@@ -30,10 +30,11 @@ A production-grade, full-stack Django application for professional ID card desig
 19. [Public Website](#public-website)
 20. [Email System](#email-system)
 21. [Setup & Installation](#setup--installation)
-22. [Environment Variables](#environment-variables)
-23. [Deployment](#deployment)
-24. [Changelog](#changelog)
-25. [License](#license)
+22. [Management Commands](#management-commands)
+23. [Environment Variables](#environment-variables)
+24. [Deployment](#deployment)
+25. [Changelog](#changelog)
+26. [License](#license)
 
 ---
 
@@ -41,7 +42,7 @@ A production-grade, full-stack Django application for professional ID card desig
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Backend** | Django 5.2, Python 3.11+ | Core application framework |
+| **Backend** | Django 5.2.10, Python 3.11+ | Core application framework |
 | **Database** | SQLite (dev) / PostgreSQL (prod) | Data storage via Django ORM |
 | **Frontend** | Tailwind CSS 4, Alpine.js, vanilla JS | Responsive UI with reactive components |
 | **Interactivity** | HTMX | Server-rendered partial updates without SPA overhead |
@@ -98,7 +99,7 @@ A production-grade, full-stack Django application for professional ID card desig
 |              |  |  |  | Pipeline      |  |  |  |                    |
 |              |  |  |  +---------------+  |  |  |                    |
 |              |  |  |  | Background    |  |  |  |                    |
-|              |  |  |  | Worker (1)    |  |  |  |                    |
+|              |  |  |  | Worker (2*)   |  |  |  |                    |
 |              |  |  |  +-------+-------+  |  |  |                    |
 |              |  |  |          |          |  |  |                    |
 |              |  |  |          v          |  |  |                    |
@@ -123,9 +124,11 @@ A production-grade, full-stack Django application for professional ID card desig
 1. **Ultra-Thin Views** — Views only parse requests, call services, and return responses. No model mutations (`.save()`, `.create()`, `.delete()`) in view files.
 2. **Service Layer Authority** — All business logic lives in service classes under `core/services/` and app-level `services.py`. Each service is the single authority for its domain.
 3. **Permission-First** — Every API and page view checks permissions via `PermissionService` before any operation. Decorators enforce role requirements.
-4. **Memory-Conscious** — Designed for 1 GB RAM VPS. Background worker uses single thread. Files processed from disk, never fully loaded into memory.
+4. **Memory-Conscious** — Designed for 1 GB RAM VPS. Background worker defaults to 2 threads (configurable 1-4) with heavy-task semaphore throttling. Files processed from disk, never fully loaded into memory.
 5. **Audit Everything** — `ActivityService` logs 30+ action types. All sensitive operations recorded with IP, user, and timestamp.
 6. **Shared Service Layer (Desktop + Mobile)** — PWA mobile API endpoints route through the same service classes as the desktop panel. No duplicate logic exists between the two interfaces.
+
+`*` default worker count is 2 (`BACKGROUND_WORKER_MAX_WORKERS`), bounded to 1-4.
 
 ### Request Flow
 
@@ -163,7 +166,7 @@ Browser -> Nginx -> Gunicorn -> SubdomainRoutingMiddleware
 ## Project Structure
 
 ```
-Adarsh FInal Deploye/
+Adarsh Admin New/
 |-- accounts/                  # Authentication app
 |   |-- models.py              #   (no custom models -- uses core.User)
 |   |-- services.py            #   OTP, login, password reset logic
@@ -204,7 +207,7 @@ Adarsh FInal Deploye/
 |
 |-- core/                      # Central app -- models, permissions, base views
 |   |-- models.py              #   Re-exports: User, Notification, ActivityLog, etc.
-|   |-- middleware.py          #   7 custom middleware classes
+|   |-- middleware.py          #   9 custom middleware classes
 |   |-- context_processors.py  #   Permission injection into all templates
 |   |-- services/              #   Business logic layer (15+ service modules)
 |   |   |-- permission_service.py    # Single authority for all permission checks
@@ -349,7 +352,7 @@ Adarsh FInal Deploye/
 |-- requirements.txt           # Python dependencies
 |-- package.json               # Node.js (Tailwind CSS CLI)
 |-- tailwind-input.css         # Tailwind CSS input file
-|-- VERSION.txt                # Current version (v2.18.0)
+|-- VERSION.txt                # Current version (v1.18.0)
 +-- db.sqlite3                 # Development database
 ```
 
@@ -369,6 +372,7 @@ Adarsh FInal Deploye/
 | `exports` | Multi-format export engine — PDF, XLSX, DOCX, ZIP generation | No (uses idcard models) |
 | `mediafiles` | Protected media file management — image upload, thumbnails, optimization | Yes (CardMedia, ImageProcessingLog) |
 | `mobile_app` | PWA mobile app — all mobile views and API endpoints | No (proxy to service layer) |
+| `panel` | Panel monitoring, backup, and notification management endpoints/views | No (uses core + shared models) |
 | `website` | Public-facing website — landing page, portfolio, testimonials, FAQ, contact, SEO | Yes (10+ content models) |
 
 ---
@@ -486,11 +490,11 @@ Status Workflow:
 | 3 | **Downloaded** | Reprint data downloaded for printing |
 | 4 | **Pool** | Reprinted cards returned to pool |
 
-### Bulk Operations (Admin Only)
+### Bulk Operations (Permission-Gated)
 - **Bulk Upload** — XLSX + ZIP import (up to 5,000 rows, batch size 100)
 - **Bulk Download** — Export as PDF, XLSX, DOCX, or ZIP with images
 - **Bulk Reupload** — Replace all images via ZIP file
-- **Bulk Delete** — Delete all cards in a table (with verification code)
+- **Bulk Delete** — Super-admin-only destructive delete-all operation (with verification code)
 - **Bulk Status Change** — Move multiple cards between statuses
 
 ### Export System
@@ -552,17 +556,22 @@ Status Workflow:
 |  per-feature toggles. Website management.      |
 |  Can perform bulk operations and exports.      |
 +-------------------------------------------------+
+|                  PRO USER                       |
+|  Single privileged account with super-admin     |
+|  powers used for owner-level operations and     |
+|  impersonation workflows.                       |
++-------------------------------------------------+
 |                 CLIENT                          |
 |  Organization/school owner. Manages their own  |
 |  groups, tables, and cards. Can delegate       |
 |  permissions to their client staff.            |
-|  [X] No bulk operations or image reupload.     |
+|  Bulk actions are toggle-gated per client.     |
 +-------------------------------------------------+
 |              CLIENT STAFF                       |
 |  Delegated access from parent client.          |
 |  Double-gated: staff perm AND client perm      |
 |  must both be True. Most restricted role.      |
-|  [X] No bulk operations or image reupload.     |
+|  Can only do what both staff + parent allow.   |
 +-------------------------------------------------+
 ```
 
@@ -581,11 +590,12 @@ These permissions are **always denied** for Client and Client Staff roles at the
 
 | Permission | Description |
 |------------|-------------|
-| `perm_idcard_bulk_upload` | Bulk upload cards via XLSX + ZIP |
-| `perm_idcard_bulk_download` | Bulk download/export cards |
-| `perm_idcard_bulk_reupload` | Bulk reupload all images via ZIP |
 | `perm_delete_all_idcard` | Delete all cards in a table |
 | `perm_reupload_idcard_image` | Reupload individual card image |
+| `perm_confirmed_list` | Reprint confirmed queue list (admin staff only) |
+| `perm_print_list` | Print queue list (admin staff only) |
+| `perm_finalized_list` | Print finalized queue list (admin staff only) |
+| `perm_website_view / add / edit / delete / publish` | Website content management (staff-side only) |
 
 ### Mobile Bottom Navigation (Role-Based)
 
@@ -607,7 +617,7 @@ The PWA bottom navigation bar adapts based on role:
 
 ### Legend
 - **Yes** = Available (can be toggled on/off per user)
-- **Blocked** = Always denied regardless of flags
+- **No** = Not available for that role in current permission service rules
 - **Always** = Always granted (super admin bypass)
 - **Inherited** = Double-gated from parent client
 - **—** = Not applicable to this role
@@ -622,8 +632,6 @@ The PWA bottom navigation bar adapts based on role:
 | Edit table (`perm_idcard_setting_edit`) | Always | Yes | Yes | Inherited |
 | Delete table (`perm_idcard_setting_delete`) | Always | Yes | Yes | Inherited |
 | Toggle table status (`perm_idcard_setting_status`) | Always | Yes | Yes | Inherited |
-| Create group (`perm_idcard_group_create`) | Always | Yes | Yes | Inherited |
-| Delete group (`perm_idcard_group_delete`) | Always | Yes | Yes | Inherited |
 
 ### ID Card List (Tab Visibility) Permissions
 
@@ -656,15 +664,25 @@ These permissions gate which **status tabs** are visible and clickable in both t
 | Retrieve from pool (`perm_idcard_retrieve`) | Always | Yes | Yes | Inherited |
 | Upgrade all classes (`perm_idcard_upgrade_all`) | Always | Yes | Yes | Inherited |
 
-### Bulk & Reupload Permissions (Admin Only)
+### Bulk & Reupload Permissions
 
 | Permission | Super Admin | Admin Staff | Client | Client Staff |
 |------------|:-----------:|:-----------:|:------:|:------------:|
-| Bulk upload (`perm_idcard_bulk_upload`) | Always | Yes | **Blocked** | **Blocked** |
-| Bulk download (`perm_idcard_bulk_download`) | Always | Yes | **Blocked** | **Blocked** |
-| Bulk reupload (`perm_idcard_bulk_reupload`) | Always | Yes | **Blocked** | **Blocked** |
-| Delete all cards (`perm_delete_all_idcard`) | Always | Yes | **Blocked** | **Blocked** |
-| Reupload image (`perm_reupload_idcard_image`) | Always | Yes | **Blocked** | **Blocked** |
+| Bulk upload (`perm_idcard_bulk_upload`) | Always | Yes | Yes | Inherited |
+| Bulk download (`perm_idcard_bulk_download`) | Always | Yes | Yes | Inherited |
+| Bulk reupload (`perm_idcard_bulk_reupload`) | Always | Yes | Yes | Inherited |
+| Delete all cards (`perm_delete_all_idcard`) | Always | No | No | No |
+| Reupload image (`perm_reupload_idcard_image`) | Always | Always | No | No |
+
+### Print Queue Permissions (Staff Side)
+
+These are available only for staff-side workflows:
+
+| Permission | Super Admin | Admin Staff | Client | Client Staff |
+|------------|:-----------:|:-----------:|:------:|:------------:|
+| Confirmed list (`perm_confirmed_list`) | Always | Yes | No | No |
+| Print list (`perm_print_list`) | Always | Yes | No | No |
+| Finalized list (`perm_finalized_list`) | Always | Yes | No | No |
 
 ### Website & Mobile Permissions
 
@@ -696,11 +714,13 @@ Middleware executes in order for every request. Custom middleware enforces secur
 | 7 | `AuthenticationMiddleware` | Django | Associates `request.user` from session |
 | 8 | `MessageMiddleware` | Django | Flash messages |
 | 9 | `RequestTimingMiddleware` | core | Logs request duration via `Server-Timing` header. Warns on >1.5s requests, >50 queries, >0.1s individual queries. |
-| 10 | `PermissionValidationMiddleware` | core | Re-fetches user from DB every 10s to detect deactivation. Forces logout if user inactive, client suspended, or staff reassigned. Annotates `request.user_scope`. |
-| 11 | `SessionIdleTimeoutMiddleware` | core | Auto-logout after configurable idle timeout (default 30 days). Handles both browser and AJAX/HTMX requests. |
-| 12 | `SecurityHeadersMiddleware` | core | Adds `Permissions-Policy`, `Cache-Control: no-store` for panel pages, `X-Robots-Tag: noindex` on panel subdomain. |
-| 13 | `WebsiteOfflineMiddleware` | core | Returns 503 offline page when `WebsiteStatus` is `draft`. Admin, static, media, API bypass. |
-| 14 | `XFrameOptionsMiddleware` | Django | Clickjacking protection (`X-Frame-Options: DENY`) |
+| 10 | `PanelEntryGateMiddleware` | core | Optional panel-entry gate for anonymous users via short-lived signed token flow. |
+| 11 | `PermissionValidationMiddleware` | core | Re-fetches user from DB on interval (60s default) to detect deactivation/reassignment. Annotates `request.user_scope`. |
+| 12 | `SessionIdleTimeoutMiddleware` | core | Auto-logout on idle timeout (default 7 days) plus absolute max age (default 30 days). |
+| 13 | `SecurityHeadersMiddleware` | core | Adds CSP, `Permissions-Policy`, panel cache hardening, and `X-Robots-Tag: noindex` on panel domain. |
+| 14 | `MaintenanceModeMiddleware` | core | Blocks panel routes for non-super-admin users when system maintenance mode is enabled. |
+| 15 | `WebsiteOfflineMiddleware` | core | Returns 503 offline page when `WebsiteStatus` is `draft`; bypasses panel/admin/static/media/API routes. |
+| 16 | `XFrameOptionsMiddleware` | Django | Clickjacking protection (`X-Frame-Options: DENY`) |
 
 ---
 
@@ -720,7 +740,7 @@ All business logic resides in the service layer. Views are ultra-thin — they p
 | **StaffService** | `core/services/staff_service.py` | Staff CRUD for both admin_staff and client_staff, permission management. |
 | **NotificationService** | `core/services/notification_service.py` | Create/broadcast/target notifications, read tracking, optional email alerts. |
 | **ActivityService** | `core/services/activity_service.py` | Non-blocking audit logging. 30+ action types. Role-filtered queries. |
-| **BackgroundWorker** | `core/services/background_worker.py` | Singleton `ThreadPoolExecutor` (max_workers=1). Task routing, timeout, cleanup. |
+| **BackgroundWorker** | `core/services/background_worker.py` | Singleton `ThreadPoolExecutor` (default `max_workers=2`, env-bounded 1-4) with heavy-task semaphore throttling. |
 | **UserProfileService** | `core/services/user_profile_service.py` | Profile updates, password changes, validation. |
 | **ExportService** | `exports/services.py` | Export orchestration — delegates to PDF, Excel, Word, ZIP modules. |
 | **ImageService** | `mediafiles/services/` | Image upload, thumbnail generation, optimization. |
@@ -744,14 +764,14 @@ class ServiceResult:
 
 ## Background Task System
 
-Designed for **1 GB RAM VPS** — uses a single-threaded worker to prevent memory exhaustion.
+Designed for **1 GB RAM VPS** — uses a bounded thread pool (default 2 workers, configurable 1-4) with heavy-task throttling.
 
 ### Architecture
 
 ```
 User Request --> Create BackgroundTask (DB) --> BackgroundWorker Queue
                                                       |
-                                                Single Thread
+                                         Worker Pool (default 2)
                                                       |
                                   +-----------------+-+---------------+
                                   v                 v                 v
@@ -782,6 +802,7 @@ User Request --> Create BackgroundTask (DB) --> BackgroundWorker Queue
 |-----------|--------|
 | **1 active task per user** | Checked atomically via `select_for_update()` |
 | **System queue limit** | Max 10 pending/processing tasks system-wide |
+| **Heavy-task throttle** | Bounded semaphore (`BACKGROUND_HEAVY_TASK_CONCURRENCY`) limits RAM-heavy jobs |
 | **Failsafe timeout** | 30 minutes — tasks exceeding this auto-fail |
 | **Stale cleanup** | Tasks pending/processing >24h marked as failed |
 | **Result cleanup** | Completed tasks >7 days purged with files |
@@ -991,7 +1012,8 @@ Each entry records: user, action type, description, target model/ID/name, IP add
 | Control | Detail |
 |---------|--------|
 | **Permission** | `perm_idcard_bulk_download` required |
-| **Status guard** | Clients blocked from exporting approved/download cards |
+| **Format guard** | Client/client_staff users are restricted to PDF exports (non-PDF formats are staff/admin-side) |
+| **Status guard** | Client/client_staff users are blocked from approved/download exports for non-PDF flows and blocked from download-all |
 | **Row limit** | Max 5,000 card IDs per request |
 | **Scope** | Client scoping enforced via `PermissionService.can_access_client()` |
 | **Templates** | Custom `ExportTemplate` support for footer instructions |
@@ -1280,7 +1302,7 @@ All emails sent asynchronously via background threads.
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd "Adarsh FInal Deploye"
+cd "Adarsh Admin New"
 
 # Create virtual environment
 python -m venv venv
@@ -1337,6 +1359,20 @@ Without ffmpeg, video uploads work but are stored at original size (no compressi
 
 ---
 
+## Management Commands
+
+Custom commands live under `core/management/commands/`.
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `create_pro_user` | Creates the single allowed `pro_user` account | `python manage.py create_pro_user --email owner@example.com --password StrongPass123` |
+| `sanitize_field_data` | Cleans non-Latin-1 characters from all `IDCard.field_data` text values (dry-run by default) | `python manage.py sanitize_field_data --apply` |
+| `fix_dob_format` | Converts digit-only DOB values (`DDMMYYYY` / `DDMMYY`) to slash format | `python manage.py fix_dob_format --apply --client-id 7` |
+| `convert_thumbs_to_webp` | Migrates old `.jpg/.jpeg` thumbnails in thumbs folders to `.webp` | `python manage.py convert_thumbs_to_webp --apply --quality 85` |
+| `revert_kg_dash_for_client` | Reverts `KG1/KG2` class values to `KG-I/KG-II` for one client | `python manage.py revert_kg_dash_for_client --client-id 123 --apply` |
+
+---
+
 ## Environment Variables
 
 | Variable | Description | Required | Default |
@@ -1349,11 +1385,33 @@ Without ffmpeg, video uploads work but are stored at original size (no compressi
 | `PANEL_DOMAIN` | Admin panel domain | No | — |
 | `WEBSITE_URL` | Full website URL with protocol | No | Auto from WEBSITE_DOMAIN |
 | `PANEL_URL` | Full panel URL with protocol | No | Auto from PANEL_DOMAIN |
+| `CSRF_TRUSTED_ORIGINS` | Comma-separated trusted origins for CSRF | No | Auto-extends from panel/website domains |
+| `SESSION_COOKIE_DOMAIN` | Shared cookie domain for subdomains | No | unset |
+| `CSRF_COOKIE_DOMAIN` | CSRF cookie domain (should match session domain for subdomains) | No | inherits `SESSION_COOKIE_DOMAIN` |
+| `SESSION_IDLE_TIMEOUT` | Idle session timeout in seconds | No | `604800` (7 days) |
+| `SESSION_ABSOLUTE_MAX_AGE` | Absolute session lifetime in seconds | No | `2592000` (30 days) |
+| `SESSION_FINGERPRINT_ENABLED` | Browser fingerprint binding for sessions | No | `true` in prod, `false` in debug |
+| `SESSION_FINGERPRINT_INCLUDE_IP` | Include coarse IP in session fingerprint | No | `false` |
+| `MEDIA_USE_XACCEL` | Use Nginx `X-Accel-Redirect` for protected media | No | `false` |
+| `BACKGROUND_WORKER_MAX_WORKERS` | Background worker pool size (bounded) | No | `2` (range 1-4) |
+| `BACKGROUND_HEAVY_TASK_CONCURRENCY` | Heavy task concurrency cap | No | `1` |
+| `REDIS_URL` | Redis cache URL for shared locks/rate limiting | **Yes (prod)** | LocMemCache fallback (dev only) |
+| `REDIS_DB` | Redis database number | No | `1` |
 | `EMAIL_HOST` | SMTP server hostname | No | — |
 | `EMAIL_PORT` | SMTP port | No | 587 |
+| `EMAIL_USE_TLS` | Use TLS for SMTP | No | `True` |
 | `EMAIL_HOST_USER` | SMTP username | No | — |
 | `EMAIL_HOST_PASSWORD` | SMTP password | No | — |
 | `DEFAULT_FROM_EMAIL` | Sender email address | No | — |
+| `CONTACT_FORM_RECIPIENT` | Recipient for website contact submissions | No | — |
+| `SITE_URL` | Base URL used in email links | No | `http://localhost:8000` |
+| `APP_VERSION` | Optional app version override when `VERSION.txt` is unavailable | No | auto (VERSION.txt/git/fallback) |
+| `TIME_ZONE` | Django timezone | No | `Asia/Kolkata` |
+| `SLOW_REQUEST_THRESHOLD` | Slow request warning threshold (seconds) | No | `1.5` |
+| `QUERY_COUNT_THRESHOLD` | Excessive query warning threshold per request | No | `50` |
+| `SLOW_QUERY_THRESHOLD` | Slow SQL warning threshold (seconds) | No | `0.1` |
+| `LOG_TO_FILE` | Enable rotating file handlers under `logs/` | No | `false` |
+| `SECURE_SSL_REDIRECT` | Force HTTPS redirect in production | No | `True` |
 
 Generate a secret key:
 ```bash
@@ -1386,6 +1444,13 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 11. **SSL certificates**: `certbot --nginx -d yourdomain.com -d panel.yourdomain.com`
 12. **Start services**: `sudo systemctl enable --now gunicorn nginx`
 
+### CI/CD Workflows
+
+- `ci.yml` — self-hosted CI: checks, migrations, bundle build, collectstatic test, and full test run.
+- `cd.yml` — manual production deploy with rollback checks (`DEPLOY` confirmation required).
+- `quick-deploy.yml` — manual hotfix deploy path (skips full CI test cycle).
+- `build-cropper.yml` — tagged Windows build/release pipeline for the standalone Face Cropper engine.
+
 ### Gunicorn Configuration
 
 ```python
@@ -1404,7 +1469,15 @@ See [`deployment/README.md`](deployment/README.md) for comprehensive deployment 
 
 ## Changelog
 
-### v2.18.0 (March 2026)
+### v1.18.0 (Current)
+
+- Version source of truth is `VERSION.txt` (`v1.18.0`).
+- Middleware stack now includes `PanelEntryGateMiddleware` and `MaintenanceModeMiddleware` in the active chain.
+- Background worker uses bounded thread-pool concurrency with heavy-task throttling.
+- Permission model reflects current rules: client/client_staff are blocked from delete-all and single-image reupload, while bulk permissions remain toggle-driven.
+- Protected media serving now enforces normalized paths, ownership checks, and optional `X-Accel-Redirect` handoff.
+
+### Recent Main-Branch Updates (Unreleased)
 
 **Image & Video Processing Pipeline**
 - Portfolio images now go through a unified pipeline on every upload (desktop + mobile): text watermark → convert to WebP → progressive quality compression to target below 500 KB with fallback resize

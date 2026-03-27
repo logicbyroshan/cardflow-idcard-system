@@ -24,6 +24,29 @@ from .services import (
 )
 
 
+def _normalize_positive_int_ids(values, max_items: int = 500):
+    """Normalize mixed payload IDs to unique positive integers with a cap."""
+    if not isinstance(values, list):
+        return []
+
+    out = []
+    seen = set()
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        try:
+            number = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if number <= 0 or number in seen:
+            continue
+        seen.add(number)
+        out.append(number)
+        if len(out) >= max_items:
+            break
+    return out
+
+
 # =============================================================================
 # API VIEWS - Dashboard
 # =============================================================================
@@ -193,8 +216,14 @@ def api_staff_detail(request, staff_id):
         if 'multipart/form-data' in content_type:
             # Django doesn't parse PUT multipart by default
             from django.http.multipartparser import MultiPartParser
-            parser = MultiPartParser(request.META, request, request.upload_handlers)
-            post_data, files = parser.parse()
+            try:
+                parser = MultiPartParser(request.META, request, request.upload_handlers)
+                post_data, files = parser.parse()
+            except Exception:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid multipart form data'
+                }, status=400)
             data = post_data.dict()
             # Parse JSON fields sent as strings
             if 'assigned_groups' in data:
@@ -572,13 +601,15 @@ def api_cards_list(request, table_id):
     """
     API: Get cards for a specific table.
     """
-    status_filter = request.GET.get('status', '')
-    search = request.GET.get('search', '')
+    status_filter = (request.GET.get('status', '') or '').strip().lower()
+    search = (request.GET.get('search', '') or '').strip()[:120]
     try:
         page = int(request.GET.get('page', 1))
         per_page = int(request.GET.get('per_page', 20))
     except (ValueError, TypeError):
         page, per_page = 1, 20
+    page = max(page, 1)
+    per_page = max(1, min(per_page, 200))
     offset = (page - 1) * per_page
     
     result = ClientCardService.get_cards(
@@ -683,8 +714,14 @@ def api_cards_bulk_status(request, table_id):
             'message': 'Invalid JSON data'
         }, status=400)
     
-    card_ids = data.get('card_ids', [])
+    card_ids = _normalize_positive_int_ids(data.get('card_ids', []), max_items=500)
     new_status = data.get('status', '')
+
+    if not card_ids:
+        return JsonResponse({
+            'success': False,
+            'message': 'No valid card IDs provided'
+        }, status=400)
     
     result = ClientCardService.bulk_change_status(
         request.user,

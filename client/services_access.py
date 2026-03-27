@@ -15,7 +15,28 @@ class ClientAccessService:
     Service for managing client data access.
     Ensures clients can only access their own data.
     """
-    
+
+    @staticmethod
+    def _normalize_positive_int_ids(raw_ids):
+        """Normalize mixed values into unique positive integers."""
+        if not isinstance(raw_ids, (list, tuple, set)):
+            return []
+
+        out = []
+        seen = set()
+        for value in raw_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                number = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            if number <= 0 or number in seen:
+                continue
+            seen.add(number)
+            out.append(number)
+        return out
+
     @staticmethod
     def get_client_for_user(user) -> Optional[Client]:
         """
@@ -25,17 +46,17 @@ class ClientAccessService:
         """
         if not user.is_authenticated:
             return None
-        
+
         if PermissionService.is_client(user):
             return getattr(user, 'client_profile', None)
-        
+
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 return staff.client
-        
+
         return None
-    
+
     @staticmethod
     def can_access_client(user, client_id: int) -> bool:
         """Check if user can access a specific client's data.
@@ -53,7 +74,7 @@ class ClientAccessService:
         if client is None:
             return False
         return client.id == client_id
-    
+
     @staticmethod
     def can_access_group(user, group: IDCardGroup) -> bool:
         """Check if user can access a specific group.
@@ -68,19 +89,18 @@ class ClientAccessService:
             if not staff:
                 return False
             return staff.assigned_clients.filter(id=group.client_id).exists()
+
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
         if group.client_id != client.id:
             return False
+
         # For client_staff with assigned groups: restrict to assigned only
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = [
-                    int(v) for v in (staff.assigned_table_ids or [])
-                    if str(v).strip().isdigit() and int(v) > 0
-                ]
+                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
                 if assigned_table_ids:
                     return IDCardTable.objects.filter(
                         id__in=assigned_table_ids,
@@ -107,19 +127,18 @@ class ClientAccessService:
             if not staff:
                 return False
             return staff.assigned_clients.filter(id=table.group.client_id).exists()
+
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
         if table.group.client_id != client.id:
             return False
+
         # For client_staff with assigned groups: restrict to assigned groups only
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = [
-                    int(v) for v in (staff.assigned_table_ids or [])
-                    if str(v).strip().isdigit() and int(v) > 0
-                ]
+                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
                 if assigned_table_ids:
                     return table.id in assigned_table_ids
                 assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
@@ -135,27 +154,31 @@ class ClientAccessService:
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return []
+
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = [
-                    int(v) for v in (staff.assigned_table_ids or [])
-                    if str(v).strip().isdigit() and int(v) > 0
-                ]
+                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
                 if assigned_table_ids:
                     from idcards.models import IDCardTable as _IDCardTable
-                    return list(_IDCardTable.objects.filter(
-                        group__client=client,
-                        id__in=assigned_table_ids,
-                        deleted_by_client=False,
-                    ).values_list('id', flat=True))
+                    return list(
+                        _IDCardTable.objects.filter(
+                            group__client=client,
+                            id__in=assigned_table_ids,
+                            deleted_by_client=False,
+                        ).values_list('id', flat=True)
+                    )
+
                 assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
                 if assigned_group_ids:
                     from idcards.models import IDCardTable as _IDCardTable
-                    return list(_IDCardTable.objects.filter(
-                        group__client=client,
-                        group_id__in=assigned_group_ids,
-                    ).values_list('id', flat=True))
+                    return list(
+                        _IDCardTable.objects.filter(
+                            group__client=client,
+                            group_id__in=assigned_group_ids,
+                            deleted_by_client=False,
+                        ).values_list('id', flat=True)
+                    )
         return None  # None means no restriction (all client tables accessible)
 
     @staticmethod
@@ -174,19 +197,18 @@ class ClientAccessService:
             if not staff:
                 return False
             return staff.assigned_clients.filter(id=card.table.group.client_id).exists()
+
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
         if card.table.group.client_id != client.id:
             return False
+
         # For client_staff with assigned groups
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = [
-                    int(v) for v in (staff.assigned_table_ids or [])
-                    if str(v).strip().isdigit() and int(v) > 0
-                ]
+                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
                 if assigned_table_ids:
                     return card.table_id in assigned_table_ids
                 assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))

@@ -483,3 +483,263 @@ class PermissionDecoratorResponseTests(TestCase):
 
         response = protected_view(request)
         self.assertEqual(response.status_code, 200)
+
+
+class PanelEntryGateSecurityTests(TestCase):
+    def setUp(self):
+        from core.models import SystemSettings
+
+        self.factory = RequestFactory()
+        cache.clear()
+        SystemSettings.set_value('website_not_found_mode', 'true')
+        SystemSettings.set_value('panel_entry_gate_enabled', 'true')
+
+    def tearDown(self):
+        cache.clear()
+
+    def _middleware(self):
+        from django.http import HttpResponse
+        from core.middleware import PanelEntryGateMiddleware
+
+        return PanelEntryGateMiddleware(lambda request: HttpResponse('ok'))
+
+    def test_timestamp_signed_panel_token_is_accepted(self):
+        from django.contrib.auth.models import AnonymousUser
+        from django.core.signing import TimestampSigner
+
+        token = TimestampSigner(salt='panel-entry-gate').sign('website-panel-entry')
+        request = self.factory.get(f'/auth/login/?panel_entry_token={token}')
+        request.user = AnonymousUser()
+        request.session = {}
+        request._is_panel_subdomain = True
+
+        response = self._middleware()(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(request.session.get('_panel_entry_ok'), '1')
+
+    def test_legacy_non_timestamp_token_is_rejected(self):
+        from django.contrib.auth.models import AnonymousUser
+        from django.core.signing import Signer
+        from django.http import Http404
+
+        token = Signer(salt='panel-entry-gate').sign('website-panel-entry')
+        request = self.factory.get(f'/auth/login/?panel_entry_token={token}')
+        request.user = AnonymousUser()
+        request.session = {}
+        request._is_panel_subdomain = True
+
+        with self.assertRaises(Http404):
+            self._middleware()(request)
+
+
+class TaskApiSecurityTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = _create_super_admin('tasksec-admin@test.com', 'adminpass1')
+
+    def test_task_download_rejects_sibling_media_prefix_path(self):
+        from core.models import BackgroundTask
+        from core.views.task_api import api_task_download
+
+        with tempfile.TemporaryDirectory() as media_root:
+            sibling_dir = media_root + '_evil'
+            os.makedirs(sibling_dir, exist_ok=True)
+            sibling_file = os.path.join(sibling_dir, 'secret.txt')
+            with open(sibling_file, 'wb') as fh:
+                fh.write(b'secret')
+
+            escaped_rel = os.path.join('..', os.path.basename(sibling_dir), 'secret.txt')
+            task = BackgroundTask.objects.create(
+                user=self.user,
+                task_type='export_zip',
+                status='completed',
+                result_path=escaped_rel,
+            )
+
+            request = self.factory.get(f'/panel/api/task-download/{task.id}/')
+            request.user = self.user
+            request.session = {}
+
+            with override_settings(MEDIA_ROOT=media_root):
+                response = api_task_download(request, task.id)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])
+
+
+class CropApiScopeTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.factory = RequestFactory()
+
+        self.admin_user = User.objects.create_user(
+            username='crop-admin-staff@test.com',
+            email='crop-admin-staff@test.com',
+            password='adminpass1',
+            role='admin_staff',
+        )
+
+        _, self.client_a = _create_client_user('crop-client-a@test.com', 'clientpass1')
+        _, self.client_b = _create_client_user('crop-client-b@test.com', 'clientpass1')
+
+        _ga, self.table_a = _create_table(self.client_a)
+        _gb, self.table_b = _create_table(self.client_b)
+
+        self.staff_profile = Staff.objects.create(
+            user=self.admin_user,
+            staff_type='admin_staff',
+        )
+        self.staff_profile.assigned_clients.add(self.client_a)
+
+    def test_prepare_crop_denies_unassigned_client_table(self):
+        from core.views.crop_api import api_prepare_crop
+
+        request = self.factory.post(
+            f'/panel/api/table/{self.table_b.id}/cards/prepare-crop/',
+            data=json.dumps({'card_ids': [1, 2, 3]}),
+            content_type='application/json',
+        )
+        request.user = self.admin_user
+
+        response = api_prepare_crop(request, self.table_b.id)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])
+
+
+class ProtectedMediaAuthorizationTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+
+        self.owner_a = User.objects.create_user(
+            username='media-owner-a@test.com',
+            email='media-owner-a@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.owner_b = User.objects.create_user(
+            username='media-owner-b@test.com',
+            email='media-owner-b@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_a = Client.objects.create(user=self.owner_a, name='Media Client A')
+        self.client_b = Client.objects.create(user=self.owner_b, name='Media Client B')
+
+    def test_media_adareshimg_enforces_client_scope(self):
+        with tempfile.TemporaryDirectory() as media_root:
+            rel_path = f"adarshimg/{self.client_a.image_folder_code}/photo.jpg"
+            abs_path = os.path.join(media_root, 'adarshimg', self.client_a.image_folder_code, 'photo.jpg')
+            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+            with open(abs_path, 'wb') as fh:
+                fh.write(b'jpg')
+
+            with override_settings(MEDIA_ROOT=media_root, MEDIA_USE_XACCEL=True):
+                self.client.force_login(self.owner_b)
+                denied = self.client.get(f'/media/{rel_path}')
+                self.assertEqual(denied.status_code, 404)
+
+                self.client.force_login(self.owner_a)
+                allowed = self.client.get(f'/media/{rel_path}')
+                self.assertEqual(allowed.status_code, 200)
+                self.assertEqual(allowed.get('X-Accel-Redirect'), f'/protected-media/{rel_path}')
+
+    def test_media_exports_enforces_task_owner(self):
+        from core.models import BackgroundTask
+
+        with tempfile.TemporaryDirectory() as media_root:
+            rel_path = 'exports/private-export.pdf'
+            abs_path = os.path.join(media_root, 'exports', 'private-export.pdf')
+            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+            with open(abs_path, 'wb') as fh:
+                fh.write(b'%PDF-1.7')
+
+            BackgroundTask.objects.create(
+                user=self.owner_a,
+                task_type='export_pdf',
+                status='completed',
+                result_path=rel_path,
+            )
+
+            with override_settings(MEDIA_ROOT=media_root, MEDIA_USE_XACCEL=True):
+                self.client.force_login(self.owner_b)
+                denied = self.client.get(f'/media/{rel_path}')
+                self.assertEqual(denied.status_code, 404)
+
+                self.client.force_login(self.owner_a)
+                allowed = self.client.get(f'/media/{rel_path}')
+                self.assertEqual(allowed.status_code, 200)
+                self.assertEqual(allowed.get('X-Accel-Redirect'), f'/protected-media/{rel_path}')
+
+
+class EnginePathScopeTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('engine-super@test.com', 'adminpass1')
+        self.admin_staff = User.objects.create_user(
+            username='engine-staff@test.com',
+            email='engine-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.client_owner = User.objects.create_user(
+            username='engine-client@test.com',
+            email='engine-client@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_owner, name='Engine Scoped Client')
+
+        staff = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
+        staff.assigned_clients.add(self.client_obj)
+
+    def test_engine_serve_image_denies_admin_staff_outside_scope(self):
+        with tempfile.TemporaryDirectory() as media_root, tempfile.TemporaryDirectory() as outside_root:
+            outside_file = os.path.join(outside_root, 'outside.jpg')
+            with open(outside_file, 'wb') as fh:
+                fh.write(b'jpg')
+
+            with override_settings(MEDIA_ROOT=media_root):
+                self.client.force_login(self.admin_staff)
+                response = self.client.get('/panel/api/engine/serve-image/', {'path': outside_file})
+                self.assertEqual(response.status_code, 403)
+                response.close()
+
+    def test_engine_serve_image_allows_super_admin_outside_scope(self):
+        with tempfile.TemporaryDirectory() as media_root, tempfile.TemporaryDirectory() as outside_root:
+            outside_file = os.path.join(outside_root, 'outside.jpg')
+            with open(outside_file, 'wb') as fh:
+                fh.write(b'jpg')
+
+            with override_settings(MEDIA_ROOT=media_root):
+                self.client.force_login(self.super_admin)
+                response = self.client.get('/panel/api/engine/serve-image/', {'path': outside_file})
+                self.assertEqual(response.status_code, 200)
+                response.close()
+
+
+class DashboardAndLogsHardeningTests(TestCase):
+    def test_dashboard_limit_parser_clamps_values(self):
+        from core.views.dashboard_views import _parse_dashboard_limit
+
+        self.assertEqual(_parse_dashboard_limit('99999'), 500)
+        self.assertEqual(_parse_dashboard_limit('-5'), 1)
+        self.assertEqual(_parse_dashboard_limit('bad'), 500)
+
+    def test_activity_logs_handles_invalid_limit_offset(self):
+        from core.models import ActivityLog
+
+        admin = _create_super_admin('activity-admin@test.com', 'adminpass1')
+        for i in range(3):
+            ActivityLog.objects.create(user=admin, action='other', description=f'log-{i}')
+
+        self.client.force_login(admin)
+        response = self.client.get('/panel/api/activity-logs/', {'limit': 'bad', 'offset': 'bad'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertGreaterEqual(payload['total'], 3)

@@ -24,7 +24,7 @@ import time
 import zipfile
 from datetime import timedelta
 from io import BytesIO
-from typing import List
+from typing import List, Optional
 
 from django.conf import settings
 from django.utils import timezone
@@ -120,7 +120,12 @@ def _process_backup(task_id: int):
         )
 
     try:
-        clients = Client.objects.filter(pk__in=client_ids).order_by('name')
+        clients = (
+            Client.objects
+            .filter(pk__in=client_ids)
+            .prefetch_related('id_card_groups__tables')
+            .order_by('name')
+        )
         task.total = clients.count()
         task.save(update_fields=['total'])
 
@@ -204,15 +209,15 @@ def _build_client_in_zip(zf: zipfile.ZipFile, client) -> bool:
     """
     from idcards.models import IDCardTable
 
-    groups = client.id_card_groups.all()
-    if not groups.exists():
+    groups = list(client.id_card_groups.all())
+    if not groups:
         return False
 
     safe_name = _safe_filename(client.name)
     wrote_any = False
 
     for group in groups:
-        tables = IDCardTable.objects.filter(group=group)
+        tables = getattr(group, 'tables', IDCardTable.objects.filter(group=group)).all()
         for table in tables:
             wrote = _write_table_to_zip(zf, safe_name, table)
             if wrote:
@@ -226,8 +231,8 @@ def _write_table_to_zip(zf: zipfile.ZipFile, client_folder: str, table) -> bool:
     from idcards.models import IDCard
     from exports.utils import get_text_fields, get_image_fields
 
-    all_cards = IDCard.objects.filter(table=table).order_by('id')
-    if not all_cards.exists():
+    all_cards = list(IDCard.objects.filter(table=table).order_by('id'))
+    if not all_cards:
         return False
 
     table_safe = _safe_filename(table.name)
@@ -240,8 +245,13 @@ def _write_table_to_zip(zf: zipfile.ZipFile, client_folder: str, table) -> bool:
     wrote_any = False
     image_paths_written = set()
 
+    cards_by_status = {status: [] for status in statuses}
+    for card in all_cards:
+        if card.status in cards_by_status:
+            cards_by_status[card.status].append(card)
+
     for status in statuses:
-        cards = [c for c in all_cards if c.status == status]
+        cards = cards_by_status[status]
         if not cards:
             continue
 
@@ -332,8 +342,8 @@ def _collect_images(zf, base_prefix, card, image_fields, already):
             continue
 
         rel = raw.replace('\\', '/')
-        abs_path = os.path.join(settings.MEDIA_ROOT, rel)
-        if not os.path.isfile(abs_path):
+        abs_path = _resolve_media_path(rel)
+        if not abs_path or not os.path.isfile(abs_path):
             continue
 
         arc_name = f"{base_prefix}/images/{os.path.basename(abs_path)}"
@@ -404,3 +414,18 @@ def _extract_image_stem(raw: str) -> str:
     basename = os.path.basename(val)
     name, _ = os.path.splitext(basename)
     return name
+
+
+def _resolve_media_path(rel_path: str) -> Optional[str]:
+    """Resolve a media-relative path and reject traversal/absolute escapes."""
+    if not rel_path:
+        return None
+
+    media_root = os.path.abspath(settings.MEDIA_ROOT)
+    candidate = os.path.abspath(os.path.join(media_root, rel_path))
+    try:
+        if os.path.commonpath([media_root, candidate]) != media_root:
+            return None
+    except ValueError:
+        return None
+    return candidate

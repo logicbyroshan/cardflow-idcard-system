@@ -828,6 +828,77 @@ class ClientApiIntegrationTests(TestCase):
         self.client_staff_user.refresh_from_db()
         self.assertTrue(self.client_staff_user.check_password('TmpStrong!982'))
 
+    def test_cards_api_without_status_is_permission_scoped(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='approved',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Approved Card'},
+        )
+
+        self.staff_profile.perm_idcard_pending_list = True
+        self.staff_profile.perm_idcard_approved_list = False
+        self.staff_profile.perm_idcard_verified_list = False
+        self.staff_profile.perm_idcard_pool_list = False
+        self.staff_profile.perm_idcard_download_list = False
+        self.staff_profile.perm_idcard_reprint_list = False
+        self.staff_profile.save(update_fields=[
+            'perm_idcard_pending_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_download_list',
+            'perm_idcard_reprint_list',
+        ])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/api/table/{self.table.id}/cards/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        statuses = {row.get('status') for row in payload['data']['cards']}
+        self.assertEqual(statuses, {'pending'})
+
+    def test_cards_api_rejects_invalid_status_filter(self):
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/table/{self.table.id}/cards/',
+            {'status': 'not-real'},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_cards_api_caps_per_page_and_normalizes_page(self):
+        from idcards.models import IDCard
+
+        for i in range(230):
+            IDCard.objects.create(
+                table=self.table,
+                status='pending',
+                field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': f'P{i}'},
+            )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/table/{self.table.id}/cards/',
+            {'status': 'pending', 'page': -5, 'per_page': 5000},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['data']['pagination']['page'], 1)
+        self.assertEqual(payload['data']['pagination']['per_page'], 200)
+        self.assertLessEqual(len(payload['data']['cards']), 200)
+
+    def test_bulk_status_rejects_invalid_card_ids_payload(self):
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/client/api/table/{self.table.id}/cards/bulk-status/',
+            data=json.dumps({'card_ids': [True, 'x', None], 'status': 'verified'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 class ClientActivationPasswordFlowTests(TestCase):
     def test_first_activation_preserves_custom_password(self):

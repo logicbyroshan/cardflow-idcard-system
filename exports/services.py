@@ -87,6 +87,27 @@ class ExportService:
     def can_view_download_list(self) -> bool:
         """Check if user can view download list."""
         return PermissionService.has(self.user, 'perm_idcard_download_list')
+
+    @staticmethod
+    def _normalize_positive_int_ids(raw_ids: Any) -> List[int]:
+        """Normalize mixed payload IDs into unique positive integers."""
+        if not isinstance(raw_ids, (list, tuple, set)):
+            return []
+
+        normalized: List[int] = []
+        seen = set()
+        for value in raw_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                parsed = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            if parsed <= 0 or parsed in seen:
+                continue
+            seen.add(parsed)
+            normalized.append(parsed)
+        return normalized
     
     def get_scoped_cards(
         self,
@@ -101,7 +122,10 @@ class ExportService:
         MAX_EXPORT_CARDS = 5000
         # Base queryset
         if card_ids:
-            cards = IDCard.objects.filter(table=table, id__in=card_ids[:MAX_EXPORT_CARDS])
+            normalized_ids = self._normalize_positive_int_ids(card_ids)[:MAX_EXPORT_CARDS]
+            if not normalized_ids:
+                return IDCard.objects.none()
+            cards = IDCard.objects.filter(table=table, id__in=normalized_ids)
         else:
             cards = IDCard.objects.filter(table=table)
         
@@ -179,18 +203,18 @@ class ExportService:
         
         # Get scoped cards
         cards = self.get_scoped_cards(table, card_ids)
-        
-        if not cards.exists():
+
+        # Sort cards: class → section → name ascending
+        sorted_cards = sort_cards_for_export(cards, table.fields)
+
+        if not sorted_cards:
             return ExportContext(
                 user=self.user,
                 table=table,
-                cards=cards,
+                cards=sorted_cards,
                 has_permission=True,
                 error_message='No cards available for export'
             )
-        
-        # Sort cards: class → section → name ascending
-        sorted_cards = sort_cards_for_export(cards, table.fields)
         
         return ExportContext(
             user=self.user,

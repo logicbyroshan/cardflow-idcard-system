@@ -175,8 +175,11 @@ def api_admin_staff_toggle_status(request, staff_id):
     try:
         result = AdminStaffCreationService.toggle_status(request.user, staff_id)
         if result.get('success'):
-            new_status = result.get('data', {}).get('is_active', '')
-            name = result.get('data', {}).get('name', 'staff member')
+            payload = result.get('data', {})
+            new_status = payload.get('is_active')
+            if new_status is None:
+                new_status = result.get('is_active')
+            name = payload.get('name', 'staff member')
             label = 'active' if new_status else 'inactive'
             ActivityService.log(
                 'staff_status',

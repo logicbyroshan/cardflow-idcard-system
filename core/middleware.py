@@ -218,6 +218,7 @@ class PanelEntryGateMiddleware:
     SESSION_KEY = '_panel_entry_ok'
     TOKEN_SALT = 'panel-entry-gate'
     TOKEN_VALUE = 'website-panel-entry'
+    SETTINGS_CACHE_TTL = 10
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -229,12 +230,9 @@ class PanelEntryGateMiddleware:
         if self._is_exempt(request.path):
             return self.get_response(request)
 
-        from core.models import SystemSettings
-        not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+        not_found_mode, gate_enabled = self._get_gate_settings()
         if not not_found_mode:
             return self.get_response(request)
-
-        gate_enabled = SystemSettings.get_value('panel_entry_gate_enabled', 'true') == 'true'
         if not gate_enabled:
             return self.get_response(request)
 
@@ -253,14 +251,33 @@ class PanelEntryGateMiddleware:
         from django.http import Http404
         raise Http404('Not found')
 
-    def _is_valid_token(self, token):
-        from django.core.signing import Signer, BadSignature
+    def _get_gate_settings(self):
+        """Fetch gate flags with short cache to avoid per-request DB reads."""
+        from django.core.cache import cache
+        from core.models import SystemSettings
 
-        signer = Signer(salt=self.TOKEN_SALT)
+        cache_key = 'panel_entry_gate:flags'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+        gate_enabled = SystemSettings.get_value('panel_entry_gate_enabled', 'true') == 'true'
+        value = (not_found_mode, gate_enabled)
+        cache.set(cache_key, value, self.SETTINGS_CACHE_TTL)
+        return value
+
+    def _is_valid_token(self, token):
+        from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
+
+        signer = TimestampSigner(salt=self.TOKEN_SALT)
+        max_age = max(int(getattr(django_settings, 'PANEL_ENTRY_TOKEN_MAX_AGE_SECONDS', 900) or 900), 1)
         try:
-            value = signer.unsign(token)
+            value = signer.unsign(token, max_age=max_age)
             return value == self.TOKEN_VALUE
-        except BadSignature:
+        except SignatureExpired:
+            return False
+        except (BadSignature, ValueError):
             return False
 
     def _is_exempt(self, path):

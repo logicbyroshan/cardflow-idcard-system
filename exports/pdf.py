@@ -69,6 +69,28 @@ def _path_to_file_uri(abs_path: str) -> str:
     return 'file://' + fwd
 
 
+def _resolve_safe_media_path(img_path: str) -> Optional[str]:
+    """Resolve a media-relative image path while blocking traversal/absolute escapes."""
+    raw = str(img_path or '').strip().replace('\\', '/')
+    if not raw:
+        return None
+    if raw.startswith('/') or os.path.isabs(raw):
+        return None
+
+    parts = [part for part in raw.split('/') if part]
+    if not parts or any(part in ('.', '..') for part in parts):
+        return None
+
+    media_root = os.path.abspath(settings.MEDIA_ROOT)
+    candidate = os.path.abspath(os.path.join(media_root, *parts))
+    try:
+        if os.path.commonpath([media_root, candidate]) != media_root:
+            return None
+    except ValueError:
+        return None
+    return candidate
+
+
 @dataclass
 class PdfExportResult:
     """Result of a PDF export operation."""
@@ -913,8 +935,8 @@ class PdfExporter:
                         fallback_to_field_data=True
                     )
                     if img_path and is_valid_image_path(img_path):
-                        abs_path = os.path.join(settings.MEDIA_ROOT, img_path)
-                        if os.path.isfile(abs_path):
+                        abs_path = _resolve_safe_media_path(img_path)
+                        if abs_path and os.path.isfile(abs_path):
                             cell['content'] = _path_to_file_uri(abs_path)
                         else:
                             cell['content'] = _path_to_file_uri(_PLACEHOLDER_IMAGE_PATH)

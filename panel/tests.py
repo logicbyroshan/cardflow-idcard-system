@@ -1,9 +1,11 @@
 import json
+import os
+import tempfile
 from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from client.models import Client
 from core.models import BackupTask, EmailLog, Notification, NotificationRead
@@ -269,6 +271,25 @@ class PanelEmailApiTests(PanelBaseTestCase):
         mock_send.assert_called_once()
 
     @mock.patch('panel.views.manage_panel_views._send_email_now')
+    def test_send_new_normalizes_invalid_email_type(self, mock_send):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.post(
+            '/panel/api/email-send/',
+            data=json.dumps({
+                'recipient_email': 'new-user@test.com',
+                'recipient_name': 'New User',
+                'subject': 'Hello',
+                'body_text': 'Welcome',
+                'email_type': 'invalid_type',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        log = EmailLog.objects.get(id=payload['log_id'])
+        self.assertEqual(log.email_type, EmailLog.EMAIL_TYPE_SYSTEM)
+
+    @mock.patch('panel.views.manage_panel_views._send_email_now')
     def test_email_resend_custom_payload_updates_log(self, mock_send):
         self.client.login(username='panel-super@test.com', password='pass1234')
 
@@ -346,6 +367,83 @@ class PanelBackupApiTests(PanelBaseTestCase):
         self.assertIn(self.client_profile.id, task.client_ids)
         mock_start_backup.assert_called_once_with(task.id)
 
+    @mock.patch('panel.services.backup_service.start_backup')
+    def test_backup_start_ignores_invalid_client_ids_when_valid_exists(self, mock_start_backup):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        task = BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='1234567890',
+            status='pending',
+        )
+
+        response = self.client.post(
+            '/panel/api/backup/start/',
+            data=json.dumps({'task_id': task.id, 'client_ids': ['bad', -5, self.client_profile.id]}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+
+        task.refresh_from_db()
+        self.assertEqual(task.client_ids, [self.client_profile.id])
+        mock_start_backup.assert_called_once_with(task.id)
+
+    @mock.patch('panel.services.backup_service.start_backup')
+    def test_backup_start_rejects_bool_client_ids(self, mock_start_backup):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        task = BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='1234567890',
+            status='pending',
+        )
+
+        response = self.client.post(
+            '/panel/api/backup/start/',
+            data=json.dumps({'task_id': task.id, 'client_ids': [True, False]}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['success'])
+        mock_start_backup.assert_not_called()
+
+    @mock.patch('panel.services.backup_service.start_backup')
+    def test_backup_start_rejects_when_another_backup_is_active(self, mock_start_backup):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        task = BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='1234567890',
+            status='pending',
+        )
+        BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='9999999999',
+            status='processing',
+        )
+
+        response = self.client.post(
+            '/panel/api/backup/start/',
+            data=json.dumps({'task_id': task.id, 'client_ids': [self.client_profile.id]}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 429)
+        self.assertFalse(response.json()['success'])
+        mock_start_backup.assert_not_called()
+
+    def test_backup_start_rejects_fully_invalid_client_ids(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        task = BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='1234567890',
+            status='pending',
+        )
+
+        response = self.client.post(
+            '/panel/api/backup/start/',
+            data=json.dumps({'task_id': task.id, 'client_ids': ['bad', '  ', None]}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['success'])
+
     @mock.patch('panel.services.backup_service.delete_backup_files')
     def test_backup_delete_now_calls_service_for_completed_task(self, mock_delete):
         self.client.login(username='panel-super@test.com', password='pass1234')
@@ -382,17 +480,54 @@ class PanelBackupApiTests(PanelBaseTestCase):
         self.assertTrue(status_payload['success'])
         self.assertEqual(status_payload['id'], task.id)
 
+    def test_backup_download_rejects_invalid_path_escape(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        task = BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='1234567890',
+            status='completed',
+            zip_files={'combined': {'path': '../secrets.txt', 'filename': 'x.zip', 'size': 1}},
+        )
+
+        response = self.client.get(f'/panel/api/backup/download/{task.id}/')
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()['success'])
+
+    def test_backup_download_sanitizes_attachment_filename(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        with tempfile.TemporaryDirectory() as media_root:
+            rel_zip = os.path.join('temp', 'backups', 'safe.zip').replace('\\', '/')
+            abs_zip = os.path.join(media_root, 'temp', 'backups', 'safe.zip')
+            os.makedirs(os.path.dirname(abs_zip), exist_ok=True)
+            with open(abs_zip, 'wb') as fh:
+                fh.write(b'PK\x03\x04')
+
+            task = BackupTask.objects.create(
+                created_by=self.super_admin,
+                confirmation_code='1234567890',
+                status='completed',
+                zip_files={'combined': {'path': rel_zip, 'filename': 'safe.zip\r\nX-Injected: 1', 'size': 4}},
+            )
+
+            with override_settings(MEDIA_ROOT=media_root):
+                response = self.client.get(f'/panel/api/backup/download/{task.id}/')
+                self.assertEqual(response.status_code, 200)
+                content_disposition = response.get('Content-Disposition', '')
+                self.assertNotIn('\r', content_disposition)
+                self.assertNotIn('\n', content_disposition)
+                response.close()
+
 
 class PanelMonitoringApiTests(PanelBaseTestCase):
-    def test_client_errors_ignores_unauthenticated_reports(self):
+    def test_client_errors_requires_authentication(self):
         response = self.client.post(
             '/panel/api/client-errors/',
             data=json.dumps({'errors': [{'type': 'error', 'message': 'x'}]}),
             content_type='application/json',
         )
-        self.assertIn(response.status_code, [200, 302])
-        if response.status_code == 200:
-            self.assertEqual(response.json()['status'], 'ignored')
+        self.assertIn(response.status_code, (302, 401))
+        if response.status_code == 401:
+            self.assertFalse(response.json().get('success'))
 
     def test_client_errors_rejects_invalid_json(self):
         self.client.login(username='panel-client@test.com', password='pass1234')
@@ -403,6 +538,18 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()['status'], 'bad_request')
+
+    def test_client_errors_rate_limit_enforced(self):
+        self.client.login(username='panel-client@test.com', password='pass1234')
+        payload = json.dumps({'errors': [{'type': 'error', 'message': 'x'}]})
+
+        for _ in range(10):
+            response = self.client.post('/panel/api/client-errors/', data=payload, content_type='application/json')
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.post('/panel/api/client-errors/', data=payload, content_type='application/json')
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()['status'], 'rate_limited')
 
     def test_monitoring_data_requires_super_admin(self):
         self.client.login(username='panel-client@test.com', password='pass1234')

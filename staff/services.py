@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Count, Q
 
 from core.models import User
 from client.models import Client
@@ -116,7 +116,7 @@ class AdminStaffPermissionService:
         Get or create the Admin Staff Django Group.
         """
         cls.ensure_permissions_exist()
-        group, created = Group.objects.get_or_create(name=ADMIN_STAFF_GROUP)
+        group, _created = Group.objects.get_or_create(name=ADMIN_STAFF_GROUP)
         return group
     
     @classmethod
@@ -166,20 +166,27 @@ class AdminStaffPermissionService:
                 }
             
             content_type = ContentType.objects.get_for_model(User)
-            
-            # Clear existing permissions
-            staff_user.user_permissions.filter(content_type=content_type).delete()
+
+            # Clear only this user's direct User-content_type permissions.
+            # Never call .delete() on Permission queryset: that deletes global
+            # permission rows and breaks other users.
+            existing_user_perms = list(
+                staff_user.user_permissions.filter(content_type=content_type)
+            )
+            if existing_user_perms:
+                staff_user.user_permissions.remove(*existing_user_perms)
             
             # Add new permissions
-            permissions = Permission.objects.filter(
+            permissions = list(Permission.objects.filter(
                 codename__in=permission_codenames,
                 content_type=content_type
-            )
-            staff_user.user_permissions.add(*permissions)
+            ))
+            if permissions:
+                staff_user.user_permissions.add(*permissions)
             
             return {
                 'success': True,
-                'assigned_count': permissions.count()
+                'assigned_count': len(permissions)
             }
             
         except Exception as e:
@@ -252,6 +259,14 @@ class AdminStaffCreationService:
             Dict with success status, message, and staff data
         """
         try:
+            normalized_email = (email or '').strip().lower()
+
+            if not normalized_email:
+                return {
+                    'success': False,
+                    'error': 'Email is required'
+                }
+
             # Verify creator is super admin
             if not PermissionService.is_super_admin(created_by):
                 return {
@@ -260,7 +275,7 @@ class AdminStaffCreationService:
                 }
             
             # Check if email already exists
-            if User.objects.filter(email=email).exists():
+            if User.objects.filter(email__iexact=normalized_email).exists():
                 return {
                     'success': False,
                     'error': 'A user with this email already exists'
@@ -275,8 +290,8 @@ class AdminStaffCreationService:
                 
                 # Create User — inactive by default; welcome email sent on first activation
                 user = User.objects.create_user(
-                    username=email,
-                    email=email,
+                    username=normalized_email,
+                    email=normalized_email,
                     password=final_password,
                     first_name=first_name,
                     last_name=last_name,
@@ -313,8 +328,8 @@ class AdminStaffCreationService:
                 # Log email as on_hold — will be sent on first activation
                 full_name = f"{first_name} {last_name}"
                 EmailLog.objects.create(
-                    recipient_name=full_name,
-                    recipient_email=email,
+                    recipient_name=full_name.strip(),
+                    recipient_email=normalized_email,
                     subject='Welcome to Adarsh Admin - Your Account is Ready!',
                     email_type=EmailLog.EMAIL_TYPE_WELCOME,
                     status=EmailLog.STATUS_ON_HOLD,
@@ -326,8 +341,8 @@ class AdminStaffCreationService:
                     'staff': {
                         'id': staff.pk,
                         'user_id': staff.user.pk,
-                        'name': full_name,
-                        'email': email,
+                        'name': full_name.strip(),
+                        'email': normalized_email,
                     },
                     'email_sent': False,
                 }
@@ -357,16 +372,16 @@ class AdminStaffCreationService:
                     'success': False,
                     'error': 'Only Super Admin can update admin staff'
                 }
-            
-            staff = Staff.objects.filter(
-                id=staff_id,
-                staff_type='admin_staff'
-            ).select_related('user').first()
-            
-            if not staff:
-                return {'success': False, 'error': 'Admin staff not found'}
-            
+
             with transaction.atomic():
+                staff = Staff.objects.select_for_update().filter(
+                    id=staff_id,
+                    staff_type='admin_staff'
+                ).select_related('user').first()
+
+                if not staff:
+                    return {'success': False, 'error': 'Admin staff not found'}
+
                 user = staff.user
                 
                 # Update user fields
@@ -392,9 +407,11 @@ class AdminStaffCreationService:
                 
                 # Update permissions
                 if permission_codenames is not None:
-                    AdminStaffPermissionService.assign_permissions_to_staff(
+                    perm_result = AdminStaffPermissionService.assign_permissions_to_staff(
                         user, permission_codenames
                     )
+                    if not perm_result.get('success'):
+                        raise ValueError(perm_result.get('error', 'Failed to assign permissions'))
                 
                 return {
                     'success': True,
@@ -434,7 +451,8 @@ class AdminStaffCreationService:
             
             return {
                 'success': True,
-                'message': f'Admin staff "{name}" deleted successfully'
+                'message': f'Admin staff "{name}" deleted successfully',
+                'data': {'name': name},
             }
             
         except Exception as e:
@@ -528,6 +546,10 @@ class AdminStaffCreationService:
                 'success': True,
                 'message': f'Admin staff "{user.get_full_name()}" {status_word}.{extra}',
                 'is_active': user.is_active,
+                'data': {
+                    'is_active': user.is_active,
+                    'name': user.get_full_name() or user.username,
+                },
             }
 
         except Exception as e:
@@ -589,13 +611,31 @@ class AdminStaffCreationService:
                     'error': 'Only Super Admin can view admin staff list'
                 }
             
-            staff_list = Staff.objects.filter(
+            staff_list = list(Staff.objects.filter(
                 staff_type='admin_staff'
-            ).select_related('user').prefetch_related('assigned_clients')
+            ).select_related('user').prefetch_related('assigned_clients'))
+
+            user_ids = [s.user_id for s in staff_list]
+            perm_counts_by_user = {}
+            if user_ids:
+                content_type = ContentType.objects.get_for_model(User)
+                perm_counts_by_user = dict(
+                    User.objects.filter(id__in=user_ids)
+                    .annotate(
+                        admin_perm_count=Count(
+                            'user_permissions',
+                            filter=Q(
+                                user_permissions__content_type=content_type,
+                                user_permissions__codename__in=ADMIN_STAFF_PERMISSIONS.keys(),
+                            ),
+                            distinct=True,
+                        )
+                    )
+                    .values_list('id', 'admin_perm_count')
+                )
             
             data = []
             for staff in staff_list:
-                permissions = AdminStaffPermissionService.get_user_permissions(staff.user)
                 # Use prefetched cache instead of re-evaluating queryset
                 assigned = list(staff.assigned_clients.all())
                 data.append({
@@ -612,7 +652,7 @@ class AdminStaffCreationService:
                         for c in assigned
                     ],
                     'assigned_clients_count': len(assigned),
-                    'permissions_count': len(permissions),
+                    'permissions_count': perm_counts_by_user.get(staff.user_id, 0),
                     'created_at': staff.created_at.isoformat(),
                 })
             

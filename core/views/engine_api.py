@@ -25,11 +25,12 @@ import time
 from pathlib import Path
 
 import requests as http_client
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
-from core.services.permission_service import require_any_admin
+from core.services.permission_service import PermissionService, require_any_admin
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,65 @@ def _internal_error_response():
         {"success": False, "message": "An unexpected error occurred. Please try again."},
         status=500,
     )
+
+
+def _is_path_within_root(path_value: str, root_value: str) -> bool:
+    """Return True only when path_value resolves under root_value."""
+    try:
+        path_real = os.path.realpath(path_value)
+        root_real = os.path.realpath(root_value)
+        return os.path.commonpath([path_real, root_real]) == root_real
+    except Exception:
+        return False
+
+
+def _extract_client_folder_code(path_value: Path):
+    """Extract client image folder code from MEDIA_ROOT/adarshimg paths."""
+    media_root = os.path.realpath(str(settings.MEDIA_ROOT))
+    path_real = os.path.realpath(str(path_value))
+    if not _is_path_within_root(path_real, media_root):
+        return None
+
+    rel_path = os.path.relpath(path_real, media_root).replace('\\', '/')
+    parts = [p for p in rel_path.split('/') if p]
+    if not parts or parts[0] != 'adarshimg':
+        return None
+    if len(parts) >= 3 and parts[1].lower() == 'thumbs':
+        return parts[2]
+    if len(parts) >= 2:
+        return parts[1]
+    return None
+
+
+def _is_engine_path_allowed(user, path_value: Path) -> bool:
+    """Enforce path scope for non-super-admin users."""
+    if PermissionService.is_super_admin(user):
+        return True
+
+    media_root = os.path.realpath(str(settings.MEDIA_ROOT))
+    target = os.path.realpath(str(path_value))
+    if not _is_path_within_root(target, media_root):
+        return False
+
+    # Client image folders are tenant-scoped via folder code ownership.
+    folder_code = _extract_client_folder_code(path_value)
+    if folder_code:
+        from client.models import Client
+
+        client = Client.objects.filter(image_folder_code=folder_code).only('id').first()
+        return bool(client and PermissionService.can_access_client(user, client.id))
+
+    # Allow internal engine working paths under MEDIA_ROOT for admin workflows.
+    rel_path = os.path.relpath(target, media_root).replace('\\', '/')
+    return rel_path.startswith('engine/') or rel_path.startswith('temp/')
+
+
+def _path_access_error(request, path_value: Path):
+    """Return a 403 JSON response when user path scope validation fails."""
+    if _is_engine_path_allowed(request.user, path_value):
+        return None
+    logger.warning("Engine path denied for user=%s path=%s", getattr(request.user, 'pk', None), path_value)
+    return JsonResponse({"success": False, "message": "Access denied for this path."}, status=403)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -130,11 +190,19 @@ def api_engine_process_folder(request):
     if not folder_path:
         return JsonResponse({"success": False, "message": "folder_path is required."}, status=400)
 
+    folder = Path(folder_path).resolve()
+    if not folder.is_absolute():
+        return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
+
+    access_err = _path_access_error(request, folder)
+    if access_err:
+        return access_err
+
     try:
         resp = http_client.post(
             f"{ENGINE_BASE}/process-folder",
             headers={**_engine_headers(), "Content-Type": "application/json"},
-            json={"folder_path": folder_path},
+            json={"folder_path": str(folder)},
             timeout=ENGINE_TIMEOUT,
         )
         resp.raise_for_status()
@@ -187,11 +255,19 @@ def api_engine_compress_folder(request):
     if target_kb is None or not isinstance(target_kb, (int, float)) or target_kb <= 0:
         return JsonResponse({"success": False, "message": "target_kb must be a positive number."}, status=400)
 
+    folder = Path(folder_path).resolve()
+    if not folder.is_absolute():
+        return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
+
+    access_err = _path_access_error(request, folder)
+    if access_err:
+        return access_err
+
     try:
         resp = http_client.post(
             f"{ENGINE_BASE}/compress-folder",
             headers={**_engine_headers(), "Content-Type": "application/json"},
-            json={"folder_path": folder_path, "target_kb": float(target_kb)},
+            json={"folder_path": str(folder), "target_kb": float(target_kb)},
             timeout=ENGINE_TIMEOUT,
         )
         resp.raise_for_status()
@@ -234,7 +310,7 @@ def api_engine_preview(request):
     Return a JSON list of image filenames inside a local folder.
     Query param: ?folder=C:\\path\\to\\folder
     Used to populate the preview grid after processing.
-    Accepts any absolute path (engine output can be anywhere on the machine).
+    Super admin can inspect any absolute path; other admin roles are scoped.
     """
 
     folder = request.GET.get("folder", "").strip()
@@ -248,6 +324,10 @@ def api_engine_preview(request):
     if not folder_path.is_absolute():
         logger.warning("Non-absolute path rejected (preview): %s", folder)
         return JsonResponse({"files": [], "error": "Absolute path required"}, status=400)
+
+    access_err = _path_access_error(request, folder_path)
+    if access_err:
+        return access_err
 
     if not folder_path.is_dir():
         return JsonResponse({"files": []})
@@ -269,8 +349,8 @@ def api_engine_serve_image(request):
     """
     Serve a single image file from the local filesystem.
     Query param: ?path=C:\\path\\to\\image.jpg
-    Accepts any absolute path so engine output folders outside MEDIA_ROOT work.
-    Extension is still validated to image types only.
+    Super admin can access any absolute path; other admin roles are scoped.
+    Extension is validated to image types only.
     """
 
     file_path = request.GET.get("path", "").strip()
@@ -283,6 +363,10 @@ def api_engine_serve_image(request):
     if not path.is_absolute():
         logger.warning("Non-absolute path rejected (serve-image): %s", file_path)
         return JsonResponse({"error": "Absolute path required"}, status=400)
+
+    access_err = _path_access_error(request, path)
+    if access_err:
+        return access_err
 
     if not path.is_file():
         return JsonResponse({"error": "File not found"}, status=404)
@@ -408,6 +492,10 @@ def api_engine_save_edited(request):
             "message": "Absolute path required.",
         }, status=400)
 
+    access_err = _path_access_error(request, orig)
+    if access_err:
+        return access_err
+
     # ── Determine the /edited/ folder ────────────────────────────────
     # original_path is like: .../some_folder/cropped/image.jpg
     # edited folder should be: .../some_folder/edited/
@@ -528,6 +616,10 @@ def api_engine_delete_image(request):
     if not src.is_absolute():
         logger.warning("Non-absolute path rejected (delete-image): %s", image_path)
         return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
+
+    access_err = _path_access_error(request, src)
+    if access_err:
+        return access_err
 
     if not src.is_file():
         return JsonResponse({"success": False, "message": "File not found."}, status=404)
@@ -652,6 +744,14 @@ def api_engine_adjust_image(request):
             "success": False,
             "message": "Absolute path required.",
         }, status=400)
+
+    access_err = _path_access_error(request, src)
+    if access_err:
+        return access_err
+
+    access_err = _path_access_error(request, orig)
+    if access_err:
+        return access_err
 
     if not src.is_file():
         return JsonResponse({
@@ -855,12 +955,20 @@ def api_engine_rename_preview(request):
     if not operation:
         return JsonResponse({"success": False, "message": "operation is required."}, status=400)
 
+    folder = Path(folder_path).resolve()
+    if not folder.is_absolute():
+        return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
+
+    access_err = _path_access_error(request, folder)
+    if access_err:
+        return access_err
+
     try:
         resp = http_client.post(
             f"{ENGINE_BASE}/rename-preview",
             headers={**_engine_headers(), "Content-Type": "application/json"},
             json={
-                "folder_path": folder_path,
+                "folder_path": str(folder),
                 "operation": operation,
                 "params": params,
                 "file_list": file_list,
@@ -940,12 +1048,20 @@ def api_engine_rename_execute(request):
     if not operation:
         return JsonResponse({"success": False, "message": "operation is required."}, status=400)
 
+    folder = Path(folder_path).resolve()
+    if not folder.is_absolute():
+        return JsonResponse({"success": False, "message": "Absolute path required."}, status=400)
+
+    access_err = _path_access_error(request, folder)
+    if access_err:
+        return access_err
+
     try:
         resp = http_client.post(
             f"{ENGINE_BASE}/rename-execute",
             headers={**_engine_headers(), "Content-Type": "application/json"},
             json={
-                "folder_path": folder_path,
+                "folder_path": str(folder),
                 "operation": operation,
                 "params": params,
                 "file_list": file_list,

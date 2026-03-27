@@ -50,6 +50,29 @@ def _get_status_from_request(request) -> str:
     return status if status in _VALID_STATUSES else ''
 
 
+def _normalize_positive_int_ids(values, max_items: int = MAX_EXPORT_CARD_IDS) -> List[int]:
+    """Normalize mixed payload IDs to unique positive integers with a hard cap."""
+    if not isinstance(values, list):
+        return []
+
+    out: List[int] = []
+    seen = set()
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        try:
+            number = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if number <= 0 or number in seen:
+            continue
+        seen.add(number)
+        out.append(number)
+        if len(out) >= max_items:
+            break
+    return out
+
+
 def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[int]]:
     """
     Extract card IDs from POST request body.
@@ -87,10 +110,7 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     
     # Validate and filter
     if card_ids:
-        card_ids = [int(cid) for cid in card_ids if isinstance(cid, (int, str)) and str(cid).isdigit()]
-        # Cap to prevent OOM / slow SQL
-        if len(card_ids) > MAX_EXPORT_CARD_IDS:
-            card_ids = card_ids[:MAX_EXPORT_CARD_IDS]
+        card_ids = _normalize_positive_int_ids(card_ids, max_items=MAX_EXPORT_CARD_IDS)
     
     # Fallback: if no card_ids provided but table_id is available,
     # fetch ALL card IDs for the requested status from the database,
@@ -645,7 +665,7 @@ def api_export_status(request, task_id: str) -> JsonResponse:
     """
     from .tasks import BackgroundExportManager
     
-    status = BackgroundExportManager.get_status(task_id)
+    status = BackgroundExportManager.get_status(task_id, user=request.user)
     if status is None:
         return JsonResponse({
             'success': False,
@@ -793,9 +813,9 @@ def api_export_preview(request, table_id: int) -> JsonResponse:
     card_ids_str = request.GET.get('card_ids', '')
     if card_ids_str:
         try:
-            card_ids = json.loads(card_ids_str)
+            card_ids = _normalize_positive_int_ids(json.loads(card_ids_str))
         except (json.JSONDecodeError, ValueError):
-            card_ids = [int(x.strip()) for x in card_ids_str.split(',') if x.strip().isdigit()]
+            card_ids = _normalize_positive_int_ids(card_ids_str.split(','))
     
     service = ExportService(request.user)
     result = service.get_export_preview(table_id, card_ids)

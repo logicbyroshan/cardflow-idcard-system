@@ -35,6 +35,15 @@ from .base_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
+    """Parse and clamp dashboard limit query params."""
+    try:
+        limit = int(raw_limit)
+    except (ValueError, TypeError):
+        limit = default
+    return min(max(limit, 1), max_limit)
+
+
 # ── Services ─────────────────────────────────────────────────────────────
 @login_required
 @require_any_admin
@@ -164,7 +173,7 @@ def dashboard(request):
 def api_recent_client_updates(request):
     """API endpoint to get recent clients with their ID card status counts"""
     try:
-        limit = int(request.GET.get('limit', 500))  # default: show all clients
+        limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
 
         # Cache per-user with 20-second TTL — tolerable staleness for a dashboard poll.
@@ -271,7 +280,7 @@ def api_print_reprint_overview(request):
         from cardprint.models import PrintRequest
         from reprintcard.models import ReprintRequest
 
-        limit = int(request.GET.get('limit', 500))  # default: show all active clients
+        limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
 
         # 20-second per-user cache — same pattern as api_recent_client_updates.

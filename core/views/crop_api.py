@@ -32,7 +32,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
-from core.services.permission_service import require_any_admin
+from core.services.permission_service import PermissionService, require_any_admin
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,28 @@ def _internal_error_response():
     )
 
 
+def _normalize_positive_int_ids(raw_ids, *, max_items=500):
+    """Normalize arbitrary payload values into unique positive integer IDs."""
+    if not isinstance(raw_ids, (list, tuple)):
+        return []
+    normalized = []
+    seen = set()
+    for item in raw_ids:
+        if isinstance(item, bool):
+            continue
+        try:
+            value = int(str(item).strip())
+        except (TypeError, ValueError):
+            continue
+        if value <= 0 or value in seen:
+            continue
+        seen.add(value)
+        normalized.append(value)
+        if len(normalized) >= max_items:
+            break
+    return normalized
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  POST  /panel/api/table/<table_id>/cards/prepare-crop/
 # ═══════════════════════════════════════════════════════════════════════════
@@ -68,23 +90,21 @@ def api_prepare_crop(request, table_id):
     Expects JSON: { "card_ids": [1, 2, 3, ...] }
     """
     from core.services.crop_service import CropService
+    from core.views.idcard_api import _check_client_scope_by_table
+
+    _tbl, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
 
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({"success": False, "message": "Invalid JSON"}, status=400)
 
-    card_ids = body.get("card_ids", [])
-    if not card_ids or not isinstance(card_ids, list):
+    card_ids = _normalize_positive_int_ids(body.get("card_ids", []), max_items=500)
+    if not card_ids:
         return JsonResponse(
             {"success": False, "message": "card_ids array is required"}, status=400
-        )
-
-    # Cap at 500 to avoid abuse
-    if len(card_ids) > 500:
-        return JsonResponse(
-            {"success": False, "message": "Maximum 500 cards per crop batch"},
-            status=400,
         )
 
     # Optional user-specified output folder path
@@ -110,6 +130,11 @@ def api_process_crop(request, table_id):
     Expects JSON: { "batch_id": "..." }
     """
     from core.services.crop_service import CropService
+    from core.views.idcard_api import _check_client_scope_by_table
+
+    _tbl, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
 
     try:
         body = json.loads(request.body)
@@ -127,6 +152,14 @@ def api_process_crop(request, table_id):
         return JsonResponse(
             {"success": False, "message": "Batch folder not found"}, status=404
         )
+
+    batch_table_id = CropService.get_batch_table_id(batch_id)
+    if batch_table_id and int(batch_table_id) != int(table_id):
+        return JsonResponse({"success": False, "message": "Batch does not belong to this table"}, status=400)
+
+    batch_client_id = CropService.get_batch_client_id(batch_id)
+    if batch_client_id and not PermissionService.can_access_client(request.user, int(batch_client_id)):
+        return JsonResponse({"success": False, "message": "Access denied"}, status=403)
 
     # Proxy to engine /process-folder
     try:
@@ -180,6 +213,10 @@ def api_crop_batch_preview(request, batch_id):
     """Return lists of original / cropped / failed / edited images."""
     from core.services.crop_service import CropService
 
+    batch_client_id = CropService.get_batch_client_id(batch_id)
+    if batch_client_id and not PermissionService.can_access_client(request.user, int(batch_client_id)):
+        return JsonResponse({"success": False, "message": "Access denied"}, status=403)
+
     result = CropService.list_batch_images(batch_id)
     status_code = 200 if result.get("success") else 404
     return JsonResponse(result, status=status_code)
@@ -199,6 +236,10 @@ def api_crop_batch_serve_image(request, batch_id):
         &name=filename.jpg
     """
     from core.services.crop_service import CropService
+
+    batch_client_id = CropService.get_batch_client_id(batch_id)
+    if batch_client_id and not PermissionService.can_access_client(request.user, int(batch_client_id)):
+        return JsonResponse({"error": "Access denied"}, status=403)
 
     img_type = request.GET.get("type", "cropped").strip()
     img_name = request.GET.get("name", "").strip()
@@ -247,6 +288,11 @@ def api_reupload_cropped(request, table_id):
     Expects JSON: { "batch_id": "...", "use_edited": false }
     """
     from core.services.crop_service import CropService
+    from core.views.idcard_api import _check_client_scope_by_table
+
+    _tbl, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
 
     try:
         body = json.loads(request.body)
@@ -260,6 +306,14 @@ def api_reupload_cropped(request, table_id):
         )
 
     use_edited = bool(body.get("use_edited", False))
+
+    batch_table_id = CropService.get_batch_table_id(batch_id)
+    if batch_table_id and int(batch_table_id) != int(table_id):
+        return JsonResponse({"success": False, "message": "Batch does not belong to this table"}, status=400)
+
+    batch_client_id = CropService.get_batch_client_id(batch_id)
+    if batch_client_id and not PermissionService.can_access_client(request.user, int(batch_client_id)):
+        return JsonResponse({"success": False, "message": "Access denied"}, status=403)
 
     result = CropService.reupload_cropped(table_id, batch_id, use_edited=use_edited)
     status_code = 200 if result.get("success") else 400
@@ -275,6 +329,10 @@ def api_reupload_cropped(request, table_id):
 def api_crop_batch_cleanup(request, batch_id):
     """Discard a batch without re-uploading."""
     from core.services.crop_service import CropService
+
+    batch_client_id = CropService.get_batch_client_id(batch_id)
+    if batch_client_id and not PermissionService.can_access_client(request.user, int(batch_client_id)):
+        return JsonResponse({"success": False, "message": "Access denied"}, status=403)
 
     result = CropService.cleanup_batch(batch_id)
     return JsonResponse(result)

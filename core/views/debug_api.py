@@ -315,8 +315,17 @@ def api_activity_logs(request):
     from django.utils.timesince import timesince as django_timesince
     from django.utils import timezone as tz
 
-    limit = min(int(request.GET.get('limit', 30)), 100)
-    offset = int(request.GET.get('offset', 0))
+    try:
+        limit = int(request.GET.get('limit', 30))
+    except (ValueError, TypeError):
+        limit = 30
+    limit = min(max(limit, 1), 100)
+
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (ValueError, TypeError):
+        offset = 0
+    offset = max(offset, 0)
     search = request.GET.get('search', '').strip()
     action_filter   = request.GET.get('action', '').strip()
     user_role_filter = request.GET.get('user_role', '').strip()

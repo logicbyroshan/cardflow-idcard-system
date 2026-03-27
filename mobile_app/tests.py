@@ -7,6 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
+from staff.models import Staff
 from website.models import PortfolioCategory
 
 
@@ -59,6 +60,19 @@ class MobileAppBaseTestCase(TestCase):
 			perm_idcard_delete=True,
 		)
 
+		self.admin_staff_user = User.objects.create_user(
+			username='mob-admin-staff@test.com',
+			email='mob-admin-staff@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		self.admin_staff_profile = Staff.objects.create(
+			user=self.admin_staff_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+			perm_idcard_pending_list=True,
+		)
+
 		self.group = IDCardGroup.objects.create(client=self.client_profile, name='Group A')
 		self.table = IDCardTable.objects.create(
 			group=self.group,
@@ -86,6 +100,10 @@ class MobileAppBaseTestCase(TestCase):
 
 	def _login_mobile_client(self):
 		self.client.login(username='mob-client@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_admin_staff(self):
+		self.client.login(username='mob-admin-staff@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
 
 
@@ -233,6 +251,48 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertEqual(self.table.fields[0]['type'], 'text')
 		self.assertEqual(self.table.fields[1]['name'], 'ROLL NO')
 
+	def test_table_update_fields_rejects_non_list_fields_payload(self):
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/update-fields/',
+			data=json.dumps({'fields': {'name': 'bad'}}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_upload_photo_rejects_invalid_card_id(self, _mock_validate):
+		self._login_mobile_super_admin()
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': 'bad', 'photo': photo},
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_upload_photo_rejects_card_table_mismatch(self, _mock_validate):
+		self._login_mobile_super_admin()
+		other_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Table B',
+			fields=[{'name': 'NAME', 'type': 'text', 'order': 0}],
+			is_active=True,
+		)
+		other_card = IDCard.objects.create(
+			table=other_table,
+			field_data={'NAME': 'Other Card'},
+			status='pending',
+		)
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(other_card.id), 'photo': photo},
+		)
+		self.assertEqual(response.status_code, 404)
+
 
 class MobileAppManagementApiTests(MobileAppBaseTestCase):
 	def test_server_info_requires_super_admin(self):
@@ -273,6 +333,12 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		payload = response.json()
 		self.assertTrue(payload['success'])
 		self.assertEqual(payload['data']['count'], 0)
+
+	def test_table_picker_admin_staff_without_assigned_clients_sees_empty_list(self):
+		self._login_mobile_admin_staff()
+		response = self.client.get('/app/tables/pending/')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(len(response.context['tables']), 0)
 
 	@mock.patch('mobile_app.views.ClientService.create')
 	def test_client_create_rejects_invalid_json_before_service_call(self, mock_create):
@@ -353,3 +419,22 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		payload = response.json()
 		self.assertFalse(payload['success'])
 		self.assertEqual(payload['failed_count'], 1)
+
+	def test_reprint_table_non_numeric_query_is_stable(self):
+		from reprintcard.models import ReprintRequest
+
+		self._login_mobile_super_admin()
+		download_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Download Card', 'ROLL NO': '777'},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			card=download_card,
+			table=self.table,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		response = self.client.get(f'/app/reprint/table/{self.table.id}/?step=request_list&q=alpha')
+		self.assertEqual(response.status_code, 200)
