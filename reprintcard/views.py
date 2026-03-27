@@ -207,6 +207,22 @@ def _require_admin_role(user):
     )
 
 
+def _parse_offset_limit(request, *, default_limit=100, max_limit=200):
+    """Parse and clamp offset/limit query params for list endpoints."""
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (ValueError, TypeError):
+        offset = 0
+    try:
+        limit = int(request.GET.get('limit', default_limit))
+    except (ValueError, TypeError):
+        limit = default_limit
+
+    offset = max(offset, 0)
+    limit = min(max(limit, 1), max_limit)
+    return offset, limit
+
+
 def _parse_local_datetime_filter(value):
     """Parse datetime-local input safely into an aware datetime."""
     if not value:
@@ -390,11 +406,7 @@ def api_reprint_list(request, table_id):
 
     query = request.GET.get('q', '').strip()
     available_only = request.GET.get('available_only', '').strip().lower() in ('1', 'true', 'yes')
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     card_qs = IDCard.objects.filter(
         table=table,
@@ -524,11 +536,7 @@ def api_request_list(request, table_id):
     query = request.GET.get('q', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     rr_qs = ReprintRequest.objects.filter(
         table=table,
@@ -636,11 +644,7 @@ def api_confirmed_list(request, table_id):
     query = request.GET.get('q', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     rr_qs = ReprintRequest.objects.filter(
         table=table,
@@ -743,11 +747,7 @@ def api_download_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     rr_qs = ReprintRequest.objects.filter(
         table=table, status='downloaded',

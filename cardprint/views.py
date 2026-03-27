@@ -44,6 +44,22 @@ def _print_access_denied():
     )
 
 
+def _parse_offset_limit(request, *, default_limit=100, max_limit=200):
+    """Parse and clamp offset/limit query params for list endpoints."""
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (ValueError, TypeError):
+        offset = 0
+    try:
+        limit = int(request.GET.get('limit', default_limit))
+    except (ValueError, TypeError):
+        limit = default_limit
+
+    offset = max(offset, 0)
+    limit = min(max(limit, 1), max_limit)
+    return offset, limit
+
+
 def _check_print_table_scope(user, table_id):
     """Check user has access to the client owning this table."""
     table = get_object_or_404(IDCardTable.objects.select_related('group'), id=table_id)
@@ -327,11 +343,7 @@ def api_print_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
         table=table, status='print_list',
@@ -541,11 +553,7 @@ def api_print_generate_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
         table=table, status='generate_list',
@@ -688,11 +696,7 @@ def api_print_finalized_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
         table=table, status='finalized',
@@ -837,11 +841,7 @@ def api_print_pool_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-    except (ValueError, TypeError):
-        offset, limit = 0, 100
+    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
         table=table, status='pool',
@@ -1077,11 +1077,7 @@ def api_generate_card_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    try:
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 500))
-    except (ValueError, TypeError):
-        offset, limit = 0, 500
+    offset, limit = _parse_offset_limit(request, default_limit=500, max_limit=500)
 
     pr_qs = PrintRequest.objects.filter(
         table=table, status='generate_list',

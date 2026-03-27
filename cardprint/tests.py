@@ -304,6 +304,22 @@ class CardPrintApiIntegrationTests(TestCase):
 		self.assertEqual(response.json()['status'], 'ok')
 		self.assertGreaterEqual(len(response.json()['items']), 1)
 
+	def test_print_list_clamps_offset_and_limit(self):
+		self.client.force_login(self.assigned_staff_user)
+		response = self.client.get(self._url('api_print_list'), {'offset': -50, 'limit': 99999})
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['offset'], 0)
+		self.assertEqual(payload['limit'], 200)
+
+	def test_generate_card_list_clamps_limit(self):
+		self.client.force_login(self.assigned_staff_user)
+		response = self.client.get(self._url('api_generate_card_list'), {'offset': -10, 'limit': 99999})
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['offset'], 0)
+		self.assertEqual(payload['limit'], 500)
+
 	def test_print_generate_and_back_to_print(self):
 		self.client.force_login(self.assigned_staff_user)
 

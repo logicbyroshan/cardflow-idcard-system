@@ -519,15 +519,15 @@ class PanelBackupApiTests(PanelBaseTestCase):
 
 
 class PanelMonitoringApiTests(PanelBaseTestCase):
-    def test_client_errors_ignores_unauthenticated_reports(self):
+    def test_client_errors_requires_authentication(self):
         response = self.client.post(
             '/panel/api/client-errors/',
             data=json.dumps({'errors': [{'type': 'error', 'message': 'x'}]}),
             content_type='application/json',
         )
-        self.assertIn(response.status_code, [200, 302])
-        if response.status_code == 200:
-            self.assertEqual(response.json()['status'], 'ignored')
+        self.assertIn(response.status_code, (302, 401))
+        if response.status_code == 401:
+            self.assertFalse(response.json().get('success'))
 
     def test_client_errors_rejects_invalid_json(self):
         self.client.login(username='panel-client@test.com', password='pass1234')

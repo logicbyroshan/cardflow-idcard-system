@@ -340,6 +340,14 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(list_response.status_code, 200)
 		self.assertGreaterEqual(len(list_response.json()['items']), 2)
 
+	def test_request_list_clamps_offset_and_limit(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_request_list'), {'offset': -100, 'limit': 99999})
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['offset'], 0)
+		self.assertEqual(payload['limit'], 200)
+
 	def test_request_list_non_numeric_query_is_stable(self):
 		self.client.force_login(self.super_admin)
 		response = self.client.get(self._url('api_request_list'), {'q': 'alpha'})

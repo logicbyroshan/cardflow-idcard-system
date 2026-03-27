@@ -23,6 +23,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
 from django.contrib.auth.decorators import login_required
+from core.services.permission_service import api_require_any_authenticated
 
 logger = logging.getLogger('core.views')
 
@@ -282,13 +283,11 @@ def _database_storage_snapshot(base_dir):
     return db_info
 
 
+@api_require_any_authenticated
 @require_POST
 @csrf_protect
 def api_client_errors(request):
     """Receive client-side JS errors and log them server-side."""
-    if not request.user.is_authenticated:
-        return JsonResponse({'status': 'ignored'}, status=200)
-
     rate_key = f'panel:client-errors:{request.user.pk}'
     report_count = int(cache.get(rate_key, 0) or 0)
     if report_count >= _MAX_REPORTS_PER_MIN:
