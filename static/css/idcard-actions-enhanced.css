@@ -544,6 +544,14 @@
     hyphens: auto;
 }
 
+/* Numeric/date identifier cells must remain on one line. */
+.idcard-table td.dynamic-field.whitespace-nowrap {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+}
+
 /* Name fields: allow shrinking below min-w when viewport is tight */
 .idcard-table td.dynamic-field:not(.image-field) {
     max-width: 220px;

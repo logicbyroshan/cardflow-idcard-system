@@ -179,48 +179,48 @@ _s('qr_barcode', 0, 0, 0, False, 'center',
    'w-[50px] text-center')
 
 # ── ID Numbers ───────────────────────────────────────────────────────
-_s('id_number', 4, 10, 20, False, 'center',
-   4.5, 10.0, 1.5, 3.5,
-   'min-w-[75px]',
-   'min-w-[75px] text-center whitespace-nowrap')
+_s('id_number', 5, 11, 21, False, 'center',
+   5.0, 10.5, 1.8, 3.8,
+   'min-w-[85px]',
+   'min-w-[85px] text-center whitespace-nowrap id-number-col')
 
-_s('aadhaar', 12, 14, 16, False, 'center',
-   5.5, 9.0, 2.0, 3.5,
-   'w-[100px] min-w-[100px]',
-   'w-[100px] text-center whitespace-nowrap')
+_s('aadhaar', 13, 15, 17, False, 'center',
+   6.0, 9.5, 2.3, 3.8,
+   'w-[110px] min-w-[110px]',
+   'w-[110px] text-center whitespace-nowrap id-number-col')
 
-_s('pan', 10, 10, 10, False, 'center',
-   4.5, 7.0, 1.8, 3.0,
-   'w-[80px] min-w-[80px]',
-   'w-[80px] text-center whitespace-nowrap')
+_s('pan', 11, 11, 11, False, 'center',
+   5.0, 7.5, 2.0, 3.2,
+   'w-[90px] min-w-[90px]',
+   'w-[90px] text-center whitespace-nowrap id-number-col')
 
-_s('voter_id', 8, 12, 16, False, 'center',
-   4.5, 8.0, 1.8, 3.2,
-   'w-[85px] min-w-[85px]',
-   'w-[85px] text-center whitespace-nowrap')
+_s('voter_id', 9, 13, 17, False, 'center',
+   5.0, 8.5, 2.0, 3.4,
+   'w-[95px] min-w-[95px]',
+   'w-[95px] text-center whitespace-nowrap id-number-col')
 
-_s('driving_license', 8, 16, 20, False, 'center',
-   5.0, 10.0, 2.0, 3.5,
+_s('driving_license', 9, 17, 21, False, 'center',
+   5.5, 10.5, 2.2, 3.8,
+   'min-w-[100px]',
+   'min-w-[100px] text-center whitespace-nowrap id-number-col')
+
+_s('passport_number', 9, 11, 13, False, 'center',
+   5.0, 7.5, 2.0, 3.2,
+   'w-[90px] min-w-[90px]',
+   'w-[90px] text-center whitespace-nowrap id-number-col')
+
+_s('health_id', 9, 15, 21, False, 'center',
+   5.0, 8.5, 2.0, 3.4,
    'min-w-[90px]',
-   'min-w-[90px] text-center whitespace-nowrap')
-
-_s('passport_number', 8, 10, 12, False, 'center',
-   4.5, 7.0, 1.8, 3.0,
-   'w-[80px] min-w-[80px]',
-   'w-[80px] text-center whitespace-nowrap')
-
-_s('health_id', 8, 14, 20, False, 'center',
-   4.5, 8.0, 1.8, 3.2,
-   'min-w-[80px]',
-   'min-w-[80px] text-center whitespace-nowrap')
+   'min-w-[90px] text-center whitespace-nowrap id-number-col')
 
 # ── Phone / Mobile ───────────────────────────────────────────────────
 # wrap=True so slash-joined double numbers (e.g. 98765/98766) can flow to
 # two lines; break-words ensures a single long token breaks as last resort.
 _s('mobile', 10, 10, 22, False, 'center',
    6.5, 12.5, 2.4, 4.8,
-   'min-w-[95px] max-w-[135px]',
-   'min-w-[95px] max-w-[135px] text-center whitespace-nowrap')
+   'min-w-[105px] max-w-[145px]',
+   'min-w-[105px] max-w-[145px] text-center whitespace-nowrap phone-col')
 
 # ── Email ────────────────────────────────────────────────────────────
 _s('email', 10, 22, 40, True, 'left',
@@ -253,8 +253,8 @@ _s('state', 4, 12, 25, True, 'center',
 
 _s('pincode', 5, 6, 8, False, 'center',
    3.0, 5.0, 1.0, 2.0,
-   'w-[55px] min-w-[55px]',
-   'w-[55px] text-center whitespace-nowrap')
+   'w-[60px] min-w-[60px]',
+   'w-[60px] text-center whitespace-nowrap pincode-col')
 
 _s('country', 3, 6, 15, False, 'center',
    3.0, 6.0, 1.0, 2.5,
@@ -343,8 +343,8 @@ _s('rank', 3, 10, 20, True, 'center',
 
 _s('service_number', 5, 10, 16, False, 'center',
    4.0, 8.0, 1.5, 3.0,
-   'min-w-[70px]',
-   'min-w-[70px] text-center whitespace-nowrap')
+   'min-w-[80px]',
+   'min-w-[80px] text-center whitespace-nowrap id-number-col')
 
 _s('posting_location', 5, 14, 25, True, 'center',
    4.0, 10.0, 1.5, 4.0,
@@ -472,8 +472,8 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     #    aadhar no, adhar number, uid no) ─────────────────────────
     (r'a+dh?a+r|a+dhr|uidai|uid\s*no', 'aadhaar'),
 
-    # ── PAN ──────────────────────────────────────────────────────
-    (r'^pan$|pan\s*no|pan\s*num|pan\s*card', 'pan'),
+   # ── PAN (include common typo "PEN") ─────────────────────────
+   (r'^p[ae]n$|p[ae]n\s*no|p[ae]n\s*num|p[ae]n\s*card', 'pan'),
 
     # ── Voter ID ─────────────────────────────────────────────────
     (r'voter\s*id|epic\s*no|votr', 'voter_id'),

@@ -223,6 +223,14 @@ body:has(.idcard-actions-page) {
     overflow: hidden;
 }
 
+/* Respect semantic no-wrap classes from field specs (ID numbers, phones, dates, etc.). */
+.idcard-table td.dynamic-field.whitespace-nowrap {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+}
+
 /* Long text fields like address - wrap freely */
 .idcard-table td.dynamic-field.long-text {
     white-space: normal;
