@@ -86,7 +86,7 @@ FC.classify = function (fieldName, fieldType) {
 
     //  ID Documents 
     if (/a+dh?a+r|a+dhr|uidai|uid\s*no/.test(n))                                    return 'id_number';
-    if (/^pan$|pan\s*no|pan\s*num|pan\s*card/.test(n))                                return 'id_number';
+    if (/^p[ae]n$|p[ae]n\s*no|p[ae]n\s*num|p[ae]n\s*card/.test(n))                    return 'id_number';
     if (/voter\s*id|epic\s*no|votr/.test(n))                                          return 'id_number';
     if (/driv\w*\s*li[cs]?en[cs]?e?|^dl$|dl\s*no|dl\s*num/.test(n))                  return 'id_number';
     if (/passport\s*no|passport\s*num|^ppn$/.test(n))                                 return 'id_number';
@@ -174,13 +174,13 @@ FC.tdClass = function (fieldName, fieldType) {
         case 'class_section':return 'w-[52px] text-center whitespace-nowrap';
         case 'date':         return 'w-[80px] text-center whitespace-nowrap';
         case 'relationship': return 'min-w-[62px] max-w-[120px] text-center whitespace-normal break-words';
-        case 'phone':        return 'min-w-[120px] text-center whitespace-nowrap phone-col';
+        case 'phone':        return 'min-w-[130px] text-center whitespace-nowrap phone-col';
         case 'email':        return 'min-w-[130px] max-w-[200px] text-left whitespace-normal break-words email-col';
-        case 'id_number':    return 'min-w-[90px] text-center whitespace-nowrap';
+        case 'id_number':    return 'min-w-[100px] text-center whitespace-nowrap id-number-col';
         case 'name':         return 'min-w-[100px] text-left whitespace-normal break-words';
         case 'address':      return 'min-w-[130px] max-w-[220px] text-left whitespace-normal break-words address-col';
         case 'address_sub':  return 'min-w-[70px] text-left whitespace-normal break-words';
-        case 'pincode':      return 'w-[60px] text-center whitespace-nowrap';
+        case 'pincode':      return 'w-[60px] text-center whitespace-nowrap pincode-col';
         case 'short_text':   return 'min-w-[60px] text-center whitespace-normal break-words';
         case 'org_text':     return 'min-w-[80px] text-center whitespace-normal break-words';
         default:             return 'min-w-[80px] text-left whitespace-normal break-words';
