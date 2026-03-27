@@ -22,6 +22,7 @@ urlpatterns = [
     path('tables/<str:status>/', views.table_picker, name='table_picker'),
     path('table/<int:table_id>/<str:status>/', views.card_list, name='card_list'),
     path('reprint/<int:client_id>/', views.reprint_lists, name='reprint_lists'),
+    path('reprint/table/<int:table_id>/', views.reprint_table, name='reprint_table'),
     path('camera/<int:table_id>/', views.camera_capture, name='camera_capture'),
     path('camera/<int:table_id>/<int:card_id>/', views.camera_capture, name='camera_capture_card'),
     path('notifications/', views.notifications, name='notifications'),

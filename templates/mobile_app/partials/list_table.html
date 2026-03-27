@@ -101,18 +101,18 @@
                     <div class="mt-2">
                         <div class="grid text-[11px] leading-snug" style="grid-template-columns: minmax(0, 42%) minmax(0, 58%);">
                             {% for item in student.display_fields %}
-                            <span class="text-gray-400 font-semibold pr-1.5 truncate py-0.5" title="{{ item.key }}">{{ item.key }}</span>
-                            <span class="text-gray-700 py-0.5 text-right truncate" title="{{ item.value }}">{{ item.value }}</span>
+                            <span class="text-gray-400 font-semibold pr-1.5 py-0.5 whitespace-normal break-words" title="{{ item.key }}">{{ item.key }}</span>
+                            <span class="text-gray-700 py-0.5 text-right whitespace-normal break-words" title="{{ item.value }}">{{ item.value }}</span>
                             {% endfor %}
                         </div>
                     </div>
 
-                    <!-- View Details Link -->
+                    <!-- Edit Link -->
                     <div class="mt-2.5 flex items-center gap-2">
-                        <a href="{% url 'mobile_app:card_detail' card_id=student.id %}" @click.stop.prevent="openViewById({{ student.id }})"
-                           class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">
-                            View Details <i class="fa-solid fa-arrow-right text-[9px]"></i>
-                        </a>
+                        <button type="button" @click.stop="openEditById({{ student.id }})"
+                                class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">
+                            Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i>
+                        </button>
                     </div>
                 </div>
             </div>

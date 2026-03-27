@@ -1126,7 +1126,7 @@ function listApp() {
         _isExcludedField(name) {
             const n = this._normalizeFieldName(name);
             if (!n) return true;
-            if (n.includes('photo') || n.includes('image')) return true;
+            if (n.includes('photo') || n.includes('image') || n.includes('signature') || n.includes('barcode') || n.includes('qr')) return true;
             return ['name', 'class', 'section', 'designation'].includes(n);
         },
 
@@ -1190,7 +1190,7 @@ function listApp() {
             if (!fieldDef) return false;
             const name = String(fieldDef.name || '').trim().toLowerCase();
             const type = String(fieldDef.type || '').trim().toLowerCase();
-            return ['photo', 'image', 'file'].includes(type) || name.includes('photo') || name.includes('image');
+            return this._isImageFieldType(type) || this._isImageLikeFieldName(name);
         },
 
         _normalizePhotoPath(raw) {
@@ -1263,7 +1263,7 @@ function listApp() {
             if (!slots.length) {
                 Object.entries(fd).forEach(([k, v]) => {
                     const kl = this._normalizeFieldName(k);
-                    if (!kl || (!kl.includes('photo') && !kl.includes('image'))) return;
+                    if (!kl || !this._isImageLikeFieldName(kl)) return;
                     const norm = this._normalizePhotoPath(v);
                     if (norm.url && !urls.includes(norm.url)) {
                         slots.push({ url: norm.url, has_path: true });
@@ -1492,7 +1492,7 @@ function listApp() {
                 ? card.display_fields
                 : this._buildDisplayFieldsFromData(fd);
             const fieldRows = displayFields
-                .map(item => `<span class="text-gray-400 font-semibold pr-1.5 whitespace-nowrap py-0.5" style="font-size:11px;">${this._escHtml(String(item.key))}</span><span class="text-gray-700 py-0.5" style="font-size:11px;">${this._escHtml(String(item.value))}</span>`)
+                .map(item => `<span class="text-gray-400 font-semibold pr-1.5 py-0.5 whitespace-normal break-words" style="font-size:11px;">${this._escHtml(String(item.key))}</span><span class="text-gray-700 py-0.5 text-right whitespace-normal break-words" style="font-size:11px;">${this._escHtml(String(item.value))}</span>`)
                 .join('');
 
             const classPill = (card.class_name || card.section)
@@ -1510,14 +1510,14 @@ function listApp() {
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
             div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md';
-            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><a href="/app/card/${card.id}/" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-view-details" data-view-id="${card.id}">View Details <i class="fa-solid fa-arrow-right text-[9px]"></i></a></div></div></div>`;
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-edit-card" data-edit-id="${card.id}">Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i></button></div></div></div>`;
 
-            const viewLink = div.querySelector('.js-view-details');
-            if (viewLink) {
-                viewLink.addEventListener('click', (e) => {
+            const editButton = div.querySelector('.js-edit-card');
+            if (editButton) {
+                editButton.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    this.openViewById(card.id);
+                    this.openEditById(card.id);
                 });
             }
 
@@ -1780,10 +1780,9 @@ function listApp() {
             this.populateFormFromStudent(student);
             this.showAddForm = true;
         },
-        async editSelected() {
-            if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
-            const editId = this.selectedIds[0];
-            let student = this.studentsData.find(s => Number(s.id) === Number(editId));
+        async openEditById(cardId) {
+            const editId = Number(cardId);
+            let student = this.studentsData.find(s => Number(s.id) === editId);
             if (!student) { this.showToast('Card not found', 'error'); return; }
 
             try {
@@ -1794,11 +1793,16 @@ function listApp() {
                 // Fall back to currently loaded list data if snapshot fetch fails.
             }
 
+            this.selectedIds = [editId];
             this.viewMode = false;
             this.editMode = true;
             this.editingId = editId;
             this.populateFormFromStudent(student);
             this.showAddForm = true;
+        },
+        async editSelected() {
+            if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
+            return this.openEditById(this.selectedIds[0]);
         },
         closeAddForm() {
             this.showAddForm = false;

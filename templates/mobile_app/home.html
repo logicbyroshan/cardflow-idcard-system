@@ -359,13 +359,13 @@
                                 </div>
                                 <div class="w-1/2 grid grid-cols-2">
                                     <div class="text-center py-2">
-                                        <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=tbl.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=tbl.id %}{% endif %}?step=request_list"
+                                        <a href="{% url 'mobile_app:reprint_table' table_id=tbl.id %}?step=request_list"
                                            class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.requested > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
                                             {{ tbl.requested|default:0 }}
                                         </a>
                                     </div>
                                     <div class="text-center py-2">
-                                        <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table_id=tbl.id %}{% else %}{% url 'reprintcard:reprint_cards' table_id=tbl.id %}{% endif %}?step=confirmed"
+                                        <a href="{% url 'mobile_app:reprint_table' table_id=tbl.id %}?step=confirmed"
                                            class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.confirmed > 0 %}text-blue-500 bg-blue-50 border border-blue-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
                                             {{ tbl.confirmed|default:0 }}
                                         </a>

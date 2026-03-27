@@ -12,6 +12,7 @@ import json
 import re
 import logging
 import time
+from urllib.parse import urlencode
 from functools import wraps
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -23,6 +24,7 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
+from django.db import transaction
 from django.db.models import Count, Q, Max, CharField
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
@@ -46,6 +48,8 @@ from core.services.activity_service import ActivityService
 
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
+MAX_SEARCH_QUERY_LEN = 100
+MAX_REPRINT_ACTION_IDS = 200
 
 
 # ---------------------------------------------------------------------------
@@ -213,6 +217,11 @@ def _search_cards_queryset(base_qs, query, limit=None):
     if limit is not None:
         return qs[:limit]
     return qs
+
+
+def _sanitize_search_query(value, max_len=MAX_SEARCH_QUERY_LEN):
+    """Trim and cap user-provided search strings to keep scans bounded."""
+    return str(value or '').strip()[:max_len]
 
 
 def _get_table_filter_metadata(table, table_fields):
@@ -1093,7 +1102,13 @@ def card_list(request, table_id, status):
         cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-status_changed_at', 'id')
     else:
         cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-created_at', 'id')
-    total_count = cards_qs.count()
+
+    # Keep the first render query lean: only fields used by this view are loaded.
+    cards_qs = cards_qs.only(
+        'id', 'field_data', 'status', 'photo',
+        'created_at', 'status_changed_at', 'downloaded_at', 'deleted_at',
+    )
+
     _card_batch_raw = list(cards_qs[:51])
     _has_more_raw = len(_card_batch_raw) > 50
     cards_batch = _card_batch_raw[:50]
@@ -1110,6 +1125,17 @@ def card_list(request, table_id, status):
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
     photo_exts = ('.jpg', '.jpeg', '.png', '.webp')
+    image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
+    image_field_types = ('photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
+
+    def _is_image_like_name(raw_name):
+        _name = str(raw_name).strip().lower()
+        if not _name:
+            return False
+        return any(_kw in _name for _kw in image_field_keywords)
+
+    def _is_image_like_type(raw_type):
+        return str(raw_type).strip().lower() in image_field_types
 
     def _normalize_photo_value(raw_val):
         if not isinstance(raw_val, str):
@@ -1142,7 +1168,7 @@ def card_list(request, table_id, status):
                 continue
             _lower = _name.lower()
             _ftype = str(_f.get('type', '')).strip().lower()
-            if _ftype in ('photo', 'image', 'file') or 'photo' in _lower or 'image' in _lower:
+            if _is_image_like_type(_ftype) or _is_image_like_name(_lower):
                 if _lower not in _seen:
                     _seen.add(_lower)
                     photo_field_names.append(_name)
@@ -1174,7 +1200,7 @@ def card_list(request, table_id, status):
 
         for _key, _val in _fd.items():
             _kl = str(_key).strip().lower()
-            if 'photo' not in _kl and 'image' not in _kl:
+            if not _is_image_like_name(_kl):
                 continue
             _url, _has_path = _normalize_photo_value(_val)
             if _url and _url not in urls:
@@ -1217,6 +1243,7 @@ def card_list(request, table_id, status):
             if not name:
                 continue
             lower = name.lower()
+            ftype = str(f.get('type', '')).strip().lower()
             if lower in used:
                 continue
             item = by_lower.get(lower)
@@ -1225,7 +1252,7 @@ def card_list(request, table_id, status):
             key_str, val = item
             if not _has_display_value(val):
                 continue
-            if lower in excluded or 'photo' in lower or 'image' in lower:
+            if lower in excluded or _is_image_like_name(lower) or _is_image_like_type(ftype):
                 continue
             ordered.append({'key': key_str, 'value': val})
             used.add(lower)
@@ -1237,7 +1264,7 @@ def card_list(request, table_id, status):
             lower = key_str.strip().lower()
             if lower in used:
                 continue
-            if lower in excluded or 'photo' in lower or 'image' in lower:
+            if lower in excluded or _is_image_like_name(lower):
                 continue
             ordered.append({'key': key_str, 'value': val})
             used.add(lower)
@@ -1452,6 +1479,188 @@ def reprint_lists(request, client_id):
 
 
 @require_mobile_client
+@require_http_methods(["GET", "POST"])
+def reprint_table(request, table_id):
+    """Mobile per-table Reprint workflow page (Request List / Confirmed List)."""
+    user = request.user
+    _, perms = _client_ctx(user)
+
+    if not PermissionService.has(user, 'perm_idcard_reprint_list'):
+        return redirect('mobile_app:home')
+
+    table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
+    if not PermissionService.can_access_client(user, table.group.client_id):
+        return redirect('mobile_app:home')
+
+    active_step = (request.GET.get('step') or request.POST.get('step') or 'request_list').strip().lower()
+    if active_step not in ('request_list', 'confirmed'):
+        active_step = 'request_list'
+
+    search_query = _sanitize_search_query(request.GET.get('q') or request.POST.get('q') or '')
+    can_manage_actions = PermissionService.is_any_admin(user)
+    notice = {'message': '', 'type': ''}
+
+    if request.method == 'POST':
+        post_action = (request.POST.get('action') or '').strip()
+        rr_ids = []
+        if request.POST.get('rr_id'):
+            try:
+                rr_ids = [int(request.POST.get('rr_id'))]
+            except (TypeError, ValueError):
+                rr_ids = []
+        if not rr_ids:
+            for _rid in request.POST.getlist('rr_ids'):
+                try:
+                    rr_ids.append(int(_rid))
+                except (TypeError, ValueError):
+                    continue
+
+        # Deduplicate while preserving order.
+        rr_ids = list(dict.fromkeys(rr_ids))
+
+        if not can_manage_actions:
+            notice = {'message': 'Only admin users can perform reprint actions.', 'type': 'error'}
+        elif not rr_ids:
+            notice = {'message': 'No request selected.', 'type': 'error'}
+        elif len(rr_ids) > MAX_REPRINT_ACTION_IDS:
+            notice = {'message': f'Maximum {MAX_REPRINT_ACTION_IDS} requests can be processed at once.', 'type': 'error'}
+        elif post_action == 'send_to_print':
+            from cardprint.services import PrintWorkflowService
+
+            with transaction.atomic():
+                requested_qs = ReprintRequest.objects.select_for_update().filter(
+                    id__in=rr_ids,
+                    table=table,
+                    status='requested',
+                    card__status='download',
+                )
+                eligible_rr_ids = list(requested_qs.values_list('id', flat=True))
+                card_ids = list(requested_qs.values_list('card_id', flat=True))
+
+                if not card_ids:
+                    notice = {'message': 'No requested reprint items found.', 'type': 'error'}
+                else:
+                    result = PrintWorkflowService.create_requests(table, card_ids, user)
+                    if not result.success:
+                        notice = {'message': result.message or 'Could not send selected items to print list.', 'type': 'error'}
+                    else:
+                        moved_count = ReprintRequest.objects.filter(
+                            id__in=eligible_rr_ids,
+                            table=table,
+                            status='requested',
+                            card__status='download',
+                        ).update(status='confirmed')
+                        notice = {
+                            'message': f'{moved_count} request(s) moved to Confirmed List.',
+                            'type': 'success',
+                        }
+                        active_step = 'request_list'
+        elif post_action == 'reject':
+            from reprintcard.services import ReprintWorkflowService
+
+            with transaction.atomic():
+                result = ReprintWorkflowService.reject_requests(table=table, rr_ids=rr_ids)
+            if result.success:
+                notice = {'message': result.message or 'Rejected selected requests.', 'type': 'success'}
+            else:
+                notice = {'message': result.message or 'Could not reject selected requests.', 'type': 'error'}
+        else:
+            notice = {'message': 'Invalid reprint action.', 'type': 'error'}
+
+        qs = {'step': active_step}
+        if search_query:
+            qs['q'] = search_query
+        if notice['message']:
+            qs['notice'] = notice['message']
+            qs['notice_type'] = notice['type']
+        return redirect(f"{request.path}?{urlencode(qs)}")
+
+    notice_message = (request.GET.get('notice') or '').strip()
+    notice_type = (request.GET.get('notice_type') or '').strip().lower()
+    if notice_type not in ('success', 'error', 'info'):
+        notice_type = 'info'
+
+    counts_raw = (
+        ReprintRequest.objects
+        .filter(table=table, status__in=['requested', 'confirmed'], card__status='download')
+        .values('status')
+        .annotate(n=Count('id'))
+    )
+    step_counts = {'requested': 0, 'confirmed': 0}
+    for row in counts_raw:
+        if row['status'] in step_counts:
+            step_counts[row['status']] = row['n']
+
+    if active_step == 'request_list':
+        rr_qs = ReprintRequest.objects.filter(
+            table=table,
+            status='requested',
+            card__status='download',
+        ).select_related('card', 'requested_by').only(
+            'id', 'status', 'created_at', 'updated_at', 'card_id',
+            'card__id', 'card__field_data', 'card__photo',
+            'requested_by__username', 'requested_by__first_name', 'requested_by__last_name',
+        ).order_by('-created_at')
+    else:
+        rr_qs = ReprintRequest.objects.filter(
+            table=table,
+            status='confirmed',
+            card__status='download',
+        ).select_related('card', 'requested_by').only(
+            'id', 'status', 'created_at', 'updated_at', 'card_id',
+            'card__id', 'card__field_data', 'card__photo',
+            'requested_by__username', 'requested_by__first_name', 'requested_by__last_name',
+        ).order_by('-updated_at')
+
+    if search_query:
+        rr_qs = rr_qs.filter(
+            Q(card__field_data__icontains=search_query) |
+            Q(card__id__icontains=search_query) |
+            Q(requested_by__username__icontains=search_query)
+        )
+
+    rr_rows = list(rr_qs[:200])
+    items = []
+    for rr in rr_rows:
+        card = rr.card
+        fd = card.field_data or {}
+        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
+        class_name = fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
+        section = fd.get('SECTION') or fd.get('section') or ''
+        photo_url = get_card_photo_url(card, fd)
+        requested_by = rr.requested_by
+        requested_by_name = (requested_by.get_full_name() or requested_by.username) if requested_by else 'System'
+
+        items.append({
+            'rr_id': rr.id,
+            'card_id': card.id,
+            'name': name,
+            'roll_no': roll_no,
+            'class_name': class_name,
+            'section': section,
+            'photo_url': photo_url,
+            'requested_by_name': requested_by_name,
+            'requested_at': rr.created_at.strftime('%d-%b-%Y %H:%M') if rr.created_at else '',
+            'confirmed_at': rr.updated_at.strftime('%d-%b-%Y %H:%M') if rr.updated_at else '',
+        })
+
+    return render(request, 'mobile_app/reprint_table.html', {
+        'client': table.group.client,
+        'table': table,
+        'active_step': active_step,
+        'items': items,
+        'request_total': step_counts['requested'],
+        'confirmed_total': step_counts['confirmed'],
+        'search_query': search_query,
+        'can_manage_reprint_actions': can_manage_actions,
+        'notice_message': notice_message,
+        'notice_type': notice_type,
+        **perms,
+    })
+
+
+@require_mobile_client
 def camera_capture(request, table_id, card_id=None):
     """Camera page for capturing ID-card photos."""
     user = request.user
@@ -1466,7 +1675,7 @@ def camera_capture(request, table_id, card_id=None):
     # If no specific card_id provided, show card picker with all cards for name-based search
     all_cards = []
     if card_id is None:
-        cards_qs = IDCard.objects.filter(table=table).order_by('id')[:300]
+        cards_qs = IDCard.objects.filter(table=table).only('id', 'field_data').order_by('id')[:300]
         for card in cards_qs:
             fd = card.field_data or {}
             name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
@@ -1633,10 +1842,10 @@ def api_card_detail(request, card_id):
 def api_cards(request, table_id):
     """Get cards for a table (paginated)."""
     status_filter = request.GET.get('status', '')
-    search = request.GET.get('search', '')
+    search = _sanitize_search_query(request.GET.get('search', ''))
     try:
-        page = int(request.GET.get('page', 1))
-        per_page = min(int(request.GET.get('per_page', 50)), 200)
+        page = max(int(request.GET.get('page', 1)), 1)
+        per_page = max(1, min(int(request.GET.get('per_page', 50)), 200))
     except (ValueError, TypeError):
         page, per_page = 1, 50
 
@@ -1667,6 +1876,8 @@ def api_card_add(request, table_id):
         try:
             field_data = json.loads(field_data_raw)
         except json.JSONDecodeError:
+            field_data = {}
+        if not isinstance(field_data, dict):
             field_data = {}
 
         # Validate photo BEFORE writing card to DB
@@ -1706,6 +1917,8 @@ def api_card_update(request, table_id, card_id):
         try:
             field_data = json.loads(field_data_raw)
         except json.JSONDecodeError:
+            field_data = {}
+        if not isinstance(field_data, dict):
             field_data = {}
 
         if field_data:
@@ -2012,7 +2225,7 @@ def search_page(request):
     if not client:
         return redirect('/app/login/')
 
-    query = request.GET.get('q', '').strip()
+    query = _sanitize_search_query(request.GET.get('q', ''))
     results = []
 
     if query and len(query) >= 2:
@@ -2284,7 +2497,7 @@ def api_search(request):
     if not client:
         return JsonResponse({'success': False, 'message': 'No client'}, status=400)
 
-    query = request.GET.get('q', '').strip()
+    query = _sanitize_search_query(request.GET.get('q', ''))
     if not query or len(query) < 2:
         return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
 
