@@ -45,17 +45,23 @@
         </div>
     </div>
 
-    <div class="px-4 pt-3">
-        <form method="get" class="relative">
+    <div class="px-2 py-1.5 bg-white border-b border-gray-200 mt-2">
+        <form method="get" class="relative flex items-center gap-1.5">
             <input type="hidden" name="step" value="{{ active_step }}">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]"></i>
-            <input
-                type="text"
-                name="q"
-                value="{{ search_query }}"
-                placeholder="Search name, roll, card id..."
-                class="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-[12px] text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-cyan-400"
-            >
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]"></i>
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_query }}"
+                    placeholder="Search by name, roll no..."
+                    class="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light transition"
+                >
+            </div>
+            <button type="submit"
+                    class="w-9 h-9 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 flex items-center justify-center active:scale-95 transition-all">
+                <i class="fa-solid fa-arrow-right text-[11px]"></i>
+            </button>
         </form>
     </div>
 
@@ -67,87 +73,98 @@
     </div>
     {% endif %}
 
-    <div class="p-4 pt-3 space-y-2.5">
+    <div class="p-3 pt-2 space-y-2.5">
         {% for item in items %}
-        <div class="rounded-2xl bg-white border border-gray-100 shadow-sm p-3">
-            <div class="flex gap-3">
-                <div class="w-[54px] h-[68px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
-                    {% if item.photo_url %}
-                    <img src="{{ item.photo_url }}" alt="" class="w-full h-full object-cover object-top" loading="lazy">
-                    {% else %}
-                    <div class="w-full h-full flex items-center justify-center text-gray-300 text-[16px]">
-                        <i class="fa-solid fa-user-slash"></i>
+        <div class="m-pop-card rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="flex gap-3 p-3">
+                <div class="w-[56px] flex-shrink-0">
+                    <div class="w-full h-[68px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                        {% if item.photo_url %}
+                        <img src="{{ item.photo_url }}" alt="" class="w-full h-full object-cover object-top" loading="lazy">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-gray-300 text-[16px]">
+                            <i class="fa-solid fa-user-slash"></i>
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
 
-                <div class="flex-1 min-w-0">
-                    <p class="text-[13px] font-bold text-gray-800 leading-tight break-words">{{ item.name }}</p>
+                <div class="flex-1 min-w-0 flex flex-col">
+                    {% if item.name %}
+                    <p class="font-bold text-gray-800 text-[14px] leading-tight break-words">{{ item.name }}</p>
+                    {% else %}
+                    <p class="font-semibold text-gray-300 text-[13px] leading-tight italic"> - </p>
+                    {% endif %}
+
                     <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
                         {% if item.class_name or item.section %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-200/70 text-indigo-700 font-semibold">
                             {% if item.class_name %}{{ item.class_name }}{% endif %}{% if item.class_name and item.section %} &bull; {% endif %}{% if item.section %}{{ item.section }}{% endif %}
                         </span>
                         {% endif %}
                         {% if item.roll_no %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 font-semibold">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-semibold">
                             Roll: {{ item.roll_no }}
                         </span>
                         {% endif %}
                     </div>
 
-                    <div class="mt-2 grid grid-cols-2 gap-2 text-[10px] text-gray-500">
-                        <div>
-                            <span class="font-semibold text-gray-600">By:</span>
-                            <span class="break-words">{{ item.requested_by_name }}</span>
-                        </div>
-                        <div class="text-right">
+                    <div class="mt-2">
+                        <div class="grid text-[11px] leading-snug" style="grid-template-columns: minmax(0, 42%) minmax(0, 58%);">
+                            {% for f in item.display_fields %}
+                            <span class="text-gray-400 font-semibold pr-1.5 py-0.5 whitespace-normal break-words" title="{{ f.key }}">{{ f.key }}</span>
+                            <span class="text-gray-700 py-0.5 text-right whitespace-normal break-words" title="{{ f.value }}">{{ f.value }}</span>
+                            {% endfor %}
+                            <span class="text-gray-400 font-semibold pr-1.5 py-0.5">Requested By</span>
+                            <span class="text-gray-700 py-0.5 text-right break-words">{{ item.requested_by_name }}</span>
                             {% if active_step == 'request_list' %}
-                            <span class="font-semibold text-gray-600">At:</span> {{ item.requested_at }}
+                            <span class="text-gray-400 font-semibold pr-1.5 py-0.5">Requested At</span>
+                            <span class="text-gray-700 py-0.5 text-right break-words">{{ item.requested_at }}</span>
                             {% else %}
-                            <span class="font-semibold text-gray-600">At:</span> {{ item.confirmed_at }}
+                            <span class="text-gray-400 font-semibold pr-1.5 py-0.5">Confirmed At</span>
+                            <span class="text-gray-700 py-0.5 text-right break-words">{{ item.confirmed_at }}</span>
                             {% endif %}
                         </div>
                     </div>
+
+                    <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                        <a href="{% url 'mobile_app:card_detail' card_id=item.card_id %}"
+                           class="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-100 rounded-lg px-2.5 py-1">
+                            View <i class="fa-solid fa-eye text-[9px]"></i>
+                        </a>
+                        <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}?focus_card={{ item.card_id }}"
+                           class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-200/70 rounded-lg px-2.5 py-1">
+                            Open Card <i class="fa-solid fa-arrow-right text-[9px]"></i>
+                        </a>
+
+                        {% if can_manage_reprint_actions and active_step == 'request_list' %}
+                        <form method="post" class="inline-flex">{% csrf_token %}
+                            <input type="hidden" name="action" value="send_to_print">
+                            <input type="hidden" name="rr_id" value="{{ item.rr_id }}">
+                            <input type="hidden" name="step" value="{{ active_step }}">
+                            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+                            <button type="submit"
+                                    class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 rounded-lg px-2.5 py-1">
+                                Send <i class="fa-solid fa-print text-[9px]"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if can_manage_reprint_actions %}
+                        <form method="post" class="inline-flex">{% csrf_token %}
+                            <input type="hidden" name="action" value="reject">
+                            <input type="hidden" name="rr_id" value="{{ item.rr_id }}">
+                            <input type="hidden" name="step" value="{{ active_step }}">
+                            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+                            <button type="submit"
+                                    class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100 rounded-lg px-2.5 py-1"
+                                    onclick="return confirm('Reject this reprint request?');">
+                                Reject <i class="fa-solid fa-xmark text-[9px]"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-
-            <div class="mt-2.5 flex flex-wrap items-center gap-2">
-                <a href="{% url 'mobile_app:card_detail' card_id=item.card_id %}"
-                   class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-100 rounded-lg px-2.5 py-1">
-                    View <i class="fa-solid fa-eye text-[9px]"></i>
-                </a>
-                <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}?focus_card={{ item.card_id }}"
-                   class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-100 rounded-lg px-2.5 py-1">
-                    Open Card <i class="fa-solid fa-arrow-right text-[9px]"></i>
-                </a>
-
-                {% if can_manage_reprint_actions and active_step == 'request_list' %}
-                <form method="post" class="inline-flex">{% csrf_token %}
-                    <input type="hidden" name="action" value="send_to_print">
-                    <input type="hidden" name="rr_id" value="{{ item.rr_id }}">
-                    <input type="hidden" name="step" value="{{ active_step }}">
-                    {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-                    <button type="submit"
-                            class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 rounded-lg px-2.5 py-1">
-                        Send <i class="fa-solid fa-print text-[9px]"></i>
-                    </button>
-                </form>
-                {% endif %}
-
-                {% if can_manage_reprint_actions %}
-                <form method="post" class="inline-flex">{% csrf_token %}
-                    <input type="hidden" name="action" value="reject">
-                    <input type="hidden" name="rr_id" value="{{ item.rr_id }}">
-                    <input type="hidden" name="step" value="{{ active_step }}">
-                    {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-                    <button type="submit"
-                            class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-100 rounded-lg px-2.5 py-1"
-                            onclick="return confirm('Reject this reprint request?');">
-                        Reject <i class="fa-solid fa-xmark text-[9px]"></i>
-                    </button>
-                </form>
-                {% endif %}
             </div>
         </div>
         {% empty %}

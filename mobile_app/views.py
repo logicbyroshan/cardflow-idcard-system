@@ -1619,18 +1619,87 @@ def reprint_table(request, table_id):
             Q(requested_by__username__icontains=search_query)
         )
 
+    table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
+    image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
+    image_field_types = ('photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
+
+    def _is_image_like_name(raw_name):
+        _name = str(raw_name).strip().lower()
+        if not _name:
+            return False
+        return any(_kw in _name for _kw in image_field_keywords)
+
+    def _is_image_like_type(raw_type):
+        return str(raw_type).strip().lower() in image_field_types
+
+    def _build_display_fields(fd, table_field_defs):
+        """Build ordered key/value list to mirror pending-list card detail blocks."""
+        def _has_display_value(v):
+            return v is not None and str(v).strip() != ''
+
+        excluded = {'name', 'class', 'section', 'designation'}
+        by_lower = {}
+        for key, val in (fd or {}).items():
+            if key is None:
+                continue
+            key_str = str(key)
+            key_lower = key_str.strip().lower()
+            if not key_lower:
+                continue
+            by_lower[key_lower] = (key_str, val)
+
+        ordered = []
+        used = set()
+
+        for f in (table_field_defs or []):
+            name = str(f.get('name', '')).strip()
+            if not name:
+                continue
+            lower = name.lower()
+            ftype = str(f.get('type', '')).strip().lower()
+            if lower in used:
+                continue
+            item = by_lower.get(lower)
+            if not item:
+                continue
+            key_str, val = item
+            if not _has_display_value(val):
+                continue
+            if lower in excluded or _is_image_like_name(lower) or _is_image_like_type(ftype):
+                continue
+            ordered.append({'key': key_str, 'value': val})
+            used.add(lower)
+
+        for key_lower, (key_str, val) in by_lower.items():
+            if key_lower in used:
+                continue
+            if not _has_display_value(val):
+                continue
+            if key_lower in excluded or _is_image_like_name(key_lower):
+                continue
+            ordered.append({'key': key_str, 'value': val})
+            used.add(key_lower)
+
+        return ordered
+
     rr_rows = list(rr_qs[:200])
     items = []
     for rr in rr_rows:
         card = rr.card
         fd = card.field_data or {}
-        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        name = (
+            fd.get('NAME') or fd.get('name') or fd.get('Name') or
+            fd.get('STUDENT NAME') or fd.get('Student Name') or fd.get('student_name') or
+            fd.get('FULL NAME') or fd.get('Full Name') or fd.get('full_name') or
+            ''
+        )
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
         class_name = fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
         section = fd.get('SECTION') or fd.get('section') or ''
         photo_url = get_card_photo_url(card, fd)
         requested_by = rr.requested_by
         requested_by_name = (requested_by.get_full_name() or requested_by.username) if requested_by else 'System'
+        display_fields = _build_display_fields(fd, table_fields)
 
         items.append({
             'rr_id': rr.id,
@@ -1640,6 +1709,7 @@ def reprint_table(request, table_id):
             'class_name': class_name,
             'section': section,
             'photo_url': photo_url,
+            'display_fields': display_fields,
             'requested_by_name': requested_by_name,
             'requested_at': rr.created_at.strftime('%d-%b-%Y %H:%M') if rr.created_at else '',
             'confirmed_at': rr.updated_at.strftime('%d-%b-%Y %H:%M') if rr.updated_at else '',
