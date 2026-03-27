@@ -21,8 +21,9 @@ class ActivityService:
     """Service for creating and querying activity log entries."""
 
     # Avoid log flooding when users process cards one-by-one very quickly.
-    SINGLE_CARD_STATUS_LOG_THROTTLE_SECONDS = 20
-    RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS = 180
+    SINGLE_CARD_STATUS_LOG_THROTTLE_SECONDS = 60
+    # Keep similar card actions grouped for up to 15 minutes in Recent Activity.
+    RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS = 900
     RECENT_ACTIVITY_FETCH_MULTIPLIER = 10
     RECENT_ACTIVITY_FETCH_CAP = 300
     CARD_ACTIVITY_DESCRIPTION_RE = re.compile(

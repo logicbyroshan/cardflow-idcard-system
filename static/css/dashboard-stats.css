@@ -121,6 +121,11 @@ a.stat-card-link:hover {
     color: #fff;
 }
 
+.stat-icon.total {
+    background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+    color: #fff;
+}
+
 /* ====================
    Count Badges
    ==================== */

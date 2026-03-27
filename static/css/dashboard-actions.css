@@ -87,25 +87,7 @@
 }
 
 .bulk-select-group select {
-    padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    font-size: var(--font-size-md);
-    color: var(--text-primary);
-    background: var(--bg-white);
-    cursor: pointer;
-    transition: all var(--transition-base);
     min-height: 36px;
-}
-
-.bulk-select-group select:hover {
-    border-color: var(--primary);
-}
-
-.bulk-select-group select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
 }
 
 .bulk-select-group select:disabled {
