@@ -6,6 +6,7 @@ All methods are classmethods/staticmethods following the project convention.
 """
 
 import logging
+import re
 
 from django.core.cache import cache as django_cache
 from django.utils import timezone
@@ -21,6 +22,13 @@ class ActivityService:
 
     # Avoid log flooding when users process cards one-by-one very quickly.
     SINGLE_CARD_STATUS_LOG_THROTTLE_SECONDS = 20
+    RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS = 180
+    RECENT_ACTIVITY_FETCH_MULTIPLIER = 10
+    RECENT_ACTIVITY_FETCH_CAP = 300
+    CARD_ACTIVITY_DESCRIPTION_RE = re.compile(
+        r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
+        re.IGNORECASE,
+    )
 
     # ── helpers ──────────────────────────────────────────────
 
@@ -309,21 +317,117 @@ class ActivityService:
             if user.role in ('client', 'client_staff'):
                 hide_admin_names = True
         
-        results = []
-        for entry in qs[:limit]:
+        fetch_limit = min(
+            max(limit * cls.RECENT_ACTIVITY_FETCH_MULTIPLIER, limit),
+            cls.RECENT_ACTIVITY_FETCH_CAP,
+        )
+
+        raw_results = []
+        for entry in qs[:fetch_limit]:
             actor = cls._get_actor_display(entry, user, hide_admin_names)
-            
-            results.append({
+
+            raw_results.append({
                 'id': entry.pk,
+                'user_id': entry.user_id,
                 'actor': actor,
                 'action': entry.action,
                 'description': entry.description,
                 'icon_class': entry.icon_class,
                 'icon_color': entry.icon_color,
-                'time_ago': timesince(entry.created_at, now),
-                'created_at': entry.created_at.isoformat(),
+                'created_at_dt': entry.created_at,
+            })
+
+        merged_results = cls._merge_recent_card_activities(raw_results)
+
+        results = []
+        for item in merged_results[:limit]:
+            results.append({
+                'id': item['id'],
+                'actor': item['actor'],
+                'action': item['action'],
+                'description': item['description'],
+                'icon_class': item['icon_class'],
+                'icon_color': item['icon_color'],
+                'time_ago': timesince(item['created_at_dt'], now),
+                'created_at': item['created_at_dt'].isoformat(),
             })
         return results
+
+    @classmethod
+    def _parse_card_activity_description(cls, description):
+        """Return parsed card activity tuple: (count, status, client) or None."""
+        if not description:
+            return None
+
+        match = cls.CARD_ACTIVITY_DESCRIPTION_RE.match(str(description).strip())
+        if not match:
+            return None
+
+        try:
+            count = int(match.group('count'))
+        except (TypeError, ValueError):
+            return None
+
+        status = str(match.group('status') or '').strip().lower()
+        client = str(match.group('client') or '').strip()
+        if not status:
+            return None
+        return count, status, client
+
+    @classmethod
+    def _merge_recent_card_activities(cls, items):
+        """Collapse adjacent card status entries into combined count rows."""
+        if not items:
+            return []
+
+        merged = []
+
+        for item in items:
+            parsed = None
+            if item.get('action') in ('card_status', 'card_bulk_status'):
+                parsed = cls._parse_card_activity_description(item.get('description', ''))
+
+            if not parsed:
+                merged.append(item)
+                continue
+
+            count, status, client = parsed
+            item_key = (item.get('user_id'), status, client.lower())
+
+            if merged:
+                last = merged[-1]
+                last_key = last.get('_merge_key')
+                last_dt = last.get('created_at_dt')
+                item_dt = item.get('created_at_dt')
+
+                can_merge = (
+                    last_key == item_key and
+                    last_dt is not None and
+                    item_dt is not None and
+                    (last_dt - item_dt).total_seconds() <= cls.RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS
+                )
+
+                if can_merge:
+                    last['_merge_count'] = last.get('_merge_count', 1) + count
+                    total = last['_merge_count']
+                    suffix = f' for {client}' if client else ''
+                    noun = 'card' if total == 1 else 'cards'
+                    last['description'] = f'{total} {noun} {status}{suffix}'
+                    last['action'] = 'card_bulk_status' if total > 1 else 'card_status'
+                    continue
+
+            suffix = f' for {client}' if client else ''
+            noun = 'card' if count == 1 else 'cards'
+            item['description'] = f'{count} {noun} {status}{suffix}'
+            item['_merge_key'] = item_key
+            item['_merge_count'] = count
+            merged.append(item)
+
+        for row in merged:
+            row.pop('_merge_key', None)
+            row.pop('_merge_count', None)
+
+        return merged
     
     @classmethod
     def _apply_role_filter(cls, queryset, user):
