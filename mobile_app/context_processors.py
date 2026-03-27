@@ -81,15 +81,29 @@ def mobile_globals(request):
             from client.models import Client
             from staff.models import Staff
             from idcards.models import IDCardTable, IDCard
+            from core.services.permission_service import PermissionService
 
-            cache_key = 'mobile:admin:overview:counts:v1'
+            accessible_ids = None
+            cache_key = 'mobile:admin:overview:counts:v2:all'
+            if PermissionService.is_admin_staff(user):
+                accessible_ids = PermissionService.get_accessible_client_ids(user)
+                cache_key = f'mobile:admin:overview:counts:v2:user:{user.id}'
+
             cached_counts = cache.get(cache_key)
             if cached_counts is None:
+                scoped_clients = Client.objects.filter(status='active')
+                scoped_tables = IDCardTable.objects.filter(is_active=True)
+                scoped_cards = IDCard.objects.all()
+                if accessible_ids is not None:
+                    scoped_clients = scoped_clients.filter(id__in=accessible_ids)
+                    scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
+                    scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+
                 cached_counts = {
-                    'admin_client_count': Client.objects.filter(status='active').count(),
+                    'admin_client_count': scoped_clients.count(),
                     'admin_staff_count': Staff.objects.count(),
-                    'admin_table_count': IDCardTable.objects.filter(is_active=True).count(),
-                    'admin_total_cards': IDCard.objects.count(),
+                    'admin_table_count': scoped_tables.count(),
+                    'admin_total_cards': scoped_cards.count(),
                 }
                 cache.set(cache_key, cached_counts, 60)
             ctx.update(cached_counts)

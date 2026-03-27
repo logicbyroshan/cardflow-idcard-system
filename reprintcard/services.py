@@ -10,6 +10,7 @@ ARCHITECTURE RULES:
 from typing import Any, Dict, List
 
 from django.db import transaction
+from django.utils import timezone
 
 from idcards.models import IDCard, IDCardTable
 from core.services.base import ServiceResult
@@ -34,6 +35,27 @@ class ReprintWorkflowService:
     VALID_STATUSES = ['requested', 'confirmed', 'downloaded']
 
     INITIAL_STATUS = 'requested'
+
+    @staticmethod
+    def _normalize_positive_int_ids(raw_ids: Any) -> List[int]:
+        """Normalize raw ID payloads into unique positive integers."""
+        if not isinstance(raw_ids, (list, tuple, set)):
+            return []
+
+        normalized: List[int] = []
+        seen = set()
+        for value in raw_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                parsed = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            if parsed <= 0 or parsed in seen:
+                continue
+            seen.add(parsed)
+            normalized.append(parsed)
+        return normalized
 
     # ── Single transition ───────────────────────────────────────────
 
@@ -85,13 +107,18 @@ class ReprintWorkflowService:
         if target_status not in cls.VALID_STATUSES:
             return ServiceResult(success=False, message=f'Invalid reprint status: {target_status}')
 
+        rr_ids = cls._normalize_positive_int_ids(rr_ids)
+        if not rr_ids:
+            return ServiceResult(success=False, message='No reprint IDs provided')
+
         valid_from = [s for s, targets in cls.ALLOWED_TRANSITIONS.items() if target_status in targets]
         if not valid_from:
             return ServiceResult(success=False, message=f'No valid source status for {target_status}.')
 
+        now = timezone.now()
         updated = ReprintRequest.objects.filter(
             id__in=rr_ids, table=table, status__in=valid_from
-        ).update(status=target_status)
+        ).update(status=target_status, updated_at=now)
 
         if not updated:
             return ServiceResult(
@@ -118,33 +145,45 @@ class ReprintWorkflowService:
         """Create reprint requests for the given card IDs.
         Skips cards that already have a pending/confirmed reprint request.
         """
+        card_ids = cls._normalize_positive_int_ids(card_ids)
         if not card_ids:
             return ServiceResult(success=False, message='No card IDs provided')
 
-        valid_ids = set(
-            IDCard.objects.filter(table=table, id__in=card_ids, status='download')
-            .values_list('id', flat=True)
-        )
+        reason = str(reason or '').strip()
 
-        already_requested = set(
-            ReprintRequest.objects.filter(
-                table=table,
-                card_id__in=valid_ids,
-                status__in=['requested', 'confirmed', 'downloaded'],
-            ).values_list('card_id', flat=True)
-        )
-
-        new_ids = valid_ids - already_requested
-        created = 0
-        for cid in new_ids:
-            ReprintRequest.objects.create(
-                card_id=cid,
-                table=table,
-                status=cls.INITIAL_STATUS,
-                reason=reason,
-                requested_by=requested_by,
+        with transaction.atomic():
+            valid_ids = set(
+                IDCard.objects.select_for_update().filter(
+                    table=table,
+                    id__in=card_ids,
+                    status='download',
+                ).values_list('id', flat=True)
             )
-            created += 1
+
+            already_requested = set(
+                ReprintRequest.objects.filter(
+                    table=table,
+                    card_id__in=valid_ids,
+                    status__in=['requested', 'confirmed', 'downloaded'],
+                ).values_list('card_id', flat=True)
+            )
+
+            new_ids = sorted(valid_ids - already_requested)
+            to_create = [
+                ReprintRequest(
+                    card_id=cid,
+                    table=table,
+                    status=cls.INITIAL_STATUS,
+                    reason=reason,
+                    requested_by=requested_by,
+                )
+                for cid in new_ids
+            ]
+            if to_create:
+                ReprintRequest.objects.bulk_create(to_create, batch_size=500)
+            created = len(to_create)
+
+        skipped_count = len(already_requested & set(card_ids))
 
         if created > 0:
             client_name = ''
@@ -168,7 +207,7 @@ class ReprintWorkflowService:
             message=f'{created} reprint request(s) created',
             data={
                 'created_count': created,
-                'skipped_count': len(already_requested & set(card_ids)),
+                'skipped_count': skipped_count,
             },
         )
 
@@ -180,26 +219,37 @@ class ReprintWorkflowService:
         move_card_to_pool: bool = True,
     ) -> ServiceResult:
         """Reject (delete) reprint requests and optionally move cards to IDCard pool."""
+        rr_ids = cls._normalize_positive_int_ids(rr_ids)
         if not rr_ids:
             return ServiceResult(success=False, message='No reprint IDs provided')
 
-        rr_qs = ReprintRequest.objects.filter(
-            id__in=rr_ids, table=table, status__in=['requested', 'confirmed']
-        )
+        with transaction.atomic():
+            rr_qs = ReprintRequest.objects.select_for_update().filter(
+                id__in=rr_ids,
+                table=table,
+                status__in=['requested', 'confirmed'],
+            )
 
-        rejected_ids = list(rr_qs.values_list('id', flat=True))
+            rejected_ids = list(rr_qs.values_list('id', flat=True))
+            rejected_count = len(rejected_ids)
 
-        if move_card_to_pool:
-            card_ids = list(rr_qs.values_list('card_id', flat=True))
-            if card_ids:
-                IDCard.objects.filter(id__in=card_ids).update(status='pool')
+            if move_card_to_pool:
+                card_ids = list(rr_qs.values_list('card_id', flat=True))
+                if card_ids:
+                    now = timezone.now()
+                    IDCard.objects.filter(id__in=card_ids).update(
+                        status='pool',
+                        deleted_at=now,
+                        status_changed_at=now,
+                        updated_at=now,
+                    )
 
-        deleted, _ = rr_qs.delete()
+            rr_qs.delete()
 
         return ServiceResult(
             success=True,
-            message=f'{deleted} reprint(s) rejected and moved to pool',
-            data={'rejected_count': deleted, 'rejected_ids': rejected_ids},
+            message=f'{rejected_count} reprint(s) rejected and moved to pool',
+            data={'rejected_count': rejected_count, 'rejected_ids': rejected_ids},
         )
 
     # ── Debug / introspection ───────────────────────────────────────

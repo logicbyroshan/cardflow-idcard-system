@@ -53,6 +53,38 @@ MAX_ZIP_SIZE = 950 * 1024 * 1024          # 950 MB for ZIP archives (buffer belo
 ALLOWED_ZIP_EXTENSIONS = ('.zip',)
 
 
+def _normalize_positive_int_ids(raw_ids, *, max_items=5000):
+    """Normalize arbitrary payload values into unique positive integer IDs."""
+    if not isinstance(raw_ids, (list, tuple)):
+        return []
+    normalized = []
+    seen = set()
+    for item in raw_ids:
+        if isinstance(item, bool):
+            continue
+        try:
+            val = int(str(item).strip())
+        except (TypeError, ValueError):
+            continue
+        if val <= 0 or val in seen:
+            continue
+        seen.add(val)
+        normalized.append(val)
+        if len(normalized) >= max_items:
+            break
+    return normalized
+
+
+def _is_path_within_root(full_path, root_dir):
+    """Return True only when full_path is contained within root_dir."""
+    try:
+        full = os.path.realpath(full_path)
+        root = os.path.realpath(str(root_dir))
+        return os.path.commonpath([full, root]) == root
+    except Exception:
+        return False
+
+
 def _validate_uploaded_file(uploaded_file, allowed_extensions, max_size, label='File'):
     """
     Validate an uploaded file's extension, content-type, and size.
@@ -188,7 +220,7 @@ def api_task_download(request, task_id):
         
         # Get full path with traversal guard
         full_path = os.path.realpath(os.path.join(settings.MEDIA_ROOT, task.result_path))
-        if not full_path.startswith(os.path.realpath(str(settings.MEDIA_ROOT))):
+        if not _is_path_within_root(full_path, settings.MEDIA_ROOT):
             return JsonResponse({
                 'success': False,
                 'message': 'Invalid file path'
@@ -203,6 +235,9 @@ def api_task_download(request, task_id):
         # Determine filename from metadata or path
         result_data = task.metadata.get('result', {})
         filename = result_data.get('filename', os.path.basename(full_path))
+        filename = os.path.basename(str(filename or '')).replace('\r', '').replace('\n', '')
+        if not filename:
+            filename = os.path.basename(full_path)
         
         # Return file response
         response = FileResponse(
@@ -740,6 +775,7 @@ def api_create_export_task(request, table_id):
                 card_ids = json.loads(card_ids)
             except (json.JSONDecodeError, TypeError):
                 card_ids = []
+        card_ids = _normalize_positive_int_ids(card_ids)
         
         status_filter = data.get('status', '')
         

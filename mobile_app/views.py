@@ -224,6 +224,27 @@ def _sanitize_search_query(value, max_len=MAX_SEARCH_QUERY_LEN):
     return str(value or '').strip()[:max_len]
 
 
+def _normalize_positive_int_ids(values):
+    """Normalize mixed input to unique positive integer IDs."""
+    if not isinstance(values, list):
+        return []
+
+    normalized = []
+    seen = set()
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        try:
+            number = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if number <= 0 or number in seen:
+            continue
+        seen.add(number)
+        normalized.append(number)
+    return normalized
+
+
 def _get_table_filter_metadata(table, table_fields):
     """Build and cache class/section filter metadata for list page."""
     class_field_name = None
@@ -1041,13 +1062,8 @@ def table_picker(request, status):
 
         # admin_staff: restrict to their assigned clients
         if PermissionService.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_client_ids = list(
-                    staff.assigned_clients.values_list('id', flat=True)
-                )
-                if assigned_client_ids:
-                    tables = tables.filter(group__client_id__in=assigned_client_ids)
+            assigned_client_ids = PermissionService.get_accessible_client_ids(user)
+            tables = tables.filter(group__client_id__in=assigned_client_ids) if assigned_client_ids else tables.none()
     else:
         tables = IDCardTable.objects.filter(
             group__client=client, is_active=True,
@@ -1613,11 +1629,13 @@ def reprint_table(request, table_id):
         ).order_by('-updated_at')
 
     if search_query:
-        rr_qs = rr_qs.filter(
+        search_filter = (
             Q(card__field_data__icontains=search_query) |
-            Q(card__id__icontains=search_query) |
             Q(requested_by__username__icontains=search_query)
         )
+        if search_query.isdigit():
+            search_filter |= Q(card_id=int(search_query))
+        rr_qs = rr_qs.filter(search_filter)
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
     image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
@@ -1856,12 +1874,17 @@ def api_bulk_status(request, table_id):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    card_ids = data.get('card_ids', [])
+    card_ids_raw = data.get('card_ids', [])
     new_status = data.get('status', '')
-    if not isinstance(card_ids, list):
+    if not isinstance(card_ids_raw, list):
         return JsonResponse({'success': False, 'message': 'card_ids must be a list'}, status=400)
-    if len(card_ids) > 500:
+    if len(card_ids_raw) > 500:
         return JsonResponse({'success': False, 'message': 'Maximum 500 cards per batch'}, status=400)
+
+    card_ids = _normalize_positive_int_ids(card_ids_raw)
+    if not card_ids:
+        return JsonResponse({'success': False, 'message': 'No valid card IDs provided'}, status=400)
+
     result = ClientCardService.bulk_change_status(request.user, table_id, card_ids, new_status)
     if result.success:
         return JsonResponse({'success': True, 'message': result.message, **(result.data or {})})
@@ -1877,11 +1900,17 @@ def api_upload_photo(request, table_id):
     photo = request.FILES.get('photo')
     if not photo or not card_id:
         return JsonResponse({'success': False, 'message': 'photo and card_id required'}, status=400)
+
+    try:
+        card_id_int = int(str(card_id).strip())
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
+
     _ok, _err = _validate_image(photo)
     if not _ok:
         return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
-        card = IDCard.objects.select_related('table__group').get(id=card_id)
+        card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
         if not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         import os, uuid
@@ -2030,6 +2059,9 @@ def api_table_update_fields(request, table_id):
         body = json.loads(request.body or '{}')
         raw_fields = body.get('fields', [])
 
+        if not isinstance(raw_fields, list):
+            return JsonResponse({'success': False, 'message': 'fields must be a list'}, status=400)
+
         VALID_FIELD_TYPES = {
             'text', 'number', 'date', 'select', 'photo', 'signature', 'qr_code',
             'barcode', 'class_section', 'mother_photo', 'father_photo',
@@ -2041,6 +2073,8 @@ def api_table_update_fields(request, table_id):
 
         validated = []
         for idx, f in enumerate(raw_fields):
+            if not isinstance(f, dict):
+                continue
             name = str(f.get('name', '')).strip().upper()
             if not name:
                 continue

@@ -18,7 +18,7 @@ def _get_panel_login_url(request=None):
     Build the panel login URL for use in emails.
     Automatically appends the panel_entry_token to bypass the gate.
     """
-    from django.core.signing import Signer
+    from django.core.signing import TimestampSigner
     from urllib.parse import urlencode
 
     panel_url = getattr(settings, 'PANEL_URL', '')
@@ -30,7 +30,7 @@ def _get_panel_login_url(request=None):
         site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
         base_url = f'{site_url}/panel/auth/login/'
 
-    signer = Signer(salt='panel-entry-gate')
+    signer = TimestampSigner(salt='panel-entry-gate')
     token = signer.sign('website-panel-entry')
     qs = urlencode({'panel_entry_token': token})
     return f"{base_url}?{qs}"

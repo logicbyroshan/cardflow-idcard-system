@@ -289,24 +289,17 @@ def api_client_errors(request):
     if not request.user.is_authenticated:
         return JsonResponse({'status': 'ignored'}, status=200)
 
-    import time
-    session = request.session
-    now = time.time()
-    window_key = '_err_report_window'
-    count_key = '_err_report_count'
-
-    window_start = session.get(window_key, 0)
-    report_count = session.get(count_key, 0)
-
-    if now - window_start > 60:
-        session[window_key] = now
-        session[count_key] = 0
-        report_count = 0
-
+    rate_key = f'panel:client-errors:{request.user.pk}'
+    report_count = int(cache.get(rate_key, 0) or 0)
     if report_count >= _MAX_REPORTS_PER_MIN:
         return JsonResponse({'status': 'rate_limited'}, status=429)
-
-    session[count_key] = report_count + 1
+    if report_count <= 0:
+        cache.set(rate_key, 1, 60)
+    else:
+        try:
+            cache.incr(rate_key)
+        except ValueError:
+            cache.set(rate_key, 1, 60)
 
     try:
         body = json.loads(request.body)
@@ -411,7 +404,7 @@ def api_monitoring_data(request):
 
     backup_qs = (
         BackupTask.objects
-        .filter(status__in=['queued', 'processing'])
+        .filter(status__in=['pending', 'processing'])
         .order_by('-created_at')[:10]
     )
 
@@ -487,7 +480,7 @@ def api_server_info_snapshot(request):
     for label, path_obj in tracked_labels:
         if not path_obj.exists() or not path_obj.is_dir():
             continue
-        size_bytes = _dir_size_bytes(str(path_obj))
+        size_bytes = _dir_size_fast(path_obj)
         path_usage_raw.append({
             'name': label,
             'size_bytes': size_bytes,

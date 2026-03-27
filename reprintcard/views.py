@@ -556,10 +556,10 @@ def api_request_list(request, table_id):
         rr_qs = rr_qs.filter(created_at__lte=to_dt)
 
     if query:
-        rr_qs = rr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        query_filter = Q(card__field_data__icontains=query)
+        if query.isdigit():
+            query_filter |= Q(card_id=int(query))
+        rr_qs = rr_qs.filter(query_filter)
 
     total = rr_qs.count()
     batch = list(rr_qs[offset:offset + limit + 1])
@@ -668,10 +668,10 @@ def api_confirmed_list(request, table_id):
         rr_qs = rr_qs.filter(updated_at__lte=to_dt)
 
     if query:
-        rr_qs = rr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        query_filter = Q(card__field_data__icontains=query)
+        if query.isdigit():
+            query_filter |= Q(card_id=int(query))
+        rr_qs = rr_qs.filter(query_filter)
 
     total = rr_qs.count()
     batch = list(rr_qs[offset:offset + limit + 1])
@@ -754,11 +754,10 @@ def api_download_list(request, table_id):
     ).select_related('card', 'requested_by').prefetch_related('card__media_files').order_by('-updated_at')
 
     if query:
-        rr_qs = rr_qs.filter(
-            Q(card__field_data__icontains=query) |
-            Q(reason__icontains=query) |
-            Q(card__id__icontains=query)
-        )
+        query_filter = Q(card__field_data__icontains=query) | Q(reason__icontains=query)
+        if query.isdigit():
+            query_filter |= Q(card_id=int(query))
+        rr_qs = rr_qs.filter(query_filter)
 
     total = rr_qs.count()
     batch = list(rr_qs[offset:offset + limit + 1])

@@ -252,3 +252,58 @@ class WorkflowServiceTests(TestCase):
 		self.assertEqual(info['current_status'], 'pending')
 		self.assertNotIn('Name', info['mandatory_fields_missing'])
 		self.assertIn('Photo', info['image_fields_missing'])
+
+	def test_transition_without_user_does_not_crash(self):
+		from idcards.services_workflow import WorkflowService
+
+		result = WorkflowService.transition(
+			self.card_good_pending,
+			'verified',
+			user=None,
+		)
+		self.assertTrue(result.success)
+		self.card_good_pending.refresh_from_db()
+		self.assertEqual(self.card_good_pending.status, 'verified')
+
+	def test_bulk_transition_normalizes_invalid_card_ids(self):
+		from idcards.services_workflow import WorkflowService
+
+		result = WorkflowService.bulk_transition(
+			table=self.table,
+			card_ids=['bad', None, -1, self.card_good_pending.id, str(self.card_good_pending.id)],
+			target_status='verified',
+			user=self.client_user,
+		)
+
+		self.assertTrue(result.success)
+		self.card_good_pending.refresh_from_db()
+		self.assertEqual(self.card_good_pending.status, 'verified')
+
+	def test_bulk_transition_ignores_locked_cards_outside_target_table(self):
+		from idcards.models import IDCardGroup, IDCardTable, IDCard
+		from idcards.services_workflow import WorkflowService
+
+		other_group = IDCardGroup.objects.create(client=self.client_obj, name='Other Group')
+		other_table = IDCardTable.objects.create(
+			group=other_group,
+			name='Other Table',
+			fields=self.table.fields,
+		)
+		locked_other_table_card = IDCard.objects.create(
+			table=other_table,
+			field_data={'Name': 'Locked', 'Photo': 'adarshimg/locked.jpg'},
+			status='approved',
+		)
+
+		result = WorkflowService.bulk_transition(
+			table=self.table,
+			card_ids=[self.card_good_pending.id, locked_other_table_card.id],
+			target_status='verified',
+			user=self.client_user,
+		)
+
+		self.assertTrue(result.success)
+		self.card_good_pending.refresh_from_db()
+		locked_other_table_card.refresh_from_db()
+		self.assertEqual(self.card_good_pending.status, 'verified')
+		self.assertEqual(locked_other_table_card.status, 'approved')

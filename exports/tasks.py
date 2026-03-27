@@ -33,6 +33,30 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _safe_media_relative_path(path_value: Any) -> str:
+    """Return a media-relative path only when it safely stays inside MEDIA_ROOT."""
+    raw = str(path_value or '').strip().replace('\\', '/')
+    if not raw:
+        return ''
+
+    # Reject absolute and traversal-like paths from task metadata.
+    if raw.startswith('/'):
+        return ''
+    parts = [part for part in raw.split('/') if part]
+    if not parts or any(part in ('.', '..') for part in parts):
+        return ''
+
+    media_root = os.path.abspath(settings.MEDIA_ROOT)
+    candidate = os.path.abspath(os.path.join(media_root, *parts))
+    try:
+        if os.path.commonpath([media_root, candidate]) != media_root:
+            return ''
+    except ValueError:
+        return ''
+
+    return os.path.relpath(candidate, media_root).replace('\\', '/')
+
+
 class BackgroundExportManager:
     """
     Facade that queues PDF exports via BackgroundTask + BackgroundWorker.
@@ -104,7 +128,7 @@ class BackgroundExportManager:
         return str(task.id)
 
     @classmethod
-    def get_status(cls, task_id: str) -> Optional[Dict[str, Any]]:
+    def get_status(cls, task_id: str, user=None) -> Optional[Dict[str, Any]]:
         """
         Return a status dict for the given task_id string.
 
@@ -112,12 +136,15 @@ class BackgroundExportManager:
         implementation so that views and JS need no changes:
           state, progress, message, download_url, filename
 
-        Returns None if the task does not exist (view returns 404).
+        Returns None if the task does not exist or is not owned by user.
         """
         from core.models import BackgroundTask
 
         try:
-            task = BackgroundTask.objects.get(id=int(task_id))
+            task_qs = BackgroundTask.objects.all()
+            if user is not None:
+                task_qs = task_qs.filter(user=user)
+            task = task_qs.get(id=int(task_id))
         except (BackgroundTask.DoesNotExist, ValueError, TypeError):
             return None
 
@@ -152,8 +179,9 @@ class BackgroundExportManager:
         download_url = ''
         filename = ''
         if task.status == 'completed' and task.result_path:
-            rel = task.result_path.replace('\\', '/')
-            download_url = settings.MEDIA_URL.rstrip('/') + '/' + rel
+            rel = _safe_media_relative_path(task.result_path)
+            if rel:
+                download_url = settings.MEDIA_URL.rstrip('/') + '/' + rel
             filename = task.metadata.get('result', {}).get(
                 'filename', os.path.basename(task.result_path)
             )

@@ -12,8 +12,9 @@ All destructive actions require a 10-digit confirmation code.
 import json
 import logging
 import os
-import random
+import secrets
 import string
+from typing import List
 
 from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
@@ -32,11 +33,49 @@ logger = logging.getLogger(__name__)
 # ─── Helpers ─────────────────────────────────────────────────────────────
 
 def _generate_code() -> str:
-    return ''.join(random.choices(string.digits, k=10))
+    return ''.join(secrets.choice(string.digits) for _ in range(10))
 
 
 def _json_error(msg, status=400):
     return JsonResponse({'success': False, 'message': msg}, status=status)
+
+
+def _normalize_id_list(values) -> List[int]:
+    """Normalize a JSON list to unique positive integer IDs."""
+    if not isinstance(values, list):
+        return []
+
+    out: List[int] = []
+    seen = set()
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        try:
+            number = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if number <= 0 or number in seen:
+            continue
+        seen.add(number)
+        out.append(number)
+        if len(out) >= 1000:
+            break
+    return out
+
+
+def _resolve_media_file(file_path: str):
+    """Resolve a media-relative backup path and reject traversal attempts."""
+    if not file_path:
+        return None
+
+    media_root = os.path.abspath(django_settings.MEDIA_ROOT)
+    candidate = os.path.abspath(os.path.join(media_root, str(file_path)))
+    try:
+        if os.path.commonpath([media_root, candidate]) != media_root:
+            return None
+    except ValueError:
+        return None
+    return candidate
 
 
 # ─── Page views ──────────────────────────────────────────────────────────
@@ -114,17 +153,27 @@ def api_backup_start(request):
     except (json.JSONDecodeError, ValueError):
         return _json_error('Invalid request body.')
 
-    task_id = body.get('task_id')
-    client_ids = body.get('client_ids', [])
+    task_id_raw = body.get('task_id')
+    client_ids_raw = body.get('client_ids', [])
 
-    if not task_id:
+    try:
+        task_id = int(task_id_raw)
+    except (TypeError, ValueError):
+        task_id = 0
+
+    if task_id <= 0:
         return _json_error('Missing task_id.')
-    if not client_ids or not isinstance(client_ids, list):
+    client_ids = _normalize_id_list(client_ids_raw)
+    if not client_ids:
         return _json_error('Please select at least one client.')
 
     task = get_object_or_404(BackupTask, pk=task_id, created_by=request.user)
     if task.status != 'pending':
         return _json_error('This backup task has already been started.')
+
+    # Heavy I/O safety: allow only one active backup at a time.
+    if BackupTask.objects.filter(status__in=('pending', 'processing')).exclude(pk=task.pk).exists():
+        return _json_error('Another backup is already running. Please wait for it to finish.', status=429)
 
     valid_clients = Client.objects.filter(pk__in=client_ids, status='active')
     if not valid_clients.exists():
@@ -218,14 +267,20 @@ def api_backup_download(request, task_id):
         return _json_error('Combined ZIP file not found for this backup.', 404)
 
     file_path = info.get('path', '')
-    abs_path = os.path.join(django_settings.MEDIA_ROOT, file_path)
+    abs_path = _resolve_media_file(file_path)
+    if not abs_path:
+        return _json_error('Backup ZIP path is invalid.', 404)
     if not os.path.isfile(abs_path):
         return _json_error('Backup ZIP file no longer exists on disk.', 404)
+
+    filename = os.path.basename(str(info.get('filename') or 'Adarsh Backup.zip')).replace('\r', '').replace('\n', '')
+    if not filename:
+        filename = 'Adarsh Backup.zip'
 
     return FileResponse(
         open(abs_path, 'rb'),
         as_attachment=True,
-        filename=info.get('filename', 'Adarsh Backup.zip'),
+        filename=filename,
     )
 
 

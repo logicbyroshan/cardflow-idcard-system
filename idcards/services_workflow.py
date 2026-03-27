@@ -91,6 +91,27 @@ class WorkflowService:
     # ── Image field helpers (delegated to BaseService) ──────────────
 
     @staticmethod
+    def _normalize_positive_int_ids(raw_ids: Any) -> List[int]:
+        """Normalize mixed payload IDs into unique positive integers."""
+        if not isinstance(raw_ids, (list, tuple, set)):
+            return []
+
+        normalized: List[int] = []
+        seen = set()
+        for value in raw_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                parsed = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            if parsed <= 0 or parsed in seen:
+                continue
+            seen.add(parsed)
+            normalized.append(parsed)
+        return normalized
+
+    @staticmethod
     def _get_image_field_names(table_fields: list, mandatory_only: bool = False) -> List[str]:
         """Return names of image-type fields in the table schema.
         If mandatory_only=True, only return fields marked as mandatory."""
@@ -278,7 +299,8 @@ class WorkflowService:
             update_fields.append('status_changed_at')
 
             card.save(update_fields=update_fields)
-        logger.info("Card %d: %s → %s by user %d", card.pk, current, target_status, user.pk)
+        actor_id = getattr(user, 'pk', None)
+        logger.info("Card %d: %s → %s by user %s", card.pk, current, target_status, actor_id if actor_id is not None else 'system')
 
         # ── 8. Activity log ─────────────────────────────────────────
         cls._log_transition(card, current, target_status, user, request)
@@ -318,12 +340,18 @@ class WorkflowService:
         if target_status not in cls.VALID_STATUSES:
             return ServiceResult(success=False, message=f'Invalid status: {target_status}')
 
+        card_ids = cls._normalize_positive_int_ids(card_ids)
+        if not card_ids:
+            return ServiceResult(success=False, message='No valid card IDs provided')
+
         # ── 2. Permission check (once, not per-card) ────────────────
         if user and not skip_permission:
             # Client-readonly: reject if any card is in locked status
             if user.role in ('client', 'client_staff'):
                 locked = IDCard.objects.filter(
-                    id__in=card_ids, status__in=cls.CLIENT_READONLY_STATUSES
+                    table=table,
+                    id__in=card_ids,
+                    status__in=cls.CLIENT_READONLY_STATUSES,
                 ).count()
                 if locked:
                     return ServiceResult(
@@ -333,7 +361,7 @@ class WorkflowService:
 
             # For pool→pending, check perm_idcard_retrieve
             # The main perm is target-based; pool→pending is special
-            has_pool_cards = IDCard.objects.filter(id__in=card_ids, status='pool').exists()
+            has_pool_cards = IDCard.objects.filter(table=table, id__in=card_ids, status='pool').exists()
             if target_status == 'pending' and has_pool_cards:
                 if not PermissionService.has(user, 'perm_idcard_retrieve'):
                     return ServiceResult(success=False, message='Permission denied')
@@ -367,6 +395,7 @@ class WorkflowService:
         if enforce_required_validations and (target_status, 'pending') in cls.MANDATORY_FIELD_TRIGGERS:
             pending_cards = list(IDCard.objects.filter(table=table, id__in=eligible_ids, status='pending'))
             valid_ids = []
+            pending_ids = {c.id for c in pending_cards}
             for card in pending_cards:
                 missing = cls._get_missing_mandatory_fields(card, table.fields or [])
                 if missing:
@@ -374,7 +403,7 @@ class WorkflowService:
                 else:
                     valid_ids.append(card.id)
             # Non-pending cards skip mandatory check
-            non_pending_ids = [cid for cid in eligible_ids if cid not in [c.id for c in pending_cards]]
+            non_pending_ids = [cid for cid in eligible_ids if cid not in pending_ids]
             eligible_ids = valid_ids + non_pending_ids
 
             if not eligible_ids and skipped_mandatory_ids:
@@ -444,7 +473,14 @@ class WorkflowService:
                 table=table, id__in=eligible_ids, status__in=valid_from
             ).update(**update_kwargs)
 
-        logger.info("Bulk transition: %d cards → %s in table %d by user %d", updated_count, target_status, table.pk, user.pk)
+        actor_id = getattr(user, 'pk', None)
+        logger.info(
+            "Bulk transition: %d cards → %s in table %d by user %s",
+            updated_count,
+            target_status,
+            table.pk,
+            actor_id if actor_id is not None else 'system',
+        )
 
         # ── 7. Activity log ─────────────────────────────────────────
         cls._log_bulk_transition(table, updated_count, target_status, user, request)

@@ -1,7 +1,9 @@
 import json
+from datetime import timedelta
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -142,6 +144,37 @@ class ReprintWorkflowServiceTests(TestCase):
 		self.assertEqual(self.rr_requested.status, 'confirmed')
 		self.assertEqual(rr_confirmed.status, 'confirmed')
 
+	def test_bulk_transition_updates_updated_at(self):
+		from reprintcard.services import ReprintWorkflowService
+		from reprintcard.models import ReprintRequest
+
+		old_updated_at = timezone.now() - timedelta(days=1)
+		ReprintRequest.objects.filter(id=self.rr_requested.id).update(updated_at=old_updated_at)
+
+		result = ReprintWorkflowService.bulk_transition(
+			table=self.table,
+			rr_ids=[self.rr_requested.id],
+			target_status='confirmed',
+			user=self.owner,
+		)
+
+		self.assertTrue(result.success)
+		self.rr_requested.refresh_from_db()
+		self.assertGreater(self.rr_requested.updated_at, old_updated_at)
+
+	def test_bulk_transition_rejects_invalid_rr_ids(self):
+		from reprintcard.services import ReprintWorkflowService
+
+		result = ReprintWorkflowService.bulk_transition(
+			table=self.table,
+			rr_ids=['x', None, {}],
+			target_status='confirmed',
+			user=self.owner,
+		)
+
+		self.assertFalse(result.success)
+		self.assertIn('No reprint IDs provided', result.message)
+
 	def test_reject_requests_moves_cards_to_pool(self):
 		from reprintcard.services import ReprintWorkflowService
 		from reprintcard.models import ReprintRequest
@@ -157,6 +190,8 @@ class ReprintWorkflowServiceTests(TestCase):
 		self.assertFalse(ReprintRequest.objects.filter(id=self.rr_requested.id).exists())
 		self.card_download_1.refresh_from_db()
 		self.assertEqual(self.card_download_1.status, 'pool')
+		self.assertIsNotNone(self.card_download_1.deleted_at)
+		self.assertIsNotNone(self.card_download_1.status_changed_at)
 
 	def test_debug_reprint_for_missing_id(self):
 		from reprintcard.services import ReprintWorkflowService
@@ -304,6 +339,20 @@ class ReprintApiIntegrationTests(TestCase):
 		list_response = self.client.get(self._url('api_request_list'))
 		self.assertEqual(list_response.status_code, 200)
 		self.assertGreaterEqual(len(list_response.json()['items']), 2)
+
+	def test_request_list_non_numeric_query_is_stable(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_request_list'), {'q': 'alpha'})
+		self.assertEqual(response.status_code, 200)
+
+	def test_confirm_invalid_rr_ids_payload_returns_400(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.post(
+			self._url('api_reprint_confirm'),
+			data=json.dumps({'rr_ids': ['bad', None, {}]}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
 
 	def test_confirm_requires_admin_role_even_with_client_permission(self):
 		from reprintcard.models import ReprintRequest

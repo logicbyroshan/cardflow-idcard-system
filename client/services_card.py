@@ -29,6 +29,27 @@ class ClientCardService(BaseService):
     VALID_STATUSES = ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']
 
     @staticmethod
+    def _normalize_positive_int_ids(raw_ids) -> List[int]:
+        """Normalize mixed input IDs into unique positive integers."""
+        if not isinstance(raw_ids, (list, tuple, set)):
+            return []
+
+        normalized: List[int] = []
+        seen = set()
+        for value in raw_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                parsed = int(str(value).strip())
+            except (TypeError, ValueError):
+                continue
+            if parsed <= 0 or parsed in seen:
+                continue
+            seen.add(parsed)
+            normalized.append(parsed)
+        return normalized
+
+    @staticmethod
     def _get_class_section_branch_fields(table):
         class_field = None
         section_field = None
@@ -60,10 +81,7 @@ class ClientCardService(BaseService):
         if not staff:
             return qs.none()
 
-        assigned_table_ids = [
-            int(v) for v in (staff.assigned_table_ids or [])
-            if str(v).strip().isdigit() and int(v) > 0
-        ]
+        assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
         if assigned_table_ids:
             if table.id not in assigned_table_ids:
                 return qs.none()
@@ -124,10 +142,7 @@ class ClientCardService(BaseService):
                 if not staff:
                     tables = tables.none()
                 else:
-                    assigned_table_ids = [
-                        int(v) for v in (staff.assigned_table_ids or [])
-                        if str(v).strip().isdigit() and int(v) > 0
-                    ]
+                    assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
                     if assigned_table_ids:
                         tables = tables.filter(id__in=assigned_table_ids)
                     else:
@@ -184,22 +199,35 @@ class ClientCardService(BaseService):
             if not ClientAccessService.can_access_table(user, table):
                 return ServiceResult(success=False, message='Access denied')
             
-            # Check status viewing permission
+            status_filter = (status_filter or '').strip().lower()
+
+            # Enforce status-view permissions for both filtered and unfiltered requests.
+            perm_map = {
+                'pending': 'perm_idcard_pending_list',
+                'verified': 'perm_idcard_verified_list',
+                'pool': 'perm_idcard_pool_list',
+                'approved': 'perm_idcard_approved_list',
+                'download': 'perm_idcard_download_list',
+                'reprint': 'perm_idcard_reprint_list',
+            }
+
+            if status_filter and status_filter not in cls.VALID_STATUSES:
+                return ServiceResult(success=False, message='Invalid status filter')
+
             if status_filter:
-                perm_map = {
-                    'pending': 'perm_idcard_pending_list',
-                    'verified': 'perm_idcard_verified_list',
-                    'pool': 'perm_idcard_pool_list',
-                    'approved': 'perm_idcard_approved_list',
-                    'download': 'perm_idcard_download_list',
-                    'reprint': 'perm_idcard_reprint_list',
-                }
                 perm = perm_map.get(status_filter)
                 if perm and not PermissionService.has_permission(user, perm):
                     return ServiceResult(
-                        success=False, 
+                        success=False,
                         message=f'No permission to view {status_filter} cards'
                     )
+
+            allowed_statuses = [
+                status for status, perm_name in perm_map.items()
+                if PermissionService.has_permission(user, perm_name)
+            ]
+            if not allowed_statuses:
+                return ServiceResult(success=False, message='No permission to view cards')
             
             # Build base query — newest batch/action first, Excel order within batch
             if status_filter == 'download':
@@ -211,8 +239,10 @@ class ClientCardService(BaseService):
             else:
                 cards_query = IDCard.objects.filter(table=table).order_by('-created_at', 'id')
             
-            if status_filter and status_filter in cls.VALID_STATUSES:
+            if status_filter:
                 cards_query = cards_query.filter(status=status_filter)
+            else:
+                cards_query = cards_query.filter(status__in=allowed_statuses)
 
             cards_query = cls._apply_client_staff_row_scope(user, table, cards_query)
             
@@ -496,10 +526,7 @@ class ClientCardService(BaseService):
 
             forbidden_ids = []
             if PermissionService.is_client_staff(user):
-                normalized_ids = sorted({
-                    int(v) for v in (card_ids or [])
-                    if str(v).strip().isdigit() and int(v) > 0
-                })
+                normalized_ids = cls._normalize_positive_int_ids(card_ids or [])
                 scoped_ids = set(
                     cls._apply_client_staff_row_scope(
                         user,

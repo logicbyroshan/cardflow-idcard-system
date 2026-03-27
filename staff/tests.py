@@ -183,6 +183,36 @@ class AdminStaffPermissionServiceTests(TestCase):
         self.assertIn('can_view_clients', permissions)
         self.assertIn('can_export_data', permissions)
 
+    def test_assign_permissions_does_not_delete_global_permission_rows(self):
+        from django.contrib.auth.models import Permission
+        from staff.services import AdminStaffPermissionService
+
+        AdminStaffPermissionService.ensure_permissions_exist()
+
+        staff_user_1 = User.objects.create_user(
+            username='permkeep1@test.com', email='permkeep1@test.com',
+            password='pass1234', role='admin_staff',
+        )
+        staff_user_2 = User.objects.create_user(
+            username='permkeep2@test.com', email='permkeep2@test.com',
+            password='pass1234', role='admin_staff',
+        )
+
+        view_perm = Permission.objects.get(codename='can_view_clients')
+        staff_user_1.user_permissions.add(view_perm)
+        staff_user_2.user_permissions.add(view_perm)
+
+        result = AdminStaffPermissionService.assign_permissions_to_staff(
+            staff_user_1,
+            ['can_export_data'],
+        )
+
+        self.assertTrue(result['success'])
+        self.assertTrue(Permission.objects.filter(codename='can_view_clients').exists())
+        self.assertTrue(
+            staff_user_2.user_permissions.filter(codename='can_view_clients').exists()
+        )
+
 
 class AdminStaffCreationServiceTests(TestCase):
     def setUp(self):
@@ -216,6 +246,27 @@ class AdminStaffCreationServiceTests(TestCase):
 
         self.assertFalse(result['success'])
         self.assertIn('Only Super Admin', result['error'])
+
+    def test_create_admin_staff_rejects_case_insensitive_duplicate_email(self):
+        from staff.services import AdminStaffCreationService
+
+        User.objects.create_user(
+            username='existing@email.com',
+            email='Existing@Email.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+
+        result = AdminStaffCreationService.create_admin_staff(
+            created_by=self.super_admin,
+            first_name='Dupe',
+            last_name='Email',
+            email='existing@email.com',
+            password='StrongPass@123',
+        )
+
+        self.assertFalse(result['success'])
+        self.assertIn('already exists', result['error'])
 
     def test_create_admin_staff_success_creates_expected_records(self):
         from core.models import EmailLog
@@ -304,6 +355,27 @@ class AdminStaffCreationServiceTests(TestCase):
 
         self.assertFalse(result['success'])
         self.assertIn('Only Super Admin', result['error'])
+
+    def test_update_admin_staff_rejects_invalid_permissions(self):
+        from staff.models import Staff
+        from staff.services import AdminStaffCreationService
+
+        staff_user = User.objects.create_user(
+            username='updatestaff@test.com',
+            email='updatestaff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        staff = Staff.objects.create(user=staff_user, staff_type='admin_staff')
+
+        result = AdminStaffCreationService.update_admin_staff(
+            updated_by=self.super_admin,
+            staff_id=staff.id,
+            permission_codenames=['not_a_real_permission'],
+        )
+
+        self.assertFalse(result['success'])
+        self.assertIn('Invalid permissions', result['error'])
 
 
 class StaffActivationPasswordFlowTests(TestCase):

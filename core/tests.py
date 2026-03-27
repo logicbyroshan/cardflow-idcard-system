@@ -483,3 +483,127 @@ class PermissionDecoratorResponseTests(TestCase):
 
         response = protected_view(request)
         self.assertEqual(response.status_code, 200)
+
+
+class PanelEntryGateSecurityTests(TestCase):
+    def setUp(self):
+        from core.models import SystemSettings
+
+        self.factory = RequestFactory()
+        cache.clear()
+        SystemSettings.set_value('website_not_found_mode', 'true')
+        SystemSettings.set_value('panel_entry_gate_enabled', 'true')
+
+    def tearDown(self):
+        cache.clear()
+
+    def _middleware(self):
+        from django.http import HttpResponse
+        from core.middleware import PanelEntryGateMiddleware
+
+        return PanelEntryGateMiddleware(lambda request: HttpResponse('ok'))
+
+    def test_timestamp_signed_panel_token_is_accepted(self):
+        from django.contrib.auth.models import AnonymousUser
+        from django.core.signing import TimestampSigner
+
+        token = TimestampSigner(salt='panel-entry-gate').sign('website-panel-entry')
+        request = self.factory.get(f'/auth/login/?panel_entry_token={token}')
+        request.user = AnonymousUser()
+        request.session = {}
+        request._is_panel_subdomain = True
+
+        response = self._middleware()(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(request.session.get('_panel_entry_ok'), '1')
+
+    def test_legacy_non_timestamp_token_is_rejected(self):
+        from django.contrib.auth.models import AnonymousUser
+        from django.core.signing import Signer
+        from django.http import Http404
+
+        token = Signer(salt='panel-entry-gate').sign('website-panel-entry')
+        request = self.factory.get(f'/auth/login/?panel_entry_token={token}')
+        request.user = AnonymousUser()
+        request.session = {}
+        request._is_panel_subdomain = True
+
+        with self.assertRaises(Http404):
+            self._middleware()(request)
+
+
+class TaskApiSecurityTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = _create_super_admin('tasksec-admin@test.com', 'adminpass1')
+
+    def test_task_download_rejects_sibling_media_prefix_path(self):
+        from core.models import BackgroundTask
+        from core.views.task_api import api_task_download
+
+        with tempfile.TemporaryDirectory() as media_root:
+            sibling_dir = media_root + '_evil'
+            os.makedirs(sibling_dir, exist_ok=True)
+            sibling_file = os.path.join(sibling_dir, 'secret.txt')
+            with open(sibling_file, 'wb') as fh:
+                fh.write(b'secret')
+
+            escaped_rel = os.path.join('..', os.path.basename(sibling_dir), 'secret.txt')
+            task = BackgroundTask.objects.create(
+                user=self.user,
+                task_type='export_zip',
+                status='completed',
+                result_path=escaped_rel,
+            )
+
+            request = self.factory.get(f'/panel/api/task-download/{task.id}/')
+            request.user = self.user
+            request.session = {}
+
+            with override_settings(MEDIA_ROOT=media_root):
+                response = api_task_download(request, task.id)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])
+
+
+class CropApiScopeTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.factory = RequestFactory()
+
+        self.admin_user = User.objects.create_user(
+            username='crop-admin-staff@test.com',
+            email='crop-admin-staff@test.com',
+            password='adminpass1',
+            role='admin_staff',
+        )
+
+        _, self.client_a = _create_client_user('crop-client-a@test.com', 'clientpass1')
+        _, self.client_b = _create_client_user('crop-client-b@test.com', 'clientpass1')
+
+        _ga, self.table_a = _create_table(self.client_a)
+        _gb, self.table_b = _create_table(self.client_b)
+
+        self.staff_profile = Staff.objects.create(
+            user=self.admin_user,
+            staff_type='admin_staff',
+        )
+        self.staff_profile.assigned_clients.add(self.client_a)
+
+    def test_prepare_crop_denies_unassigned_client_table(self):
+        from core.views.crop_api import api_prepare_crop
+
+        request = self.factory.post(
+            f'/panel/api/table/{self.table_b.id}/cards/prepare-crop/',
+            data=json.dumps({'card_ids': [1, 2, 3]}),
+            content_type='application/json',
+        )
+        request.user = self.admin_user
+
+        response = api_prepare_crop(request, self.table_b.id)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])

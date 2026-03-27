@@ -34,6 +34,15 @@ DEFAULT_EMAIL_TEMPLATE = (
 )
 
 
+def _normalize_email_type(value):
+    """Return a valid EmailLog type or fallback to system."""
+    candidate = str(value or '').strip()
+    valid_types = {choice[0] for choice in EmailLog.TYPE_CHOICES}
+    if candidate in valid_types:
+        return candidate
+    return EmailLog.EMAIL_TYPE_SYSTEM
+
+
 def _send_email_now(subject, body_text, body_html, recipient_email):
     """Send email synchronously with bounded timeout and explicit HTML fallback."""
     connection = get_connection(timeout=30)
@@ -190,7 +199,7 @@ def api_email_resend(request, log_id):
         subject = (payload.get('subject') or log.subject or '').strip()
         body_text = (payload.get('body_text') or log.body_text or '').strip()
         body_html = (payload.get('body_html') or log.body_html or '').strip()
-        email_type = (payload.get('email_type') or log.email_type or EmailLog.EMAIL_TYPE_SYSTEM).strip()
+        email_type = _normalize_email_type(payload.get('email_type') or log.email_type)
 
         if not recipient_email or not subject or not body_text:
             return JsonResponse({'success': False, 'message': 'Recipient email, subject, and message are required.'}, status=400)
@@ -214,10 +223,11 @@ def api_email_resend(request, log_id):
                 'new_status_display': log.get_status_display(),
             })
         except Exception as e:
+            logger.exception('api_email_resend custom send failed for log %s', log_id)
             log.status = EmailLog.STATUS_FAILED
-            log.error_message = str(e)
+            log.error_message = str(e)[:2000]
             log.save(update_fields=['status', 'error_message'])
-            return JsonResponse({'success': False, 'message': f'Failed to send email: {e}'}, status=500)
+            return JsonResponse({'success': False, 'message': 'Failed to send email.'}, status=500)
 
     is_otp_log = log.email_type == EmailLog.EMAIL_TYPE_OTP_RESET
     if (not is_otp_log) and log.status not in [EmailLog.STATUS_ON_HOLD, EmailLog.STATUS_FAILED]:
@@ -322,7 +332,7 @@ def api_email_send_new(request):
     subject = (payload.get('subject') or '').strip()
     body_text = (payload.get('body_text') or '').strip()
     body_html = (payload.get('body_html') or '').strip()
-    email_type = (payload.get('email_type') or EmailLog.EMAIL_TYPE_SYSTEM).strip()
+    email_type = _normalize_email_type(payload.get('email_type'))
 
     if not recipient_email or not subject or not body_text:
         return JsonResponse({'success': False, 'message': 'Recipient email, subject, and message are required.'}, status=400)
@@ -345,10 +355,11 @@ def api_email_send_new(request):
         log.save(update_fields=['status', 'sent_at', 'error_message'])
         return JsonResponse({'success': True, 'message': 'Email sent successfully.', 'log_id': log.id})
     except Exception as e:
+        logger.exception('api_email_send_new failed for recipient=%s', recipient_email)
         log.status = EmailLog.STATUS_FAILED
-        log.error_message = str(e)
+        log.error_message = str(e)[:2000]
         log.save(update_fields=['status', 'error_message'])
-        return JsonResponse({'success': False, 'message': f'Failed to send email: {e}'}, status=500)
+        return JsonResponse({'success': False, 'message': 'Failed to send email.'}, status=500)
 
 
 @require_super_admin

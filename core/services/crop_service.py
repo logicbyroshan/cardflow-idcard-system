@@ -68,6 +68,51 @@ class CropService:
         """Edited images sit in <folder>/edited/ ."""
         return batch_dir / "edited"
 
+    @staticmethod
+    def _meta_file(batch_dir: Path) -> Path:
+        """Metadata file for lightweight scope checks across crop endpoints."""
+        return batch_dir / "_batch_meta.json"
+
+    @classmethod
+    def _read_batch_meta(cls, batch_id: str) -> dict:
+        """Read batch metadata if present; return empty dict on parse/read errors."""
+        batch_dir = cls._batch_dir(batch_id)
+        if not batch_dir.is_dir():
+            return {}
+        meta_file = cls._meta_file(batch_dir)
+        if not meta_file.is_file():
+            return {}
+        try:
+            with open(meta_file, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    @classmethod
+    def get_batch_table_id(cls, batch_id: str):
+        """Return table_id recorded for a batch, if available."""
+        data = cls._read_batch_meta(batch_id)
+        table_id = data.get("table_id")
+        if table_id is None:
+            return None
+        try:
+            return int(table_id)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def get_batch_client_id(cls, batch_id: str):
+        """Return client_id recorded for a batch, if available."""
+        data = cls._read_batch_meta(batch_id)
+        client_id = data.get("client_id")
+        if client_id is None:
+            return None
+        try:
+            return int(client_id)
+        except (TypeError, ValueError):
+            return None
+
     # ── 1. Prepare images ────────────────────────────────────────────
 
     @classmethod
@@ -129,6 +174,19 @@ class CropService:
             batch_dir = Path(settings.MEDIA_ROOT) / "temp" / f"crop_batch_{batch_id}"
 
         batch_dir.mkdir(parents=True, exist_ok=True)
+
+        # Persist table/client context so batch-based endpoints can enforce scope.
+        try:
+            meta = {
+                "batch_id": batch_id,
+                "table_id": int(table.id),
+                "client_id": int(table.group.client_id),
+                "created_at": int(time.time()),
+            }
+            with open(cls._meta_file(batch_dir), "w", encoding="utf-8") as fh:
+                json.dump(meta, fh, ensure_ascii=False)
+        except Exception as exc:
+            logger.warning("Failed to persist crop batch metadata for %s: %s", batch_id, exc)
 
         images_copied = 0
         skipped = 0

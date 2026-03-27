@@ -128,6 +128,18 @@ class ExportViewHelperTests(TestCase):
         ids = _get_card_ids_from_request(request)
         self.assertEqual(ids, [1, 2, 3])
 
+    def test_get_card_ids_normalizes_and_deduplicates(self):
+        from exports.views import _get_card_ids_from_request
+
+        request = self.factory.post(
+            '/panel/exports/xlsx/1/',
+            data=json.dumps({'card_ids': [1, '1', ' 2 ', True, 0, -5, 'bad']}),
+            content_type='application/json',
+        )
+
+        ids = _get_card_ids_from_request(request)
+        self.assertEqual(ids, [1, 2])
+
     def test_get_card_ids_fallback_by_status_when_not_supplied(self):
         from exports.views import _get_card_ids_from_request
 
@@ -359,3 +371,44 @@ class ExportApiIntegrationAdvancedTests(TestCase):
             )
 
         self.assertEqual(response.status_code, 429)
+
+    def test_export_status_is_scoped_to_request_user(self):
+        from core.models import BackgroundTask
+
+        task = BackgroundTask.objects.create(
+            user=self.admin,
+            task_type='export_pdf',
+            status='completed',
+            total=1,
+            progress=1,
+            result_path='temp/exports/owner.pdf',
+            metadata={'result': {'filename': 'owner.pdf', 'card_count': 1}},
+        )
+
+        other_user = User.objects.create_user(
+            username='exother@test.com',
+            email='exother@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+        self.client.login(username='exother@test.com', password='pass1234')
+        response = self.client.get(f'/panel/exports/status/{task.id}/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_export_status_hides_invalid_result_path(self):
+        from core.models import BackgroundTask
+
+        self.client.login(username='exadmin@test.com', password='adminpass1')
+        task = BackgroundTask.objects.create(
+            user=self.admin,
+            task_type='export_pdf',
+            status='completed',
+            total=1,
+            progress=1,
+            result_path='../outside.pdf',
+            metadata={'result': {'filename': 'outside.pdf', 'card_count': 1}},
+        )
+
+        response = self.client.get(f'/panel/exports/status/{task.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get('download_url'), '')

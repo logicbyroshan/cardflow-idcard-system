@@ -56,7 +56,7 @@ class ClientStaffService(BaseService):
 
         normalized_ids = sorted({
             int(v) for v in raw_ids
-            if str(v).strip().isdigit() and int(v) > 0
+            if not isinstance(v, bool) and str(v).strip().isdigit() and int(v) > 0
         })
         if not normalized_ids:
             return [], []
