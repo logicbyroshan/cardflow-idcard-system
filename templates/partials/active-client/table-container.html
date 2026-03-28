@@ -72,21 +72,7 @@ Required context:
     </div>
     <div class="pagination-right">
         <label>Rows per page:</label>
-        <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-            <button class="dropdown-toggle" id="rowsToggle" type="button">
-                <span id="rowsSelectedText">{{ per_page }}</span>
-                <i class="fa-solid fa-chevron-down"></i>
-            </button>
-            <div class="dropdown-options" id="rowsOptions">
-                {% for opt in per_page_options %}
-                <div class="dropdown-option {% if opt == per_page %}selected{% endif %}"
-                     data-value="{{ opt }}"
-                     hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ opt }}"
-                     hx-target="#active-client-table-container"
-                     hx-swap="innerHTML">{{ opt }}</div>
-                {% endfor %}
-            </div>
-        </div>
+        {% include 'components/filter-dropdown.html' with dropdown_id='rowsDropdown' dropdown_class='rows-dropdown' toggle_id='rowsToggle' options_id='rowsOptions' selected_text_id='rowsSelectedText' default_label=per_page options_template='partials/active-client/table-rows-options.html' %}
     </div>
 </div>
 {% endif %}

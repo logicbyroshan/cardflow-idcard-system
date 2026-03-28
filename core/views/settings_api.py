@@ -74,6 +74,7 @@ def api_change_password(request):
             request.user,
             data.get('current_password'),
             data.get('new_password'),
+            current_session_key=request.session.session_key,
         )
         if success:
             update_session_auth_hash(request, request.user)

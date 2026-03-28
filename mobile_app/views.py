@@ -167,13 +167,29 @@ def _client_ctx(user):
     return client, perms
 
 
+_AACI_SENTINEL = object()  # sentinel for _admin_accessible_client_ids cache
+
+
 def _admin_accessible_client_ids(user):
-    """Return admin-scoped client IDs, or None for super_admin (all clients)."""
+    """Return admin-scoped client IDs, or None for super_admin (all clients).
+
+    Performance: caches the result on the user object so repeated calls
+    within the same request don't trigger additional M2M queries.
+    """
+    _cache_attr = '_cached_accessible_client_ids'
+    cached = getattr(user, _cache_attr, _AACI_SENTINEL)
+    if cached is not _AACI_SENTINEL:
+        return cached
+
     if PermissionService.is_super_admin(user):
-        return None
-    if PermissionService.is_admin_staff(user):
-        return PermissionService.get_accessible_client_ids(user)
-    return []
+        result = None
+    elif PermissionService.is_admin_staff(user):
+        result = PermissionService.get_accessible_client_ids(user)
+    else:
+        result = []
+
+    setattr(user, _cache_attr, result)
+    return result
 
 
 def _search_cards_queryset(base_qs, query, limit=None):
@@ -572,6 +588,12 @@ def home(request):
     if not client:
         return redirect('/app/login/')
 
+    # ── Compute accessible_ids ONCE for the entire view ──────────────────
+    # Avoids 4+ redundant M2M queries for admin_staff users.
+    _is_admin = PermissionService.is_any_admin(user)
+    _is_admin_staff = PermissionService.is_admin_staff(user)
+    accessible_ids = _admin_accessible_client_ids(user) if _is_admin else None
+
     result = ClientDashboardService.get_dashboard_data(user, client=client)
 
     tables = IDCardTable.objects.filter(
@@ -599,10 +621,9 @@ def home(request):
     }
 
     # Admin-specific counts for dashboard management section (cached 5 min)
-    if PermissionService.is_any_admin(user):
+    if _is_admin:
         from client.models import Client
         from staff.models import Staff
-        accessible_ids = _admin_accessible_client_ids(user)
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
@@ -623,7 +644,28 @@ def home(request):
             cache.set(cache_key, _admin_counts, 300)
         ctx.update(_admin_counts)
 
-    if result.success:
+    # ── Card status counts ───────────────────────────────────────────────
+    # For admins: single cached aggregate across accessible scope.
+    # For client/client_staff: use ClientDashboardService result (already computed).
+    if _is_admin:
+        # Super-admins all see the same global aggregate → shared cache key is intentional.
+        _status_cache_key = 'mob_admin_status_counts' if accessible_ids is None else f'mob_admin_status_counts:{user.id}'
+        _gcounts = cache.get(_status_cache_key)
+        if _gcounts is None:
+            _gcards = IDCard.objects.all()
+            if accessible_ids is not None:
+                _gcards = _gcards.filter(table__group__client_id__in=accessible_ids)
+            _gcounts = {r['status']: r['n'] for r in _gcards.order_by().values('status').annotate(n=Count('id'))}
+            cache.set(_status_cache_key, _gcounts, 30)
+        ctx.update({
+            'pending_count': _gcounts.get('pending', 0),
+            'verified_count': _gcounts.get('verified', 0),
+            'approved_count': _gcounts.get('approved', 0),
+            'download_count': _gcounts.get('download', 0),
+            'pool_count': _gcounts.get('pool', 0),
+            'total_cards': sum(v for k, v in _gcounts.items() if k not in ('pool', 'reprint')),
+        })
+    elif result.success:
         data = result.data
         counts = data.get('counts', data.get('card_counts', {}))
         ctx.update({
@@ -641,33 +683,16 @@ def home(request):
             'pool_count': 0, 'total_cards': 0,
         })
 
-    # Admins: override with aggregate card counts across accessible scope
-    if PermissionService.is_any_admin(user):
-        _gcards = IDCard.objects.all()
-        if PermissionService.is_admin_staff(user):
-            accessible_ids = _admin_accessible_client_ids(user)
-            _gcards = _gcards.filter(table__group__client_id__in=accessible_ids)
-        _gcounts = {r['status']: r['n'] for r in _gcards.values('status').annotate(n=Count('id'))}
-        ctx.update({
-            'pending_count': _gcounts.get('pending', 0),
-            'verified_count': _gcounts.get('verified', 0),
-            'approved_count': _gcounts.get('approved', 0),
-            'download_count': _gcounts.get('download', 0),
-            'pool_count': _gcounts.get('pool', 0),
-            'total_cards': sum(v for k, v in _gcounts.items() if k not in ('pool', 'reprint')),
-        })
-
     # Build card-based recent activity in the exact format the template expects
     # Admin: all cards across all clients; client roles: scoped to their client
     from django.utils.timesince import timesince as _timesince
     from django.utils import timezone as _tz
     _now = _tz.now()
     _cards_scope = (
-        IDCard.objects.all() if PermissionService.is_any_admin(user)
+        IDCard.objects.all() if _is_admin
         else IDCard.objects.filter(table__group__client=client)
     )
-    if PermissionService.is_admin_staff(user):
-        accessible_ids = _admin_accessible_client_ids(user)
+    if _is_admin_staff and accessible_ids is not None:
         _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
     # For client_staff: restrict activity to their assigned groups only
     if PermissionService.is_client_staff(user):
@@ -695,7 +720,7 @@ def home(request):
     # For client / client_staff: show the single client's groups as "clients".
     recent_client_updates = []
     try:
-        if PermissionService.is_any_admin(user):
+        if _is_admin:
             from client.models import Client as ClientModel
             # Clients that have cards, ordered by most recent card update
             clients_qs = (
@@ -705,8 +730,7 @@ def home(request):
                 .filter(last_update__isnull=False)
                 .order_by('-last_update')
             )
-            if PermissionService.is_admin_staff(user):
-                accessible_ids = _admin_accessible_client_ids(user)
+            if accessible_ids is not None:
                 clients_qs = clients_qs.filter(id__in=accessible_ids)
             client_list = list(clients_qs[:10])
             client_ids = [c.id for c in client_list]
@@ -806,7 +830,7 @@ def home(request):
     reprint_request_total = 0
     reprint_confirmed_total = 0
     try:
-        if PermissionService.is_any_admin(user):
+        if _is_admin:
             from client.models import Client as ClientModel
 
             clients_qs = (
@@ -816,8 +840,7 @@ def home(request):
                 .filter(last_reprint_update__isnull=False)
                 .order_by('-last_reprint_update')
             )
-            if PermissionService.is_admin_staff(user):
-                accessible_ids = _admin_accessible_client_ids(user)
+            if accessible_ids is not None:
                 clients_qs = clients_qs.filter(id__in=accessible_ids)
 
             client_list = list(clients_qs[:10])

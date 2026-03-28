@@ -98,10 +98,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ).join('');
 
             const _esc = window.escapeHtml || function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
+            const requiredIndicatorHtml = field.mandatory
+                ? '<span class="mandatory-indicator" title="Required field" aria-hidden="true">*</span>'
+                : '';
             // In add/edit mode, field name is an editable input; in view mode it's plain text
             const fieldNameHtml = GSP.currentMode !== 'view'
-                ? `<span class="field-name"><input type="text" class="field-name-input" data-idx="${idx}" value="${_esc(field.name)}" placeholder="Field name">${field.mandatory ? '<span class="mandatory-indicator" title="Required field">*</span>' : ''}</span>`
-                : `<span class="field-name">${_esc(field.name)}${field.mandatory ? '<span class="mandatory-indicator" title="Required field">*</span>' : ''}</span>`;
+                ? `<span class="field-name"><span class="field-name-input-wrap"><input type="text" class="field-name-input" data-idx="${idx}" value="${_esc(field.name)}" placeholder="Field name">${requiredIndicatorHtml}</span></span>`
+                : `<span class="field-name">${_esc(field.name)}${requiredIndicatorHtml}</span>`;
 
             // Mandatory checkbox for edit mode
             const mandatoryHtml = GSP.currentMode !== 'view'

@@ -6,6 +6,7 @@ permissions, workflow transitions, bulk upload service, global search.
 from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.http import HttpResponse
 from unittest.mock import patch
 import json
 import os
@@ -338,6 +339,33 @@ class MiddlewareTests(TestCase):
     def test_unauthenticated_panel_redirects(self):
         response = self.client.get('/panel/')
         self.assertIn(response.status_code, [302, 200])
+
+
+class SubdomainRoutingSecurityTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @override_settings(DEBUG=False, ALLOWED_HOSTS=['unknown.local'])
+    def test_panel_context_cookie_ignored_outside_debug(self):
+        from core.middleware import SubdomainRoutingMiddleware
+
+        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
+        request = self.factory.get('/api/auth/check-email/', HTTP_HOST='unknown.local')
+        request.COOKIES['_panel_ctx'] = '1'
+
+        middleware(request)
+        self.assertFalse(getattr(request, '_is_panel_subdomain', False))
+
+    @override_settings(DEBUG=True)
+    def test_panel_context_cookie_used_in_debug(self):
+        from core.middleware import SubdomainRoutingMiddleware
+
+        middleware = SubdomainRoutingMiddleware(lambda request: HttpResponse('ok'))
+        request = self.factory.get('/api/auth/check-email/', HTTP_HOST='unknown.local')
+        request.COOKIES['_panel_ctx'] = '1'
+
+        middleware(request)
+        self.assertTrue(getattr(request, '_is_panel_subdomain', False))
 
 
 # ── IDCardTable Field Tests ──
@@ -743,3 +771,204 @@ class DashboardAndLogsHardeningTests(TestCase):
         payload = response.json()
         self.assertTrue(payload['success'])
         self.assertGreaterEqual(payload['total'], 3)
+
+
+class SecurityApiRegressionTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('sec-api-admin@test.com', 'adminpass1')
+
+        self.client_user_a, self.client_a = _create_client_user('sec-client-a@test.com', 'clientpass1')
+        self.client_user_b, self.client_b = _create_client_user('sec-client-b@test.com', 'clientpass1')
+
+        _group_a, self.table_a = _create_table(self.client_a, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+        ])
+        self.card_a = _create_card(self.table_a, field_data={'NAME': 'ALICE', 'CLASS': '10'})
+
+        self.admin_staff = User.objects.create_user(
+            username='sec-admin-staff@test.com',
+            email='sec-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
+        staff_profile.assigned_clients.add(self.client_a)
+
+    def test_inline_update_field_rejects_unknown_field_name(self):
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update-field/',
+            data=json.dumps({'field': '__HACK__', 'value': 'x'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertFalse(payload.get('success', True))
+        self.assertIn('Invalid field name', payload.get('message', ''))
+
+        self.card_a.refresh_from_db()
+        self.assertNotIn('__HACK__', self.card_a.field_data)
+
+    def test_client_toggle_status_blocks_unassigned_admin_staff(self):
+        self.client.login(username='sec-admin-staff@test.com', password='pass1234')
+
+        response = self.client.post(
+            f'/panel/api/client/{self.client_b.id}/toggle-status/',
+            data=json.dumps({}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('Access denied', response.json().get('message', ''))
+
+    def test_delete_all_confirmation_locks_after_five_failed_attempts(self):
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        session = self.client.session
+        session[f'delete_all_code_{self.table_a.id}'] = '1234567890'
+        session.save()
+
+        url = f'/panel/api/table/{self.table_a.id}/cards/bulk-delete/'
+        for _ in range(5):
+            response = self.client.post(
+                url,
+                data=json.dumps({'delete_all': True, 'confirmation_code': '0000000000'}),
+                content_type='application/json',
+            )
+            self.assertEqual(response.status_code, 403)
+
+        locked = self.client.post(
+            url,
+            data=json.dumps({'delete_all': True, 'confirmation_code': '0000000000'}),
+            content_type='application/json',
+        )
+        self.assertEqual(locked.status_code, 429)
+        self.assertIn('Too many failed attempts', locked.json().get('message', ''))
+
+    def test_delete_all_success_clears_attempt_counter(self):
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        session = self.client.session
+        session[f'delete_all_code_{self.table_a.id}'] = '1234567890'
+        session[f'delete_all_attempts_{self.table_a.id}'] = 3
+        session.save()
+
+        response = self.client.post(
+            f'/panel/api/table/{self.table_a.id}/cards/bulk-delete/',
+            data=json.dumps({'delete_all': True, 'confirmation_code': '1234567890'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        session_after = self.client.session
+        self.assertNotIn(f'delete_all_code_{self.table_a.id}', session_after)
+        self.assertNotIn(f'delete_all_attempts_{self.table_a.id}', session_after)
+
+    def test_maintenance_status_hides_details_for_non_admin(self):
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+
+        response = self.client.get('/panel/api/maintenance/status/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertIn('enabled', payload)
+        self.assertNotIn('message', payload)
+        self.assertNotIn('end_time', payload)
+
+    def test_maintenance_status_returns_full_payload_for_admin(self):
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        response = self.client.get('/panel/api/maintenance/status/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertIn('enabled', payload)
+        self.assertIn('message', payload)
+        self.assertIn('end_time', payload)
+
+    def test_client_and_client_staff_cards_api_hide_admin_audit_metadata(self):
+        from staff.models import Staff
+
+        # Parent client permissions gate client_staff visibility too.
+        self.client_a.perm_idcard_pending_list = True
+        self.client_a.perm_idcard_updated_at = True
+        self.client_a.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_updated_at'])
+
+        client_staff_user = User.objects.create_user(
+            username='sec-client-staff-a@test.com',
+            email='sec-client-staff-a@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=client_staff_user,
+            staff_type='client_staff',
+            client=self.client_a,
+            perm_idcard_pending_list=True,
+            perm_idcard_updated_at=True,
+        )
+
+        admin_touched_card = self.card_a
+        admin_touched_card.modified_by = self.admin_staff.username
+        admin_touched_card.save(update_fields=['modified_by'])
+
+        client_touched_card = _create_card(
+            self.table_a,
+            field_data={'NAME': 'BOB', 'CLASS': '10'},
+            status='pending',
+        )
+        client_touched_card.modified_by = client_staff_user.username
+        client_touched_card.save(update_fields=['modified_by'])
+
+        url = f'/panel/api/table/{self.table_a.id}/cards/?status=pending'
+
+        # Client view
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        cards_by_id = {c['id']: c for c in payload['cards']}
+
+        self.assertEqual(cards_by_id[admin_touched_card.id]['modified_by'], '')
+        self.assertIsNone(cards_by_id[admin_touched_card.id]['updated_at'])
+        self.assertIsNone(cards_by_id[admin_touched_card.id]['downloaded_at'])
+        self.assertIsNone(cards_by_id[admin_touched_card.id]['deleted_at'])
+
+        self.assertEqual(cards_by_id[client_touched_card.id]['modified_by'], self.client_a.name)
+        self.assertIsNotNone(cards_by_id[client_touched_card.id]['updated_at'])
+
+        # Client staff view
+        self.client.login(username='sec-client-staff-a@test.com', password='pass1234')
+        response_staff = self.client.get(url)
+        self.assertEqual(response_staff.status_code, 200)
+        payload_staff = response_staff.json()
+        staff_cards_by_id = {c['id']: c for c in payload_staff['cards']}
+
+        self.assertEqual(staff_cards_by_id[admin_touched_card.id]['modified_by'], '')
+        self.assertIsNone(staff_cards_by_id[admin_touched_card.id]['updated_at'])
+        self.assertEqual(staff_cards_by_id[client_touched_card.id]['modified_by'], self.client_a.name)
+
+    def test_client_update_response_masks_username_to_client_name(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_updated_at = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_updated_at'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({'field_data': {'NAME': 'ALICIA', 'CLASS': '10'}}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['card']['modified_by'], self.client_a.name)
+        self.assertNotEqual(payload['card']['modified_by'], self.client_user_a.username)
+        self.assertIsNotNone(payload['card']['updated_at'])

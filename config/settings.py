@@ -36,6 +36,14 @@ if not os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes'):
 # Safe default: False — must explicitly opt-in to DEBUG mode
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    """Read boolean-like environment variables safely."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
 # Allowed Hosts
 # In DEBUG mode allow everything; in production read from .env
 if DEBUG:
@@ -266,13 +274,20 @@ SESSION_SAVE_EVERY_REQUEST = False
 # cookie is readable by ALL subdomains.  Only needed if you want a login
 # on panel.* to also be recognised on www.* (rare — www is public).
 _session_cookie_domain = os.getenv('SESSION_COOKIE_DOMAIN', '').strip()
-if _session_cookie_domain:
+_allow_wildcard_session_cookie = _env_bool('ALLOW_WILDCARD_SESSION_COOKIE_DOMAIN', False)
+_is_wildcard_cookie_domain = _session_cookie_domain.startswith('.')
+if _session_cookie_domain and (not _is_wildcard_cookie_domain or _allow_wildcard_session_cookie):
     SESSION_COOKIE_DOMAIN = _session_cookie_domain
 
 # CSRF cookie domain — must match the session cookie domain when using
 # subdomains, otherwise the csrftoken cookie set on one subdomain is
 # invisible to another and POST requests fail with 403.
-_csrf_cookie_domain = os.getenv('CSRF_COOKIE_DOMAIN', _session_cookie_domain).strip()
+_csrf_cookie_domain_fallback = (
+    _session_cookie_domain
+    if (not _is_wildcard_cookie_domain or _allow_wildcard_session_cookie)
+    else ''
+)
+_csrf_cookie_domain = os.getenv('CSRF_COOKIE_DOMAIN', _csrf_cookie_domain_fallback).strip()
 if _csrf_cookie_domain:
     CSRF_COOKIE_DOMAIN = _csrf_cookie_domain
 
@@ -298,6 +313,19 @@ SESSION_FINGERPRINT_INCLUDE_IP = os.getenv(
     'SESSION_FINGERPRINT_INCLUDE_IP',
     'false'
 ).strip().lower() in ('1', 'true', 'yes')
+
+# How often PermissionValidationMiddleware can skip DB revalidation.
+# Lower values reduce access-revocation windows.
+PERMISSION_REVALIDATION_INTERVAL = int(os.getenv('PERMISSION_REVALIDATION_INTERVAL', '20'))
+
+# Dev-only OTP log visibility toggle.
+# DEBUG alone no longer enables plaintext OTP logs.
+DEV_LOG_OTP = _env_bool('DEV_LOG_OTP', False)
+
+# CSP hardening toggles (defaults preserve current behavior).
+CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
+CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', True)
+CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', DEBUG)
 
 # ── Permissions-Policy header ──
 # Restricts browser APIs not needed by this app.

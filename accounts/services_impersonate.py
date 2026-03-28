@@ -78,6 +78,13 @@ class ImpersonateService:
         request.session[cls.SESSION_KEY] = original_user_id
         request.session[cls.SESSION_NAME_KEY] = original_user_name
 
+        # Re-seed session fingerprint immediately after login() rotates session.
+        try:
+            from core.middleware import PermissionValidationMiddleware
+            PermissionValidationMiddleware.seed_session_fingerprint(request)
+        except Exception:
+            pass
+
         from .services import DASHBOARD_URLS
         redirect_url = DASHBOARD_URLS.get(target_user.role, '/panel/')
 
@@ -114,6 +121,12 @@ class ImpersonateService:
 
         # Switch back — login() flushes the session (clears impersonation markers)
         login(request, original_user, backend='django.contrib.auth.backends.ModelBackend')
+
+        try:
+            from core.middleware import PermissionValidationMiddleware
+            PermissionValidationMiddleware.seed_session_fingerprint(request)
+        except Exception:
+            pass
 
         logger.info(
             "Impersonation stopped: pro_user=%s (ID:%d) was impersonating %s",

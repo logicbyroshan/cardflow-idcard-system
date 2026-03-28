@@ -45,7 +45,7 @@ class StaffService(BaseService):
         # ID Card Actions (work in Pending and Verified lists only)
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
-        'perm_idcard_created_at', 'perm_idcard_updated_at',
+        'perm_idcard_updated_at',
         'perm_idcard_delete_from_pool',
         'perm_idcard_retrieve',
         # ID Card Bulk Actions (work across all lists)

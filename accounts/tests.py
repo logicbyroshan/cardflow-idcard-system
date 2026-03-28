@@ -5,10 +5,12 @@ Covers: AuthService, OTPService, RoleService, rate limiting, login/logout flows.
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
+from django.contrib.sessions.backends.db import SessionStore
 from django.core.cache import cache
 from django.test.client import RequestFactory
 from unittest import mock
 import json
+from core.models import ActivityLog
 
 User = get_user_model()
 
@@ -191,6 +193,13 @@ class LoginViewTests(TestCase):
     def tearDown(self):
         cache.clear()
 
+    def _create_authenticated_session(self):
+        session = SessionStore()
+        session['_auth_user_id'] = str(self.user.pk)
+        session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+        session['_auth_user_hash'] = self.user.get_session_auth_hash()
+        session.save()
+
     def test_login_page_loads(self):
         response = self.client.get('/panel/login/')
         self.assertIn(response.status_code, [200, 302])
@@ -222,6 +231,62 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data['success'])
+
+    def test_login_api_blocks_when_concurrent_sessions_reach_limit(self):
+        for _ in range(5):
+            self._create_authenticated_session()
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.24',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('Maximum 5 active logins', payload['message'])
+
+    def test_login_api_records_ip_address_in_activity_log(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.50',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '203.0.113.50')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=True)
+    def test_login_api_records_trusted_xff_ip_in_activity_log(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='10.10.10.10',
+            HTTP_X_FORWARDED_FOR='198.51.100.33, 203.0.113.44',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '198.51.100.33')
 
     def test_login_api_wrong_password(self):
         response = self.client.post(
@@ -351,6 +416,25 @@ class AuthServiceRoleEdgeTests(TestCase):
             unblocked = services.AuthService.authenticate_user('locked@example.com', 'lockpass123')
             self.assertTrue(unblocked['success'])
 
+    @mock.patch('accounts.services.send_mail_async')
+    def test_authenticate_sends_failed_login_alert_after_threshold(self, mocked_send_mail):
+        from accounts import services
+
+        cache.clear()
+        User.objects.create_user(
+            username='alert@example.com',
+            email='alert@example.com',
+            password='alertpass123',
+            role='client',
+        )
+
+        with mock.patch.object(services, 'AUTH_FAIL_NOTIFY_THRESHOLD', 2), \
+             mock.patch.object(services, 'AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS', 300):
+            services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
+            services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
+
+        self.assertEqual(mocked_send_mail.call_count, 1)
+
 
 class OTPServiceEdgeTests(TestCase):
     def setUp(self):
@@ -475,6 +559,31 @@ class UserProfileServiceTests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('newpass123'))
 
+    def test_change_password_revokes_other_sessions_keeps_current(self):
+        from django.test import Client
+        from accounts.services_profile import UserProfileService
+
+        client_a = Client()
+        client_b = Client()
+        self.assertTrue(client_a.login(username='profile@example.com', password='testpass123'))
+        self.assertTrue(client_b.login(username='profile@example.com', password='testpass123'))
+
+        key_a = client_a.session.session_key
+        key_b = client_b.session.session_key
+        self.assertTrue(Session.objects.filter(session_key=key_a).exists())
+        self.assertTrue(Session.objects.filter(session_key=key_b).exists())
+
+        success, _message = UserProfileService.change_password(
+            self.user,
+            'testpass123',
+            'newpass123',
+            current_session_key=key_a,
+        )
+        self.assertTrue(success)
+
+        self.assertTrue(Session.objects.filter(session_key=key_a).exists())
+        self.assertFalse(Session.objects.filter(session_key=key_b).exists())
+
     def test_change_password_rejects_wrong_current(self):
         from accounts.services_profile import UserProfileService
         success, message = UserProfileService.change_password(self.user, 'wrong', 'newpass123')
@@ -565,6 +674,15 @@ class ImpersonationApiTests(TestCase):
     def test_impersonation_list_requires_pro_user(self):
         self.client.login(username='normal-user@example.com', password='testpass123')
         response = self.client.get('/panel/api/auth/impersonate/users/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_impersonation_start_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_pro_user_can_start_and_stop_impersonation(self):

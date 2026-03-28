@@ -152,17 +152,7 @@
     </div>
     <div class="pagination-right">
         <label for="poolRowsToggle">Rows per page:</label>
-        <div class="custom-dropdown rows-dropdown" id="poolRowsDropdown">
-            <button class="dropdown-toggle" id="poolRowsToggle" type="button" aria-expanded="false">
-                <span id="poolRowsSelectedText">50</span>
-                <i class="fa-solid fa-chevron-down"></i>
-            </button>
-            <div class="dropdown-options" id="poolRowsOptions">
-                <div class="dropdown-option selected" data-value="50">50</div>
-                <div class="dropdown-option" data-value="100">100</div>
-                <div class="dropdown-option" data-value="all">All</div>
-            </div>
-        </div>
+        {% include 'components/filter-dropdown.html' with dropdown_id='poolRowsDropdown' dropdown_class='rows-dropdown' toggle_id='poolRowsToggle' options_id='poolRowsOptions' selected_text_id='poolRowsSelectedText' default_label='50' options_template='partials/components/rows-options-50-100-all.html' %}
     </div>
 </div>
 {% endif %}

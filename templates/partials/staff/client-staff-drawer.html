@@ -282,19 +282,12 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                             </label>
                             <span class="permission-label">Verify Card{% if not perm_idcard_verify %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
-                        <div class="permission-row{% if not perm_idcard_created_at %} perm-locked{% endif %}" {% if not perm_idcard_created_at %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_created_at" id="perm-idcard-created-at" {% if not perm_idcard_created_at %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Created Date{% if not perm_idcard_created_at %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
                         <div class="permission-row{% if not perm_idcard_updated_at %} perm-locked{% endif %}" {% if not perm_idcard_updated_at %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="perm_idcard_updated_at" id="perm-idcard-updated-at" {% if not perm_idcard_updated_at %}disabled{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
-                            <span class="permission-label">Updated Date{% if not perm_idcard_updated_at %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
+                            <span class="permission-label">Last Updated &amp; Updated By{% if not perm_idcard_updated_at %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
                         <div class="permission-row{% if not perm_idcard_delete_from_pool %} perm-locked{% endif %}" {% if not perm_idcard_delete_from_pool %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">

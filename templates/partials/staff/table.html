@@ -35,11 +35,7 @@ Uses Tailwind CSS component classes.
             {% empty %}
             <tr>
                 <td colspan="6">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-user-slash"></i>
-                        <h3>No Staff Found</h3>
-                        <p>No staff members match your current filters. Try adjusting your search.</p>
-                    </div>
+                    {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-user-slash' title='No Staff Found' message='No staff members match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>
             {% endfor %}

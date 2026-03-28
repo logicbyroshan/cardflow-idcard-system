@@ -4,22 +4,36 @@ Action Bar Component (Tailwind)
 Provides the standardized toolbar above tables.
 
 Usage:
-  {% include 'components/action-bar.html' %}
+  {% include 'components/action-bar.html' with
+     bar_id='client-action-bar'
+     left_template='partials/client/action-bar-left.html'
+     right_template='partials/client/action-bar-right.html'
+  %}
 
-  Then inject left/right content into .action-bar-left / .action-bar-right
-  via Django blocks or JavaScript.
+  You can render slot templates or pass safe HTML content.
 
 Parameters:
-  - bar_id    : Unique ID (optional, default: "action-bar")
-  - left_content  : HTML for left side (optional)
-  - right_content : HTML for right side (optional)
+  - bar_id         : Unique ID (optional, default: "action-bar")
+  - bar_class      : Extra class names for wrapper (optional)
+  - left_template  : Template path for left content (optional)
+  - right_template : Template path for right content (optional)
+  - left_content   : Safe HTML fallback for left side (optional)
+  - right_content  : Safe HTML fallback for right side (optional)
 {% endcomment %}
 
-<div id="{{ bar_id|default:'action-bar' }}" class="action-bar">
+<div id="{{ bar_id|default:'action-bar' }}" class="action-bar{% if bar_class %} {{ bar_class }}{% endif %}">
   <div class="action-bar-left" id="{{ bar_id|default:'action-bar' }}-left">
-    {{ left_content|default:""|safe }}
+    {% if left_template %}
+      {% include left_template %}
+    {% else %}
+      {{ left_content|default:""|safe }}
+    {% endif %}
   </div>
   <div class="action-bar-right" id="{{ bar_id|default:'action-bar' }}-right">
-    {{ right_content|default:""|safe }}
+    {% if right_template %}
+      {% include right_template %}
+    {% else %}
+      {{ right_content|default:""|safe }}
+    {% endif %}
   </div>
 </div>

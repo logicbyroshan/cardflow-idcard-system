@@ -12,9 +12,7 @@ from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
-from django.utils import timezone
 from django.contrib.auth import login, logout
-from django.contrib.sessions.models import Session
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from core.services.activity_service import ActivityService
@@ -22,7 +20,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .services import AuthService, OTPService, RoleService, DASHBOARD_URLS
-from .rate_limit import rate_limit
+from .rate_limit import rate_limit, _get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -74,21 +72,6 @@ class LoginPageView(View):
 
 class LogoutView(View):
     """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
-
-    @staticmethod
-    def _count_active_sessions_for_user(user_id, stop_after=None):
-        """Count non-expired authenticated sessions for a user id."""
-        active = 0
-        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
-            try:
-                data = session.get_decoded()
-            except Exception:
-                continue
-            if str(data.get('_auth_user_id')) == str(user_id):
-                active += 1
-                if stop_after is not None and active >= stop_after:
-                    break
-        return active
     
     def get(self, request):
         # GET requests redirect to login — do NOT perform logout on GET
@@ -107,7 +90,7 @@ class LogoutView(View):
         if request.user.is_authenticated:
             # Pro User cannot logout the final active session.
             if getattr(request.user, 'role', '') == 'pro_user':
-                active_sessions = self._count_active_sessions_for_user(request.user.id, stop_after=2)
+                active_sessions = AuthService.count_active_sessions_for_user(request.user.id, stop_after=2)
                 if active_sessions <= 1:
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
@@ -249,6 +232,7 @@ class LoginAPIView(View):
     
     def post(self, request):
         identifier = None
+        client_ip = _get_client_ip(request)
         try:
             data = json.loads(request.body)
             identifier = data.get('email', '').strip()
@@ -264,15 +248,40 @@ class LoginAPIView(View):
             result = AuthService.authenticate_user(identifier, password, role)
             
             if result['success']:
+                user = result['user']
+                current_session_key = ''
+                if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
+                    current_session_key = request.session.session_key or ''
+
+                max_sessions = AuthService.max_concurrent_sessions()
+                active_sessions = AuthService.count_active_sessions_for_user(
+                    user.id,
+                    exclude_session_key=current_session_key,
+                    stop_after=max_sessions + 1,
+                )
+                if active_sessions >= max_sessions:
+                    logger.warning(
+                        "Login blocked by session limit: user=%s role=%s ip=%s active_sessions=%s limit=%s",
+                        _mask_login_identifier(identifier),
+                        role,
+                        client_ip,
+                        active_sessions,
+                        max_sessions,
+                    )
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'Maximum {max_sessions} active logins are allowed for this account. Please logout from another browser and try again.'
+                    })
+
                 # Log the user in
-                login(request, result['user'])
+                login(request, user)
                 
                 # Store selected role in session for reference
                 request.session['selected_role'] = role
                 
                 # Log activity
-                ActivityService.log_login(request, result['user'])
-                logger.info("Login success: user=%s role=%s", _mask_login_identifier(identifier), role)
+                ActivityService.log_login(request, user)
+                logger.info("Login success: user=%s role=%s ip=%s", _mask_login_identifier(identifier), role, client_ip)
                 
                 return JsonResponse({
                     'success': True,
@@ -281,9 +290,10 @@ class LoginAPIView(View):
                 })
             else:
                 logger.warning(
-                    "Login failed: identifier=%s role=%s reason=%s",
+                    "Login failed: identifier=%s role=%s ip=%s reason=%s",
                     _mask_login_identifier(identifier),
                     role,
+                    client_ip,
                     result['message'],
                 )
                 return JsonResponse({
@@ -297,7 +307,7 @@ class LoginAPIView(View):
                 'message': 'Invalid JSON data'
             }, status=400)
         except Exception as e:
-            logger.exception("Login error for user=%s", _mask_login_identifier(identifier))
+            logger.exception("Login error for user=%s ip=%s", _mask_login_identifier(identifier), client_ip)
             return JsonResponse({
                 'success': False,
                 'message': 'An unexpected error occurred. Please try again.'
@@ -471,6 +481,8 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
 
     def post(self, request):
         from .services_impersonate import ImpersonateService
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
         try:
             data = json.loads(request.body)
             target_user_id = data.get('user_id')

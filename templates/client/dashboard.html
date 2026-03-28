@@ -40,7 +40,7 @@
         <i class="fa-solid fa-clock"></i>
       </div>
       <div class="stat-info">
-        <div class="stat-value" id="stat-pending">0</div>
+        <div class="stat-value stat-value-skeleton" id="stat-pending">0</div>
         <div class="stat-label">Pending Cards</div>
       </div>
     </a>
@@ -50,7 +50,7 @@
         <i class="fa-solid fa-check-circle"></i>
       </div>
       <div class="stat-info">
-        <div class="stat-value" id="stat-verified">0</div>
+        <div class="stat-value stat-value-skeleton" id="stat-verified">0</div>
         <div class="stat-label">Verified Cards</div>
       </div>
     </a>
@@ -60,7 +60,7 @@
         <i class="fa-solid fa-thumbs-up"></i>
       </div>
       <div class="stat-info">
-        <div class="stat-value" id="stat-approved">0</div>
+        <div class="stat-value stat-value-skeleton" id="stat-approved">0</div>
         <div class="stat-label">Approved Cards</div>
       </div>
     </a>
@@ -70,7 +70,7 @@
         <i class="fa-solid fa-download"></i>
       </div>
       <div class="stat-info">
-        <div class="stat-value" id="stat-download">0</div>
+        <div class="stat-value stat-value-skeleton" id="stat-download">0</div>
         <div class="stat-label">Downloaded Cards</div>
       </div>
     </a>
@@ -80,7 +80,7 @@
         <i class="fa-solid fa-layer-group"></i>
       </div>
       <div class="stat-info">
-        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-value stat-value-skeleton" id="stat-total">0</div>
         <div class="stat-label">Total ID Cards</div>
       </div>
     </a>
@@ -114,10 +114,37 @@
               </tr>
             </thead>
             <tbody id="reprintHistoryBody">
-              <tr>
-                <td colspan="6" class="rh-state-cell">
-                  <i class="fa-solid fa-spinner fa-spin"></i> Loading reprint history...
-                </td>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 82%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 72%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 70%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 60px;"></span></td>
+              </tr>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 74%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 65%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 64%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 58px;"></span></td>
+              </tr>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 79%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 68%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 54px;"></span></td>
+              </tr>
+              <tr class="reprint-history-skeleton-row">
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 12px; margin: 0 auto;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
+                <td class="rh-photo"><span class="dash-skeleton dash-skeleton-avatar"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 62%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-line" style="width: 69%;"></span></td>
+                <td><span class="dash-skeleton dash-skeleton-pill" style="width: 62px;"></span></td>
               </tr>
             </tbody>
           </table>
@@ -132,13 +159,25 @@
       </div>
       <div class="dashboard-card-body tall-body">
         <div class="activity-list" id="recentActivityList">
-          <div class="activity-item" id="activityLoadingMsg">
-            <div class="activity-icon edit">
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            </div>
+          <div class="activity-item activity-skeleton" id="activityLoadingMsg">
+            <div class="dash-skeleton dash-skeleton-avatar"></div>
             <div class="activity-content">
-              <div class="activity-text">Loading recent activity...</div>
-              <div class="activity-time">&nbsp;</div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 78%;"></div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 52%;"></div>
+            </div>
+          </div>
+          <div class="activity-item activity-skeleton">
+            <div class="dash-skeleton dash-skeleton-avatar"></div>
+            <div class="activity-content">
+              <div class="dash-skeleton dash-skeleton-line" style="width: 70%;"></div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 48%;"></div>
+            </div>
+          </div>
+          <div class="activity-item activity-skeleton">
+            <div class="dash-skeleton dash-skeleton-avatar"></div>
+            <div class="activity-content">
+              <div class="dash-skeleton dash-skeleton-line" style="width: 75%;"></div>
+              <div class="dash-skeleton dash-skeleton-line" style="width: 44%;"></div>
             </div>
           </div>
         </div>
@@ -202,6 +241,20 @@ document.addEventListener('DOMContentLoaded', function() {
   loadReprintHistory();
 });
 
+function setStatValue(id, value) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value || 0;
+  el.classList.remove('stat-value-skeleton');
+}
+
+function clearAllStatSkeletons() {
+  ['stat-total', 'stat-pending', 'stat-verified', 'stat-approved', 'stat-download'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('stat-value-skeleton');
+  });
+}
+
 // Dashboard Data (stats + activity)
 async function loadDashboardData() {
   try {
@@ -210,11 +263,11 @@ async function loadDashboardData() {
 
     if (data.success) {
       const stats = data.data.card_counts;
-      document.getElementById('stat-total').textContent    = stats.total    || 0;
-      document.getElementById('stat-pending').textContent  = stats.pending  || 0;
-      document.getElementById('stat-verified').textContent = stats.verified || 0;
-      document.getElementById('stat-approved').textContent = stats.approved || 0;
-      document.getElementById('stat-download').textContent = stats.download || 0;
+      setStatValue('stat-total', stats.total);
+      setStatValue('stat-pending', stats.pending);
+      setStatValue('stat-verified', stats.verified);
+      setStatValue('stat-approved', stats.approved);
+      setStatValue('stat-download', stats.download);
 
       // Render recent activity
       const actList = document.getElementById('recentActivityList');
@@ -235,9 +288,20 @@ async function loadDashboardData() {
             </div>`).join('');
         }
       }
+    } else {
+      clearAllStatSkeletons();
+      const actList = document.getElementById('recentActivityList');
+      if (actList) {
+        actList.innerHTML = '<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">Unable to load recent activity</div><div class="activity-time">Please refresh and try again</div></div></div>';
+      }
     }
   } catch (err) {
     console.error('Error loading dashboard:', err);
+    clearAllStatSkeletons();
+    const actList = document.getElementById('recentActivityList');
+    if (actList) {
+      actList.innerHTML = '<div class="activity-item"><div class="activity-icon edit"><i class="fa-solid fa-circle-info"></i></div><div class="activity-content"><div class="activity-text">Unable to load recent activity</div><div class="activity-time">Please refresh and try again</div></div></div>';
+    }
   }
 }
 

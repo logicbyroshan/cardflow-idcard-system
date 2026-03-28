@@ -312,8 +312,13 @@ class IDCardCardService(BaseService):
         try:
             table = get_object_or_404(IDCardTable, id=table_id)
 
-            # Base queryset
-            cards_query = IDCard.objects.filter(table=table)
+            # Base queryset — use .only() to skip fetching the deprecated photo
+            # ImageField and other heavy columns not needed for list serialization.
+            cards_query = IDCard.objects.filter(table=table).only(
+                'id', 'table_id', 'field_data', 'photo', 'status',
+                'created_at', 'updated_at', 'downloaded_at', 'deleted_at',
+                'status_changed_at', 'modified_by',
+            )
 
             if status_filter and status_filter in cls.VALID_STATUSES:
                 cards_query = cards_query.filter(status=status_filter)
@@ -442,8 +447,9 @@ class IDCardCardService(BaseService):
         counts = {status: 0 for status in cls.VALID_STATUSES}
         counts['total'] = 0
 
-        # Efficient aggregation
-        status_agg = IDCard.objects.filter(table=table).values('status').annotate(count=Count('id'))
+        # Efficient aggregation — .order_by() strips the model's default
+        # ordering so the DB doesn't add a useless ORDER BY to the GROUP BY.
+        status_agg = IDCard.objects.filter(table=table).order_by().values('status').annotate(count=Count('id'))
 
         for item in status_agg:
             counts[item['status']] = item['count']
@@ -817,16 +823,34 @@ class IDCardCardService(BaseService):
                 if not field:
                     return ServiceResult(success=False, message='Field name is required!')
 
+                field_name = str(field).strip()
+                if not field_name:
+                    return ServiceResult(success=False, message='Field name is required!')
+
+                valid_field_map = {}
+                for table_field in (table.fields or []):
+                    if not isinstance(table_field, dict):
+                        continue
+                    raw_name = str(table_field.get('name', '')).strip()
+                    if raw_name and raw_name.lower() not in valid_field_map:
+                        valid_field_map[raw_name.lower()] = raw_name
+
+                normalized_field = field_name.lower()
+                if normalized_field not in valid_field_map:
+                    return ServiceResult(success=False, message='Invalid field name')
+
+                canonical_field = valid_field_map[normalized_field]
+
                 field_data = card.field_data or {}
 
                 if isinstance(value, str):
                     # Only uppercase non-image fields to protect image paths
-                    if cls.is_image_field_name_for_table(field, table.fields):
-                        field_data[field] = value
+                    if cls.is_image_field_name_for_table(canonical_field, table.fields):
+                        field_data[canonical_field] = value
                     else:
-                        field_data[field] = value.upper()
+                        field_data[canonical_field] = value.upper()
                 else:
-                    field_data[field] = value
+                    field_data[canonical_field] = value
 
                 card.field_data = field_data
                 if modified_by:
@@ -836,7 +860,7 @@ class IDCardCardService(BaseService):
                 return ServiceResult(
                     success=True,
                     message='Field updated successfully!',
-                    data={'field': field, 'value': field_data[field]}
+                    data={'field': canonical_field, 'value': field_data[canonical_field]}
                 )
 
         except IDCard.DoesNotExist:

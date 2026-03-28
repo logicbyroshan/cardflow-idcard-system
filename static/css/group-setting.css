@@ -228,17 +228,23 @@
 }
 
 .field-name {
+  position: relative;
   min-width: 140px;
   font-weight: 600;
   font-size: 13px;
   color: #374151;
 }
 
+.field-name-input-wrap {
+  position: relative;
+  display: block;
+}
+
 .field-name-input {
   width: 100%;
   min-width: 140px;
   box-sizing: border-box;
-  padding: 5px 10px;
+  padding: 5px 20px 5px 10px;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
   font-size: 13px;
@@ -346,8 +352,24 @@
 .mandatory-indicator {
   color: #ef4444;
   font-weight: 700;
-  margin-left: 2px;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.field-name-input-wrap .mandatory-indicator {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  margin-left: 0;
+  pointer-events: none;
+}
+
+.field-name > .mandatory-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  transform: translateY(-1px);
 }
 
 .field-mandatory-cell {

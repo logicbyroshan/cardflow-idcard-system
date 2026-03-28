@@ -1,37 +1,8 @@
 {% comment %}
-Unified Empty State Component
-=============================
-Usage: 
-  {% include 'partials/components/empty-state.html' with 
-     id="staff-empty" 
-     icon="fa-user-slash" 
-     title="No Staff Found" 
-     message="Try adjusting your search or filter criteria" 
-     show_action=True 
-     action_text="Add Staff"
-     action_id="add-staff-btn"
-  %}
-
-Parameters:
-  - id: Unique ID for the empty state (required)
-  - icon: FontAwesome icon class (default: fa-inbox)
-  - title: Main heading text (default: "No Data Found")
-  - message: Descriptive text (default: "Try adjusting your search or filter criteria")
-  - show_action: Whether to show action button (default: False)
-  - action_text: Button text (default: "Add New")
-  - action_id: Button ID for JavaScript binding (default: "empty-state-action")
-  - hidden: Whether initially hidden (default: True)
-
-CSS: Styles defined in tailwind-input.css (single source of truth for all empty states)
+Empty State Partial - Compatibility Wrapper
+===========================================
+Deprecated include path kept for backward compatibility.
+Canonical empty-state markup lives in components/empty-state.html.
 {% endcomment %}
 
-<div class="empty-state" id="{{ id|default:'empty-state' }}" {% if hidden|default:True %}style="display: none;"{% endif %}>
-    <i class="fa-solid {{ icon|default:'fa-inbox' }}"></i>
-    <h3>{{ title|default:"No Data Found" }}</h3>
-    <p>{{ message|default:"Try adjusting your search or filter criteria" }}</p>
-    {% if show_action %}
-    <button class="btn btn-primary btn-sm empty-state-action mt-3" id="{{ action_id|default:'empty-state-action' }}">
-        <i class="fa-solid fa-plus"></i> {{ action_text|default:"Add New" }}
-    </button>
-    {% endif %}
-</div>
+{% include 'components/empty-state.html' with id=id icon=icon title=title message=message show_action=show_action action_text=action_text action_id=action_id hidden=hidden %}

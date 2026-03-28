@@ -489,3 +489,78 @@
     text-align: center;
     line-height: 18px;
 }
+
+/* ====================
+   Dashboard Skeleton Loading
+   ==================== */
+@keyframes dashboardSkeletonWave {
+    0% { background-position: 120% 0; }
+    100% { background-position: -120% 0; }
+}
+
+.dash-skeleton {
+    background: linear-gradient(90deg, #e5e7eb 20%, #f3f4f6 50%, #e5e7eb 80%);
+    background-size: 220% 100%;
+    animation: dashboardSkeletonWave 1.25s linear infinite;
+}
+
+.dash-skeleton-line {
+    display: block;
+    height: 11px;
+    border-radius: 4px;
+}
+
+.dash-skeleton-pill {
+    display: block;
+    width: 56px;
+    height: 18px;
+    margin: 0 auto;
+    border-radius: 999px;
+}
+
+.dash-skeleton-avatar {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.dashboard-table-skeleton-row td,
+.reprint-history-skeleton-row td {
+    background: #fff !important;
+    padding-top: 9px;
+    padding-bottom: 9px;
+}
+
+.dashboard-table-skeleton-row:hover td,
+.reprint-history-skeleton-row:hover td {
+    background: #fff !important;
+}
+
+.dashboard-table-skeleton-row td:first-child,
+.reprint-history-skeleton-row td:nth-child(2) {
+    padding-right: 24px;
+}
+
+.activity-item.activity-skeleton {
+    pointer-events: none;
+}
+
+.activity-item.activity-skeleton .activity-content {
+    padding-top: 2px;
+}
+
+.activity-item.activity-skeleton .dash-skeleton-line + .dash-skeleton-line {
+    margin-top: 7px;
+}
+
+.stat-value.stat-value-skeleton {
+    width: 64px;
+    height: 22px;
+    border-radius: 6px;
+    color: transparent !important;
+    background: linear-gradient(90deg, #dbe2ef 20%, #edf2f7 50%, #dbe2ef 80%);
+    background-size: 220% 100%;
+    animation: dashboardSkeletonWave 1.25s linear infinite;
+}

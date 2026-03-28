@@ -66,7 +66,7 @@ class SubdomainRoutingMiddleware:
             if request.path_info.startswith('/panel/'):
                 request.path_info = request.path_info[len('/panel'):]
                 request.path = request.path_info
-        elif request.path_info.startswith('/panel/') or request.path_info == '/panel':
+        elif getattr(django_settings, 'DEBUG', False) and (request.path_info.startswith('/panel/') or request.path_info == '/panel'):
             # Local dev / unknown host accessing /panel/… paths:
             # Route through urls_panel and strip the prefix.  Also set a
             # context cookie so that subsequent JS fetch() calls (which use
@@ -78,7 +78,7 @@ class SubdomainRoutingMiddleware:
             if not request.path_info:
                 request.path_info = '/'
             request.path = request.path_info
-        elif request.COOKIES.get('_panel_ctx') == '1':
+        elif getattr(django_settings, 'DEBUG', False) and request.COOKIES.get('_panel_ctx') == '1':
             # Local dev: JS API calls from a panel page (e.g. /api/auth/…).
             # The cookie was set when the /panel/… page was first loaded.
             request.urlconf = 'config.urls_panel'
@@ -368,6 +368,12 @@ class PermissionValidationMiddleware:
                 return redirect(f'{prefix}/auth/login/?next={quote(next_url, safe="/")}')
             return self.get_response(request)
 
+        # Fast fail-closed for users deactivated since their last request.
+        if not getattr(request.user, 'is_active', True):
+            return self._force_logout(request, 'Your account has been deactivated.')
+
+        self._sync_revalidation_marker(request)
+
         fingerprint_result = self._validate_session_fingerprint(request)
         if fingerprint_result is not None:
             return fingerprint_result
@@ -390,6 +396,23 @@ class PermissionValidationMiddleware:
         self._annotate_request_scope(request)
         
         return self.get_response(request)
+
+    def _sync_revalidation_marker(self, request):
+        """Force DB revalidation when a signal marked this user as changed."""
+        try:
+            from core.services.session_revalidation import get_user_revalidation_marker
+            marker = get_user_revalidation_marker(getattr(request.user, 'pk', None))
+        except Exception:
+            return
+
+        if not marker:
+            return
+
+        marker = str(marker)
+        seen = str(request.session.get(self.REVALIDATION_MARKER_SESSION_KEY, '') or '')
+        if marker != seen:
+            request.session[self.REVALIDATION_MARKER_SESSION_KEY] = marker
+            request.session['_pvm_force_recheck'] = 1
     
     def _is_exempt_url(self, request):
         """Check if URL is exempt from permission validation."""
@@ -415,8 +438,9 @@ class PermissionValidationMiddleware:
     # How often (seconds) to re-validate user from DB.
     # Between checks, the cached validation in the session is trusted.
     # Set to 0 to check every request (original behavior).
-    REVALIDATION_INTERVAL = 60  # seconds (P2: raised from 10 → 60 to reduce DB load)
+    REVALIDATION_INTERVAL = max(int(getattr(django_settings, 'PERMISSION_REVALIDATION_INTERVAL', 20)), 0)
     SESSION_FP_KEY = '_session_fingerprint'
+    REVALIDATION_MARKER_SESSION_KEY = '_pvm_reval_marker'
 
     @staticmethod
     def _client_ip(request):
@@ -439,17 +463,27 @@ class PermissionValidationMiddleware:
             return '.'.join(parts[:3])
         return ip_value
 
-    def _build_session_fingerprint(self, request):
+    @classmethod
+    def build_session_fingerprint(cls, request):
         """Build deterministic fingerprint from user-agent (+ optional coarse IP)."""
         ua = (request.META.get('HTTP_USER_AGENT', '') or '').strip().lower()
         ua_part = ua[:256]
 
         ip_part = ''
         if getattr(django_settings, 'SESSION_FINGERPRINT_INCLUDE_IP', False):
-            ip_part = self._normalize_ip_for_fingerprint(self._client_ip(request))
+            ip_part = cls._normalize_ip_for_fingerprint(cls._client_ip(request))
 
         raw = f'{ua_part}|{ip_part}'
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+    @classmethod
+    def seed_session_fingerprint(cls, request):
+        """Initialize session fingerprint immediately after auth-context changes."""
+        if not getattr(django_settings, 'SESSION_FINGERPRINT_ENABLED', False):
+            return
+        if not request.META.get('HTTP_USER_AGENT'):
+            return
+        request.session[cls.SESSION_FP_KEY] = cls.build_session_fingerprint(request)
 
     def _validate_session_fingerprint(self, request):
         """Validate session fingerprint for authenticated requests."""
@@ -459,7 +493,7 @@ class PermissionValidationMiddleware:
         if not request.META.get('HTTP_USER_AGENT'):
             return None
 
-        current_fp = self._build_session_fingerprint(request)
+        current_fp = self.build_session_fingerprint(request)
         stored_fp = request.session.get(self.SESSION_FP_KEY)
 
         if not stored_fp:
@@ -507,9 +541,10 @@ class PermissionValidationMiddleware:
         from core.models import User
         
         user = request.user
+        force_recheck = bool(request.session.pop('_pvm_force_recheck', 0))
         
         # Skip DB re-fetch if we validated recently (within REVALIDATION_INTERVAL)
-        if self.REVALIDATION_INTERVAL > 0:
+        if self.REVALIDATION_INTERVAL > 0 and not force_recheck:
             last_check = request.session.get('_pvm_last_check', 0)
             if (time.time() - last_check) < self.REVALIDATION_INTERVAL:
                 return None
@@ -1017,57 +1052,6 @@ class SecurityHeadersMiddleware:
 
     SKIP_PREFIXES = ('/static/', '/media/')
 
-    # CSP for the panel / admin pages:
-    # - 'unsafe-inline' required: HTMX hx-* attributes and Django template inline scripts
-    # - 'unsafe-eval' required: Alpine.js evaluates x-data/x-show/x-text/x-bind expressions
-    #   via new Function() which needs eval permission (confirmed via browser console CSP errors)
-    # - img-src data:/blob: required: image previews and canvas operations
-    # - font-src data: required: some icon fonts are base64-embedded
-    # Strict protections still enforced:
-    # - object-src 'none'    → blocks Flash/plugins entirely
-    # - base-uri 'self'      → prevents <base href> injection attacks
-    # - form-action 'self'   → prevents forms being hijacked to external targets
-    # - frame-ancestors 'none' → belt-and-suspenders with X-Frame-Options: DENY
-    _CSP_PANEL = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: blob:; "
-        "font-src 'self' data:; "
-        "connect-src 'self' http://127.0.0.1:4765; "  # 127.0.0.1:4765 = local Face Cropper engine
-        "media-src 'self'; "
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "frame-ancestors 'none';"
-    )
-
-    # CSP for the mobile PWA (/app/) which loads Tailwind CDN, Alpine.js,
-    # Cropper.js, Google Fonts, and Font Awesome from CDNs.
-    # 'unsafe-eval' required by Tailwind CSS Play CDN (runtime compiler).
-    _CSP_PWA = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
-            "https://cdn.tailwindcss.com "
-            "https://cdn.jsdelivr.net "
-            "https://cdnjs.cloudflare.com "
-            "https://static.cloudflareinsights.com; "
-        "style-src 'self' 'unsafe-inline' "
-            "https://cdnjs.cloudflare.com "
-            "https://fonts.googleapis.com "
-            "https://cdn.tailwindcss.com; "
-        "img-src 'self' data: blob: https:; "
-        "font-src 'self' data: "
-            "https://cdnjs.cloudflare.com "
-            "https://fonts.gstatic.com; "
-        "connect-src 'self' http://127.0.0.1:4765; "  # 127.0.0.1:4765 = local Face Cropper engine
-        "media-src 'self' blob:; "
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "frame-ancestors 'none';"
-    )
-
     def __init__(self, get_response):
         self.get_response = get_response
         self._permissions_policy = getattr(
@@ -1075,6 +1059,67 @@ class SecurityHeadersMiddleware:
             'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
         )
         self._panel_domain = getattr(django_settings, 'PANEL_DOMAIN', '').lower().strip()
+        self._allow_unsafe_inline = bool(getattr(django_settings, 'CSP_ALLOW_UNSAFE_INLINE', True))
+        self._allow_unsafe_eval = bool(getattr(django_settings, 'CSP_ALLOW_UNSAFE_EVAL', True))
+        self._allow_local_engine = bool(getattr(django_settings, 'CSP_ALLOW_LOCAL_ENGINE_CONNECT', False))
+
+    def _build_script_src(self, extra_sources=None):
+        parts = ["'self'"]
+        if self._allow_unsafe_inline:
+            parts.append("'unsafe-inline'")
+        if self._allow_unsafe_eval:
+            parts.append("'unsafe-eval'")
+        for src in (extra_sources or []):
+            if src:
+                parts.append(src)
+        return ' '.join(parts)
+
+    def _build_connect_src(self):
+        parts = ["'self'"]
+        if self._allow_local_engine:
+            parts.append('http://127.0.0.1:4765')
+        return ' '.join(parts)
+
+    def _build_panel_csp(self):
+        return (
+            "default-src 'self'; "
+            f"script-src {self._build_script_src(['https://static.cloudflareinsights.com'])}; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self' data:; "
+            f"connect-src {self._build_connect_src()}; "
+            "media-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none';"
+        )
+
+    def _build_pwa_csp(self):
+        script_sources = [
+            'https://cdn.tailwindcss.com',
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com',
+            'https://static.cloudflareinsights.com',
+        ]
+        return (
+            "default-src 'self'; "
+            f"script-src {self._build_script_src(script_sources)}; "
+            "style-src 'self' 'unsafe-inline' "
+                "https://cdnjs.cloudflare.com "
+                "https://fonts.googleapis.com "
+                "https://cdn.tailwindcss.com; "
+            "img-src 'self' data: blob: https:; "
+            "font-src 'self' data: "
+                "https://cdnjs.cloudflare.com "
+                "https://fonts.gstatic.com; "
+            f"connect-src {self._build_connect_src()}; "
+            "media-src 'self' blob:; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none';"
+        )
 
     def __call__(self, request):
         response = self.get_response(request)
@@ -1088,7 +1133,7 @@ class SecurityHeadersMiddleware:
         content_type = response.get('Content-Type', '')
         if 'text/html' in content_type and 'Content-Security-Policy' not in response:
             is_pwa = request.path.startswith('/app/')
-            response['Content-Security-Policy'] = self._CSP_PWA if is_pwa else self._CSP_PANEL
+            response['Content-Security-Policy'] = self._build_pwa_csp() if is_pwa else self._build_panel_csp()
 
         if self._permissions_policy:
             # Mobile PWA needs camera access for photo capture

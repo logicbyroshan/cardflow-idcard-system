@@ -158,6 +158,8 @@ def api_client_delete(request, client_id):
 @api_require_any_admin
 def api_client_toggle_status(request, client_id):
     """API endpoint to toggle client active/inactive status"""
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.toggle_status(client_id)
     if result.success:
         new_status = result.data.get('new_status', result.data.get('status', ''))

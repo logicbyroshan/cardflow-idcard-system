@@ -13,7 +13,6 @@ Two endpoints that power the auto-update flow:
     Returns the latest CropperRelease version + download URL.
     Requires login (same as all admin-panel APIs).
 """
-import hashlib
 import hmac
 import json
 import logging
@@ -58,11 +57,11 @@ def _verify_webhook(request) -> bool:
     # Method 2: HMAC-SHA256 (GitHub style)
     sig_header = request.headers.get("X-Hub-Signature-256", "")
     if sig_header:
-        expected = "sha256=" + hmac.new(
+        expected = "sha256=" + hmac.digest(
             WEBHOOK_SECRET.encode(),
             request.body,
-            hashlib.sha256,
-        ).hexdigest()
+            'sha256',
+        ).hex()
         if hmac.compare_digest(sig_header, expected):
             return True
 

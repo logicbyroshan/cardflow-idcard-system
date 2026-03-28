@@ -92,7 +92,6 @@ class Staff(models.Model):
     perm_idcard_info = models.BooleanField(default=False)
     perm_idcard_approve = models.BooleanField(default=False)
     perm_idcard_verify = models.BooleanField(default=False)
-    perm_idcard_created_at = models.BooleanField(default=False)
     perm_idcard_updated_at = models.BooleanField(default=False)
     perm_idcard_delete_from_pool = models.BooleanField(default=False)
     perm_reupload_idcard_image = models.BooleanField(default=False)  # Single card reupload
