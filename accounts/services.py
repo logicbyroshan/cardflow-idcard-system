@@ -62,6 +62,7 @@ AUTH_FAIL_NOTIFY_THRESHOLD = int(os.getenv('AUTH_FAIL_NOTIFY_THRESHOLD', '5'))
 AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS = int(
     os.getenv('AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS', str(AUTH_FAIL_WINDOW_SECONDS))
 )
+MAX_CONCURRENT_SESSIONS = int(os.getenv('MAX_CONCURRENT_SESSIONS', '5'))
 DEV_LOG_OTP = os.getenv('DEV_LOG_OTP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
@@ -105,6 +106,32 @@ class AuthService:
     and session management.
     """
     
+    @staticmethod
+    def max_concurrent_sessions() -> int:
+        return max(1, MAX_CONCURRENT_SESSIONS)
+
+    @staticmethod
+    def count_active_sessions_for_user(user_id, *, exclude_session_key: str = '', stop_after=None) -> int:
+        """Count active DB-backed sessions currently authenticated as this user."""
+        if not user_id:
+            return 0
+
+        from django.contrib.sessions.models import Session
+
+        active = 0
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            if exclude_session_key and session.session_key == exclude_session_key:
+                continue
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+            if str(data.get('_auth_user_id')) == str(user_id):
+                active += 1
+                if stop_after is not None and active >= stop_after:
+                    break
+        return active
+
     @staticmethod
     def _find_user(identifier, role=None):
         """

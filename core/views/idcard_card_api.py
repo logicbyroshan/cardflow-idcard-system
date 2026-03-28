@@ -95,6 +95,42 @@ def _filter_options_cache_key(user, table_id):
     return f'{base}:client_staff:{user.id}:{table_sig}:{cls_sig}:{sec_sig}:{br_sig}'
 
 
+def _build_modifier_role_map(modifier_names):
+    """Resolve modifier usernames to roles in one query."""
+    normalized = {
+        str(name).strip() for name in (modifier_names or [])
+        if str(name).strip()
+    }
+    if not normalized:
+        return {}
+
+    from core.models import User as _User
+    return {
+        username: role
+        for username, role in _User.objects.filter(
+            username__in=normalized,
+        ).values_list('username', 'role')
+    }
+
+
+def _client_modifier_display_name(table):
+    """Display a single client label instead of internal usernames."""
+    try:
+        name = (table.group.client.name or '').strip()
+    except Exception:
+        name = ''
+    return name or 'Client'
+
+
+def _sanitize_client_audit_fields(table, modifier, updated_at, updated_at_iso, modifier_role_map):
+    """Hide admin metadata for client/client_staff viewers."""
+    raw_modifier = (modifier or '').strip()
+    role = modifier_role_map.get(raw_modifier)
+    if role in ('client', 'client_staff'):
+        return _client_modifier_display_name(table), updated_at, updated_at_iso
+    return '', None, None
+
+
 # ==================== ID CARD API ENDPOINTS ====================
 
 @require_http_methods(["GET"])
@@ -123,8 +159,9 @@ def api_idcard_list(request, table_id):
         if required_perm and not PermissionService.has(request.user, required_perm):
             return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     
-    # client_staff must use row-scoped response compatible with legacy /cards/ payload.
-    if PermissionService.is_client_staff(request.user):
+    # client/client_staff use cards_json-compatible payload to enforce consistent
+    # metadata masking and row scoping.
+    if PermissionService.is_client_role(request.user):
         scoped_resp = api_idcard_cards_json(request, table_id)
         try:
             scoped_payload = json.loads(scoped_resp.content.decode('utf-8'))
@@ -134,8 +171,8 @@ def api_idcard_list(request, table_id):
         if not scoped_payload.get('success'):
             return scoped_resp
 
-        # Compute scoped status counts in a single aggregate query.
-        # The row-scoped queryset is built once and reused for the aggregate.
+        # Compute status counts once. For client_staff this is row-scoped; for
+        # client users _apply_client_staff_row_scope returns the full queryset.
         from django.db.models import Count
         scoped_cards_qs = _apply_client_staff_row_scope(
             IDCard.objects.filter(table=table),
@@ -380,24 +417,16 @@ def api_idcard_cards_json(request, table_id):
     # sr_no base: for cursor mode, use offset param if provided, otherwise 0
     sr_base = offset if not cursor else offset
 
-    # For client/client_staff users: hide updated_at/modified_by when the
-    # modification was made by an admin (super_admin or admin_staff).
-    # Clients should only see edits made by client/client_staff users.
-    _is_client_viewer = request.user.role in ('client', 'client_staff')
-    _admin_modifier_usernames = set()
+    # For client/client_staff users, expose update metadata only when modifier
+    # is client/client_staff; admin/admin_staff updates are hidden.
+    _is_client_viewer = PermissionService.is_client_role(request.user)
+    _modifier_role_map = {}
     if _is_client_viewer:
-        modifier_names = set(
+        modifier_names = {
             c.modified_by for c in cards
             if c.modified_by and c.modified_by.strip()
-        )
-        if modifier_names:
-            from core.models import User as _User
-            _admin_modifier_usernames = set(
-                _User.objects.filter(
-                    username__in=modifier_names,
-                    role__in=('super_admin', 'admin_staff'),
-                ).values_list('username', flat=True)
-            )
+        }
+        _modifier_role_map = _build_modifier_role_map(modifier_names)
 
     for idx, card in enumerate(cards):
         fd = card.field_data or {}
@@ -422,14 +451,24 @@ def api_idcard_cards_json(request, table_id):
                 entry['thumb'] = _thumb(val) if val else ''
             ordered.append(entry)
 
-        # For client viewers, hide updated_at/modified_by when the modifier is admin
+        # By default include complete audit metadata; client viewers are sanitized below.
         _modifier = card.modified_by or ''
         _card_updated_at = localtime(card.updated_at).strftime('%d-%b-%Y %H:%M') if card.updated_at else None
         _card_updated_at_iso = card.updated_at.isoformat() if card.updated_at else None
-        if _is_client_viewer and _modifier in _admin_modifier_usernames:
-            _modifier = ''
-            _card_updated_at = None
-            _card_updated_at_iso = None
+        _card_downloaded_at = localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None
+        _card_deleted_at = localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None
+
+        if _is_client_viewer:
+            _modifier, _card_updated_at, _card_updated_at_iso = _sanitize_client_audit_fields(
+                table,
+                _modifier,
+                _card_updated_at,
+                _card_updated_at_iso,
+                _modifier_role_map,
+            )
+            # Never expose download/pool audit timestamps to client-facing roles.
+            _card_downloaded_at = None
+            _card_deleted_at = None
 
         results.append({
             'id': card.id,
@@ -442,8 +481,8 @@ def api_idcard_cards_json(request, table_id):
             'ordered_fields': ordered,
             'updated_at': _card_updated_at,
             'updated_at_iso': _card_updated_at_iso,
-            'downloaded_at': localtime(card.downloaded_at).strftime('%d-%b-%Y %H:%M') if card.downloaded_at else None,
-            'deleted_at': localtime(card.deleted_at).strftime('%d-%b-%Y %H:%M') if card.deleted_at else None,
+            'downloaded_at': _card_downloaded_at,
+            'deleted_at': _card_deleted_at,
             'modified_by': _modifier,
         })
 
@@ -702,7 +741,22 @@ def api_idcard_get(request, card_id):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     result = IDCardService.get_card(card_id)
     if result.success:
-        return JsonResponse({'success': True, 'card': result.data['card']})
+        card_payload = dict(result.data['card'])
+        if PermissionService.is_client_role(request.user):
+            modifier_role_map = _build_modifier_role_map([card_payload.get('modified_by', '')])
+            modifier, updated_at, updated_at_iso = _sanitize_client_audit_fields(
+                card.table,
+                card_payload.get('modified_by', ''),
+                card_payload.get('updated_at'),
+                card_payload.get('updated_at_iso'),
+                modifier_role_map,
+            )
+            card_payload['modified_by'] = modifier
+            card_payload['updated_at'] = updated_at
+            card_payload['updated_at_iso'] = updated_at_iso
+            card_payload['downloaded_at'] = None
+            card_payload['deleted_at'] = None
+        return JsonResponse({'success': True, 'card': card_payload})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
 
 
@@ -749,19 +803,34 @@ def api_idcard_update(request, card_id):
 
         if result.success:
             card_data = result.data['card']
+            response_card = {
+                'id': card_data['id'],
+                'field_data': card_data['field_data'],
+                'photo': card_data.get('photo'),
+                'status': card_data['status'],
+                'status_display': card_data.get('status_display'),
+                'updated_at': card_data.get('updated_at'),
+                'updated_at_iso': card_data.get('updated_at_iso'),
+                'modified_by': card_data.get('modified_by', ''),
+            }
+
+            if PermissionService.is_client_role(request.user):
+                modifier_role_map = _build_modifier_role_map([response_card.get('modified_by', '')])
+                modifier, updated_at, updated_at_iso = _sanitize_client_audit_fields(
+                    _card.table,
+                    response_card.get('modified_by', ''),
+                    response_card.get('updated_at'),
+                    response_card.get('updated_at_iso'),
+                    modifier_role_map,
+                )
+                response_card['modified_by'] = modifier
+                response_card['updated_at'] = updated_at
+                response_card['updated_at_iso'] = updated_at_iso
+
             return JsonResponse({
                 'success': True,
                 'message': result.message,
-                'card': {
-                    'id': card_data['id'],
-                    'field_data': card_data['field_data'],
-                    'photo': card_data.get('photo'),
-                    'status': card_data['status'],
-                    'status_display': card_data.get('status_display'),
-                    'updated_at': card_data.get('updated_at'),
-                    'updated_at_iso': card_data.get('updated_at_iso'),
-                    'modified_by': card_data.get('modified_by', ''),
-                }
+                'card': response_card,
             })
 
         # Concurrency conflict → 409

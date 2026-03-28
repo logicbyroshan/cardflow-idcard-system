@@ -61,7 +61,7 @@ class PermissionService:
         'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
         'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
         'perm_idcard_bulk_reupload',
-        'perm_idcard_created_at', 'perm_idcard_updated_at',
+        'perm_idcard_updated_at',
         'perm_idcard_delete_from_pool', 'perm_delete_all_idcard',
         'perm_reupload_idcard_image', 'perm_idcard_retrieve',
         'perm_idcard_upgrade_all',

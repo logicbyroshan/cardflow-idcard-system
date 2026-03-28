@@ -5,10 +5,12 @@ Covers: AuthService, OTPService, RoleService, rate limiting, login/logout flows.
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
+from django.contrib.sessions.backends.db import SessionStore
 from django.core.cache import cache
 from django.test.client import RequestFactory
 from unittest import mock
 import json
+from core.models import ActivityLog
 
 User = get_user_model()
 
@@ -191,6 +193,13 @@ class LoginViewTests(TestCase):
     def tearDown(self):
         cache.clear()
 
+    def _create_authenticated_session(self):
+        session = SessionStore()
+        session['_auth_user_id'] = str(self.user.pk)
+        session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+        session['_auth_user_hash'] = self.user.get_session_auth_hash()
+        session.save()
+
     def test_login_page_loads(self):
         response = self.client.get('/panel/login/')
         self.assertIn(response.status_code, [200, 302])
@@ -222,6 +231,62 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data['success'])
+
+    def test_login_api_blocks_when_concurrent_sessions_reach_limit(self):
+        for _ in range(5):
+            self._create_authenticated_session()
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.24',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('Maximum 5 active logins', payload['message'])
+
+    def test_login_api_records_ip_address_in_activity_log(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.50',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '203.0.113.50')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=True)
+    def test_login_api_records_trusted_xff_ip_in_activity_log(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='10.10.10.10',
+            HTTP_X_FORWARDED_FOR='198.51.100.33, 203.0.113.44',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '198.51.100.33')
 
     def test_login_api_wrong_password(self):
         response = self.client.post(

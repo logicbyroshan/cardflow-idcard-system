@@ -891,3 +891,84 @@ class SecurityApiRegressionTests(TestCase):
         self.assertIn('enabled', payload)
         self.assertIn('message', payload)
         self.assertIn('end_time', payload)
+
+    def test_client_and_client_staff_cards_api_hide_admin_audit_metadata(self):
+        from staff.models import Staff
+
+        # Parent client permissions gate client_staff visibility too.
+        self.client_a.perm_idcard_pending_list = True
+        self.client_a.perm_idcard_updated_at = True
+        self.client_a.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_updated_at'])
+
+        client_staff_user = User.objects.create_user(
+            username='sec-client-staff-a@test.com',
+            email='sec-client-staff-a@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=client_staff_user,
+            staff_type='client_staff',
+            client=self.client_a,
+            perm_idcard_pending_list=True,
+            perm_idcard_updated_at=True,
+        )
+
+        admin_touched_card = self.card_a
+        admin_touched_card.modified_by = self.admin_staff.username
+        admin_touched_card.save(update_fields=['modified_by'])
+
+        client_touched_card = _create_card(
+            self.table_a,
+            field_data={'NAME': 'BOB', 'CLASS': '10'},
+            status='pending',
+        )
+        client_touched_card.modified_by = client_staff_user.username
+        client_touched_card.save(update_fields=['modified_by'])
+
+        url = f'/panel/api/table/{self.table_a.id}/cards/?status=pending'
+
+        # Client view
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        cards_by_id = {c['id']: c for c in payload['cards']}
+
+        self.assertEqual(cards_by_id[admin_touched_card.id]['modified_by'], '')
+        self.assertIsNone(cards_by_id[admin_touched_card.id]['updated_at'])
+        self.assertIsNone(cards_by_id[admin_touched_card.id]['downloaded_at'])
+        self.assertIsNone(cards_by_id[admin_touched_card.id]['deleted_at'])
+
+        self.assertEqual(cards_by_id[client_touched_card.id]['modified_by'], self.client_a.name)
+        self.assertIsNotNone(cards_by_id[client_touched_card.id]['updated_at'])
+
+        # Client staff view
+        self.client.login(username='sec-client-staff-a@test.com', password='pass1234')
+        response_staff = self.client.get(url)
+        self.assertEqual(response_staff.status_code, 200)
+        payload_staff = response_staff.json()
+        staff_cards_by_id = {c['id']: c for c in payload_staff['cards']}
+
+        self.assertEqual(staff_cards_by_id[admin_touched_card.id]['modified_by'], '')
+        self.assertIsNone(staff_cards_by_id[admin_touched_card.id]['updated_at'])
+        self.assertEqual(staff_cards_by_id[client_touched_card.id]['modified_by'], self.client_a.name)
+
+    def test_client_update_response_masks_username_to_client_name(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_updated_at = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_updated_at'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({'field_data': {'NAME': 'ALICIA', 'CLASS': '10'}}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['card']['modified_by'], self.client_a.name)
+        self.assertNotEqual(payload['card']['modified_by'], self.client_user_a.username)
+        self.assertIsNotNone(payload['card']['updated_at'])

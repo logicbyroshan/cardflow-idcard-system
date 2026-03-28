@@ -8,6 +8,7 @@ All methods are classmethods/staticmethods following the project convention.
 import logging
 import re
 
+from django.conf import settings
 from django.core.cache import cache as django_cache
 from django.utils import timezone
 from django.utils.timesince import timesince
@@ -38,9 +39,17 @@ class ActivityService:
         """Extract client IP from request, handling proxies."""
         if request is None:
             return None
-        xff = request.META.get('HTTP_X_FORWARDED_FOR')
-        if xff:
-            return xff.split(',')[0].strip()
+
+        trust_xff = bool(getattr(settings, 'RATE_LIMIT_TRUST_X_FORWARDED_FOR', False))
+        if trust_xff:
+            xff = request.META.get('HTTP_X_FORWARDED_FOR')
+            if xff:
+                parts = [p.strip() for p in xff.split(',') if p.strip()]
+                if len(parts) >= 2:
+                    return parts[-2]
+                if parts:
+                    return parts[0]
+
         return request.META.get('REMOTE_ADDR')
 
     @classmethod

@@ -350,7 +350,8 @@ function _updateRowInPlace(cardId, cardData) {
     if (cardData.modified_by !== undefined) {
         const userCells = row.querySelectorAll('.user-cell');
         if (userCells.length > 0) {
-            userCells[userCells.length - 1].textContent = cardData.modified_by || 'Admin';
+            const isClientUser = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER);
+            userCells[userCells.length - 1].textContent = cardData.modified_by || (isClientUser ? '' : 'Admin');
         }
     }
 
