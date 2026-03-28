@@ -130,6 +130,9 @@ urlpatterns = [
     path('api/notifications/admin/create/', views.api_panel_notification_create, name='api_panel_notification_create'),
     path('api/notifications/admin/<int:notification_id>/delete/', views.api_panel_notification_delete, name='api_panel_notification_delete'),
     path('api/notifications/admin/target-users/', views.api_panel_target_users, name='api_panel_target_users'),
+
+    # Client Tutorial (all authenticated users; content is client-oriented)
+    path('tutorial/', views.tutorial, name='tutorial'),
     
     # System Settings
     path('settings/', views.settings, name='settings'),

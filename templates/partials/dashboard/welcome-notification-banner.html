@@ -1,4 +1,31 @@
 <!-- Welcome Banner with Sliding Notifications (shared partial) -->
+<style>
+  /* Emphasize maintenance banner: larger title and taller bar for visibility. */
+  .client-welcome-banner.notif-cat-maintenance .welcome-slide {
+    min-height: 86px;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .client-welcome-banner.notif-cat-maintenance .welcome-notif-title {
+    font-size: 28px;
+    line-height: 1.05;
+    font-weight: 800;
+  }
+
+  @media (max-width: 768px) {
+    .client-welcome-banner.notif-cat-maintenance .welcome-slide {
+      min-height: 76px;
+      padding-top: 14px;
+      padding-bottom: 14px;
+    }
+
+    .client-welcome-banner.notif-cat-maintenance .welcome-notif-title {
+      font-size: 22px;
+    }
+  }
+</style>
+
 <div class="client-welcome-banner" id="clientWelcomeBanner">
   <div class="welcome-slide welcome-slide-active" id="welcomeDefaultSlide">
     <div class="welcome-text">

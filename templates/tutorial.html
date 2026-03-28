@@ -1,0 +1,644 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if tutorial_lang == 'hi' %}क्लाइंट ट्यूटोरियल - Adarsh ID Cards{% else %}Client Tutorial - Adarsh ID Cards{% endif %}{% endblock %}
+
+{% block main_class %}tutorial-main{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/tutorial.css' %}">
+{% endblock %}
+
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_client %}
+  <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_client_staff %}
+  <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">{% if tutorial_lang == 'hi' %}ट्यूटोरियल{% else %}Tutorial{% endif %}</span>
+{% endblock %}
+
+{% block content %}
+<div class="main-content tutorial-page-wrap">
+  <section class="tutorial-hero">
+    <div class="tutorial-hero-content">
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}क्लाइंट गाइड{% else %}Client Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}क्लाइंट ऑपरेशन्स ट्यूटोरियल{% else %}Client Operations Tutorial{% endif %}</h1>
+      {% if tutorial_lang == 'hi' %}
+      <p>
+        यह पेज Adarsh ID Cards के लिए आपका पूरा क्लाइंट SOP है। इसमें डेटा तैयारी से लेकर
+        अप्रूवल, डाउनलोड, रीप्रिंट और टीम ऑपरेशन तक का पूरा वर्कफ़्लो दिया गया है।
+      </p>
+      {% else %}
+      <p>
+        This page is your complete client-side SOP for Adarsh ID Cards. It covers the real working flow from
+        data preparation to approval, downloads, reprints, and team operations.
+      </p>
+      {% endif %}
+      <div class="tutorial-hero-actions">
+        <button
+          class="btn btn-secondary"
+          type="button"
+          data-toggle-lang="{% if tutorial_lang == 'hi' %}en{% else %}hi{% endif %}"
+        >
+          <i class="fa-solid fa-language"></i>
+          {% if tutorial_lang == 'hi' %}View In English{% else %}हिंदी में देखें{% endif %}
+        </button>
+        <a class="btn btn-primary" href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-youtube"></i>
+          {% if tutorial_lang == 'hi' %}YouTube पर वीडियो ट्यूटोरियल देखें{% else %}Watch Video Tutorial on YouTube{% endif %}
+        </a>
+        <button class="btn btn-outline-primary" type="button" data-jump-tab="get-started">
+          <i class="fa-solid fa-list-check"></i>
+          {% if tutorial_lang == 'hi' %}शुरुआती स्टेप्स पर जाएं{% else %}Jump to Getting Started{% endif %}
+        </button>
+      </div>
+    </div>
+    <div class="tutorial-hero-note">
+      <div class="tutorial-video-card">
+        <div class="tutorial-video-icon">
+          <i class="fa-brands fa-youtube"></i>
+        </div>
+        <h3>{% if tutorial_lang == 'hi' %}यहां से शुरू करें{% else %}Start Here{% endif %}</h3>
+        <p>{% if tutorial_lang == 'hi' %}पहले वीडियो देखें, फिर रोज़ काम करते समय इस पेज को चेकलिस्ट की तरह इस्तेमाल करें।{% else %}Watch the video once, then use this page as your daily execution checklist.{% endif %}</p>
+        <a href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">{% if tutorial_lang == 'hi' %}YouTube ट्यूटोरियल खोलें{% else %}Open YouTube Tutorial{% endif %}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="tutorial-tabs-shell">
+    <div class="tutorial-tabs" role="tablist" aria-label="{% if tutorial_lang == 'hi' %}ट्यूटोरियल नेविगेशन टैब्स{% else %}Tutorial navigation tabs{% endif %}">
+      <button type="button" class="tutorial-tab-btn is-active" data-tab="get-started" role="tab" aria-selected="true">{% if tutorial_lang == 'hi' %}शुरुआत{% else %}Getting Started{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="workflow" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}दैनिक वर्कफ़्लो{% else %}Daily Workflow{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="quality" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}क्वालिटी और अप्रूवल{% else %}Quality & Approval{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="exports" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}एक्सपोर्ट और रीप्रिंट{% else %}Exports & Reprint{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="team" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}टीम और सुरक्षा{% else %}Team & Security{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="support" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}समस्या समाधान{% else %}Troubleshooting{% endif %}</button>
+    </div>
+
+    <div class="tutorial-panels">
+      <section class="tutorial-panel is-active" data-panel="get-started" role="tabpanel">
+        {% if tutorial_lang == 'hi' %}
+        <h2>8 स्टेप्स में तेज शुरुआत</h2>
+        <div class="quick-grid">
+          <article><span>1</span><p>डैशबोर्ड में लॉगिन करके हेडर में अपना क्लाइंट नाम जांचें।</p></article>
+          <article><span>2</span><p>ID Card Group खोलें और सही क्लास या बैच की टेबल चुनें।</p></article>
+          <article><span>3</span><p>कार्ड डेटा और इमेज सही फॉर्मेट में अपलोड करें।</p></article>
+          <article><span>4</span><p>Pending रिकॉर्ड्स चेक करें और गलत डेटा पहले ठीक करें।</p></article>
+          <article><span>5</span><p>टेक्स्ट, फोटो और क्लास सेक्शन चेक करके रिकॉर्ड्स Verified में भेजें।</p></article>
+          <article><span>6</span><p>फाइनल प्रूफ-चेक के बाद ही कार्ड्स Approve करें।</p></article>
+          <article><span>7</span><p>Approved या Download स्टेटस से फाइनल आउटपुट डाउनलोड करें।</p></article>
+          <article><span>8</span><p>डैशबोर्ड एक्टिविटी और नोटिफिकेशन रोज ट्रैक करें।</p></article>
+        </div>
+
+        <h3>क्लाइंट रोल्स और एक्सेस</h3>
+        <p>
+          आपकी संस्था में सामान्यतः एक Client Admin और जरूरत अनुसार Client Staff होते हैं।
+          Client Admin एक्सेस, फाइनल अप्रूवल और जवाबदेही संभालता है। Staff के लिए अलग-अलग अकाउंट रखें।
+        </p>
+        <div class="callout">
+          <strong>महत्वपूर्ण:</strong> एक ही अकाउंट कई ऑपरेटर्स के बीच साझा न करें।
+        </div>
+
+        <h3>पहली बार ऑनबोर्डिंग</h3>
+        <ol>
+          <li>Upload, Review और Final Approval के जिम्मेदार व्यक्ति तय करें।</li>
+          <li>पूरे सेशन के लिए group और table naming standard फाइनल करें।</li>
+          <li>प्रोडक्शन से पहले mandatory output fields लॉक करें।</li>
+          <li>फुल बैच से पहले 20 से 50 रिकॉर्ड का पायलट रन करें।</li>
+          <li>पूरा फ्लो validate करें: Pending से Verified से Approved से Download।</li>
+          <li>एक SOP फाइनल करके सभी बैच में वही पैटर्न रखें।</li>
+        </ol>
+        {% else %}
+        <h2>Quick Start in 8 Steps</h2>
+        <div class="quick-grid">
+          <article><span>1</span><p>Login to your dashboard and confirm your client name in the header.</p></article>
+          <article><span>2</span><p>Open ID Card Group and choose the correct table for your class or batch.</p></article>
+          <article><span>3</span><p>Upload card data and images in the required format.</p></article>
+          <article><span>4</span><p>Review records in Pending and fix invalid details before verify.</p></article>
+          <article><span>5</span><p>Move clean records to Verified after checking text, photo, and class section.</p></article>
+          <article><span>6</span><p>Approve cards only after final proof-check from your reviewer.</p></article>
+          <article><span>7</span><p>Download final outputs from approved or download status.</p></article>
+          <article><span>8</span><p>Track updates daily from dashboard activity and notifications.</p></article>
+        </div>
+
+        <h3>Client Roles and Access</h3>
+        <p>
+          Your organization usually has one client admin and optional client staff users. Client admin controls access,
+          final approvals, and accountability. Staff should use individual accounts with minimum required permissions.
+        </p>
+        <div class="callout">
+          <strong>Important:</strong> Never share one account across multiple operators.
+        </div>
+
+        <h3>First-Time Onboarding</h3>
+        <ol>
+          <li>Assign named owners for upload, review, and final approval.</li>
+          <li>Define one naming standard for groups and tables for the full session.</li>
+          <li>Finalize mandatory output fields before production.</li>
+          <li>Run a pilot with 20 to 50 records before full batch.</li>
+          <li>Validate complete cycle: Pending to Verified to Approved to Download.</li>
+          <li>Freeze SOP and reuse same pattern for all future batches.</li>
+        </ol>
+        {% endif %}
+      </section>
+
+      <section class="tutorial-panel" data-panel="workflow" role="tabpanel" hidden>
+        {% if tutorial_lang == 'hi' %}
+        <h2>दैनिक वर्कफ़्लो</h2>
+        <p>
+          डैशबोर्ड आपका कंट्रोल सेंटर है। स्टेटस काउंटर्स और एक्टिविटी फीड देखकर तय करें कि टीम को किस काम पर फोकस करना है।
+        </p>
+        <ul>
+          <li>Pending रिकॉर्ड्स पहले साफ करें ताकि बैकलॉग न बढ़े।</li>
+          <li>Verified को लंबे समय तक होल्ड न रखें, इसे review queue की तरह चलाएं।</li>
+          <li>Notifications को सिर्फ सूचना नहीं, action item मानकर काम करें।</li>
+        </ul>
+
+        <h3>Groups और Tables रणनीति</h3>
+        <ol>
+          <li>Group को session या operational cycle के हिसाब से बनाएं।</li>
+          <li>Table naming pattern फिक्स रखें, जैसे SchoolCode-Class-Section-Session-BatchNo.</li>
+          <li>Production में रिकॉर्ड आने के बाद table rename कम से कम करें।</li>
+          <li>हर table का owner तय करें ताकि जवाबदेही स्पष्ट रहे।</li>
+        </ol>
+
+        <h3>डेटा और इमेज अपलोड स्टैंडर्ड</h3>
+        <table class="tutorial-table">
+          <thead>
+            <tr>
+              <th>आइटम</th>
+              <th>न्यूनतम स्टैंडर्ड</th>
+              <th>क्यों जरूरी है</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Student Identifier</td>
+              <td>सभी फाइलों में यूनिक और स्थिर</td>
+              <td>गलत मैपिंग और डुप्लिकेट से बचाव</td>
+            </tr>
+            <tr>
+              <td>Name Fields</td>
+              <td>अपलोड से पहले अंतिम स्पेलिंग फाइनल</td>
+              <td>लेट-स्टेज करेक्शन कम होते हैं</td>
+            </tr>
+            <tr>
+              <td>Class और Section</td>
+              <td>हर रो में एक जैसा फॉर्मेट</td>
+              <td>फ़िल्टर और एक्सपोर्ट सटीक रहते हैं</td>
+            </tr>
+            <tr>
+              <td>Photo Files</td>
+              <td>एक ही naming pattern</td>
+              <td>अपलोड mismatch errors कम होते हैं</td>
+            </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <h2>Daily Workflow</h2>
+        <p>
+          The dashboard is your control center. Use status counters and activity feed to decide where the team should focus.
+        </p>
+        <ul>
+          <li>Pending should be processed first to avoid accumulation.</li>
+          <li>Verified should remain a review queue, not a long-term storage state.</li>
+          <li>Notifications should be treated as action items.</li>
+        </ul>
+
+        <h3>Groups and Tables Strategy</h3>
+        <ol>
+          <li>Create group by session or operational cycle.</li>
+          <li>Create table names with strict pattern, for example SchoolCode-Class-Section-Session-BatchNo.</li>
+          <li>Avoid frequent renaming after records are in production.</li>
+          <li>Assign ownership table-wise for accountability.</li>
+        </ol>
+
+        <h3>Data and Image Upload Standards</h3>
+        <table class="tutorial-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Minimum Standard</th>
+              <th>Why It Matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Student Identifier</td>
+              <td>Unique and stable in all files</td>
+              <td>Avoids wrong mapping and duplicates</td>
+            </tr>
+            <tr>
+              <td>Name Fields</td>
+              <td>Final approved spelling</td>
+              <td>Reduces late-stage corrections</td>
+            </tr>
+            <tr>
+              <td>Class and Section</td>
+              <td>Single format for all rows</td>
+              <td>Improves filtering and exports</td>
+            </tr>
+            <tr>
+              <td>Photo Files</td>
+              <td>One naming pattern</td>
+              <td>Reduces upload mismatch failures</td>
+            </tr>
+          </tbody>
+        </table>
+        {% endif %}
+      </section>
+
+      <section class="tutorial-panel" data-panel="quality" role="tabpanel" hidden>
+        {% if tutorial_lang == 'hi' %}
+        <h2>स्टेटस वर्कफ़्लो और अप्रूवल क्वालिटी गेट</h2>
+        <table class="tutorial-table">
+          <thead>
+            <tr>
+              <th>स्टेटस</th>
+              <th>उद्देश्य</th>
+              <th>जिम्मेदार</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pending</td>
+              <td>प्रारंभिक सुधार और क्लीनअप</td>
+              <td>Data Operator</td>
+            </tr>
+            <tr>
+              <td>Verified</td>
+              <td>रिव्यू पूरा, साइन-ऑफ की प्रतीक्षा</td>
+              <td>Reviewer</td>
+            </tr>
+            <tr>
+              <td>Approved</td>
+              <td>फाइनल आउटपुट के लिए तैयार रिकॉर्ड्स</td>
+              <td>Client Admin</td>
+            </tr>
+            <tr>
+              <td>Downloaded</td>
+              <td>डिलीवरी ट्रैकिंग स्टेज</td>
+              <td>Client Admin या Operator</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          जल्दी के लिए Pending से सीधे Approved न करें। इससे रीप्रिंट लोड बढ़ता है।
+        </div>
+
+        <h3>Approve करने से पहले चेकलिस्ट</h3>
+        <ul>
+          <li>नाम, क्लास और सेक्शन source records से मेल खाते हों।</li>
+          <li>फोटो स्पष्ट, centered, upright और सही छात्र की हो।</li>
+          <li>ID नंबर में कोई अंक missing या extra न हो।</li>
+          <li>Mandatory fields खाली न हों।</li>
+          <li>उसी टेबल में duplicate card न हो।</li>
+        </ul>
+        <p class="tutorial-note">सुझाव: हर टेबल के लिए एक reviewer sign-off के बाद ही final approval करें।</p>
+        {% else %}
+        <h2>Status Workflow and Approval Quality Gate</h2>
+        <table class="tutorial-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Purpose</th>
+              <th>Owner</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pending</td>
+              <td>Initial correction and cleanup</td>
+              <td>Data Operator</td>
+            </tr>
+            <tr>
+              <td>Verified</td>
+              <td>Review-complete, waiting sign-off</td>
+              <td>Reviewer</td>
+            </tr>
+            <tr>
+              <td>Approved</td>
+              <td>Final output-ready records</td>
+              <td>Client Admin</td>
+            </tr>
+            <tr>
+              <td>Downloaded</td>
+              <td>Delivery tracking stage</td>
+              <td>Client Admin or operator</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          Do not skip directly from Pending to Approved for speed. It increases reprint load.
+        </div>
+
+        <h3>Checklist Before Approve</h3>
+        <ul>
+          <li>Name, class, and section are correct and consistent with source records.</li>
+          <li>Photo is clear, centered, upright, and belongs to the correct student.</li>
+          <li>ID number has no missing or extra digits.</li>
+          <li>Mandatory fields are not blank.</li>
+          <li>No duplicate card exists in the same table.</li>
+        </ul>
+        <p class="tutorial-note">Recommendation: each table should have one named reviewer sign-off before approval.</p>
+        {% endif %}
+      </section>
+
+      <section class="tutorial-panel" data-panel="exports" role="tabpanel" hidden>
+        {% if tutorial_lang == 'hi' %}
+        <h2>एक्सपोर्ट, डिलीवरी और रीप्रिंट हैंडलिंग</h2>
+        <h3>Export और Delivery प्रोटोकॉल</h3>
+        <ol>
+          <li>Delivery stage के अनुसार Approved या Download स्टेटस फ़िल्टर करें।</li>
+          <li>आवश्यक फॉर्मेट में export करें और बार-बार क्लिक से बचें।</li>
+          <li>बड़े जॉब्स में background task पूरा होने दें।</li>
+          <li>प्रिंटर या स्कूल को भेजने से पहले sample verify करें।</li>
+          <li>ट्रेसेबिलिटी के लिए standard naming के साथ archive रखें।</li>
+        </ol>
+
+        <h3>रीप्रिंट और Exception Handling</h3>
+        <ul>
+          <li>रीप्रिंट केवल valid correction केस में ही करें।</li>
+          <li>हर रीप्रिंट के लिए reason note रिकॉर्ड करें।</li>
+          <li>रीप्रिंट के बाद final delivery से पहले card पुनः verify करें।</li>
+          <li>Repeated reprints को ट्रैक करें ताकि root cause निकाला जा सके।</li>
+        </ul>
+
+        <div class="callout callout-soft">
+          Export bundles के लिए सुझाया नाम: Client-Table-Date-Format-Operator.
+        </div>
+        {% else %}
+        <h2>Exports, Delivery, and Reprint Handling</h2>
+        <h3>Export and Delivery Protocol</h3>
+        <ol>
+          <li>Filter by Approved or Download status per delivery stage.</li>
+          <li>Export in required format and avoid repeated trigger clicks.</li>
+          <li>For large jobs, wait for background task completion.</li>
+          <li>Verify a sample before sharing to printer or school authority.</li>
+          <li>Archive files with strict naming convention for traceability.</li>
+        </ol>
+
+        <h3>Reprint and Exception Handling</h3>
+        <ul>
+          <li>Use reprint only for valid correction scenarios.</li>
+          <li>Capture reason note for every reprint.</li>
+          <li>After reprint, revalidate card before final delivery.</li>
+          <li>Track repeated reprints to identify root quality issues.</li>
+        </ul>
+
+        <div class="callout callout-soft">
+          Suggested filename for exported bundles: Client-Table-Date-Format-Operator.
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="tutorial-panel" data-panel="team" role="tabpanel" hidden>
+        {% if tutorial_lang == 'hi' %}
+        <h2>टीम ऑपरेशन और सुरक्षा</h2>
+        <h3>सुझाया गया Role Matrix</h3>
+        <table class="tutorial-table">
+          <thead>
+            <tr>
+              <th>रोल</th>
+              <th>मुख्य कार्य</th>
+              <th>Approval Rights</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Data Operator</td>
+              <td>Pending queue में upload और correction</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Reviewer</td>
+              <td>Verification और invalid records reject करना</td>
+              <td>Optional</td>
+            </tr>
+            <tr>
+              <td>Client Admin</td>
+              <td>Final sign-off, export delivery, permission control</td>
+              <td>Yes</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>सुरक्षा के बेसिक नियम</h3>
+        <ul>
+          <li>पासवर्ड कभी भी chat apps में शेयर न करें।</li>
+          <li>Inactive staff को तुरंत disable करें।</li>
+          <li>Active season में हर सप्ताह permissions review करें।</li>
+          <li>Bulk बदलाव से पहले source upload files का backup रखें।</li>
+        </ul>
+        {% else %}
+        <h2>Team Operations and Security</h2>
+        <h3>Recommended Role Matrix</h3>
+        <table class="tutorial-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Main Work</th>
+              <th>Approval Rights</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Data Operator</td>
+              <td>Upload and correction in pending queue</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Reviewer</td>
+              <td>Verification and rejection of invalid records</td>
+              <td>Optional</td>
+            </tr>
+            <tr>
+              <td>Client Admin</td>
+              <td>Final sign-off, export delivery, permission control</td>
+              <td>Yes</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Security Basics</h3>
+        <ul>
+          <li>Never share passwords through chat apps.</li>
+          <li>Disable inactive staff immediately.</li>
+          <li>Review permissions every week during active season.</li>
+          <li>Keep source upload files backed up before bulk changes.</li>
+        </ul>
+        {% endif %}
+      </section>
+
+      <section class="tutorial-panel" data-panel="support" role="tabpanel" hidden>
+        {% if tutorial_lang == 'hi' %}
+        <h2>समस्या समाधान और चेकलिस्ट</h2>
+        <div class="faq-grid">
+          <article>
+            <h4>छात्र के साथ इमेज mismatch</h4>
+            <p>री-अपलोड से पहले identifier mapping और file naming pattern दोबारा जांचें।</p>
+          </article>
+          <article>
+            <h4>Card status transition blocked</h4>
+            <p>Role permission validate करें और allowed sequence के अनुसार ही आगे बढ़ें।</p>
+          </article>
+          <article>
+            <h4>Export धीमा या delayed</h4>
+            <p>छोटे export sets इस्तेमाल करें और background task completion मॉनिटर करें।</p>
+          </article>
+          <article>
+            <h4>Staff को expected rows नहीं दिख रहे</h4>
+            <p>Staff permissions में assigned scopes और table access validate करें।</p>
+          </article>
+          <article>
+            <h4>एक ही table से बार-बार reprint</h4>
+            <p>Records को approved में भेजने से पहले strict reviewer sign-off लागू करें।</p>
+          </article>
+          <article>
+            <h4>Delivery के बाद audit मुश्किल</h4>
+            <p>Export folder naming standard करें और delivery owner log करें।</p>
+          </article>
+        </div>
+
+        <h3>Daily और Weekly Checklist</h3>
+        <div class="daily-checklist">
+          <label><input type="checkbox"> Upload, review और approval के owners confirm करें।</label>
+          <label><input type="checkbox"> पिछले दिन के pending exceptions पहले साफ करें।</label>
+          <label><input type="checkbox"> Status transition से पहले नए uploads verify करें।</label>
+          <label><input type="checkbox"> Review sign-off के बाद ही approve करें।</label>
+          <label><input type="checkbox"> सभी exports को standard naming के साथ archive करें।</label>
+          <label><input type="checkbox"> Weekly: staff permissions review करें और unused access हटाएं।</label>
+          <label><input type="checkbox"> Weekly: simple ops report प्रकाशित करें (uploaded, approved, delivered, reprint)।</label>
+        </div>
+        {% else %}
+        <h2>Troubleshooting and Checklists</h2>
+        <div class="faq-grid">
+          <article>
+            <h4>Image mismatch with student</h4>
+            <p>Re-check identifier mapping and file naming pattern before re-upload.</p>
+          </article>
+          <article>
+            <h4>Card status transition blocked</h4>
+            <p>Validate role permission and follow allowed sequence only.</p>
+          </article>
+          <article>
+            <h4>Export slow or delayed</h4>
+            <p>Use smaller export sets and monitor background task completion.</p>
+          </article>
+          <article>
+            <h4>Staff cannot see expected rows</h4>
+            <p>Validate assigned scopes and table access in staff permissions.</p>
+          </article>
+          <article>
+            <h4>Repeated reprint from same table</h4>
+            <p>Add strict reviewer sign-off before records move to approved.</p>
+          </article>
+          <article>
+            <h4>Difficult audit after delivery</h4>
+            <p>Standardize export folder names and log who delivered what.</p>
+          </article>
+        </div>
+
+        <h3>Daily and Weekly Checklist</h3>
+        <div class="daily-checklist">
+          <label><input type="checkbox"> Confirm owner assignment for upload, review, and approval.</label>
+          <label><input type="checkbox"> Clear previous-day pending exceptions first.</label>
+          <label><input type="checkbox"> Verify fresh uploads before status transition.</label>
+          <label><input type="checkbox"> Approve only after review sign-off.</label>
+          <label><input type="checkbox"> Archive all exports with standard naming.</label>
+          <label><input type="checkbox"> Weekly: review staff permissions and remove unused access.</label>
+          <label><input type="checkbox"> Weekly: publish simple operations report (uploaded, approved, delivered, reprint).</label>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var root = document.querySelector('.tutorial-tabs-shell');
+  if (!root) return;
+
+  var tabButtons = Array.prototype.slice.call(root.querySelectorAll('.tutorial-tab-btn'));
+  var panels = Array.prototype.slice.call(root.querySelectorAll('.tutorial-panel'));
+  var jumpButtons = Array.prototype.slice.call(document.querySelectorAll('[data-jump-tab]'));
+  var langButtons = Array.prototype.slice.call(document.querySelectorAll('[data-toggle-lang]'));
+
+  function activateTab(tabId) {
+    tabButtons.forEach(function (btn) {
+      var isActive = btn.getAttribute('data-tab') === tabId;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    panels.forEach(function (panel) {
+      var isActive = panel.getAttribute('data-panel') === tabId;
+      panel.classList.toggle('is-active', isActive);
+      panel.hidden = !isActive;
+    });
+
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.set('tab', tabId);
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  }
+
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      activateTab(btn.getAttribute('data-tab'));
+    });
+  });
+
+  jumpButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tabId = btn.getAttribute('data-jump-tab');
+      if (tabId) activateTab(tabId);
+    });
+  });
+
+  langButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var targetLang = btn.getAttribute('data-toggle-lang');
+      if (!targetLang) return;
+
+      var active = root.querySelector('.tutorial-tab-btn.is-active');
+      var currentTab = active ? active.getAttribute('data-tab') : 'get-started';
+
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('lang', targetLang);
+        url.searchParams.set('tab', currentTab || 'get-started');
+        window.location.href = url.toString();
+      } catch (e) {}
+    });
+  });
+
+  var initialTab = 'get-started';
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var tabFromQuery = params.get('tab');
+    if (tabFromQuery && root.querySelector('.tutorial-tab-btn[data-tab="' + tabFromQuery + '"]')) {
+      initialTab = tabFromQuery;
+    }
+  } catch (e) {}
+
+  try {
+    document.documentElement.lang = '{{ tutorial_lang|default:"en" }}';
+  } catch (e) {}
+
+  activateTab(initialTab);
+})();
+</script>
+{% endblock %}

@@ -555,3 +555,19 @@ def settings(request):
         'export_settings': export_settings,
     }
     return render(request, 'settings.html', context)
+
+
+@login_required
+def tutorial(request):
+    """Client-facing tutorial and usage guide page."""
+    tutorial_lang = str(request.GET.get('lang', 'en')).strip().lower()
+    if tutorial_lang not in ('en', 'hi'):
+        tutorial_lang = 'en'
+
+    context = {
+        'active_page': 'tutorial',
+        'user_role': get_user_role(request.user),
+        'tutorial_video_url': getattr(django_settings, 'CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/'),
+        'tutorial_lang': tutorial_lang,
+    }
+    return render(request, 'tutorial.html', context)

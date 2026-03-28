@@ -29,6 +29,7 @@ from .base import (
     api_email_send_new,
     api_email_compose_defaults,
     settings,
+    tutorial,
     api_export_settings_get,
     api_export_settings_update,
     api_export_templates_list,

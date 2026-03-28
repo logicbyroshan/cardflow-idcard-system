@@ -56,6 +56,7 @@ from .admin_page_views import (                      # noqa: F401
     api_email_send_new,
     api_email_compose_defaults,
     settings,
+    tutorial,
 )
 
 # ── Export settings / template APIs ───────────────────────────────────

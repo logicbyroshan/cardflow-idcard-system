@@ -526,6 +526,9 @@ CONTACT_FORM_RECIPIENT = os.getenv('CONTACT_FORM_RECIPIENT', '')
 # Local: http://localhost:8000 | Production: Set SITE_URL in .env
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 
+# Client tutorial page video URL (shown on /panel/tutorial/)
+CLIENT_TUTORIAL_VIDEO_URL = os.getenv('CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/')
+
 
 # =============================================================================
 # APP VERSION
