@@ -15,16 +15,18 @@ Usage:
 
 Parameters:
   - dropdown_id      : Container ID (default: "filterDropdown")
+  - dropdown_class   : Extra classes for dropdown container (optional)
   - toggle_id        : Button ID (default: "dropdownToggle")
   - options_id       : Options container ID (default: "dropdownOptions")
   - selected_text_id : Display text span ID (default: "selectedText")
   - default_label    : Default selected text (default: "All")
+  - options_template : Template path for custom dropdown-option markup (optional)
   - options          : List of dicts with 'value' and 'label' keys (optional, renders from template var)
 
-If 'options' is not provided, inject options manually into #<options_id>.
+If both options_template and options are not provided, a single default option is rendered.
 {% endcomment %}
 
-<div class="custom-dropdown" id="{{ dropdown_id|default:'filterDropdown' }}">
+<div class="custom-dropdown{% if dropdown_class %} {{ dropdown_class }}{% endif %}" id="{{ dropdown_id|default:'filterDropdown' }}">
   <button class="dropdown-toggle"
           id="{{ toggle_id|default:'dropdownToggle' }}"
           type="button"
@@ -33,7 +35,9 @@ If 'options' is not provided, inject options manually into #<options_id>.
     <i class="fa-solid fa-chevron-down"></i>
   </button>
   <div class="dropdown-options" id="{{ options_id|default:'dropdownOptions' }}">
-    {% if options %}
+    {% if options_template %}
+      {% include options_template %}
+    {% elif options %}
       {% for opt in options %}
       <div class="dropdown-option{% if forloop.first %} selected{% endif %}" data-value="{{ opt.value }}">{{ opt.label }}</div>
       {% endfor %}

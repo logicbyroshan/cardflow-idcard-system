@@ -36,11 +36,7 @@ Contains: Table displaying active clients with groups info
             {% empty %}
             <tr>
                 <td colspan="5">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-building-slash"></i>
-                        <h3>No Clients Found</h3>
-                        <p>No clients match your current filters. Try adjusting your search.</p>
-                    </div>
+                    {% include 'components/empty-state.html' with id='active-client-empty-inline' icon='fa-building-slash' title='No Clients Found' message='No clients match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>
             {% endfor %}
@@ -48,6 +44,6 @@ Contains: Table displaying active clients with groups info
     </table>
     
     <!-- Empty State for Search -->
-    {% include 'partials/components/empty-state.html' with id="active-client-empty-state" icon="fa-magnifying-glass" title="No Results Found" message="Try adjusting your search criteria" hidden=True %}
+    {% include 'components/empty-state.html' with id="active-client-empty-state" icon="fa-magnifying-glass" title="No Results Found" message="Try adjusting your search criteria" hidden=True %}
 </div>
 <!-- Active Clients Table End -->

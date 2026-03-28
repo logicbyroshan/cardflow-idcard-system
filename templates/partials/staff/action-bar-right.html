@@ -1,0 +1,36 @@
+<div class="actions">
+    <div class="btn-group">
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-md btn-primary" id="addStaffBtn" title="Add New Staff"><i class="fa-solid fa-plus"></i> Add
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-md btn-neutral" id="editStaffBtn" title="Edit Selected Staff" disabled><i class="fa-solid fa-pen"></i> Edit
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-md btn-neutral" id="viewStaffBtn" title="View Selected Staff" disabled><i class="fa-solid fa-eye"></i> View
+        </button>
+        {% endif %}
+    </div>
+    {% if is_client_admin %}
+    <div class="btn-separator"></div>
+    <div class="btn-group">
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-md btn-neutral" id="assignStaffBtn" title="Assign Groups / Classes / Sections" disabled><i class="fa-solid fa-link"></i> Assign
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div class="btn-separator"></div>
+    <div class="btn-group">
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-md btn-danger" id="deleteStaffBtn" title="Delete Selected Staff" disabled><i class="fa-solid fa-trash"></i> Delete
+        </button>
+        {% endif %}
+        {% if perm_idcard_client_list %}
+        <button class="btn btn-md btn-warning" id="activeStaffBtn" title="Toggle Staff Status" disabled><i class="fa-solid fa-toggle-on"></i> Active
+        </button>
+        {% endif %}
+    </div>
+</div>

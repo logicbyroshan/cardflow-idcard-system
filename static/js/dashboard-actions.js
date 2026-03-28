@@ -5,12 +5,33 @@ window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
 
+    function setDashboardTableSkeleton(tbody, columnCount, rowCount) {
+        if (!tbody) return;
+        const lineWidths = ['78%', '66%', '72%', '63%', '70%'];
+        const rows = [];
+
+        for (let i = 0; i < rowCount; i++) {
+            const cells = [];
+            for (let c = 0; c < columnCount; c++) {
+                if (c === 0) {
+                    cells.push(`<td><span class="dash-skeleton dash-skeleton-line" style="width: ${lineWidths[i % lineWidths.length]};"></span></td>`);
+                } else {
+                    cells.push('<td><span class="dash-skeleton dash-skeleton-pill"></span></td>');
+                }
+            }
+            rows.push(`<tr class="dashboard-table-skeleton-row">${cells.join('')}</tr>`);
+        }
+
+        tbody.innerHTML = rows.join('');
+    }
+
     // ====================
     // Load Recent Client Updates
     // ====================
     function loadRecentClientUpdates() {
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
+        setDashboardTableSkeleton(tbody, 5, 3);
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
         ApiClient.get('/api/recent-client-updates/')
@@ -528,6 +549,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const reprintBody = document.getElementById('reprintOverviewBody');
         const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
+
+        setDashboardTableSkeleton(printBody, 3, 3);
+        setDashboardTableSkeleton(reprintBody, 3, 3);
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 

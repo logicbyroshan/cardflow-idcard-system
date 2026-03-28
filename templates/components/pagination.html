@@ -18,6 +18,7 @@ Parameters:
   - rows_toggle_id     : Rows toggle button ID (default: "rowsToggle")
   - rows_text_id       : Rows selected text ID (default: "rowsSelectedText")
   - rows_options_id    : Rows options container ID (default: "rowsOptions")
+  - rows_options_template : Options template path (default: "components/pagination-rows-options.html")
   - default_rows       : Default rows per page (default: "10")
 
 JS contract:
@@ -41,18 +42,6 @@ JS contract:
   </div>
   <div class="pagination-right">
     <label>Rows per page:</label>
-    <div class="custom-dropdown rows-dropdown" id="{{ rows_dropdown_id|default:'rowsDropdown' }}">
-      <button class="dropdown-toggle" id="{{ rows_toggle_id|default:'rowsToggle' }}" type="button" aria-expanded="false">
-        <span id="{{ rows_text_id|default:'rowsSelectedText' }}">{{ default_rows|default:"10" }}</span>
-        <i class="fa-solid fa-chevron-down"></i>
-      </button>
-      <div class="dropdown-options" id="{{ rows_options_id|default:'rowsOptions' }}">
-        <div class="dropdown-option" data-value="5">5</div>
-        <div class="dropdown-option selected" data-value="10">10</div>
-        <div class="dropdown-option" data-value="25">25</div>
-        <div class="dropdown-option" data-value="50">50</div>
-        <div class="dropdown-option" data-value="100">100</div>
-      </div>
-    </div>
+    {% include 'components/filter-dropdown.html' with dropdown_id=rows_dropdown_id|default:'rowsDropdown' dropdown_class='rows-dropdown' toggle_id=rows_toggle_id|default:'rowsToggle' options_id=rows_options_id|default:'rowsOptions' selected_text_id=rows_text_id|default:'rowsSelectedText' default_label=default_rows|default:'10' options_template=rows_options_template|default:'components/pagination-rows-options.html' %}
   </div>
 </div>

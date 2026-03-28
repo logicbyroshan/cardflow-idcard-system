@@ -47,28 +47,33 @@ def mobile_globals(request):
 
     ctx = {}
 
-    # ── Unread notification count ────────────────────────────────────────────
+    # ── Unread notification count (cached 30s per user) ──────────────────────
     try:
-        from core.models import Notification, NotificationRead
-        from django.db.models import Q
+        notif_cache_key = f'mobile:notif_count:{user.pk}'
+        notif_count = cache.get(notif_cache_key)
+        if notif_count is None:
+            from core.models import Notification, NotificationRead
+            from django.db.models import Q
 
-        active_ids = list(
-            Notification.objects
-            .filter(
-                Q(target='all') | Q(target=role) | Q(target='selected', target_users=user),
-                is_active=True,
+            active_ids = list(
+                Notification.objects
+                .filter(
+                    Q(target='all') | Q(target=role) | Q(target='selected', target_users=user),
+                    is_active=True,
+                )
+                .values_list('id', flat=True)
             )
-            .values_list('id', flat=True)
-        )
-        if active_ids:
-            read_ids = set(
-                NotificationRead.objects
-                .filter(user=user, notification_id__in=active_ids)
-                .values_list('notification_id', flat=True)
-            )
-            ctx['notification_count'] = min(len(set(active_ids) - read_ids), 99)
-        else:
-            ctx['notification_count'] = 0
+            if active_ids:
+                read_ids = set(
+                    NotificationRead.objects
+                    .filter(user=user, notification_id__in=active_ids)
+                    .values_list('notification_id', flat=True)
+                )
+                notif_count = min(len(set(active_ids) - read_ids), 99)
+            else:
+                notif_count = 0
+            cache.set(notif_cache_key, notif_count, 30)
+        ctx['notification_count'] = notif_count
     except Exception:
         logger.exception(
             'mobile_globals: notification_count query failed for user %s', user.pk,
