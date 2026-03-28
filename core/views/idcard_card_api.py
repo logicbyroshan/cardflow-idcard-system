@@ -134,22 +134,19 @@ def api_idcard_list(request, table_id):
         if not scoped_payload.get('success'):
             return scoped_resp
 
+        # Compute scoped status counts in a single aggregate query.
+        # The row-scoped queryset is built once and reused for the aggregate.
         from django.db.models import Count
-        scoped_counts = {
-            'pending': 0,
-            'verified': 0,
-            'pool': 0,
-            'approved': 0,
-            'download': 0,
-            'reprint': 0,
-            'total': 0,
-        }
         scoped_cards_qs = _apply_client_staff_row_scope(
             IDCard.objects.filter(table=table),
             request.user,
             table,
         )
-        for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
+        scoped_counts = {
+            'pending': 0, 'verified': 0, 'pool': 0,
+            'approved': 0, 'download': 0, 'reprint': 0, 'total': 0,
+        }
+        for row in scoped_cards_qs.order_by().values('status').annotate(count=Count('id')):
             st = row.get('status')
             ct = row.get('count', 0)
             if st in scoped_counts:
@@ -266,14 +263,20 @@ def api_idcard_cards_json(request, table_id):
     # Verified/Approved: most recently changed first (-status_changed_at), then id
     # Download: most recently downloaded first
     # Pool: most recently pooled first
+    # .only() skips columns not needed for virtual table rendering (e.g. original_photo_name)
+    _only_fields = (
+        'id', 'table_id', 'field_data', 'photo', 'status',
+        'created_at', 'updated_at', 'downloaded_at', 'deleted_at',
+        'status_changed_at', 'modified_by',
+    )
     if status_filter == 'download':
-        qs = IDCard.objects.filter(table=table).order_by('-downloaded_at', '-id')
+        qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
-        qs = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
+        qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-deleted_at', '-id')
     elif status_filter in ('verified', 'approved'):
-        qs = IDCard.objects.filter(table=table).order_by('-status_changed_at', 'id')
+        qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-status_changed_at', 'id')
     else:
-        qs = IDCard.objects.filter(table=table).order_by('-created_at', 'id')
+        qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-created_at', 'id')
 
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)
@@ -939,7 +942,19 @@ def api_idcard_bulk_delete(request, table_id):
         if delete_all:
             confirmation_code = data.get('confirmation_code', '')
             session_key = f'delete_all_code_{table_id}'
+            attempt_key = f'delete_all_attempts_{table_id}'
             expected_code = request.session.get(session_key)
+
+            try:
+                attempts = int(request.session.get(attempt_key, 0) or 0)
+            except (TypeError, ValueError):
+                attempts = 0
+
+            if attempts >= 5:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Too many failed attempts. Request a new code.'
+                }, status=429)
             
             if not expected_code:
                 return JsonResponse({
@@ -948,13 +963,16 @@ def api_idcard_bulk_delete(request, table_id):
                 }, status=400)
             
             if str(confirmation_code) != str(expected_code):
+                request.session[attempt_key] = attempts + 1
+                request.session.modified = True
                 return JsonResponse({
                     'success': False,
                     'message': 'Invalid confirmation code. Delete aborted.'
                 }, status=403)
             
             # Code verified — clear it so it can't be reused
-            del request.session[session_key]
+            request.session.pop(attempt_key, None)
+            request.session.pop(session_key, None)
             request.session.modified = True
         
         result = IDCardService.bulk_delete(table_id, card_ids, delete_all)
@@ -982,6 +1000,7 @@ def api_generate_delete_code(request, table_id):
         
         code = str(secrets.randbelow(9000000000) + 1000000000)
         request.session[f'delete_all_code_{table_id}'] = code
+        request.session.pop(f'delete_all_attempts_{table_id}', None)
         request.session.modified = True
         
         return JsonResponse({
@@ -1103,7 +1122,7 @@ def api_table_status_counts(request, table_id):
                 'reprint': 0,
                 'total': 0,
             }
-            for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
+            for row in scoped_cards_qs.order_by().values('status').annotate(count=Count('id')):
                 st = row.get('status')
                 ct = row.get('count', 0)
                 if st in status_counts:

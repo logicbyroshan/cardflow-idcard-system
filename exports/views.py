@@ -138,11 +138,22 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
         try:
             from django.db.models.fields.json import KeyTextTransform
             from core.views.idcard_api import _get_class_section_field_names
-            
-            qs = IDCard.objects.filter(table_id=table_id)
+
+            table = IDCardTable.objects.select_related('group').filter(id=table_id).first()
+            if not table:
+                return None
+
+            user = getattr(request, 'user', None)
+            if not user or not getattr(user, 'is_authenticated', False):
+                logger.warning("Export fallback blocked for unauthenticated request on table %s", table_id)
+                return None
+            if not PermissionService.can_access_client(user, table.group.client_id):
+                logger.warning("Export fallback blocked for unauthorized user %s on table %s", getattr(user, 'id', None), table_id)
+                return None
+
+            qs = IDCard.objects.filter(table=table)
             if status:
                 qs = qs.filter(status=status)
-            table = IDCardTable.objects.filter(id=table_id).first()
             if search_q:
                 qs = IDCardService._apply_search_filter(qs, search_q, table=table)
             # Use proper JSON field extraction for exact class/section matching

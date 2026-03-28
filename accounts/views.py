@@ -471,6 +471,8 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
 
     def post(self, request):
         from .services_impersonate import ImpersonateService
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
         try:
             data = json.loads(request.body)
             target_user_id = data.get('user_id')

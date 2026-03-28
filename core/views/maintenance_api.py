@@ -15,6 +15,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from core.services.maintenance_service import MaintenanceService
+from core.services.permission_service import PermissionService
 from core.services.permission_service import require_super_admin
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,10 @@ logger = logging.getLogger(__name__)
 @login_required
 @require_http_methods(['GET'])
 def api_system_maintenance_check(request):
-    """Lightweight poll — returns { enabled: bool, end_time: str|null }."""
+    """Lightweight poll with role-aware payload."""
     status = MaintenanceService.get_status()
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'enabled': bool(status.get('enabled', False))})
     return JsonResponse(status)
 
 

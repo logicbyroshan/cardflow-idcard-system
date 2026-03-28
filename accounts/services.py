@@ -58,6 +58,11 @@ OTP_MAX_ATTEMPTS = 3
 # Login hardening settings (cache-based per-identifier throttle)
 AUTH_FAIL_WINDOW_SECONDS = int(os.getenv('AUTH_FAIL_WINDOW_SECONDS', '900'))
 AUTH_FAIL_MAX_ATTEMPTS = int(os.getenv('AUTH_FAIL_MAX_ATTEMPTS', '15'))
+AUTH_FAIL_NOTIFY_THRESHOLD = int(os.getenv('AUTH_FAIL_NOTIFY_THRESHOLD', '5'))
+AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS = int(
+    os.getenv('AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS', str(AUTH_FAIL_WINDOW_SECONDS))
+)
+DEV_LOG_OTP = os.getenv('DEV_LOG_OTP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 def _normalize_identifier(value: str) -> str:
@@ -70,13 +75,20 @@ def _auth_fail_cache_key(identifier: str) -> str:
     return f'auth_fail:{digest}'
 
 
-def _revoke_user_sessions(user_id: int) -> None:
-    """Best-effort revocation of all active DB sessions for a user."""
+def _auth_fail_notify_cache_key(identifier: str) -> str:
+    digest = hashlib.sha256(identifier.encode('utf-8')).hexdigest()
+    return f'auth_fail_notify:{digest}'
+
+
+def _revoke_user_sessions(user_id: int, *, exclude_session_key: str = '') -> None:
+    """Best-effort revocation of active DB sessions for a user."""
     from django.contrib.sessions.models import Session
 
     try:
         qs = Session.objects.filter(expire_date__gt=timezone.now())
         for session in qs.iterator(chunk_size=200):
+            if exclude_session_key and session.session_key == exclude_session_key:
+                continue
             try:
                 data = session.get_decoded()
             except Exception:
@@ -165,15 +177,53 @@ class AuthService:
     @staticmethod
     def _record_login_failure(identifier: str) -> None:
         if not identifier:
-            return
+            return 0
         key = _auth_fail_cache_key(identifier)
         try:
             cache.add(key, 0, AUTH_FAIL_WINDOW_SECONDS)
-            cache.incr(key)
+            return int(cache.incr(key) or 0)
         except ValueError:
             cache.set(key, 1, AUTH_FAIL_WINDOW_SECONDS)
+            return 1
         except Exception:
-            pass
+            return 0
+
+    @staticmethod
+    def _maybe_notify_failed_login(user, identifier: str, attempts: int) -> None:
+        """Send best-effort suspicious login notification without changing API responses."""
+        if not user or not getattr(user, 'email', ''):
+            return
+        if attempts < max(1, AUTH_FAIL_NOTIFY_THRESHOLD):
+            return
+
+        notify_key = _auth_fail_notify_cache_key(identifier)
+        # cache.add => notify only once per cooldown window.
+        try:
+            should_notify = cache.add(notify_key, 1, AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS)
+        except Exception:
+            return
+        if not should_notify:
+            return
+
+        try:
+            subject = 'Security Alert: Multiple failed login attempts'
+            message = (
+                f'Hi {user.get_full_name() or user.username},\n\n'
+                'We detected multiple failed login attempts for your account.\n'
+                f'Attempts observed: {attempts}\n\n'
+                'If this was not you, please change your password immediately and contact support.\n\n'
+                'Adarsh Admin Security'
+            )
+            send_mail_async(
+                subject=subject,
+                message=message,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+                recipient_list=[user.email],
+                email_type='security_alert',
+                skip_logging=False,
+            )
+        except Exception as exc:
+            logger.warning('Failed to send login-failure alert for user=%s: %s', user.pk, exc)
 
     @staticmethod
     def _clear_login_failures(identifier: str) -> None:
@@ -217,17 +267,20 @@ class AuthService:
             # Check role if specified
             if role and user.role != role:
                 if not (role == 'super_admin' and user.role == 'pro_user'):
-                    AuthService._record_login_failure(identifier)
+                    attempts = AuthService._record_login_failure(identifier)
+                    AuthService._maybe_notify_failed_login(user, identifier, attempts)
                     return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             if not user.is_active:
-                AuthService._record_login_failure(identifier)
+                attempts = AuthService._record_login_failure(identifier)
+                AuthService._maybe_notify_failed_login(user, identifier, attempts)
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             authenticated_user = authenticate(username=user.username, password=password)
 
             if authenticated_user is None:
-                AuthService._record_login_failure(identifier)
+                attempts = AuthService._record_login_failure(identifier)
+                AuthService._maybe_notify_failed_login(user, identifier, attempts)
                 return {'success': False, 'message': _AUTH_FAIL_MSG}
 
             AuthService._clear_login_failures(identifier)
@@ -353,7 +406,10 @@ class OTPService:
             
             # Send email (or just log in development)
             if settings.DEBUG:
-                logger.info("[DEV] OTP for %s: %s", email, otp)
+                if getattr(settings, 'DEV_LOG_OTP', DEV_LOG_OTP):
+                    logger.info("[DEV] OTP for %s: %s", email, otp)
+                else:
+                    logger.debug("[DEV] OTP generated for %s (logging suppressed)", email)
                 log.status = EmailLog.STATUS_SENT
                 log.sent_at = timezone.now()
                 log.error_message = ''

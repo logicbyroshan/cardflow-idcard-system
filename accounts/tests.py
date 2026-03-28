@@ -351,6 +351,25 @@ class AuthServiceRoleEdgeTests(TestCase):
             unblocked = services.AuthService.authenticate_user('locked@example.com', 'lockpass123')
             self.assertTrue(unblocked['success'])
 
+    @mock.patch('accounts.services.send_mail_async')
+    def test_authenticate_sends_failed_login_alert_after_threshold(self, mocked_send_mail):
+        from accounts import services
+
+        cache.clear()
+        User.objects.create_user(
+            username='alert@example.com',
+            email='alert@example.com',
+            password='alertpass123',
+            role='client',
+        )
+
+        with mock.patch.object(services, 'AUTH_FAIL_NOTIFY_THRESHOLD', 2), \
+             mock.patch.object(services, 'AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS', 300):
+            services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
+            services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
+
+        self.assertEqual(mocked_send_mail.call_count, 1)
+
 
 class OTPServiceEdgeTests(TestCase):
     def setUp(self):
@@ -475,6 +494,31 @@ class UserProfileServiceTests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('newpass123'))
 
+    def test_change_password_revokes_other_sessions_keeps_current(self):
+        from django.test import Client
+        from accounts.services_profile import UserProfileService
+
+        client_a = Client()
+        client_b = Client()
+        self.assertTrue(client_a.login(username='profile@example.com', password='testpass123'))
+        self.assertTrue(client_b.login(username='profile@example.com', password='testpass123'))
+
+        key_a = client_a.session.session_key
+        key_b = client_b.session.session_key
+        self.assertTrue(Session.objects.filter(session_key=key_a).exists())
+        self.assertTrue(Session.objects.filter(session_key=key_b).exists())
+
+        success, _message = UserProfileService.change_password(
+            self.user,
+            'testpass123',
+            'newpass123',
+            current_session_key=key_a,
+        )
+        self.assertTrue(success)
+
+        self.assertTrue(Session.objects.filter(session_key=key_a).exists())
+        self.assertFalse(Session.objects.filter(session_key=key_b).exists())
+
     def test_change_password_rejects_wrong_current(self):
         from accounts.services_profile import UserProfileService
         success, message = UserProfileService.change_password(self.user, 'wrong', 'newpass123')
@@ -565,6 +609,15 @@ class ImpersonationApiTests(TestCase):
     def test_impersonation_list_requires_pro_user(self):
         self.client.login(username='normal-user@example.com', password='testpass123')
         response = self.client.get('/panel/api/auth/impersonate/users/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_impersonation_start_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.post(
+            '/panel/api/auth/impersonate/start/',
+            data=json.dumps({'user_id': self.target_user.id}),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_pro_user_can_start_and_stop_impersonation(self):

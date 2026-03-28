@@ -49,6 +49,15 @@ class CoreConfig(AppConfig):
         # SQLite WAL mode for concurrent access (dev env; production uses PostgreSQL)
         from django.db.backends.signals import connection_created
         connection_created.connect(_set_sqlite_pragmas)
+
+        # Register security revalidation signals once at startup.
+        try:
+            from core.services.session_revalidation import register_revalidation_signals
+            register_revalidation_signals()
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("Session revalidation signal registration failed: %s", e)
         
         # Skip cleanup during migrations and other management commands
         running_server = (

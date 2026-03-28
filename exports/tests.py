@@ -148,9 +148,32 @@ class ExportViewHelperTests(TestCase):
             data=json.dumps({'status': 'pending'}),
             content_type='application/json',
         )
+        request.user = self.admin
 
         ids = _get_card_ids_from_request(request, table_id=self.table.id)
         self.assertEqual(len(ids), 5)
+
+    def test_get_card_ids_fallback_requires_client_scope(self):
+        from client.models import Client
+        from exports.views import _get_card_ids_from_request
+
+        outsider = User.objects.create_user(
+            username='export-outsider@test.com',
+            email='export-outsider@test.com',
+            password='pass1234',
+            role='client',
+        )
+        Client.objects.create(user=outsider, name='Outsider Client')
+
+        request = self.factory.post(
+            f'/panel/exports/xlsx/{self.table.id}/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+        )
+        request.user = outsider
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertIsNone(ids)
 
     def test_get_image_rename_options_filters_invalid_pairs(self):
         from exports.views import _get_image_rename_options_from_request

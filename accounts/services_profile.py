@@ -63,7 +63,7 @@ class UserProfileService:
         }
 
     @staticmethod
-    def change_password(user, current_password, new_password):
+    def change_password(user, current_password, new_password, current_session_key=None):
         """
         Change user's password after validating current password.
         Uses Django AUTH_PASSWORD_VALIDATORS for strength checks.
@@ -84,6 +84,14 @@ class UserProfileService:
 
         user.set_password(new_password)
         user.save()
+
+        # Security hardening: revoke other active sessions after password change.
+        try:
+            from accounts.services import _revoke_user_sessions
+            _revoke_user_sessions(user.pk, exclude_session_key=current_session_key or '')
+        except Exception as exc:
+            logger.warning('Password-change session revocation failed for user=%s: %s', user.pk, exc)
+
         return True, 'Password changed successfully'
 
     @staticmethod
