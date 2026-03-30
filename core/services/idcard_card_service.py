@@ -15,7 +15,7 @@ from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q, CharField
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Coalesce
 from django.utils.timezone import localtime
 
 from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -371,8 +371,7 @@ class IDCardCardService(BaseService):
                         pass
 
             # --- Sorting ---
-            # sr-asc / sr-desc: newest upload batch first, Excel row order within batch.
-            # Verified/approved: most recently changed first.
+            # sr-asc default: newest status movement first (with created_at fallback).
             if sort_order == 'sr-desc':
                 cards_query = cards_query.order_by('created_at', '-id')
             elif sort_order == 'name-asc':
@@ -397,17 +396,17 @@ class IDCardCardService(BaseService):
             elif sort_order == 'date-old':
                 cards_query = cards_query.order_by('updated_at', 'id')
             else:
-                # Default: sr-asc — newest batch first, Excel row order within batch
-                # Verified/approved: most recently status-changed first
-                # Download/pool: most-recently-moved first
+                # Default: sr-asc — newest action first in destination list.
+                # Download/pool keep dedicated movement timestamps.
+                # Other statuses use status_changed_at with created_at fallback.
                 if status_filter == 'download':
                     cards_query = cards_query.order_by('-downloaded_at', '-id')
                 elif status_filter == 'pool':
                     cards_query = cards_query.order_by('-deleted_at', '-id')
-                elif status_filter in ('verified', 'approved'):
-                    cards_query = cards_query.order_by('-status_changed_at', 'id')
                 else:
-                    cards_query = cards_query.order_by('-created_at', 'id')
+                    cards_query = cards_query.annotate(
+                        _status_sort_at=Coalesce('status_changed_at', 'created_at')
+                    ).order_by('-_status_sort_at', '-id')
 
             total_count = cards_query.count()
             cards = cards_query[offset:offset + limit]

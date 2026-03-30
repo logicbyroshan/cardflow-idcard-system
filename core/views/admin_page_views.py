@@ -289,15 +289,21 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
 
-    # ── Base queryset — newest batch/action first, Excel order within batch ──
+    # ── Base queryset — newest action first in each status list ──
+    # Pending/Verified/Approved/Reprint are sorted by last status movement,
+    # with created_at fallback for legacy rows where status_changed_at is null.
+    from django.db.models.functions import Coalesce
     if status_filter == 'download':
         id_cards_query = IDCard.objects.filter(table=table).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
         id_cards_query = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
-    elif status_filter in ('verified', 'approved'):
-        id_cards_query = IDCard.objects.filter(table=table).order_by('-status_changed_at', 'id')
     else:
-        id_cards_query = IDCard.objects.filter(table=table).order_by('-created_at', 'id')
+        id_cards_query = (
+            IDCard.objects
+            .filter(table=table)
+            .annotate(_status_sort_at=Coalesce('status_changed_at', 'created_at'))
+            .order_by('-_status_sort_at', '-id')
+        )
     if status_filter and status_filter in _VALID_STATUSES:
         id_cards_query = id_cards_query.filter(status=status_filter)
 

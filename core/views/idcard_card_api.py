@@ -295,12 +295,13 @@ def api_idcard_cards_json(request, table_id):
     except (ValueError, TypeError):
         offset, limit = 0, 100
 
-    # Base queryset — newest batch/action first, Excel order within same batch
-    # Pending: latest upload first (-created_at), then Excel row order (id)
-    # Verified/Approved: most recently changed first (-status_changed_at), then id
+    # Base queryset — newest action first in each status list.
+    # Pending/Verified/Approved/Reprint use status_changed_at with created_at fallback
+    # so cards that were just moved between statuses appear at the top.
     # Download: most recently downloaded first
     # Pool: most recently pooled first
     # .only() skips columns not needed for virtual table rendering (e.g. original_photo_name)
+    from django.db.models.functions import Coalesce
     _only_fields = (
         'id', 'table_id', 'field_data', 'photo', 'status',
         'created_at', 'updated_at', 'downloaded_at', 'deleted_at',
@@ -310,10 +311,14 @@ def api_idcard_cards_json(request, table_id):
         qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-downloaded_at', '-id')
     elif status_filter == 'pool':
         qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-deleted_at', '-id')
-    elif status_filter in ('verified', 'approved'):
-        qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-status_changed_at', 'id')
     else:
-        qs = IDCard.objects.filter(table=table).only(*_only_fields).order_by('-created_at', 'id')
+        qs = (
+            IDCard.objects
+            .filter(table=table)
+            .only(*_only_fields)
+            .annotate(_status_sort_at=Coalesce('status_changed_at', 'created_at'))
+            .order_by('-_status_sort_at', '-id')
+        )
 
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)
