@@ -515,6 +515,11 @@ def api_global_search(request):
         
         results = []
         query_upper = query.upper()
+        non_searchable_field_types = {
+            'photo', 'mother_photo', 'father_photo', 'image',
+            'signature', 'file', 'barcode', 'qr_code'
+        }
+        non_searchable_name_tokens = ('PHOTO', 'IMAGE', 'SIGN', 'BARCODE', 'QR', 'FILE')
         
         # Build base queryset - scope by user role
         base_cards = IDCard.objects.select_related(
@@ -567,13 +572,29 @@ def api_global_search(request):
             field_data = card.field_data or {}
             matched_field = ''
             matched_value = ''
+
+            field_type_by_name = {}
+            if card.table and card.table.fields:
+                for field in card.table.fields:
+                    fname = str(field.get('name', '')).strip().upper()
+                    if not fname:
+                        continue
+                    field_type_by_name[fname] = str(field.get('type', 'text')).strip().lower()
             
             # Find which field matched
             for field_name, field_value in field_data.items():
                 if not field_value:
                     continue
                     
-                field_name_upper = field_name.upper()
+                field_name_upper = str(field_name).upper()
+                field_type = field_type_by_name.get(field_name_upper, '')
+
+                # Ignore image/file-like columns so storage paths do not pollute search.
+                if field_type in non_searchable_field_types:
+                    continue
+                if (not field_type) and any(token in field_name_upper for token in non_searchable_name_tokens):
+                    continue
+
                 field_value_str = str(field_value).upper()
                 
                 # Apply filter
@@ -590,8 +611,8 @@ def api_global_search(request):
                     matched_value = str(field_value)
                     break
             
-            # Skip if filter was applied but no matching field found
-            if filter_type != 'all' and not matched_field:
+            # Skip cards where no searchable field value actually matched.
+            if not matched_field:
                 continue
                 
             # Get display name from first text field

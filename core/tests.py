@@ -328,6 +328,27 @@ class GlobalSearchTests(TestCase):
         data = response.json()
         self.assertEqual(data['count'], 0)
 
+    def test_search_does_not_match_json_key_names(self):
+        self.client.login(username='admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/global-search/?q=NAME')
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['count'], 0)
+
+    def test_search_does_not_match_image_storage_paths(self):
+        _create_card(self.table, {
+            'NAME': 'CHARLIE',
+            'CLASS': '8',
+            'PHOTO': 'adarshimg/ROS-IMAGE-PATH-123.jpg',
+        })
+        cache.clear()
+
+        self.client.login(username='admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/global-search/?q=ROS-IMAGE-PATH-123')
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['count'], 0)
+
 
 # ── Middleware Tests ──
 class MiddlewareTests(TestCase):
