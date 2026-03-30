@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function updateDrawerFilterVisibility() {
+    function updateDrawerFilterVisibility(hasGroupSelection) {
         var filterSection = document.getElementById('class-section-filter-section');
         var classGroup = document.getElementById('class-filter-group');
         var sectionGroup = document.getElementById('section-filter-group');
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var showClass = fieldCapabilities.hasClass;
         var showSection = fieldCapabilities.hasSection;
         var showBranch = fieldCapabilities.hasBranch;
-        var showAny = showClass || showSection || showBranch;
+        var showAny = hasGroupSelection && (showClass || showSection || showBranch);
 
         if (!showClass) selectedClasses.clear();
         if (!showSection) selectedSections.clear();
@@ -218,162 +218,561 @@ document.addEventListener('DOMContentLoaded', function () {
         if (branchRow) branchRow.style.display = showBranch ? '' : 'none';
     }
 
-    function updateAssignFilterVisibility() {
-        var classBlock = document.getElementById('assign-class-block');
-        var sectionBlock = document.getElementById('assign-section-block');
-        var branchBlock = document.getElementById('assign-branch-block');
+    var currentAssignedGroupIds = [];
+    var currentDraftGroupId = null;
+    var assignmentGroupsById = {};
+    var assignmentScopeChips = {};
 
-        var showClass = fieldCapabilities.hasClass;
-        var showSection = fieldCapabilities.hasSection;
-        var showBranch = fieldCapabilities.hasBranch;
+    function renderCheckboxOptions(containerId, options, selectedSet, onToggle) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
 
-        if (!showClass) assignSelectedClasses.clear();
-        if (!showSection) assignSelectedSections.clear();
-        if (!showBranch) assignSelectedBranches.clear();
-
-        if (classBlock) classBlock.style.display = showClass ? '' : 'none';
-        if (sectionBlock) sectionBlock.style.display = showSection ? '' : 'none';
-        if (branchBlock) branchBlock.style.display = showBranch ? '' : 'none';
-    }
-
-    function buildCsMultiselect(prefix, allItems, selectedSet, getItemsFn, onSelectionChange) {
-        var toggle   = document.getElementById(prefix + '-multiselect-toggle');
-        var dropdown = document.getElementById(prefix + '-multiselect-dropdown');
-        var list     = document.getElementById(prefix + '-multiselect-list');
-        var text     = document.getElementById(prefix + '-multiselect-text');
-        var search   = document.getElementById(prefix + '-search-input');
-        var empty    = document.getElementById(prefix + '-multiselect-empty');
-        if (!toggle || !list) return;
-
-        function _items() {
-            return typeof getItemsFn === 'function' ? (getItemsFn() || []) : (allItems || []);
+        container.innerHTML = '';
+        var normalized = (options || []).map(function (v) { return String(v); });
+        if (!normalized.length) {
+            container.innerHTML = '<div class="assignment-options-empty">No options available.</div>';
+            return;
         }
 
-        function render(filter) {
-            list.innerHTML = '';
-            var term = (filter || '').toLowerCase().trim();
-            var sourceItems = _items();
-            var filtered = sourceItems.filter(function (v) { return !term || v.toLowerCase().includes(term); });
-            filtered.sort(function (a, b) {
-                var sa = selectedSet.has(a) ? 0 : 1, sb = selectedSet.has(b) ? 0 : 1;
-                if (sa !== sb) return sa - sb;
-                return a.localeCompare(b);
+        normalized.forEach(function (value) {
+            var safeId = containerId + '-' + value.replace(/[^a-zA-Z0-9_-]/g, '_');
+            var label = document.createElement('label');
+            label.className = 'assignment-checkbox-item';
+            label.setAttribute('for', safeId);
+
+            var input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = safeId;
+            input.checked = selectedSet.has(value);
+            input.addEventListener('change', function () {
+                if (input.checked) selectedSet.add(value);
+                else selectedSet.delete(value);
+                if (typeof onToggle === 'function') onToggle(value, input.checked);
             });
-            if (filtered.length === 0) { if (empty) empty.style.display = ''; return; }
-            if (empty) empty.style.display = 'none';
-            filtered.forEach(function (val) {
-                var div = document.createElement('div');
-                div.className = 'client-multiselect-item' + (selectedSet.has(val) ? ' selected' : '');
-                div.innerHTML = '<input type="checkbox" ' + (selectedSet.has(val) ? 'checked' : '') + '><span class="client-name">' + _esc(val) + '</span>';
-                div.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var cb = div.querySelector('input[type="checkbox"]');
-                    if (e.target !== cb) cb.checked = !cb.checked;
-                    if (cb.checked) { selectedSet.add(val); div.classList.add('selected'); }
-                    else            { selectedSet.delete(val); div.classList.remove('selected'); }
-                    updateText();
-                    if (typeof onSelectionChange === 'function') onSelectionChange(val, cb.checked);
+
+            var text = document.createElement('span');
+            text.textContent = value;
+
+            label.appendChild(input);
+            label.appendChild(text);
+            container.appendChild(label);
+        });
+    }
+
+    function _normalizeStringList(values) {
+        return Array.from(new Set((values || []).map(function (v) {
+            return String(v || '').trim();
+        }).filter(function (v) {
+            return !!v;
+        })));
+    }
+
+    function _cloneClassSectionMap(mapObj) {
+        var out = {};
+        Object.keys(mapObj || {}).forEach(function (k) {
+            out[String(k)] = (mapObj[k] || []).map(function (v) { return String(v); });
+        });
+        return out;
+    }
+
+    function _chipKey(groupId) {
+        return String(parseInt(groupId, 10));
+    }
+
+    function _getGroupName(groupId) {
+        var key = _chipKey(groupId);
+        return assignmentGroupsById[key] || ('Group #' + key);
+    }
+
+    function _pruneChipSelection(chip) {
+        if (!chip) return;
+
+        chip.classes = _normalizeStringList(chip.classes).filter(function (v) {
+            return !chip.classOptions.length || chip.classOptions.indexOf(v) !== -1;
+        });
+
+        var allowedSections = chip.sectionOptions.slice();
+        if (chip.hasClass && chip.classes.length) {
+            var allowedFromClass = new Set();
+            chip.classes.forEach(function (cls) {
+                (chip.classSectionMap[cls] || []).forEach(function (sec) {
+                    allowedFromClass.add(String(sec));
                 });
-                list.appendChild(div);
+            });
+            allowedSections = allowedSections.filter(function (sec) {
+                return allowedFromClass.has(String(sec));
             });
         }
 
-        function updateText() {
-            if (!text) return;
-            var count = selectedSet.size;
-            if (count === 0) { text.textContent = prefix === 'class' ? 'All classes' : (prefix === 'branch' ? 'All branches' : 'All sections'); text.classList.remove('has-selection'); }
-            else if (count <= 2) { text.textContent = Array.from(selectedSet).join(', '); text.classList.add('has-selection'); }
-            else { text.textContent = count + ' selected'; text.classList.add('has-selection'); }
-        }
-
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            if (dropdown.style.display !== 'none') { dropdown.style.display = 'none'; toggle.classList.remove('open'); }
-            else { dropdown.style.display = ''; toggle.classList.add('open'); if (search) { search.value = ''; search.focus(); } render(); }
-        });
-        if (search) {
-            search.addEventListener('input', function () { render(search.value); });
-            search.addEventListener('click', function (e) { e.stopPropagation(); });
-        }
-        document.addEventListener('click', function (e) {
-            if (dropdown.style.display !== 'none') {
-                var container = document.getElementById(prefix + '-multiselect');
-                if (container && !container.contains(e.target)) { dropdown.style.display = 'none'; toggle.classList.remove('open'); }
-            }
+        chip.sections = _normalizeStringList(chip.sections).filter(function (v) {
+            return allowedSections.indexOf(v) !== -1;
         });
 
-        return { render: render, updateText: updateText };
+        chip.branches = _normalizeStringList(chip.branches).filter(function (v) {
+            return !chip.branchOptions.length || chip.branchOptions.indexOf(v) !== -1;
+        });
     }
 
-    var classMs = null;
-    var sectionMs = null;
-    var branchMs = null;
+    function _getChipAvailableSections(chip) {
+        if (!chip) return [];
+        if (!chip.hasClass || !chip.classes.length) return chip.sectionOptions.slice();
+
+        var out = new Set();
+        chip.classes.forEach(function (cls) {
+            (chip.classSectionMap[cls] || []).forEach(function (sec) {
+                out.add(String(sec));
+            });
+        });
+
+        var allSectionsForGroup = chip.sectionOptions.slice();
+        if (!allSectionsForGroup.length) {
+            return Array.from(out).sort(function (a, b) { return a.localeCompare(b); });
+        }
+        return allSectionsForGroup.filter(function (sec) {
+            return out.has(String(sec));
+        });
+    }
+
+    function _ensureChip(groupId) {
+        var key = _chipKey(groupId);
+        if (assignmentScopeChips[key]) return assignmentScopeChips[key];
+
+        assignmentScopeChips[key] = {
+            groupId: parseInt(groupId, 10),
+            groupName: _getGroupName(groupId),
+            classes: [],
+            sections: [],
+            branches: [],
+            classOptions: [],
+            sectionOptions: [],
+            branchOptions: [],
+            classSectionMap: {},
+            hasClass: true,
+            hasSection: true,
+            hasBranch: true,
+            optionsLoaded: false,
+            isEditing: false,
+            pendingGlobalClasses: null,
+            pendingGlobalSections: null,
+            pendingGlobalBranches: null,
+            initializedFromGlobal: true,
+        };
+        return assignmentScopeChips[key];
+    }
+
+    async function ensureChipOptionsLoaded(chip) {
+        if (!chip || chip.optionsLoaded) return;
+        try {
+            await loadAssignGroups();
+            var resp = await fetch(_buildGroupScopedOptionsUrl([chip.groupId]), { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            var data = await resp.json();
+            if (!data.success) return;
+
+            chip.classOptions = _normalizeStringList(data.classes || []);
+            chip.sectionOptions = _normalizeStringList(data.sections || []);
+            chip.branchOptions = _normalizeStringList(data.branches || []);
+            chip.classSectionMap = _cloneClassSectionMap(data.class_sections || {});
+            chip.hasClass = data.has_class_field === true || chip.classOptions.length > 0;
+            chip.hasSection = data.has_section_field === true || chip.sectionOptions.length > 0;
+            chip.hasBranch = data.has_branch_field === true || chip.branchOptions.length > 0;
+
+            if (chip.initializedFromGlobal === false) {
+                var pendingClasses = _normalizeStringList(chip.pendingGlobalClasses || []);
+                var pendingSections = _normalizeStringList(chip.pendingGlobalSections || []);
+                var pendingBranches = _normalizeStringList(chip.pendingGlobalBranches || []);
+
+                chip.classes = pendingClasses.filter(function (v) {
+                    return chip.classOptions.indexOf(v) !== -1;
+                });
+                chip.sections = pendingSections.filter(function (v) {
+                    return chip.sectionOptions.indexOf(v) !== -1;
+                });
+                chip.branches = pendingBranches.filter(function (v) {
+                    return chip.branchOptions.indexOf(v) !== -1;
+                });
+
+                chip.pendingGlobalClasses = null;
+                chip.pendingGlobalSections = null;
+                chip.pendingGlobalBranches = null;
+                chip.initializedFromGlobal = true;
+            }
+
+            chip.optionsLoaded = true;
+            _pruneChipSelection(chip);
+        } catch (_) {}
+    }
+
+    function hydrateChipOptionsInBackground() {
+        var keys = Object.keys(assignmentScopeChips);
+        if (!keys.length) return;
+
+        (async function () {
+            var changed = false;
+            for (var i = 0; i < keys.length; i += 1) {
+                var chip = assignmentScopeChips[keys[i]];
+                if (!chip) continue;
+                var beforeLoaded = chip.optionsLoaded;
+                await ensureChipOptionsLoaded(chip);
+                if (!beforeLoaded && chip.optionsLoaded) changed = true;
+            }
+            if (changed) renderAssignmentScopeChips();
+        })();
+    }
+
+    function updateCurrentChipActionLabel() {
+        var btn = document.getElementById('save-current-assignment-chip-btn');
+        if (!btn) return;
+        if (!currentDraftGroupId) {
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Group Assignment';
+            return;
+        }
+
+        var key = _chipKey(currentDraftGroupId);
+        if (assignmentScopeChips[key]) {
+            btn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Update Group Assignment';
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Group Assignment';
+        }
+    }
+
+    function renderAssignmentScopeChips() {
+        var chipList = document.getElementById('group-assignment-chip-list');
+        if (!chipList) return;
+
+        var keys = Object.keys(assignmentScopeChips).sort(function (a, b) {
+            var aName = (assignmentScopeChips[a].groupName || '').toLowerCase();
+            var bName = (assignmentScopeChips[b].groupName || '').toLowerCase();
+            return aName.localeCompare(bName);
+        });
+
+        chipList.innerHTML = '';
+        if (!keys.length) {
+            chipList.innerHTML = '<div class="assignment-options-empty" id="group-assignment-chip-empty">No group assignments added yet.</div>';
+            updateCurrentChipActionLabel();
+            return;
+        }
+
+        function addChipGroup(container, chip, labelText, values, selectedValues, valueKey) {
+            if (!values.length && !selectedValues.length) return;
+
+            var wrap = document.createElement('div');
+            wrap.className = 'assignment-scope-chip-group';
+
+            var label = document.createElement('div');
+            label.className = 'assignment-scope-chip-group-label';
+            label.textContent = labelText;
+            wrap.appendChild(label);
+
+            var list = document.createElement('div');
+            list.className = 'assignment-chip-checkbox-list';
+
+            var normalizedValues = _normalizeStringList(values.length ? values : selectedValues);
+            if (!normalizedValues.length) {
+                var empty = document.createElement('div');
+                empty.className = 'assignment-options-empty';
+                empty.textContent = 'No values selected.';
+                list.appendChild(empty);
+            } else {
+                normalizedValues.forEach(function (val) {
+                    var safe = String(chip.groupId) + '-' + valueKey + '-' + val.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    var isAssigned = selectedValues.indexOf(val) !== -1;
+                    var row = document.createElement(chip.isEditing ? 'label' : 'div');
+                    row.className = 'assignment-chip-checkbox-item ' + (isAssigned ? 'is-assigned' : 'is-unassigned');
+                    if (chip.isEditing) {
+                        row.setAttribute('for', safe);
+                    }
+
+                    if (chip.isEditing) {
+                        var input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.id = safe;
+                        input.checked = isAssigned;
+                        input.addEventListener('change', function () {
+                            var target = chip[valueKey];
+                            if (input.checked) {
+                                if (target.indexOf(val) === -1) target.push(val);
+                            } else {
+                                chip[valueKey] = target.filter(function (x) { return x !== val; });
+                            }
+
+                            if (valueKey === 'classes') {
+                                _pruneChipSelection(chip);
+                                renderAssignmentScopeChips();
+                            }
+                        });
+                        row.appendChild(input);
+                    } else {
+                        var icon = document.createElement('i');
+                        icon.className = isAssigned
+                            ? 'fa-solid fa-circle-check assignment-status-icon assignment-status-icon--assigned'
+                            : 'fa-solid fa-ban assignment-status-icon assignment-status-icon--unassigned';
+                        row.appendChild(icon);
+                    }
+
+                    var text = document.createElement('span');
+                    text.className = 'assignment-chip-option-text';
+                    text.textContent = val;
+
+                    row.appendChild(text);
+                    list.appendChild(row);
+                });
+            }
+
+            wrap.appendChild(list);
+            container.appendChild(wrap);
+        }
+
+        keys.forEach(function (key) {
+            var chip = assignmentScopeChips[key];
+            chip.groupName = _getGroupName(chip.groupId);
+
+            var card = document.createElement('div');
+            card.className = 'assignment-scope-chip-card';
+
+            var head = document.createElement('div');
+            head.className = 'assignment-scope-chip-head';
+
+            var title = document.createElement('div');
+            title.className = 'assignment-scope-chip-title';
+            title.textContent = chip.groupName;
+
+            var tools = document.createElement('div');
+            tools.className = 'assignment-scope-chip-tools';
+
+            var editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'assignment-scope-chip-edit';
+            editBtn.textContent = chip.isEditing ? 'Save' : 'Edit';
+            editBtn.addEventListener('click', async function () {
+                if (!chip.isEditing) {
+                    chip.isEditing = true;
+                    await ensureChipOptionsLoaded(chip);
+                    renderAssignmentScopeChips();
+                    return;
+                }
+                chip.isEditing = false;
+                _pruneChipSelection(chip);
+                renderAssignmentScopeChips();
+            });
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'assignment-scope-chip-remove';
+            removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            removeBtn.title = 'Remove assignment';
+            removeBtn.addEventListener('click', function () {
+                delete assignmentScopeChips[key];
+                renderAssignmentScopeChips();
+                updateCurrentChipActionLabel();
+            });
+
+            tools.appendChild(editBtn);
+            tools.appendChild(removeBtn);
+            head.appendChild(title);
+            head.appendChild(tools);
+            card.appendChild(head);
+
+            var groups = document.createElement('div');
+            groups.className = 'assignment-scope-chip-groups';
+
+            if (chip.hasClass || chip.classes.length) {
+                addChipGroup(groups, chip, 'Classes', chip.classOptions, chip.classes, 'classes');
+            }
+            if (chip.hasSection || chip.sections.length) {
+                addChipGroup(groups, chip, 'Sections', _getChipAvailableSections(chip), chip.sections, 'sections');
+            }
+            if (chip.hasBranch || chip.branches.length) {
+                addChipGroup(groups, chip, 'Branches / Courses', chip.branchOptions, chip.branches, 'branches');
+            }
+
+            if (groups.childElementCount > 0) {
+                card.appendChild(groups);
+                card.classList.remove('assignment-scope-chip-card--compact');
+            } else {
+                card.classList.add('assignment-scope-chip-card--compact');
+            }
+            chipList.appendChild(card);
+        });
+
+        updateCurrentChipActionLabel();
+    }
+
+    function upsertCurrentDraftAsChip(showNotification) {
+        if (!currentDraftGroupId) {
+            if (showNotification && typeof showToast === 'function') {
+                showToast('Select one group first', 'error');
+            }
+            return false;
+        }
+
+        var chip = _ensureChip(currentDraftGroupId);
+        chip.groupName = _getGroupName(currentDraftGroupId);
+        chip.classes = _normalizeStringList(Array.from(selectedClasses));
+        chip.sections = _normalizeStringList(Array.from(selectedSections));
+        chip.branches = _normalizeStringList(Array.from(selectedBranches));
+        chip.classOptions = _normalizeStringList(allClasses);
+        chip.sectionOptions = _normalizeStringList(allSections);
+        chip.branchOptions = _normalizeStringList(allBranches);
+        chip.classSectionMap = _cloneClassSectionMap(classSectionMap);
+        chip.hasClass = fieldCapabilities.hasClass;
+        chip.hasSection = fieldCapabilities.hasSection;
+        chip.hasBranch = fieldCapabilities.hasBranch;
+        chip.optionsLoaded = true;
+        chip.isEditing = false;
+
+        _pruneChipSelection(chip);
+        renderAssignmentScopeChips();
+
+        if (showNotification && typeof showToast === 'function') {
+            showToast('Group assignment saved in chip', 'success');
+        }
+        return true;
+    }
+
+    function getAssignmentPayloadFromChips() {
+        var payload = {
+            assigned_groups: [],
+            allowed_classes: [],
+            allowed_sections: [],
+            allowed_branches: [],
+        };
+
+        Object.keys(assignmentScopeChips).forEach(function (key) {
+            var chip = assignmentScopeChips[key];
+            if (!chip) return;
+            payload.assigned_groups.push(parseInt(chip.groupId, 10));
+            payload.allowed_classes = payload.allowed_classes.concat(chip.classes || []);
+            payload.allowed_sections = payload.allowed_sections.concat(chip.sections || []);
+            payload.allowed_branches = payload.allowed_branches.concat(chip.branches || []);
+        });
+
+        payload.assigned_groups = _normalizeGroupIds(payload.assigned_groups);
+        payload.allowed_classes = _normalizeStringList(payload.allowed_classes);
+        payload.allowed_sections = _normalizeStringList(payload.allowed_sections);
+        payload.allowed_branches = _normalizeStringList(payload.allowed_branches);
+        return payload;
+    }
+
+    function hydrateChipsFromStaffData(data) {
+        assignmentScopeChips = {};
+
+        var assignedIds = _getAssignedSelectionIds(data);
+        var classes = _normalizeStringList(data.allowed_classes || []);
+        var sections = _normalizeStringList(data.allowed_sections || []);
+        var branches = _normalizeStringList(data.allowed_branches || []);
+
+        assignedIds.forEach(function (gid) {
+            assignmentScopeChips[_chipKey(gid)] = {
+                groupId: gid,
+                groupName: _getGroupName(gid),
+                classes: [],
+                sections: [],
+                branches: [],
+                classOptions: [],
+                sectionOptions: [],
+                branchOptions: [],
+                classSectionMap: {},
+                hasClass: true,
+                hasSection: true,
+                hasBranch: true,
+                optionsLoaded: false,
+                isEditing: false,
+                pendingGlobalClasses: classes.slice(),
+                pendingGlobalSections: sections.slice(),
+                pendingGlobalBranches: branches.slice(),
+                initializedFromGlobal: false,
+            };
+        });
+
+        renderAssignmentScopeChips();
+        hydrateChipOptionsInBackground();
+    }
+
+    function renderScopedCheckboxes() {
+        var hasGroupSelection = currentAssignedGroupIds.length > 0;
+        updateDrawerFilterVisibility(hasGroupSelection);
+
+        if (!hasGroupSelection) {
+            renderCheckboxOptions('class-options-list', [], selectedClasses);
+            renderCheckboxOptions('section-options-list', [], selectedSections);
+            renderCheckboxOptions('branch-options-list', [], selectedBranches);
+            return;
+        }
+
+        _pruneScopedSelections(selectedClasses, selectedSections, selectedBranches);
+
+        if (fieldCapabilities.hasClass) {
+            renderCheckboxOptions('class-options-list', allClasses, selectedClasses, function () {
+                _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
+                renderScopedCheckboxes();
+            });
+        } else {
+            selectedClasses.clear();
+            renderCheckboxOptions('class-options-list', [], selectedClasses);
+        }
+
+        var availableSections = fieldCapabilities.hasClass
+            ? _getSectionsForSelectedClasses(selectedClasses)
+            : allSections;
+
+        if (fieldCapabilities.hasSection) {
+            renderCheckboxOptions('section-options-list', availableSections, selectedSections);
+        } else {
+            selectedSections.clear();
+            renderCheckboxOptions('section-options-list', [], selectedSections);
+        }
+
+        if (fieldCapabilities.hasBranch) {
+            renderCheckboxOptions('branch-options-list', allBranches, selectedBranches);
+        } else {
+            selectedBranches.clear();
+            renderCheckboxOptions('branch-options-list', [], selectedBranches);
+        }
+    }
 
     async function initClassSection(preClasses, preSections, preBranches, groupIds) {
-        await fetchClassSectionOptions(groupIds || []);
-        // Keep set instances stable because multiselect handlers capture set references.
+        currentAssignedGroupIds = _normalizeGroupIds(groupIds || []);
+
         _replaceSetValues(selectedClasses, preClasses);
         _replaceSetValues(selectedSections, preSections);
         _replaceSetValues(selectedBranches, preBranches);
 
-        updateDrawerFilterVisibility();
-        _pruneScopedSelections(selectedClasses, selectedSections, selectedBranches);
-
-        if (!classMs) {
-            classMs = buildCsMultiselect('class', allClasses, selectedClasses, null, function () {
-                _pruneSectionsBySelectedClasses(selectedSections, selectedClasses);
-                if (sectionMs) {
-                    sectionMs.render('');
-                    sectionMs.updateText();
-                }
-            });
-        }
-        if (!sectionMs) {
-            sectionMs = buildCsMultiselect('section', allSections, selectedSections, function () {
-                return _getSectionsForSelectedClasses(selectedClasses);
-            });
-        }
-        if (classMs) { classMs.render(); classMs.updateText(); }
-        if (sectionMs) { sectionMs.render(); sectionMs.updateText(); }
-
-        if (fieldCapabilities.hasBranch) {
-            if (!branchMs) branchMs = buildCsMultiselect('branch', allBranches, selectedBranches);
-            if (branchMs) { branchMs.render(); branchMs.updateText(); }
-        } else {
+        if (!currentAssignedGroupIds.length) {
+            selectedClasses.clear();
+            selectedSections.clear();
             selectedBranches.clear();
-            var bt = document.getElementById('branch-multiselect-text');
-            if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
+            renderScopedCheckboxes();
+            return;
         }
+
+        await fetchClassSectionOptions(currentAssignedGroupIds);
+        renderScopedCheckboxes();
     }
 
     async function refreshDrawerClassSectionByGroups(groupIds) {
-        await fetchClassSectionOptions(groupIds || []);
-        updateDrawerFilterVisibility();
-        _pruneScopedSelections(selectedClasses, selectedSections, selectedBranches);
+        currentAssignedGroupIds = _normalizeGroupIds(groupIds || []);
 
-        if (classMs) { classMs.render(''); classMs.updateText(); }
-        if (sectionMs) { sectionMs.render(''); sectionMs.updateText(); }
-
-        if (fieldCapabilities.hasBranch) {
-            if (!branchMs) branchMs = buildCsMultiselect('branch', allBranches, selectedBranches);
-            if (branchMs) { branchMs.render(''); branchMs.updateText(); }
-        } else {
+        if (!currentAssignedGroupIds.length) {
+            selectedClasses.clear();
+            selectedSections.clear();
             selectedBranches.clear();
-            var bt = document.getElementById('branch-multiselect-text');
-            if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
+            renderScopedCheckboxes();
+            return;
         }
+
+        await fetchClassSectionOptions(currentAssignedGroupIds);
+        renderScopedCheckboxes();
     }
 
     function resetClassSection() {
+        currentAssignedGroupIds = [];
+        currentDraftGroupId = null;
         selectedClasses.clear();
         selectedSections.clear();
         selectedBranches.clear();
-        var ct = document.getElementById('class-multiselect-text');
-        var st = document.getElementById('section-multiselect-text');
-        var bt = document.getElementById('branch-multiselect-text');
-        if (ct) { ct.textContent = 'All classes'; ct.classList.remove('has-selection'); }
-        if (st) { st.textContent = 'All sections'; st.classList.remove('has-selection'); }
-        if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
+        renderScopedCheckboxes();
+        updateCurrentChipActionLabel();
     }
 
     // ==================== VANILLA JS DELETE MODAL (client-only) ====================
@@ -388,152 +787,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (closeDeleteModalB) closeDeleteModalB.addEventListener('click', closeDeleteModalFn);
     if (cancelDeleteBtn)   cancelDeleteBtn.addEventListener('click', closeDeleteModalFn);
 
-    // ==================== ASSIGN MODAL (Group / Class / Section) ====================
-    var assignOverlay  = document.getElementById('assign-modal-overlay');
-    var assignCloseBtn = document.getElementById('assign-modal-close');
-    var assignCancelBtn = document.getElementById('assign-modal-cancel');
-    var assignSaveBtn   = document.getElementById('assign-modal-save');
-    var assignStaffName = document.getElementById('assign-staff-name');
-    var _assignStaffId  = null;
-
-    // Separate Sets for the assign-modal multi-selects
-    var assignSelectedGroups   = new Set();
-    var assignSelectedClasses  = new Set();
-    var assignSelectedSections = new Set();
-    var assignSelectedBranches = new Set();
-    var _assignAllGroups   = [];
-    var _assignGroupsLoaded = false;
-
-    function openAssignModal() { if (assignOverlay) { assignOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; } }
-    function closeAssignModal() { if (assignOverlay) { assignOverlay.style.display = 'none'; document.body.style.overflow = ''; } }
-
-    if (assignCloseBtn)  assignCloseBtn.addEventListener('click', closeAssignModal);
-    if (assignCancelBtn) assignCancelBtn.addEventListener('click', closeAssignModal);
-
-    // Reusable multi-select builder for the assign modal
-    function buildAssignMultiselect(prefix, allItems, selectedSet, getItemsFn, onSelectionChange) {
-        var toggle   = document.getElementById('assign-' + prefix + '-toggle');
-        var dropdown = document.getElementById('assign-' + prefix + '-dropdown');
-        var list     = document.getElementById('assign-' + prefix + '-list');
-        var text     = document.getElementById('assign-' + prefix + '-text');
-        var search   = document.getElementById('assign-' + prefix + '-search');
-        var empty    = document.getElementById('assign-' + prefix + '-empty');
-        if (!toggle || !list) return null;
-
-        var defaultLabel = prefix === 'group' ? 'Select groups...' : (prefix === 'class' ? 'All classes' : (prefix === 'branch' ? 'All branches' : 'All sections'));
-
-        function _items() {
-            return typeof getItemsFn === 'function' ? (getItemsFn() || []) : (allItems || []);
-        }
-
-        function render(filter) {
-            list.innerHTML = '';
-            var term = (filter || '').toLowerCase().trim();
-            var sourceItems = _items();
-            var filtered = sourceItems.filter(function (item) {
-                var label = typeof item === 'object' ? item.name : item;
-                return !term || label.toLowerCase().includes(term);
-            });
-            // Sort: selected first
-            filtered.sort(function (a, b) {
-                var idA = typeof a === 'object' ? String(a.id) : a;
-                var idB = typeof b === 'object' ? String(b.id) : b;
-                var sa = selectedSet.has(idA) ? 0 : 1, sb = selectedSet.has(idB) ? 0 : 1;
-                if (sa !== sb) return sa - sb;
-                var la = typeof a === 'object' ? a.name : a;
-                var lb = typeof b === 'object' ? b.name : b;
-                return la.localeCompare(lb);
-            });
-            if (filtered.length === 0) { if (empty) empty.style.display = ''; return; }
-            if (empty) empty.style.display = 'none';
-            filtered.forEach(function (item) {
-                var id    = typeof item === 'object' ? String(item.id) : item;
-                var label = typeof item === 'object' ? item.name : item;
-                var div = document.createElement('div');
-                div.className = 'client-multiselect-item' + (selectedSet.has(id) ? ' selected' : '');
-                div.innerHTML = '<input type="checkbox" ' + (selectedSet.has(id) ? 'checked' : '') + '><span class="client-name">' + _esc(label) + '</span>';
-                div.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var cb = div.querySelector('input[type="checkbox"]');
-                    if (e.target !== cb) cb.checked = !cb.checked;
-                    if (cb.checked) { selectedSet.add(id); div.classList.add('selected'); }
-                    else            { selectedSet.delete(id); div.classList.remove('selected'); }
-                    updateText();
-                    if (typeof onSelectionChange === 'function') onSelectionChange(id, cb.checked);
-                });
-                list.appendChild(div);
-            });
-        }
-
-        function updateText() {
-            if (!text) return;
-            var count = selectedSet.size;
-            if (count === 0) { text.textContent = defaultLabel; text.classList.remove('has-selection'); }
-            else if (count <= 2) {
-                var labels = [];
-                _items().forEach(function (item) {
-                    var id = typeof item === 'object' ? String(item.id) : item;
-                    if (selectedSet.has(id)) labels.push(typeof item === 'object' ? item.name : item);
-                });
-                text.textContent = labels.join(', ');
-                text.classList.add('has-selection');
-            }
-            else { text.textContent = count + ' selected'; text.classList.add('has-selection'); }
-        }
-
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            if (dropdown.style.display !== 'none') { dropdown.style.display = 'none'; toggle.classList.remove('open'); }
-            else { dropdown.style.display = ''; toggle.classList.add('open'); if (search) { search.value = ''; search.focus(); } render(); }
-        });
-        if (search) {
-            search.addEventListener('input', function () { render(search.value); });
-            search.addEventListener('click', function (e) { e.stopPropagation(); });
-        }
-        document.addEventListener('click', function (e) {
-            if (dropdown.style.display !== 'none') {
-                var container = document.getElementById('assign-' + prefix + '-multiselect');
-                if (container && !container.contains(e.target)) { dropdown.style.display = 'none'; toggle.classList.remove('open'); }
-            }
-        });
-
-        return { render: render, updateText: updateText };
-    }
-
-    var assignGroupMs   = null;
-    var assignClassMs   = null;
-    var assignSectionMs = null;
-    var assignBranchMs  = null;
-
-    async function refreshAssignClassSectionByGroups(groupIds) {
-        await fetchClassSectionOptions(groupIds || []);
-        updateAssignFilterVisibility();
-        _pruneScopedSelections(assignSelectedClasses, assignSelectedSections, assignSelectedBranches);
-
-        if (assignClassMs) { assignClassMs.render(''); assignClassMs.updateText(); }
-        if (assignSectionMs) { assignSectionMs.render(''); assignSectionMs.updateText(); }
-
-        if (fieldCapabilities.hasBranch) {
-            if (!assignBranchMs) assignBranchMs = buildAssignMultiselect('branch', allBranches, assignSelectedBranches);
-            if (assignBranchMs) { assignBranchMs.render(''); assignBranchMs.updateText(); }
-        } else {
-            assignSelectedBranches.clear();
-            var bt = document.getElementById('assign-branch-text');
-            if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
-        }
-    }
-
+    // Keep assignment id source aligned with active group metadata for drawer filters.
+    var _assignmentGroupsLoaded = false;
     async function loadAssignGroups() {
-        if (_assignGroupsLoaded) return;
+        if (_assignmentGroupsLoaded) return;
         try {
             var resp = await fetch('/client/api/groups/active/', { credentials: 'same-origin' });
             if (!resp.ok) return;
             var data = await resp.json();
             if (data.success) {
-                _assignAllGroups = data.groups || [];
-                _assignGroupsLoaded = true;
+                _assignmentGroupsLoaded = true;
+                var groups = data.groups || [];
 
-                var sources = Array.from(new Set((_assignAllGroups || []).map(function (item) {
+                assignmentGroupsById = {};
+                groups.forEach(function (item) {
+                    var id = parseInt((item && item.id), 10);
+                    if (!Number.isFinite(id)) return;
+                    assignmentGroupsById[String(id)] = String((item && item.name) || ('Group #' + id));
+                });
+
+                var sources = Array.from(new Set(groups.map(function (item) {
                     return String((item && item.source) || '').toLowerCase();
                 }).filter(function (v) { return v === 'group' || v === 'table'; })));
 
@@ -547,137 +820,29 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (_) {}
     }
 
-    async function openAssignForStaff(staffId) {
-        _assignStaffId = staffId;
-
-        // Load options in parallel
-        await Promise.all([loadAssignGroups()]);
-
-        // Fetch current staff data
-        try {
-            var resp = await fetch('/client/api/staff/' + staffId + '/', { credentials: 'same-origin' });
-            if (!resp.ok) { if (typeof showToast === 'function') showToast('Failed to load staff data', 'error'); return; }
-            var json = await resp.json();
-            if (!json.success) { if (typeof showToast === 'function') showToast(json.error || 'Failed to load staff data', 'error'); return; }
-            var data = json.data;
-
-            // Set header name
-            if (assignStaffName) assignStaffName.textContent = data.name || 'Staff';
-
-            // Populate selections  clear and refill (NOT replace) to keep closure refs intact
-            assignSelectedGroups.clear();
-            var availableIds = new Set((_assignAllGroups || []).map(function (item) { return String(item.id); }));
-            _getAssignedSelectionIds(data).forEach(function (id) {
-                var sid = String(id);
-                if (availableIds.has(sid)) assignSelectedGroups.add(sid);
-            });
-            assignSelectedClasses.clear();
-            (data.allowed_classes || []).forEach(function (v) { assignSelectedClasses.add(v); });
-            assignSelectedSections.clear();
-            (data.allowed_sections || []).forEach(function (v) { assignSelectedSections.add(v); });
-            assignSelectedBranches.clear();
-            (data.allowed_branches || []).forEach(function (v) { assignSelectedBranches.add(v); });
-
-            await fetchClassSectionOptions(Array.from(assignSelectedGroups).map(function (id) { return parseInt(id, 10); }));
-            updateAssignFilterVisibility();
-            _pruneScopedSelections(assignSelectedClasses, assignSelectedSections, assignSelectedBranches);
-
-            // Build/update multi-selects
-            if (!assignGroupMs) {
-                assignGroupMs = buildAssignMultiselect('group', _assignAllGroups, assignSelectedGroups, null, function () {
-                    refreshAssignClassSectionByGroups(Array.from(assignSelectedGroups).map(function (id) { return parseInt(id, 10); }));
-                });
-            }
-            if (!assignClassMs) {
-                assignClassMs = buildAssignMultiselect('class', allClasses, assignSelectedClasses, null, function () {
-                    _pruneSectionsBySelectedClasses(assignSelectedSections, assignSelectedClasses);
-                    if (assignSectionMs) {
-                        assignSectionMs.render('');
-                        assignSectionMs.updateText();
-                    }
-                });
-            }
-            if (!assignSectionMs) {
-                assignSectionMs = buildAssignMultiselect('section', allSections, assignSelectedSections, function () {
-                    return _getSectionsForSelectedClasses(assignSelectedClasses);
-                });
-            }
-
-            // Branch multi-select: show only when selected group scope has branch field.
-            if (fieldCapabilities.hasBranch) {
-                if (!assignBranchMs) assignBranchMs = buildAssignMultiselect('branch', allBranches, assignSelectedBranches);
-                if (assignBranchMs) { assignBranchMs.render(); assignBranchMs.updateText(); }
-            } else {
-                assignSelectedBranches.clear();
-                var bt = document.getElementById('assign-branch-text');
-                if (bt) { bt.textContent = 'All branches'; bt.classList.remove('has-selection'); }
-            }
-
-            // Render with current selections
-            if (assignGroupMs)   { assignGroupMs.render();   assignGroupMs.updateText(); }
-            if (assignClassMs)   { assignClassMs.render();   assignClassMs.updateText(); }
-            if (assignSectionMs) { assignSectionMs.render();  assignSectionMs.updateText(); }
-
-            openAssignModal();
-
-        } catch (err) {
-            if (typeof showToast === 'function') showToast('Network error', 'error');
-        }
-    }
-
-    // Save assignment
-    if (assignSaveBtn) {
-        assignSaveBtn.addEventListener('click', async function () {
-            if (!_assignStaffId) return;
-            assignSaveBtn.disabled = true;
-            assignSaveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
-
-            var payload = {
-                assigned_groups:   Array.from(assignSelectedGroups).map(Number),
-                allowed_classes:   Array.from(assignSelectedClasses),
-                allowed_sections:  Array.from(assignSelectedSections),
-                allowed_branches:  Array.from(assignSelectedBranches),
-            };
-
-            try {
-                var csrfToken = '';
-                var csrfEl = document.querySelector('[name=csrfmiddlewaretoken]') || document.querySelector('meta[name="csrf-token"]');
-                if (csrfEl) csrfToken = csrfEl.value || csrfEl.getAttribute('content') || '';
-
-                var resp = await fetch('/client/api/staff/' + _assignStaffId + '/', {
-                    method: 'PUT',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                var json = await resp.json();
-                if (json.success) {
-                    if (typeof showToast === 'function') showToast('Assignment saved successfully!', 'success');
-                    closeAssignModal();
-                } else {
-                    if (typeof showToast === 'function') showToast(json.error || 'Failed to save assignment', 'error');
-                }
-            } catch (err) {
-                if (typeof showToast === 'function') showToast('Network error', 'error');
-            }
-
-            assignSaveBtn.disabled = false;
-            assignSaveBtn.innerHTML = '<i class="fa-solid fa-check"></i> Save Assignment';
+    var saveCurrentAssignmentChipBtn = document.getElementById('save-current-assignment-chip-btn');
+    if (saveCurrentAssignmentChipBtn) {
+        saveCurrentAssignmentChipBtn.addEventListener('click', function () {
+            upsertCurrentDraftAsChip(true);
         });
     }
 
     // Wire up the Assign button in action bar
     var assignStaffBtn = document.getElementById('assignStaffBtn');
     if (assignStaffBtn) {
-        assignStaffBtn.addEventListener('click', function () {
-            var mgr = window._staffPageMgr;
-            if (mgr && mgr.getSelectedStaffId && mgr.getSelectedStaffId()) {
-                openAssignForStaff(mgr.getSelectedStaffId());
+        assignStaffBtn.addEventListener('click', async function () {
+            if (!mgr || !mgr.getSelectedStaffId) return;
+
+            var selectedId = mgr.getSelectedStaffId();
+            if (!selectedId) return;
+
+            var detail = await fetchStaffDetailById(selectedId);
+            if (!detail) {
+                if (typeof showToast === 'function') showToast('Failed to load staff data', 'error');
+                return;
             }
+
+            mgr.openDrawer('assign', detail);
         });
     }
 
@@ -695,10 +860,18 @@ document.addEventListener('DOMContentLoaded', function () {
             apiUrl:          '/client/api/groups/active/',
             responseKey:     'groups',
             payloadKey:      'assigned_groups',
-            preselectedKey:  'assigned_table_ids',
-            placeholder:     'Select groups...',
+            preselectedKey:  '__none__',
+            placeholder:     'Select one group...',
             pluralLabel:     'groups',
+            singleSelect:    true,
             matchByParentId: false,
+            getExcludedIds: function () {
+                return Object.keys(assignmentScopeChips).map(function (k) {
+                    return parseInt(k, 10);
+                }).filter(function (v) {
+                    return Number.isFinite(v);
+                });
+            },
         },
 
         // Permissions  full set mirroring STAFF_PERMISSION_FIELDS in services_staff.py
@@ -710,9 +883,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'perm-idcard-bulk-download',
             // Card Actions
             'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
-            'perm-idcard-approve', 'perm-idcard-verify',
+            'perm-idcard-verify',
             'perm-idcard-created-at', 'perm-idcard-updated-at',
-            'perm-idcard-delete-from-pool',
             // App & Access
             'perm-mobile-app'
         ],
@@ -732,23 +904,86 @@ document.addEventListener('DOMContentLoaded', function () {
 
         onDrawerReset: function () {
             resetClassSection();
-            initClassSection([], [], [], []);
+            assignmentScopeChips = {};
+            renderAssignmentScopeChips();
         },
-        onPopulateForm: function (data) {
-            initClassSection(
-                data.allowed_classes,
-                data.allowed_sections,
-                data.allowed_branches,
-                _getAssignedSelectionIds(data)
-            );
+        onPopulateForm: function (data, meta) {
+            if (!meta || meta.mode !== 'assign') return;
+
+            hydrateChipsFromStaffData(data);
+            resetClassSection();
+            updateCurrentChipActionLabel();
+
+            // Late-bind proper names if groups metadata arrives after chip hydration.
+            loadAssignGroups().then(function () {
+                renderAssignmentScopeChips();
+            });
         },
-        onAssignmentSelectionChange: function (selectedGroupIds) {
-            refreshDrawerClassSectionByGroups(selectedGroupIds || []);
+        onAssignmentSelectionChange: async function (selectedGroupIds, meta) {
+            if (!meta || meta.mode !== 'assign') return;
+
+            var normalizedGroupIds = _normalizeGroupIds(selectedGroupIds || []);
+            currentDraftGroupId = normalizedGroupIds.length ? normalizedGroupIds[0] : null;
+
+            if (!currentDraftGroupId) {
+                resetClassSection();
+                return;
+            }
+
+            var key = _chipKey(currentDraftGroupId);
+            var existingChip = assignmentScopeChips[key] || null;
+            if (existingChip) {
+                _replaceSetValues(selectedClasses, existingChip.classes || []);
+                _replaceSetValues(selectedSections, existingChip.sections || []);
+                _replaceSetValues(selectedBranches, existingChip.branches || []);
+            } else {
+                selectedClasses.clear();
+                selectedSections.clear();
+                selectedBranches.clear();
+            }
+
+            // Auto-create a full assignment chip immediately for selected group.
+            await refreshDrawerClassSectionByGroups([currentDraftGroupId]);
+
+            if (!assignmentScopeChips[key]) {
+                assignmentScopeChips[key] = {
+                    groupId: currentDraftGroupId,
+                    groupName: _getGroupName(currentDraftGroupId),
+                    classes: fieldCapabilities.hasClass ? _normalizeStringList(allClasses) : [],
+                    sections: fieldCapabilities.hasSection ? _normalizeStringList(allSections) : [],
+                    branches: fieldCapabilities.hasBranch ? _normalizeStringList(allBranches) : [],
+                    classOptions: _normalizeStringList(allClasses),
+                    sectionOptions: _normalizeStringList(allSections),
+                    branchOptions: _normalizeStringList(allBranches),
+                    classSectionMap: _cloneClassSectionMap(classSectionMap),
+                    hasClass: fieldCapabilities.hasClass,
+                    hasSection: fieldCapabilities.hasSection,
+                    hasBranch: fieldCapabilities.hasBranch,
+                    optionsLoaded: true,
+                    isEditing: false,
+                };
+                _pruneChipSelection(assignmentScopeChips[key]);
+                if (typeof showToast === 'function') {
+                    showToast('Group assignment chip created', 'success');
+                }
+            }
+
+            renderAssignmentScopeChips();
+            updateCurrentChipActionLabel();
         },
-        onBeforeSubmit: function (formData) {
-            formData.allowed_classes = Array.from(selectedClasses);
-            formData.allowed_sections = Array.from(selectedSections);
-            formData.allowed_branches = Array.from(selectedBranches);
+        onBeforeSubmit: function (formData, meta) {
+            if (!meta || meta.mode !== 'assign') return;
+
+            // Persist the currently selected group state before final submit.
+            if (currentDraftGroupId) {
+                upsertCurrentDraftAsChip(false);
+            }
+
+            var payload = getAssignmentPayloadFromChips();
+            formData.assigned_groups = payload.assigned_groups;
+            formData.allowed_classes = payload.allowed_classes;
+            formData.allowed_sections = payload.allowed_sections;
+            formData.allowed_branches = payload.allowed_branches;
         },
         onSetStatus:        null,
         onEnableFormInputs: null,

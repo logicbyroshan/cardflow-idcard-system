@@ -41,6 +41,23 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     var msText          = document.getElementById(prefix + '-multiselect-text');
     var msSearch        = document.getElementById(prefix + '-search-input');
     var msEmpty         = document.getElementById(prefix + '-multiselect-empty');
+    var selectedChipWrap = document.getElementById(prefix + '-selected-chip-container');
+    var selectedChipLabel = document.getElementById(prefix + '-selected-chip-label');
+    var selectedChipClearBtn = document.getElementById(prefix + '-selected-chip-clear');
+    var isSingleSelect = cfg.assignment && cfg.assignment.singleSelect === true;
+
+    var classSectionFilterSection = document.getElementById('class-section-filter-section');
+    var staffInfoSection          = document.getElementById('staff-info-section');
+    var staffPermissionsSection   = document.getElementById('staff-permissions-section');
+
+    function setDrawerSectionVisibility(mode) {
+        var assignmentOnly = mode === 'assign';
+
+        if (assignSection) assignSection.style.display = assignmentOnly ? '' : 'none';
+        if (classSectionFilterSection) classSectionFilterSection.style.display = assignmentOnly ? '' : 'none';
+        if (staffInfoSection) staffInfoSection.style.display = assignmentOnly ? 'none' : '';
+        if (staffPermissionsSection) staffPermissionsSection.style.display = assignmentOnly ? 'none' : '';
+    }
 
     var allItems    = [];          // { id, name }
     var selectedIds = new Set();
@@ -52,8 +69,23 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     function renderList(filter) {
         if (!msList) return;
         msList.innerHTML = '';
+
+        var excludedIdSet = new Set();
+        if (cfg.assignment && typeof cfg.assignment.getExcludedIds === 'function') {
+            try {
+                (cfg.assignment.getExcludedIds() || []).forEach(function (rawId) {
+                    var id = parseInt(rawId, 10);
+                    if (Number.isFinite(id)) excludedIdSet.add(id);
+                });
+            } catch (_) {}
+        }
+
         var term = (filter || '').toLowerCase().trim();
-        var filtered = allItems.filter(function (it) { return !term || it.name.toLowerCase().includes(term); });
+        var filtered = allItems.filter(function (it) {
+            var itemId = parseInt(it.id, 10);
+            if (excludedIdSet.has(itemId)) return false;
+            return !term || it.name.toLowerCase().includes(term);
+        });
 
         filtered.sort(function (a, b) {
             var aid = parseInt(a.id, 10);
@@ -81,15 +113,43 @@ window._StaffDrawerSetup = function (cfg, ctx) {
                 e.stopPropagation();
                 var cb = div.querySelector('input[type="checkbox"]');
                 if (e.target !== cb) cb.checked = !cb.checked;
-                if (cb.checked) { selectedIds.add(itemId); div.classList.add('selected'); }
-                else            { selectedIds.delete(itemId); div.classList.remove('selected'); }
+                if (cb.checked) {
+                    if (isSingleSelect) {
+                        selectedIds = new Set([itemId]);
+                        renderList(msSearch ? msSearch.value : '');
+                        closeMsDropdown();
+                    } else {
+                        selectedIds.add(itemId);
+                        div.classList.add('selected');
+                    }
+                } else {
+                    selectedIds.delete(itemId);
+                    if (isSingleSelect) {
+                        renderList(msSearch ? msSearch.value : '');
+                    } else {
+                        div.classList.remove('selected');
+                    }
+                }
                 updateSelectionText();
                 if (typeof cfg.onAssignmentSelectionChange === 'function') {
-                    cfg.onAssignmentSelectionChange(Array.from(selectedIds));
+                    cfg.onAssignmentSelectionChange(Array.from(selectedIds), { mode: currentMode });
                 }
             });
             msList.appendChild(div);
         });
+    }
+
+    function updateSelectedChip() {
+        if (!selectedChipWrap || !selectedChipLabel) return;
+        if (selectedIds.size === 0) {
+            selectedChipWrap.style.display = 'none';
+            selectedChipLabel.textContent = '-';
+            return;
+        }
+        var selectedId = Array.from(selectedIds)[0];
+        var selectedItem = allItems.find(function (it) { return parseInt(it.id, 10) === parseInt(selectedId, 10); });
+        selectedChipLabel.textContent = selectedItem ? selectedItem.name : String(selectedId);
+        selectedChipWrap.style.display = '';
     }
 
     function updateSelectionText() {
@@ -99,7 +159,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             msText.textContent = cfg.assignment.placeholder;
             msText.classList.remove('has-selection');
         } else {
-            if (count <= 2) {
+            if (isSingleSelect || count <= 2) {
                 var names = allItems
                     .filter(function (it) { return selectedIds.has(parseInt(it.id, 10)); })
                     .map(function (it) { return it.name; });
@@ -109,6 +169,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             }
             msText.classList.add('has-selection');
         }
+        updateSelectedChip();
     }
 
     function openMsDropdown()  { if (!msDropdown) return; msDropdown.style.display = ''; if (msToggle) msToggle.classList.add('open'); if (msSearch) { msSearch.value = ''; msSearch.focus(); } renderList(); }
@@ -151,17 +212,47 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             }
         });
 
+        if (isSingleSelect && selectedIds.size > 1) {
+            var firstSelected = Array.from(selectedIds)[0];
+            selectedIds = new Set([firstSelected]);
+        }
+
         updateSelectionText();
         closeMsDropdown();
         if (typeof cfg.onAssignmentSelectionChange === 'function') {
-            cfg.onAssignmentSelectionChange(Array.from(selectedIds));
+            cfg.onAssignmentSelectionChange(Array.from(selectedIds), { mode: currentMode });
         }
     }
 
     function resetAssignment() {
         selectedIds = new Set();
         if (msText) { msText.textContent = cfg.assignment.placeholder; msText.classList.remove('has-selection'); }
+        updateSelectedChip();
         closeMsDropdown();
+    }
+
+    function clearAssignmentSelection(options) {
+        selectedIds = new Set();
+        updateSelectionText();
+        renderList(msSearch ? msSearch.value : '');
+        if (!options || options.silent !== true) {
+            if (typeof cfg.onAssignmentSelectionChange === 'function') {
+                cfg.onAssignmentSelectionChange([], { mode: currentMode });
+            }
+        }
+    }
+
+    if (selectedChipClearBtn) {
+        selectedChipClearBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectedIds = new Set();
+            updateSelectionText();
+            renderList(msSearch ? msSearch.value : '');
+            if (typeof cfg.onAssignmentSelectionChange === 'function') {
+                cfg.onAssignmentSelectionChange([], { mode: currentMode });
+            }
+        });
     }
 
     // ==================== PASSWORD OPTIONS ====================
@@ -199,6 +290,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         cfg.permissionFields.forEach(function (f) { var el = document.getElementById(f); if (el) el.checked = false; });
         resetAssignment();
         resetPasswordOption();
+        setDrawerSectionVisibility(currentMode);
 
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span id="submit-btn-text">Add Staff</span>';
@@ -210,7 +302,6 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             if (submitBtnText) submitBtnText.textContent = 'Add Staff';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
-            initAssignment([]);
             // Show password option for new staff
             if (pwRow) pwRow.style.display = '';
             // Hide temp password button in add mode
@@ -228,6 +319,21 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             // Show temp password button in edit mode
             var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
             if (tempPwBtn) tempPwBtn.style.display = '';
+            if (staffData) {
+                populateForm(staffData);
+                setDrawerSectionVisibility(mode);
+            }
+        } else if (mode === 'assign') {
+            drawerTitle.textContent = 'Assign Groups, Classes & Sections';
+            drawerIcon.className = 'fa-solid fa-link';
+            if (submitBtnText) submitBtnText.textContent = 'Save Assignment';
+            submitBtn.style.display = 'inline-flex';
+            enableFormInputs(true);
+            // Hide password option in assign mode
+            if (pwRow) pwRow.style.display = 'none';
+            // Hide temp password button in assign mode
+            var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
+            if (tempPwBtn) tempPwBtn.style.display = 'none';
             if (staffData) populateForm(staffData);
         } else if (mode === 'view') {
             drawerTitle.textContent = 'View Staff Details';
@@ -239,7 +345,10 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             // Hide temp password button in view mode
             var tempPwBtn = document.getElementById('tempPasswordStaffBtn');
             if (tempPwBtn) tempPwBtn.style.display = 'none';
-            if (staffData) populateForm(staffData);
+            if (staffData) {
+                populateForm(staffData);
+                setDrawerSectionVisibility(mode);
+            }
         }
 
         staffDrawer.classList.add('open');
@@ -268,7 +377,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
         initAssignment(d[cfg.assignment.preselectedKey] || []);
 
         // Allow page-specific extensions to populate custom fields
-        if (cfg.onPopulateForm) cfg.onPopulateForm(d);
+        if (cfg.onPopulateForm) cfg.onPopulateForm(d, { mode: currentMode });
     }
 
     function closeDrawer() {
@@ -346,60 +455,68 @@ window._StaffDrawerSetup = function (cfg, ctx) {
             var origHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
 
-            var formData = {
-                name:      document.getElementById('staff-name').value.trim(),
-                email:     document.getElementById('staff-email').value.trim(),
-                phone:     document.getElementById('staff-phone').value.trim(),
-                address:   (document.getElementById('staff-address') || {}).value || '',
-                is_active: document.getElementById('staff-status').value === 'true',
-            };
+            var isAssignMode = currentMode === 'assign';
+            var isUpdateMode = (currentMode === 'edit' || currentMode === 'assign') && ctx.selectedStaffId;
+            var isCreateMode = !isUpdateMode;
+            var formData = {};
 
-            var isCreateMode = !(currentMode === 'edit' && ctx.selectedStaffId);
+            if (!isAssignMode) {
+                formData = {
+                    name:      document.getElementById('staff-name').value.trim(),
+                    email:     document.getElementById('staff-email').value.trim(),
+                    phone:     document.getElementById('staff-phone').value.trim(),
+                    address:   (document.getElementById('staff-address') || {}).value || '',
+                    is_active: document.getElementById('staff-status').value === 'true',
+                };
 
-            if (!formData.name) {
-                showToast('Name is required', 'error');
-                btn.disabled = false;
-                btn.innerHTML = origHtml;
-                return;
-            }
-
-            // Sanitize text fields before submission; email exempt from char rules
-            if (window.DataSanitizer) {
-                var _sanitized = DataSanitizer.sanitizeFormData(formData, ['email']);
-                formData = _sanitized.data;
-            }
-
-            // Validate/create password strategy
-            if (isCreateMode && pwOptionSelect) {
-                if (pwOptionSelect.value === 'custom') {
-                    if (!pwInput || !pwInput.value.trim()) {
-                        showToast('Custom password is required when phone password is not used', 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = origHtml;
-                        return;
-                    }
-                    formData.password = pwInput.value.trim();
-                } else if (!formData.phone) {
-                    showToast('Phone is required when using phone number as password', 'error');
+                if (!formData.name) {
+                    showToast('Name is required', 'error');
                     btn.disabled = false;
                     btn.innerHTML = origHtml;
                     return;
                 }
+
+                // Sanitize text fields before submission; email exempt from char rules
+                if (window.DataSanitizer) {
+                    var _sanitized = DataSanitizer.sanitizeFormData(formData, ['email']);
+                    formData = _sanitized.data;
+                }
+
+                // Validate/create password strategy
+                if (isCreateMode && pwOptionSelect) {
+                    if (pwOptionSelect.value === 'custom') {
+                        if (!pwInput || !pwInput.value.trim()) {
+                            showToast('Custom password is required when phone password is not used', 'error');
+                            btn.disabled = false;
+                            btn.innerHTML = origHtml;
+                            return;
+                        }
+                        formData.password = pwInput.value.trim();
+                    } else if (!formData.phone) {
+                        showToast('Phone is required when using phone number as password', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml;
+                        return;
+                    }
+                }
+
+                cfg.permissionFields.forEach(function (f) {
+                    var el  = document.getElementById(f);
+                    var api = f.replace(/-/g, '_');
+                    if (el) formData[api] = cfg.respectDisabledPerms ? (el.disabled ? false : el.checked) : el.checked;
+                });
             }
 
-            cfg.permissionFields.forEach(function (f) {
-                var el  = document.getElementById(f);
-                var api = f.replace(/-/g, '_');
-                if (el) formData[api] = cfg.respectDisabledPerms ? (el.disabled ? false : el.checked) : el.checked;
-            });
-            formData[cfg.assignment.payloadKey] = Array.from(selectedIds);
+            if (isAssignMode && cfg.assignment && cfg.assignment.payloadKey) {
+                formData[cfg.assignment.payloadKey] = Array.from(selectedIds);
+            }
 
             // Allow page-specific extensions to add custom data
-            if (cfg.onBeforeSubmit) cfg.onBeforeSubmit(formData);
+            if (cfg.onBeforeSubmit) cfg.onBeforeSubmit(formData, { mode: currentMode });
 
             var result;
             try {
-                result = (currentMode === 'edit' && ctx.selectedStaffId)
+                result = isUpdateMode
                     ? await ctx._api.updateStaff(cfg, ctx.selectedStaffId, formData)
                     : await ctx._api.createStaff(cfg, formData);
 
@@ -435,6 +552,7 @@ window._StaffDrawerSetup = function (cfg, ctx) {
     return {
         openDrawer:  openDrawer,
         closeDrawer: closeDrawer,
+        clearAssignmentSelection: clearAssignmentSelection,
     };
 };
 

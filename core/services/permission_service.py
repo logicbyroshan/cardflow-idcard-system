@@ -118,6 +118,12 @@ class PermissionService:
         'perm_website_publish',
     }
 
+    # Sensitive permissions that client_staff can never hold, even if present on Staff model.
+    CLIENT_STAFF_BLOCKED_PERMS: set = {
+        'perm_idcard_approve',
+        'perm_idcard_delete_from_pool',
+    }
+
     # Status → list-permission mapping (shared across views)
     STATUS_LIST_PERM_MAP = {
         'pending': 'perm_idcard_pending_list',
@@ -284,6 +290,8 @@ class PermissionService:
 
         # --- 4. client_staff (double-gated) ---
         if cls.is_client_staff(user):
+            if perm_key in cls.CLIENT_STAFF_BLOCKED_PERMS:
+                return False
             staff = getattr(user, 'staff_profile', None)
             if not staff:
                 logger.warning("PermissionService.has: client_staff user %s has no staff_profile", user.pk)

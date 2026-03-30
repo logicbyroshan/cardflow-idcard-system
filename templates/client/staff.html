@@ -20,6 +20,204 @@
     margin-left: 4px;
     vertical-align: middle;
   }
+
+  .assignment-chip-wrap {
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .assignment-chip-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .assignment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 6px 12px;
+    width: fit-content;
+    max-width: 100%;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .assignment-chip-clear {
+    border: 0;
+    background: transparent;
+    color: #1e3a8a;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+  .assignment-checkbox-list {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    max-height: 180px;
+    overflow: auto;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+  }
+  .assignment-checkbox-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+    font-size: 12px;
+    color: #1e293b;
+    cursor: pointer;
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .assignment-checkbox-item input {
+    accent-color: #2563eb;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
+  .assignment-options-empty {
+    width: 100%;
+    font-size: 12px;
+    color: #64748b;
+    padding: 6px 2px;
+  }
+  .assignment-builder-action-row {
+    margin-top: 8px;
+  }
+  .assignment-scope-chip-list {
+    display: grid;
+    gap: 10px;
+  }
+  .assignment-scope-chip-card {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+  }
+  .assignment-scope-chip-card.assignment-scope-chip-card--compact {
+    gap: 0;
+    padding-bottom: 8px;
+  }
+  .assignment-scope-chip-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .assignment-scope-chip-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e3a8a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .assignment-scope-chip-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .assignment-scope-chip-edit {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .assignment-scope-chip-remove {
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #b91c1c;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .assignment-scope-chip-groups {
+    display: grid;
+    gap: 8px;
+  }
+  .assignment-scope-chip-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 8px;
+  }
+  .assignment-scope-chip-group-label {
+    font-size: 11px;
+    color: #334155;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .assignment-chip-checkbox-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px;
+  }
+  .assignment-chip-checkbox-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #1e293b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 5px 7px;
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+  .assignment-chip-checkbox-item.is-assigned {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+  }
+  .assignment-chip-checkbox-item.is-unassigned {
+    border-color: #fecaca;
+    background: #fff7f7;
+  }
+  .assignment-chip-checkbox-item input {
+    margin: 0;
+    width: 14px;
+    height: 14px;
+    accent-color: #2563eb;
+  }
+  .assignment-status-icon {
+    font-size: 12px;
+    width: 14px;
+    text-align: center;
+  }
+  .assignment-status-icon--assigned {
+    color: #16a34a;
+  }
+  .assignment-status-icon--unassigned {
+    color: #dc2626;
+  }
+  .assignment-chip-option-text {
+    color: #334155;
+    font-weight: 500;
+  }
 </style>
 {% endblock %}
 
@@ -46,9 +244,6 @@
 
 <!-- Staff Drawer (Add/Edit) - Client version with Group Assignment -->
 {% include 'partials/staff/client-staff-drawer.html' %}
-
-<!-- Assign Modal (Quick Group/Class/Section Assignment) -->
-{% include 'partials/staff/assign-modal.html' %}
 
 <!-- Temp Password Modal -->
 {% include 'partials/client/temp-password-modal.html' %}

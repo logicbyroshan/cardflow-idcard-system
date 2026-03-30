@@ -36,12 +36,17 @@ class ClientStaffService(BaseService):
         'perm_idcard_bulk_download',
         # ── Card Actions ──────────────────────────────────────────────
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete',
-        'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
+        'perm_idcard_info', 'perm_idcard_verify',
         'perm_idcard_reprint_list',
         'perm_idcard_updated_at',
-        'perm_idcard_delete_from_pool',
         # ── App & Access ───────────────────────────────────────────
         'perm_mobile_app',
+    ]
+
+    # Sensitive permissions that client_staff must never hold.
+    NON_DELEGABLE_CLIENT_STAFF_PERMS = [
+        'perm_idcard_approve',
+        'perm_idcard_delete_from_pool',
     ]
 
     @staticmethod
@@ -340,6 +345,10 @@ class ClientStaffService(BaseService):
                             staff_kwargs[perm] = cls.parse_bool(data[perm])
                         else:
                             staff_kwargs[perm] = False
+
+                # Sensitive perms are never delegable to client_staff.
+                for perm in cls.NON_DELEGABLE_CLIENT_STAFF_PERMS:
+                    staff_kwargs[perm] = False
                 
                 staff = Staff.objects.create(**staff_kwargs)
                 
@@ -432,6 +441,10 @@ class ClientStaffService(BaseService):
                             setattr(staff, perm, cls.parse_bool(data[perm]))
                         else:
                             setattr(staff, perm, False)
+
+                # Sensitive perms are never delegable to client_staff.
+                for perm in cls.NON_DELEGABLE_CLIENT_STAFF_PERMS:
+                    setattr(staff, perm, False)
 
                 # Update class/section filters if provided
                 if 'allowed_classes' in data:

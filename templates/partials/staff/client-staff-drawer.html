@@ -36,7 +36,7 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                     <label>Assign Groups (Classes/Sections)</label>
                     <div class="client-multiselect" id="group-multiselect">
                         <div class="client-multiselect-header" id="group-multiselect-toggle">
-                            <span class="client-multiselect-placeholder" id="group-multiselect-text">Select groups...</span>
+                            <span class="client-multiselect-placeholder" id="group-multiselect-text">Select one group...</span>
                             <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
                         </div>
                         <div class="client-multiselect-dropdown" id="group-multiselect-dropdown" style="display: none;">
@@ -52,7 +52,7 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                             </div>
                         </div>
                     </div>
-                    <small class="field-hint">Select groups this staff can manage. Leave empty for all groups.</small>
+                    <small class="field-hint">Select one group for this staff. Remove it from the chip if needed.</small>
                 </div>
             </div>
 
@@ -64,66 +64,49 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                 <div class="form-row">
                     <div class="form-group" id="class-filter-group">
                         <label>Allowed Classes</label>
-                        <div class="client-multiselect" id="class-multiselect">
-                            <div class="client-multiselect-header" id="class-multiselect-toggle">
-                                <span class="client-multiselect-placeholder" id="class-multiselect-text">All classes</span>
-                                <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
-                            </div>
-                            <div class="client-multiselect-dropdown" id="class-multiselect-dropdown" style="display: none;">
-                                <div class="client-multiselect-search">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                    <input type="text" id="class-search-input" placeholder="Search classes..." autocomplete="off">
-                                </div>
-                                <div class="client-multiselect-list" id="class-multiselect-list"></div>
-                                <div class="client-multiselect-empty" id="class-multiselect-empty" style="display: none;">No classes found</div>
-                            </div>
+                        <div class="assignment-checkbox-list" id="class-options-list">
+                            <div class="assignment-options-empty">Select one group first.</div>
                         </div>
-                        <small class="field-hint">Leave empty for all classes.</small>
+                        <small class="field-hint">Choose from available classes in selected group.</small>
                     </div>
                     <div class="form-group" id="section-filter-group">
                         <label>Allowed Sections</label>
-                        <div class="client-multiselect" id="section-multiselect">
-                            <div class="client-multiselect-header" id="section-multiselect-toggle">
-                                <span class="client-multiselect-placeholder" id="section-multiselect-text">All sections</span>
-                                <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
-                            </div>
-                            <div class="client-multiselect-dropdown" id="section-multiselect-dropdown" style="display: none;">
-                                <div class="client-multiselect-search">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                    <input type="text" id="section-search-input" placeholder="Search sections..." autocomplete="off">
-                                </div>
-                                <div class="client-multiselect-list" id="section-multiselect-list"></div>
-                                <div class="client-multiselect-empty" id="section-multiselect-empty" style="display: none;">No sections found</div>
-                            </div>
+                        <div class="assignment-checkbox-list" id="section-options-list">
+                            <div class="assignment-options-empty">Select one group first.</div>
                         </div>
-                        <small class="field-hint">Leave empty for all sections.</small>
+                        <small class="field-hint">Choose from available sections in selected group.</small>
                     </div>
                 </div>
                 <!-- Branch filter (auto-detected for colleges) -->
                 <div class="form-row" id="branch-filter-row" style="display:none;">
                     <div class="form-group">
-                        <label>Allowed Branches</label>
-                        <div class="client-multiselect" id="branch-multiselect">
-                            <div class="client-multiselect-header" id="branch-multiselect-toggle">
-                                <span class="client-multiselect-placeholder" id="branch-multiselect-text">All branches</span>
-                                <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
-                            </div>
-                            <div class="client-multiselect-dropdown" id="branch-multiselect-dropdown" style="display: none;">
-                                <div class="client-multiselect-search">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                    <input type="text" id="branch-search-input" placeholder="Search branches..." autocomplete="off">
-                                </div>
-                                <div class="client-multiselect-list" id="branch-multiselect-list"></div>
-                                <div class="client-multiselect-empty" id="branch-multiselect-empty" style="display: none;">No branches found</div>
-                            </div>
+                        <label>Allowed Branches / Courses</label>
+                        <div class="assignment-checkbox-list" id="branch-options-list">
+                            <div class="assignment-options-empty">Select one group first.</div>
                         </div>
-                        <small class="field-hint">Leave empty for all branches.</small>
+                        <small class="field-hint">Choose available branch/course options for selected group.</small>
                     </div>
+                </div>
+                <div class="form-row assignment-builder-action-row">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <button type="button" class="btn btn-sm btn-primary" id="save-current-assignment-chip-btn">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Group Assignment
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" id="group-assignment-chip-section">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-layer-group"></i> Saved Group Assignments
+                </h3>
+                <div class="assignment-scope-chip-list" id="group-assignment-chip-list">
+                    <div class="assignment-options-empty" id="group-assignment-chip-empty">No group assignments added yet.</div>
                 </div>
             </div>
             
             <!-- Staff Information Section -->
-            <div class="form-section">
+            <div class="form-section" id="staff-info-section">
                 <h3 class="section-title">
                     <i class="fa-solid fa-info-circle"></i> Staff Information
                 </h3>
@@ -173,7 +156,7 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
             </div>
             
             <!-- Permissions Section -->
-            <div class="form-section">
+            <div class="form-section" id="staff-permissions-section">
                 <div class="permission-header">
                     <i class="fa-solid fa-shield-halved"></i> User Permission
                 </div>
@@ -268,13 +251,6 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                             </label>
                             <span class="permission-label">Delete Card{% if not perm_idcard_delete %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
-                        <div class="permission-row{% if not perm_idcard_approve %} perm-locked{% endif %}" {% if not perm_idcard_approve %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_approve" id="perm-idcard-approve" {% if not perm_idcard_approve %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Approve Card{% if not perm_idcard_approve %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
                         <div class="permission-row{% if not perm_idcard_verify %} perm-locked{% endif %}" {% if not perm_idcard_verify %}title="Admin has not granted you this permission"{% endif %}>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="perm_idcard_verify" id="perm-idcard-verify" {% if not perm_idcard_verify %}disabled{% endif %}>
@@ -288,13 +264,6 @@ Mirrors admin staff-drawer.html but with Group Assignment instead of Client Assi
                                 <span class="toggle-slider"></span>
                             </label>
                             <span class="permission-label">Last Updated &amp; Updated By{% if not perm_idcard_updated_at %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
-                        </div>
-                        <div class="permission-row{% if not perm_idcard_delete_from_pool %} perm-locked{% endif %}" {% if not perm_idcard_delete_from_pool %}title="Admin has not granted you this permission"{% endif %}>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="perm_idcard_delete_from_pool" id="perm-idcard-delete-from-pool" {% if not perm_idcard_delete_from_pool %}disabled{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="permission-label">Retrieve from Pool{% if not perm_idcard_delete_from_pool %} <i class="fa-solid fa-lock perm-lock-icon"></i>{% endif %}</span>
                         </div>
                     </div>
                 </div>
