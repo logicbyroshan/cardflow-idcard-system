@@ -499,11 +499,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 normalizedValues.forEach(function (val) {
                     var safe = String(chip.groupId) + '-' + valueKey + '-' + val.replace(/[^a-zA-Z0-9_-]/g, '_');
                     var isAssigned = selectedValues.indexOf(val) !== -1;
-                    var row = document.createElement(chip.isEditing ? 'label' : 'div');
+                    var row = document.createElement('div');
                     row.className = 'assignment-chip-checkbox-item ' + (isAssigned ? 'is-assigned' : 'is-unassigned');
-                    if (chip.isEditing) {
-                        row.setAttribute('for', safe);
-                    }
 
                     if (chip.isEditing) {
                         var input = document.createElement('input');
@@ -518,9 +515,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                 chip[valueKey] = target.filter(function (x) { return x !== val; });
                             }
 
+                            row.classList.toggle('is-assigned', input.checked);
+                            row.classList.toggle('is-unassigned', !input.checked);
+
                             if (valueKey === 'classes') {
+                                // Keep data consistent while editing, but avoid full rerender
+                                // on every click so multi-select interactions stay stable.
                                 _pruneChipSelection(chip);
-                                renderAssignmentScopeChips();
                             }
                         });
                         row.appendChild(input);
