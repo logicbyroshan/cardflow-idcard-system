@@ -249,16 +249,20 @@ class LoginAPIView(View):
             
             if result['success']:
                 user = result['user']
+                browser_fingerprint = AuthService.browser_fingerprint_from_request(request)
                 current_session_key = ''
                 if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
                     current_session_key = request.session.session_key or ''
 
                 max_sessions = AuthService.max_concurrent_sessions()
-                active_sessions = AuthService.count_active_sessions_for_user(
+                session_inspection = AuthService.inspect_active_sessions_for_user(
                     user.id,
+                    browser_fingerprint=browser_fingerprint,
                     exclude_session_key=current_session_key,
                     stop_after=max_sessions + 1,
                 )
+                active_sessions = int(session_inspection.get('count', 0) or 0)
+                has_different_browser_session = bool(session_inspection.get('has_different_browser'))
                 if active_sessions >= max_sessions:
                     logger.warning(
                         "Login blocked by session limit: user=%s role=%s ip=%s active_sessions=%s limit=%s",
@@ -278,9 +282,26 @@ class LoginAPIView(View):
                 
                 # Store selected role in session for reference
                 request.session['selected_role'] = role
+                request.session['_auth_browser_fp'] = browser_fingerprint
                 
                 # Log activity
-                ActivityService.log_login(request, user)
+                if user.role in ('client', 'client_staff') and has_different_browser_session:
+                    display_name = user.get_full_name() or user.username
+                    ActivityService.log(
+                        'login',
+                        f'{display_name} logged in from a different browser while another session is active',
+                        user=user,
+                        request=request,
+                    )
+                    logger.warning(
+                        "Concurrent cross-browser login detected: user=%s role=%s ip=%s active_sessions=%s",
+                        _mask_login_identifier(identifier),
+                        role,
+                        client_ip,
+                        active_sessions,
+                    )
+                else:
+                    ActivityService.log_login(request, user)
                 logger.info("Login success: user=%s role=%s ip=%s", _mask_login_identifier(identifier), role, client_ip)
                 
                 return JsonResponse({

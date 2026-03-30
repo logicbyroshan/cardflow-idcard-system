@@ -193,11 +193,13 @@ class LoginViewTests(TestCase):
     def tearDown(self):
         cache.clear()
 
-    def _create_authenticated_session(self):
+    def _create_authenticated_session(self, browser_fp=''):
         session = SessionStore()
         session['_auth_user_id'] = str(self.user.pk)
         session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
         session['_auth_user_hash'] = self.user.get_session_auth_hash()
+        if browser_fp:
+            session['_auth_browser_fp'] = browser_fp
         session.save()
 
     def test_login_page_loads(self):
@@ -249,6 +251,34 @@ class LoginViewTests(TestCase):
         payload = response.json()
         self.assertFalse(payload['success'])
         self.assertIn('Maximum 5 active logins', payload['message'])
+
+    def test_login_api_logs_cross_browser_activity_for_client(self):
+        from accounts.services import AuthService
+
+        existing_fp = AuthService.build_browser_fingerprint(
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0',
+            'en-US',
+        )
+        self._create_authenticated_session(browser_fp=existing_fp)
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+            HTTP_ACCEPT_LANGUAGE='en-US',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertIn('different browser', (log_entry.description or '').lower())
 
     def test_login_api_records_ip_address_in_activity_log(self):
         response = self.client.post(

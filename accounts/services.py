@@ -133,6 +133,76 @@ class AuthService:
         return active
 
     @staticmethod
+    def build_browser_fingerprint(user_agent: str, accept_language: str = '') -> str:
+        """Build a stable, non-reversible browser fingerprint for session comparison."""
+        ua = str(user_agent or '').strip().lower()
+        al = str(accept_language or '').strip().lower()
+        raw = f'{ua}|{al}'
+        return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:20]
+
+    @staticmethod
+    def browser_fingerprint_from_request(request) -> str:
+        if request is None:
+            return ''
+        return AuthService.build_browser_fingerprint(
+            request.META.get('HTTP_USER_AGENT', ''),
+            request.META.get('HTTP_ACCEPT_LANGUAGE', ''),
+        )
+
+    @staticmethod
+    def inspect_active_sessions_for_user(
+        user_id,
+        *,
+        browser_fingerprint: str = '',
+        exclude_session_key: str = '',
+        stop_after=None,
+    ) -> dict:
+        """
+        Inspect active sessions for a user and detect concurrent logins from other browsers.
+        """
+        if not user_id:
+            return {
+                'count': 0,
+                'has_different_browser': False,
+                'known_browser_fingerprints': [],
+            }
+
+        from django.contrib.sessions.models import Session
+
+        active = 0
+        has_different_browser = False
+        known_browser_fingerprints = set()
+        current_fp = str(browser_fingerprint or '').strip()
+
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            if exclude_session_key and session.session_key == exclude_session_key:
+                continue
+
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+
+            if str(data.get('_auth_user_id')) != str(user_id):
+                continue
+
+            active += 1
+            fp = str(data.get('_auth_browser_fp') or '').strip()
+            if fp:
+                known_browser_fingerprints.add(fp)
+                if current_fp and fp != current_fp:
+                    has_different_browser = True
+
+            if stop_after is not None and active >= stop_after:
+                break
+
+        return {
+            'count': active,
+            'has_different_browser': has_different_browser,
+            'known_browser_fingerprints': sorted(known_browser_fingerprints),
+        }
+
+    @staticmethod
     def _find_user(identifier, role=None):
         """
         Find a user by email or username, with optional role filter.

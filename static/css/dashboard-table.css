@@ -190,12 +190,28 @@
 }
 
 .rh-col-date {
-    width: 100px;
+    width: 136px;
 }
 
 .rh-col-status {
     width: 88px;
 }
+
+/* Client staff dashboard uses a 4-column recent table where Created holds date+time. */
+.recent-table.client-staff-recent-table th:nth-child(1),
+.recent-table.client-staff-recent-table td:nth-child(1) { width: 40%; }
+
+.recent-table.client-staff-recent-table th:nth-child(2),
+.recent-table.client-staff-recent-table td:nth-child(2) { width: 16%; }
+
+.recent-table.client-staff-recent-table th:nth-child(3),
+.recent-table.client-staff-recent-table td:nth-child(3) {
+    width: 28%;
+    white-space: nowrap;
+}
+
+.recent-table.client-staff-recent-table th:nth-child(4),
+.recent-table.client-staff-recent-table td:nth-child(4) { width: 16%; }
 
 .rh-state-cell {
     text-align: center;
