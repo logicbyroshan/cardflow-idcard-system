@@ -25,7 +25,7 @@ from .constants import VALID_IMAGE_EXTENSIONS
 logger = logging.getLogger(__name__)
 
 # Common iPhone formats that need conversion for broad browser preview support.
-HEIF_EXTENSIONS = frozenset({'.heic', '.heif'})
+HEIF_EXTENSIONS = frozenset({'.heic', '.heif', '.hei'})
 HEIF_MIME_TYPES = frozenset({
     'image/heic',
     'image/heif',
@@ -73,6 +73,7 @@ def _extension_to_content_type(ext: str) -> str:
         '.bmp': 'image/bmp',
         '.heic': 'image/heic',
         '.heif': 'image/heif',
+        '.hei': 'image/heic',
     }
     return mapping.get(ext, 'application/octet-stream')
 

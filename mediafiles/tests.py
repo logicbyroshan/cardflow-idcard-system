@@ -192,6 +192,35 @@ class UploadNormalizationTests(TestCase):
         self.assertTrue(normalized.name.lower().endswith('.jpg'))
         self.assertEqual(normalized.content_type, 'image/jpeg')
 
+    def test_normalize_uploaded_image_converts_hei_alias_to_jpg(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from mediafiles.utils import normalize_uploaded_image
+
+        fake_hei_upload = SimpleUploadedFile('iphone.hei', b'fake-hei-bytes', content_type='image/heic')
+        converted_jpeg_bytes = (
+            b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00'
+            b'\xff\xd9'
+        )
+
+        with mock.patch(
+            'mediafiles.utils.normalize_image_bytes_for_storage',
+            return_value=(converted_jpeg_bytes, '.jpg', None),
+        ):
+            normalized, error = normalize_uploaded_image(
+                fake_hei_upload,
+                max_bytes=5 * 1024 * 1024,
+                allowed_extensions={'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei'},
+                allowed_mime_types={
+                    'image/jpeg', 'image/png', 'image/webp',
+                    'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+                },
+            )
+
+        self.assertIsNone(error)
+        self.assertIsNotNone(normalized)
+        self.assertTrue(normalized.name.lower().endswith('.jpg'))
+        self.assertEqual(normalized.content_type, 'image/jpeg')
+
 
 class CardMediaModelAdvancedTests(TestCase):
     def test_card_media_upload_path_sanitizes_parts(self):

@@ -86,6 +86,26 @@ function getMainPhotoFile() {
     return null;
 }
 
+function isHeifLikeFile(file) {
+    if (!file) return false;
+    const name = String(file.name || '').toLowerCase();
+    const type = String(file.type || '').toLowerCase();
+    return (
+        name.endsWith('.heic') ||
+        name.endsWith('.heif') ||
+        name.endsWith('.hei') ||
+        type.indexOf('heic') !== -1 ||
+        type.indexOf('heif') !== -1
+    );
+}
+
+function showDeferredHeifPreview(previewEl) {
+    if (!previewEl) return;
+    previewEl.classList.remove('no-path', 'has-image', 'path-not-found');
+    previewEl.classList.add('pending-image');
+    previewEl.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
+}
+
 // ==========================================
 // IMAGE FIELD PROCESSING HELPERS
 // ==========================================
@@ -102,15 +122,31 @@ function applyImageToField(input, file) {
     const downloadBtn = fieldCard?.querySelector('.btn-download-field');
     
     if (previewEl) {
+        const heifLike = isHeifLikeFile(file);
         const reader = new FileReader();
         reader.onload = function(ev) {
             previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
             previewEl.classList.add('has-image');
             previewEl.innerHTML = '';
             var img = document.createElement('img');
+            img.onerror = function() {
+                showDeferredHeifPreview(previewEl);
+            };
             img.src = ev.target.result;
             img.alt = 'Preview';
             previewEl.appendChild(img);
+
+            // Chromium often cannot decode HEIF/HEIC previews locally.
+            if (heifLike) {
+                setTimeout(function() {
+                    if (!img.complete || !img.naturalWidth) {
+                        showDeferredHeifPreview(previewEl);
+                    }
+                }, 350);
+            }
+        };
+        reader.onerror = function() {
+            showDeferredHeifPreview(previewEl);
         };
         reader.readAsDataURL(file);
     }
@@ -149,14 +185,31 @@ function initFormDataHandlers() {
     if (formPhotoInput) {
         formPhotoInput.addEventListener('change', function() {
             if (this.files && this.files[0]) {
+                const selectedFile = this.files[0];
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     if (formPhotoPreview) {
                         formPhotoPreview.innerHTML = '';
                         var img = document.createElement('img');
+                        img.onerror = function() {
+                            formPhotoPreview.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
+                        };
                         img.src = e.target.result;
                         img.alt = 'Photo';
                         formPhotoPreview.appendChild(img);
+
+                        if (isHeifLikeFile(selectedFile)) {
+                            setTimeout(function() {
+                                if (!img.complete || !img.naturalWidth) {
+                                    formPhotoPreview.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
+                                }
+                            }, 350);
+                        }
+                    }
+                };
+                reader.onerror = function() {
+                    if (formPhotoPreview) {
+                        formPhotoPreview.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
                     }
                 };
                 reader.readAsDataURL(this.files[0]);

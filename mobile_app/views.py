@@ -365,7 +365,7 @@ _ALLOWED_IMAGE_TYPES = frozenset({
     'image/jpeg', 'image/png', 'image/webp', 'image/gif',
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
 })
-_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif'})
+_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.hei'})
 _MAX_IMAGE_SIZE = 15 * 1024 * 1024  # 15 MB
 
 def _validate_image(photo):
@@ -1155,7 +1155,7 @@ def card_list(request, table_id, status):
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
-    photo_exts = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif')
+    photo_exts = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei')
     image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
     image_field_types = ('photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
 

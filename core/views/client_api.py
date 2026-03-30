@@ -24,7 +24,7 @@ ALLOWED_IMAGE_UPLOAD_MIMES = {
     'image/jpeg', 'image/png', 'image/webp',
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
 }
-ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'}
+ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei'}
 
 
 def _validate_optional_image_upload(uploaded):

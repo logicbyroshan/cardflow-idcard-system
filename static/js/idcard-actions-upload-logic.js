@@ -584,7 +584,7 @@ function initZipUpload() {
 
         try {
             var zip = await JSZip.loadAsync(file);
-            var imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+            var imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.heif', '.hei'];
             var imageCount = 0;
             _us.zipFileNamesMap[fieldName] = [];
             var normalizedNames = new Set();

@@ -180,7 +180,7 @@
         if (!result) return '';
         var num = parseFloat(result);
         if (!isNaN(num) && num === Math.floor(num)) result = String(Math.floor(num));
-        var exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+        var exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.heif', '.hei'];
         var lower = result.toLowerCase();
         for (var i = 0; i < exts.length; i++) {
             if (lower.endsWith(exts[i])) { result = result.slice(0, -exts[i].length); break; }
