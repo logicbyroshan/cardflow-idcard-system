@@ -13,6 +13,7 @@ Features:
 """
 import os
 import re
+import io
 import base64
 import logging
 import zipfile
@@ -133,6 +134,23 @@ class ZipExporter:
             zip_files = []
             total_images = 0
             image_name_mapping = self._resolve_image_name_mapping(rename_options, table.fields or [])
+
+            output_format = 'zip'
+            if isinstance(rename_options, dict):
+                raw_mode = str(rename_options.get('output_format', 'zip') or 'zip').strip().lower()
+                if raw_mode == 'pdf_zip':
+                    output_format = 'pdf_zip'
+
+            if output_format == 'pdf_zip':
+                return self._export_images_as_pdf_zip(
+                    table=table,
+                    cards=cards,
+                    image_fields=image_fields,
+                    image_name_mapping=image_name_mapping,
+                    clean_client_name=clean_client_name,
+                    clean_table_name=clean_table_name,
+                    status=status,
+                )
             
             # Create a SINGLE ZIP with subdirectories per image field
             zip_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
@@ -246,6 +264,187 @@ class ZipExporter:
                 success=False,
                 message='ZIP export failed. Please try again or contact support.'
             )
+
+    def _export_images_as_pdf_zip(
+        self,
+        table,
+        cards: QuerySet,
+        image_fields: List[Dict[str, Any]],
+        image_name_mapping: Dict[str, str],
+        clean_client_name: str,
+        clean_table_name: str,
+        status: str,
+    ) -> ZipExportResult:
+        """Create one ZIP that contains one PDF per selected photo column."""
+        selected_keys = [
+            key for key in ('PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO')
+            if key in image_name_mapping
+        ]
+        if not selected_keys:
+            return ZipExportResult(
+                success=False,
+                message='Select at least one image-name mapping to export PDF files.'
+            )
+
+        field_by_key: Dict[str, Dict[str, Any]] = {}
+        for field_info in image_fields:
+            key = self._canonical_image_key(field_info.get('name', ''), field_info.get('type', ''))
+            if key and key in selected_keys and key not in field_by_key:
+                field_by_key[key] = field_info
+
+        if not field_by_key:
+            return ZipExportResult(
+                success=False,
+                message='No matching PHOTO columns found for PDF export.'
+            )
+
+        zip_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        zip_tmp_path = zip_tmp.name
+        zip_tmp.close()
+
+        total_images = 0
+        pdf_count = 0
+        try:
+            with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for key in selected_keys:
+                    field_info = field_by_key.get(key)
+                    if not field_info:
+                        continue
+
+                    field_name = field_info.get('name', '')
+                    if not field_name:
+                        continue
+
+                    pdf_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+                    pdf_tmp_path = pdf_tmp.name
+                    pdf_tmp.close()
+                    try:
+                        page_count = self._write_image_field_pdf(
+                            cards=cards,
+                            field_name=field_name,
+                            pdf_path=pdf_tmp_path,
+                        )
+                        if page_count <= 0:
+                            continue
+
+                        readable_field = self._get_readable_field_name(field_name)
+                        pdf_filename = f"{readable_field}_Images.pdf"
+                        zf.write(pdf_tmp_path, arcname=pdf_filename)
+                        total_images += page_count
+                        pdf_count += 1
+                    finally:
+                        try:
+                            os.unlink(pdf_tmp_path)
+                        except OSError:
+                            pass
+
+            if pdf_count == 0:
+                return ZipExportResult(
+                    success=False,
+                    message='No images found for selected photo columns!'
+                )
+
+            zip_size = os.path.getsize(zip_tmp_path)
+            if zip_size > MAX_BASE64_ZIP_BYTES:
+                return ZipExportResult(
+                    success=False,
+                    message='Selected PDF ZIP is too large for inline download. Please export fewer cards.'
+                )
+
+            with open(zip_tmp_path, 'rb') as f:
+                zip_data = f.read()
+
+            parts = []
+            if clean_client_name:
+                parts.append(clean_client_name)
+            parts.append(clean_table_name)
+            parts.append('ImagesPDF')
+            if status:
+                parts.append(clean_filename(status.capitalize()))
+            zip_filename = '_'.join(parts) + '.zip'
+
+            zip_base64 = base64.b64encode(zip_data).decode('utf-8')
+            del zip_data
+
+            return ZipExportResult(
+                success=True,
+                zip_files=[
+                    ZipFileInfo(
+                        field_name='PDF',
+                        filename=zip_filename,
+                        data=zip_base64,
+                        image_count=total_images,
+                    )
+                ],
+                total_images=total_images,
+                total_zips=1,
+            )
+        except Exception as e:
+            logger.error("PDF-in-ZIP export failed: %s", e, exc_info=True)
+            return ZipExportResult(
+                success=False,
+                message='PDF ZIP export failed. Please try again or contact support.'
+            )
+        finally:
+            try:
+                os.unlink(zip_tmp_path)
+            except OSError:
+                pass
+
+    def _write_image_field_pdf(self, cards: QuerySet, field_name: str, pdf_path: str) -> int:
+        """Write one PDF where each page contains one image from the given field."""
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.utils import ImageReader
+
+        pdf_canvas = canvas.Canvas(pdf_path)
+        page_count = 0
+        MAX_IMAGES_PER_PDF = 5000
+
+        try:
+            for card in cards.iterator(chunk_size=100):
+                if page_count >= MAX_IMAGES_PER_PDF:
+                    break
+
+                img_path = ImageService.get_image_path_for_card(
+                    card=card,
+                    field_name=field_name,
+                    fallback_to_field_data=True,
+                )
+                if not is_valid_image_path(img_path):
+                    continue
+
+                try:
+                    with default_storage.open(img_path, 'rb') as img_file:
+                        img_data = img_file.read()
+
+                    if not img_data or len(img_data) < 100:
+                        continue
+
+                    image_reader = ImageReader(io.BytesIO(img_data))
+                    width, height = image_reader.getSize()
+                    if width <= 0 or height <= 0:
+                        continue
+
+                    width = float(width)
+                    height = float(height)
+                    pdf_canvas.setPageSize((width, height))
+                    pdf_canvas.drawImage(image_reader, 0, 0, width=width, height=height)
+                    pdf_canvas.showPage()
+                    page_count += 1
+                except FileNotFoundError:
+                    continue
+                except Exception:
+                    continue
+
+            pdf_canvas.save()
+        except Exception:
+            try:
+                pdf_canvas.save()
+            except Exception:
+                pass
+            return 0
+
+        return page_count
     
     def _create_zip_for_field(
         self,

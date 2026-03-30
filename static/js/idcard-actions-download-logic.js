@@ -122,11 +122,12 @@ function downloadImages(cardIds, renameOptions) {
     if (renameOptions && renameOptions.enabled === true && renameOptions.image_name_fields) {
         requestBody.rename_options = renameOptions;
     }
+    const isPdfZipMode = !!(renameOptions && renameOptions.enabled === true && renameOptions.output_format === 'pdf_zip');
 
     // Use DownloadManager if available
     if (window.DownloadManager) {
         window.DownloadManager.startImageDownload({
-            name: 'Images ZIP',
+            name: isPdfZipMode ? 'Images PDF ZIP' : 'Images ZIP',
             url: `/api/table/${tableId}/cards/download-images/`,
             body: requestBody,
             onComplete: function() {

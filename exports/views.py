@@ -196,6 +196,7 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
         {
             "rename_options": {
                 "enabled": true,
+                "output_format": "zip" | "pdf_zip",
                 "image_name_fields": {
                     "PHOTO": "Student Name",
                     "FATHER_PHOTO": "Father Name",
@@ -235,9 +236,13 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
     if not cleaned_map:
         return None
 
+    raw_output_format = str(rename_options.get('output_format', 'zip') or 'zip').strip().lower()
+    output_format = 'pdf_zip' if raw_output_format == 'pdf_zip' else 'zip'
+
     return {
         'enabled': True,
         'image_name_fields': cleaned_map,
+        'output_format': output_format,
     }
 
 

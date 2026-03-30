@@ -191,8 +191,10 @@ function _dlInitializeImageRenamePanel() {
 function _dlResetImageRenameControls() {
     const toggleEl = document.getElementById('downloadImgRenameToggle');
     const panelEl = document.getElementById('downloadImgRenamePanel');
+    const formatSelect = document.getElementById('downloadImgFormatSelect');
     if (toggleEl) toggleEl.checked = false;
     if (panelEl) panelEl.style.display = 'none';
+    if (formatSelect) formatSelect.value = 'zip';
     _dlInitializeImageRenamePanel();
 }
 
@@ -201,6 +203,7 @@ function _dlGetImageRenameOptionsFromModal() {
     const photoSelect = document.getElementById('downloadImgMapPhoto');
     const fatherSelect = document.getElementById('downloadImgMapFather');
     const motherSelect = document.getElementById('downloadImgMapMother');
+    const formatSelect = document.getElementById('downloadImgFormatSelect');
 
     if (!toggleEl || !toggleEl.checked) return null;
 
@@ -215,9 +218,13 @@ function _dlGetImageRenameOptionsFromModal() {
 
     if (!Object.keys(imageNameFields).length) return null;
 
+    const selectedFormat = formatSelect ? String(formatSelect.value || '').trim() : 'zip';
+    const outputFormat = selectedFormat === 'pdf_zip' ? 'pdf_zip' : 'zip';
+
     return {
         enabled: true,
-        image_name_fields: imageNameFields
+        image_name_fields: imageNameFields,
+        output_format: outputFormat
     };
 }
 

@@ -134,6 +134,15 @@
     </div>
 
     <div id="downloadImgRenamePanel" class="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50" style="display:none;">
+      <div class="mb-3">
+        <label class="center-modal-label text-left block mb-1">Download format</label>
+        <select id="downloadImgFormatSelect" class="center-modal-select">
+          <option value="zip">ZIP (images)</option>
+          <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
+        </select>
+        <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
+      </div>
+
       <div class="grid gap-2">
         <div id="downloadImgMapPhotoRow">
           <label class="center-modal-label text-left block mb-1">PHOTO filename from</label>
