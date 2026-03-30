@@ -489,6 +489,15 @@ def api_global_search(request):
     try:
         query = request.GET.get('q', '').strip()
         filter_type = request.GET.get('filter', 'all')
+        raw_table_id = (request.GET.get('table_id') or '').strip()
+
+        scoped_table_id = None
+        if raw_table_id:
+            if not raw_table_id.isdigit():
+                return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
+            scoped_table_id = int(raw_table_id)
+            if scoped_table_id <= 0:
+                return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
         
         if not query or len(query) < 2:
             return JsonResponse({
@@ -498,7 +507,8 @@ def api_global_search(request):
             })
 
         user = request.user
-        cache_key = f'global-search:{user.id}:{filter_type}:{query.lower()}'
+        scope_sig = f'table:{scoped_table_id}' if scoped_table_id else 'all'
+        cache_key = f'global-search:{user.id}:{scope_sig}:{filter_type}:{query.lower()}'
         cached = cache.get(cache_key)
         if cached is not None:
             return JsonResponse(cached)
@@ -535,6 +545,21 @@ def api_global_search(request):
                 base_cards = base_cards.filter(table__group__client_id__in=accessible_ids)
             else:
                 base_cards = base_cards.none()
+
+        if scoped_table_id:
+            scoped_table = IDCardTable.objects.select_related('group').filter(id=scoped_table_id).first()
+            if not scoped_table:
+                return JsonResponse({'success': False, 'message': 'Table not found.'}, status=404)
+
+            if not PermissionService.can_access_client(user, scoped_table.group.client_id):
+                return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+            if user.role in ('client', 'client_staff'):
+                from client.services import ClientAccessService
+                if not ClientAccessService.can_access_table(user, scoped_table):
+                    return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+            base_cards = base_cards.filter(table_id=scoped_table_id)
         
         cards = base_cards[:GLOBAL_SEARCH_DB_LIMIT]  # Limit at database level for speed
         
@@ -603,6 +628,8 @@ def api_global_search(request):
                 'id': card.id,
                 'title': display_name or f'Card #{card.id}',
                 'subtitle': f'{client_name} • {table_name} • {card.get_status_display()}',
+                'table_id': card.table.id if card.table else None,
+                'table_name': table_name,
                 'matched_field': matched_field or 'Field',
                 'matched_value': matched_value or query,
                 'url': (f'{reverse("client:idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}'
@@ -610,6 +637,7 @@ def api_global_search(request):
                         f'{reverse("idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}') if card.table else '#',
                 'icon': 'fa-id-card',
                 'status': card.status,
+                'status_display': card.get_status_display(),
                 'photo': photo_url,
             })
             

@@ -95,6 +95,55 @@
 
     function getEl(id) { return document.getElementById(id); }
 
+    function parseCurrentActionsTableId() {
+        const path = String(window.location.pathname || '');
+        const match = path.match(/\/table\/(\d+)\/actions\/?$/i);
+        if (!match) return null;
+        const tableId = parseInt(match[1], 10);
+        return Number.isFinite(tableId) && tableId > 0 ? tableId : null;
+    }
+
+    function getSearchScopeContext() {
+        const onActionsPage = !!document.querySelector('main.idcard-actions-page');
+        const tableId = onActionsPage ? parseCurrentActionsTableId() : null;
+        if (onActionsPage && tableId) {
+            return {
+                mode: 'table',
+                tableId,
+                title: 'Search this list (all statuses)',
+                hint: 'Searches this table across Pending, Verified, Pool, Approved, Download, Reprint.',
+            };
+        }
+
+        return {
+            mode: 'global',
+            tableId: null,
+            title: 'Search across all ID cards',
+            hint: 'Enter at least 2 characters to search',
+        };
+    }
+
+    function renderPlaceholder(container, scope, titleOverride) {
+        if (!container) return;
+        const title = titleOverride || scope.title;
+        container.innerHTML = `
+            <div class="search-placeholder">
+                <i class="fa-solid fa-search"></i>
+                <p>${title}</p>
+                <span>${scope.hint}</span>
+            </div>
+        `;
+    }
+
+    function buildGlobalSearchUrl(query, filter) {
+        const scope = getSearchScopeContext();
+        let url = `/api/global-search/?q=${encodeURIComponent(query)}&filter=${encodeURIComponent(filter)}`;
+        if (scope.mode === 'table' && scope.tableId) {
+            url += `&table_id=${encodeURIComponent(String(scope.tableId))}`;
+        }
+        return url;
+    }
+
     let _searchTriggerEl = null;
 
     function openGlobalSearch() {
@@ -102,9 +151,18 @@
         const overlay = getEl('globalSearchOverlay');
         if (overlay) {
             overlay.classList.add('active');
+            const scope = getSearchScopeContext();
+            const input = getEl('globalSearchInput');
+            if (input) {
+                input.placeholder = scope.mode === 'table'
+                    ? 'Search this list across all statuses...'
+                    : 'Search ID cards by name, address, mobile...';
+                input.setAttribute('aria-label', scope.title);
+            }
+            renderPlaceholder(getEl('globalSearchResults'), scope);
             setTimeout(() => {
-                const input = getEl('globalSearchInput');
-                if (input) input.focus();
+                const focusInput = getEl('globalSearchInput');
+                if (focusInput) focusInput.focus();
             }, 100);
         }
     }
@@ -114,19 +172,12 @@
         const input = getEl('globalSearchInput');
         const clearBtn = getEl('clearGlobalSearch');
         const results = getEl('globalSearchResults');
+        const scope = getSearchScopeContext();
 
         if (overlay) overlay.classList.remove('active');
         if (input) input.value = '';
         if (clearBtn) clearBtn.style.display = 'none';
-        if (results) {
-            results.innerHTML = `
-                <div class="search-placeholder">
-                    <i class="fa-solid fa-search"></i>
-                    <p>Search across all ID cards</p>
-                    <span>Enter at least 2 characters to search</span>
-                </div>
-            `;
-        }
+        renderPlaceholder(results, scope);
         // Restore focus to trigger element (a11y)
         if (_searchTriggerEl && typeof _searchTriggerEl.focus === 'function') {
             _searchTriggerEl.focus();
@@ -138,7 +189,7 @@
         const filter = getEl('globalSearchFilter')?.value || 'all';
         const results = getEl('globalSearchResults');
 
-        ApiClient.get(`/api/global-search/?q=${encodeURIComponent(query)}&filter=${filter}`)
+        ApiClient.get(buildGlobalSearchUrl(query, filter))
             .then(data => {
                 if (data.success) {
                     displayResults(data.results, query);
@@ -203,12 +254,20 @@
                 iconHtml = `<div class="result-icon idcard"><i class="fa-solid fa-user"></i></div>`;
             }
 
+            const statusClass = esc(String(result.status || '').toLowerCase());
+            const statusDisplay = esc(result.status_display || 'Unknown');
+            const listName = esc(result.table_name || 'Unknown List');
+
             html += `
-                <div class="global-search-result-item" data-url="${esc(result.url)}">
+                <div class="global-search-result-item" data-url="${esc(result.url)}" data-status="${statusClass}" data-card-id="${esc(String(result.id || ''))}" data-table-id="${esc(String(result.table_id || ''))}">
                     ${iconHtml}
                     <div class="result-info">
                         <div class="result-title">${esc(result.title)}</div>
                         <div class="result-subtitle">${esc(result.subtitle)}</div>
+                        <div class="result-meta-row">
+                            <span class="result-list-name">${listName}</span>
+                            <span class="result-status-pill ${statusClass}">${statusDisplay}</span>
+                        </div>
                         <div class="result-match">Match: <strong>${esc(result.matched_field)}</strong> = "${esc(result.matched_value)}"</div>
                     </div>
                     <i class="fa-solid fa-chevron-right result-arrow"></i>
@@ -221,6 +280,25 @@
         container.querySelectorAll('.global-search-result-item').forEach(function (item) {
             item.addEventListener('click', function () {
                 const url = this.getAttribute('data-url');
+                const resultStatus = String(this.getAttribute('data-status') || '').toLowerCase();
+                const cardId = parseInt(this.getAttribute('data-card-id'), 10);
+                const resultTableId = parseInt(this.getAttribute('data-table-id'), 10);
+                const currentScope = getSearchScopeContext();
+
+                if (
+                    currentScope.mode === 'table'
+                    && Number.isFinite(resultTableId)
+                    && resultTableId === currentScope.tableId
+                    && window.IDCardPage
+                    && typeof window.IDCardPage.navigateStatusNoReload === 'function'
+                    && resultStatus
+                    && Number.isFinite(cardId)
+                ) {
+                    closeGlobalSearch();
+                    window.IDCardPage.navigateStatusNoReload(resultStatus, cardId);
+                    return;
+                }
+
                 if (url && url !== '#') {
                     this.innerHTML = `
                         <div class="result-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
@@ -297,15 +375,7 @@
                 if (input) input.value = '';
                 this.style.display = 'none';
                 if (input) input.focus();
-                if (resultsEl) {
-                    resultsEl.innerHTML = `
-                        <div class="search-placeholder">
-                            <i class="fa-solid fa-search"></i>
-                            <p>Search across all ID cards</p>
-                            <span>Enter at least 2 characters to search</span>
-                        </div>
-                    `;
-                }
+                renderPlaceholder(resultsEl, getSearchScopeContext());
             });
         }
 
@@ -322,13 +392,12 @@
 
                 if (query.length < 2) {
                     if (resultsEl) {
-                        resultsEl.innerHTML = `
-                            <div class="search-placeholder">
-                                <i class="fa-solid fa-search"></i>
-                                <p>${query.length === 0 ? 'Search across all ID cards' : 'Enter at least 2 characters'}</p>
-                                <span>Enter at least 2 characters to search</span>
-                            </div>
-                        `;
+                        const scope = getSearchScopeContext();
+                        renderPlaceholder(
+                            resultsEl,
+                            scope,
+                            query.length === 0 ? scope.title : 'Enter at least 2 characters'
+                        );
                     }
                     return;
                 }

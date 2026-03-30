@@ -314,6 +314,69 @@
     margin-bottom: 2px;
 }
 
+.result-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.result-list-name {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.result-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-transform: capitalize;
+    color: #334155;
+    background: #f8fafc;
+}
+
+.result-status-pill.pending {
+    color: #a16207;
+    border-color: #fcd34d;
+    background: #fffbeb;
+}
+
+.result-status-pill.verified {
+    color: #047857;
+    border-color: #6ee7b7;
+    background: #ecfdf5;
+}
+
+.result-status-pill.pool {
+    color: #b91c1c;
+    border-color: #fecaca;
+    background: #fff1f2;
+}
+
+.result-status-pill.approved {
+    color: #1d4ed8;
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.result-status-pill.download {
+    color: #374151;
+    border-color: #d1d5db;
+    background: #f3f4f6;
+}
+
+.result-status-pill.reprint {
+    color: #7c3aed;
+    border-color: #c4b5fd;
+    background: #f5f3ff;
+}
+
 .result-match {
     font-size: 11px;
     color: #9ca3af;
