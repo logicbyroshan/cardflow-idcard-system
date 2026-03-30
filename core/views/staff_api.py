@@ -4,37 +4,39 @@ Contains: All staff-related API endpoints (CRUD, toggle status, active clients l
 """
 import json
 import logging
-import os
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from ..services.permission_service import api_require_super_admin
 from ..services import StaffService
 from client.models import Client
 from accounts.rate_limit import rate_limit
+from mediafiles.utils import normalize_uploaded_image
 
 logger = logging.getLogger(__name__)
 
 
 MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
-ALLOWED_IMAGE_UPLOAD_MIMES = {'image/jpeg', 'image/png', 'image/webp'}
-ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp'}
+ALLOWED_IMAGE_UPLOAD_MIMES = {
+    'image/jpeg', 'image/png', 'image/webp',
+    'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+}
+ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'}
 
 
 def _validate_optional_image_upload(uploaded):
     """Validate optional profile image upload."""
     if not uploaded:
-        return None
-    if getattr(uploaded, 'size', 0) > MAX_IMAGE_UPLOAD_BYTES:
-        return JsonResponse({'success': False, 'message': 'Image must be 5 MB or smaller'}, status=400)
+        return None, None
 
-    ext = os.path.splitext(getattr(uploaded, 'name', '') or '')[1].lower()
-    if ext not in ALLOWED_IMAGE_UPLOAD_EXTS:
-        return JsonResponse({'success': False, 'message': 'Only JPG, PNG, and WEBP images are allowed'}, status=400)
-
-    content_type = (getattr(uploaded, 'content_type', '') or '').lower()
-    if content_type and content_type not in ALLOWED_IMAGE_UPLOAD_MIMES:
-        return JsonResponse({'success': False, 'message': 'Unsupported image content type'}, status=400)
-    return None
+    normalized_upload, error_message = normalize_uploaded_image(
+        uploaded,
+        max_bytes=MAX_IMAGE_UPLOAD_BYTES,
+        allowed_extensions=ALLOWED_IMAGE_UPLOAD_EXTS,
+        allowed_mime_types=ALLOWED_IMAGE_UPLOAD_MIMES,
+    )
+    if error_message:
+        return None, JsonResponse({'success': False, 'message': error_message}, status=400)
+    return normalized_upload, None
 
 
 @require_http_methods(["POST"])
@@ -53,7 +55,7 @@ def api_staff_create(request):
             data = json.loads(request.body)
             profile_image = None
 
-        file_error = _validate_optional_image_upload(profile_image)
+        profile_image, file_error = _validate_optional_image_upload(profile_image)
         if file_error:
             return file_error
         
@@ -101,7 +103,7 @@ def api_staff_update(request, staff_id):
             data = json.loads(request.body)
             profile_image = None
 
-        file_error = _validate_optional_image_upload(profile_image)
+        profile_image, file_error = _validate_optional_image_upload(profile_image)
         if file_error:
             return file_error
         

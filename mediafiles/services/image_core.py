@@ -24,6 +24,7 @@ from ..constants import (
     THUMBNAIL_SUFFIX,
     CLIENT_IMAGE_BASE_FOLDER,
 )
+from ..utils import normalize_image_bytes_for_storage, register_heif_opener
 from .image_rename import ImageRenamer
 from .image_thumbnail import ThumbnailService
 
@@ -147,6 +148,8 @@ class ImageCoreMixin:
         try:
             from PIL import Image
 
+            register_heif_opener()
+
             # MAX_IMAGE_PIXELS is set once at app startup (core/apps.py)
 
             # Phase 1: verify file integrity (header + checksum check).
@@ -161,7 +164,7 @@ class ImageCoreMixin:
             # just to throw it away. format is populated by open() alone.
             with Image.open(BytesIO(image_bytes)) as img:
                 fmt = (img.format or '').lower()
-                if fmt and fmt not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp']:
+                if fmt and fmt not in ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif']:
                     return False, f"Unsupported image format: {img.format}"
 
             return True, None
@@ -344,15 +347,27 @@ class ImageCoreMixin:
         Phase 1 rule: If the image exceeds 5 MB it is quality-compressed
         (dimensions preserved) before saving.
         """
+        normalized_bytes, normalized_ext, normalize_err = normalize_image_bytes_for_storage(
+            image_bytes,
+            suggested_ext=original_ext,
+        )
+        if normalize_err:
+            return MediaResult(success=False, message=normalize_err)
+
+        image_bytes = normalized_bytes
+        original_ext = normalized_ext
+
         # Phase 1: compress large images to <= 5 MB (quality only, no resize)
         if len(image_bytes) > cls.MAX_STORED_IMAGE_SIZE:
-            image_bytes = cls.compress_to_target_size(image_bytes)
-            # After compression the effective extension is always JPEG
-            original_ext = '.jpg'
+            compressed_bytes = cls.compress_to_target_size(image_bytes)
+            if compressed_bytes != image_bytes:
+                image_bytes = compressed_bytes
+                # After compression the effective extension is always JPEG
+                original_ext = '.jpg'
 
         # First save the original
         result = cls.save_image(
-            ContentFile(image_bytes),
+            ContentFile(image_bytes, name=f'upload{original_ext}'),
             client,
             existing_path,
             batch_counter

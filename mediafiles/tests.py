@@ -113,6 +113,85 @@ class ImageServiceBasicTests(TestCase):
         is_valid, error_msg = validate_image_bytes(b'')
         self.assertFalse(is_valid)
 
+    def test_save_new_image_preserves_png_extension(self):
+        from io import BytesIO
+        from PIL import Image
+        from mediafiles.services import ImageService
+
+        client_obj, _group, _table, _card = _create_test_card()
+        buf = BytesIO()
+        Image.new('RGB', (64, 64), color='blue').save(buf, format='PNG')
+        png_bytes = buf.getvalue()
+
+        result = ImageService.save_new_image(
+            image_bytes=png_bytes,
+            client=client_obj,
+            field_name='PHOTO',
+            original_ext='.png',
+            batch_counter=1,
+        )
+        self.assertTrue(result.success, result.message)
+        saved_path = result.data.get('final_value', '')
+        self.assertTrue(saved_path.lower().endswith('.png'))
+
+        # Keep media folder clean for subsequent tests.
+        ImageService.delete_image(saved_path)
+
+
+class UploadNormalizationTests(TestCase):
+    def test_normalize_uploaded_image_accepts_png(self):
+        from io import BytesIO
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from mediafiles.utils import normalize_uploaded_image
+
+        buf = BytesIO()
+        Image.new('RGB', (48, 48), color='green').save(buf, format='PNG')
+        upload = SimpleUploadedFile('student.png', buf.getvalue(), content_type='image/png')
+
+        normalized, error = normalize_uploaded_image(
+            upload,
+            max_bytes=5 * 1024 * 1024,
+            allowed_extensions={'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'},
+            allowed_mime_types={
+                'image/jpeg', 'image/png', 'image/webp',
+                'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+            },
+        )
+
+        self.assertIsNone(error)
+        self.assertIsNotNone(normalized)
+        self.assertEqual(normalized.name.lower(), 'student.png')
+
+    def test_normalize_uploaded_image_converts_heic_to_jpg(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from mediafiles.utils import normalize_uploaded_image
+
+        fake_heic_upload = SimpleUploadedFile('iphone.heic', b'fake-heic-bytes', content_type='image/heic')
+        converted_jpeg_bytes = (
+            b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00'
+            b'\xff\xd9'
+        )
+
+        with mock.patch(
+            'mediafiles.utils.normalize_image_bytes_for_storage',
+            return_value=(converted_jpeg_bytes, '.jpg', None),
+        ):
+            normalized, error = normalize_uploaded_image(
+                fake_heic_upload,
+                max_bytes=5 * 1024 * 1024,
+                allowed_extensions={'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'},
+                allowed_mime_types={
+                    'image/jpeg', 'image/png', 'image/webp',
+                    'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+                },
+            )
+
+        self.assertIsNone(error)
+        self.assertIsNotNone(normalized)
+        self.assertTrue(normalized.name.lower().endswith('.jpg'))
+        self.assertEqual(normalized.content_type, 'image/jpeg')
+
 
 class CardMediaModelAdvancedTests(TestCase):
     def test_card_media_upload_path_sanitizes_parts(self):

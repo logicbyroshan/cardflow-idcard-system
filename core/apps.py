@@ -46,6 +46,13 @@ class CoreConfig(AppConfig):
         except ImportError:
             pass
 
+        # Register optional HEIC/HEIF decoder once for all image pipelines.
+        try:
+            from mediafiles.utils import register_heif_opener
+            register_heif_opener()
+        except Exception:
+            pass
+
         # SQLite WAL mode for concurrent access (dev env; production uses PostgreSQL)
         from django.db.backends.signals import connection_created
         connection_created.connect(_set_sqlite_pragmas)

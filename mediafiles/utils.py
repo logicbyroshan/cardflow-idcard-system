@@ -13,10 +13,163 @@ import re
 import random
 import string
 import uuid
+import logging
+from io import BytesIO
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple, Iterable
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from .constants import VALID_IMAGE_EXTENSIONS
+
+logger = logging.getLogger(__name__)
+
+# Common iPhone formats that need conversion for broad browser preview support.
+HEIF_EXTENSIONS = frozenset({'.heic', '.heif'})
+HEIF_MIME_TYPES = frozenset({
+    'image/heic',
+    'image/heif',
+    'image/heic-sequence',
+    'image/heif-sequence',
+})
+
+_HEIF_REGISTER_ATTEMPTED = False
+_HEIF_REGISTERED = False
+
+
+def register_heif_opener() -> bool:
+    """Register HEIF/HEIC decoder with Pillow when pillow-heif is available."""
+    global _HEIF_REGISTER_ATTEMPTED, _HEIF_REGISTERED
+    if _HEIF_REGISTER_ATTEMPTED:
+        return _HEIF_REGISTERED
+
+    _HEIF_REGISTER_ATTEMPTED = True
+    try:
+        from pillow_heif import register_heif_opener as _register_heif_opener
+
+        _register_heif_opener()
+        _HEIF_REGISTERED = True
+    except Exception as exc:
+        logger.debug('HEIF opener registration skipped: %s', exc)
+        _HEIF_REGISTERED = False
+
+    return _HEIF_REGISTERED
+
+
+def _content_type_base(content_type: Optional[str]) -> str:
+    if not content_type:
+        return ''
+    return str(content_type).lower().split(';', 1)[0].strip()
+
+
+def _extension_to_content_type(ext: str) -> str:
+    ext = (ext or '').lower()
+    mapping = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif',
+        '.bmp': 'image/bmp',
+        '.heic': 'image/heic',
+        '.heif': 'image/heif',
+    }
+    return mapping.get(ext, 'application/octet-stream')
+
+
+def normalize_image_bytes_for_storage(
+    image_bytes: bytes,
+    suggested_ext: str = '.jpg',
+) -> Tuple[bytes, str, Optional[str]]:
+    """Validate image bytes and convert HEIC/HEIF to JPEG for compatibility."""
+    if not image_bytes:
+        return image_bytes, _normalize_extension(suggested_ext), 'Image data is empty'
+
+    try:
+        from PIL import Image, ImageOps
+
+        register_heif_opener()
+
+        with Image.open(BytesIO(image_bytes)) as verify_img:
+            verify_img.verify()
+
+        with Image.open(BytesIO(image_bytes)) as probe_img:
+            fmt = (probe_img.format or '').lower()
+
+        if fmt in ('heic', 'heif'):
+            with Image.open(BytesIO(image_bytes)) as img:
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                out = BytesIO()
+                img.save(out, format='JPEG', quality=92, optimize=True)
+                return out.getvalue(), '.jpg', None
+
+        return image_bytes, _normalize_extension(suggested_ext), None
+    except Exception as exc:
+        return image_bytes, _normalize_extension(suggested_ext), f'Invalid image: {exc}'
+
+
+def normalize_uploaded_image(
+    uploaded_file,
+    *,
+    max_bytes: int,
+    allowed_extensions: Iterable[str],
+    allowed_mime_types: Iterable[str],
+) -> Tuple[Optional[object], Optional[str]]:
+    """Validate upload and convert HEIC/HEIF to JPEG when needed."""
+    if not uploaded_file:
+        return None, None
+
+    size = getattr(uploaded_file, 'size', 0) or 0
+    if size > max_bytes:
+        max_mb = max_bytes // (1024 * 1024)
+        return None, f'Image must be {max_mb} MB or smaller'
+
+    name = str(getattr(uploaded_file, 'name', '') or '').strip()
+    ext = os.path.splitext(name)[1].lower()
+    ct = _content_type_base(getattr(uploaded_file, 'content_type', '') or '')
+
+    allowed_exts = {str(v).lower() for v in (allowed_extensions or [])}
+    allowed_mimes = {str(v).lower() for v in (allowed_mime_types or [])}
+
+    if ext and ext not in allowed_exts:
+        return None, 'Only JPG, PNG, WEBP, and HEIC images are allowed'
+    if ct and ct not in allowed_mimes:
+        return None, 'Unsupported image content type'
+
+    try:
+        uploaded_file.seek(0)
+        image_bytes = uploaded_file.read()
+        uploaded_file.seek(0)
+    except Exception:
+        return None, 'Unable to read uploaded image'
+
+    normalized_bytes, normalized_ext, err = normalize_image_bytes_for_storage(
+        image_bytes,
+        suggested_ext=ext or '.jpg',
+    )
+    if err:
+        if ext in HEIF_EXTENSIONS or ct in HEIF_MIME_TYPES:
+            return None, 'HEIC image could not be decoded. Please try JPG/PNG or enable HEIC decoder support.'
+        return None, 'Uploaded file is not a valid image.'
+
+    should_convert = (
+        normalized_ext != (ext or normalized_ext)
+        or normalized_bytes != image_bytes
+    )
+    if not should_convert:
+        return uploaded_file, None
+
+    stem = os.path.splitext(name)[0].strip() or 'image'
+    normalized_name = f'{stem}{normalized_ext}'
+    normalized_ct = _extension_to_content_type(normalized_ext)
+
+    return SimpleUploadedFile(
+        normalized_name,
+        normalized_bytes,
+        content_type=normalized_ct,
+    ), None
 
 
 # =============================================================================

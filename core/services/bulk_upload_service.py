@@ -44,7 +44,7 @@ MAX_SINGLE_IMAGE_BYTES = 20 * 1024 * 1024  # Skip files > 20MB
 RAM_THRESHOLD_BYTES = 50 * 1024 * 1024  # 50 MB
 RAM_THRESHOLD_PER_IMAGE = 256 * 1024  # 256 KB per image
 
-VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+VALID_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.heif'}
 
 
 class DiskBackedImageStore:

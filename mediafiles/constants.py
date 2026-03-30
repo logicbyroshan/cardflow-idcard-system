@@ -40,7 +40,7 @@ IMAGE_FIELD_NAME_PATTERNS = [
 # =============================================================================
 
 # Valid image extensions supported for upload
-VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.heif']
 
 # =============================================================================
 # THUMBNAIL SETTINGS

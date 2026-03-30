@@ -45,6 +45,7 @@ from staff.models import Staff
 from accounts.rate_limit import rate_limit
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
+from mediafiles.utils import normalize_uploaded_image
 
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
@@ -360,33 +361,24 @@ def _get_table_filter_metadata(table, table_fields):
 
 
 # ── Image upload validation ──────────────────────────────────────────────────
-_ALLOWED_IMAGE_TYPES = frozenset({'image/jpeg', 'image/png', 'image/webp', 'image/gif'})
-_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif'})
+_ALLOWED_IMAGE_TYPES = frozenset({
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
+})
+_ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif'})
 _MAX_IMAGE_SIZE = 15 * 1024 * 1024  # 15 MB
 
 def _validate_image(photo):
-    """Return (True, '') or (False, error_message) for an uploaded file."""
-    import os as _os
-    # File size check
-    if hasattr(photo, 'size') and photo.size and photo.size > _MAX_IMAGE_SIZE:
-        return False, 'Image too large. Maximum size is 15 MB.'
-    ct = (photo.content_type or '').lower().split(';')[0].strip()
-    if ct not in _ALLOWED_IMAGE_TYPES:
-        return False, f'File type "{ct}" not allowed. Use JPEG, PNG or WebP.'
-    ext = _os.path.splitext(photo.name.lower())[1]
-    if ext not in _ALLOWED_IMAGE_EXTS:
-        return False, f'File extension "{ext}" not allowed.'
-    # Verify actual image content with Pillow
-    try:
-        from PIL import Image
-        from io import BytesIO
-        photo.seek(0)
-        img = Image.open(BytesIO(photo.read()))
-        img.verify()
-        photo.seek(0)
-    except Exception:
-        return False, 'Uploaded file is not a valid image.'
-    return True, ''
+    """Return (ok, message, normalized_upload) for an uploaded file."""
+    normalized_upload, error_message = normalize_uploaded_image(
+        photo,
+        max_bytes=_MAX_IMAGE_SIZE,
+        allowed_extensions=_ALLOWED_IMAGE_EXTS,
+        allowed_mime_types=_ALLOWED_IMAGE_TYPES,
+    )
+    if error_message:
+        return False, error_message, None
+    return True, '', normalized_upload
 
 
 # ---------------------------------------------------------------------------
@@ -1163,7 +1155,7 @@ def card_list(request, table_id, status):
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
-    photo_exts = ('.jpg', '.jpeg', '.png', '.webp')
+    photo_exts = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif')
     image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
     image_field_types = ('photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
 
@@ -1950,7 +1942,7 @@ def api_upload_photo(request, table_id):
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
 
-    _ok, _err = _validate_image(photo)
+    _ok, _err, photo = _validate_image(photo)
     if not _ok:
         return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
@@ -2026,7 +2018,7 @@ def api_card_add(request, table_id):
         # Validate photo BEFORE writing card to DB
         photo = request.FILES.get('photo')
         if photo:
-            _ok, _err = _validate_image(photo)
+            _ok, _err, photo = _validate_image(photo)
             if not _ok:
                 return JsonResponse({'success': False, 'message': _err}, status=400)
 
@@ -2071,7 +2063,7 @@ def api_card_update(request, table_id, card_id):
 
         photo = request.FILES.get('photo')
         if photo:
-            _ok, _err = _validate_image(photo)
+            _ok, _err, photo = _validate_image(photo)
             if not _ok:
                 return JsonResponse({'success': False, 'message': _err}, status=400)
             import os, uuid
