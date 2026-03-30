@@ -1,7 +1,7 @@
 """
 Client Card Service — read and status-transition operations on ID cards.
 """
-from typing import Optional, List
+from typing import Optional, List, Any, Tuple
 
 from django.utils.timezone import localtime
 from django.db.models import Count, Q
@@ -72,6 +72,81 @@ class ClientCardService(BaseService):
                 branch_field = fname
         return class_field, section_field, branch_field
 
+    @staticmethod
+    def _dedupe_scope_values(values: Any) -> List[str]:
+        out: List[str] = []
+        seen = set()
+        for value in values or []:
+            text = str(value).strip()
+            if not text:
+                continue
+            lowered = text.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            out.append(text)
+        return out
+
+    @classmethod
+    def _table_scope_filters(cls, staff, table) -> Tuple[List[str], List[str], List[str]]:
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if not isinstance(scopes, list) or not scopes:
+            return (
+                cls._dedupe_scope_values(staff.allowed_classes or []),
+                cls._dedupe_scope_values(staff.allowed_sections or []),
+                cls._dedupe_scope_values(staff.allowed_branches or []),
+            )
+
+        matched = []
+        for scope in scopes:
+            if not isinstance(scope, dict):
+                continue
+            stype = str(scope.get('scope_type', '') or '').strip().lower()
+            sid = scope.get('scope_id')
+            try:
+                sid_int = int(str(sid).strip())
+            except (TypeError, ValueError):
+                continue
+
+            if stype == 'table' and sid_int == int(table.id):
+                matched.append(scope)
+            elif stype == 'group' and sid_int == int(table.group_id):
+                matched.append(scope)
+
+        if not matched:
+            return (
+                cls._dedupe_scope_values(staff.allowed_classes or []),
+                cls._dedupe_scope_values(staff.allowed_sections or []),
+                cls._dedupe_scope_values(staff.allowed_branches or []),
+            )
+
+        classes: List[str] = []
+        sections: List[str] = []
+        branches: List[str] = []
+        for scope in matched:
+            classes.extend(scope.get('classes') or [])
+            sections.extend(scope.get('sections') or [])
+            branches.extend(scope.get('branches') or [])
+
+        return (
+            cls._dedupe_scope_values(classes),
+            cls._dedupe_scope_values(sections),
+            cls._dedupe_scope_values(branches),
+        )
+
+    @classmethod
+    def _table_is_assigned_to_staff(cls, staff, table) -> bool:
+        assigned_table_ids = set(cls._normalize_positive_int_ids(staff.assigned_table_ids or []))
+        assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+
+        if assigned_table_ids and assigned_group_ids:
+            return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
+        if assigned_table_ids:
+            return int(table.id) in assigned_table_ids
+        if assigned_group_ids:
+            return int(table.group_id) in assigned_group_ids
+        return True
+
     @classmethod
     def _apply_client_staff_row_scope(cls, user, table, qs):
         if not PermissionService.is_client_staff(user):
@@ -81,18 +156,10 @@ class ClientCardService(BaseService):
         if not staff:
             return qs.none()
 
-        assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
-        if assigned_table_ids:
-            if table.id not in assigned_table_ids:
-                return qs.none()
-        else:
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids and table.group_id not in assigned_group_ids:
-                return qs.none()
+        if not cls._table_is_assigned_to_staff(staff, table):
+            return qs.none()
 
-        allowed_classes = [str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip()]
-        allowed_sections = [str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip()]
-        allowed_branches = [str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip()]
+        allowed_classes, allowed_sections, allowed_branches = cls._table_scope_filters(staff, table)
 
         class_field, section_field, branch_field = cls._get_class_section_branch_fields(table)
 
@@ -143,12 +210,14 @@ class ClientCardService(BaseService):
                     tables = tables.none()
                 else:
                     assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
-                    if assigned_table_ids:
+                    assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+
+                    if assigned_table_ids and assigned_group_ids:
+                        tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                    elif assigned_table_ids:
                         tables = tables.filter(id__in=assigned_table_ids)
-                    else:
-                        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-                        if assigned_group_ids:
-                            tables = tables.filter(group_id__in=assigned_group_ids)
+                    elif assigned_group_ids:
+                        tables = tables.filter(group_id__in=assigned_group_ids)
             
             tables_data = [{
                 'id': t.id,

@@ -53,6 +53,84 @@ def _normalized_assigned_table_ids(staff):
     ]
 
 
+def _dedupe_scope_values(values):
+    """Normalize scope filter values preserving first-seen order."""
+    out = []
+    seen = set()
+    for value in values or []:
+        text = str(value).strip()
+        if not text:
+            continue
+        lowered = text.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        out.append(text)
+    return out
+
+
+def _table_is_assigned_to_staff(staff, table):
+    """Allow table if assigned by table ID OR by owning group ID."""
+    assigned_table_ids = set(_normalized_assigned_table_ids(staff))
+    assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+
+    if assigned_table_ids and assigned_group_ids:
+        return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
+    if assigned_table_ids:
+        return int(table.id) in assigned_table_ids
+    if assigned_group_ids:
+        return int(table.group_id) in assigned_group_ids
+    return True
+
+
+def _table_scope_filters_for_staff(staff, table):
+    """Return class/section/branch filters relevant to the current table."""
+    scopes = getattr(staff, 'assignment_scopes', None)
+    if not isinstance(scopes, list) or not scopes:
+        return (
+            _dedupe_scope_values(staff.allowed_classes or []),
+            _dedupe_scope_values(staff.allowed_sections or []),
+            _dedupe_scope_values(staff.allowed_branches or []),
+        )
+
+    matched = []
+    for scope in scopes:
+        if not isinstance(scope, dict):
+            continue
+        stype = str(scope.get('scope_type', '') or '').strip().lower()
+        scope_id = scope.get('scope_id')
+        try:
+            scope_id = int(str(scope_id).strip())
+        except (TypeError, ValueError):
+            continue
+
+        if stype == 'table' and scope_id == int(table.id):
+            matched.append(scope)
+        elif stype == 'group' and scope_id == int(table.group_id):
+            matched.append(scope)
+
+    if not matched:
+        return (
+            _dedupe_scope_values(staff.allowed_classes or []),
+            _dedupe_scope_values(staff.allowed_sections or []),
+            _dedupe_scope_values(staff.allowed_branches or []),
+        )
+
+    classes = []
+    sections = []
+    branches = []
+    for scope in matched:
+        classes.extend(scope.get('classes') or [])
+        sections.extend(scope.get('sections') or [])
+        branches.extend(scope.get('branches') or [])
+
+    return (
+        _dedupe_scope_values(classes),
+        _dedupe_scope_values(sections),
+        _dedupe_scope_values(branches),
+    )
+
+
 def _safe_error(e, fallback='An error occurred. Please try again.'):
     """Return a safe error message for API responses. Logs the real exception."""
     logger.exception("API error: %s", e)
@@ -245,18 +323,10 @@ def _apply_client_staff_row_scope(qs, user, table):
     if not staff:
         return qs.none()
 
-    assigned_table_ids = _normalized_assigned_table_ids(staff)
-    if assigned_table_ids:
-        if table.id not in assigned_table_ids:
-            return qs.none()
-    else:
-        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-        if assigned_group_ids and table.group_id not in assigned_group_ids:
-            return qs.none()
+    if not _table_is_assigned_to_staff(staff, table):
+        return qs.none()
 
-    allowed_classes = [str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip()]
-    allowed_sections = [str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip()]
-    allowed_branches = [str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip()]
+    allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
 
     if not (allowed_classes or allowed_sections or allowed_branches):
         return qs
@@ -311,18 +381,18 @@ def _check_client_scope_by_group(user, group_id):
         if not staff:
             return None, _access_denied_response()
         assigned_table_ids = _normalized_assigned_table_ids(staff)
+        assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+        has_group_assignment = group.id in assigned_group_ids
+        has_group_table = False
         if assigned_table_ids:
             has_group_table = IDCardTable.objects.filter(
                 id__in=assigned_table_ids,
                 group_id=group.id,
                 deleted_by_client=False,
             ).exists()
-            if not has_group_table:
-                return None, _access_denied_response()
-        else:
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids and group.id not in assigned_group_ids:
-                return None, _access_denied_response()
+
+        if (assigned_group_ids or assigned_table_ids) and not (has_group_assignment or has_group_table):
+            return None, _access_denied_response()
     return group, None
 
 def _check_client_scope_by_table(user, table_id):
@@ -337,14 +407,8 @@ def _check_client_scope_by_table(user, table_id):
         staff = getattr(user, 'staff_profile', None)
         if not staff:
             return None, _access_denied_response()
-        assigned_table_ids = _normalized_assigned_table_ids(staff)
-        if assigned_table_ids:
-            if table.id not in assigned_table_ids:
-                return None, _access_denied_response()
-        else:
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids and table.group_id not in assigned_group_ids:
-                return None, _access_denied_response()
+        if not _table_is_assigned_to_staff(staff, table):
+            return None, _access_denied_response()
     return table, None
 
 def _check_client_scope_by_card(user, card_id):
@@ -359,14 +423,8 @@ def _check_client_scope_by_card(user, card_id):
         staff = getattr(user, 'staff_profile', None)
         if not staff:
             return None, _access_denied_response()
-        assigned_table_ids = _normalized_assigned_table_ids(staff)
-        if assigned_table_ids:
-            if card.table_id not in assigned_table_ids:
-                return None, _access_denied_response()
-        else:
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids and card.table.group_id not in assigned_group_ids:
-                return None, _access_denied_response()
+        if not _table_is_assigned_to_staff(staff, card.table):
+            return None, _access_denied_response()
     return card, None
 
 

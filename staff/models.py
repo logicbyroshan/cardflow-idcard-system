@@ -56,6 +56,16 @@ class Staff(models.Model):
         default=list, blank=True,
         help_text='Allowed branch values (colleges). Empty list = all branches.'
     )
+
+    # Per-assignment row filters scoped to a specific group/table selection.
+    # Example item:
+    # {"scope_type":"table","scope_id":12,"group_id":5,
+    #  "classes":["I","II"],"sections":["A"],"branches":[]}
+    assignment_scopes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Per-scope class/section/branch filters for client staff assignments.'
+    )
     
     address = models.TextField(blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)

@@ -612,6 +612,8 @@ class ClientApiIntegrationTests(TestCase):
         from idcards.models import IDCardGroup, IDCardTable, IDCard
         from staff.models import Staff
 
+        cache.clear()
+
         self.owner = User.objects.create_user(
             username='api-owner@test.com', email='api-owner@test.com',
             password='pass1234', role='client',
@@ -649,6 +651,9 @@ class ClientApiIntegrationTests(TestCase):
             staff_type='client_staff',
             client=self.client_obj,
         )
+
+    def tearDown(self):
+        cache.clear()
 
     def test_api_tables_list_permission_denied_when_setting_list_off(self):
         self.client_obj.perm_idcard_setting_list = False
@@ -720,6 +725,73 @@ class ClientApiIntegrationTests(TestCase):
         self.assertIn('A', payload.get('sections', []))
         self.assertNotIn('11', payload.get('classes', []))
         self.assertNotIn('B', payload.get('sections', []))
+
+    def test_api_class_section_options_includes_count_maps(self):
+        from idcards.models import IDCard
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'John 2'},
+        )
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'B', 'NAME': 'John 3'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/class-section-options/?group_ids={self.table.id}&id_source=table'
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload.get('class_counts', {}).get('10'), 3)
+        self.assertEqual(payload.get('section_counts', {}).get('A'), 2)
+        self.assertEqual(payload.get('section_counts', {}).get('B'), 1)
+        self.assertEqual(payload.get('class_section_counts', {}).get('10', {}).get('A'), 2)
+        self.assertEqual(payload.get('class_section_counts', {}).get('10', {}).get('B'), 1)
+
+    def test_api_staff_create_and_detail_include_assignment_scopes(self):
+        self.client.login(username='api-owner@test.com', password='pass1234')
+
+        payload = {
+            'name': 'Scoped Staff',
+            'phone': '7777777777',
+            'assigned_groups': [self.table.id],
+            'assignment_id_source': 'table',
+            'assignment_scopes': [
+                {
+                    'scope_type': 'table',
+                    'scope_id': self.table.id,
+                    'classes': ['10'],
+                    'sections': ['A'],
+                    'branches': [],
+                }
+            ],
+        }
+        create_resp = self.client.post(
+            '/panel/client/api/staff/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(create_resp.status_code, 200)
+        create_payload = create_resp.json()
+        self.assertTrue(create_payload.get('success'))
+
+        staff_id = create_payload['data']['staff_id']
+        detail_resp = self.client.get(f'/panel/client/api/staff/{staff_id}/')
+        self.assertEqual(detail_resp.status_code, 200)
+        detail_payload = detail_resp.json().get('data', {})
+        scopes = detail_payload.get('assignment_scopes', [])
+        self.assertEqual(len(scopes), 1)
+        self.assertEqual(scopes[0].get('scope_type'), 'table')
+        self.assertEqual(scopes[0].get('scope_id'), self.table.id)
+        self.assertEqual(scopes[0].get('classes'), ['10'])
+        self.assertEqual(scopes[0].get('sections'), ['A'])
 
     def test_api_class_section_options_auto_uses_group_mode_without_id_collision(self):
         from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -847,6 +919,89 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(tables[0].id, self.table.id)
         self.assertEqual(tables[0].pending_count, 1)
         self.assertEqual(tables[0].total_cards, 1)
+
+    def test_client_staff_row_scope_supports_combined_group_and_table_assignments(self):
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+
+        extra_group = IDCardGroup.objects.create(client=self.client_obj, name='Class 12')
+        extra_table = IDCardTable.objects.create(
+            group=extra_group,
+            name='Students Extra',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '11', 'SECTION': 'A', 'NAME': 'Group Scope Rejected'},
+        )
+        IDCard.objects.create(
+            table=extra_table,
+            status='pending',
+            field_data={'CLASS': '12', 'SECTION': 'B', 'NAME': 'Table Scope Allowed'},
+        )
+        IDCard.objects.create(
+            table=extra_table,
+            status='pending',
+            field_data={'CLASS': '13', 'SECTION': 'B', 'NAME': 'Table Scope Rejected'},
+        )
+
+        self.staff_profile.perm_idcard_pending_list = True
+        self.staff_profile.assigned_table_ids = [extra_table.id]
+        self.staff_profile.allowed_classes = ['99']
+        self.staff_profile.allowed_sections = ['Z']
+        self.staff_profile.allowed_branches = []
+        self.staff_profile.assignment_scopes = [
+            {
+                'scope_type': 'group',
+                'scope_id': self.group.id,
+                'group_id': self.group.id,
+                'classes': ['10'],
+                'sections': ['A'],
+                'branches': [],
+            },
+            {
+                'scope_type': 'table',
+                'scope_id': extra_table.id,
+                'group_id': extra_group.id,
+                'classes': ['12'],
+                'sections': ['B'],
+                'branches': [],
+            },
+        ]
+        self.staff_profile.save(update_fields=[
+            'perm_idcard_pending_list',
+            'assigned_table_ids',
+            'allowed_classes',
+            'allowed_sections',
+            'allowed_branches',
+            'assignment_scopes',
+        ])
+        self.staff_profile.assigned_groups.set([self.group])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+
+        group_resp = self.client.get(
+            f'/panel/client/api/table/{self.table.id}/cards/',
+            {'status': 'pending'},
+        )
+        self.assertEqual(group_resp.status_code, 200)
+        group_cards = group_resp.json().get('data', {}).get('cards', [])
+        self.assertEqual(len(group_cards), 1)
+        self.assertEqual(group_cards[0].get('field_data', {}).get('CLASS'), '10')
+
+        table_resp = self.client.get(
+            f'/panel/client/api/table/{extra_table.id}/cards/',
+            {'status': 'pending'},
+        )
+        self.assertEqual(table_resp.status_code, 200)
+        table_cards = table_resp.json().get('data', {}).get('cards', [])
+        self.assertEqual(len(table_cards), 1)
+        self.assertEqual(table_cards[0].get('field_data', {}).get('CLASS'), '12')
 
     def test_client_staff_cards_api_class_filter_with_roman_value(self):
         from idcards.models import IDCard

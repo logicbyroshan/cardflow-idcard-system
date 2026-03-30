@@ -134,10 +134,18 @@ def _filter_options_cache_key(user, table_id):
         if str(v).strip().isdigit() and int(v) > 0
     })
     table_sig = ','.join(str(v) for v in table_ids) if table_ids else 'all'
+    group_ids = sorted(staff.assigned_groups.values_list('id', flat=True))
+    group_sig = ','.join(str(v) for v in group_ids) if group_ids else 'all'
+    scope_sig = 'none'
+    if isinstance(staff.assignment_scopes, list):
+        try:
+            scope_sig = json.dumps(staff.assignment_scopes, sort_keys=True, separators=(',', ':'))
+        except Exception:
+            scope_sig = str(staff.assignment_scopes)
     cls_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip())) or 'all'
     sec_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip())) or 'all'
     br_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip())) or 'all'
-    return f'{base}:client_staff:{user.id}:{table_sig}:{cls_sig}:{sec_sig}:{br_sig}'
+    return f'{base}:client_staff:{user.id}:{table_sig}:{group_sig}:{cls_sig}:{sec_sig}:{br_sig}:{scope_sig}'
 
 
 def _build_modifier_role_map(modifier_names):

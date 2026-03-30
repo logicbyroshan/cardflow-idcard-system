@@ -39,10 +39,12 @@ class ClientDashboardService(BaseService):
             return tables.none()
 
         assigned_table_ids = cls._normalized_assigned_table_ids(staff)
+        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+
+        if assigned_table_ids and assigned_group_ids:
+            return tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
         if assigned_table_ids:
             return tables.filter(id__in=assigned_table_ids)
-
-        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
         if assigned_group_ids:
             return tables.filter(group_id__in=assigned_group_ids)
 

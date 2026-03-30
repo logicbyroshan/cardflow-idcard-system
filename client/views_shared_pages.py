@@ -61,12 +61,14 @@ def client_idcard_group(request):
                     int(v) for v in (staff.assigned_table_ids or [])
                     if str(v).strip().isdigit() and int(v) > 0
                 ]
-                if assigned_table_ids:
+                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+
+                if assigned_table_ids and assigned_group_ids:
+                    tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                elif assigned_table_ids:
                     tables_qs = tables_qs.filter(id__in=assigned_table_ids)
-                else:
-                    assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-                    if assigned_group_ids:
-                        tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
+                elif assigned_group_ids:
+                    tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
 
             scoped_tables = []
             for table in tables_qs.order_by('-updated_at'):

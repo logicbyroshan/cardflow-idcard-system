@@ -112,6 +112,138 @@ class ClientStaffService(BaseService):
         # Backward-compatible fallback: keep group assignments even when
         # table mode was inferred but table IDs are not present in payload.
         return sorted(valid_group_ids), []
+
+    @staticmethod
+    def _normalize_scope_value_list(raw_values: Any) -> List[str]:
+        """Normalize class/section/branch lists into unique non-empty strings."""
+        if not isinstance(raw_values, list):
+            return []
+
+        out: List[str] = []
+        seen = set()
+        for value in raw_values:
+            if value is None:
+                continue
+            text = str(value).strip()
+            if not text:
+                continue
+            lowered = text.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            out.append(text)
+        return out
+
+    @classmethod
+    def _normalize_assignment_scopes(cls, client: Client, raw_scopes: Any) -> List[Dict[str, Any]]:
+        """Validate and normalize per-scope filters sent by assignment chips."""
+        if not isinstance(raw_scopes, list):
+            return []
+
+        pending_scopes: List[Dict[str, Any]] = []
+        requested_group_ids = set()
+        requested_table_ids = set()
+
+        for item in raw_scopes:
+            if not isinstance(item, dict):
+                continue
+
+            scope_type = str(item.get('scope_type', '') or '').strip().lower()
+            if scope_type not in ('group', 'table'):
+                continue
+
+            raw_scope_id = item.get('scope_id')
+            if isinstance(raw_scope_id, bool):
+                continue
+            try:
+                scope_id = int(str(raw_scope_id).strip())
+            except (TypeError, ValueError):
+                continue
+            if scope_id <= 0:
+                continue
+
+            if scope_type == 'group':
+                requested_group_ids.add(scope_id)
+            else:
+                requested_table_ids.add(scope_id)
+
+            pending_scopes.append({
+                'scope_type': scope_type,
+                'scope_id': scope_id,
+                'classes': cls._normalize_scope_value_list(item.get('classes', [])),
+                'sections': cls._normalize_scope_value_list(item.get('sections', [])),
+                'branches': cls._normalize_scope_value_list(item.get('branches', [])),
+            })
+
+        valid_group_ids = set(
+            IDCardGroup.objects.filter(
+                client=client,
+                id__in=list(requested_group_ids),
+            ).values_list('id', flat=True)
+        )
+
+        valid_table_rows = list(
+            IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+                id__in=list(requested_table_ids),
+            ).values_list('id', 'group_id')
+        )
+        valid_table_map = {int(tid): int(gid) for tid, gid in valid_table_rows}
+
+        normalized_by_key: Dict[str, Dict[str, Any]] = {}
+        for scope in pending_scopes:
+            scope_type = scope['scope_type']
+            scope_id = int(scope['scope_id'])
+
+            if scope_type == 'group':
+                if scope_id not in valid_group_ids:
+                    continue
+                group_id = scope_id
+            else:
+                group_id = valid_table_map.get(scope_id)
+                if not group_id:
+                    continue
+
+            key = f'{scope_type}:{scope_id}'
+            normalized_by_key[key] = {
+                'scope_type': scope_type,
+                'scope_id': scope_id,
+                'group_id': int(group_id),
+                'classes': scope['classes'],
+                'sections': scope['sections'],
+                'branches': scope['branches'],
+            }
+
+        return sorted(
+            normalized_by_key.values(),
+            key=lambda s: (s['scope_type'], int(s['group_id']), int(s['scope_id'])),
+        )
+
+    @staticmethod
+    def _scope_value_union(scopes: List[Dict[str, Any]]) -> Tuple[List[str], List[str], List[str]]:
+        """Build legacy union lists from normalized scopes for compatibility."""
+        classes, sections, branches = [], [], []
+        seen_cls, seen_sec, seen_bra = set(), set(), set()
+
+        for scope in scopes:
+            for value in (scope.get('classes') or []):
+                key = str(value).strip().lower()
+                if key and key not in seen_cls:
+                    seen_cls.add(key)
+                    classes.append(str(value).strip())
+            for value in (scope.get('sections') or []):
+                key = str(value).strip().lower()
+                if key and key not in seen_sec:
+                    seen_sec.add(key)
+                    sections.append(str(value).strip())
+            for value in (scope.get('branches') or []):
+                key = str(value).strip().lower()
+                if key and key not in seen_bra:
+                    seen_bra.add(key)
+                    branches.append(str(value).strip())
+
+        return classes, sections, branches
     
     @classmethod
     def can_manage_staff(cls, user) -> bool:
@@ -161,6 +293,7 @@ class ClientStaffService(BaseService):
                     ],
                     'allowed_classes': staff.allowed_classes or [],
                     'allowed_sections': staff.allowed_sections or [],
+                    'assignment_scopes': staff.assignment_scopes or [],
                 }
                 # Include all permissions
                 for perm in cls.STAFF_PERMISSION_FIELDS:
@@ -229,6 +362,7 @@ class ClientStaffService(BaseService):
                 'allowed_classes': staff.allowed_classes or [],
                 'allowed_sections': staff.allowed_sections or [],
                 'allowed_branches': staff.allowed_branches or [],
+                'assignment_scopes': staff.assignment_scopes or [],
                 'client_permissions': client_permissions,
             }
             # Include all permissions
@@ -366,15 +500,44 @@ class ClientStaffService(BaseService):
                     staff_kwargs[perm] = False
                 
                 staff = Staff.objects.create(**staff_kwargs)
-                
+
+                normalized_assignment_scopes = None
+                if 'assignment_scopes' in data:
+                    normalized_assignment_scopes = cls._normalize_assignment_scopes(
+                        client,
+                        data.get('assignment_scopes', []),
+                    )
+
+                scope_group_ids = sorted({
+                    int(scope.get('group_id', 0) or 0)
+                    for scope in (normalized_assignment_scopes or [])
+                    if int(scope.get('group_id', 0) or 0) > 0
+                })
+                scope_table_ids = sorted({
+                    int(scope.get('scope_id', 0) or 0)
+                    for scope in (normalized_assignment_scopes or [])
+                    if str(scope.get('scope_type', '')).lower() == 'table' and int(scope.get('scope_id', 0) or 0) > 0
+                })
+
                 # Assign groups if provided
                 assigned_groups = data.get('assigned_groups', [])
+                if (not assigned_groups) and normalized_assignment_scopes:
+                    assigned_groups = scope_group_ids
+
+                resolved_group_ids = []
+                resolved_table_ids = []
                 if assigned_groups:
                     resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
                         client,
                         assigned_groups,
                         data.get('assignment_id_source', 'auto'),
                     )
+
+                if normalized_assignment_scopes:
+                    resolved_group_ids = sorted(set(resolved_group_ids) | set(scope_group_ids))
+                    resolved_table_ids = sorted(set(resolved_table_ids) | set(scope_table_ids))
+
+                if resolved_group_ids or resolved_table_ids:
                     valid_groups = IDCardGroup.objects.filter(
                         id__in=resolved_group_ids,
                         client=client,
@@ -382,6 +545,25 @@ class ClientStaffService(BaseService):
                     staff.assigned_groups.set(valid_groups)
                     staff.assigned_table_ids = resolved_table_ids
                     staff.save(update_fields=['assigned_table_ids'])
+
+                if normalized_assignment_scopes is not None:
+                    valid_group_set = set(resolved_group_ids)
+                    valid_table_set = set(resolved_table_ids)
+                    filtered_scopes = []
+                    for scope in normalized_assignment_scopes:
+                        stype = scope.get('scope_type')
+                        sid = int(scope.get('scope_id', 0) or 0)
+                        if stype == 'group' and sid in valid_group_set:
+                            filtered_scopes.append(scope)
+                        elif stype == 'table' and sid in valid_table_set:
+                            filtered_scopes.append(scope)
+
+                    classes_u, sections_u, branches_u = cls._scope_value_union(filtered_scopes)
+                    staff.assignment_scopes = filtered_scopes
+                    staff.allowed_classes = classes_u
+                    staff.allowed_sections = sections_u
+                    staff.allowed_branches = branches_u
+                    staff.save(update_fields=['assignment_scopes', 'allowed_classes', 'allowed_sections', 'allowed_branches'])
             
             return ServiceResult(
                 success=True,
@@ -417,6 +599,24 @@ class ClientStaffService(BaseService):
                     )
                 except Staff.DoesNotExist:
                     return ServiceResult(success=False, message='Staff not found')
+
+                normalized_assignment_scopes = None
+                if 'assignment_scopes' in data:
+                    normalized_assignment_scopes = cls._normalize_assignment_scopes(
+                        client,
+                        data.get('assignment_scopes', []),
+                    )
+
+                scope_group_ids = sorted({
+                    int(scope.get('group_id', 0) or 0)
+                    for scope in (normalized_assignment_scopes or [])
+                    if int(scope.get('group_id', 0) or 0) > 0
+                })
+                scope_table_ids = sorted({
+                    int(scope.get('scope_id', 0) or 0)
+                    for scope in (normalized_assignment_scopes or [])
+                    if str(scope.get('scope_type', '')).lower() == 'table' and int(scope.get('scope_id', 0) or 0) > 0
+                })
 
                 staff_user = staff.user
 
@@ -479,12 +679,31 @@ class ClientStaffService(BaseService):
                 staff.save()
 
                 # Update group assignments if provided
-                if 'assigned_groups' in data:
-                    resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
-                        client,
-                        data.get('assigned_groups', []),
-                        data.get('assignment_id_source', 'auto'),
-                    )
+                resolved_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                resolved_table_ids = [
+                    int(v) for v in (staff.assigned_table_ids or [])
+                    if str(v).strip().isdigit() and int(v) > 0
+                ]
+
+                if ('assigned_groups' in data) or (normalized_assignment_scopes is not None):
+                    explicit_assignment_payload = 'assigned_groups' in data
+                    assignment_ids = data.get('assigned_groups', [])
+                    if (not assignment_ids) and normalized_assignment_scopes:
+                        assignment_ids = scope_group_ids
+
+                    if assignment_ids:
+                        resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
+                            client,
+                            assignment_ids,
+                            data.get('assignment_id_source', 'auto'),
+                        )
+                    elif explicit_assignment_payload and not normalized_assignment_scopes:
+                        resolved_group_ids, resolved_table_ids = [], []
+
+                    if normalized_assignment_scopes:
+                        resolved_group_ids = sorted(set(resolved_group_ids) | set(scope_group_ids))
+                        resolved_table_ids = sorted(set(resolved_table_ids) | set(scope_table_ids))
+
                     valid_groups = IDCardGroup.objects.filter(
                         id__in=resolved_group_ids,
                         client=client,
@@ -492,6 +711,25 @@ class ClientStaffService(BaseService):
                     staff.assigned_groups.set(valid_groups)
                     staff.assigned_table_ids = resolved_table_ids
                     staff.save(update_fields=['assigned_table_ids'])
+
+                if normalized_assignment_scopes is not None:
+                    valid_group_set = set(int(v) for v in (resolved_group_ids or []))
+                    valid_table_set = set(int(v) for v in (resolved_table_ids or []))
+                    filtered_scopes = []
+                    for scope in normalized_assignment_scopes:
+                        stype = scope.get('scope_type')
+                        sid = int(scope.get('scope_id', 0) or 0)
+                        if stype == 'group' and sid in valid_group_set:
+                            filtered_scopes.append(scope)
+                        elif stype == 'table' and sid in valid_table_set:
+                            filtered_scopes.append(scope)
+
+                    classes_u, sections_u, branches_u = cls._scope_value_union(filtered_scopes)
+                    staff.assignment_scopes = filtered_scopes
+                    staff.allowed_classes = classes_u
+                    staff.allowed_sections = sections_u
+                    staff.allowed_branches = branches_u
+                    staff.save(update_fields=['assignment_scopes', 'allowed_classes', 'allowed_sections', 'allowed_branches'])
             
             return ServiceResult(
                 success=True,

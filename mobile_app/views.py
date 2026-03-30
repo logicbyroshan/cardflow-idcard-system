@@ -262,6 +262,76 @@ def _normalize_positive_int_ids(values):
     return normalized
 
 
+def _dedupe_scope_values(values):
+    """Normalize filter values preserving first-seen order."""
+    out = []
+    seen = set()
+    for value in values or []:
+        text = str(value).strip()
+        if not text:
+            continue
+        lowered = text.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        out.append(text)
+    return out
+
+
+def _staff_can_access_table(staff, table):
+    """Allow access if table is assigned directly or via assigned group."""
+    assigned_table_ids = set(_normalize_positive_int_ids(getattr(staff, 'assigned_table_ids', None) or []))
+    assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+
+    if assigned_table_ids and assigned_group_ids:
+        return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
+    if assigned_table_ids:
+        return int(table.id) in assigned_table_ids
+    if assigned_group_ids:
+        return int(table.group_id) in assigned_group_ids
+    return True
+
+
+def _staff_table_scope_filters(staff, table):
+    """Resolve class/section filters for current table from assignment scopes."""
+    scopes = getattr(staff, 'assignment_scopes', None)
+    if not isinstance(scopes, list) or not scopes:
+        return (
+            _dedupe_scope_values(staff.allowed_classes or []),
+            _dedupe_scope_values(staff.allowed_sections or []),
+        )
+
+    matched = []
+    for scope in scopes:
+        if not isinstance(scope, dict):
+            continue
+        stype = str(scope.get('scope_type', '') or '').strip().lower()
+        sid = scope.get('scope_id')
+        try:
+            sid = int(str(sid).strip())
+        except (TypeError, ValueError):
+            continue
+
+        if stype == 'table' and sid == int(table.id):
+            matched.append(scope)
+        elif stype == 'group' and sid == int(table.group_id):
+            matched.append(scope)
+
+    if not matched:
+        return (
+            _dedupe_scope_values(staff.allowed_classes or []),
+            _dedupe_scope_values(staff.allowed_sections or []),
+        )
+
+    classes = []
+    sections = []
+    for scope in matched:
+        classes.extend(scope.get('classes') or [])
+        sections.extend(scope.get('sections') or [])
+
+    return (_dedupe_scope_values(classes), _dedupe_scope_values(sections))
+
+
 def _get_table_filter_metadata(table, table_fields):
     """Build and cache class/section filter metadata for list page."""
     class_field_name = None
@@ -596,8 +666,13 @@ def home(request):
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
+            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
             assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids:
+            if assigned_table_ids and assigned_group_ids:
+                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+            elif assigned_table_ids:
+                tables = tables.filter(id__in=assigned_table_ids)
+            elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
 
     tables_list = list(tables)  # evaluate once — avoids 3 separate DB hits
@@ -1090,8 +1165,13 @@ def table_picker(request, status):
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
+            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
             assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids:
+            if assigned_table_ids and assigned_group_ids:
+                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+            elif assigned_table_ids:
+                tables = tables.filter(id__in=assigned_table_ids)
+            elif assigned_group_ids:
                 tables = tables.filter(group_id__in=assigned_group_ids)
 
     tables_list = list(tables)  # evaluate once — avoids 2 extra DB hits
@@ -1119,6 +1199,11 @@ def card_list(request, table_id, status):
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('mobile_app:home')
+
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if not staff or not _staff_can_access_table(staff, table):
+            return redirect('mobile_app:home')
 
     status_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
     if status_perm and not PermissionService.has(user, status_perm):
@@ -1150,8 +1235,7 @@ def card_list(request, table_id, status):
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
-            allowed_classes = staff.allowed_classes or []
-            allowed_sections = staff.allowed_sections or []
+            allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
@@ -1463,8 +1547,13 @@ def reprint_lists(request, client_id):
     if PermissionService.is_client_staff(user):
         staff = getattr(user, 'staff_profile', None)
         if staff:
+            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
             assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
-            if assigned_group_ids:
+            if assigned_table_ids and assigned_group_ids:
+                tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+            elif assigned_table_ids:
+                tables_qs = tables_qs.filter(id__in=assigned_table_ids)
+            elif assigned_group_ids:
                 tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
 
     tables = list(tables_qs)

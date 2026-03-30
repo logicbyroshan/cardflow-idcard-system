@@ -158,6 +158,11 @@ def api_staff_list_create(request):
                 data['assigned_groups'] = json.loads(data['assigned_groups'])
             except (json.JSONDecodeError, TypeError):
                 data['assigned_groups'] = []
+        if 'assignment_scopes' in data:
+            try:
+                data['assignment_scopes'] = json.loads(data['assignment_scopes'])
+            except (json.JSONDecodeError, TypeError):
+                data['assignment_scopes'] = []
         # Parse boolean strings
         for key in list(data.keys()):
             if data[key] in ('true', 'True'):
@@ -230,6 +235,11 @@ def api_staff_detail(request, staff_id):
                     data['assigned_groups'] = json.loads(data['assigned_groups'])
                 except (json.JSONDecodeError, TypeError):
                     data['assigned_groups'] = []
+            if 'assignment_scopes' in data:
+                try:
+                    data['assignment_scopes'] = json.loads(data['assignment_scopes'])
+                except (json.JSONDecodeError, TypeError):
+                    data['assignment_scopes'] = []
             # Parse boolean strings
             for key in list(data.keys()):
                 if data[key] in ('true', 'True'):
@@ -474,6 +484,9 @@ def api_class_section_options(request):
     sections = set()
     branches = set()
     class_sections = {}
+    class_counts = {}
+    section_counts = {}
+    class_section_counts = {}
     table_field_map = {}
     has_class_field = False
     has_section_field = False
@@ -551,6 +564,17 @@ def api_class_section_options(request):
             if section_val:
                 class_sections[class_val].add(section_val)
 
+            class_counts[class_val] = class_counts.get(class_val, 0) + 1
+
+        if section_val:
+            section_counts[section_val] = section_counts.get(section_val, 0) + 1
+
+        if class_val and section_val:
+            class_section_counts.setdefault(class_val, {})
+            class_section_counts[class_val][section_val] = (
+                class_section_counts[class_val].get(section_val, 0) + 1
+            )
+
     payload = {
         'success': True,
         'resolved_id_source': resolved_id_source,
@@ -563,6 +587,21 @@ def api_class_section_options(request):
         'class_sections': {
             cls_name: sorted(sec_values)
             for cls_name, sec_values in sorted(class_sections.items(), key=lambda x: x[0])
+        },
+        'class_counts': {
+            cls_name: int(count)
+            for cls_name, count in sorted(class_counts.items(), key=lambda x: x[0])
+        },
+        'section_counts': {
+            sec_name: int(count)
+            for sec_name, count in sorted(section_counts.items(), key=lambda x: x[0])
+        },
+        'class_section_counts': {
+            cls_name: {
+                sec_name: int(sec_count)
+                for sec_name, sec_count in sorted(sec_counts.items(), key=lambda x: x[0])
+            }
+            for cls_name, sec_counts in sorted(class_section_counts.items(), key=lambda x: x[0])
         },
     }
     cache.set(cache_key, payload, 120)

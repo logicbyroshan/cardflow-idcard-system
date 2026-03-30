@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var allSections = [];
     var allBranches = [];
     var classSectionMap = {};
+    var classCountMap = {};
+    var sectionCountMap = {};
+    var classSectionCountMap = {};
     var fieldCapabilities = {
         hasClass: false,
         hasSection: false,
@@ -126,11 +129,32 @@ document.addEventListener('DOMContentLoaded', function () {
         return url;
     }
 
+    function _normalizeCountMap(raw) {
+        var out = {};
+        Object.keys(raw || {}).forEach(function (k) {
+            var key = String(k);
+            var val = parseInt(raw[k], 10);
+            out[key] = Number.isFinite(val) && val >= 0 ? val : 0;
+        });
+        return out;
+    }
+
+    function _normalizeNestedCountMap(raw) {
+        var out = {};
+        Object.keys(raw || {}).forEach(function (k) {
+            out[String(k)] = _normalizeCountMap(raw[k] || {});
+        });
+        return out;
+    }
+
     function _applyClassSectionOptions(data) {
         allClasses = data.classes || [];
         allSections = data.sections || [];
         allBranches = data.branches || [];
         classSectionMap = data.class_sections || {};
+        classCountMap = _normalizeCountMap(data.class_counts || {});
+        sectionCountMap = _normalizeCountMap(data.section_counts || {});
+        classSectionCountMap = _normalizeNestedCountMap(data.class_section_counts || {});
         fieldCapabilities.hasClass = data.has_class_field === true || allClasses.length > 0;
         fieldCapabilities.hasSection = data.has_section_field === true || allSections.length > 0;
         fieldCapabilities.hasBranch = data.has_branch_field === true || allBranches.length > 0;
@@ -158,7 +182,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     classes: data.classes || [],
                     sections: data.sections || [],
                     branches: data.branches || [],
-                    class_sections: data.class_sections || {}
+                    class_sections: data.class_sections || {},
+                    class_counts: data.class_counts || {},
+                    section_counts: data.section_counts || {},
+                    class_section_counts: data.class_section_counts || {}
                 };
                 _applyClassSectionOptions(csOptionsCache[cacheKey]);
             }
@@ -243,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var currentAssignedGroupIds = [];
     var currentDraftGroupId = null;
     var assignmentGroupsById = {};
+    var assignmentGroupMetaById = {};
     var assignmentScopeChips = {};
 
     function renderCheckboxOptions(containerId, options, selectedSet, onToggle) {
@@ -355,6 +383,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function _getChipClassCount(chip, cls) {
+        if (!chip || !chip.classCounts) return 0;
+        var raw = chip.classCounts[String(cls)];
+        var num = parseInt(raw, 10);
+        return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    function _getChipSectionCount(chip, sec) {
+        if (!chip) return 0;
+        var section = String(sec);
+
+        if (chip.classes && chip.classes.length && chip.classSectionCounts) {
+            var total = 0;
+            chip.classes.forEach(function (cls) {
+                var bucket = chip.classSectionCounts[String(cls)] || {};
+                var raw = bucket[section];
+                var num = parseInt(raw, 10);
+                if (Number.isFinite(num) && num > 0) total += num;
+            });
+            if (total > 0) return total;
+        }
+
+        var fallback = chip.sectionCounts ? chip.sectionCounts[section] : 0;
+        var fallbackNum = parseInt(fallback, 10);
+        return Number.isFinite(fallbackNum) && fallbackNum > 0 ? fallbackNum : 0;
+    }
+
     function _ensureChip(groupId) {
         var key = _chipKey(groupId);
         if (assignmentScopeChips[key]) return assignmentScopeChips[key];
@@ -362,6 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
         assignmentScopeChips[key] = {
             groupId: parseInt(groupId, 10),
             groupName: _getGroupName(groupId),
+            scopeType: (assignmentIdSource === 'group' || assignmentIdSource === 'table') ? assignmentIdSource : 'group',
             classes: [],
             sections: [],
             branches: [],
@@ -369,6 +425,9 @@ document.addEventListener('DOMContentLoaded', function () {
             sectionOptions: [],
             branchOptions: [],
             classSectionMap: {},
+            classCounts: {},
+            sectionCounts: {},
+            classSectionCounts: {},
             hasClass: true,
             hasSection: true,
             hasBranch: true,
@@ -395,6 +454,9 @@ document.addEventListener('DOMContentLoaded', function () {
             chip.sectionOptions = _normalizeStringList(data.sections || []);
             chip.branchOptions = _normalizeStringList(data.branches || []);
             chip.classSectionMap = _cloneClassSectionMap(data.class_sections || {});
+            chip.classCounts = _normalizeCountMap(data.class_counts || {});
+            chip.sectionCounts = _normalizeCountMap(data.section_counts || {});
+            chip.classSectionCounts = _normalizeNestedCountMap(data.class_section_counts || {});
             chip.hasClass = data.has_class_field === true || chip.classOptions.length > 0;
             chip.hasSection = data.has_section_field === true || chip.sectionOptions.length > 0;
             chip.hasBranch = data.has_branch_field === true || chip.branchOptions.length > 0;
@@ -475,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        function addChipGroup(container, chip, labelText, values, selectedValues, valueKey) {
+        function addChipGroup(container, chip, labelText, values, selectedValues, valueKey, countResolver) {
             if (!values.length && !selectedValues.length) return;
 
             var wrap = document.createElement('div');
@@ -538,6 +600,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     text.textContent = val;
 
                     row.appendChild(text);
+
+                    if (typeof countResolver === 'function') {
+                        var count = parseInt(countResolver(val, chip), 10);
+                        if (Number.isFinite(count) && count >= 0) {
+                            var badge = document.createElement('span');
+                            badge.className = 'assignment-chip-count-badge';
+                            badge.textContent = String(count);
+                            row.appendChild(badge);
+                        }
+                    }
+
                     list.appendChild(row);
                 });
             }
@@ -600,10 +673,10 @@ document.addEventListener('DOMContentLoaded', function () {
             groups.className = 'assignment-scope-chip-groups';
 
             if (chip.hasClass || chip.classes.length) {
-                addChipGroup(groups, chip, 'Classes', chip.classOptions, chip.classes, 'classes');
+                addChipGroup(groups, chip, 'Classes', chip.classOptions, chip.classes, 'classes', _getChipClassCount);
             }
             if (chip.hasSection || chip.sections.length) {
-                addChipGroup(groups, chip, 'Sections', _getChipAvailableSections(chip), chip.sections, 'sections');
+                addChipGroup(groups, chip, 'Sections', _getChipAvailableSections(chip), chip.sections, 'sections', _getChipSectionCount);
             }
             if (chip.hasBranch || chip.branches.length) {
                 addChipGroup(groups, chip, 'Branches / Courses', chip.branchOptions, chip.branches, 'branches');
@@ -631,6 +704,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var chip = _ensureChip(currentDraftGroupId);
         chip.groupName = _getGroupName(currentDraftGroupId);
+        var meta = assignmentGroupMetaById[_chipKey(currentDraftGroupId)] || {};
+        var inferredSource = String(meta.source || '').toLowerCase();
+        chip.scopeType = (inferredSource === 'group' || inferredSource === 'table')
+            ? inferredSource
+            : ((assignmentIdSource === 'group' || assignmentIdSource === 'table') ? assignmentIdSource : 'group');
         chip.classes = _normalizeStringList(Array.from(selectedClasses));
         chip.sections = _normalizeStringList(Array.from(selectedSections));
         chip.branches = _normalizeStringList(Array.from(selectedBranches));
@@ -638,6 +716,9 @@ document.addEventListener('DOMContentLoaded', function () {
         chip.sectionOptions = _normalizeStringList(allSections);
         chip.branchOptions = _normalizeStringList(allBranches);
         chip.classSectionMap = _cloneClassSectionMap(classSectionMap);
+        chip.classCounts = _normalizeCountMap(classCountMap);
+        chip.sectionCounts = _normalizeCountMap(sectionCountMap);
+        chip.classSectionCounts = _normalizeNestedCountMap(classSectionCountMap);
         chip.hasClass = fieldCapabilities.hasClass;
         chip.hasSection = fieldCapabilities.hasSection;
         chip.hasBranch = fieldCapabilities.hasBranch;
@@ -659,26 +740,98 @@ document.addEventListener('DOMContentLoaded', function () {
             allowed_classes: [],
             allowed_sections: [],
             allowed_branches: [],
+            assignment_scopes: [],
         };
 
         Object.keys(assignmentScopeChips).forEach(function (key) {
             var chip = assignmentScopeChips[key];
             if (!chip) return;
-            payload.assigned_groups.push(parseInt(chip.groupId, 10));
+            var gid = parseInt(chip.groupId, 10);
+            if (!Number.isFinite(gid) || gid <= 0) return;
+
+            payload.assigned_groups.push(gid);
             payload.allowed_classes = payload.allowed_classes.concat(chip.classes || []);
             payload.allowed_sections = payload.allowed_sections.concat(chip.sections || []);
             payload.allowed_branches = payload.allowed_branches.concat(chip.branches || []);
+
+            var scopeType = String(chip.scopeType || '').toLowerCase();
+            if (scopeType !== 'group' && scopeType !== 'table') {
+                scopeType = (assignmentIdSource === 'table') ? 'table' : 'group';
+            }
+
+            payload.assignment_scopes.push({
+                scope_type: scopeType,
+                scope_id: gid,
+                classes: _normalizeStringList(chip.classes || []),
+                sections: _normalizeStringList(chip.sections || []),
+                branches: _normalizeStringList(chip.branches || []),
+            });
         });
 
         payload.assigned_groups = _normalizeGroupIds(payload.assigned_groups);
         payload.allowed_classes = _normalizeStringList(payload.allowed_classes);
         payload.allowed_sections = _normalizeStringList(payload.allowed_sections);
         payload.allowed_branches = _normalizeStringList(payload.allowed_branches);
+        payload.assignment_scopes = payload.assignment_scopes.sort(function (a, b) {
+            var at = String(a.scope_type || '');
+            var bt = String(b.scope_type || '');
+            if (at !== bt) return at.localeCompare(bt);
+            return parseInt(a.scope_id, 10) - parseInt(b.scope_id, 10);
+        });
         return payload;
     }
 
     function hydrateChipsFromStaffData(data) {
         assignmentScopeChips = {};
+
+        var rawScopes = Array.isArray(data && data.assignment_scopes) ? data.assignment_scopes : [];
+        if (rawScopes.length) {
+            var inferredScopeType = String((rawScopes[0] && rawScopes[0].scope_type) || '').toLowerCase();
+            if ((inferredScopeType === 'group' || inferredScopeType === 'table') && assignmentIdSource !== inferredScopeType) {
+                assignmentIdSource = inferredScopeType;
+                csOptionsCache = {};
+            }
+
+            rawScopes.forEach(function (scope) {
+                if (!scope || typeof scope !== 'object') return;
+                var gid = parseInt(scope.scope_id, 10);
+                if (!Number.isFinite(gid) || gid <= 0) return;
+
+                var scopeType = String(scope.scope_type || '').toLowerCase();
+                if (scopeType !== 'group' && scopeType !== 'table') {
+                    scopeType = (assignmentIdSource === 'table') ? 'table' : 'group';
+                }
+
+                assignmentScopeChips[_chipKey(gid)] = {
+                    groupId: gid,
+                    groupName: _getGroupName(gid),
+                    scopeType: scopeType,
+                    classes: _normalizeStringList(scope.classes || []),
+                    sections: _normalizeStringList(scope.sections || []),
+                    branches: _normalizeStringList(scope.branches || []),
+                    classOptions: [],
+                    sectionOptions: [],
+                    branchOptions: [],
+                    classSectionMap: {},
+                    classCounts: {},
+                    sectionCounts: {},
+                    classSectionCounts: {},
+                    hasClass: true,
+                    hasSection: true,
+                    hasBranch: true,
+                    optionsLoaded: false,
+                    isEditing: false,
+                    pendingGlobalClasses: null,
+                    pendingGlobalSections: null,
+                    pendingGlobalBranches: null,
+                    initializedFromGlobal: true,
+                };
+            });
+
+            renderAssignmentScopeChips();
+            hydrateChipOptionsInBackground();
+            return;
+        }
 
         var assignedIds = _getAssignedSelectionIds(data);
         var classes = _normalizeStringList(data.allowed_classes || []);
@@ -689,6 +842,7 @@ document.addEventListener('DOMContentLoaded', function () {
             assignmentScopeChips[_chipKey(gid)] = {
                 groupId: gid,
                 groupName: _getGroupName(gid),
+                scopeType: (assignmentIdSource === 'table') ? 'table' : 'group',
                 classes: [],
                 sections: [],
                 branches: [],
@@ -696,6 +850,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 sectionOptions: [],
                 branchOptions: [],
                 classSectionMap: {},
+                classCounts: {},
+                sectionCounts: {},
+                classSectionCounts: {},
                 hasClass: true,
                 hasSection: true,
                 hasBranch: true,
@@ -823,10 +980,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 var groups = data.groups || [];
 
                 assignmentGroupsById = {};
+                assignmentGroupMetaById = {};
                 groups.forEach(function (item) {
                     var id = parseInt((item && item.id), 10);
                     if (!Number.isFinite(id)) return;
                     assignmentGroupsById[String(id)] = String((item && item.name) || ('Group #' + id));
+                    assignmentGroupMetaById[String(id)] = {
+                        source: String((item && item.source) || '').toLowerCase(),
+                        groupId: parseInt((item && item.group_id), 10),
+                    };
                 });
 
                 var sources = Array.from(new Set(groups.map(function (item) {
@@ -974,9 +1136,14 @@ document.addEventListener('DOMContentLoaded', function () {
             await refreshDrawerClassSectionByGroups([currentDraftGroupId]);
 
             if (!assignmentScopeChips[key]) {
+                var draftMeta = assignmentGroupMetaById[key] || {};
+                var draftSource = String(draftMeta.source || '').toLowerCase();
                 assignmentScopeChips[key] = {
                     groupId: currentDraftGroupId,
                     groupName: _getGroupName(currentDraftGroupId),
+                    scopeType: (draftSource === 'group' || draftSource === 'table')
+                        ? draftSource
+                        : ((assignmentIdSource === 'table') ? 'table' : 'group'),
                     classes: fieldCapabilities.hasClass ? _normalizeStringList(allClasses) : [],
                     sections: fieldCapabilities.hasSection ? _normalizeStringList(allSections) : [],
                     branches: fieldCapabilities.hasBranch ? _normalizeStringList(allBranches) : [],
@@ -984,6 +1151,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     sectionOptions: _normalizeStringList(allSections),
                     branchOptions: _normalizeStringList(allBranches),
                     classSectionMap: _cloneClassSectionMap(classSectionMap),
+                    classCounts: _normalizeCountMap(classCountMap),
+                    sectionCounts: _normalizeCountMap(sectionCountMap),
+                    classSectionCounts: _normalizeNestedCountMap(classSectionCountMap),
                     hasClass: fieldCapabilities.hasClass,
                     hasSection: fieldCapabilities.hasSection,
                     hasBranch: fieldCapabilities.hasBranch,
@@ -1015,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.allowed_classes = payload.allowed_classes;
             formData.allowed_sections = payload.allowed_sections;
             formData.allowed_branches = payload.allowed_branches;
+            formData.assignment_scopes = payload.assignment_scopes;
         },
         onSetStatus:        null,
         onEnableFormInputs: null,

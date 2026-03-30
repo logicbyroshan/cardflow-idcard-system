@@ -4,6 +4,7 @@ Client Access Service — ownership and access-control checks.
 Ensures clients (and client-staff) can only reach their own data.
 """
 from typing import Optional
+from django.db.models import Q
 
 from client.models import Client
 from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -101,6 +102,11 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+
+                if assigned_group_ids and group.id in assigned_group_ids:
+                    return True
+
                 if assigned_table_ids:
                     return IDCardTable.objects.filter(
                         id__in=assigned_table_ids,
@@ -108,9 +114,9 @@ class ClientAccessService:
                         group__client_id=group.client_id,
                         deleted_by_client=False,
                     ).exists()
-                assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
-                if assigned_ids:  # Empty means all groups are accessible
-                    return group.id in assigned_ids
+
+                if assigned_group_ids:
+                    return group.id in assigned_group_ids
         return True
 
     @staticmethod
@@ -139,11 +145,14 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+
+                if assigned_table_ids and assigned_group_ids:
+                    return (table.id in assigned_table_ids) or (table.group_id in assigned_group_ids)
                 if assigned_table_ids:
                     return table.id in assigned_table_ids
-                assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
-                if assigned_ids:  # Empty means all groups are accessible
-                    return table.group_id in assigned_ids
+                if assigned_group_ids:  # Empty means all groups are accessible
+                    return table.group_id in assigned_group_ids
         return True
 
     @staticmethod
@@ -159,8 +168,20 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                from idcards.models import IDCardTable as _IDCardTable
+
+                if assigned_table_ids and assigned_group_ids:
+                    return list(
+                        _IDCardTable.objects.filter(
+                            group__client=client,
+                            deleted_by_client=False,
+                        ).filter(
+                            Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids)
+                        ).values_list('id', flat=True)
+                    )
+
                 if assigned_table_ids:
-                    from idcards.models import IDCardTable as _IDCardTable
                     return list(
                         _IDCardTable.objects.filter(
                             group__client=client,
@@ -169,9 +190,7 @@ class ClientAccessService:
                         ).values_list('id', flat=True)
                     )
 
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
                 if assigned_group_ids:
-                    from idcards.models import IDCardTable as _IDCardTable
                     return list(
                         _IDCardTable.objects.filter(
                             group__client=client,
@@ -209,9 +228,12 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+
+                if assigned_table_ids and assigned_group_ids:
+                    return (card.table_id in assigned_table_ids) or (card.table.group_id in assigned_group_ids)
                 if assigned_table_ids:
                     return card.table_id in assigned_table_ids
-                assigned_ids = list(staff.assigned_groups.values_list('id', flat=True))
-                if assigned_ids:
-                    return card.table.group_id in assigned_ids
+                if assigned_group_ids:
+                    return card.table.group_id in assigned_group_ids
         return True
