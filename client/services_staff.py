@@ -56,8 +56,18 @@ class ClientStaffService(BaseService):
         return '' if value.endswith('@noemail.local') else value
 
     @staticmethod
-    def _resolve_assignment_scope_ids(client: Client, raw_ids: Any) -> Tuple[List[int], List[int]]:
-        """Normalize assignment IDs into valid group IDs and table IDs."""
+    def _resolve_assignment_scope_ids(
+        client: Client,
+        raw_ids: Any,
+        id_source: str = 'auto',
+    ) -> Tuple[List[int], List[int]]:
+        """Normalize assignment IDs into valid group IDs and table IDs.
+
+        ``id_source`` controls interpretation of ``raw_ids``:
+        - ``group``: IDs are group IDs
+        - ``table``: IDs are table IDs
+        - ``auto``: follows client assignment mode (single group => table mode)
+        """
         if not isinstance(raw_ids, list):
             return [], []
 
@@ -68,10 +78,21 @@ class ClientStaffService(BaseService):
         if not normalized_ids:
             return [], []
 
+        source = str(id_source or '').strip().lower()
+        if source not in ('group', 'table', 'auto'):
+            source = 'auto'
+
+        if source == 'auto':
+            group_count = IDCardGroup.objects.filter(client=client).count()
+            source = 'table' if group_count <= 1 else 'group'
+
         valid_group_ids = set(
             IDCardGroup.objects.filter(client=client, id__in=normalized_ids)
             .values_list('id', flat=True)
         )
+
+        if source == 'group':
+            return sorted(valid_group_ids), []
 
         valid_table_ids = set(
             IDCardTable.objects.filter(
@@ -86,17 +107,11 @@ class ClientStaffService(BaseService):
                 id__in=valid_table_ids,
             ).values_list('group_id', flat=True)
             valid_group_ids.update(table_group_ids)
+            return sorted(valid_group_ids), sorted(valid_table_ids)
 
-        unresolved_ids = [gid for gid in normalized_ids if gid not in valid_group_ids]
-        if unresolved_ids:
-            table_group_ids = IDCardTable.objects.filter(
-                group__client=client,
-                deleted_by_client=False,
-                id__in=unresolved_ids,
-            ).values_list('group_id', flat=True)
-            valid_group_ids.update(table_group_ids)
-
-        return sorted(valid_group_ids), sorted(valid_table_ids)
+        # Backward-compatible fallback: keep group assignments even when
+        # table mode was inferred but table IDs are not present in payload.
+        return sorted(valid_group_ids), []
     
     @classmethod
     def can_manage_staff(cls, user) -> bool:
@@ -358,6 +373,7 @@ class ClientStaffService(BaseService):
                     resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
                         client,
                         assigned_groups,
+                        data.get('assignment_id_source', 'auto'),
                     )
                     valid_groups = IDCardGroup.objects.filter(
                         id__in=resolved_group_ids,
@@ -467,6 +483,7 @@ class ClientStaffService(BaseService):
                     resolved_group_ids, resolved_table_ids = cls._resolve_assignment_scope_ids(
                         client,
                         data.get('assigned_groups', []),
+                        data.get('assignment_id_source', 'auto'),
                     )
                     valid_groups = IDCardGroup.objects.filter(
                         id__in=resolved_group_ids,

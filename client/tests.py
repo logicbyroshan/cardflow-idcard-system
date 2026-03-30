@@ -587,6 +587,24 @@ class ClientStaffServicePermissionTests(TestCase):
         self.assertFalse(result.success)
         self.assertIn('phone number is required', result.message.lower())
 
+    def test_resolve_assignment_scope_auto_prefers_groups_for_multi_group_client(self):
+        from client.services import ClientStaffService
+        from idcards.models import IDCardGroup, IDCardTable
+
+        group_a = IDCardGroup.objects.create(client=self.client_obj, name='Group A')
+        group_b = IDCardGroup.objects.create(client=self.client_obj, name='Group B')
+        IDCardTable.objects.create(group=group_a, name='Table A', fields=[])
+        IDCardTable.objects.create(group=group_b, name='Table B', fields=[])
+
+        resolved_group_ids, resolved_table_ids = ClientStaffService._resolve_assignment_scope_ids(
+            self.client_obj,
+            [group_a.id, group_b.id],
+            'auto',
+        )
+
+        self.assertEqual(resolved_group_ids, sorted([group_a.id, group_b.id]))
+        self.assertEqual(resolved_table_ids, [])
+
 
 class ClientApiIntegrationTests(TestCase):
     def setUp(self):
@@ -702,6 +720,57 @@ class ClientApiIntegrationTests(TestCase):
         self.assertIn('A', payload.get('sections', []))
         self.assertNotIn('11', payload.get('classes', []))
         self.assertNotIn('B', payload.get('sections', []))
+
+    def test_api_class_section_options_auto_uses_group_mode_without_id_collision(self):
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+
+        extra_group = IDCardGroup.objects.create(client=self.client_obj, name='Class 12')
+
+        # Create another table under the original group first so table IDs can
+        # numerically overlap with group IDs in the request payload.
+        colliding_table = IDCardTable.objects.create(
+            group=self.group,
+            name='Colliding Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+        target_table = IDCardTable.objects.create(
+            group=extra_group,
+            name='Target Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=colliding_table,
+            status='pending',
+            field_data={'CLASS': '99', 'SECTION': 'X', 'NAME': 'Wrong Scope'},
+        )
+        IDCard.objects.create(
+            table=target_table,
+            status='pending',
+            field_data={'CLASS': '12', 'SECTION': 'B', 'NAME': 'Right Scope'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(
+            f'/panel/client/api/class-section-options/?group_ids={extra_group.id}'
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload.get('resolved_id_source'), 'group')
+        self.assertIn('12', payload.get('classes', []))
+        self.assertIn('B', payload.get('sections', []))
+        self.assertNotIn('99', payload.get('classes', []))
+        self.assertNotIn('X', payload.get('sections', []))
 
     def test_filter_options_cache_scoped_for_client_staff(self):
         from idcards.models import IDCard

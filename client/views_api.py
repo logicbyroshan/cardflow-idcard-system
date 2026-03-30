@@ -7,7 +7,6 @@ card listing/status changes, image uploads, and group/class helpers.
 import json
 
 from django.core.cache import cache
-from django.db.models import Q
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
@@ -420,6 +419,11 @@ def api_class_section_options(request):
     if id_source not in ('group', 'table'):
         id_source = 'auto'
 
+    resolved_id_source = id_source
+    if resolved_id_source == 'auto':
+        group_count = IDCardGroup.objects.filter(client=client).count()
+        resolved_id_source = 'table' if group_count <= 1 else 'group'
+
     group_ids = []
     if raw_group_ids:
         try:
@@ -428,7 +432,7 @@ def api_class_section_options(request):
             group_ids = []
 
     group_key = ','.join(str(gid) for gid in group_ids) if group_ids else 'all'
-    cache_key = f'client:class-section-options:{client.id}:{group_key}:{id_source}'
+    cache_key = f'client:class-section-options:{client.id}:{group_key}:{resolved_id_source}'
     cached = cache.get(cache_key)
     if cached is not None:
         return JsonResponse(cached)
@@ -447,22 +451,22 @@ def api_class_section_options(request):
             IDCardTable.objects.filter(group__client=client, id__in=group_ids).values_list('id', flat=True)
         )
 
-        if id_source == 'table':
+        if resolved_id_source == 'table':
             if valid_table_ids:
                 tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
-            else:
-                tables_qs = tables_qs.none()
-        elif id_source == 'group':
-            if valid_group_ids:
+            elif valid_group_ids:
+                # Backward-compatible fallback for legacy group-id payloads.
                 tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
             else:
                 tables_qs = tables_qs.none()
-        elif valid_group_ids or valid_table_ids:
-            tables_qs = tables_qs.filter(
-                Q(group_id__in=list(valid_group_ids)) | Q(id__in=list(valid_table_ids))
-            )
-        else:
-            tables_qs = tables_qs.none()
+        elif resolved_id_source == 'group':
+            if valid_group_ids:
+                tables_qs = tables_qs.filter(group_id__in=list(valid_group_ids))
+            elif valid_table_ids:
+                # Graceful fallback for stale clients accidentally sending table IDs.
+                tables_qs = tables_qs.filter(id__in=list(valid_table_ids))
+            else:
+                tables_qs = tables_qs.none()
 
     tables = list(tables_qs.values('id', 'fields'))
 
@@ -549,6 +553,7 @@ def api_class_section_options(request):
 
     payload = {
         'success': True,
+        'resolved_id_source': resolved_id_source,
         'classes': sorted(classes),
         'sections': sorted(sections),
         'branches': sorted(branches),

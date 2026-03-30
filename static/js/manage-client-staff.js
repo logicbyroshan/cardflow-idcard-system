@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var selectedBranches = new Set();
     var csOptionsCache = {};
     var assignmentIdSource = 'auto';
+    var USE_CHIP_SCOPED_FILTERS = true;
 
     var _esc = window.escapeHtml || function (s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
@@ -98,8 +99,21 @@ document.addEventListener('DOMContentLoaded', function () {
     function _getAssignedSelectionIds(data) {
         if (!data || typeof data !== 'object') return [];
         var tableIds = _normalizeGroupIds(data.assigned_table_ids || []);
-        if (tableIds.length > 0) return tableIds;
-        return _normalizeGroupIds(data.assigned_group_ids || []);
+        var groupIds = _normalizeGroupIds(data.assigned_group_ids || []);
+
+        if (assignmentIdSource === 'table') {
+            return tableIds.length ? tableIds : groupIds;
+        }
+        if (assignmentIdSource === 'group') {
+            return groupIds.length ? groupIds : tableIds;
+        }
+
+        // Auto mode fallback for transitional/stale data:
+        // prefer the richer set and bias toward group IDs on ties.
+        if (groupIds.length >= tableIds.length && groupIds.length) {
+            return groupIds;
+        }
+        return tableIds;
     }
 
     function _buildGroupScopedOptionsUrl(groupIds) {
@@ -202,6 +216,14 @@ document.addEventListener('DOMContentLoaded', function () {
         var classGroup = document.getElementById('class-filter-group');
         var sectionGroup = document.getElementById('section-filter-group');
         var branchRow = document.getElementById('branch-filter-row');
+
+        if (USE_CHIP_SCOPED_FILTERS) {
+            if (filterSection) filterSection.style.display = 'none';
+            if (classGroup) classGroup.style.display = 'none';
+            if (sectionGroup) sectionGroup.style.display = 'none';
+            if (branchRow) branchRow.style.display = 'none';
+            return;
+        }
 
         var showClass = fieldCapabilities.hasClass;
         var showSection = fieldCapabilities.hasSection;
@@ -821,6 +843,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var saveCurrentAssignmentChipBtn = document.getElementById('save-current-assignment-chip-btn');
+    if (saveCurrentAssignmentChipBtn && USE_CHIP_SCOPED_FILTERS) {
+        var legacyActionRow = saveCurrentAssignmentChipBtn.closest('.assignment-builder-action-row');
+        if (legacyActionRow) legacyActionRow.style.display = 'none';
+    }
     if (saveCurrentAssignmentChipBtn) {
         saveCurrentAssignmentChipBtn.addEventListener('click', function () {
             upsertCurrentDraftAsChip(true);
@@ -936,6 +962,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 _replaceSetValues(selectedClasses, existingChip.classes || []);
                 _replaceSetValues(selectedSections, existingChip.sections || []);
                 _replaceSetValues(selectedBranches, existingChip.branches || []);
+                existingChip.isEditing = true;
             } else {
                 selectedClasses.clear();
                 selectedSections.clear();
@@ -960,7 +987,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     hasSection: fieldCapabilities.hasSection,
                     hasBranch: fieldCapabilities.hasBranch,
                     optionsLoaded: true,
-                    isEditing: false,
+                    isEditing: true,
                 };
                 _pruneChipSelection(assignmentScopeChips[key]);
                 if (typeof showToast === 'function') {
@@ -981,6 +1008,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var payload = getAssignmentPayloadFromChips();
             formData.assigned_groups = payload.assigned_groups;
+            formData.assignment_id_source = (
+                assignmentIdSource === 'group' || assignmentIdSource === 'table'
+            ) ? assignmentIdSource : 'auto';
             formData.allowed_classes = payload.allowed_classes;
             formData.allowed_sections = payload.allowed_sections;
             formData.allowed_branches = payload.allowed_branches;
