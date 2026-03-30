@@ -153,6 +153,55 @@ function getHeic2AnyBlob(result) {
     return result || null;
 }
 
+function getHeifMimeByName(fileName) {
+    var name = String(fileName || '').toLowerCase();
+    if (name.endsWith('.heif')) return 'image/heif';
+    if (name.endsWith('.heic') || name.endsWith('.hei')) return 'image/heic';
+    return 'image/heic';
+}
+
+function buildHeifDecodeBlob(file) {
+    if (!file) return file;
+    var type = String(file.type || '').toLowerCase();
+    if (type.indexOf('heic') !== -1 || type.indexOf('heif') !== -1) {
+        return file;
+    }
+    return new Blob([file], { type: getHeifMimeByName(file.name) });
+}
+
+function buildCsrfHeaders() {
+    var headers = {};
+    if (typeof getCSRFToken === 'function') {
+        var token = getCSRFToken();
+        if (token) {
+            headers['X-CSRFToken'] = token;
+        }
+    }
+    return headers;
+}
+
+async function convertHeifPreviewViaServer(file) {
+    var formData = new FormData();
+    formData.append('file', file, file.name || 'image.heic');
+
+    var response = await withTimeout(fetch('/api/image/preview-convert/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: buildCsrfHeaders(),
+        body: formData,
+    }), 12000, 'Server preview conversion timed out');
+
+    if (!response.ok) {
+        throw new Error('Server preview conversion failed');
+    }
+
+    var previewBlob = await response.blob();
+    if (!previewBlob || !previewBlob.size) {
+        throw new Error('Server preview response was empty');
+    }
+    return blobToDataUrl(previewBlob);
+}
+
 function withTimeout(promise, timeoutMs, message) {
     return new Promise(function(resolve, reject) {
         var settled = false;
@@ -183,8 +232,9 @@ async function getPreviewDataUrl(file) {
 
     if (typeof window.heic2any === 'function') {
         try {
+            var heifBlob = buildHeifDecodeBlob(file);
             const converted = await withTimeout(window.heic2any({
-                blob: file,
+                blob: heifBlob,
                 toType: 'image/jpeg',
                 quality: 0.9,
             }), 5000, 'HEIF conversion timed out');
@@ -195,6 +245,12 @@ async function getPreviewDataUrl(file) {
         } catch (err) {
             console.warn('HEIF preview conversion failed, using direct browser preview fallback.', err);
         }
+    }
+
+    try {
+        return await convertHeifPreviewViaServer(file);
+    } catch (err) {
+        console.warn('Server HEIF preview conversion failed, trying browser fallback.', err);
     }
 
     return fileToDataUrl(file);

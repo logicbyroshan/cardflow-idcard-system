@@ -11,11 +11,13 @@ Contains:
 """
 import json
 import logging
+import os
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 
 from idcards.models import IDCard
+from mediafiles.utils import normalize_image_bytes_for_storage
 from ..services import IDCardService
 from ..services.base import BaseService
 from ..services.activity_service import ActivityService
@@ -40,6 +42,49 @@ from .idcard_helpers import (
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_edit')
+def api_image_preview_convert(request):
+    """Convert uploaded HEIF/HEIC to previewable bytes before save."""
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return JsonResponse({'success': False, 'message': 'No image file provided'}, status=400)
+
+    max_bytes = 15 * 1024 * 1024
+    file_size = getattr(uploaded_file, 'size', 0) or 0
+    if file_size > max_bytes:
+        return JsonResponse({'success': False, 'message': 'Image must be 15 MB or smaller'}, status=400)
+
+    try:
+        uploaded_file.seek(0)
+        image_bytes = uploaded_file.read()
+        uploaded_file.seek(0)
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Unable to read image data'}, status=400)
+
+    suggested_ext = os.path.splitext(str(getattr(uploaded_file, 'name', '') or ''))[1].lower() or '.jpg'
+    normalized_bytes, normalized_ext, err = normalize_image_bytes_for_storage(
+        image_bytes,
+        suggested_ext=suggested_ext,
+    )
+    if err:
+        return JsonResponse({'success': False, 'message': 'Unable to generate preview for this image'}, status=400)
+
+    content_type = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif',
+        '.bmp': 'image/bmp',
+    }.get(normalized_ext, 'image/jpeg')
+
+    response = HttpResponse(normalized_bytes, content_type=content_type)
+    response['Cache-Control'] = 'no-store, max-age=0'
+    response['X-Preview-Ext'] = normalized_ext
+    return response
 
 
 def _is_card_in_client_staff_scope(user, card):

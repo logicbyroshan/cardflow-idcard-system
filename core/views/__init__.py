@@ -83,6 +83,7 @@ from .staff_api import (
 )
 
 from .idcard_api import (
+    api_image_preview_convert,
     api_idcard_table_create,
     api_idcard_table_get,
     api_idcard_table_update,

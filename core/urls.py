@@ -177,6 +177,7 @@ urlpatterns = [
     path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
     path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),
     path('api/card/<int:card_id>/update-field/', views.api_idcard_update_field, name='api_idcard_update_field'),
+    path('api/image/preview-convert/', views.api_image_preview_convert, name='api_image_preview_convert'),
     path('api/card/<int:card_id>/delete/', views.api_idcard_delete, name='api_idcard_delete'),
     path('api/card/<int:card_id>/status/', views.api_idcard_change_status, name='api_idcard_change_status'),
     path('api/table/<int:table_id>/cards/bulk-status/', views.api_idcard_bulk_status, name='api_idcard_bulk_status'),

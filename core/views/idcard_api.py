@@ -37,6 +37,7 @@ from .idcard_table_api import (
 )
 
 from .idcard_card_api import (
+    api_image_preview_convert,
     api_idcard_list,
     api_idcard_cards_json,
     api_idcard_all_ids,
