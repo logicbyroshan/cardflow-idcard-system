@@ -11,6 +11,7 @@ Contains:
 import json
 import logging
 import os
+import re
 
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
@@ -34,6 +35,14 @@ from ..utils.upload_security import validate_zip_safety
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+
+def _normalized_field_tokens(name):
+    """Split a field name into lowercase alphanumeric tokens."""
+    raw = str(name or '').strip().lower()
+    if not raw:
+        return set()
+    return {tok for tok in re.split(r'[^a-z0-9]+', raw) if tok}
 
 
 def _normalized_assigned_table_ids(staff):
@@ -167,13 +176,19 @@ def _get_class_section_field_names(table):
     """
     class_field = None
     section_field = None
+    class_tokens = {'class', 'std', 'standard', 'grade'}
+    section_tokens = {'section', 'sec', 'div', 'division'}
+
     for field in (table.fields or []):
-        ftype = field.get('type', '')
-        fname = field.get('name', '')
-        fname_lower = fname.lower() if fname else ''
-        if not class_field and (ftype == 'class' or fname_lower == 'class'):
+        ftype = str(field.get('type', '') or '').strip().lower()
+        fname = str(field.get('name', '') or '').strip()
+        tokens = _normalized_field_tokens(fname)
+
+        if not class_field and (ftype == 'class' or bool(tokens & class_tokens)):
             class_field = fname
-        elif not section_field and (ftype == 'section' or fname_lower == 'section'):
+            continue
+
+        if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
             section_field = fname
     return class_field, section_field
 
@@ -188,35 +203,29 @@ def _get_class_section_branch_field_names(table):
     section_field = None
     branch_field = None
 
+    class_tokens = {'class', 'std', 'standard', 'grade'}
+    section_tokens = {'section', 'sec', 'div', 'division'}
+    branch_tokens = {'branch', 'stream', 'course'}
+
     for field in (table.fields or []):
         ftype = str(field.get('type', '') or '').strip().lower()
         fname = str(field.get('name', '') or '').strip()
-        fname_lower = fname.lower()
+        tokens = _normalized_field_tokens(fname)
 
-        if not class_field and (ftype == 'class' or fname_lower == 'class'):
+        if not class_field and (ftype == 'class' or bool(tokens & class_tokens)):
             class_field = fname
             continue
 
-        if not section_field and (ftype == 'section' or fname_lower == 'section'):
+        if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
             section_field = fname
             continue
 
         if branch_field:
             continue
 
-        if ftype == 'branch':
+        if ftype == 'branch' or bool(tokens & branch_tokens):
             branch_field = fname
             continue
-
-        if (
-            fname_lower == 'branch'
-            or fname_lower == 'stream'
-            or fname_lower == 'course'
-            or 'branch' in fname_lower
-            or 'stream' in fname_lower
-            or 'course' in fname_lower
-        ):
-            branch_field = fname
 
     return class_field, section_field, branch_field
 
