@@ -40,7 +40,7 @@ def client_idcard_group(request):
         'perm_idcard_setting_list', 'perm_idcard_pending_list',
         'perm_idcard_verified_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_pool_list',
-        'perm_idcard_reprint_list',
+        'perm_reprint_request_list', 'perm_confirmed_list',
     ]
     has_any_list_perm = any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS)
     
@@ -130,7 +130,7 @@ def client_idcard_actions(request, table_id):
     LIST_PERMISSIONS = [
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_approved_list', 'perm_idcard_download_list',
-        'perm_idcard_pool_list', 'perm_idcard_reprint_list',
+        'perm_idcard_pool_list', 'perm_reprint_request_list', 'perm_confirmed_list',
     ]
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
         return redirect(reverse('client:dashboard'))
@@ -262,12 +262,18 @@ def client_reprint_cards(request, table_id):
     if not ClientAccessService.can_access_table(user, table):
         return redirect(reverse('client:idcard_group'))
     
-    # Check perm_idcard_reprint_list permission
-    if not PermissionService.has_permission(user, 'perm_idcard_reprint_list'):
+    can_request_list = PermissionService.has_permission(user, 'perm_reprint_request_list')
+    can_confirmed_list = PermissionService.has_permission(user, 'perm_confirmed_list')
+    if not (can_request_list or can_confirmed_list):
         return redirect(reverse('client:idcard_group'))
     
     current_step = request.GET.get('step', 'request_list')
     if current_step not in ('request_list', 'confirmed'):
+        current_step = 'request_list'
+
+    if current_step == 'request_list' and not can_request_list:
+        current_step = 'confirmed'
+    elif current_step == 'confirmed' and not can_confirmed_list:
         current_step = 'request_list'
     
     # Real step counts
@@ -380,6 +386,8 @@ def client_reprint_cards(request, table_id):
         'confirmed_total': confirmed_total,
         'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
         'initial_load_limit': INITIAL_LOAD_LIMIT,
+        'can_reprint_request_list': can_request_list,
+        'can_reprint_confirmed_list': can_confirmed_list,
     }
     return render(request, 'reprintcard/reprint-cards.html', context)
 

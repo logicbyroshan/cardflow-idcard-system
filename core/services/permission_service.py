@@ -52,7 +52,7 @@ class PermissionService:
         'perm_idcard_pending_list', 'perm_idcard_verified_list',
         'perm_idcard_pool_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_reprint_list',
-        # Print & Reprint list permissions (admin_staff only)
+        # Print & Reprint list permissions
         'perm_reprint_request_list', 'perm_confirmed_list', 'perm_print_list', 'perm_finalized_list',
     ]
 
@@ -107,9 +107,7 @@ class PermissionService:
         'perm_idcard_bulk_reupload',  # admin/staff-only (not available to client roles)
         'perm_delete_all_idcard',    # super_admin-only
         'perm_reupload_idcard_image',
-        # Print-queue lists — admin_staff only (not on Client model by design)
-        'perm_reprint_request_list',
-        'perm_confirmed_list',
+        # Print-queue lists — admin/staff-only (except reprint request/confirmed now available to clients)
         'perm_print_list',
         'perm_finalized_list',
         # Website management — admin_staff only (not on Client model by design)

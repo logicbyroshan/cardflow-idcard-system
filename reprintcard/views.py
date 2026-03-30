@@ -214,16 +214,12 @@ def _can_use_reprint_cards(user) -> bool:
 
 def _can_view_reprint_request_list(user) -> bool:
     """Permission for opening the Reprint Request List page/tab."""
-    if PermissionService.is_admin_staff(user):
-        return PermissionService.has(user, 'perm_reprint_request_list')
-    return PermissionService.has(user, 'perm_idcard_reprint_list')
+    return PermissionService.has(user, 'perm_reprint_request_list')
 
 
 def _can_view_reprint_confirmed_list(user) -> bool:
     """Permission for opening the Reprint Confirmed List page/tab."""
-    if PermissionService.is_admin_staff(user):
-        return PermissionService.has(user, 'perm_confirmed_list')
-    return PermissionService.has(user, 'perm_idcard_reprint_list')
+    return PermissionService.has(user, 'perm_confirmed_list')
 
 
 def _reprint_permission_denied_response():

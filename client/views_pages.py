@@ -105,7 +105,7 @@ def card_table(request, table_id):
         'perm_idcard_setting_list', 'perm_idcard_pending_list',
         'perm_idcard_verified_list', 'perm_idcard_approved_list',
         'perm_idcard_download_list', 'perm_idcard_pool_list',
-        'perm_idcard_reprint_list',
+        'perm_reprint_request_list', 'perm_confirmed_list',
     ]
     if not any(PermissionService.has_permission(user, p) for p in LIST_PERMISSIONS):
         return redirect(reverse('client:dashboard'))

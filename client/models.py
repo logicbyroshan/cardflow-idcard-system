@@ -105,6 +105,8 @@ class Client(models.Model):
     perm_idcard_approved_list = models.BooleanField(default=False)
     perm_idcard_download_list = models.BooleanField(default=False)
     perm_idcard_reprint_list = models.BooleanField(default=False)
+    perm_reprint_request_list = models.BooleanField(default=False)
+    perm_confirmed_list = models.BooleanField(default=False)
     
     # ID Card Action Permissions
     # Note: Actions only work in Pending and Verified lists

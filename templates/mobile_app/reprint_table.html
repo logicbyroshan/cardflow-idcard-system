@@ -24,6 +24,7 @@
 
     <div class="px-4 pt-3">
         <div class="flex bg-white rounded-2xl shadow-sm border border-gray-100 p-1">
+            {% if can_reprint_request_list %}
             <a href="{% url 'mobile_app:reprint_table' table_id=table.id %}?step=request_list{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
                class="flex-1 py-2.5 text-[12px] font-semibold rounded-xl transition-all text-center"
                {% if active_step == 'request_list' %}
@@ -33,6 +34,8 @@
                {% endif %}>
                 Request <span class="ml-1 text-[11px] font-black">{{ request_total|default:0 }}</span>
             </a>
+            {% endif %}
+            {% if can_reprint_confirmed_list %}
             <a href="{% url 'mobile_app:reprint_table' table_id=table.id %}?step=confirmed{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
                class="flex-1 py-2.5 text-[12px] font-semibold rounded-xl transition-all text-center"
                {% if active_step == 'confirmed' %}
@@ -42,6 +45,7 @@
                {% endif %}>
                 Confirmed <span class="ml-1 text-[11px] font-black">{{ confirmed_total|default:0 }}</span>
             </a>
+            {% endif %}
         </div>
     </div>
 

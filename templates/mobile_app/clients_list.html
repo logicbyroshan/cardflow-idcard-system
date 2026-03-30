@@ -353,8 +353,9 @@ const CAN_MANAGE_CLIENTS = {{ can_manage_clients|yesno:"true,false" }};
 const CLIENT_PERMISSION_KEYS = [
     'perm_idcard_client_list',
     'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
-    'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
-    'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
+    'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list',
+    'perm_reprint_request_list', 'perm_confirmed_list',
+    'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
     'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
     'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all',
     'perm_mobile_app',
@@ -405,7 +406,13 @@ function clientsApp() {
                     { key: 'perm_idcard_pool_list', label: 'Pool List' },
                     { key: 'perm_idcard_approved_list', label: 'Approved List' },
                     { key: 'perm_idcard_download_list', label: 'Download List' },
-                    { key: 'perm_idcard_reprint_list', label: 'Reprint List' },
+                ],
+            },
+            {
+                title: 'Print & Reprint Lists',
+                items: [
+                    { key: 'perm_reprint_request_list', label: 'Request List (Reprint)' },
+                    { key: 'perm_confirmed_list', label: 'Confirmed List (Reprint)' },
                 ],
             },
             {
@@ -417,6 +424,7 @@ function clientsApp() {
                     { key: 'perm_idcard_delete', label: 'Delete Card' },
                     { key: 'perm_idcard_approve', label: 'Approve Card' },
                     { key: 'perm_idcard_verify', label: 'Verify Card' },
+                    { key: 'perm_idcard_reprint_list', label: 'Reprint Cards' },
                     { key: 'perm_idcard_updated_at', label: 'Last Updated & Updated By' },
                     { key: 'perm_idcard_retrieve', label: 'Retrieve from Pool' },
                 ],

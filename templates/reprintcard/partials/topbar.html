@@ -30,13 +30,13 @@
   <!-- Right - 3-Step Workflow Tabs -->
   <div class="nav-right">
     <div class="action-tabs">
-      {% if is_super_admin or is_admin_staff and can_reprint_request_list or is_client and perm_idcard_reprint_list or is_client_staff and perm_idcard_reprint_list %}
+      {% if is_super_admin or can_reprint_request_list %}
       <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" class="action-tab reprint-confirm-tab {% if current_step == 'request_list' %}active{% endif %}">
         <span class="tab-label">Request List</span>
         <span class="tab-count">{{ step_counts.request_list }}</span>
       </a>
       {% endif %}
-      {% if is_super_admin or is_admin_staff and can_reprint_confirmed_list or is_client and perm_idcard_reprint_list or is_client_staff and perm_idcard_reprint_list %}
+      {% if is_super_admin or can_reprint_confirmed_list %}
       <a href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=confirmed" class="action-tab reprint-pool-tab {% if current_step == 'confirmed' %}active{% endif %}">
         <span class="tab-label">Confirmed List</span>
         <span class="tab-count">{{ step_counts.confirmed }}</span>

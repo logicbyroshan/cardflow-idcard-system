@@ -1392,8 +1392,11 @@ def card_list(request, table_id, status):
         if _row['status'] in tab_counts:
             tab_counts[_row['status']] = _row['n']
 
+    can_reprint_request_list = PermissionService.has(user, 'perm_reprint_request_list')
+    can_reprint_confirmed_list = PermissionService.has(user, 'perm_confirmed_list')
+
     reprint_counts = {'requested': 0, 'confirmed': 0}
-    if status == 'download' and PermissionService.has(user, 'perm_idcard_reprint_list'):
+    if status == 'download' and (can_reprint_request_list or can_reprint_confirmed_list):
         for _row in (
             ReprintRequest.objects
             .filter(table=table, status__in=['requested', 'confirmed'])
@@ -1424,6 +1427,8 @@ def card_list(request, table_id, status):
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
         'tab_counts': tab_counts,
         'reprint_counts': reprint_counts,
+        'can_reprint_request_list': can_reprint_request_list,
+        'can_reprint_confirmed_list': can_reprint_confirmed_list,
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
@@ -1438,7 +1443,9 @@ def reprint_lists(request, client_id):
     user = request.user
     _, perms = _client_ctx(user)
 
-    if not PermissionService.has(user, 'perm_idcard_reprint_list'):
+    can_request_list = PermissionService.has(user, 'perm_reprint_request_list')
+    can_confirmed_list = PermissionService.has(user, 'perm_confirmed_list')
+    if not (can_request_list or can_confirmed_list):
         return redirect('mobile_app:home')
     if not PermissionService.can_access_client(user, client_id):
         return redirect('mobile_app:home')
@@ -1448,6 +1455,10 @@ def reprint_lists(request, client_id):
 
     active_step = (request.GET.get('step') or 'request_list').strip().lower()
     if active_step not in ('request_list', 'confirmed'):
+        active_step = 'request_list'
+    if active_step == 'request_list' and not can_request_list:
+        active_step = 'confirmed'
+    elif active_step == 'confirmed' and not can_confirmed_list:
         active_step = 'request_list'
 
     tables_qs = (
@@ -1513,6 +1524,8 @@ def reprint_lists(request, client_id):
         'request_total': request_total,
         'confirmed_total': confirmed_total,
         'download_total': download_total,
+        'can_reprint_request_list': can_request_list,
+        'can_reprint_confirmed_list': can_confirmed_list,
         **perms,
     })
 
@@ -1524,7 +1537,9 @@ def reprint_table(request, table_id):
     user = request.user
     _, perms = _client_ctx(user)
 
-    if not PermissionService.has(user, 'perm_idcard_reprint_list'):
+    can_request_list = PermissionService.has(user, 'perm_reprint_request_list')
+    can_confirmed_list = PermissionService.has(user, 'perm_confirmed_list')
+    if not (can_request_list or can_confirmed_list):
         return redirect('mobile_app:home')
 
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
@@ -1533,6 +1548,10 @@ def reprint_table(request, table_id):
 
     active_step = (request.GET.get('step') or request.POST.get('step') or 'request_list').strip().lower()
     if active_step not in ('request_list', 'confirmed'):
+        active_step = 'request_list'
+    if active_step == 'request_list' and not can_request_list:
+        active_step = 'confirmed'
+    elif active_step == 'confirmed' and not can_confirmed_list:
         active_step = 'request_list'
 
     search_query = _sanitize_search_query(request.GET.get('q') or request.POST.get('q') or '')
@@ -1765,6 +1784,8 @@ def reprint_table(request, table_id):
         'confirmed_total': step_counts['confirmed'],
         'search_query': search_query,
         'can_manage_reprint_actions': can_manage_actions,
+        'can_reprint_request_list': can_request_list,
+        'can_reprint_confirmed_list': can_confirmed_list,
         'notice_message': notice_message,
         'notice_type': notice_type,
         **perms,

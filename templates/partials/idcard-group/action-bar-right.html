@@ -11,7 +11,7 @@
         {% if is_super_admin or perm_print_list %}
         <button class="btn btn-md btn-neutral" id="printCardsBtn" disabled title="Go to Print List for selected table"><i class="fa-solid fa-print"></i> Print Cards</button>
         {% endif %}
-        {% if is_super_admin or is_admin_staff and perm_reprint_request_list or is_admin_staff and perm_confirmed_list or is_client and perm_idcard_reprint_list or is_client_staff and perm_idcard_reprint_list %}
+        {% if is_super_admin or is_admin_staff and perm_reprint_request_list or is_admin_staff and perm_confirmed_list or is_client and perm_reprint_request_list or is_client and perm_confirmed_list or is_client_staff and perm_reprint_request_list or is_client_staff and perm_confirmed_list %}
         <button class="btn btn-md btn-neutral" id="reprintCardsBtn" disabled title="Go to Reprint List for selected table"><i class="fa-solid fa-rotate-right"></i> Reprint Cards</button>
         {% endif %}
     </div>
