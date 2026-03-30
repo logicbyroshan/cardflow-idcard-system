@@ -31,13 +31,13 @@
       <h1>{% if tutorial_lang == 'hi' %}क्लाइंट ऑपरेशन्स ट्यूटोरियल{% else %}Client Operations Tutorial{% endif %}</h1>
       {% if tutorial_lang == 'hi' %}
       <p>
-        यह पेज Adarsh ID Cards के लिए आपका पूरा क्लाइंट SOP है। इसमें डेटा तैयारी से लेकर
-        अप्रूवल, डाउनलोड, रीप्रिंट और टीम ऑपरेशन तक का पूरा वर्कफ़्लो दिया गया है।
+        Ye page aapka simple daily guide hai. Isme upload se lekar check, approve,
+        download, reprint aur team permission tak sab kuch easy steps me diya hai.
       </p>
       {% else %}
       <p>
-        This page is your complete client-side SOP for Adarsh ID Cards. It covers the real working flow from
-        data preparation to approval, downloads, reprints, and team operations.
+        This page is your simple daily guide. It covers upload, checking, approval,
+        download, reprint, and team permissions in easy steps.
       </p>
       {% endif %}
       <div class="tutorial-hero-actions">
@@ -55,7 +55,7 @@
         </a>
         <button class="btn btn-outline-primary" type="button" data-jump-tab="get-started">
           <i class="fa-solid fa-list-check"></i>
-          {% if tutorial_lang == 'hi' %}शुरुआती स्टेप्स पर जाएं{% else %}Jump to Getting Started{% endif %}
+          {% if tutorial_lang == 'hi' %}Start वाले स्टेप्स खोलें{% else %}Go to Start Steps{% endif %}
         </button>
       </div>
     </div>
@@ -65,8 +65,8 @@
           <i class="fa-brands fa-youtube"></i>
         </div>
         <h3>{% if tutorial_lang == 'hi' %}यहां से शुरू करें{% else %}Start Here{% endif %}</h3>
-        <p>{% if tutorial_lang == 'hi' %}पहले वीडियो देखें, फिर रोज़ काम करते समय इस पेज को चेकलिस्ट की तरह इस्तेमाल करें।{% else %}Watch the video once, then use this page as your daily execution checklist.{% endif %}</p>
-        <a href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">{% if tutorial_lang == 'hi' %}YouTube ट्यूटोरियल खोलें{% else %}Open YouTube Tutorial{% endif %}</a>
+        <p>{% if tutorial_lang == 'hi' %}Video ek baar dekh lo, fir daily kaam me is page ko checklist ki tarah use karo.{% else %}Watch the video once, then use this page as your daily checklist.{% endif %}</p>
+        <a href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">{% if tutorial_lang == 'hi' %}YouTube video खोलें{% else %}Open YouTube Video{% endif %}</a>
       </div>
     </div>
   </section>
@@ -84,53 +84,53 @@
     <div class="tutorial-panels">
       <section class="tutorial-panel is-active" data-panel="get-started" role="tabpanel">
         {% if tutorial_lang == 'hi' %}
-        <h2>8 स्टेप्स में तेज शुरुआत</h2>
+        <h2>8 आसान स्टेप्स में शुरुआत</h2>
         <div class="quick-grid">
-          <article><span>1</span><p>डैशबोर्ड में लॉगिन करके हेडर में अपना क्लाइंट नाम जांचें।</p></article>
-          <article><span>2</span><p>ID Card Group खोलें और सही क्लास या बैच की टेबल चुनें।</p></article>
-          <article><span>3</span><p>कार्ड डेटा और इमेज सही फॉर्मेट में अपलोड करें।</p></article>
-          <article><span>4</span><p>Pending रिकॉर्ड्स चेक करें और गलत डेटा पहले ठीक करें।</p></article>
-          <article><span>5</span><p>टेक्स्ट, फोटो और क्लास सेक्शन चेक करके रिकॉर्ड्स Verified में भेजें।</p></article>
-          <article><span>6</span><p>फाइनल प्रूफ-चेक के बाद ही कार्ड्स Approve करें।</p></article>
-          <article><span>7</span><p>Approved या Download स्टेटस से फाइनल आउटपुट डाउनलोड करें।</p></article>
-          <article><span>8</span><p>डैशबोर्ड एक्टिविटी और नोटिफिकेशन रोज ट्रैक करें।</p></article>
+          <article><span>1</span><p>Dashboard login karke header me client name check karo.</p></article>
+          <article><span>2</span><p>ID Card Group me sahi class ya batch table select karo.</p></article>
+          <article><span>3</span><p>Data file aur photos sahi format me upload karo.</p></article>
+          <article><span>4</span><p>Pending list me galtiyan pehle thik karo.</p></article>
+          <article><span>5</span><p>Record check karke cards ko Verified me bhejo.</p></article>
+          <article><span>6</span><p>Final check ke baad hi cards Approve karo.</p></article>
+          <article><span>7</span><p>Approved/Download list se output download karo.</p></article>
+          <article><span>8</span><p>Daily activity aur notifications monitor karo.</p></article>
         </div>
 
         <h3>क्लाइंट रोल्स और एक्सेस</h3>
         <p>
-          आपकी संस्था में सामान्यतः एक Client Admin और जरूरत अनुसार Client Staff होते हैं।
-          Client Admin एक्सेस, फाइनल अप्रूवल और जवाबदेही संभालता है। Staff के लिए अलग-अलग अकाउंट रखें।
+          Usually ek Client Admin hota hai aur zarurat ke hisab se Client Staff users hote hain.
+          Client Admin final control rakhta hai. Staff ke liye alag login rakho.
         </p>
         <div class="callout">
-          <strong>महत्वपूर्ण:</strong> एक ही अकाउंट कई ऑपरेटर्स के बीच साझा न करें।
+          <strong>Important:</strong> ek account ko multiple logon me share mat karo.
         </div>
 
         <h3>पहली बार ऑनबोर्डिंग</h3>
         <ol>
-          <li>Upload, Review और Final Approval के जिम्मेदार व्यक्ति तय करें।</li>
-          <li>पूरे सेशन के लिए group और table naming standard फाइनल करें।</li>
-          <li>प्रोडक्शन से पहले mandatory output fields लॉक करें।</li>
-          <li>फुल बैच से पहले 20 से 50 रिकॉर्ड का पायलट रन करें।</li>
-          <li>पूरा फ्लो validate करें: Pending से Verified से Approved से Download।</li>
-          <li>एक SOP फाइनल करके सभी बैच में वही पैटर्न रखें।</li>
+          <li>Upload, Review aur Approval ke owners fix karo.</li>
+          <li>Group/table naming ka ek standard decide karo.</li>
+          <li>Production se pehle mandatory fields lock karo.</li>
+          <li>Full batch se pehle 20-50 records ka pilot run karo.</li>
+          <li>Flow check karo: Pending -> Verified -> Approved -> Download.</li>
+          <li>Jo process sahi chale, wahi sab batches me repeat karo.</li>
         </ol>
         {% else %}
-        <h2>Quick Start in 8 Steps</h2>
+        <h2>Start Fast in 8 Easy Steps</h2>
         <div class="quick-grid">
-          <article><span>1</span><p>Login to your dashboard and confirm your client name in the header.</p></article>
-          <article><span>2</span><p>Open ID Card Group and choose the correct table for your class or batch.</p></article>
-          <article><span>3</span><p>Upload card data and images in the required format.</p></article>
-          <article><span>4</span><p>Review records in Pending and fix invalid details before verify.</p></article>
-          <article><span>5</span><p>Move clean records to Verified after checking text, photo, and class section.</p></article>
-          <article><span>6</span><p>Approve cards only after final proof-check from your reviewer.</p></article>
-          <article><span>7</span><p>Download final outputs from approved or download status.</p></article>
-          <article><span>8</span><p>Track updates daily from dashboard activity and notifications.</p></article>
+          <article><span>1</span><p>Login and confirm your client name on top.</p></article>
+          <article><span>2</span><p>Open ID Card Group and pick the correct table.</p></article>
+          <article><span>3</span><p>Upload data file and photos in correct format.</p></article>
+          <article><span>4</span><p>Fix mistakes in Pending list first.</p></article>
+          <article><span>5</span><p>After checking, move records to Verified.</p></article>
+          <article><span>6</span><p>Approve only after final review.</p></article>
+          <article><span>7</span><p>Download final output from Approved/Download list.</p></article>
+          <article><span>8</span><p>Check activity and notifications daily.</p></article>
         </div>
 
         <h3>Client Roles and Access</h3>
         <p>
-          Your organization usually has one client admin and optional client staff users. Client admin controls access,
-          final approvals, and accountability. Staff should use individual accounts with minimum required permissions.
+          Usually there is one client admin and some client staff users. Client admin manages final approval and access.
+          Keep separate login for each staff member.
         </p>
         <div class="callout">
           <strong>Important:</strong> Never share one account across multiple operators.
@@ -138,12 +138,12 @@
 
         <h3>First-Time Onboarding</h3>
         <ol>
-          <li>Assign named owners for upload, review, and final approval.</li>
-          <li>Define one naming standard for groups and tables for the full session.</li>
-          <li>Finalize mandatory output fields before production.</li>
-          <li>Run a pilot with 20 to 50 records before full batch.</li>
-          <li>Validate complete cycle: Pending to Verified to Approved to Download.</li>
-          <li>Freeze SOP and reuse same pattern for all future batches.</li>
+          <li>Assign owners for upload, review, and approval.</li>
+          <li>Set one naming format for groups and tables.</li>
+          <li>Lock mandatory fields before production.</li>
+          <li>Run a pilot with 20 to 50 records first.</li>
+          <li>Check full flow: Pending -> Verified -> Approved -> Download.</li>
+          <li>Use the same process for all batches.</li>
         </ol>
         {% endif %}
       </section>
@@ -152,20 +152,20 @@
         {% if tutorial_lang == 'hi' %}
         <h2>दैनिक वर्कफ़्लो</h2>
         <p>
-          डैशबोर्ड आपका कंट्रोल सेंटर है। स्टेटस काउंटर्स और एक्टिविटी फीड देखकर तय करें कि टीम को किस काम पर फोकस करना है।
+          Dashboard aapka control center hai. Status count dekh kar decide karo team ko kis kaam par focus karna hai.
         </p>
         <ul>
-          <li>Pending रिकॉर्ड्स पहले साफ करें ताकि बैकलॉग न बढ़े।</li>
-          <li>Verified को लंबे समय तक होल्ड न रखें, इसे review queue की तरह चलाएं।</li>
-          <li>Notifications को सिर्फ सूचना नहीं, action item मानकर काम करें।</li>
+          <li>Pending records pehle clear karo, backlog mat badhne do.</li>
+          <li>Verified list ko hold mat karo, jaldi review complete karo.</li>
+          <li>Notifications ko action item ki tarah treat karo.</li>
         </ul>
 
         <h3>Groups और Tables रणनीति</h3>
         <ol>
-          <li>Group को session या operational cycle के हिसाब से बनाएं।</li>
-          <li>Table naming pattern फिक्स रखें, जैसे SchoolCode-Class-Section-Session-BatchNo.</li>
-          <li>Production में रिकॉर्ड आने के बाद table rename कम से कम करें।</li>
-          <li>हर table का owner तय करें ताकि जवाबदेही स्पष्ट रहे।</li>
+          <li>Group ko session ya cycle ke hisab se banao.</li>
+          <li>Table naming pattern fix rakho (example: SchoolCode-Class-Section-Session-BatchNo).</li>
+          <li>Production start hone ke baad table rename avoid karo.</li>
+          <li>Har table ka owner fix karo.</li>
         </ol>
 
         <h3>डेटा और इमेज अपलोड स्टैंडर्ड</h3>
@@ -180,43 +180,43 @@
           <tbody>
             <tr>
               <td>Student Identifier</td>
-              <td>सभी फाइलों में यूनिक और स्थिर</td>
-              <td>गलत मैपिंग और डुप्लिकेट से बचाव</td>
+              <td>Har file me same aur unique ho</td>
+              <td>Wrong mapping aur duplicate se bachata hai</td>
             </tr>
             <tr>
               <td>Name Fields</td>
-              <td>अपलोड से पहले अंतिम स्पेलिंग फाइनल</td>
-              <td>लेट-स्टेज करेक्शन कम होते हैं</td>
+              <td>Final spelling pehle hi confirm karo</td>
+              <td>Baad me correction ka load kam hota hai</td>
             </tr>
             <tr>
               <td>Class और Section</td>
-              <td>हर रो में एक जैसा फॉर्मेट</td>
-              <td>फ़िल्टर और एक्सपोर्ट सटीक रहते हैं</td>
+              <td>Sab rows me same format rakho</td>
+              <td>Filter aur export accurate rehta hai</td>
             </tr>
             <tr>
               <td>Photo Files</td>
-              <td>एक ही naming pattern</td>
-              <td>अपलोड mismatch errors कम होते हैं</td>
+              <td>Ek hi naming style use karo</td>
+              <td>Upload mismatch errors kam aate hain</td>
             </tr>
           </tbody>
         </table>
         {% else %}
         <h2>Daily Workflow</h2>
         <p>
-          The dashboard is your control center. Use status counters and activity feed to decide where the team should focus.
+          Dashboard is your control center. Use status counts to decide team priority.
         </p>
         <ul>
-          <li>Pending should be processed first to avoid accumulation.</li>
-          <li>Verified should remain a review queue, not a long-term storage state.</li>
-          <li>Notifications should be treated as action items.</li>
+          <li>Clear Pending first so backlog does not grow.</li>
+          <li>Do not keep records long in Verified; review quickly.</li>
+          <li>Treat notifications as action items.</li>
         </ul>
 
         <h3>Groups and Tables Strategy</h3>
         <ol>
-          <li>Create group by session or operational cycle.</li>
-          <li>Create table names with strict pattern, for example SchoolCode-Class-Section-Session-BatchNo.</li>
-          <li>Avoid frequent renaming after records are in production.</li>
-          <li>Assign ownership table-wise for accountability.</li>
+          <li>Create groups by session or working cycle.</li>
+          <li>Use one naming format for tables (example: SchoolCode-Class-Section-Session-BatchNo).</li>
+          <li>Avoid renaming tables after production starts.</li>
+          <li>Assign one owner per table.</li>
         </ol>
 
         <h3>Data and Image Upload Standards</h3>
@@ -232,22 +232,22 @@
             <tr>
               <td>Student Identifier</td>
               <td>Unique and stable in all files</td>
-              <td>Avoids wrong mapping and duplicates</td>
+              <td>Prevents wrong mapping and duplicates</td>
             </tr>
             <tr>
               <td>Name Fields</td>
-              <td>Final approved spelling</td>
-              <td>Reduces late-stage corrections</td>
+              <td>Final spelling before upload</td>
+              <td>Reduces late corrections</td>
             </tr>
             <tr>
               <td>Class and Section</td>
               <td>Single format for all rows</td>
-              <td>Improves filtering and exports</td>
+              <td>Keeps filters and exports accurate</td>
             </tr>
             <tr>
               <td>Photo Files</td>
               <td>One naming pattern</td>
-              <td>Reduces upload mismatch failures</td>
+              <td>Reduces upload mismatch errors</td>
             </tr>
           </tbody>
         </table>
@@ -256,7 +256,7 @@
 
       <section class="tutorial-panel" data-panel="quality" role="tabpanel" hidden>
         {% if tutorial_lang == 'hi' %}
-        <h2>स्टेटस वर्कफ़्लो और अप्रूवल क्वालिटी गेट</h2>
+        <h2>Status Flow और Approval Check</h2>
         <table class="tutorial-table">
           <thead>
             <tr>
@@ -268,42 +268,42 @@
           <tbody>
             <tr>
               <td>Pending</td>
-              <td>प्रारंभिक सुधार और क्लीनअप</td>
+              <td>Data correction aur cleanup</td>
               <td>Data Operator</td>
             </tr>
             <tr>
               <td>Verified</td>
-              <td>रिव्यू पूरा, साइन-ऑफ की प्रतीक्षा</td>
+              <td>Review ho gaya, sign-off ka wait</td>
               <td>Reviewer</td>
             </tr>
             <tr>
               <td>Approved</td>
-              <td>फाइनल आउटपुट के लिए तैयार रिकॉर्ड्स</td>
+              <td>Final output ke liye ready</td>
               <td>Client Admin</td>
             </tr>
             <tr>
               <td>Downloaded</td>
-              <td>डिलीवरी ट्रैकिंग स्टेज</td>
+              <td>Delivery tracking stage</td>
               <td>Client Admin या Operator</td>
             </tr>
           </tbody>
         </table>
 
         <div class="callout">
-          जल्दी के लिए Pending से सीधे Approved न करें। इससे रीप्रिंट लोड बढ़ता है।
+          Jaldi me Pending se direct Approved mat karo. Isse reprint load badhta hai.
         </div>
 
         <h3>Approve करने से पहले चेकलिस्ट</h3>
         <ul>
-          <li>नाम, क्लास और सेक्शन source records से मेल खाते हों।</li>
-          <li>फोटो स्पष्ट, centered, upright और सही छात्र की हो।</li>
-          <li>ID नंबर में कोई अंक missing या extra न हो।</li>
-          <li>Mandatory fields खाली न हों।</li>
-          <li>उसी टेबल में duplicate card न हो।</li>
+          <li>Name, class aur section source data se match kare.</li>
+          <li>Photo clear, centered aur sahi student ka ho.</li>
+          <li>ID number me digit missing ya extra na ho.</li>
+          <li>Mandatory fields blank na ho.</li>
+          <li>Same table me duplicate card na ho.</li>
         </ul>
-        <p class="tutorial-note">सुझाव: हर टेबल के लिए एक reviewer sign-off के बाद ही final approval करें।</p>
+        <p class="tutorial-note">Tip: har table me reviewer sign-off ke baad hi final approval do.</p>
         {% else %}
-        <h2>Status Workflow and Approval Quality Gate</h2>
+        <h2>Status Flow and Approval Check</h2>
         <table class="tutorial-table">
           <thead>
             <tr>
@@ -315,17 +315,17 @@
           <tbody>
             <tr>
               <td>Pending</td>
-              <td>Initial correction and cleanup</td>
+              <td>Data correction and cleanup</td>
               <td>Data Operator</td>
             </tr>
             <tr>
               <td>Verified</td>
-              <td>Review-complete, waiting sign-off</td>
+              <td>Review done, waiting sign-off</td>
               <td>Reviewer</td>
             </tr>
             <tr>
               <td>Approved</td>
-              <td>Final output-ready records</td>
+              <td>Ready for final output</td>
               <td>Client Admin</td>
             </tr>
             <tr>
@@ -337,18 +337,18 @@
         </table>
 
         <div class="callout">
-          Do not skip directly from Pending to Approved for speed. It increases reprint load.
+          Do not move directly from Pending to Approved. It increases reprint load.
         </div>
 
         <h3>Checklist Before Approve</h3>
         <ul>
-          <li>Name, class, and section are correct and consistent with source records.</li>
-          <li>Photo is clear, centered, upright, and belongs to the correct student.</li>
+          <li>Name, class, and section match source data.</li>
+          <li>Photo is clear, centered, and correct.</li>
           <li>ID number has no missing or extra digits.</li>
-          <li>Mandatory fields are not blank.</li>
-          <li>No duplicate card exists in the same table.</li>
+          <li>Mandatory fields are filled.</li>
+          <li>No duplicate card in same table.</li>
         </ul>
-        <p class="tutorial-note">Recommendation: each table should have one named reviewer sign-off before approval.</p>
+        <p class="tutorial-note">Tip: get reviewer sign-off before final approval.</p>
         {% endif %}
       </section>
 
@@ -357,41 +357,41 @@
         <h2>एक्सपोर्ट, डिलीवरी और रीप्रिंट हैंडलिंग</h2>
         <h3>Export और Delivery प्रोटोकॉल</h3>
         <ol>
-          <li>Delivery stage के अनुसार Approved या Download स्टेटस फ़िल्टर करें।</li>
-          <li>आवश्यक फॉर्मेट में export करें और बार-बार क्लिक से बचें।</li>
-          <li>बड़े जॉब्स में background task पूरा होने दें।</li>
-          <li>प्रिंटर या स्कूल को भेजने से पहले sample verify करें।</li>
-          <li>ट्रेसेबिलिटी के लिए standard naming के साथ archive रखें।</li>
+          <li>Delivery stage ke hisab se Approved ya Download filter lagao.</li>
+          <li>Required format me export karo, same button baar-baar mat click karo.</li>
+          <li>Large job me background task complete hone do.</li>
+          <li>Printer/school ko bhejne se pehle sample check karo.</li>
+          <li>Export files ko standard naam se archive karo.</li>
         </ol>
 
         <h3>रीप्रिंट और Exception Handling</h3>
         <ul>
-          <li>रीप्रिंट केवल valid correction केस में ही करें।</li>
-          <li>हर रीप्रिंट के लिए reason note रिकॉर्ड करें।</li>
-          <li>रीप्रिंट के बाद final delivery से पहले card पुनः verify करें।</li>
-          <li>Repeated reprints को ट्रैक करें ताकि root cause निकाला जा सके।</li>
+          <li>Reprint sirf genuine correction case me karo.</li>
+          <li>Har reprint ka reason note karo.</li>
+          <li>Reprint ke baad final delivery se pehle card dobara verify karo.</li>
+          <li>Repeated reprints track karo, root cause nikaalo.</li>
         </ul>
 
         <div class="callout callout-soft">
-          Export bundles के लिए सुझाया नाम: Client-Table-Date-Format-Operator.
+          Suggested file name: Client-Table-Date-Format-Operator.
         </div>
         {% else %}
         <h2>Exports, Delivery, and Reprint Handling</h2>
         <h3>Export and Delivery Protocol</h3>
         <ol>
-          <li>Filter by Approved or Download status per delivery stage.</li>
-          <li>Export in required format and avoid repeated trigger clicks.</li>
+          <li>Use Approved or Download filter based on delivery stage.</li>
+          <li>Export in required format; do not click repeatedly.</li>
           <li>For large jobs, wait for background task completion.</li>
-          <li>Verify a sample before sharing to printer or school authority.</li>
-          <li>Archive files with strict naming convention for traceability.</li>
+          <li>Check one sample before sending to printer/school.</li>
+          <li>Archive files with standard naming.</li>
         </ol>
 
         <h3>Reprint and Exception Handling</h3>
         <ul>
-          <li>Use reprint only for valid correction scenarios.</li>
-          <li>Capture reason note for every reprint.</li>
-          <li>After reprint, revalidate card before final delivery.</li>
-          <li>Track repeated reprints to identify root quality issues.</li>
+          <li>Use reprint only for genuine correction cases.</li>
+          <li>Record reason for every reprint.</li>
+          <li>After reprint, verify card again before delivery.</li>
+          <li>Track repeated reprints to find root issue.</li>
         </ul>
 
         <div class="callout callout-soft">
@@ -415,12 +415,12 @@
           <tbody>
             <tr>
               <td>Data Operator</td>
-              <td>Pending queue में upload और correction</td>
+              <td>Pending list me upload aur correction</td>
               <td>No</td>
             </tr>
             <tr>
               <td>Reviewer</td>
-              <td>Verification और invalid records reject करना</td>
+              <td>Verification aur wrong records reject karna</td>
               <td>Optional</td>
             </tr>
             <tr>
@@ -433,10 +433,10 @@
 
         <h3>सुरक्षा के बेसिक नियम</h3>
         <ul>
-          <li>पासवर्ड कभी भी chat apps में शेयर न करें।</li>
-          <li>Inactive staff को तुरंत disable करें।</li>
-          <li>Active season में हर सप्ताह permissions review करें।</li>
-          <li>Bulk बदलाव से पहले source upload files का backup रखें।</li>
+          <li>Password kabhi bhi chat app me share mat karo.</li>
+          <li>Inactive staff ko turant disable karo.</li>
+          <li>Active season me weekly permissions review karo.</li>
+          <li>Bulk change se pehle source files ka backup rakho.</li>
         </ul>
         {% else %}
         <h2>Team Operations and Security</h2>
@@ -452,12 +452,12 @@
           <tbody>
             <tr>
               <td>Data Operator</td>
-              <td>Upload and correction in pending queue</td>
+              <td>Upload and correction in Pending list</td>
               <td>No</td>
             </tr>
             <tr>
               <td>Reviewer</td>
-              <td>Verification and rejection of invalid records</td>
+              <td>Verification and rejection of wrong records</td>
               <td>Optional</td>
             </tr>
             <tr>
@@ -470,10 +470,10 @@
 
         <h3>Security Basics</h3>
         <ul>
-          <li>Never share passwords through chat apps.</li>
+          <li>Never share passwords on chat apps.</li>
           <li>Disable inactive staff immediately.</li>
-          <li>Review permissions every week during active season.</li>
-          <li>Keep source upload files backed up before bulk changes.</li>
+          <li>Review permissions weekly during active season.</li>
+          <li>Keep backup of source files before bulk changes.</li>
         </ul>
         {% endif %}
       </section>
@@ -483,79 +483,79 @@
         <h2>समस्या समाधान और चेकलिस्ट</h2>
         <div class="faq-grid">
           <article>
-            <h4>छात्र के साथ इमेज mismatch</h4>
-            <p>री-अपलोड से पहले identifier mapping और file naming pattern दोबारा जांचें।</p>
+            <h4>Photo student se mismatch</h4>
+            <p>Re-upload se pehle identifier mapping aur file naming dobara check karo.</p>
           </article>
           <article>
             <h4>Card status transition blocked</h4>
-            <p>Role permission validate करें और allowed sequence के अनुसार ही आगे बढ़ें।</p>
+            <p>Role permission check karo aur allowed sequence follow karo.</p>
           </article>
           <article>
-            <h4>Export धीमा या delayed</h4>
-            <p>छोटे export sets इस्तेमाल करें और background task completion मॉनिटर करें।</p>
+            <h4>Export slow ya delayed</h4>
+            <p>Chhote export sets use karo aur background task complete hone do.</p>
           </article>
           <article>
-            <h4>Staff को expected rows नहीं दिख रहे</h4>
-            <p>Staff permissions में assigned scopes और table access validate करें।</p>
+            <h4>Staff ko expected rows nahi dikh rahe</h4>
+            <p>Staff permissions me assigned scope aur table access check karo.</p>
           </article>
           <article>
-            <h4>एक ही table से बार-बार reprint</h4>
-            <p>Records को approved में भेजने से पहले strict reviewer sign-off लागू करें।</p>
+            <h4>Same table se bar-bar reprint</h4>
+            <p>Approved se pehle reviewer sign-off compulsory rakho.</p>
           </article>
           <article>
-            <h4>Delivery के बाद audit मुश्किल</h4>
-            <p>Export folder naming standard करें और delivery owner log करें।</p>
+            <h4>Delivery ke baad audit mushkil</h4>
+            <p>Export naming standard rakho aur delivery owner log karo.</p>
           </article>
         </div>
 
         <h3>Daily और Weekly Checklist</h3>
         <div class="daily-checklist">
-          <label><input type="checkbox"> Upload, review और approval के owners confirm करें।</label>
-          <label><input type="checkbox"> पिछले दिन के pending exceptions पहले साफ करें।</label>
-          <label><input type="checkbox"> Status transition से पहले नए uploads verify करें।</label>
-          <label><input type="checkbox"> Review sign-off के बाद ही approve करें।</label>
-          <label><input type="checkbox"> सभी exports को standard naming के साथ archive करें।</label>
-          <label><input type="checkbox"> Weekly: staff permissions review करें और unused access हटाएं।</label>
-          <label><input type="checkbox"> Weekly: simple ops report प्रकाशित करें (uploaded, approved, delivered, reprint)।</label>
+          <label><input type="checkbox"> Upload, review aur approval owners confirm karo.</label>
+          <label><input type="checkbox"> Kal ke pending issues pehle clear karo.</label>
+          <label><input type="checkbox"> Status change se pehle new uploads verify karo.</label>
+          <label><input type="checkbox"> Review sign-off ke baad hi approve karo.</label>
+          <label><input type="checkbox"> Exports ko standard naam se archive karo.</label>
+          <label><input type="checkbox"> Weekly: staff permissions review karo, extra access hatao.</label>
+          <label><input type="checkbox"> Weekly: simple report banao (uploaded, approved, delivered, reprint).</label>
         </div>
         {% else %}
         <h2>Troubleshooting and Checklists</h2>
         <div class="faq-grid">
           <article>
             <h4>Image mismatch with student</h4>
-            <p>Re-check identifier mapping and file naming pattern before re-upload.</p>
+            <p>Check identifier mapping and file naming before re-upload.</p>
           </article>
           <article>
             <h4>Card status transition blocked</h4>
-            <p>Validate role permission and follow allowed sequence only.</p>
+            <p>Check role permission and follow allowed sequence.</p>
           </article>
           <article>
             <h4>Export slow or delayed</h4>
-            <p>Use smaller export sets and monitor background task completion.</p>
+            <p>Use smaller export sets and wait for background task completion.</p>
           </article>
           <article>
             <h4>Staff cannot see expected rows</h4>
-            <p>Validate assigned scopes and table access in staff permissions.</p>
+            <p>Check assigned scope and table access in staff permissions.</p>
           </article>
           <article>
             <h4>Repeated reprint from same table</h4>
-            <p>Add strict reviewer sign-off before records move to approved.</p>
+            <p>Keep reviewer sign-off mandatory before moving to Approved.</p>
           </article>
           <article>
             <h4>Difficult audit after delivery</h4>
-            <p>Standardize export folder names and log who delivered what.</p>
+            <p>Use standard export names and log delivery owner.</p>
           </article>
         </div>
 
         <h3>Daily and Weekly Checklist</h3>
         <div class="daily-checklist">
-          <label><input type="checkbox"> Confirm owner assignment for upload, review, and approval.</label>
-          <label><input type="checkbox"> Clear previous-day pending exceptions first.</label>
-          <label><input type="checkbox"> Verify fresh uploads before status transition.</label>
+          <label><input type="checkbox"> Confirm owners for upload, review, and approval.</label>
+          <label><input type="checkbox"> Clear pending issues from previous day first.</label>
+          <label><input type="checkbox"> Verify new uploads before status change.</label>
           <label><input type="checkbox"> Approve only after review sign-off.</label>
-          <label><input type="checkbox"> Archive all exports with standard naming.</label>
-          <label><input type="checkbox"> Weekly: review staff permissions and remove unused access.</label>
-          <label><input type="checkbox"> Weekly: publish simple operations report (uploaded, approved, delivered, reprint).</label>
+          <label><input type="checkbox"> Archive exports with standard naming.</label>
+          <label><input type="checkbox"> Weekly: review staff permissions and remove extra access.</label>
+          <label><input type="checkbox"> Weekly: make simple report (uploaded, approved, delivered, reprint).</label>
         </div>
         {% endif %}
       </section>

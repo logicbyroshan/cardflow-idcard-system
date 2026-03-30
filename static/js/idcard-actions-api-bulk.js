@@ -72,7 +72,7 @@ function bulkApprove(cardIds) {
 }
 
 function bulkUnverify(cardIds) {
-    IDCardApp.showWorkflowConfirm(`Are you sure you want to move ${cardIds.length} selected record(s) back to pending?`, function() {
+    IDCardApp.showWorkflowConfirm(`Are you sure you want to move ${cardIds.length} selected record(s) from Verified to Pending?`, function() {
         const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
         if (!tableId) {
             if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -92,31 +92,39 @@ function bulkUnverify(cardIds) {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk unverify failed', false);
                 });
         }
-    }, { actionType: 'unverify', count: cardIds.length });
+    }, {
+        actionType: 'unverify',
+        count: cardIds.length,
+        note: 'This will move selected records from Verified to Pending list.'
+    });
 }
 
 function bulkDisapprove(cardIds) {
-    IDCardApp.showWorkflowConfirm(`Are you sure you want to disapprove ${cardIds.length} selected record(s) and move them back to pending?`, function() {
+    IDCardApp.showWorkflowConfirm(`Are you sure you want to move ${cardIds.length} selected record(s) from Approved to Verified list?`, function() {
         const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
         if (!tableId) {
             if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
+            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove cards', false);
                         return;
                     }
-                    if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to pending`);
+                    if (typeof showToast === 'function') showToast(data.message || `${data.updated_count} card(s) moved to verified`);
                     IDCardApp.refreshCardTable();
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk disapprove failed', false);
                 });
         }
-    }, { actionType: 'disapprove', count: cardIds.length });
+    }, {
+        actionType: 'disapprove',
+        count: cardIds.length,
+        note: 'This will move selected records from Approved to Verified list.'
+    });
 }
 
 function bulkDelete(cardIds) {
@@ -154,7 +162,11 @@ function bulkDelete(cardIds) {
 }
 
 function bulkRetrieve(cardIds) {
-    IDCardApp.showWorkflowConfirm(`Are you sure you want to retrieve ${cardIds.length} selected record(s) back to pending?`, function() {
+    const currentStatus = (typeof CURRENT_STATUS !== 'undefined' ? String(CURRENT_STATUS).toLowerCase() : 'pool');
+    const isDownloadList = currentStatus === 'download';
+    const sourceLabel = isDownloadList ? 'Download' : 'Pool';
+
+    IDCardApp.showWorkflowConfirm(`Are you sure you want to move ${cardIds.length} selected record(s) from ${sourceLabel} to Pending list?`, function() {
         const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
         if (!tableId) {
             if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -174,7 +186,11 @@ function bulkRetrieve(cardIds) {
                     if (typeof showToast === 'function') showToast(err.message || 'Bulk retrieve failed', false);
                 });
         }
-    }, { actionType: 'retrieve', count: cardIds.length });
+    }, {
+        actionType: isDownloadList ? 'retrieveDownload' : 'retrievePool',
+        count: cardIds.length,
+        note: `This will move selected records from ${sourceLabel} to Pending list.`
+    });
 }
 
 function bulkDeletePermanent(cardIds) {
@@ -333,7 +349,7 @@ function initBulkActionHandlers() {
         }
     });
     
-    // Disapprove Selected button (Approved list  move to pending)
+    // Disapprove Selected button (Approved list  move to verified)
     document.getElementById('disapproveBtn')?.addEventListener('click', function() {
         const selectedIds = _getIds();
         if (selectedIds.length > 0) {

@@ -225,9 +225,11 @@ function refreshStatusCounts() {
 var _actionThemes = {
     verify:      { icon: 'fa-shield-check',     color: '#10b981', bg: '#ecfdf5', label: 'Verify',      confirmLabel: 'Verify',      from: 'Pending',   to: 'Verified',  fromColor: '#f59e0b', toColor: '#10b981' },
     approve:     { icon: 'fa-circle-check',      color: '#3b82f6', bg: '#eff6ff', label: 'Approve',     confirmLabel: 'Approve',     from: 'Verified',  to: 'Approved',  fromColor: '#10b981', toColor: '#3b82f6' },
-    unverify:    { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Unverify',    confirmLabel: 'Move Back',   from: 'Verified',  to: 'Pending',   fromColor: '#10b981', toColor: '#f59e0b' },
-    disapprove:  { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Disapprove',  confirmLabel: 'Move Back',   from: 'Approved',  to: 'Pending',   fromColor: '#3b82f6', toColor: '#f59e0b' },
+    unverify:    { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Unverify',    confirmLabel: 'Move to Pending', from: 'Verified',  to: 'Pending',   fromColor: '#10b981', toColor: '#f59e0b' },
+    disapprove:  { icon: 'fa-rotate-left',       color: '#f59e0b', bg: '#fffbeb', label: 'Disapprove',  confirmLabel: 'Move to Verified', from: 'Approved',  to: 'Verified',  fromColor: '#3b82f6', toColor: '#10b981' },
     retrieve:    { icon: 'fa-arrow-rotate-left', color: '#6366f1', bg: '#eef2ff', label: 'Retrieve',    confirmLabel: 'Retrieve',    from: 'Pool',      to: 'Pending',   fromColor: '#ef4444', toColor: '#f59e0b' },
+    retrievePool:{ icon: 'fa-arrow-rotate-left', color: '#6366f1', bg: '#eef2ff', label: 'Retrieve',    confirmLabel: 'Retrieve',    from: 'Pool',      to: 'Pending',   fromColor: '#ef4444', toColor: '#f59e0b' },
+    retrieveDownload:{ icon: 'fa-arrow-rotate-left', color: '#2563eb', bg: '#eff6ff', label: 'Retrieve', confirmLabel: 'Retrieve',   from: 'Download',  to: 'Pending',   fromColor: '#3b82f6', toColor: '#f59e0b' },
     'delete':    { icon: 'fa-trash-can',         color: '#f59e0b', bg: '#fffbeb', label: 'Delete',      confirmLabel: 'Delete',      from: '',          to: 'Pool',      fromColor: '#6b7280', toColor: '#ef4444' },
     'delete-permanent': { icon: 'fa-skull-crossbones', color: '#ef4444', bg: '#fef2f2', label: 'Permanent Delete', confirmLabel: 'Delete Forever', from: '', to: '', fromColor: '#ef4444', toColor: '#ef4444' },
     'default':   { icon: 'fa-circle-question',   color: '#6366f1', bg: '#eef2ff', label: 'Confirm',     confirmLabel: 'Confirm',     from: '',          to: '',          fromColor: '#6b7280', toColor: '#6b7280' }
@@ -384,7 +386,7 @@ function approveCard(cardId) {
 }
 
 function unverifyCard(cardId) {
-    showWorkflowConfirm('Are you sure you want to move this record back to pending?', function() {
+    showWorkflowConfirm('Are you sure you want to move this record from Verified to Pending?', function() {
         if (typeof apiCall === 'function') {
             apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
                 .then(data => {
@@ -399,11 +401,18 @@ function unverifyCard(cardId) {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to unverify card', false);
                 });
         }
-    }, { actionType: 'unverify' });
+    }, {
+        actionType: 'unverify',
+        note: 'This will move the record from Verified to Pending list.'
+    });
 }
 
 function retrieveCard(cardId) {
-    showWorkflowConfirm('Are you sure you want to retrieve this record to pending?', function() {
+    const currentStatus = (typeof CURRENT_STATUS !== 'undefined' ? String(CURRENT_STATUS).toLowerCase() : 'pool');
+    const isDownloadList = currentStatus === 'download';
+    const sourceLabel = isDownloadList ? 'Download' : 'Pool';
+
+    showWorkflowConfirm(`Are you sure you want to move this record from ${sourceLabel} to Pending list?`, function() {
         if (typeof apiCall === 'function') {
             apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
                 .then(data => {
@@ -418,26 +427,32 @@ function retrieveCard(cardId) {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to retrieve card', false);
                 });
         }
-    }, { actionType: 'retrieve' });
+    }, {
+        actionType: isDownloadList ? 'retrieveDownload' : 'retrievePool',
+        note: `This will move the record from ${sourceLabel} to Pending list.`
+    });
 }
 
 function disapproveCard(cardId) {
-    showWorkflowConfirm('Are you sure you want to disapprove this record and move it back to pending?', function() {
+    showWorkflowConfirm('Are you sure you want to move this record from Approved to Verified list?', function() {
         if (typeof apiCall === 'function') {
-            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'pending' })
+            apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'verified' })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove card', false);
                         return;
                     }
-                    if (typeof showToast === 'function') showToast('Card moved back to pending');
+                    if (typeof showToast === 'function') showToast('Card moved to verified list');
                     removeCardRow(cardId);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Failed to disapprove card', false);
                 });
         }
-    }, { actionType: 'disapprove' });
+    }, {
+        actionType: 'disapprove',
+        note: 'This will move the record from Approved to Verified list.'
+    });
 }
 
 function moveToDownload(cardId) {

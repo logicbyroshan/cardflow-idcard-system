@@ -181,15 +181,40 @@ function createRowFromCard(card, index) {
         if (!isClientUser) {
             html += `<td class="w-[90px] px-[1px] py-1 align-middle date-cell whitespace-nowrap text-center">${card.deleted_at || '-'}</td>`;
         }
-    } else if (status !== 'download' && status !== 'pool' && status !== 'approved') {
-        // Pending/Verified: show action buttons
+    }
+
+    const hasApprovedAction = (
+        status === 'approved' &&
+        !isClientUser &&
+        typeof PERMS !== 'undefined' &&
+        !!PERMS.idcard_approve
+    );
+    const hasDownloadRetrieveAction = (
+        status === 'download' &&
+        !isClientUser &&
+        typeof PERMS !== 'undefined' &&
+        !!PERMS.idcard_retrieve
+    );
+    const hasPoolRetrieveAction = (
+        status === 'pool' &&
+        typeof PERMS !== 'undefined' &&
+        !!PERMS.idcard_retrieve
+    );
+    const showActionColumn = (
+        hasDownloadRetrieveAction ||
+        hasPoolRetrieveAction ||
+        (status !== 'download' && status !== 'pool' && (status !== 'approved' || hasApprovedAction))
+    );
+
+    // Pending/Verified + Approved(disapprove) + Download/Pool(retrieve): show action buttons
+    if (showActionColumn) {
         html += `<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell">
             <div class="action-buttons inline-flex flex-col gap-[2px]">
                 ${getRowActionButtons(status, card.id)}
             </div>
         </td>`;
     }
-    // Approved: no extra column  Print Selected button is in the action bar above
+    // Approved: for non-client users with permission, row action now includes single-card disapprove
     
     // Last Updated / Updated By
     // Admin users: shown on all statuses
@@ -216,6 +241,7 @@ function createRowFromCard(card, index) {
 
 function getRowActionButtons(status, cardId) {
     var p = (typeof PERMS !== 'undefined') ? PERMS : {};
+    var isClientUser = (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER);
     switch(status) {
         case 'pending':
             return p.idcard_verify ? `<button class="row-action-btn verify-row-btn" data-card-id="${cardId}" title="Verify this card"><span>Verify</span></button>` : '';
@@ -225,6 +251,12 @@ function getRowActionButtons(status, cardId) {
             if (p.idcard_verify) btns += `<button class="row-action-btn unverify-row-btn" data-card-id="${cardId}" title="Move back to pending"><span>Unverify</span></button>`;
             return btns;
         }
+        case 'approved':
+            return p.idcard_approve ? `<button class="row-action-btn unapprove-row-btn" data-card-id="${cardId}" title="Move to verified list"><span>Disapprove</span></button>` : '';
+        case 'download':
+            return (!isClientUser && p.idcard_retrieve) ? `<button class="row-action-btn retrieve-row-btn" data-card-id="${cardId}" title="Move from download to pending"><span>Retrieve</span></button>` : '';
+        case 'pool':
+            return p.idcard_retrieve ? `<button class="row-action-btn retrieve-row-btn" data-card-id="${cardId}" title="Move from pool to pending"><span>Retrieve</span></button>` : '';
         default:
             return '';
     }

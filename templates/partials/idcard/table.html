@@ -25,7 +25,15 @@
                 {% if current_status == 'pool' and not is_client and not is_client_staff %}
                 <!-- Deleted At  -  admin only -->
                 <th class="w-[90px] min-w-[90px] text-center">Deleted At</th>
-                {% elif current_status != 'download' and current_status != 'pool' and current_status != 'approved' %}
+                {% endif %}
+
+                {% if current_status == 'download' and not is_client and not is_client_staff and perm_idcard_retrieve %}
+                <!-- Action (download retrieve) -->
+                <th class="w-[60px] min-w-[60px] text-center">Action</th>
+                {% elif current_status == 'pool' and perm_idcard_retrieve %}
+                <!-- Action (pool retrieve) -->
+                <th class="w-[60px] min-w-[60px] text-center">Action</th>
+                {% elif current_status != 'download' and current_status != 'pool' and (current_status != 'approved' or (not is_client and not is_client_staff and perm_idcard_approve)) %}
                 <!-- Action  -  fit buttons -->
                 <th class="w-[60px] min-w-[60px] text-center">Action</th>
                 {% endif %}

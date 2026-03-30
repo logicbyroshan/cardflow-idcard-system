@@ -154,7 +154,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_idcard_approve %}
-            <button class="btn action-btn btn-red" id="disapproveBtn" disabled title="Move selected back to pending">
+            <button class="btn action-btn btn-red" id="disapproveBtn" disabled title="Move selected to verified list">
                 <i class="fa-solid fa-rotate-left"></i>
                 <span class="btn-text">Disapprove Selected</span>
             </button>
@@ -215,7 +215,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_idcard_retrieve %}
-            <button class="btn action-btn btn-green" id="retrieveBtnD" disabled title="Retrieve to pending">
+            <button class="btn action-btn btn-green" id="retrieveBtnD" disabled title="Move selected from download to pending">
                 <i class="fa-solid fa-rotate-left"></i>
                 <span class="btn-text">Retrieve</span>
             </button>
@@ -272,7 +272,7 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             </button>
             {% endif %}
             {% if perm_idcard_retrieve %}
-            <button class="btn action-btn btn-green" id="retrieveBtnP" disabled title="Retrieve to pending">
+            <button class="btn action-btn btn-green" id="retrieveBtnP" disabled title="Move selected from pool to pending">
                 <i class="fa-solid fa-rotate-left"></i>
                 <span class="btn-text">Retrieve</span>
             </button>
