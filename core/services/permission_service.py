@@ -104,7 +104,7 @@ class PermissionService:
     # Client model by design (admin/staff-only features).
     CLIENT_BLOCKED_PERMS: set = {
         # perm_idcard_bulk_upload  — now allowed for clients (gated by toggle)
-        # perm_idcard_bulk_reupload — now allowed for clients (gated by toggle)
+        'perm_idcard_bulk_reupload',  # admin/staff-only (not available to client roles)
         'perm_delete_all_idcard',    # super_admin-only
         'perm_reupload_idcard_image',
         # Print-queue lists — admin_staff only (not on Client model by design)

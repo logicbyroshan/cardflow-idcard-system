@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list', 'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify',
         'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
-        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_bulk_reupload', 'perm_idcard_upgrade_all',
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_upgrade_all',
         'perm_mobile_app', 'perm_set_temp_password'
       ];
 
