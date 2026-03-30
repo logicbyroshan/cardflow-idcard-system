@@ -278,10 +278,44 @@ def _dedupe_scope_values(values):
     return out
 
 
+def _staff_assigned_group_ids_for_access(staff):
+    """Return group IDs that explicitly grant group-level access."""
+    scopes = getattr(staff, 'assignment_scopes', None)
+    if isinstance(scopes, list) and scopes:
+        group_ids = []
+        seen = set()
+        has_any_valid_scope = False
+
+        for scope in scopes:
+            if not isinstance(scope, dict):
+                continue
+            stype = str(scope.get('scope_type', '') or '').strip().lower()
+            if stype not in ('group', 'table'):
+                continue
+            has_any_valid_scope = True
+            if stype != 'group':
+                continue
+
+            sid = scope.get('scope_id')
+            try:
+                sid_int = int(str(sid).strip())
+            except (TypeError, ValueError):
+                continue
+            if sid_int <= 0 or sid_int in seen:
+                continue
+            seen.add(sid_int)
+            group_ids.append(sid_int)
+
+        if has_any_valid_scope:
+            return group_ids
+
+    return list(staff.assigned_groups.values_list('id', flat=True))
+
+
 def _staff_can_access_table(staff, table):
     """Allow access if table is assigned directly or via assigned group."""
     assigned_table_ids = set(_normalize_positive_int_ids(getattr(staff, 'assigned_table_ids', None) or []))
-    assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+    assigned_group_ids = set(_staff_assigned_group_ids_for_access(staff))
 
     if assigned_table_ids and assigned_group_ids:
         return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
@@ -667,7 +701,7 @@ def home(request):
         staff = getattr(user, 'staff_profile', None)
         if staff:
             assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
             if assigned_table_ids and assigned_group_ids:
                 tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
             elif assigned_table_ids:
@@ -765,8 +799,15 @@ def home(request):
     if PermissionService.is_client_staff(user):
         _staff = getattr(user, 'staff_profile', None)
         if _staff:
-            _assigned_gids = list(_staff.assigned_groups.values_list('id', flat=True))
-            if _assigned_gids:
+            _assigned_tids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
+            _assigned_gids = _staff_assigned_group_ids_for_access(_staff)
+            if _assigned_tids and _assigned_gids:
+                _cards_scope = _cards_scope.filter(
+                    Q(table_id__in=_assigned_tids) | Q(table__group_id__in=_assigned_gids)
+                )
+            elif _assigned_tids:
+                _cards_scope = _cards_scope.filter(table_id__in=_assigned_tids)
+            elif _assigned_gids:
                 _cards_scope = _cards_scope.filter(table__group_id__in=_assigned_gids)
     _recent_acts = []
     for _card in _cards_scope.select_related('table').order_by('-updated_at')[:10]:
@@ -978,8 +1019,13 @@ def home(request):
             if PermissionService.is_client_staff(user):
                 _staff = getattr(user, 'staff_profile', None)
                 if _staff:
-                    _assigned_group_ids = list(_staff.assigned_groups.values_list('id', flat=True))
-                    if _assigned_group_ids:
+                    _assigned_table_ids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
+                    _assigned_group_ids = _staff_assigned_group_ids_for_access(_staff)
+                    if _assigned_table_ids and _assigned_group_ids:
+                        _tables_qs = _tables_qs.filter(Q(id__in=_assigned_table_ids) | Q(group_id__in=_assigned_group_ids))
+                    elif _assigned_table_ids:
+                        _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
+                    elif _assigned_group_ids:
                         _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
 
             _tables = list(_tables_qs.order_by('group__name', 'name')[:12])
@@ -1166,7 +1212,7 @@ def table_picker(request, status):
         staff = getattr(user, 'staff_profile', None)
         if staff:
             assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
             if assigned_table_ids and assigned_group_ids:
                 tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
             elif assigned_table_ids:
@@ -1548,7 +1594,7 @@ def reprint_lists(request, client_id):
         staff = getattr(user, 'staff_profile', None)
         if staff:
             assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
-            assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
             if assigned_table_ids and assigned_group_ids:
                 tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
             elif assigned_table_ids:

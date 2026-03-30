@@ -61,7 +61,7 @@ def client_idcard_group(request):
                     int(v) for v in (staff.assigned_table_ids or [])
                     if str(v).strip().isdigit() and int(v) > 0
                 ]
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_table_ids and assigned_group_ids:
                     tables_qs = tables_qs.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))

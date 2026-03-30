@@ -1003,6 +1003,66 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(len(table_cards), 1)
         self.assertEqual(table_cards[0].get('field_data', {}).get('CLASS'), '12')
 
+    def test_client_staff_table_scope_does_not_unlock_full_parent_group(self):
+        from idcards.models import IDCardTable, IDCard
+
+        extra_table = IDCardTable.objects.create(
+            group=self.group,
+            name='Unassigned Same Group Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=self.table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Allowed Table Row'},
+        )
+        IDCard.objects.create(
+            table=extra_table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'NAME': 'Should Stay Hidden'},
+        )
+
+        self.staff_profile.perm_idcard_pending_list = True
+        self.staff_profile.assigned_table_ids = [self.table.id]
+        self.staff_profile.allowed_classes = ['10']
+        self.staff_profile.allowed_sections = ['A']
+        self.staff_profile.allowed_branches = []
+        self.staff_profile.assignment_scopes = [
+            {
+                'scope_type': 'table',
+                'scope_id': self.table.id,
+                'group_id': self.group.id,
+                'classes': ['10'],
+                'sections': ['A'],
+                'branches': [],
+            }
+        ]
+        self.staff_profile.save(update_fields=[
+            'perm_idcard_pending_list',
+            'assigned_table_ids',
+            'allowed_classes',
+            'allowed_sections',
+            'allowed_branches',
+            'assignment_scopes',
+        ])
+        # Keep parent group assignment set to mimic compatibility storage.
+        self.staff_profile.assigned_groups.set([self.group])
+
+        self.client.login(username='api-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/client/idcard-group/')
+        self.assertEqual(response.status_code, 200)
+
+        tables = list(response.context['tables'])
+        table_ids = sorted(t.id for t in tables)
+        self.assertEqual(table_ids, [self.table.id])
+        self.assertEqual(tables[0].pending_count, 2)
+        self.assertEqual(tables[0].total_cards, 2)
+
     def test_client_staff_cards_api_class_filter_with_roman_value(self):
         from idcards.models import IDCard
 

@@ -27,6 +27,36 @@ class ClientDashboardService(BaseService):
             if str(v).strip().isdigit() and int(v) > 0
         ]
 
+    @staticmethod
+    def _assigned_group_ids_for_access(staff):
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if isinstance(scopes, list) and scopes:
+            group_ids = []
+            seen = set()
+            has_any_valid_scope = False
+            for scope in scopes:
+                if not isinstance(scope, dict):
+                    continue
+                stype = str(scope.get('scope_type', '') or '').strip().lower()
+                if stype not in ('group', 'table'):
+                    continue
+                has_any_valid_scope = True
+                if stype != 'group':
+                    continue
+                sid = scope.get('scope_id')
+                try:
+                    sid_int = int(str(sid).strip())
+                except (TypeError, ValueError):
+                    continue
+                if sid_int <= 0 or sid_int in seen:
+                    continue
+                seen.add(sid_int)
+                group_ids.append(sid_int)
+            if has_any_valid_scope:
+                return group_ids
+
+        return list(staff.assigned_groups.values_list('id', flat=True))
+
     @classmethod
     def _get_accessible_tables_qs(cls, user, client):
         tables = IDCardTable.objects.filter(group__client=client, is_active=True)
@@ -39,7 +69,7 @@ class ClientDashboardService(BaseService):
             return tables.none()
 
         assigned_table_ids = cls._normalized_assigned_table_ids(staff)
-        assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+        assigned_group_ids = cls._assigned_group_ids_for_access(staff)
 
         if assigned_table_ids and assigned_group_ids:
             return tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))

@@ -134,10 +134,43 @@ class ClientCardService(BaseService):
             cls._dedupe_scope_values(branches),
         )
 
+    @staticmethod
+    def _assigned_group_ids_for_access(staff) -> List[int]:
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if isinstance(scopes, list) and scopes:
+            out: List[int] = []
+            seen = set()
+            has_any_valid_scope = False
+
+            for scope in scopes:
+                if not isinstance(scope, dict):
+                    continue
+                stype = str(scope.get('scope_type', '') or '').strip().lower()
+                if stype not in ('group', 'table'):
+                    continue
+                has_any_valid_scope = True
+                if stype != 'group':
+                    continue
+
+                sid = scope.get('scope_id')
+                try:
+                    sid_int = int(str(sid).strip())
+                except (TypeError, ValueError):
+                    continue
+                if sid_int <= 0 or sid_int in seen:
+                    continue
+                seen.add(sid_int)
+                out.append(sid_int)
+
+            if has_any_valid_scope:
+                return out
+
+        return list(staff.assigned_groups.values_list('id', flat=True))
+
     @classmethod
     def _table_is_assigned_to_staff(cls, staff, table) -> bool:
         assigned_table_ids = set(cls._normalize_positive_int_ids(staff.assigned_table_ids or []))
-        assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+        assigned_group_ids = set(cls._assigned_group_ids_for_access(staff))
 
         if assigned_table_ids and assigned_group_ids:
             return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
@@ -210,7 +243,7 @@ class ClientCardService(BaseService):
                     tables = tables.none()
                 else:
                     assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
-                    assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                    assigned_group_ids = cls._assigned_group_ids_for_access(staff)
 
                     if assigned_table_ids and assigned_group_ids:
                         tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))

@@ -603,10 +603,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (typeof countResolver === 'function') {
                         var count = parseInt(countResolver(val, chip), 10);
-                        if (Number.isFinite(count) && count >= 0) {
+                        if (Number.isFinite(count) && count > 0) {
                             var badge = document.createElement('span');
-                            badge.className = 'assignment-chip-count-badge';
+                            badge.className = 'assignment-chip-count-badge assignment-chip-count-badge--' + valueKey;
                             badge.textContent = String(count);
+                            badge.title = count + ' cards';
                             row.appendChild(badge);
                         }
                     }

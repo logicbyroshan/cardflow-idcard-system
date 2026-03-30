@@ -31,6 +31,7 @@ from .idcard_helpers import (
     _safe_error,
     _check_client_scope_by_table,
     _check_client_scope_by_card,
+    _assigned_group_ids_for_access,
     _get_class_section_field_names,
     _build_class_filter_q,
     invalidate_class_variant_cache,
@@ -134,7 +135,7 @@ def _filter_options_cache_key(user, table_id):
         if str(v).strip().isdigit() and int(v) > 0
     })
     table_sig = ','.join(str(v) for v in table_ids) if table_ids else 'all'
-    group_ids = sorted(staff.assigned_groups.values_list('id', flat=True))
+    group_ids = sorted(_assigned_group_ids_for_access(staff))
     group_sig = ','.join(str(v) for v in group_ids) if group_ids else 'all'
     scope_sig = 'none'
     if isinstance(staff.assignment_scopes, list):

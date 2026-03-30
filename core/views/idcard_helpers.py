@@ -69,10 +69,44 @@ def _dedupe_scope_values(values):
     return out
 
 
+def _assigned_group_ids_for_access(staff):
+    """Return group IDs that explicitly grant group-level access."""
+    scopes = getattr(staff, 'assignment_scopes', None)
+    if isinstance(scopes, list) and scopes:
+        group_ids = []
+        seen = set()
+        has_any_valid_scope = False
+
+        for scope in scopes:
+            if not isinstance(scope, dict):
+                continue
+            stype = str(scope.get('scope_type', '') or '').strip().lower()
+            if stype not in ('group', 'table'):
+                continue
+            has_any_valid_scope = True
+            if stype != 'group':
+                continue
+
+            sid = scope.get('scope_id')
+            try:
+                sid_int = int(str(sid).strip())
+            except (TypeError, ValueError):
+                continue
+            if sid_int <= 0 or sid_int in seen:
+                continue
+            seen.add(sid_int)
+            group_ids.append(sid_int)
+
+        if has_any_valid_scope:
+            return group_ids
+
+    return list(staff.assigned_groups.values_list('id', flat=True))
+
+
 def _table_is_assigned_to_staff(staff, table):
     """Allow table if assigned by table ID OR by owning group ID."""
     assigned_table_ids = set(_normalized_assigned_table_ids(staff))
-    assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+    assigned_group_ids = set(_assigned_group_ids_for_access(staff))
 
     if assigned_table_ids and assigned_group_ids:
         return (int(table.id) in assigned_table_ids) or (int(table.group_id) in assigned_group_ids)
@@ -381,7 +415,7 @@ def _check_client_scope_by_group(user, group_id):
         if not staff:
             return None, _access_denied_response()
         assigned_table_ids = _normalized_assigned_table_ids(staff)
-        assigned_group_ids = set(staff.assigned_groups.values_list('id', flat=True))
+        assigned_group_ids = set(_assigned_group_ids_for_access(staff))
         has_group_assignment = group.id in assigned_group_ids
         has_group_table = False
         if assigned_table_ids:

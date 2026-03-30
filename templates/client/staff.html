@@ -218,6 +218,40 @@
     color: #334155;
     font-weight: 500;
   }
+  .assignment-chip-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    margin-left: 4px;
+    padding: 0 7px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08);
+  }
+  .assignment-chip-count-badge.assignment-chip-count-badge--classes {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+  }
+  .assignment-chip-count-badge.assignment-chip-count-badge--sections {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #c2410c;
+  }
+  .assignment-chip-count-badge.assignment-chip-count-badge--branches {
+    background: #ecfeff;
+    border-color: #a5f3fc;
+    color: #0f766e;
+  }
+  .assignment-chip-checkbox-item.is-unassigned .assignment-chip-count-badge {
+    filter: saturate(0.7);
+    opacity: 0.88;
+  }
 </style>
 {% endblock %}
 

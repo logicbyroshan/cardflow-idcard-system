@@ -39,6 +39,45 @@ class ClientAccessService:
         return out
 
     @staticmethod
+    def _assigned_group_ids_for_access(staff):
+        """Return group IDs that explicitly grant group-level access.
+
+        When assignment_scopes exist, only ``scope_type='group'`` entries should
+        grant group-level access. Table scopes should not implicitly unlock all
+        tables in the parent group.
+        """
+        scopes = getattr(staff, 'assignment_scopes', None)
+        if isinstance(scopes, list) and scopes:
+            explicit_group_ids = []
+            seen = set()
+            has_any_valid_scope = False
+
+            for scope in scopes:
+                if not isinstance(scope, dict):
+                    continue
+                stype = str(scope.get('scope_type', '') or '').strip().lower()
+                if stype not in ('group', 'table'):
+                    continue
+                has_any_valid_scope = True
+                if stype != 'group':
+                    continue
+
+                sid = scope.get('scope_id')
+                try:
+                    sid_int = int(str(sid).strip())
+                except (TypeError, ValueError):
+                    continue
+                if sid_int <= 0 or sid_int in seen:
+                    continue
+                seen.add(sid_int)
+                explicit_group_ids.append(sid_int)
+
+            if has_any_valid_scope:
+                return explicit_group_ids
+
+        return list(staff.assigned_groups.values_list('id', flat=True))
+
+    @staticmethod
     def get_client_for_user(user) -> Optional[Client]:
         """
         Get the Client instance for a user.
@@ -102,7 +141,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_group_ids and group.id in assigned_group_ids:
                     return True
@@ -145,7 +184,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_table_ids and assigned_group_ids:
                     return (table.id in assigned_table_ids) or (table.group_id in assigned_group_ids)
@@ -168,7 +207,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
                 from idcards.models import IDCardTable as _IDCardTable
 
                 if assigned_table_ids and assigned_group_ids:
@@ -228,7 +267,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if staff:
                 assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
-                assigned_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+                assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_table_ids and assigned_group_ids:
                     return (card.table_id in assigned_table_ids) or (card.table.group_id in assigned_group_ids)
