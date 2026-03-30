@@ -53,7 +53,7 @@ function _renderDependentFilterOptions() {
     const classTextEl = document.getElementById('classFilterText');
     const sectionTextEl = document.getElementById('sectionFilterText');
 
-    if (!classOptionsEl || !sectionOptionsEl) return;
+    if (!classOptionsEl && !sectionOptionsEl) return;
 
     let allowedClassValues = _allClassOptions.map(_classOptionValue);
     let allowedSectionValues = _allSectionOptions.slice();
@@ -73,18 +73,22 @@ function _renderDependentFilterOptions() {
     const filteredClassOptions = _allClassOptions.filter(opt => allowedClassSet.has(_classOptionValue(opt)));
     const filteredSectionOptions = _allSectionOptions.filter(v => allowedSectionSet.has(String(v)));
 
-    classOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Classes</div>' +
-        filteredClassOptions.map(function(opt) {
-            const value = _classOptionValue(opt);
-            const label = _classOptionLabel(opt);
-            return '<div class="dropdown-option" data-value="' + _escFilterHtml(value) + '">' + _escFilterHtml(label) + '</div>';
-        }).join('');
+    if (classOptionsEl) {
+        classOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Classes</div>' +
+            filteredClassOptions.map(function(opt) {
+                const value = _classOptionValue(opt);
+                const label = _classOptionLabel(opt);
+                return '<div class="dropdown-option" data-value="' + _escFilterHtml(value) + '">' + _escFilterHtml(label) + '</div>';
+            }).join('');
+    }
 
-    sectionOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Sections</div>' +
-        filteredSectionOptions.map(function(v) {
-            var s = String(v);
-            return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>';
-        }).join('');
+    if (sectionOptionsEl) {
+        sectionOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Sections</div>' +
+            filteredSectionOptions.map(function(v) {
+                var s = String(v);
+                return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>';
+            }).join('');
+    }
 
     const classStillValid = !currentClassFilter || filteredClassOptions.some(opt => _classOptionValue(opt) === currentClassFilter);
     const sectionStillValid = !currentSectionFilter || filteredSectionOptions.some(v => String(v) === currentSectionFilter);
@@ -98,11 +102,19 @@ function _renderDependentFilterOptions() {
         IDCardApp.currentSectionFilter = '';
     }
 
-    classOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
-    sectionOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+    if (classOptionsEl) {
+        classOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+    }
+    if (sectionOptionsEl) {
+        sectionOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+    }
 
-    var classSel = classOptionsEl.querySelector('[data-value="' + CSS.escape(currentClassFilter) + '"]') || classOptionsEl.querySelector('[data-value=""]');
-    var sectionSel = sectionOptionsEl.querySelector('[data-value="' + CSS.escape(currentSectionFilter) + '"]') || sectionOptionsEl.querySelector('[data-value=""]');
+    var classSel = classOptionsEl
+        ? (classOptionsEl.querySelector('[data-value="' + CSS.escape(currentClassFilter) + '"]') || classOptionsEl.querySelector('[data-value=""]'))
+        : null;
+    var sectionSel = sectionOptionsEl
+        ? (sectionOptionsEl.querySelector('[data-value="' + CSS.escape(currentSectionFilter) + '"]') || sectionOptionsEl.querySelector('[data-value=""]'))
+        : null;
 
     if (classSel) classSel.classList.add('selected');
     if (sectionSel) sectionSel.classList.add('selected');
