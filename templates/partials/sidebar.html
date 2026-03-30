@@ -62,7 +62,7 @@
       <span class="nav-section-title">ID Card Management</span>
       <div class="nav-section-line"></div>
     </div>
-    {% if is_super_admin or perm_idcard_setting_list or perm_idcard_client_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list %}
+    {% if is_super_admin or perm_idcard_setting_list or perm_idcard_client_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
     <a href="{% url 'active_clients' %}" id="activeClientsLink" class="{% if active_page == 'active_clients' %}active{% endif %}">
       <i class="fa-solid fa-user-check"></i><span>{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</span>
     </a>

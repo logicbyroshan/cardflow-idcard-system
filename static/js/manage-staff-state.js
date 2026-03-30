@@ -24,10 +24,13 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm-idcard-group-create', 'perm-idcard-group-delete',
         // Status Lists
         'perm-idcard-pending-list', 'perm-idcard-verified-list', 'perm-idcard-pool-list',
-        'perm-idcard-approved-list', 'perm-idcard-download-list', 'perm-idcard-reprint-list',
+        'perm-idcard-approved-list', 'perm-idcard-download-list',
+        // Print & Reprint Lists
+        'perm-reprint-request-list', 'perm-confirmed-list', 'perm-print-list', 'perm-finalized-list',
         // Actions
         'perm-idcard-add', 'perm-idcard-edit', 'perm-idcard-delete', 'perm-idcard-info',
         'perm-idcard-approve', 'perm-idcard-verify',
+        'perm-idcard-reprint-list',
         'perm-idcard-bulk-upload', 'perm-idcard-bulk-download',
         'perm-idcard-bulk-reupload', 'perm-idcard-upgrade-all',
         'perm-idcard-created-at', 'perm-idcard-updated-at',

@@ -81,6 +81,7 @@ class Staff(models.Model):
     perm_idcard_reprint_list = models.BooleanField(default=False)
     
     # Print & Reprint List Permissions
+    perm_reprint_request_list = models.BooleanField(default=False)  # Request List (Reprint)
     perm_confirmed_list = models.BooleanField(default=False)   # Confirmed List (Reprint)
     perm_print_list = models.BooleanField(default=False)        # Print List
     perm_finalized_list = models.BooleanField(default=False)    # Finalized List (Print Cards)

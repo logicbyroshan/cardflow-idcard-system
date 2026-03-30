@@ -207,6 +207,56 @@ def _require_admin_role(user):
     )
 
 
+def _can_use_reprint_cards(user) -> bool:
+    """Permission for opening reprint picker and creating reprint requests."""
+    return PermissionService.has(user, 'perm_idcard_reprint_list')
+
+
+def _can_view_reprint_request_list(user) -> bool:
+    """Permission for opening the Reprint Request List page/tab."""
+    if PermissionService.is_admin_staff(user):
+        return PermissionService.has(user, 'perm_reprint_request_list')
+    return PermissionService.has(user, 'perm_idcard_reprint_list')
+
+
+def _can_view_reprint_confirmed_list(user) -> bool:
+    """Permission for opening the Reprint Confirmed List page/tab."""
+    if PermissionService.is_admin_staff(user):
+        return PermissionService.has(user, 'perm_confirmed_list')
+    return PermissionService.has(user, 'perm_idcard_reprint_list')
+
+
+def _reprint_permission_denied_response():
+    return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
+
+def _require_reprint_scope(user, scope: str):
+    """Role-aware reprint permission gate used by reprint endpoints."""
+    if PermissionService.is_super_admin(user):
+        return None
+
+    if scope == 'cards':
+        allowed = _can_use_reprint_cards(user)
+    elif scope == 'request':
+        allowed = _can_view_reprint_request_list(user)
+    elif scope == 'confirmed':
+        allowed = _can_view_reprint_confirmed_list(user)
+    elif scope == 'request_or_confirmed':
+        allowed = _can_view_reprint_request_list(user) or _can_view_reprint_confirmed_list(user)
+    elif scope == 'any_reprint':
+        allowed = (
+            _can_use_reprint_cards(user)
+            or _can_view_reprint_request_list(user)
+            or _can_view_reprint_confirmed_list(user)
+        )
+    else:
+        allowed = False
+
+    if allowed:
+        return None
+    return _reprint_permission_denied_response()
+
+
 def _parse_offset_limit(request, *, default_limit=100, max_limit=200):
     """Parse and clamp offset/limit query params for list endpoints."""
     try:
@@ -249,11 +299,19 @@ def reprint_cards(request, table_id):
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('active_clients')
-    if not PermissionService.has_permission(user, 'perm_idcard_reprint_list'):
+
+    can_request_list = _can_view_reprint_request_list(user)
+    can_confirmed_list = _can_view_reprint_confirmed_list(user)
+    if not (can_request_list or can_confirmed_list):
         return redirect('active_clients')
 
     current_step = request.GET.get('step', 'request_list')
     if current_step not in ('request_list', 'confirmed'):
+        current_step = 'request_list'
+
+    if current_step == 'request_list' and not can_request_list:
+        current_step = 'confirmed'
+    elif current_step == 'confirmed' and not can_confirmed_list:
         current_step = 'request_list'
 
     # Step counts
@@ -360,6 +418,8 @@ def reprint_cards(request, table_id):
         'confirmed_total': confirmed_total,
         'confirmed_has_more': confirmed_total > INITIAL_LOAD_LIMIT,
         'initial_load_limit': INITIAL_LOAD_LIMIT,
+        'can_reprint_request_list': can_request_list,
+        'can_reprint_confirmed_list': can_confirmed_list,
     }
     return render(request, 'reprintcard/reprint-cards.html', context)
 
@@ -369,9 +429,13 @@ def reprint_cards(request, table_id):
 # ---------------------------------------------------------------------------
 
 @require_http_methods(["GET"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_reprint_step_counts(request, table_id):
     """Return step counts for the reprint workflow tabs."""
+    perm_err = _require_reprint_scope(request.user, 'any_reprint')
+    if perm_err:
+        return perm_err
+
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -489,11 +553,15 @@ def api_reprint_request_create(request, table_id):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_reprint_confirm(request, table_id):
     """Confirm reprint requests: requested → confirmed.
     Body: { "rr_ids": [1, 2, 3] }
     """
+    perm_err = _require_reprint_scope(request.user, 'request')
+    if perm_err:
+        return perm_err
+
     admin_err = _require_admin_role(request.user)
     if admin_err:
         return admin_err
@@ -522,9 +590,13 @@ def api_reprint_confirm(request, table_id):
 
 
 @require_http_methods(["GET"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_request_list(request, table_id):
     """List requested reprint requests (status='requested')."""
+    perm_err = _require_reprint_scope(request.user, 'request')
+    if perm_err:
+        return perm_err
+
     from django.db.models.functions import Cast
     from django.db.models import CharField
     from django.db.models.fields.json import KeyTextTransform
@@ -598,11 +670,15 @@ def api_request_list(request, table_id):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_reprint_reject(request, table_id):
     """Reject (delete) reprint requests in 'requested' or 'confirmed' status.
     Body: { "rr_ids": [1, 2, 3] }
     """
+    perm_err = _require_reprint_scope(request.user, 'request_or_confirmed')
+    if perm_err:
+        return perm_err
+
     admin_err = _require_admin_role(request.user)
     if admin_err:
         return admin_err
@@ -630,9 +706,13 @@ def api_reprint_reject(request, table_id):
 
 
 @require_http_methods(["GET"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_confirmed_list(request, table_id):
     """List confirmed reprint requests (status='confirmed')."""
+    perm_err = _require_reprint_scope(request.user, 'confirmed')
+    if perm_err:
+        return perm_err
+
     from django.db.models.functions import Cast
     from django.db.models import CharField
     from django.db.models.fields.json import KeyTextTransform
@@ -706,11 +786,15 @@ def api_confirmed_list(request, table_id):
 
 
 @require_http_methods(["POST"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_reprint_mark_downloaded(request, table_id):
     """Mark confirmed reprints as downloaded: confirmed → downloaded.
     Body: { "rr_ids": [1, 2, 3] }
     """
+    perm_err = _require_reprint_scope(request.user, 'confirmed')
+    if perm_err:
+        return perm_err
+
     admin_err = _require_admin_role(request.user)
     if admin_err:
         return admin_err
@@ -739,9 +823,13 @@ def api_reprint_mark_downloaded(request, table_id):
 
 
 @require_http_methods(["GET"])
-@api_require_permission('perm_idcard_reprint_list')
+@login_required
 def api_download_list(request, table_id):
     """List downloaded reprint requests (status='downloaded')."""
+    perm_err = _require_reprint_scope(request.user, 'confirmed')
+    if perm_err:
+        return perm_err
+
     table, err = _check_reprint_table_scope(request.user, table_id)
     if err:
         return err
@@ -796,7 +884,6 @@ def api_download_list(request, table_id):
 
 @require_http_methods(["POST"])
 @login_required
-@api_require_permission('perm_idcard_reprint_list')
 def api_reprint_send_to_print(request, table_id):
     """Send requested reprint items to the cardprint Print List.
 
@@ -804,6 +891,10 @@ def api_reprint_send_to_print(request, table_id):
     Extracts card IDs from requested reprint requests and creates
     PrintRequest entries in the cardprint app.
     """
+    perm_err = _require_reprint_scope(request.user, 'request')
+    if perm_err:
+        return perm_err
+
     admin_err = _require_admin_role(request.user)
     if admin_err:
         return admin_err

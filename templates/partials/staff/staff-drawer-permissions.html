@@ -94,13 +94,6 @@ Partial for all staff permission toggles (group settings, card lists, card actio
                 </label>
                 <span class="permission-label">Download List</span>
             </div>
-            <div class="permission-row">
-                <label class="toggle-switch">
-                    <input type="checkbox" name="perm_idcard_reprint_list" id="perm-idcard-reprint-list">
-                    <span class="toggle-slider"></span>
-                </label>
-                <span class="permission-label">Reprint List</span>
-            </div>
         </div>
     </div>
     
@@ -110,6 +103,13 @@ Partial for all staff permission toggles (group settings, card lists, card actio
             <i class="fa-solid fa-print"></i> Print &amp; Reprint Lists
         </div>
         <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_reprint_request_list" id="perm-reprint-request-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Request List (Reprint)</span>
+            </div>
             <div class="permission-row">
                 <label class="toggle-switch">
                     <input type="checkbox" name="perm_confirmed_list" id="perm-confirmed-list">
@@ -181,6 +181,13 @@ Partial for all staff permission toggles (group settings, card lists, card actio
                     <span class="toggle-slider"></span>
                 </label>
                 <span class="permission-label">Verify Card</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_idcard_reprint_list" id="perm-idcard-reprint-list">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Reprint Cards</span>
             </div>
             <div class="permission-row">
                 <label class="toggle-switch">
