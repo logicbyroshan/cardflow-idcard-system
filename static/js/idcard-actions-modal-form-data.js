@@ -106,6 +106,100 @@ function showDeferredHeifPreview(previewEl) {
     previewEl.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
 }
 
+function showPreviewNotAvailable(previewEl) {
+    if (!previewEl) return;
+    previewEl.classList.remove('has-image', 'pending-image', 'path-not-found');
+    previewEl.classList.add('no-path');
+    previewEl.innerHTML = '<i class="fa-solid fa-image"></i>';
+}
+
+function fileToDataUrl(file) {
+    return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            resolve(ev.target.result);
+        };
+        reader.onerror = function() {
+            reject(new Error('Failed to read file for preview'));
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function blobToDataUrl(blob) {
+    return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            resolve(ev.target.result);
+        };
+        reader.onerror = function() {
+            reject(new Error('Failed to read converted blob for preview'));
+        };
+        reader.readAsDataURL(blob);
+    });
+}
+
+function getHeic2AnyBlob(result) {
+    if (Array.isArray(result)) {
+        return result.length ? result[0] : null;
+    }
+    return result || null;
+}
+
+async function getPreviewDataUrl(file) {
+    if (!isHeifLikeFile(file)) {
+        return fileToDataUrl(file);
+    }
+
+    if (typeof window.heic2any === 'function') {
+        try {
+            const converted = await window.heic2any({
+                blob: file,
+                toType: 'image/jpeg',
+                quality: 0.9,
+            });
+            const convertedBlob = getHeic2AnyBlob(converted);
+            if (convertedBlob) {
+                return blobToDataUrl(convertedBlob);
+            }
+        } catch (err) {
+            console.warn('HEIF preview conversion failed, using direct browser preview fallback.', err);
+        }
+    }
+
+    return fileToDataUrl(file);
+}
+
+async function setPreviewFromFile(previewEl, file, altText) {
+    if (!previewEl || !file) return;
+
+    try {
+        const dataUrl = await getPreviewDataUrl(file);
+
+        previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
+        previewEl.classList.add('has-image');
+        previewEl.innerHTML = '';
+
+        var img = document.createElement('img');
+        img.onerror = function() {
+            if (isHeifLikeFile(file)) {
+                showDeferredHeifPreview(previewEl);
+            } else {
+                showPreviewNotAvailable(previewEl);
+            }
+        };
+        img.src = dataUrl;
+        img.alt = altText || 'Preview';
+        previewEl.appendChild(img);
+    } catch (err) {
+        if (isHeifLikeFile(file)) {
+            showDeferredHeifPreview(previewEl);
+        } else {
+            showPreviewNotAvailable(previewEl);
+        }
+    }
+}
+
 // ==========================================
 // IMAGE FIELD PROCESSING HELPERS
 // ==========================================
@@ -113,7 +207,7 @@ function showDeferredHeifPreview(previewEl) {
 /**
  * Helper: Apply an image File to the field's preview, path input, and buttons.
  */
-function applyImageToField(input, file) {
+async function applyImageToField(input, file) {
     const previewId = input.getAttribute('data-preview-id');
     const previewEl = document.getElementById(previewId);
     const fieldCard = input.closest('.image-field-card');
@@ -122,33 +216,7 @@ function applyImageToField(input, file) {
     const downloadBtn = fieldCard?.querySelector('.btn-download-field');
     
     if (previewEl) {
-        const heifLike = isHeifLikeFile(file);
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
-            previewEl.classList.add('has-image');
-            previewEl.innerHTML = '';
-            var img = document.createElement('img');
-            img.onerror = function() {
-                showDeferredHeifPreview(previewEl);
-            };
-            img.src = ev.target.result;
-            img.alt = 'Preview';
-            previewEl.appendChild(img);
-
-            // Chromium often cannot decode HEIF/HEIC previews locally.
-            if (heifLike) {
-                setTimeout(function() {
-                    if (!img.complete || !img.naturalWidth) {
-                        showDeferredHeifPreview(previewEl);
-                    }
-                }, 350);
-            }
-        };
-        reader.onerror = function() {
-            showDeferredHeifPreview(previewEl);
-        };
-        reader.readAsDataURL(file);
+        await setPreviewFromFile(previewEl, file, 'Preview');
     }
     
     // Update path input to show new file name
@@ -183,36 +251,12 @@ function initFormDataHandlers() {
     
     // Photo upload preview
     if (formPhotoInput) {
-        formPhotoInput.addEventListener('change', function() {
+        formPhotoInput.addEventListener('change', async function() {
             if (this.files && this.files[0]) {
                 const selectedFile = this.files[0];
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    if (formPhotoPreview) {
-                        formPhotoPreview.innerHTML = '';
-                        var img = document.createElement('img');
-                        img.onerror = function() {
-                            formPhotoPreview.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
-                        };
-                        img.src = e.target.result;
-                        img.alt = 'Photo';
-                        formPhotoPreview.appendChild(img);
-
-                        if (isHeifLikeFile(selectedFile)) {
-                            setTimeout(function() {
-                                if (!img.complete || !img.naturalWidth) {
-                                    formPhotoPreview.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
-                                }
-                            }, 350);
-                        }
-                    }
-                };
-                reader.onerror = function() {
-                    if (formPhotoPreview) {
-                        formPhotoPreview.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
-                    }
-                };
-                reader.readAsDataURL(this.files[0]);
+                if (formPhotoPreview) {
+                    await setPreviewFromFile(formPhotoPreview, selectedFile, 'Photo');
+                }
             }
         });
     }
