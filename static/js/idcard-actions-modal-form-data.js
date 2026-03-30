@@ -106,6 +106,13 @@ function showDeferredHeifPreview(previewEl) {
     previewEl.innerHTML = '<i class="fa-solid fa-clock"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preview after save</span>';
 }
 
+function showPreparingHeifPreview(previewEl) {
+    if (!previewEl) return;
+    previewEl.classList.remove('no-path', 'has-image', 'path-not-found');
+    previewEl.classList.add('pending-image');
+    previewEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preparing preview...</span>';
+}
+
 function showPreviewNotAvailable(previewEl) {
     if (!previewEl) return;
     previewEl.classList.remove('has-image', 'pending-image', 'path-not-found');
@@ -146,6 +153,29 @@ function getHeic2AnyBlob(result) {
     return result || null;
 }
 
+function withTimeout(promise, timeoutMs, message) {
+    return new Promise(function(resolve, reject) {
+        var settled = false;
+        var timer = setTimeout(function() {
+            if (settled) return;
+            settled = true;
+            reject(new Error(message || 'Operation timed out'));
+        }, timeoutMs);
+
+        Promise.resolve(promise).then(function(value) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(value);
+        }).catch(function(err) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            reject(err);
+        });
+    });
+}
+
 async function getPreviewDataUrl(file) {
     if (!isHeifLikeFile(file)) {
         return fileToDataUrl(file);
@@ -153,11 +183,11 @@ async function getPreviewDataUrl(file) {
 
     if (typeof window.heic2any === 'function') {
         try {
-            const converted = await window.heic2any({
+            const converted = await withTimeout(window.heic2any({
                 blob: file,
                 toType: 'image/jpeg',
                 quality: 0.9,
-            });
+            }), 5000, 'HEIF conversion timed out');
             const convertedBlob = getHeic2AnyBlob(converted);
             if (convertedBlob) {
                 return blobToDataUrl(convertedBlob);
@@ -172,9 +202,17 @@ async function getPreviewDataUrl(file) {
 
 async function setPreviewFromFile(previewEl, file, altText) {
     if (!previewEl || !file) return;
+    const heifLike = isHeifLikeFile(file);
+    const requestId = String(Date.now()) + '-' + String(Math.random()).slice(2);
+    previewEl.dataset.previewRequestId = requestId;
+
+    if (heifLike) {
+        showPreparingHeifPreview(previewEl);
+    }
 
     try {
         const dataUrl = await getPreviewDataUrl(file);
+        if (previewEl.dataset.previewRequestId !== requestId) return;
 
         previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
         previewEl.classList.add('has-image');
@@ -182,7 +220,7 @@ async function setPreviewFromFile(previewEl, file, altText) {
 
         var img = document.createElement('img');
         img.onerror = function() {
-            if (isHeifLikeFile(file)) {
+            if (heifLike) {
                 showDeferredHeifPreview(previewEl);
             } else {
                 showPreviewNotAvailable(previewEl);
@@ -192,7 +230,8 @@ async function setPreviewFromFile(previewEl, file, altText) {
         img.alt = altText || 'Preview';
         previewEl.appendChild(img);
     } catch (err) {
-        if (isHeifLikeFile(file)) {
+        if (previewEl.dataset.previewRequestId !== requestId) return;
+        if (heifLike) {
             showDeferredHeifPreview(previewEl);
         } else {
             showPreviewNotAvailable(previewEl);
@@ -207,7 +246,7 @@ async function setPreviewFromFile(previewEl, file, altText) {
 /**
  * Helper: Apply an image File to the field's preview, path input, and buttons.
  */
-async function applyImageToField(input, file) {
+function applyImageToField(input, file) {
     const previewId = input.getAttribute('data-preview-id');
     const previewEl = document.getElementById(previewId);
     const fieldCard = input.closest('.image-field-card');
@@ -216,7 +255,7 @@ async function applyImageToField(input, file) {
     const downloadBtn = fieldCard?.querySelector('.btn-download-field');
     
     if (previewEl) {
-        await setPreviewFromFile(previewEl, file, 'Preview');
+        setPreviewFromFile(previewEl, file, 'Preview');
     }
     
     // Update path input to show new file name
@@ -251,11 +290,11 @@ function initFormDataHandlers() {
     
     // Photo upload preview
     if (formPhotoInput) {
-        formPhotoInput.addEventListener('change', async function() {
+        formPhotoInput.addEventListener('change', function() {
             if (this.files && this.files[0]) {
                 const selectedFile = this.files[0];
                 if (formPhotoPreview) {
-                    await setPreviewFromFile(formPhotoPreview, selectedFile, 'Photo');
+                    setPreviewFromFile(formPhotoPreview, selectedFile, 'Photo');
                 }
             }
         });
