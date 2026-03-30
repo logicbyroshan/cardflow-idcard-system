@@ -12,6 +12,47 @@
   <link rel="stylesheet" href="{% static 'css/auth.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <style>
+    .auth-body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.14), transparent 30%),
+        radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1), transparent 26%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+    .auth-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+    }
+    .auth-card {
+      width: min(100%, 620px);
+      margin: 0 auto;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+      border-radius: 18px;
+      background: #ffffff;
+    }
+    .maintenance-complete-badge {
+      display: none;
+      margin: 0.35rem auto 0;
+      width: fit-content;
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .maintenance-complete-badge.show {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
     .countdown-grid {
       display: flex; gap: 0.75rem; justify-content: center; margin: 1.25rem 0;
     }
@@ -36,6 +77,63 @@
       height: 100%; background: #f59e0b; border-radius: 2px;
       transition: width 1s linear;
     }
+    .maintenance-progress-bar.is-complete {
+      background: #16a34a;
+    }
+    .maintenance-status-bar {
+      position: relative;
+      overflow: hidden;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .maintenance-status-bar::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #f59e0b;
+    }
+    .maintenance-status-bar.is-complete {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+    .maintenance-status-bar.is-complete::before {
+      background: #16a34a;
+    }
+    .status-dot.is-complete {
+      background: #16a34a;
+      animation: none;
+    }
+    .auth-info-box.is-complete {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+    .auth-info-box.is-complete .auth-info-box-text-warning {
+      color: #166534;
+    }
+    .auth-icon-circle-warning.is-complete {
+      background: #dcfce7;
+      border-color: #86efac;
+      box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.24);
+      animation: none;
+    }
+    .auth-icon-circle-warning.is-complete .modal-icon-i-warning {
+      color: #15803d;
+      animation: none !important;
+    }
+    @media (max-width: 640px) {
+      .auth-container { padding: 0.75rem; }
+      .auth-card { border-radius: 14px; }
+      .countdown-grid { gap: 0.5rem; }
+      .countdown-unit { min-width: 64px; padding: 0.65rem 0.75rem; }
+      .countdown-value { font-size: 1.45rem; }
+    }
   </style>
 </head>
 <body class="auth-body">
@@ -48,10 +146,14 @@
 
       <!-- Maintenance Icon -->
       <div class="auth-icon-header">
-        <div class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
+        <div id="maintenanceIconCircle" class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
           <i class="fa-solid fa-gear modal-icon-i-warning" style="animation: fa-spin 3s linear infinite;" aria-hidden="true"></i>
         </div>
         <h2 class="auth-icon-title">System Under Maintenance</h2>
+        <div id="maintenanceCompleteBadge" class="maintenance-complete-badge">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+          Maintenance completed
+        </div>
         <p class="auth-icon-desc" id="maintenanceMessage">
           {{ message|default:"The system is under scheduled maintenance. Please check back shortly." }}
         </p>
@@ -79,7 +181,7 @@
       </div>
 
       <!-- Status Info -->
-      <div class="auth-info-box auth-info-box-warning">
+      <div id="maintenanceInfoBox" class="auth-info-box auth-info-box-warning">
         <div class="auth-info-box-body">
           <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
           <div class="auth-info-box-text auth-info-box-text-warning">
@@ -90,8 +192,8 @@
       </div>
 
       <!-- Live Status Check -->
-      <div class="maintenance-status-bar">
-        <span class="status-dot"></span>
+      <div id="maintenanceStatusBar" class="maintenance-status-bar">
+        <span id="maintenanceStatusDot" class="status-dot"></span>
         <span id="statusText">Checking maintenance status...</span>
       </div>
 
@@ -112,7 +214,8 @@
   <script id="maintenance-config" type="application/json">
   {
     "endTime": {{ end_time_json|default:"null" }},
-    "apiUrl": "{% url 'api_system_maintenance_check' %}"
+    "apiUrl": "{% url 'api_system_maintenance_check' %}",
+    "redirectUrl": "{{ redirect_url|default:'/'|escapejs }}"
   }
   </script>
   <script>
@@ -120,9 +223,17 @@
     var cfg = JSON.parse(document.getElementById('maintenance-config').textContent);
     var endTime = cfg.endTime ? new Date(cfg.endTime) : null;
     var startTime = new Date();
+    var redirectUrl = cfg.redirectUrl || '/';
     var statusText = document.getElementById('statusText');
     var countdownSection = document.getElementById('countdownSection');
     var progressBar = document.getElementById('progressBar');
+    var statusBar = document.getElementById('maintenanceStatusBar');
+    var statusDot = document.getElementById('maintenanceStatusDot');
+    var infoBox = document.getElementById('maintenanceInfoBox');
+    var iconCircle = document.getElementById('maintenanceIconCircle');
+    var completeBadge = document.getElementById('maintenanceCompleteBadge');
+    var completed = false;
+    var countdownExpiryChecked = false;
 
     // Hide countdown if no end time
     if (!endTime) {
@@ -134,6 +245,26 @@
 
     function pad(n) { return n < 10 ? '0' + n : n; }
 
+    function markMaintenanceComplete() {
+      if (completed) return;
+      completed = true;
+
+      if (statusBar) statusBar.classList.add('is-complete');
+      if (statusDot) statusDot.classList.add('is-complete');
+      if (infoBox) infoBox.classList.add('is-complete');
+      if (iconCircle) iconCircle.classList.add('is-complete');
+      if (progressBar) {
+        progressBar.classList.add('is-complete');
+        progressBar.style.width = '100%';
+      }
+      if (completeBadge) completeBadge.classList.add('show');
+      statusText.textContent = 'Maintenance complete. Redirecting to website...';
+    }
+
+    function redirectToWebsite() {
+      window.location.replace(redirectUrl);
+    }
+
     function updateCountdown() {
       if (!endTime) return;
       var now = new Date();
@@ -144,7 +275,10 @@
         document.getElementById('cdMinutes').textContent = '00';
         document.getElementById('cdSeconds').textContent = '00';
         progressBar.style.width = '100%';
-        checkStatus();
+        if (!countdownExpiryChecked) {
+          countdownExpiryChecked = true;
+          checkStatus();
+        }
         return;
       }
 
@@ -167,11 +301,14 @@
     function checkStatus() {
       statusText.textContent = 'Checking maintenance status...';
       fetch(cfg.apiUrl, { method: 'GET', credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+          if (!r.ok) throw new Error('status-check-failed');
+          return r.json();
+        })
         .then(function(data) {
           if (!data.enabled) {
-            statusText.innerHTML = '<span style="color:#059669;font-weight:600;">Maintenance complete! Redirecting...</span>';
-            setTimeout(function() { window.location.href = '/'; }, 1000);
+            markMaintenanceComplete();
+            setTimeout(redirectToWebsite, 700);
           } else {
             statusText.textContent = 'Maintenance in progress. Will check again soon...';
           }
@@ -184,8 +321,8 @@
     // Run countdown every second
     if (endTime) { setInterval(updateCountdown, 1000); updateCountdown(); }
 
-    // Poll status every 30 seconds
-    setInterval(checkStatus, 30000);
+    // Poll status every 10 seconds
+    setInterval(checkStatus, 10000);
     checkStatus();
 
     // Expose for button
