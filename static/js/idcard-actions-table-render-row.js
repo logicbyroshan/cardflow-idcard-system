@@ -81,6 +81,15 @@ function createRowFromCard(card, index) {
         return 'photo-type';
     }
     
+    function toMediaSrc(path) {
+        if (!path) return '';
+        const p = String(path).trim();
+        if (!p) return '';
+        if (p.startsWith('http://') || p.startsWith('https://')) return p;
+        if (p.startsWith('/media/')) return p;
+        return `/media/${p.replace(/^\/+/, '')}`;
+    }
+
     let html = `<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="rowCheckbox"></td>`;
     html += `<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">${card.sr_no}</td>`;
     
@@ -121,8 +130,10 @@ function createRowFromCard(card, index) {
                     const cacheBuster = `?t=${Date.now()}`;
                     // Use thumbnail path for faster loading in tables
                     const thumbPath = window.getThumbPath ? window.getThumbPath(fieldValue) : fieldValue;
-                    const thumbSrc = thumbPath ? `/media/${thumbPath}${cacheBuster}` : null;
-                    const originalSrc = `/media/${fieldValue}${cacheBuster}`;
+                    const thumbSrcBase = toMediaSrc(thumbPath);
+                    const originalSrcBase = toMediaSrc(fieldValue);
+                    const thumbSrc = thumbSrcBase ? `${thumbSrcBase}${cacheBuster}` : null;
+                    const originalSrc = originalSrcBase ? `${originalSrcBase}${cacheBuster}` : '';
                     
                     // Use onError fallback to original if thumbnail doesn't exist
                     // Escape originalSrc for safe use inside the inline onerror attribute
