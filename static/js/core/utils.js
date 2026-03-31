@@ -26,10 +26,13 @@
         if (!imagePath || imagePath === '' || imagePath === 'NOT_FOUND') return null;
         if (imagePath.startsWith('PENDING:')) return null;
 
-        // Reject values that don't look like real file paths (no extension)
-        if (imagePath.indexOf('.') === -1) return null;
+        var normalizedPath = String(imagePath).replace(/\\/g, '/');
+        normalizedPath = normalizedPath.replace(/^\/media\//, '').replace(/^media\//, '');
 
-        var parts = imagePath.replace(/\\/g, '/').split('/');
+        // Reject values that don't look like real file paths (no extension)
+        if (normalizedPath.indexOf('.') === -1) return null;
+
+        var parts = normalizedPath.split('/');
         // Change extension to .webp for thumbnail
         var last = parts[parts.length - 1];
         var dotIdx = last.lastIndexOf('.');
@@ -49,13 +52,14 @@
         if (imagePath.startsWith('PENDING:')) {
             return { src: null, isThumbnail: false, isPlaceholder: true, isPending: true, pendingRef: imagePath.substring(8) };
         }
-        var thumbPath = preferThumbnail ? getThumbPath(imagePath) : null;
+        var normalizedPath = String(imagePath).replace(/\\/g, '/').replace(/^\/media\//, '').replace(/^media\//, '');
+        var thumbPath = preferThumbnail ? getThumbPath(normalizedPath) : null;
         return {
-            src: '/media/' + imagePath,
+            src: '/media/' + normalizedPath,
             thumbSrc: thumbPath ? '/media/' + thumbPath : null,
             isThumbnail: false,
             isPlaceholder: false,
-            originalPath: imagePath
+            originalPath: normalizedPath
         };
     }
 

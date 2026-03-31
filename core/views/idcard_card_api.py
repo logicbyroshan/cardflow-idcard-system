@@ -455,6 +455,10 @@ def api_idcard_cards_json(request, table_id):
         """Replicate get_thumbnail_path template filter (returns .webp path)."""
         if not path or path == 'NOT_FOUND' or path.startswith('PENDING:'):
             return path
+        try:
+            path = BaseService.normalize_image_path(path)
+        except Exception:
+            pass
         # Reject values that don't look like real file paths (no extension)
         if '.' not in path:
             return ''
@@ -471,6 +475,37 @@ def api_idcard_cards_json(request, table_id):
             return f"thumbs/{name}.webp"
         except Exception:
             return path
+
+    def _lookup_field_value(field_data, field_data_upper, field_name):
+        """Lookup field value by exact/case-insensitive/trimmed key variants."""
+        if not field_name:
+            return ''
+        # Fast path
+        val = field_data.get(field_name, '') or field_data_upper.get(field_name.upper(), '')
+        if val:
+            return val
+
+        wanted = str(field_name).strip().upper()
+        for k, v in field_data.items():
+            if str(k).strip().upper() == wanted and v:
+                return v
+        return ''
+
+    def _looks_like_image_value(v):
+        if not v:
+            return False
+        text = str(v).strip()
+        if not text or text in ('NOT_FOUND',):
+            return False
+        if text.startswith('PENDING:'):
+            return True
+        low = text.lower()
+        return (
+            low.endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'))
+            or '/media/' in low
+            or low.startswith('http://')
+            or low.startswith('https://')
+        )
 
     results = []
     # sr_no base: for cursor mode, use offset param if provided, otherwise 0
@@ -498,9 +533,9 @@ def api_idcard_cards_json(request, table_id):
             is_img = BaseService.is_image_field(field)
             if is_img:
                 ftype = 'image'
-            val = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
+            val = _lookup_field_value(fd, fd_upper, fname)
             # Legacy photo fallback
-            if not val and fname.upper() == 'PHOTO' and card.photo:
+            if fname.strip().upper() == 'PHOTO' and (not val or not _looks_like_image_value(val)) and card.photo:
                 try:
                     val = card.photo.name or card.photo.url
                 except Exception:
