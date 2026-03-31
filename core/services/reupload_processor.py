@@ -15,13 +15,19 @@ Usage:
     process_reupload_images(task)
 """
 import os
+import json
 import logging
+import re
 import time
 import zipfile
+import hashlib
 
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+_NAME_14_RE = re.compile(r'^\d{14}$')
+_NAME_14_6_RE = re.compile(r'^\d{14}_\d{6}$')
 
 
 def _db_retry(fn, max_retries=5, base_delay=1.0):
@@ -113,6 +119,7 @@ def process_reupload_images(task):
     
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
+    strict_mode = bool(metadata.get('strict_mode', True))
     
     if not table_id:
         task.mark_failed("Missing table_id in metadata")
@@ -166,11 +173,49 @@ def process_reupload_images(task):
         # First, build index of available images in ZIP (just names, not content)
         # This is memory efficient - only stores filenames
         try:
-            zip_image_index = _build_zip_image_index(zip_path)
+            zip_image_index, manifest_index, zip_stats = _build_zip_image_index(zip_path)
             logger.info("ZIP index built: %d images found", len(zip_image_index))
         except Exception as e:
             logger.exception("Failed to read ZIP for reupload task_id=%s", task.id)
             task.mark_failed("Failed to read ZIP file. Please verify the ZIP and try again.")
+            return
+
+        if strict_mode and not zip_stats.get('manifest_present'):
+            task.mark_failed(
+                "Strict reupload requires _reupload_manifest.json in ZIP. "
+                "Please download a fresh ZIP from panel and reupload that edited ZIP."
+            )
+            return
+
+        if strict_mode and zip_stats.get('manifest_duplicate_keys', 0) > 0:
+            task.mark_failed(
+                f"Strict reupload blocked: manifest has {zip_stats.get('manifest_duplicate_keys')} duplicate card/field mappings."
+            )
+            return
+
+        if strict_mode and zip_stats.get('manifest_missing_paths', 0) > 0:
+            task.mark_failed(
+                f"Strict reupload blocked: manifest references {zip_stats.get('manifest_missing_paths')} files that are missing in ZIP."
+            )
+            return
+
+        preflight = _run_reupload_preflight(
+            cards_qs=cards_qs,
+            image_field_names=image_field_names,
+            zip_image_index=zip_image_index,
+            manifest_index=manifest_index,
+            strict_mode=strict_mode,
+            manifest_present=zip_stats.get('manifest_present', False),
+        )
+
+        metadata['preflight'] = preflight
+        task.metadata = metadata
+        _db_retry(lambda: task.save(update_fields=['metadata']))
+
+        if strict_mode and preflight.get('ambiguous_matches', 0) > 0:
+            task.mark_failed(
+                f"Strict reupload blocked: {preflight.get('ambiguous_matches')} ambiguous matches detected in preflight."
+            )
             return
 
         if not zip_image_index:
@@ -181,10 +226,12 @@ def process_reupload_images(task):
         # Avoids reopening (and re-reading the central directory) for every
         # single image — was N open/close calls, now exactly 1.
         _open_zip = zipfile.ZipFile(zip_path, 'r')
+        zip_name_set = set(_open_zip.namelist())
 
         # Process cards one at a time
         updated_count = 0
         matched_count = 0
+        unchanged_count = 0
         errors = []
         batch_counter = 0
         pending_updates = []  # Accumulated cards for bulk_update; flushed every FLUSH_EVERY
@@ -199,6 +246,21 @@ def process_reupload_images(task):
                 card_updated = False
                 
                 for img_field in image_field_names:
+                    manifest_meta = manifest_index.get((card.pk, img_field)) if manifest_index else None
+                    manifest_entry = None
+                    if manifest_meta:
+                        path_key = str(manifest_meta.get('zip_path') or '').replace('\\', '/')
+                        if path_key in zip_name_set:
+                            base_name = os.path.basename(path_key)
+                            ext = os.path.splitext(base_name)[1].lower()
+                            manifest_entry = {
+                                'zip_path': path_key,
+                                'ext': ext,
+                                'original_name': base_name,
+                                'sha256': manifest_meta.get('sha256'),
+                                'size': manifest_meta.get('size'),
+                            }
+
                     current_value = field_data.get(img_field) or ''
                     
                     # ── Determine what to match against ──────────────────
@@ -229,15 +291,18 @@ def process_reupload_images(task):
                     else:
                         continue
                     
-                    if not match_key:
+                    if not match_key and not manifest_entry:
                         continue
-                    
-                    # Check if we have a matching image in ZIP
-                    if match_key not in zip_image_index:
-                        continue
-                    
-                    # Extract and save this specific image
-                    zip_entry = zip_image_index[match_key]
+
+                    # Prefer deterministic manifest mapping when available.
+                    zip_entry = manifest_entry
+                    if not zip_entry:
+                        if strict_mode and zip_stats.get('manifest_present'):
+                            continue
+                        # Fallback: legacy basename matching.
+                        if match_key not in zip_image_index:
+                            continue
+                        zip_entry = zip_image_index[match_key]
                     matched_count += 1
                     
                     try:
@@ -254,6 +319,18 @@ def process_reupload_images(task):
                         if not is_valid:
                             errors.append(f"Card {card.pk}: Invalid image - {error_msg}")
                             continue
+
+                        image_sha = hashlib.sha256(image_bytes).hexdigest()
+                        if strict_mode and manifest_entry and manifest_entry.get('sha256'):
+                            if str(manifest_entry.get('sha256')).lower() != image_sha.lower():
+                                errors.append(f"Card {card.pk}: Manifest hash mismatch for {img_field}")
+                                continue
+
+                        if strict_mode and existing_path:
+                            existing_sha = _compute_storage_sha256(existing_path)
+                            if existing_sha and existing_sha.lower() == image_sha.lower():
+                                unchanged_count += 1
+                                continue
                         
                         # Save image FILE to disk (no DB writes yet)
                         # Pass card=None so replace_image/save_new_image
@@ -280,6 +357,19 @@ def process_reupload_images(task):
                         
                         if result.success and result.data.get('final_value'):
                             saved_path = result.data['final_value']
+
+                            if strict_mode:
+                                expected_mode = 'update' if existing_path else 'new'
+                                if not _is_valid_system_filename(saved_path, expected_mode):
+                                    try:
+                                        ImageService.delete_image(saved_path)
+                                    except Exception:
+                                        pass
+                                    errors.append(
+                                        f"Card {card.pk}: Generated filename violates policy ({os.path.basename(saved_path)})"
+                                    )
+                                    continue
+
                             field_data[img_field] = saved_path
                             # Preserve original reference for future reuploads
                             # (the ZIP entry's original name without extension)
@@ -350,7 +440,11 @@ def process_reupload_images(task):
         task.metadata['result'] = {
             'updated_count': updated_count,
             'matched_count': matched_count,
+            'unchanged_count': unchanged_count,
             'zip_images_count': len(zip_image_index),
+            'strict_mode': strict_mode,
+            'manifest_present': zip_stats.get('manifest_present', False),
+            'preflight': preflight,
             'error_count': len(errors),
             'errors': errors[:10] if errors else []
         }
@@ -359,8 +453,8 @@ def process_reupload_images(task):
         # Mark completed (with retry)
         _db_retry(lambda: task.mark_completed())
         logger.info(
-            "REUPLOAD_DONE task_id=%d matched=%d updated=%d zip_images=%d errors=%d",
-            task.id, matched_count, updated_count, len(zip_image_index), len(errors),
+            "REUPLOAD_DONE task_id=%d matched=%d updated=%d unchanged=%d zip_images=%d errors=%d",
+            task.id, matched_count, updated_count, unchanged_count, len(zip_image_index), len(errors),
         )
 
     except Exception as e:
@@ -477,18 +571,56 @@ def _build_zip_image_index(zip_path):
     """
     Build an index of images in a ZIP file.
     
-    CRITICAL: Only stores filenames and metadata, not image content.
-    
-    Returns:
-        dict: {normalized_key: {'zip_path': str, 'ext': str, 'original_name': str}}
+        CRITICAL: Only stores filenames and metadata, not image content.
+
+        Returns:
+                tuple:
+                    - dict: {normalized_key: {'zip_path': str, 'ext': str, 'original_name': str}}
+                    - dict: {(card_id, field_name): {'zip_path': str, 'sha256': str, 'size': int}}
+                        from optional _reupload_manifest.json
+                    - dict: zip_stats
     """
     from core.services.base import BaseService
     
     index = {}
+    manifest_index = {}
+    duplicate_name_keys = 0
+    manifest_duplicate_keys = 0
+    manifest_missing_paths = 0
+    manifest_present = False
     
     with zipfile.ZipFile(zip_path, 'r') as zf:
+        # Optional deterministic mapping generated by exporter.
+        if '_reupload_manifest.json' in zf.namelist():
+            manifest_present = True
+            try:
+                raw_manifest = zf.read('_reupload_manifest.json')
+                parsed_manifest = json.loads(raw_manifest.decode('utf-8'))
+                for item in parsed_manifest.get('entries', []):
+                    card_id = item.get('card_id')
+                    field_name = item.get('field_name')
+                    zip_entry_path = str(item.get('zip_path') or '').replace('\\', '/')
+                    if card_id and field_name and zip_entry_path:
+                        mk = (int(card_id), str(field_name))
+                        if mk in manifest_index:
+                            manifest_duplicate_keys += 1
+                            continue
+                        if zip_entry_path not in zf.namelist():
+                            manifest_missing_paths += 1
+                            continue
+                        manifest_index[mk] = {
+                            'zip_path': zip_entry_path,
+                            'sha256': item.get('sha256'),
+                            'size': item.get('size'),
+                        }
+            except Exception:
+                logger.warning("Invalid _reupload_manifest.json ignored in ZIP: %s", zip_path)
+
         for zip_info in zf.infolist():
             if zip_info.is_dir():
+                continue
+
+            if zip_info.filename == '_reupload_manifest.json':
                 continue
             
             # Skip very large files
@@ -512,8 +644,114 @@ def _build_zip_image_index(zip_path):
                         'ext': ext,
                         'original_name': base_name
                     }
-    
-    return index
+                if existing is not None:
+                    duplicate_name_keys += 1
+
+    zip_stats = {
+        'manifest_present': manifest_present,
+        'manifest_entries': len(manifest_index),
+        'manifest_duplicate_keys': manifest_duplicate_keys,
+        'manifest_missing_paths': manifest_missing_paths,
+        'duplicate_name_keys': duplicate_name_keys,
+    }
+
+    return index, manifest_index, zip_stats
+
+
+def _is_valid_system_filename(path_or_name, mode='new'):
+    """
+    Validate filename stem against system policy.
+
+    new     -> 14 digits
+    update  -> 14 digits + underscore + 6 digits
+    """
+    base_name = os.path.basename(str(path_or_name or '').strip())
+    stem, _ = os.path.splitext(base_name)
+    if mode == 'new':
+        return bool(_NAME_14_RE.match(stem))
+    if mode == 'update':
+        return bool(_NAME_14_6_RE.match(stem))
+    return bool(_NAME_14_RE.match(stem) or _NAME_14_6_RE.match(stem))
+
+
+def _run_reupload_preflight(
+    cards_qs,
+    image_field_names,
+    zip_image_index,
+    manifest_index,
+    strict_mode,
+    manifest_present,
+):
+    """Compute match diagnostics before any writes occur."""
+    from core.services.base import BaseService
+
+    expected_targets = 0
+    matched_targets = 0
+    missing_targets = 0
+    ambiguous_matches = 0
+    missing_samples = []
+
+    for card in cards_qs.iterator(chunk_size=500):
+        field_data = card.field_data or {}
+        for img_field in image_field_names:
+            current_value = field_data.get(img_field) or ''
+            match_key = None
+
+            if current_value.startswith('PENDING:'):
+                match_key = BaseService.normalize_image_identifier(current_value[8:])
+            elif current_value and current_value not in ('NOT_FOUND', ''):
+                ref_key = f'__ref_{img_field}'
+                original_ref = field_data.get(ref_key, '')
+                if original_ref:
+                    match_key = BaseService.normalize_image_identifier(original_ref)
+                else:
+                    existing_filename = os.path.splitext(os.path.basename(current_value))[0]
+                    match_key = BaseService.normalize_image_identifier(existing_filename)
+            else:
+                continue
+
+            expected_targets += 1
+            has_manifest_hit = bool(manifest_index.get((card.pk, img_field))) if manifest_present else False
+            has_fallback_hit = bool(match_key and match_key in zip_image_index)
+
+            if has_manifest_hit or (not manifest_present and has_fallback_hit):
+                matched_targets += 1
+            else:
+                missing_targets += 1
+                if len(missing_samples) < 20:
+                    missing_samples.append({'card_id': card.pk, 'field_name': img_field})
+
+            if strict_mode and manifest_present and has_fallback_hit and not has_manifest_hit:
+                ambiguous_matches += 1
+
+    return {
+        'expected_targets': expected_targets,
+        'matched_targets': matched_targets,
+        'missing_targets': missing_targets,
+        'ambiguous_matches': ambiguous_matches,
+        'missing_samples': missing_samples,
+        'manifest_present': manifest_present,
+        'strict_mode': bool(strict_mode),
+    }
+
+
+def _compute_storage_sha256(storage_path):
+    """Hash an existing stored file; returns None when unavailable."""
+    if not storage_path:
+        return None
+    try:
+        from django.core.files.storage import default_storage
+        if not default_storage.exists(storage_path):
+            return None
+        h = hashlib.sha256()
+        with default_storage.open(storage_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                if not chunk:
+                    break
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return None
 
 
 def _extract_single_image(zf_or_path, internal_path):

@@ -6,11 +6,14 @@ permissions, workflow transitions, bulk upload service, global search.
 from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from unittest.mock import patch
 import json
 import os
 import tempfile
+import io
+import zipfile
 
 User = get_user_model()
 
@@ -993,3 +996,158 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(payload['card']['modified_by'], self.client_a.name)
         self.assertNotEqual(payload['card']['modified_by'], self.client_user_a.username)
         self.assertIsNotNone(payload['card']['updated_at'])
+
+
+class ReuploadPreflightTokenFlowTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('reupload-admin@test.com', 'adminpass1')
+        self.other_admin = _create_super_admin('reupload-other@test.com', 'adminpass1')
+        _, self.client_obj = _create_client_user('reupload-client@test.com', 'clientpass1')
+        _group, self.table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+        ])
+        self.card = _create_card(
+            self.table,
+            field_data={
+                'NAME': 'TOKEN USER',
+                'PHOTO': 'adarshimg/20240101121212.jpg',
+            },
+            status='pending',
+        )
+
+        self._tmp_media = tempfile.TemporaryDirectory()
+        self._media_override = override_settings(MEDIA_ROOT=self._tmp_media.name)
+        self._media_override.enable()
+
+    def tearDown(self):
+        self._media_override.disable()
+        self._tmp_media.cleanup()
+
+    def _make_reupload_zip(self, include_manifest=True):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'fake-image-bytes-12345')
+            if include_manifest:
+                manifest = {
+                    'version': 1,
+                    'entries': [
+                        {
+                            'card_id': self.card.id,
+                            'field_name': 'PHOTO',
+                            'zip_path': 'PHOTO/20240101121212.jpg',
+                            'sha256': 'abc123',
+                            'size': 22,
+                        }
+                    ],
+                }
+                zf.writestr('_reupload_manifest.json', json.dumps(manifest))
+        return buf.getvalue()
+
+    def test_preflight_success_then_create_task_with_token(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        zip_bytes = self._make_reupload_zip(include_manifest=True)
+        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
+
+        preflight_resp = self.client.post(
+            f'/panel/api/table/{self.table.id}/reupload-preflight/',
+            data={
+                'photos_zip': upload,
+                'card_ids': json.dumps([self.card.id]),
+                'strict_mode': '1',
+                'status': 'pending',
+            },
+        )
+
+        self.assertEqual(preflight_resp.status_code, 200)
+        preflight_payload = preflight_resp.json()
+        self.assertTrue(preflight_payload['success'])
+        self.assertTrue(preflight_payload['can_start'])
+        self.assertTrue(preflight_payload.get('preflight_token'))
+
+        token = preflight_payload['preflight_token']
+
+        with patch('core.views.task_api.background_worker.submit_task') as mock_submit:
+            create_resp = self.client.post(
+                f'/panel/api/table/{self.table.id}/reupload-task/',
+                data={'preflight_token': token},
+            )
+
+        self.assertEqual(create_resp.status_code, 200)
+        create_payload = create_resp.json()
+        self.assertTrue(create_payload['success'])
+        self.assertTrue(create_payload['created_from_preflight'])
+        self.assertIn('task_id', create_payload)
+        mock_submit.assert_called_once()
+
+        from core.models import BackgroundTask
+        task = BackgroundTask.objects.get(id=create_payload['task_id'])
+        self.assertEqual(task.task_type, 'reupload_images')
+        self.assertEqual(task.metadata.get('table_id'), self.table.id)
+        self.assertEqual(task.metadata.get('card_ids'), [self.card.id])
+        self.assertTrue(task.metadata.get('strict_mode'))
+
+    def test_preflight_strict_mode_blocks_when_manifest_missing(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        zip_bytes = self._make_reupload_zip(include_manifest=False)
+        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
+
+        preflight_resp = self.client.post(
+            f'/panel/api/table/{self.table.id}/reupload-preflight/',
+            data={
+                'photos_zip': upload,
+                'card_ids': json.dumps([self.card.id]),
+                'strict_mode': '1',
+            },
+        )
+
+        self.assertEqual(preflight_resp.status_code, 200)
+        payload = preflight_resp.json()
+        self.assertTrue(payload['success'])
+        self.assertFalse(payload['can_start'])
+        self.assertFalse(payload.get('preflight_token'))
+        reasons = payload.get('blocked_reasons', [])
+        self.assertTrue(any('manifest' in r.lower() for r in reasons))
+
+    def test_preflight_token_rejected_for_different_user(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        zip_bytes = self._make_reupload_zip(include_manifest=True)
+        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
+        preflight_resp = self.client.post(
+            f'/panel/api/table/{self.table.id}/reupload-preflight/',
+            data={'photos_zip': upload, 'card_ids': json.dumps([self.card.id])},
+        )
+        token = preflight_resp.json()['preflight_token']
+
+        self.client.logout()
+        self.client.login(username='reupload-other@test.com', password='adminpass1')
+        create_resp = self.client.post(
+            f'/panel/api/table/{self.table.id}/reupload-task/',
+            data={'preflight_token': token},
+        )
+
+        self.assertEqual(create_resp.status_code, 400)
+        self.assertIn('does not belong to current user', create_resp.json().get('message', '').lower())
+
+    def test_preflight_token_expired_returns_clear_error(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        zip_bytes = self._make_reupload_zip(include_manifest=True)
+        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
+        preflight_resp = self.client.post(
+            f'/panel/api/table/{self.table.id}/reupload-preflight/',
+            data={'photos_zip': upload, 'card_ids': json.dumps([self.card.id])},
+        )
+        token = preflight_resp.json()['preflight_token']
+
+        with patch('core.views.task_api._consume_reupload_preflight_token', return_value=(None, 'Preflight token expired. Please run preflight again.')):
+            create_resp = self.client.post(
+                f'/panel/api/table/{self.table.id}/reupload-task/',
+                data={'preflight_token': token},
+            )
+
+        self.assertEqual(create_resp.status_code, 400)
+        self.assertIn('expired', create_resp.json().get('message', '').lower())

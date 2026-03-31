@@ -21,6 +21,8 @@ import os
 import json
 import logging
 
+from django.core import signing
+from django.core.signing import BadSignature, SignatureExpired
 from django.core.cache import cache as django_cache
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_POST, require_GET
@@ -38,6 +40,7 @@ from core.services.permission_service import (
 from core.services.background_worker import (
     background_worker,
     save_uploaded_file_to_disk,
+    cleanup_temp_file,
 )
 from accounts.rate_limit import rate_limit
 
@@ -51,6 +54,8 @@ MAX_ZIP_SIZE = 950 * 1024 * 1024          # 950 MB for ZIP archives (buffer belo
 
 # Allowed file extensions
 ALLOWED_ZIP_EXTENSIONS = ('.zip',)
+REUPLOAD_PREFLIGHT_TOKEN_SALT = 'reupload-preflight-v1'
+REUPLOAD_PREFLIGHT_TOKEN_MAX_AGE = 30 * 60  # 30 minutes
 
 
 def _normalize_positive_int_ids(raw_ids, *, max_items=5000):
@@ -99,6 +104,145 @@ def _validate_uploaded_file(uploaded_file, allowed_extensions, max_size, label='
         actual_mb = uploaded_file.size / (1024 * 1024)
         return False, f'{label}: File too large ({actual_mb:.1f} MB). Maximum: {max_mb:.0f} MB'
     return True, None
+
+
+def _parse_reupload_scope_payload(request):
+    """Parse reupload scope payload from request.POST in a safe, normalized form."""
+    target_field = str(request.POST.get('target_field', '') or '').strip()
+
+    card_ids = []
+    if 'card_ids' in request.POST:
+        try:
+            raw_ids = json.loads(request.POST.get('card_ids', '[]'))
+        except (json.JSONDecodeError, TypeError):
+            raw_ids = []
+        card_ids = _normalize_positive_int_ids(raw_ids, max_items=10000)
+
+    status_filter = str(request.POST.get('status', '') or '').strip()
+    strict_mode_raw = str(request.POST.get('strict_mode', '1')).strip().lower()
+    strict_mode = strict_mode_raw not in ('0', 'false', 'no', 'off')
+
+    return {
+        'target_field': target_field,
+        'card_ids': card_ids,
+        'status_filter': status_filter,
+        'strict_mode': strict_mode,
+    }
+
+
+def _build_reupload_cards_queryset(table, card_ids, status_filter):
+    """Build queryset for preflight/task scope exactly like background processor."""
+    from idcards.models import IDCard
+    from core.services.base import BaseService
+
+    if card_ids:
+        return IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
+    if status_filter and status_filter in BaseService.VALID_STATUSES:
+        return IDCard.objects.filter(table=table, status=status_filter).order_by('id')
+    return IDCard.objects.filter(table=table).order_by('id')
+
+
+def _evaluate_reupload_preflight(zip_rel_path, table, cards_qs, strict_mode):
+    """Run deterministic preflight checks without mutating any card/media data."""
+    from core.services.base import BaseService
+    from core.services.reupload_processor import (
+        _build_zip_image_index,
+        _run_reupload_preflight,
+    )
+
+    zip_abs = os.path.join(settings.MEDIA_ROOT, zip_rel_path)
+    if not zip_rel_path or not os.path.exists(zip_abs):
+        return {
+            'ok': False,
+            'message': 'Uploaded ZIP not found. Please upload again.',
+        }
+
+    image_field_names = BaseService.get_image_field_names(table.fields or [])
+    if not image_field_names:
+        return {
+            'ok': False,
+            'message': 'No image fields configured in this table.',
+        }
+
+    zip_image_index, manifest_index, zip_stats = _build_zip_image_index(zip_abs)
+    preflight = _run_reupload_preflight(
+        cards_qs=cards_qs,
+        image_field_names=image_field_names,
+        zip_image_index=zip_image_index,
+        manifest_index=manifest_index,
+        strict_mode=bool(strict_mode),
+        manifest_present=zip_stats.get('manifest_present', False),
+    )
+
+    blocked_reasons = []
+    if len(zip_image_index) == 0:
+        blocked_reasons.append('No valid images found in ZIP.')
+    if strict_mode and not zip_stats.get('manifest_present'):
+        blocked_reasons.append('Strict mode requires _reupload_manifest.json in ZIP.')
+    if strict_mode and zip_stats.get('manifest_duplicate_keys', 0) > 0:
+        blocked_reasons.append('Manifest has duplicate card/field mappings.')
+    if strict_mode and zip_stats.get('manifest_missing_paths', 0) > 0:
+        blocked_reasons.append('Manifest references files that are missing from ZIP.')
+    if strict_mode and preflight.get('ambiguous_matches', 0) > 0:
+        blocked_reasons.append('Ambiguous fallback-only matches detected; strict mode blocked.')
+
+    return {
+        'ok': True,
+        'can_start': len(blocked_reasons) == 0,
+        'zip_stats': zip_stats,
+        'preflight': preflight,
+        'blocked_reasons': blocked_reasons,
+    }
+
+
+def _issue_reupload_preflight_token(user_id, table_id, zip_path, scope_payload):
+    payload = {
+        'u': int(user_id),
+        't': int(table_id),
+        'z': str(zip_path),
+        'target_field': scope_payload.get('target_field', ''),
+        'card_ids': scope_payload.get('card_ids', []),
+        'status_filter': scope_payload.get('status_filter', ''),
+        'strict_mode': bool(scope_payload.get('strict_mode', True)),
+    }
+    return signing.dumps(payload, salt=REUPLOAD_PREFLIGHT_TOKEN_SALT)
+
+
+def _consume_reupload_preflight_token(token, request_user_id, table_id):
+    """Validate preflight token and return normalized payload or (None, error)."""
+    try:
+        payload = signing.loads(
+            token,
+            salt=REUPLOAD_PREFLIGHT_TOKEN_SALT,
+            max_age=REUPLOAD_PREFLIGHT_TOKEN_MAX_AGE,
+        )
+    except SignatureExpired:
+        return None, 'Preflight token expired. Please run preflight again.'
+    except BadSignature:
+        return None, 'Invalid preflight token. Please run preflight again.'
+
+    if int(payload.get('u', -1)) != int(request_user_id):
+        return None, 'Preflight token does not belong to current user.'
+    if int(payload.get('t', -1)) != int(table_id):
+        return None, 'Preflight token table mismatch.'
+
+    zip_path = str(payload.get('z', '')).strip()
+    if not zip_path:
+        return None, 'Preflight token is missing ZIP path.'
+
+    zip_abs = os.path.join(settings.MEDIA_ROOT, zip_path)
+    if not _is_path_within_root(zip_abs, settings.MEDIA_ROOT):
+        return None, 'Preflight token contains invalid ZIP path.'
+    if not os.path.exists(zip_abs):
+        return None, 'Preflight ZIP no longer exists. Please run preflight again.'
+
+    return {
+        'zip_path': zip_path,
+        'target_field': str(payload.get('target_field', '') or '').strip(),
+        'card_ids': _normalize_positive_int_ids(payload.get('card_ids', []), max_items=10000),
+        'status_filter': str(payload.get('status_filter', '') or '').strip(),
+        'strict_mode': bool(payload.get('strict_mode', True)),
+    }, None
 
 
 def _acquire_task_lock(user_id, task_type, ttl=10):
@@ -578,6 +722,91 @@ def api_create_bulk_upload_task(request, table_id):
 # ==================== REUPLOAD IMAGES TASK CREATION ====================
 
 @require_POST
+@rate_limit(max_requests=8, window_seconds=60, key_prefix='reupload_preflight')
+@api_require_permission('perm_idcard_bulk_reupload')
+def api_reupload_preflight(request, table_id):
+    """Upload ZIP and return deterministic preflight summary without creating a task."""
+    from core.views.idcard_api import _check_client_scope_by_table, _CLIENT_READONLY_STATUSES
+    from idcards.models import IDCard
+
+    _tbl, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
+
+    if request.user.role in ('client', 'client_staff'):
+        has_locked = IDCard.objects.filter(
+            table_id=table_id,
+            status__in=_CLIENT_READONLY_STATUSES
+        ).exists()
+        if has_locked:
+            return JsonResponse({
+                'success': False,
+                'message': 'This table contains cards in approved/download status. Client users cannot reupload images.'
+            }, status=403)
+
+    table = get_object_or_404(IDCardTable, id=table_id)
+
+    if 'photos_zip' not in request.FILES:
+        return JsonResponse({'success': False, 'message': 'No ZIP file uploaded'}, status=400)
+
+    reup_zip = request.FILES['photos_zip']
+    ok, err_msg = _validate_uploaded_file(reup_zip, ALLOWED_ZIP_EXTENSIONS, MAX_ZIP_SIZE, 'ZIP')
+    if not ok:
+        return JsonResponse({'success': False, 'message': err_msg}, status=400)
+
+    zip_path = save_uploaded_file_to_disk(reup_zip)
+
+    try:
+        zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
+        if not zok:
+            cleanup_temp_file(zip_path)
+            return JsonResponse({'success': False, 'message': zerr}, status=400)
+
+        scope_payload = _parse_reupload_scope_payload(request)
+        cards_qs = _build_reupload_cards_queryset(
+            table=table,
+            card_ids=scope_payload['card_ids'],
+            status_filter=scope_payload['status_filter'],
+        )
+
+        preflight_eval = _evaluate_reupload_preflight(
+            zip_rel_path=zip_path,
+            table=table,
+            cards_qs=cards_qs,
+            strict_mode=scope_payload['strict_mode'],
+        )
+
+        if not preflight_eval.get('ok'):
+            cleanup_temp_file(zip_path)
+            return JsonResponse({'success': False, 'message': preflight_eval.get('message', 'Preflight failed')}, status=400)
+
+        can_start = bool(preflight_eval.get('can_start'))
+        token = None
+        if can_start:
+            token = _issue_reupload_preflight_token(
+                user_id=request.user.id,
+                table_id=table_id,
+                zip_path=zip_path,
+                scope_payload=scope_payload,
+            )
+        else:
+            cleanup_temp_file(zip_path)
+
+        return JsonResponse({
+            'success': True,
+            'can_start': can_start,
+            'preflight': preflight_eval.get('preflight', {}),
+            'zip_stats': preflight_eval.get('zip_stats', {}),
+            'blocked_reasons': preflight_eval.get('blocked_reasons', []),
+            'preflight_token': token,
+            'message': 'Preflight completed' if can_start else 'Preflight blocked. Resolve issues and retry.',
+        })
+    except Exception as e:
+        logger.exception('Error running reupload preflight: %s', e)
+        cleanup_temp_file(zip_path)
+        return JsonResponse({'success': False, 'message': 'Error running reupload preflight'}, status=400)
+
+@require_POST
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='reupload')
 @api_require_permission('perm_idcard_bulk_reupload')
 def api_create_reupload_task(request, table_id):
@@ -626,40 +855,54 @@ def api_create_reupload_task(request, table_id):
     try:
         # Validate table exists
         table = get_object_or_404(IDCardTable, id=table_id)
-        
-        # Check for required ZIP file
-        if 'photos_zip' not in request.FILES:
-            return JsonResponse({
-                'success': False,
-                'message': 'No ZIP file uploaded'
-            }, status=400)
-        
-        # Validate ZIP file
-        reup_zip = request.FILES['photos_zip']
-        ok, err_msg = _validate_uploaded_file(reup_zip, ALLOWED_ZIP_EXTENSIONS, MAX_ZIP_SIZE, 'ZIP')
-        if not ok:
-            return JsonResponse({'success': False, 'message': err_msg}, status=400)
-        
-        # Save ZIP to disk
-        zip_path = save_uploaded_file_to_disk(reup_zip)
-        
-        # ZIP bomb/safety check
-        zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
-        if not zok:
-            return JsonResponse({'success': False, 'message': zerr}, status=400)
-        
-        # Get optional parameters
-        target_field = request.POST.get('target_field', '')
-        
-        card_ids = []
-        if 'card_ids' in request.POST:
-            try:
-                card_ids = json.loads(request.POST.get('card_ids', '[]'))
-                card_ids = [int(cid) for cid in card_ids if cid and str(cid).strip().isdigit()]
-            except (json.JSONDecodeError, TypeError):
-                card_ids = []
-        
-        status_filter = request.POST.get('status', '')
+
+        created_from_preflight = False
+        preflight_token = str(request.POST.get('preflight_token', '') or '').strip()
+
+        if preflight_token:
+            token_payload, token_err = _consume_reupload_preflight_token(
+                token=preflight_token,
+                request_user_id=request.user.id,
+                table_id=table_id,
+            )
+            if token_err:
+                return JsonResponse({'success': False, 'message': token_err}, status=400)
+
+            zip_path = token_payload['zip_path']
+            target_field = token_payload['target_field']
+            card_ids = token_payload['card_ids']
+            status_filter = token_payload['status_filter']
+            strict_mode = token_payload['strict_mode']
+            created_from_preflight = True
+        else:
+            # Check for required ZIP file
+            if 'photos_zip' not in request.FILES:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No ZIP file uploaded'
+                }, status=400)
+
+            # Validate ZIP file
+            reup_zip = request.FILES['photos_zip']
+            ok, err_msg = _validate_uploaded_file(reup_zip, ALLOWED_ZIP_EXTENSIONS, MAX_ZIP_SIZE, 'ZIP')
+            if not ok:
+                return JsonResponse({'success': False, 'message': err_msg}, status=400)
+
+            # Save ZIP to disk
+            zip_path = save_uploaded_file_to_disk(reup_zip)
+
+            # ZIP bomb/safety check
+            zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
+            if not zok:
+                cleanup_temp_file(zip_path)
+                return JsonResponse({'success': False, 'message': zerr}, status=400)
+
+            # Parse optional scope parameters
+            scope_payload = _parse_reupload_scope_payload(request)
+            target_field = scope_payload['target_field']
+            card_ids = scope_payload['card_ids']
+            status_filter = scope_payload['status_filter']
+            strict_mode = scope_payload['strict_mode']
         
         # Create BackgroundTask atomically (prevents race conditions)
         task, error_msg = BackgroundTask.create_if_no_active(
@@ -671,13 +914,15 @@ def api_create_reupload_task(request, table_id):
                 'target_field': target_field,
                 'card_ids': card_ids,
                 'status_filter': status_filter,
+                'strict_mode': strict_mode,
             }
         )
         
         if not task:
-            # Cleanup uploaded file since task creation failed
-            from core.services.background_worker import cleanup_temp_file
-            cleanup_temp_file(zip_path)
+            # Cleanup direct-uploaded file since task creation failed.
+            # For preflight token flow keep file for retry until token expiry.
+            if not created_from_preflight:
+                cleanup_temp_file(zip_path)
             
             return JsonResponse({
                 'success': False,
@@ -690,6 +935,7 @@ def api_create_reupload_task(request, table_id):
         return JsonResponse({
             'success': True,
             'task_id': task.id,
+            'created_from_preflight': created_from_preflight,
             'message': f'Reupload task created. Check progress at /api/task-status/{task.id}/'
         })
         

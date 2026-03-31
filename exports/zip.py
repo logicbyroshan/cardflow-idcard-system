@@ -14,6 +14,8 @@ Features:
 import os
 import re
 import io
+import json
+import hashlib
 import base64
 import logging
 import zipfile
@@ -164,6 +166,7 @@ class ZipExporter:
             
             try:
                 with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    reupload_manifest_entries = []
                     for field_info in image_fields:
                         field_name = field_info['name']
                         field_type = field_info.get('type', '')
@@ -201,6 +204,13 @@ class ZipExporter:
                                         # Place inside subdirectory named after field
                                         arcname = f"{folder_name}/{download_filename}"
                                         zf.writestr(arcname, img_data)
+                                        reupload_manifest_entries.append({
+                                            'card_id': card.id,
+                                            'field_name': field_name,
+                                            'zip_path': arcname,
+                                            'sha256': hashlib.sha256(img_data).hexdigest(),
+                                            'size': len(img_data),
+                                        })
                                         field_count += 1
                                         total_images += 1
                                         
@@ -209,6 +219,16 @@ class ZipExporter:
                                 continue
                             except Exception:
                                 continue
+
+                    # Embed deterministic map for robust reupload matching.
+                    # If users edit images in-place and re-zip, backend can
+                    # map card/field to exact file path without basename guesswork.
+                    if reupload_manifest_entries:
+                        manifest_payload = {
+                            'version': 1,
+                            'entries': reupload_manifest_entries,
+                        }
+                        zf.writestr('_reupload_manifest.json', json.dumps(manifest_payload, separators=(',', ':')))
                 
                 if total_images == 0:
                     os.unlink(zip_tmp_path)

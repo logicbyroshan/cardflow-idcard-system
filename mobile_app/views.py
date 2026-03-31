@@ -46,6 +46,7 @@ from accounts.rate_limit import rate_limit
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
 from mediafiles.utils import normalize_uploaded_image
+from mediafiles.services import ImageService
 
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
@@ -2094,11 +2095,62 @@ def api_upload_photo(request, table_id):
         card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
         if not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+        # Keep mobile + desktop lists in sync by writing through the same
+        # field_data/CardMedia image pipeline used by idcard-actions tables.
+        image_field_names = ImageService.get_image_field_names(card.table.fields or [])
+        preferred_field_name = None
+        for field_name in image_field_names:
+            if 'photo' in str(field_name or '').lower():
+                preferred_field_name = field_name
+                break
+        if not preferred_field_name and image_field_names:
+            preferred_field_name = image_field_names[0]
+
+        if preferred_field_name:
+            field_data = card.field_data or {}
+            field_data_upper = {k.upper(): v for k, v in field_data.items()}
+            existing_value = field_data.get(preferred_field_name, '') or field_data_upper.get(preferred_field_name.upper(), '')
+
+            media_result = ImageService.process_image_field(
+                field_name=preferred_field_name,
+                new_value=None,
+                existing_value=existing_value,
+                client=card.table.group.client,
+                card=card,
+                uploaded_file=photo,
+                batch_counter=1,
+                uploaded_by=request.user,
+            )
+            if not media_result.success:
+                return JsonResponse({'success': False, 'message': media_result.message or 'Upload failed'}, status=400)
+
+            final_value = (media_result.data or {}).get('final_value', existing_value)
+            field_data[preferred_field_name] = final_value
+            card.field_data = field_data
+            card.modified_by = getattr(request.user, 'username', '') or card.modified_by
+
+            # Legacy compatibility: keep ImageField pointer aligned with latest path.
+            if final_value:
+                card.photo = final_value
+
+            card.save(update_fields=['field_data', 'modified_by', 'photo'])
+            photo_url = get_card_photo_url(card, field_data)
+            return JsonResponse({
+                'success': True,
+                'message': 'Photo uploaded',
+                'photo_url': photo_url,
+                'field_name': preferred_field_name,
+            })
+
+        # Fallback for tables that have no configured image fields.
         import os, uuid
         ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
         safe_name = f'{uuid.uuid4().hex}{ext}'
         card.photo.save(safe_name, photo, save=True)
-        return JsonResponse({'success': True, 'message': 'Photo uploaded', 'photo_url': card.photo.url})
+        card.modified_by = getattr(request.user, 'username', '') or card.modified_by
+        card.save(update_fields=['modified_by'])
+        return JsonResponse({'success': True, 'message': 'Photo uploaded', 'photo_url': get_card_photo_url(card)})
     except IDCard.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
     except Exception:
