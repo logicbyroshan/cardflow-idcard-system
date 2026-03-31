@@ -5,6 +5,7 @@
 <style>
 
 /* --- Font Faces --------------------------------------------------- */
+{% if not use_pisa_fallback %}
 @font-face {
     font-family: 'Arial';
     src: url('{{ font_dir }}/arial.ttf');
@@ -41,6 +42,7 @@
     font-weight: normal;
     font-style: normal;
 }
+{% endif %}
 
 /* --- Page setup --------------------------------------------------- */
 /*
@@ -48,6 +50,7 @@
    Top margin enlarged to 2.0cm to accommodate the larger 3-line header.
    Bottom margin 1.2cm for the footer row.
 */
+{% if not use_pisa_fallback %}
 @page {
     size: A4 landscape;
     margin: 2.0cm 0.5cm 1.2cm 0.5cm;
@@ -132,6 +135,28 @@
     overflow-wrap: break-word;
     word-break: normal;
 }
+{% else %}
+@page {
+    size: A4 landscape;
+    margin: 1.2cm 0.5cm 1.0cm 0.5cm;
+}
+
+#hdr-left,
+#hdr-center,
+#hdr-right,
+#ftr-left {
+    display: none;
+}
+
+.pisa-header {
+    font-family: {{ font_family }};
+    font-size: 10pt;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 0 8pt 0;
+    line-height: 1.35;
+}
+{% endif %}
 
 /* --- Global reset ------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -272,6 +297,10 @@ table.data-table td.img-cell.placeholder-cell img {
 {# -- Pages -------------------------------------------------------------------- #}
 {% for page_rows in pages %}
 <div class="page">
+
+    {% if use_pisa_fallback %}
+    <div class="pisa-header">{{ institution_name|upper }} | {{ center_list_name|default:table_name|upper }}{% if current_date %} ({{ current_date }}){% endif %} | ADARSH ID CARDS</div>
+    {% endif %}
 
     <table class="data-table">
         <colgroup>
