@@ -489,11 +489,6 @@ class PdfExporter:
                 'use_pisa_fallback': (not _weasyprint_available),
             }
 
-            if not _weasyprint_available:
-                # xhtml2pdf/ReportLab works best with built-in fonts on Windows.
-                context['font_family'] = 'Helvetica, Arial, sans-serif'
-                context['template_font'] = 'Helvetica'
-
             html_string = render_to_string('exports/pdf_report.html', context)
             filename = generate_export_filename(table.name, 'pdf', client_name=institution_name, status=status)
 
