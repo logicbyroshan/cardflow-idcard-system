@@ -52,7 +52,7 @@ THUMBNAIL_SIZE = (150, 150)
 # Suffix added to thumbnail filenames
 THUMBNAIL_SUFFIX = '_thumb'
 
-# JPEG quality for thumbnails (1-100)
+# WebP quality for thumbnails (1-100)
 THUMBNAIL_QUALITY = 85
 
 # =============================================================================

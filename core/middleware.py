@@ -26,6 +26,21 @@ SLOW_REQUEST_THRESHOLD = getattr(django_settings, 'SLOW_REQUEST_THRESHOLD', 1.5)
 QUERY_COUNT_THRESHOLD = getattr(django_settings, 'QUERY_COUNT_THRESHOLD', 50)
 SLOW_QUERY_THRESHOLD = getattr(django_settings, 'SLOW_QUERY_THRESHOLD', 0.1)
 
+# Read-mostly polling APIs should avoid session writes to reduce DB lock
+# contention while background workers are doing heavy writes.
+TASK_POLLING_PATH_PREFIXES = (
+    '/api/task-status/',
+    '/api/task-active/',
+    '/api/task-list/',
+    '/api/export/status/',
+)
+
+
+def _is_task_polling_path(path: str) -> bool:
+    if not path:
+        return False
+    return any(path.startswith(prefix) for prefix in TASK_POLLING_PATH_PREFIXES)
+
 
 class SubdomainRoutingMiddleware:
     """
@@ -372,7 +387,12 @@ class PermissionValidationMiddleware:
         if not getattr(request.user, 'is_active', True):
             return self._force_logout(request, 'Your account has been deactivated.')
 
-        self._sync_revalidation_marker(request)
+        is_task_polling = _is_task_polling_path(request.path)
+
+        # Task polling endpoints are read-mostly and frequent. Avoid touching
+        # session keys there to reduce lock contention with background tasks.
+        if not is_task_polling:
+            self._sync_revalidation_marker(request)
 
         fingerprint_result = self._validate_session_fingerprint(request)
         if fingerprint_result is not None:
@@ -389,7 +409,7 @@ class PermissionValidationMiddleware:
         # This avoids forcing a session write on every request.
         now_ts = time.time()
         prev_ts = float(request.session.get('_pvm_last_check', 0) or 0)
-        if (now_ts - prev_ts) >= max(float(self.REVALIDATION_INTERVAL), 1.0):
+        if (not is_task_polling) and (now_ts - prev_ts) >= max(float(self.REVALIDATION_INTERVAL), 1.0):
             request.session['_pvm_last_check'] = now_ts
         
         # Annotate request with role-based scope (merged from RoleScopingMiddleware)
@@ -1024,6 +1044,11 @@ class SessionIdleTimeoutMiddleware:
             session_created = request.session.get('_session_created')
             if session_created is not None and (now - session_created) > self._max_age:
                 return self._force_logout(request, reason='absolute_max_age')
+
+        # Background task polling can be very frequent. Skip activity stamp
+        # writes for these paths to avoid DB lock contention on SQLite.
+        if _is_task_polling_path(request.path):
+            return self.get_response(request)
 
         # Stamp session on first authenticated use (for absolute max-age tracking)
         # and throttle subsequent writes to once per ACTIVITY_WRITE_INTERVAL.

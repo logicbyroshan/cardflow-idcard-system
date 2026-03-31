@@ -94,6 +94,7 @@ class ImageRecordsMixin:
         original_ext: str = '.jpg',
         original_filename: str = None,
         uploaded_by=None,
+        delete_old_after_save: bool = True,
     ) -> 'MediaResult':
         """
         Single entry point for REPLACING an existing image.
@@ -126,6 +127,7 @@ class ImageRecordsMixin:
             existing_path=existing_path,
             batch_counter=batch_counter,
             original_ext=original_ext,
+            delete_existing_on_update=delete_old_after_save,
         )
         if not result.success:
             return result
@@ -153,6 +155,8 @@ class ImageRecordsMixin:
 
         result.data['final_value'] = saved_path
         result.data['action'] = 'upload'
+        if existing_path and not delete_old_after_save:
+            result.data['old_path_to_delete'] = existing_path
         return result
 
     @classmethod

@@ -82,7 +82,7 @@ def normalize_image_bytes_for_storage(
     image_bytes: bytes,
     suggested_ext: str = '.jpg',
 ) -> Tuple[bytes, str, Optional[str]]:
-    """Validate image bytes and convert HEIC/HEIF to JPEG for compatibility."""
+    """Validate image bytes and transcode all supported formats to JPEG."""
     if not image_bytes:
         return image_bytes, _normalize_extension(suggested_ext), 'Image data is empty'
 
@@ -94,19 +94,33 @@ def normalize_image_bytes_for_storage(
         with Image.open(BytesIO(image_bytes)) as verify_img:
             verify_img.verify()
 
-        with Image.open(BytesIO(image_bytes)) as probe_img:
-            fmt = (probe_img.format or '').lower()
+        # Canonical storage rule: every uploaded image is stored as JPG.
+        with Image.open(BytesIO(image_bytes)) as src_img:
+            working_img = ImageOps.exif_transpose(src_img)
+            try:
+                if working_img.mode in ('RGBA', 'LA', 'P'):
+                    if working_img.mode == 'P':
+                        converted = working_img.convert('RGBA')
+                        if working_img is not src_img:
+                            working_img.close()
+                        working_img = converted
+                    background = Image.new('RGB', working_img.size, (255, 255, 255))
+                    background.paste(working_img, mask=working_img.split()[-1] if 'A' in working_img.mode else None)
+                    if working_img is not src_img:
+                        working_img.close()
+                    working_img = background
+                elif working_img.mode != 'RGB':
+                    converted = working_img.convert('RGB')
+                    if working_img is not src_img:
+                        working_img.close()
+                    working_img = converted
 
-        if fmt in ('heic', 'heif'):
-            with Image.open(BytesIO(image_bytes)) as img:
-                img = ImageOps.exif_transpose(img)
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
                 out = BytesIO()
-                img.save(out, format='JPEG', quality=92, optimize=True)
+                working_img.save(out, format='JPEG', quality=92, optimize=True)
                 return out.getvalue(), '.jpg', None
-
-        return image_bytes, _normalize_extension(suggested_ext), None
+            finally:
+                if working_img is not src_img:
+                    working_img.close()
     except Exception as exc:
         return image_bytes, _normalize_extension(suggested_ext), f'Invalid image: {exc}'
 

@@ -2,7 +2,7 @@
 Thumbnail Service
 
 Handles thumbnail generation and management.
-Thumbnails stored in: adarshimg/thumbs/{client_code}/{filename}.jpg
+Thumbnails stored in: adarshimg/thumbs/{client_code}/{filename}.webp
 
 Rules (Phase 2 hardened):
   1. Thumbnails MUST be 5–10× smaller (bytes) than the original.
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 MIN_SIZE_RATIO = 5        # Thumbnail must be at least 5× smaller than original
 MAX_SIZE_RATIO = 10       # Target upper bound (softer — we don't upscale quality)
-MIN_QUALITY = 40          # Absolute floor for JPEG quality during auto-shrink
+MIN_QUALITY = 40          # Absolute floor for WebP quality during auto-shrink
 QUALITY_STEP = 5          # How much to drop quality per retry
 
 
@@ -39,7 +39,7 @@ class ThumbnailService:
     
     Storage structure:
     - Original: media/adarshimg/{client_code}/{filename}.jpg
-    - Thumbnail: media/adarshimg/thumbs/{client_code}/{filename}.jpg
+    - Thumbnail: media/adarshimg/thumbs/{client_code}/{filename}.webp
     
     Phase 2 guarantees:
     - Thumbnail is 5–10× smaller (bytes) than the original.
@@ -125,7 +125,7 @@ class ThumbnailService:
             original_size_bytes: Size of the original file in bytes (for ratio enforcement).
             
         Returns:
-            Thumbnail image bytes (JPEG), or None on failure.
+            Thumbnail image bytes (WebP), or None on failure.
         """
         if not image_bytes or len(image_bytes) < 100:
             logger.warning("Invalid image bytes for thumbnail generation")

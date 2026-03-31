@@ -113,7 +113,7 @@ class ImageServiceBasicTests(TestCase):
         is_valid, error_msg = validate_image_bytes(b'')
         self.assertFalse(is_valid)
 
-    def test_save_new_image_preserves_png_extension(self):
+    def test_save_new_image_normalizes_png_to_jpg(self):
         from io import BytesIO
         from PIL import Image
         from mediafiles.services import ImageService
@@ -132,14 +132,14 @@ class ImageServiceBasicTests(TestCase):
         )
         self.assertTrue(result.success, result.message)
         saved_path = result.data.get('final_value', '')
-        self.assertTrue(saved_path.lower().endswith('.png'))
+        self.assertTrue(saved_path.lower().endswith('.jpg'))
 
         # Keep media folder clean for subsequent tests.
         ImageService.delete_image(saved_path)
 
 
 class UploadNormalizationTests(TestCase):
-    def test_normalize_uploaded_image_accepts_png(self):
+    def test_normalize_uploaded_image_converts_png_to_jpg(self):
         from io import BytesIO
         from PIL import Image
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -161,7 +161,8 @@ class UploadNormalizationTests(TestCase):
 
         self.assertIsNone(error)
         self.assertIsNotNone(normalized)
-        self.assertEqual(normalized.name.lower(), 'student.png')
+        self.assertEqual(normalized.name.lower(), 'student.jpg')
+        self.assertEqual(normalized.content_type, 'image/jpeg')
 
     def test_normalize_uploaded_image_converts_heic_to_jpg(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

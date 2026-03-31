@@ -33,6 +33,10 @@ def _db_retry(fn, max_retries=5, base_delay=1.0):
     - PostgreSQL: stale / dropped connections
         - InterfaceError  ('connection already closed')
         - OperationalError('server closed the connection unexpectedly')
+    - PostgreSQL transient write conflicts
+        - deadlock detected (40P01)
+        - serialization failure (40001)
+        - lock not available / lock timeout (55P03)
 
     On a connection-level error we call close_old_connections() so Django
     opens a fresh connection on the next attempt.
@@ -45,6 +49,18 @@ def _db_retry(fn, max_retries=5, base_delay=1.0):
         except (OperationalError, InterfaceError) as e:
             err_str = str(e).lower()
             is_lock = 'database is locked' in err_str
+            pg_code = (
+                getattr(e, 'pgcode', None)
+                or getattr(getattr(e, '__cause__', None), 'pgcode', None)
+            )
+            is_pg_transient = pg_code in {'40001', '40P01', '55P03'}
+            is_pg_lock_text = (
+                'deadlock detected' in err_str
+                or 'could not serialize access' in err_str
+                or 'lock timeout' in err_str
+                or 'could not obtain lock on row' in err_str
+                or 'lock not available' in err_str
+            )
             is_conn = (
                 isinstance(e, InterfaceError)
                 or 'server closed the connection' in err_str
@@ -52,7 +68,7 @@ def _db_retry(fn, max_retries=5, base_delay=1.0):
                 or 'could not connect to server' in err_str
                 or 'ssl connection has been closed' in err_str
             )
-            if not (is_lock or is_conn):
+            if not (is_lock or is_conn or is_pg_transient or is_pg_lock_text):
                 raise  # not a transient issue — propagate immediately
             last_err = e
             delay = base_delay * (2 ** attempt)  # 1, 2, 4, 8, 16 s
@@ -60,7 +76,7 @@ def _db_retry(fn, max_retries=5, base_delay=1.0):
                 "DB transient error (attempt %d/%d), retrying in %.1fs: %s",
                 attempt + 1, max_retries, delay, e,
             )
-            if is_conn:
+            if is_conn or is_pg_transient:
                 try:
                     from django.db import close_old_connections
                     close_old_connections()
@@ -174,6 +190,7 @@ def process_reupload_images(task):
         pending_updates = []  # Accumulated cards for bulk_update; flushed every FLUSH_EVERY
         pending_media_deletes = []  # (card_pk, field_name) tuples for batch CardMedia cleanup
         pending_media_creates = []  # kwargs dicts for batch CardMedia creation
+        pending_storage_deletes = []  # old paths to delete only AFTER DB commit
         FLUSH_EVERY = 100  # larger batches → fewer DB writes → less lock contention
 
         for idx, card in enumerate(cards_qs.iterator(chunk_size=200)):
@@ -273,6 +290,9 @@ def process_reupload_images(task):
                             # Queue CardMedia ops for batch flush
                             if existing_path:
                                 pending_media_deletes.append((card.pk, img_field))
+                                old_path = result.data.get('old_path_to_delete')
+                                if old_path and old_path != saved_path:
+                                    pending_storage_deletes.append(old_path)
                             pending_media_creates.append({
                                 'card': card,
                                 'client': client,
@@ -300,11 +320,13 @@ def process_reupload_images(task):
             if (idx + 1) % FLUSH_EVERY == 0 or idx == total_cards - 1:
                 _flush_batch(
                     pending_updates, pending_media_deletes,
-                    pending_media_creates, IDCard, ImageService, client,
+                    pending_media_creates, pending_storage_deletes,
+                    IDCard, ImageService, client,
                 )
                 pending_updates = []
                 pending_media_deletes = []
                 pending_media_creates = []
+                pending_storage_deletes = []
                 _db_retry(lambda _idx=idx: task.update_progress(_idx + 1))
 
         # Safety flush: if the iterator returned fewer rows than total_cards
@@ -313,11 +335,13 @@ def process_reupload_images(task):
         if pending_updates or pending_media_creates:
             _flush_batch(
                 pending_updates, pending_media_deletes,
-                pending_media_creates, IDCard, ImageService, client,
+                pending_media_creates, pending_storage_deletes,
+                IDCard, ImageService, client,
             )
             pending_updates = []
             pending_media_deletes = []
             pending_media_creates = []
+            pending_storage_deletes = []
 
         # Build result
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"
@@ -355,13 +379,20 @@ def process_reupload_images(task):
         _cleanup_task_files(task)
 
 
-def _flush_batch(pending_updates, pending_media_deletes, pending_media_creates,
-                 IDCard, ImageService, client):
+def _flush_batch(
+    pending_updates,
+    pending_media_deletes,
+    pending_media_creates,
+    pending_storage_deletes,
+    IDCard,
+    ImageService,
+    client,
+):
     """
     Flush accumulated DB writes in a single retried transaction.
 
-    Groups IDCard bulk_update + CardMedia delete/create into one write so
-    SQLite's single-writer lock is acquired only once per batch.
+    Groups IDCard bulk_update + CardMedia delete/create into one write.
+    Old image file deletion is deferred until after DB commit succeeds.
     """
     if not pending_updates and not pending_media_creates:
         return
@@ -402,7 +433,44 @@ def _flush_batch(pending_updates, pending_media_deletes, pending_media_creates,
                     ))
                 CardMedia.objects.bulk_create(objs, batch_size=100)
 
-    _db_retry(_do_flush)
+    try:
+        _db_retry(_do_flush)
+    except Exception:
+        # DB failed: rollback saved files from this batch so paths don't drift.
+        rollback_paths = {
+            item.get('saved_path')
+            for item in pending_media_creates
+            if item.get('saved_path')
+        }
+        for saved_path in rollback_paths:
+            try:
+                ImageService.delete_image(saved_path)
+            except Exception as cleanup_err:
+                logger.warning(
+                    "Reupload rollback cleanup failed for new file %s: %s",
+                    saved_path,
+                    cleanup_err,
+                )
+        raise
+
+    # DB commit succeeded: now it is safe to remove old replaced files.
+    if pending_storage_deletes:
+        from mediafiles.models import CardMedia
+
+        for old_path in set(pending_storage_deletes):
+            if not old_path:
+                continue
+            try:
+                # If any row still references this file, do not delete it.
+                if CardMedia.objects.filter(file=old_path).exists():
+                    continue
+                ImageService.delete_image(old_path)
+            except Exception as delete_err:
+                logger.warning(
+                    "Deferred old-image delete failed for %s: %s",
+                    old_path,
+                    delete_err,
+                )
 
 
 def _build_zip_image_index(zip_path):

@@ -237,7 +237,8 @@ class ImageCoreMixin:
         file_content,
         client,
         existing_path: Optional[str] = None,
-        batch_counter: int = 1
+        batch_counter: int = 1,
+        delete_existing_on_update: bool = True,
     ) -> 'MediaResult':
         """
         Save an image file to the client's folder with collision-safe renaming.
@@ -249,6 +250,7 @@ class ImageCoreMixin:
             client: Client model instance
             existing_path: Path of existing image (for updates)
             batch_counter: Counter for unique filename generation
+            delete_existing_on_update: If True, remove old file+thumbnail immediately
             
         Returns:
             MediaResult with saved path in data['path']
@@ -303,7 +305,7 @@ class ImageCoreMixin:
             saved_path = default_storage.save(file_path, ContentFile(image_bytes))
             
             # Delete old image if this is an update
-            if is_update:
+            if is_update and delete_existing_on_update:
                 try:
                     if default_storage.exists(existing_path):
                         default_storage.delete(existing_path)
@@ -339,7 +341,8 @@ class ImageCoreMixin:
         client,
         existing_path: Optional[str] = None,
         batch_counter: int = 1,
-        original_ext: str = '.jpg'
+        original_ext: str = '.jpg',
+        delete_existing_on_update: bool = True,
     ) -> 'MediaResult':
         """
         Save an image and generate its thumbnail.
@@ -370,7 +373,8 @@ class ImageCoreMixin:
             ContentFile(image_bytes, name=f'upload{original_ext}'),
             client,
             existing_path,
-            batch_counter
+            batch_counter,
+            delete_existing_on_update,
         )
         
         if not result.success:

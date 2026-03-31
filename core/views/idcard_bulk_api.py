@@ -571,80 +571,109 @@ def api_idcard_reupload_images(request, table_id):
         
         for batch_start in range(0, len(all_card_ids), REUPLOAD_BATCH_SIZE):
             batch_ids = all_card_ids[batch_start:batch_start + REUPLOAD_BATCH_SIZE]
-            
-            with transaction.atomic():
-                batch_cards = IDCard.objects.filter(id__in=batch_ids).order_by('id')
-                
-                for card in batch_cards:
-                    field_data = card.field_data or {}
-                    card_updated = False
-                    
-                    for img_field in image_field_names:
-                        current_value = field_data.get(img_field, '')
-                        
-                        # Determine what to match against
-                        match_key = None
-                        existing_path = None
-                        
-                        if current_value.startswith('PENDING:'):
-                            # Extract the reference from PENDING:reference
-                            match_key = BaseService.normalize_image_identifier(current_value[8:])
-                        elif current_value and current_value not in ('NOT_FOUND', ''):
-                            # Has existing image - extract filename for matching
-                            existing_path = current_value
-                            existing_filename = os.path.splitext(os.path.basename(current_value))[0]
-                            match_key = BaseService.normalize_image_identifier(existing_filename)
-                        else:
-                            # No current value - skip unless we want to match by card data
-                            # Could extend to match by NAME or other field values
+            batch_new_paths = []
+            batch_old_paths_to_delete = []
+
+            try:
+                with transaction.atomic():
+                    batch_cards = IDCard.objects.filter(id__in=batch_ids).order_by('id')
+
+                    for card in batch_cards:
+                        field_data = card.field_data or {}
+                        card_updated = False
+
+                        for img_field in image_field_names:
+                            current_value = field_data.get(img_field, '')
+
+                            # Determine what to match against
+                            match_key = None
+                            existing_path = None
+
+                            if current_value.startswith('PENDING:'):
+                                # Extract the reference from PENDING:reference
+                                match_key = BaseService.normalize_image_identifier(current_value[8:])
+                            elif current_value and current_value not in ('NOT_FOUND', ''):
+                                # Has existing image - extract filename for matching
+                                existing_path = current_value
+                                existing_filename = os.path.splitext(os.path.basename(current_value))[0]
+                                match_key = BaseService.normalize_image_identifier(existing_filename)
+                            else:
+                                # No current value - skip unless we want to match by card data
+                                # Could extend to match by NAME or other field values
+                                continue
+
+                            if not match_key:
+                                continue
+
+                            # Try to find matching photo in ZIP
+                            if match_key in zip_photos:
+                                photo_info = zip_photos[match_key]
+                                matched_count += 1
+
+                                try:
+                                    batch_counter += 1
+
+                                    # Use single-authority entry point
+                                    if existing_path:
+                                        result = ImageService.replace_image(
+                                            image_bytes=photo_info['bytes'],
+                                            client=client,
+                                            field_name=img_field,
+                                            existing_path=existing_path,
+                                            card=card,
+                                            batch_counter=batch_counter,
+                                            original_ext=photo_info['ext'],
+                                            delete_old_after_save=False,
+                                        )
+                                    else:
+                                        result = ImageService.save_new_image(
+                                            image_bytes=photo_info['bytes'],
+                                            client=client,
+                                            field_name=img_field,
+                                            card=card,
+                                            batch_counter=batch_counter,
+                                            original_ext=photo_info['ext'],
+                                        )
+
+                                    if result.success and result.data.get('final_value'):
+                                        saved_path = result.data['final_value']
+                                        field_data[img_field] = saved_path
+                                        card_updated = True
+                                        batch_new_paths.append(saved_path)
+                                        old_path = result.data.get('old_path_to_delete')
+                                        if old_path and old_path != saved_path:
+                                            batch_old_paths_to_delete.append(old_path)
+                                        logger.debug("Reupload: Card %s field %s updated to %s",
+                                                   card.pk, img_field, saved_path)
+                                    else:
+                                        errors.append(f"Card {card.pk}: Failed to save {img_field} - {result.message}")
+                                except Exception as save_err:
+                                    errors.append(f"Card {card.pk}: Error saving {img_field} - {str(save_err)}")
+
+                        if card_updated:
+                            card.field_data = field_data
+                            card.save()
+                            updated_count += 1
+            except Exception:
+                # Transaction failed: remove newly saved files from this batch.
+                for new_path in set(batch_new_paths):
+                    try:
+                        ImageService.delete_image(new_path)
+                    except Exception:
+                        pass
+                raise
+
+            # DB commit succeeded: now remove superseded old files.
+            if batch_old_paths_to_delete:
+                from mediafiles.models import CardMedia
+
+                for old_path in set(batch_old_paths_to_delete):
+                    try:
+                        if CardMedia.objects.filter(file=old_path).exists():
                             continue
-                        
-                        if not match_key:
-                            continue
-                        
-                        # Try to find matching photo in ZIP
-                        if match_key in zip_photos:
-                            photo_info = zip_photos[match_key]
-                            matched_count += 1
-                            
-                            try:
-                                batch_counter += 1
-                                
-                                # Use single-authority entry point
-                                if existing_path:
-                                    result = ImageService.replace_image(
-                                        image_bytes=photo_info['bytes'],
-                                        client=client,
-                                        field_name=img_field,
-                                        existing_path=existing_path,
-                                        card=card,
-                                        batch_counter=batch_counter,
-                                        original_ext=photo_info['ext'],
-                                    )
-                                else:
-                                    result = ImageService.save_new_image(
-                                        image_bytes=photo_info['bytes'],
-                                        client=client,
-                                        field_name=img_field,
-                                        card=card,
-                                        batch_counter=batch_counter,
-                                        original_ext=photo_info['ext'],
-                                    )
-                                
-                                if result.success and result.data.get('final_value'):
-                                    field_data[img_field] = result.data['final_value']
-                                    card_updated = True
-                                    logger.debug("Reupload: Card %s field %s updated to %s", 
-                                               card.pk, img_field, result.data['final_value'])
-                                else:
-                                    errors.append(f"Card {card.pk}: Failed to save {img_field} - {result.message}")
-                            except Exception as save_err:
-                                errors.append(f"Card {card.pk}: Error saving {img_field} - {str(save_err)}")
-                    
-                    if card_updated:
-                        card.field_data = field_data
-                        card.save()
-                        updated_count += 1
+                        ImageService.delete_image(old_path)
+                    except Exception:
+                        continue
         
         # Build response
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"

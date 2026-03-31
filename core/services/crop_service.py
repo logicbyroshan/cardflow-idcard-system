@@ -406,6 +406,7 @@ class CropService:
                 continue
 
             # Replace image via ImageService
+            result = None
             try:
                 result = ImageService.replace_image(
                     image_bytes=image_bytes,
@@ -415,10 +416,19 @@ class CropService:
                     card=card,
                     batch_counter=updated_count + 1,
                     original_ext=source_path.suffix,
+                    delete_old_after_save=False,
                 )
                 if result.success and result.data.get("final_value"):
-                    card.field_data[field_name] = result.data["final_value"]
+                    saved_path = result.data["final_value"]
+                    card.field_data[field_name] = saved_path
                     card.save(update_fields=["field_data", "updated_at"])
+
+                    old_path = result.data.get('old_path_to_delete')
+                    if old_path and old_path != saved_path:
+                        from mediafiles.models import CardMedia
+                        if not CardMedia.objects.filter(file=old_path).exists():
+                            ImageService.delete_image(old_path)
+
                     updated_count += 1
                 else:
                     error_count += 1
@@ -426,6 +436,12 @@ class CropService:
                         f"Card {card_id}: ImageService error — {result.message}"
                     )
             except Exception as exc:
+                try:
+                    rollback_path = result.data.get("final_value") if result is not None else None
+                    if rollback_path:
+                        ImageService.delete_image(rollback_path)
+                except Exception:
+                    pass
                 error_count += 1
                 errors.append(f"Card {card_id}: {exc}")
                 logger.exception("Reupload cropped error for card %d", card_id)
