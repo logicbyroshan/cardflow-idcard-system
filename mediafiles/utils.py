@@ -12,7 +12,6 @@ import os
 import re
 import random
 import string
-import uuid
 import logging
 from io import BytesIO
 from datetime import datetime
@@ -221,20 +220,23 @@ def generate_unique_suffix(length: int = 5) -> str:
 # FILENAME GENERATION (restored from backup — critical for unique filenames)
 # =============================================================================
 
-def generate_image_filename(batch_counter: int = 1, extension: str = '.jpg') -> str:
+def generate_image_filename(batch_counter: int = 1, extension: str = '.jpg', upload_prefix: str = 'a') -> str:
     """
     Generate a unique filename for newly uploaded images.
-    Format: {HHMMSSmmmuuuCC}.ext (14 digits total)
+    Format: {a|c}{HHMMSSmmmuuuCC}.ext (15 chars before extension)
     
     Args:
         batch_counter: Sequential number within current upload batch (1-99)
         extension: File extension including dot
     
     Returns:
-        New filename string (14 digits + extension)
+        New filename string (role prefix + 14 digits + extension)
     """
     try:
         ext = _normalize_extension(extension)
+        prefix = str(upload_prefix or '').strip().lower()
+        if prefix not in ('a', 'c'):
+            prefix = 'a'
         now = datetime.now()
         time_part = now.strftime('%H%M%S')
         microseconds = now.microsecond
@@ -243,22 +245,29 @@ def generate_image_filename(batch_counter: int = 1, extension: str = '.jpg') -> 
         mmm = str(milliseconds).zfill(3)
         uuu = str(micros).zfill(3)
         counter = batch_counter % 100
-        filename = f"{time_part}{mmm}{uuu}{counter:02d}{ext}"
+        filename = f"{prefix}{time_part}{mmm}{uuu}{counter:02d}{ext}"
         return filename
     except Exception:
-        return f"img{uuid.uuid4().hex[:10]}{extension or '.jpg'}"
+        prefix = str(upload_prefix or '').strip().lower()
+        if prefix not in ('a', 'c'):
+            prefix = 'a'
+        ext = _normalize_extension(extension or '.jpg')
+        now = datetime.now()
+        fallback_base = f"{now.strftime('%H%M%S')}{str(now.microsecond).zfill(6)[:6]}{batch_counter % 100:02d}"
+        return f"{prefix}{fallback_base}{ext}"
 
 
-def generate_updated_filename(existing_path: str, new_extension: Optional[str] = None) -> str:
+def generate_updated_filename(existing_path: str, new_extension: Optional[str] = None, upload_prefix: str = 'a') -> str:
     """
     Generate updated filename for existing images (update/reupload).
-    Keeps the ORIGINAL 14-digit timestamp and adds underscore + 6-digit HHMMSS.
+    Keeps the ORIGINAL base token and adds underscore + 6-digit HHMMSS.
+    Base token can be either legacy 14-digit or new prefixed (a/c + 14-digit).
     """
     try:
         if existing_path and existing_path not in ['NOT_FOUND', '', 'PENDING']:
             filename = os.path.basename(existing_path)
         else:
-            return generate_image_filename(1, new_extension or '.jpg')
+            return generate_image_filename(1, new_extension or '.jpg', upload_prefix=upload_prefix)
         
         base_name, current_ext = os.path.splitext(filename)
         ext = _normalize_extension(new_extension) if new_extension else current_ext
@@ -268,13 +277,22 @@ def generate_updated_filename(existing_path: str, new_extension: Optional[str] =
             original_base = base_name.split('_')[0]
         else:
             original_base = base_name
+
+        is_legacy_base = len(original_base) == 14 and original_base.isdigit()
+        is_prefixed_base = (
+            len(original_base) == 15
+            and original_base[0].lower() in ('a', 'c')
+            and original_base[1:].isdigit()
+        )
+        if not (is_legacy_base or is_prefixed_base):
+            return generate_image_filename(1, ext or '.jpg', upload_prefix=upload_prefix)
         
         now = datetime.now()
         update_time = now.strftime('%H%M%S')
         new_filename = f"{original_base}_{update_time}{ext}"
         return new_filename
     except Exception:
-        return generate_image_filename(1, new_extension or '.jpg')
+        return generate_image_filename(1, new_extension or '.jpg', upload_prefix=upload_prefix)
 
 
 def _normalize_extension(ext: str) -> str:

@@ -26,8 +26,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-_NAME_14_RE = re.compile(r'^\d{14}$')
-_NAME_14_6_RE = re.compile(r'^\d{14}_\d{6}$')
+_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
+_NAME_BASE_6_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})_\d{6}$')
 
 
 def _db_retry(fn, max_retries=5, base_delay=1.0):
@@ -120,6 +120,7 @@ def process_reupload_images(task):
     metadata = task.metadata or {}
     table_id = metadata.get('table_id')
     strict_mode = bool(metadata.get('strict_mode', True))
+    task_user = getattr(task, 'user', None)
     
     if not table_id:
         task.mark_failed("Missing table_id in metadata")
@@ -344,6 +345,7 @@ def process_reupload_images(task):
                                 card=None,  # defer CardMedia to batch
                                 batch_counter=batch_counter,
                                 original_ext=zip_entry['ext'],
+                                uploaded_by=task_user,
                             )
                         else:
                             result = ImageService.save_new_image(
@@ -353,6 +355,7 @@ def process_reupload_images(task):
                                 card=None,  # defer CardMedia to batch
                                 batch_counter=batch_counter,
                                 original_ext=zip_entry['ext'],
+                                uploaded_by=task_user,
                             )
                         
                         if result.success and result.data.get('final_value'):
@@ -662,16 +665,16 @@ def _is_valid_system_filename(path_or_name, mode='new'):
     """
     Validate filename stem against system policy.
 
-    new     -> 14 digits
-    update  -> 14 digits + underscore + 6 digits
+    new     -> [a|c]+14 digits OR legacy 14 digits
+    update  -> base + underscore + 6 digits
     """
     base_name = os.path.basename(str(path_or_name or '').strip())
     stem, _ = os.path.splitext(base_name)
     if mode == 'new':
-        return bool(_NAME_14_RE.match(stem))
+        return bool(_NAME_BASE_RE.match(stem))
     if mode == 'update':
-        return bool(_NAME_14_6_RE.match(stem))
-    return bool(_NAME_14_RE.match(stem) or _NAME_14_6_RE.match(stem))
+        return bool(_NAME_BASE_6_RE.match(stem))
+    return bool(_NAME_BASE_RE.match(stem) or _NAME_BASE_6_RE.match(stem))
 
 
 def _run_reupload_preflight(

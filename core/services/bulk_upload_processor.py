@@ -119,6 +119,7 @@ def process_bulk_upload(task):
         # Get ZIP file paths from metadata
         zip_paths = metadata.get('zip_paths', {})
         unified_zip_paths = metadata.get('unified_zip_paths', [])
+        task_user = getattr(task, 'user', None)
 
         # Build ZIP index ONCE before the row loop.
         # Scans every ZIP's central directory a single time so each row can do
@@ -164,6 +165,7 @@ def process_bulk_upload(task):
                             zip_index=zip_index,
                             client=client,
                             batch_counter=len(batch) + cards_created + 1,
+                            uploaded_by=task_user if getattr(task_user, 'is_authenticated', False) else None,
                         )
                         
                         if result['success']:
@@ -490,7 +492,7 @@ def _populate_zip_index(zf, index):
             index[key] = (zf, info.filename, ext)
 
 
-def _find_and_save_image_from_zips(photo_column_value, zip_index, client, batch_counter):
+def _find_and_save_image_from_zips(photo_column_value, zip_index, client, batch_counter, uploaded_by=None):
     """
     Find an image using the pre-built zip_index and save it.
 
@@ -523,10 +525,11 @@ def _find_and_save_image_from_zips(photo_column_value, zip_index, client, batch_
         {'bytes': image_bytes, 'ext': ext, 'original_name': os.path.basename(internal_path)},
         client,
         batch_counter,
+        uploaded_by=uploaded_by,
     )
 
 
-def _save_extracted_image(result, client, batch_counter):
+def _save_extracted_image(result, client, batch_counter, uploaded_by=None):
     """
     Save an extracted image using ImageService single-authority entry point.
     """
@@ -540,6 +543,7 @@ def _save_extracted_image(result, client, batch_counter):
             card=None,  # card not yet created during bulk upload
             batch_counter=batch_counter,
             original_ext=result['ext'],
+            uploaded_by=uploaded_by,
         )
         
         if save_result.success and save_result.data.get('final_value'):

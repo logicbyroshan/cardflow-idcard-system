@@ -624,6 +624,7 @@ def api_idcard_reupload_images(request, table_id):
                                             batch_counter=batch_counter,
                                             original_ext=photo_info['ext'],
                                             delete_old_after_save=False,
+                                            uploaded_by=request.user if request.user.is_authenticated else None,
                                         )
                                     else:
                                         result = ImageService.save_new_image(
@@ -633,6 +634,7 @@ def api_idcard_reupload_images(request, table_id):
                                             card=card,
                                             batch_counter=batch_counter,
                                             original_ext=photo_info['ext'],
+                                            uploaded_by=request.user if request.user.is_authenticated else None,
                                         )
 
                                     if result.success and result.data.get('final_value'):

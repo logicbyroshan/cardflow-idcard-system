@@ -391,6 +391,7 @@ def process_data_rows(*, rows, header_to_field, image_ref_columns, image_fields,
                                         card=None,
                                         batch_counter=cards_created,
                                         original_ext=photo_info['ext'],
+                                        uploaded_by=request_user if request_user and request_user.is_authenticated else None,
                                     )
                                     # Free image bytes immediately after save
                                     del photo_info

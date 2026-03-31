@@ -113,14 +113,14 @@ class ImageCoreMixin:
         return True
 
     @staticmethod
-    def generate_filename(batch_counter: int = 1, original_ext: str = '.jpg') -> str:
-        """Generate a unique 14-digit filename for NEW uploaded images."""
-        return ImageRenamer.generate_filename(batch_counter, original_ext)
+    def generate_filename(batch_counter: int = 1, original_ext: str = '.jpg', upload_prefix: str = 'a') -> str:
+        """Generate a unique prefixed filename for NEW uploaded images."""
+        return ImageRenamer.generate_filename(batch_counter, original_ext, upload_prefix=upload_prefix)
 
     @staticmethod
-    def generate_updated_filename(existing_path: str, new_ext: Optional[str] = None) -> str:
+    def generate_updated_filename(existing_path: str, new_ext: Optional[str] = None, upload_prefix: str = 'a') -> str:
         """Generate updated filename for EXISTING images (preserves original timestamp)."""
-        return ImageRenamer.generate_updated_filename(existing_path, new_ext)
+        return ImageRenamer.generate_updated_filename(existing_path, new_ext, upload_prefix=upload_prefix)
 
     # ==================== VALIDATION ====================
 
@@ -239,6 +239,7 @@ class ImageCoreMixin:
         existing_path: Optional[str] = None,
         batch_counter: int = 1,
         delete_existing_on_update: bool = True,
+        uploader_prefix: str = 'a',
     ) -> 'MediaResult':
         """
         Save an image file to the client's folder with collision-safe renaming.
@@ -292,11 +293,17 @@ class ImageCoreMixin:
             
             if is_update:
                 filename = ImageRenamer.generate_updated_filename_safe(
-                    client_folder, existing_path, original_ext
+                    client_folder,
+                    existing_path,
+                    original_ext,
+                    upload_prefix=uploader_prefix,
                 )
             else:
                 filename = ImageRenamer.generate_filename_safe(
-                    client_folder, batch_counter, original_ext
+                    client_folder,
+                    batch_counter,
+                    original_ext,
+                    upload_prefix=uploader_prefix,
                 )
             
             file_path = f"{client_folder}/{filename}"
@@ -343,6 +350,7 @@ class ImageCoreMixin:
         batch_counter: int = 1,
         original_ext: str = '.jpg',
         delete_existing_on_update: bool = True,
+        uploader_prefix: str = 'a',
     ) -> 'MediaResult':
         """
         Save an image and generate its thumbnail.
@@ -375,6 +383,7 @@ class ImageCoreMixin:
             existing_path,
             batch_counter,
             delete_existing_on_update,
+            uploader_prefix,
         )
         
         if not result.success:

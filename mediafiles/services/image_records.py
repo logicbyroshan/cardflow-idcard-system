@@ -28,6 +28,14 @@ class ImageRecordsMixin:
     # They guarantee: save + thumbnail + CardMedia + return final_value.
     # Callers store the returned data['final_value'] in field_data — nothing else.
 
+    @staticmethod
+    def _resolve_uploader_prefix(uploaded_by=None) -> str:
+        """Map uploader role to filename prefix: admin-side='a', client-side='c'."""
+        role = str(getattr(uploaded_by, 'role', '') or '').strip().lower()
+        if role in ('client', 'client_staff'):
+            return 'c'
+        return 'a'
+
     @classmethod
     def save_new_image(
         cls,
@@ -51,12 +59,14 @@ class ImageRecordsMixin:
         Returns:
             MediaResult with data['final_value'] — the path to store in field_data.
         """
+        uploader_prefix = cls._resolve_uploader_prefix(uploaded_by)
         result = cls.save_image_with_thumbnail(
             image_bytes=image_bytes,
             client=client,
             existing_path=None,
             batch_counter=batch_counter,
             original_ext=original_ext,
+            uploader_prefix=uploader_prefix,
         )
         if not result.success:
             return result
@@ -121,6 +131,8 @@ class ImageRecordsMixin:
                 uploaded_by=uploaded_by,
             )
 
+        uploader_prefix = cls._resolve_uploader_prefix(uploaded_by)
+
         result = cls.save_image_with_thumbnail(
             image_bytes=image_bytes,
             client=client,
@@ -128,6 +140,7 @@ class ImageRecordsMixin:
             batch_counter=batch_counter,
             original_ext=original_ext,
             delete_existing_on_update=delete_old_after_save,
+            uploader_prefix=uploader_prefix,
         )
         if not result.success:
             return result

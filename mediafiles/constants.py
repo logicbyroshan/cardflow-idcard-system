@@ -75,11 +75,15 @@ UPLOAD_PATHS = {
 # FILENAME PATTERNS
 # =============================================================================
 
-# Pattern for newly uploaded images: 14 digits (HHMMSSmmmuuuCC)
-NEW_FILENAME_LENGTH = 14
+# Pattern for newly uploaded images: role prefix + 14 digits
+# Example: a14325123456701.jpg / c14325123456701.jpg
+NEW_FILENAME_LENGTH = 15
 
-# Pattern for updated images: original + underscore + 6-digit time (HHMMSS)
-UPDATED_FILENAME_LENGTH = 21
+# Pattern for updated images: original_base + underscore + 6-digit HHMMSS
+# New format length: 22  (15 + 1 + 6)
+UPDATED_FILENAME_LENGTH = 22
 
-# Legacy filename length (before upgrade)
+# Legacy compatibility lengths (accepted for existing data)
+LEGACY_NEW_FILENAME_LENGTH = 14
+LEGACY_UPDATED_FILENAME_LENGTH = 21
 LEGACY_FILENAME_LENGTH = 13

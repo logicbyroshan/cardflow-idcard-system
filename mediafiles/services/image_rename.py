@@ -2,8 +2,8 @@
 Image Rename Service
 
 Handles all image filename generation according to spec:
-- FIRST SAVE: <14_digit_timestamp><00-99>.<ext>
-- EDIT/REUPLOAD: <original_14_digit>_<6_digit_timestamp>.<ext>
+- FIRST SAVE: <role_prefix><14_digit_timestamp>.<ext>
+- EDIT/REUPLOAD: <original_base>_<6_digit_timestamp>.<ext>
 
 Hardened against:
 - Timestamp collisions (retry with incremented counter)
@@ -33,7 +33,9 @@ class ImageRenamer:
     """
     Image filename generation following strict naming rules.
     
-    First upload: HHMMSSmmmuuuCC.ext (14 digits)
+    First upload: {a|c}HHMMSSmmmuuuCC.ext (15 chars before extension)
+    - Prefix a: uploaded by admin/admin_staff/system
+    - Prefix c: uploaded by client/client_staff
     - HH: Hour (00-23)
     - MM: Minute (00-59)
     - SS: Second (00-59)
@@ -41,13 +43,15 @@ class ImageRenamer:
     - uuu: Microseconds (000-999)
     - CC: Counter (00-99)
     
-    Update/reupload: original_14_HHMMSS.ext (21 chars before ext)
-    - First 14 digits NEVER change
+    Update/reupload: original_base_HHMMSS.ext
+    - original_base is preserved as-is (legacy 14-digit OR prefixed a/c + 14)
     - Exactly ONE underscore + 6 digit HHMMSS appended
     - Never chains (no original_HH_HH_HH)
     """
     
     MAX_COLLISION_RETRIES = 10
+    DEFAULT_UPLOAD_PREFIX = 'a'
+    VALID_UPLOAD_PREFIXES = {'a', 'c'}
     
     @staticmethod
     def normalize_extension(ext: str) -> str:
@@ -63,6 +67,14 @@ class ImageRenamer:
         if ext not in VALID_IMAGE_EXTENSIONS:
             return '.jpg'
         return ext
+
+    @classmethod
+    def normalize_upload_prefix(cls, upload_prefix: Optional[str]) -> str:
+        """Normalize caller-provided upload prefix to one of {a, c}."""
+        candidate = str(upload_prefix or '').strip().lower()
+        if candidate in cls.VALID_UPLOAD_PREFIXES:
+            return candidate
+        return cls.DEFAULT_UPLOAD_PREFIX
     
     @classmethod
     def _get_next_counter(cls) -> int:
@@ -72,11 +84,16 @@ class ImageRenamer:
         return _global_counter
     
     @classmethod
-    def generate_filename(cls, batch_counter: int = 1, extension: str = '.jpg') -> str:
+    def generate_filename(
+        cls,
+        batch_counter: int = 1,
+        extension: str = '.jpg',
+        upload_prefix: str = 'a',
+    ) -> str:
         """
-        Generate a unique 14-digit filename for NEW uploaded images.
+        Generate a unique prefixed filename for NEW uploaded images.
         
-        Format: HHMMSSmmmuuuCC.ext
+        Format: {a|c}HHMMSSmmmuuuCC.ext
         
         Uses a hybrid counter: combines batch_counter with a global
         process-level counter to avoid collisions even within the same
@@ -87,9 +104,10 @@ class ImageRenamer:
             extension: File extension including dot
             
         Returns:
-            New filename string (e.g., "14325123456701.jpg")
+            New filename string (e.g., "a14325123456701.jpg")
         """
         ext = cls.normalize_extension(extension)
+        prefix = cls.normalize_upload_prefix(upload_prefix)
         now = datetime.now()
         
         # Time components
@@ -107,7 +125,7 @@ class ImageRenamer:
         # Combine batch counter with global counter for uniqueness
         effective_counter = (batch_counter + cls._get_next_counter()) % 100
         
-        filename = f"{time_part}{mmm}{uuu}{effective_counter:02d}{ext}"
+        filename = f"{prefix}{time_part}{mmm}{uuu}{effective_counter:02d}{ext}"
         return filename
     
     @classmethod
@@ -115,7 +133,8 @@ class ImageRenamer:
         cls,
         folder_path: str,
         batch_counter: int = 1,
-        extension: str = '.jpg'
+        extension: str = '.jpg',
+        upload_prefix: str = 'a',
     ) -> str:
         """
         Generate a unique filename that is guaranteed not to collide
@@ -133,7 +152,11 @@ class ImageRenamer:
             Unique filename string
         """
         for attempt in range(cls.MAX_COLLISION_RETRIES):
-            filename = cls.generate_filename(batch_counter + attempt, extension)
+            filename = cls.generate_filename(
+                batch_counter + attempt,
+                extension,
+                upload_prefix=upload_prefix,
+            )
             full_path = f"{folder_path}/{filename}"
             
             try:
@@ -150,27 +173,30 @@ class ImageRenamer:
             )
             time.sleep(0.001)  # 1ms to shift microsecond component
         
-        # Exhausted retries — use fallback with extra entropy
+        # Exhausted retries — use deterministic prefixed timestamp fallback.
         logger.warning(
             "Exhausted %d collision retries in %s, using fallback",
             cls.MAX_COLLISION_RETRIES, folder_path
         )
-        import uuid
         ext = cls.normalize_extension(extension)
-        return f"{datetime.now().strftime('%H%M%S')}{uuid.uuid4().hex[:8]}{ext}"
+        prefix = cls.normalize_upload_prefix(upload_prefix)
+        now = datetime.now()
+        fallback_base = f"{now.strftime('%H%M%S')}{str(now.microsecond).zfill(6)[:6]}{cls._get_next_counter():02d}"
+        return f"{prefix}{fallback_base}{ext}"
     
     @classmethod
     def _extract_original_base(cls, filename_or_path: str) -> Optional[str]:
         """
-        Extract the original 14-digit base from any filename,
+        Extract the original base token from any filename,
         stripping ALL existing update suffixes.
         
         This prevents double/chained suffixes:
-          14325123456701_163045.jpg → 14325123456701
-          14325123456701_163045_170000.jpg → 14325123456701  (corrects bad state)
+          a14325123456701_163045.jpg → a14325123456701
+          14325123456701_163045.jpg  → 14325123456701
+          a14325123456701_163045_170000.jpg → a14325123456701
         
         Returns:
-            14-digit string or None if invalid
+            Base token string or None if invalid
         """
         if not filename_or_path:
             return None
@@ -181,14 +207,27 @@ class ImageRenamer:
         # Always take the first segment before any underscore
         original_base = base_name.split('_')[0]
         
-        # Validate: must be exactly 14 digits
+        # New format: role prefix + 14 digits
+        if (
+            len(original_base) == 15
+            and original_base[0].lower() in cls.VALID_UPLOAD_PREFIXES
+            and original_base[1:].isdigit()
+        ):
+            return original_base[0].lower() + original_base[1:]
+
+        # Legacy format: exactly 14 digits
         if len(original_base) == 14 and original_base.isdigit():
             return original_base
         
         return None
     
     @classmethod
-    def generate_updated_filename(cls, existing_path: str, new_extension: Optional[str] = None) -> str:
+    def generate_updated_filename(
+        cls,
+        existing_path: str,
+        new_extension: Optional[str] = None,
+        upload_prefix: str = 'a',
+    ) -> str:
         """
         Generate updated filename for EXISTING images (edit/reupload).
         
@@ -207,7 +246,7 @@ class ImageRenamer:
         """
         # If no valid existing path, generate fresh
         if not existing_path or existing_path in ['NOT_FOUND', '', 'PENDING'] or existing_path.startswith('PENDING:'):
-            return cls.generate_filename(1, new_extension or '.jpg')
+            return cls.generate_filename(1, new_extension or '.jpg', upload_prefix=upload_prefix)
         
         # Get current extension
         filename = os.path.basename(existing_path)
@@ -224,10 +263,10 @@ class ImageRenamer:
         if not original_base:
             # Invalid base — generate fresh
             logger.warning(
-                "Cannot extract 14-digit base from '%s', generating fresh filename",
+                "Cannot extract base token from '%s', generating fresh filename",
                 existing_path
             )
-            return cls.generate_filename(1, ext)
+            return cls.generate_filename(1, ext, upload_prefix=upload_prefix)
         
         # Generate SINGLE update suffix (replaces any previous suffix)
         now = datetime.now()
@@ -241,7 +280,8 @@ class ImageRenamer:
         cls,
         folder_path: str,
         existing_path: str,
-        new_extension: Optional[str] = None
+        new_extension: Optional[str] = None,
+        upload_prefix: str = 'a',
     ) -> str:
         """
         Generate updated filename with collision avoidance.
@@ -255,7 +295,11 @@ class ImageRenamer:
             Unique updated filename
         """
         for attempt in range(cls.MAX_COLLISION_RETRIES):
-            filename = cls.generate_updated_filename(existing_path, new_extension)
+            filename = cls.generate_updated_filename(
+                existing_path,
+                new_extension,
+                upload_prefix=upload_prefix,
+            )
             full_path = f"{folder_path}/{filename}"
             
             # The old file at existing_path will be deleted, so if the name
@@ -277,7 +321,13 @@ class ImageRenamer:
             time.sleep(0.001)
         
         # Fallback: use milliseconds in suffix for extra uniqueness
-        original_base = cls._extract_original_base(existing_path) or datetime.now().strftime('%H%M%S%f')[:14]
+        original_base = cls._extract_original_base(existing_path)
+        if not original_base:
+            original_base = cls.generate_filename(
+                batch_counter=1,
+                extension=new_extension or '.jpg',
+                upload_prefix=upload_prefix,
+            ).split('.', 1)[0]
         now = datetime.now()
         ext = cls.normalize_extension(new_extension) if new_extension else '.jpg'
         return f"{original_base}_{now.strftime('%H%M%S')}{ext}"
