@@ -291,7 +291,21 @@
           <div class="section-body">
             <!-- Template List -->
             <div id="exportTemplateList" class="settings-template-list">
-              <p class="settings-template-loading">Loading templates...</p>
+              <div class="settings-template-skeleton" aria-hidden="true">
+                {% for _ in "123" %}
+                <div class="settings-template-skeleton-row">
+                  <div class="settings-template-skeleton-main">
+                    <div class="settings-template-skeleton-block settings-template-skeleton-title"></div>
+                    <div class="settings-template-skeleton-block settings-template-skeleton-line"></div>
+                    <div class="settings-template-skeleton-block settings-template-skeleton-line settings-template-skeleton-line-short"></div>
+                  </div>
+                  <div class="settings-template-skeleton-actions">
+                    <div class="settings-template-skeleton-block settings-template-skeleton-btn"></div>
+                    <div class="settings-template-skeleton-block settings-template-skeleton-btn"></div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
             </div>
 
             <!-- Add New Template Form -->

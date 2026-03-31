@@ -329,9 +329,20 @@ function setRowsPerPage(count) {
 // LOADING INDICATORS
 // ==========================================
 
+var _tableSkeletonStart = 0;
+var _tableSkeletonHideTimer = null;
+var _lazySkeletonStart = 0;
+var _lazySkeletonHideTimer = null;
+
 function showLazyLoadIndicator(show) {
     const indicator = document.getElementById('lazyLoadIndicator');
     if (!indicator) return;
+    const minDelay = window.getSkeletonDelayMs ? window.getSkeletonDelayMs() : 350;
+
+    function hideIndicator() {
+        indicator.classList.toggle('is-visible', false);
+        indicator.style.display = 'none';
+    }
 
     if (!indicator.dataset.skeletonInit) {
         indicator.dataset.skeletonInit = '1';
@@ -345,8 +356,25 @@ function showLazyLoadIndicator(show) {
         ].join('');
     }
 
-    indicator.classList.toggle('is-visible', !!show);
-    indicator.style.display = show ? 'block' : 'none';
+    if (show) {
+        _lazySkeletonStart = Date.now();
+        if (_lazySkeletonHideTimer) {
+            clearTimeout(_lazySkeletonHideTimer);
+            _lazySkeletonHideTimer = null;
+        }
+        indicator.classList.toggle('is-visible', true);
+        indicator.style.display = 'block';
+        return;
+    }
+
+    const start = _lazySkeletonStart || Date.now();
+    const elapsed = Date.now() - start;
+    const remaining = Math.max(0, minDelay - elapsed);
+    if (remaining === 0) {
+        hideIndicator();
+    } else {
+        _lazySkeletonHideTimer = setTimeout(hideIndicator, remaining);
+    }
 }
 
 function showTableLoadingOverlay(show) {
@@ -356,6 +384,11 @@ function showTableLoadingOverlay(show) {
     let overlay = tableWrapper.querySelector('.table-loading-overlay');
     
     if (show) {
+        _tableSkeletonStart = Date.now();
+        if (_tableSkeletonHideTimer) {
+            clearTimeout(_tableSkeletonHideTimer);
+            _tableSkeletonHideTimer = null;
+        }
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.className = 'table-loading-overlay table-skeleton-overlay';
@@ -392,8 +425,19 @@ function showTableLoadingOverlay(show) {
         tableWrapper.classList.add('table-skeleton-host', 'table-skeleton-loading');
         overlay.style.display = 'flex';
     } else if (overlay) {
-        tableWrapper.classList.remove('table-skeleton-loading');
-        overlay.style.display = 'none';
+        const minDelay = window.getSkeletonDelayMs ? window.getSkeletonDelayMs() : 350;
+        const start = _tableSkeletonStart || Date.now();
+        const elapsed = Date.now() - start;
+        const remaining = Math.max(0, minDelay - elapsed);
+        const hideOverlay = function () {
+            tableWrapper.classList.remove('table-skeleton-loading');
+            overlay.style.display = 'none';
+        };
+        if (remaining === 0) {
+            hideOverlay();
+        } else {
+            _tableSkeletonHideTimer = setTimeout(hideOverlay, remaining);
+        }
     }
 }
 

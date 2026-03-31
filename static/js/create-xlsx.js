@@ -326,6 +326,20 @@ function initCreateWithXlsx(opts) {
 
     if (progressBar) progressBar.style.width = '0%';
     if (progressPct) progressPct.textContent = '';
+    if (progressIcon) {
+      progressIcon.className = 'cx-progress-skeleton-icon';
+      progressIcon.style.animation = '';
+    }
+    var progressSkeletonStart = progressIcon ? Date.now() : null;
+    function waitForProgressSkeleton() {
+      if (!progressSkeletonStart) return Promise.resolve();
+      var start = progressSkeletonStart;
+      progressSkeletonStart = null;
+      if (typeof window.waitForMinDelay === 'function') {
+        return window.waitForMinDelay(start);
+      }
+      return Promise.resolve();
+    }
 
     var formData = new FormData();
     formData.append('file', selectedFile);
@@ -382,26 +396,32 @@ function initCreateWithXlsx(opts) {
         try {
           var result = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300 && result.success) {
-            if (progressBar) progressBar.style.width = '100%';
-            if (progressPct) progressPct.textContent = 'Done!';
-            if (progressIcon) { progressIcon.className = 'fa-solid fa-check-circle'; progressIcon.style.animation = 'none'; }
-            progressText.textContent = result.message || 'Table created successfully!';
-            if (window.showToast) showToast(result.message || 'Table created successfully!', 'success');
-            if (window.alpineCloseModal) window.alpineCloseModal();
-            setTimeout(onSuccess, 800);
+            waitForProgressSkeleton().then(function() {
+              if (progressBar) progressBar.style.width = '100%';
+              if (progressPct) progressPct.textContent = 'Done!';
+              if (progressIcon) { progressIcon.className = 'fa-solid fa-check-circle'; progressIcon.style.animation = 'none'; }
+              progressText.textContent = result.message || 'Table created successfully!';
+              if (window.showToast) showToast(result.message || 'Table created successfully!', 'success');
+              if (window.alpineCloseModal) window.alpineCloseModal();
+              setTimeout(onSuccess, 800);
+            });
           } else if (xhr.status === 429 && _createRetryCount < MAX_RETRIES) {
             _createRetryCount++;
             if (progressBar) progressBar.style.width = '0%';
             progressText.textContent = (result.message || 'Server busy') + ' Retrying...';
             setTimeout(attemptUpload, 5000);
           } else {
-            if (window.showToast) showToast(result.message || 'Failed to create table.', result.level || 'error');
-            showStep(1);
+            waitForProgressSkeleton().then(function() {
+              if (window.showToast) showToast(result.message || 'Failed to create table.', result.level || 'error');
+              showStep(1);
+            });
           }
         } catch (e) {
           console.error('Create from XLSX parse error:', e);
-          if (window.showToast) showToast('Failed to process server response.', 'error');
-          showStep(1);
+          waitForProgressSkeleton().then(function() {
+            if (window.showToast) showToast('Failed to process server response.', 'error');
+            showStep(1);
+          });
         }
       };
 
@@ -415,14 +435,18 @@ function initCreateWithXlsx(opts) {
           setTimeout(attemptUpload, 5000);
           return;
         }
-        if (window.showToast) showToast('Network error. Please try again.', 'error');
-        showStep(1);
+        waitForProgressSkeleton().then(function() {
+          if (window.showToast) showToast('Network error. Please try again.', 'error');
+          showStep(1);
+        });
       };
 
       xhr.ontimeout = function() {
         if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
-        if (window.showToast) showToast('Upload timed out  server took too long. Try a smaller file.', 'error');
-        showStep(1);
+        waitForProgressSkeleton().then(function() {
+          if (window.showToast) showToast('Upload timed out  server took too long. Try a smaller file.', 'error');
+          showStep(1);
+        });
       };
 
       xhr.send(formData);

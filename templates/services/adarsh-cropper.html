@@ -22,7 +22,10 @@
   <div class="engine-badge"
        :class="{ 'connected': eng.connected, 'disconnected': eng.checked && !eng.connected }">
     <template x-if="eng.loading">
-      <span><i class="fa-solid fa-circle-notch fa-spin"></i> Checking...</span>
+      <span class="engine-badge-skeleton" aria-hidden="true">
+        <span class="engine-badge-skeleton-block engine-badge-skeleton-icon"></span>
+        <span class="engine-badge-skeleton-block engine-badge-skeleton-line"></span>
+      </span>
     </template>
     <template x-if="!eng.loading && eng.connected">
       <span><i class="fa-solid fa-circle-check"></i> Engine v<span x-text="eng.version"></span></span>
@@ -69,8 +72,11 @@
 
     {# Loading #}
     <div class="engine-loading" x-show="engine.loading" x-cloak>
-      <i class="fa-solid fa-circle-notch fa-spin"></i>
-      <span>Detecting engine...</span>
+      <div class="engine-loading-skeleton" aria-hidden="true">
+        <span class="engine-loading-skeleton-block engine-loading-skeleton-title"></span>
+        <span class="engine-loading-skeleton-block engine-loading-skeleton-line"></span>
+      </div>
+      <span class="sr-only">Detecting engine...</span>
     </div>
 
     {# Connected  -  shown only after engine is confirmed connected #}
@@ -179,7 +185,9 @@
                 </template>
               </select>
               <template x-if="clientsLoading">
-                <span class="client-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading clients...</span>
+                <span class="client-loading client-loading-skeleton" aria-hidden="true">
+                  <span class="client-loading-skeleton-block client-loading-skeleton-line"></span>
+                </span>
               </template>
             </div>
           </template>
@@ -431,9 +439,16 @@
         </div>
 
         {# Loading #}
-        <div class="preview-loading" x-show="preview.loading" x-cloak>
-          <i class="fa-solid fa-circle-notch fa-spin"></i>
-          <span>Loading previews...</span>
+        <div class="preview-loading preview-loading-skeleton" x-show="preview.loading" x-cloak>
+          <div class="preview-loading-skeleton" aria-hidden="true">
+            <template x-for="row in 3" :key="'preview-load-' + row">
+              <div class="preview-loading-skeleton-row">
+                <span class="preview-loading-skeleton-block preview-loading-skeleton-thumb"></span>
+                <span class="preview-loading-skeleton-block preview-loading-skeleton-line"></span>
+              </div>
+            </template>
+          </div>
+          <span class="sr-only">Loading previews...</span>
         </div>
 
         {# Grid #}

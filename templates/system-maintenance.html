@@ -35,6 +35,18 @@
       border-radius: 18px;
       background: #ffffff;
     }
+    @keyframes maintenance-skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .maintenance-skeleton {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.35) 25%, rgba(253, 230, 138, 0.7) 37%, rgba(251, 191, 36, 0.35) 63%);
+      background-size: 200% 100%;
+      animation: maintenance-skeleton-shimmer 1.4s linear infinite;
+    }
     .maintenance-complete-badge {
       display: none;
       margin: 0.35rem auto 0;
@@ -127,6 +139,10 @@
       color: #15803d;
       animation: none !important;
     }
+    .auth-icon-circle-warning.is-complete .maintenance-skeleton {
+      animation: none;
+      background: #bbf7d0;
+    }
     @media (max-width: 640px) {
       .auth-container { padding: 0.75rem; }
       .auth-card { border-radius: 14px; }
@@ -147,7 +163,7 @@
       <!-- Maintenance Icon -->
       <div class="auth-icon-header">
         <div id="maintenanceIconCircle" class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
-          <i class="fa-solid fa-gear modal-icon-i-warning" style="animation: fa-spin 3s linear infinite;" aria-hidden="true"></i>
+          <span class="maintenance-skeleton" aria-hidden="true"></span>
         </div>
         <h2 class="auth-icon-title">System Under Maintenance</h2>
         <div id="maintenanceCompleteBadge" class="maintenance-complete-badge">

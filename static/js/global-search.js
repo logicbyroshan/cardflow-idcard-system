@@ -92,6 +92,9 @@
     // ==========================================
 
     let searchTimeout = null;
+    let searchSkeletonStart = 0;
+    let searchRequestSeq = 0;
+    const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
 
     function getEl(id) { return document.getElementById(id); }
 
@@ -132,6 +135,27 @@
                 <p>${title}</p>
                 <span>${scope.hint}</span>
             </div>
+        `;
+    }
+
+    function renderSearchLoadingSkeleton(container) {
+        if (!container) return;
+        container.innerHTML = `
+            <div class="global-search-loading global-search-loading-skeleton" aria-hidden="true">
+                <div class="global-search-skeleton-row">
+                    <span class="global-search-skeleton-icon"></span>
+                    <span class="global-search-skeleton-line global-search-skeleton-line-lg"></span>
+                </div>
+                <div class="global-search-skeleton-row">
+                    <span class="global-search-skeleton-icon"></span>
+                    <span class="global-search-skeleton-line global-search-skeleton-line-md"></span>
+                </div>
+                <div class="global-search-skeleton-row">
+                    <span class="global-search-skeleton-icon"></span>
+                    <span class="global-search-skeleton-line global-search-skeleton-line-sm"></span>
+                </div>
+            </div>
+            <span class="sr-only">Searching...</span>
         `;
     }
 
@@ -177,6 +201,12 @@
         if (overlay) overlay.classList.remove('active');
         if (input) input.value = '';
         if (clearBtn) clearBtn.style.display = 'none';
+        searchSkeletonStart = 0;
+        searchRequestSeq += 1;
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+            searchTimeout = null;
+        }
         renderPlaceholder(results, scope);
         // Restore focus to trigger element (a11y)
         if (_searchTriggerEl && typeof _searchTriggerEl.focus === 'function') {
@@ -186,32 +216,43 @@
     }
 
     function performSearch(query) {
+        const skeletonStart = searchSkeletonStart || Date.now();
         const filter = getEl('globalSearchFilter')?.value || 'all';
         const results = getEl('globalSearchResults');
+        const requestSeq = ++searchRequestSeq;
 
         ApiClient.get(buildGlobalSearchUrl(query, filter))
             .then(data => {
+                return waitForMinDelay(skeletonStart).then(() => data);
+            })
+            .then(data => {
+                if (requestSeq !== searchRequestSeq) return;
+                searchSkeletonStart = 0;
                 if (data.success) {
-                    displayResults(data.results, query);
+                    displayResults(data.results || [], query);
                 } else if (results) {
                     const _esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
                     results.innerHTML = `
                         <div class="global-search-no-results">
                             <i class="fa-solid fa-exclamation-circle"></i>
-                            <p>Error: ${_esc(data.message)}</p>
+                            <p>${_esc(data.message || 'Search failed')}</p>
                         </div>
                     `;
                 }
             })
             .catch(() => {
-                if (results) {
-                    results.innerHTML = `
-                        <div class="global-search-no-results">
-                            <i class="fa-solid fa-exclamation-circle"></i>
-                            <p>Error searching. Please try again.</p>
-                        </div>
-                    `;
-                }
+                waitForMinDelay(skeletonStart).then(() => {
+                    if (requestSeq !== searchRequestSeq) return;
+                    searchSkeletonStart = 0;
+                    if (results) {
+                        results.innerHTML = `
+                            <div class="global-search-no-results">
+                                <i class="fa-solid fa-exclamation-circle"></i>
+                                <p>Something went wrong. Please try again.</p>
+                            </div>
+                        `;
+                    }
+                });
             });
     }
 
@@ -301,11 +342,12 @@
 
                 if (url && url !== '#') {
                     this.innerHTML = `
-                        <div class="result-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
-                        <div class="result-info">
-                            <div class="result-title">Loading...</div>
-                            <div class="result-subtitle">Navigating to the record</div>
+                        <div class="result-icon result-skeleton-icon" aria-hidden="true"></div>
+                        <div class="result-info result-skeleton-info" aria-hidden="true">
+                            <div class="result-skeleton-line result-skeleton-title"></div>
+                            <div class="result-skeleton-line result-skeleton-subtitle"></div>
                         </div>
+                        <span class="sr-only">Navigating to the record...</span>
                     `;
                     this.style.pointerEvents = 'none';
                     window.location.href = url;
@@ -374,6 +416,8 @@
             clearBtn.addEventListener('click', function () {
                 if (input) input.value = '';
                 this.style.display = 'none';
+                searchSkeletonStart = 0;
+                searchRequestSeq += 1;
                 if (input) input.focus();
                 renderPlaceholder(resultsEl, getSearchScopeContext());
             });
@@ -391,6 +435,8 @@
                 if (searchTimeout) clearTimeout(searchTimeout);
 
                 if (query.length < 2) {
+                    searchSkeletonStart = 0;
+                    searchRequestSeq += 1;
                     if (resultsEl) {
                         const scope = getSearchScopeContext();
                         renderPlaceholder(
@@ -403,12 +449,8 @@
                 }
 
                 if (resultsEl) {
-                    resultsEl.innerHTML = `
-                        <div class="global-search-loading">
-                            <i class="fa-solid fa-spinner fa-spin"></i>
-                            <p>Searching...</p>
-                        </div>
-                    `;
+                    searchSkeletonStart = Date.now();
+                    renderSearchLoadingSkeleton(resultsEl);
                 }
 
                 searchTimeout = setTimeout(function () {
@@ -422,6 +464,10 @@
             filter.addEventListener('change', function () {
                 const query = input?.value.trim();
                 if (query && query.length >= 2) {
+                    if (resultsEl) {
+                        searchSkeletonStart = Date.now();
+                        renderSearchLoadingSkeleton(resultsEl);
+                    }
                     performSearch(query);
                 }
             });

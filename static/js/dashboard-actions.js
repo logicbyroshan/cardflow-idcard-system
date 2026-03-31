@@ -4,6 +4,7 @@
 window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
+    const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
 
     function setDashboardTableSkeleton(tbody, columnCount, rowCount) {
         if (!tbody) return;
@@ -32,76 +33,81 @@ document.addEventListener('DOMContentLoaded', function() {
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
         setDashboardTableSkeleton(tbody, 5, 3);
+        const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
         ApiClient.get('/api/recent-client-updates/')
             .then(data => {
-                if (data.success && data.clients.length > 0) {
-                    tbody.innerHTML = data.clients.map((client, i) => {
-                        const tables = client.tables || [];
-                        const inactiveBadge = client.status && client.status !== 'active'
-                            ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                            : '';
-                        // Build sub-rows for each table (same column structure)
-                        const tableSubRows = tables.map(t => `
-                            <tr class="client-sub-row expand-group-${i}" style="display:none">
+                waitForMinDelay(skeletonStart).then(() => {
+                    if (data.success && data.clients.length > 0) {
+                        tbody.innerHTML = data.clients.map((client, i) => {
+                            const tables = client.tables || [];
+                            const inactiveBadge = client.status && client.status !== 'active'
+                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
+                                : '';
+                            // Build sub-rows for each table (same column structure)
+                            const tableSubRows = tables.map(t => `
+                                <tr class="client-sub-row expand-group-${i}" style="display:none">
+                                    <td>
+                                        <a href="/table/${t.id}/cards/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="/table/${t.id}/cards/?status=pending" class="count-badge pending">${t.pending}</a>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="/table/${t.id}/cards/?status=verified" class="count-badge verified">${t.verified}</a>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="/table/${t.id}/cards/?status=approved" class="count-badge approved">${t.approved}</a>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="/table/${t.id}/cards/?status=download" class="count-badge downloaded">${t.downloaded}</a>
+                                    </td>
+                                </tr>
+                            `).join('');
+
+                            return `
+                            <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
                                 <td>
-                                    <a href="/table/${t.id}/cards/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                    <a href="/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/table/${t.id}/cards/?status=pending" class="count-badge pending">${t.pending}</a>
+                                    <span class="count-badge pending">${client.pending}</span>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/table/${t.id}/cards/?status=verified" class="count-badge verified">${t.verified}</a>
+                                    <span class="count-badge verified">${client.verified}</span>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/table/${t.id}/cards/?status=approved" class="count-badge approved">${t.approved}</a>
+                                    <span class="count-badge approved">${client.approved}</span>
                                 </td>
                                 <td class="text-center">
-                                    <a href="/table/${t.id}/cards/?status=download" class="count-badge downloaded">${t.downloaded}</a>
+                                    <span class="count-badge downloaded">${client.downloaded}</span>
                                 </td>
                             </tr>
-                        `).join('');
-
-                        return `
-                        <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
-                            <td>
-                                <a href="/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
-                            </td>
-                            <td class="text-center">
-                                <span class="count-badge pending">${client.pending}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="count-badge verified">${client.verified}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="count-badge approved">${client.approved}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="count-badge downloaded">${client.downloaded}</span>
-                            </td>
-                        </tr>
-                        ${tableSubRows}
-                    `}).join('');
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
-                                <i class="fa-solid fa-users-slash"></i> No recent client updates
-                            </td>
-                        </tr>
-                    `;
-                }
+                            ${tableSubRows}
+                        `}).join('');
+                    } else {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                                    <i class="fa-solid fa-users-slash"></i> No recent client updates
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
             })
             .catch(error => {
                 console.error('Error loading recent client updates:', error);
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center" style="padding: 40px; color: #dc2626;">
-                            <i class="fa-solid fa-exclamation-triangle"></i> Error loading data
-                        </td>
-                    </tr>
-                `;
+                waitForMinDelay(skeletonStart).then(() => {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center" style="padding: 40px; color: #dc2626;">
+                                <i class="fa-solid fa-exclamation-triangle"></i> Error loading data
+                            </td>
+                        </tr>
+                    `;
+                });
             });
     }
     
@@ -552,89 +558,93 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setDashboardTableSkeleton(printBody, 3, 3);
         setDashboardTableSkeleton(reprintBody, 3, 3);
+        const skeletonStart = Date.now();
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
         ApiClient.get('/api/print-reprint-overview/?limit=500')
             .then(data => {
                 if (!data.success) throw new Error(data.error || 'Failed');
+                waitForMinDelay(skeletonStart).then(() => {
+                    //  Render Print table
+                    if (printBody) {
+                        const clients = data.print_clients || [];
+                        if (clients.length > 0) {
+                            printBody.innerHTML = clients.map((client, i) => {
+                                const tables = client.tables || [];
+                                const iBadge = client.status && client.status !== 'active'
+                                    ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
+                                    : '';
+                                const subRows = tables.map(t => `
+                                    <tr class="client-sub-row print-expand-group-${i}" style="display:none">
+                                        <td>
+                                            <a href="/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                        </td>
+                                        <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
+                                        <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
+                                    </tr>
+                                `).join('');
+                                return `
+                                    <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
+                                        <td>
+                                            <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                        </td>
+                                        <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
+                                        <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
+                                    </tr>
+                                    ${subRows}
+                                `;
+                            }).join('');
+                        } else {
+                            printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                        }
+                    }
 
-                //  Render Print table 
-                if (printBody) {
-                    const clients = data.print_clients || [];
-                    if (clients.length > 0) {
-                        printBody.innerHTML = clients.map((client, i) => {
-                            const tables = client.tables || [];
-                            const iBadge = client.status && client.status !== 'active'
-                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                : '';
-                            const subRows = tables.map(t => `
-                                <tr class="client-sub-row print-expand-group-${i}" style="display:none">
-                                    <td>
-                                        <a href="/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
-                                    </td>
-                                    <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
-                                    <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
-                                </tr>
-                            `).join('');
-                            return `
-                                <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
-                                    <td>
-                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
-                                    </td>
-                                    <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
-                                    <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
-                                </tr>
-                                ${subRows}
-                            `;
-                        }).join('');
-                    } else {
-                        printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                    //  Render Reprint table
+                    if (reprintBody) {
+                        const clients = data.reprint_clients || [];
+                        if (reprintTotalBadge) {
+                            reprintTotalBadge.textContent = String(data.reprint_total_requested || 0);
+                        }
+                        if (clients.length > 0) {
+                            reprintBody.innerHTML = clients.map((client, i) => {
+                                const tables = client.tables || [];
+                                const iBadge = client.status && client.status !== 'active'
+                                    ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
+                                    : '';
+                                const subRows = tables.map(t => `
+                                    <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
+                                        <td>
+                                            <a href="/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                        </td>
+                                        <td class="text-center"><a href="/reprint/table/${t.id}/?step=request_list" class="count-badge pending">${t.requested}</a></td>
+                                        <td class="text-center"><a href="/reprint/table/${t.id}/?step=confirmed" class="count-badge verified">${t.confirmed}</a></td>
+                                    </tr>
+                                `).join('');
+                                return `
+                                    <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
+                                        <td>
+                                            <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                        </td>
+                                        <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
+                                        <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
+                                    </tr>
+                                    ${subRows}
+                                `;
+                            }).join('');
+                        } else {
+                            reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                        }
                     }
-                }
-
-                //  Render Reprint table 
-                if (reprintBody) {
-                    const clients = data.reprint_clients || [];
-                    if (reprintTotalBadge) {
-                        reprintTotalBadge.textContent = String(data.reprint_total_requested || 0);
-                    }
-                    if (clients.length > 0) {
-                        reprintBody.innerHTML = clients.map((client, i) => {
-                            const tables = client.tables || [];
-                            const iBadge = client.status && client.status !== 'active'
-                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                : '';
-                            const subRows = tables.map(t => `
-                                <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
-                                    <td>
-                                        <a href="/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
-                                    </td>
-                                    <td class="text-center"><a href="/reprint/table/${t.id}/?step=request_list" class="count-badge pending">${t.requested}</a></td>
-                                    <td class="text-center"><a href="/reprint/table/${t.id}/?step=confirmed" class="count-badge verified">${t.confirmed}</a></td>
-                                </tr>
-                            `).join('');
-                            return `
-                                <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
-                                    <td>
-                                        <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
-                                    </td>
-                                    <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
-                                    <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
-                                </tr>
-                                ${subRows}
-                            `;
-                        }).join('');
-                    } else {
-                        reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
-                    }
-                }
+                });
             })
             .catch(err => {
                 console.error('Error loading print/reprint overview:', err);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
-                if (printBody)   printBody.innerHTML = errHtml(3);
-                if (reprintBody) reprintBody.innerHTML = errHtml(3);
+                waitForMinDelay(skeletonStart).then(() => {
+                    if (printBody)   printBody.innerHTML = errHtml(3);
+                    if (reprintBody) reprintBody.innerHTML = errHtml(3);
+                });
             });
     }
 

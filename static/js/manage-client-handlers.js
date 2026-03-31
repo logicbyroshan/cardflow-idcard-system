@@ -274,6 +274,54 @@ document.addEventListener('DOMContentLoaded', function() {
         return permissions;
       }
 
+      function ensureStaffSkeletonStyles() {
+        if (document.getElementById('staffSkeletonStyles')) return;
+        var style = document.createElement('style');
+        style.id = 'staffSkeletonStyles';
+        style.textContent = [
+          '@keyframes staff-skeleton-shimmer {',
+          '  0% { background-position: 200% 0; }',
+          '  100% { background-position: -200% 0; }',
+          '}',
+          '.staff-loading-skeleton { display: flex; flex-direction: column; gap: 8px; width: 100%; }',
+          '.staff-loading-skeleton-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #fff; }',
+          '.staff-loading-skeleton-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }',
+          '.staff-loading-skeleton-row:last-child { margin-bottom: 0; }',
+          '.staff-loading-skeleton-block {',
+          '  border-radius: 8px;',
+          '  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);',
+          '  background-size: 200% 100%;',
+          '  animation: staff-skeleton-shimmer 1.25s linear infinite;',
+          '}',
+          '.staff-loading-skeleton-avatar { width: 34px; height: 34px; border-radius: 9999px; flex-shrink: 0; }',
+          '.staff-loading-skeleton-line-lg { width: 58%; height: 11px; }',
+          '.staff-loading-skeleton-line-md { width: 36%; height: 10px; }',
+          '.staff-loading-skeleton-line-full { width: 100%; height: 10px; }'
+        ].join('');
+        document.head.appendChild(style);
+      }
+
+      function getStaffSkeletonHtml() {
+        var items = [];
+        for (var i = 0; i < 3; i++) {
+          items.push(
+            '<div class="staff-loading-skeleton-card" aria-hidden="true">' +
+              '<div class="staff-loading-skeleton-row">' +
+                '<span class="staff-loading-skeleton-block staff-loading-skeleton-avatar"></span>' +
+                '<span class="staff-loading-skeleton-block staff-loading-skeleton-line-lg"></span>' +
+              '</div>' +
+              '<div class="staff-loading-skeleton-row">' +
+                '<span class="staff-loading-skeleton-block staff-loading-skeleton-line-md"></span>' +
+              '</div>' +
+              '<div class="staff-loading-skeleton-row">' +
+                '<span class="staff-loading-skeleton-block staff-loading-skeleton-line-full"></span>' +
+              '</div>' +
+            '</div>'
+          );
+        }
+        return '<div class="staff-loading-skeleton">' + items.join('') + '</div><span class="sr-only">Loading staff...</span>';
+      }
+
       async function openStaffDrawer() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
 
@@ -281,14 +329,17 @@ document.addEventListener('DOMContentLoaded', function() {
         staffDrawerClientName.textContent = clientName;
 
         // Show loading state
-        staffList.innerHTML = '<div class="loading-staff"><i class="fa-solid fa-spinner fa-spin"></i> Loading staff...</div>';
+        ensureStaffSkeletonStyles();
+        staffList.innerHTML = getStaffSkeletonHtml();
         staffList.style.display = 'flex';
         noStaffMessage.style.display = 'none';
+        var skeletonStart = Date.now();
 
         staffDrawer.classList.add('open');
         document.body.style.overflow = 'hidden';
 
         var data = await fetchClientStaff(NS.selectedClientId);
+        await waitForMinDelay(skeletonStart);
 
         if (data && data.staff) {
           var staffData = data.staff;

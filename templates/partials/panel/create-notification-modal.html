@@ -62,7 +62,16 @@
             <input type="text" placeholder="Search users..." oninput="filterUserPicker(this.value)">
           </div>
           <div class="user-picker-list" id="userPickerList">
-            <div class="user-picker-empty">Loading users...</div>
+            <div class="user-picker-skeleton" aria-hidden="true">
+              {% for _ in "1234" %}
+              <div class="user-picker-skeleton-row">
+                <span class="user-picker-skeleton-block user-picker-skeleton-check"></span>
+                <span class="user-picker-skeleton-block user-picker-skeleton-name"></span>
+                <span class="user-picker-skeleton-block user-picker-skeleton-role"></span>
+              </div>
+              {% endfor %}
+            </div>
+            <span class="sr-only">Loading users...</span>
           </div>
           <div class="user-picker-selected" id="userPickerSelected"></div>
         </div>

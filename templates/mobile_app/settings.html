@@ -427,9 +427,13 @@
                     </div>
 
                     <template x-if="serverLoading">
-                        <div class="px-4 py-8 flex items-center justify-center gap-2 text-gray-400">
-                            <i class="fa-solid fa-spinner fa-spin text-sm"></i>
-                            <span class="text-xs font-medium">Fetching server info...</span>
+                        <div class="px-4 py-3 space-y-3" aria-hidden="true">
+                            <template x-for="i in 6" :key="'server-skeleton-' + i">
+                                <div class="flex items-center justify-between gap-4 py-1">
+                                    <div class="skeleton-line h-2.5 w-20 rounded-lg"></div>
+                                    <div class="skeleton-line h-2.5 w-32 rounded-lg"></div>
+                                </div>
+                            </template>
                         </div>
                     </template>
 

@@ -565,6 +565,40 @@
   color: #64748b;
 }
 
+@keyframes ae-loading-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.ae-loading-skeleton {
+  width: min(360px, 70%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.ae-loading-skeleton-block {
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(148,163,184,0.3) 25%, rgba(203,213,225,0.55) 37%, rgba(148,163,184,0.3) 63%);
+  background-size: 200% 100%;
+  animation: ae-loading-skeleton-shimmer 1.4s linear infinite;
+}
+
+.ae-loading-skeleton-title {
+  width: 44%;
+  height: 12px;
+}
+
+.ae-loading-skeleton-line {
+  width: 76%;
+  height: 10px;
+}
+
+.ae-loading-skeleton-line-short {
+  width: 58%;
+}
+
 /* ── Phase 8: Error Overlay ─────────────────────────────────────── */
 
 .ae-error-overlay {

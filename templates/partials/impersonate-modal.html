@@ -49,10 +49,16 @@
 
     <!-- User list -->
     <div class="flex-1 overflow-y-auto px-5 py-3" id="impersonateUserList">
-      <div class="text-center text-[#718096] text-sm py-8">
-        <i class="fa-solid fa-spinner fa-spin text-lg mb-2 block"></i>
-        Loading users...
+      {% for _ in "12345" %}
+      <div class="imp-user-skeleton-row" aria-hidden="true">
+        <div class="imp-user-skeleton imp-user-skeleton-avatar"></div>
+        <div class="imp-user-skeleton-main">
+          <div class="imp-user-skeleton imp-user-skeleton-title"></div>
+          <div class="imp-user-skeleton imp-user-skeleton-subtitle"></div>
+        </div>
+        <div class="imp-user-skeleton imp-user-skeleton-badge"></div>
       </div>
+      {% endfor %}
     </div>
 
     <!-- Footer -->
@@ -63,6 +69,10 @@
 </div>
 
 <style>
+  @keyframes imp-user-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
   .imp-role-pill {
     color: #a0aec0;
     border-color: rgba(102,126,234,0.2);
@@ -100,6 +110,49 @@
   .imp-role-badge.role-admin_staff { background: rgba(245,158,11,0.2); color: #fbbf24; }
   .imp-role-badge.role-client { background: rgba(72,187,120,0.2); color: #68d391; }
   .imp-role-badge.role-client_staff { background: rgba(99,179,237,0.2); color: #63b3ed; }
+  .imp-user-skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.4rem;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .imp-user-skeleton-row:last-child {
+    margin-bottom: 0;
+  }
+  .imp-user-skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, rgba(148,163,184,0.25) 25%, rgba(148,163,184,0.38) 37%, rgba(148,163,184,0.25) 63%);
+    background-size: 200% 100%;
+    animation: imp-user-skeleton-shimmer 1.35s linear infinite;
+  }
+  .imp-user-skeleton-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+  .imp-user-skeleton-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .imp-user-skeleton-title {
+    width: 52%;
+    height: 11px;
+    margin-bottom: 7px;
+  }
+  .imp-user-skeleton-subtitle {
+    width: 72%;
+    height: 10px;
+  }
+  .imp-user-skeleton-badge {
+    width: 74px;
+    height: 20px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
 </style>
 
 <script>

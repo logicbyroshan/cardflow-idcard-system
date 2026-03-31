@@ -75,6 +75,8 @@ function initSearchHandlers() {
 // ==========================================
 
 let searchAllTimeout = null;
+let searchAllSkeletonStart = 0;
+let searchAllRequestSeq = 0;
 
 function initSearchAllModal() {
     const searchAllBtn = document.getElementById('searchAllBtn');
@@ -99,6 +101,12 @@ function initSearchAllModal() {
             searchAllModalOverlay.classList.remove('active');
             document.body.style.overflow = ''; // Restore body scroll
         }
+        if (searchAllTimeout) {
+            clearTimeout(searchAllTimeout);
+            searchAllTimeout = null;
+        }
+        searchAllSkeletonStart = 0;
+        searchAllRequestSeq += 1;
         if (searchAllInput) searchAllInput.value = '';
         if (clearSearchInput) clearSearchInput.style.display = 'none';
         if (searchResultsContainer) {
@@ -117,32 +125,43 @@ function initSearchAllModal() {
             if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
             return;
         }
+
+        const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
+        const skeletonStart = searchAllSkeletonStart || Date.now();
+        const requestSeq = ++searchAllRequestSeq;
         
         ApiClient.get(`/api/table/${tableId}/cards/search/?q=${encodeURIComponent(query)}`)
             .then(data => {
+                return waitForMinDelay(skeletonStart).then(() => data);
+            })
+            .then(data => {
+                if (requestSeq !== searchAllRequestSeq) return;
+                searchAllSkeletonStart = 0;
                 if (data.success) {
                     displaySearchResults(data.results, query, searchResultsContainer, closeSearchAllModalFn);
-                } else {
-                    if (searchResultsContainer) {
-                        searchResultsContainer.innerHTML = `
-                            <div class="search-no-results">
-                                <i class="fa-solid fa-exclamation-circle"></i>
-                                <p>Error: ${data.message}</p>
-                            </div>
-                        `;
-                    }
+                } else if (searchResultsContainer) {
+                    searchResultsContainer.innerHTML = `
+                        <div class="search-no-results">
+                            <i class="fa-solid fa-exclamation-circle"></i>
+                            <p>Error: ${data.message}</p>
+                        </div>
+                    `;
                 }
             })
             .catch(error => {
                 console.error('Search error:', error);
-                if (searchResultsContainer) {
-                    searchResultsContainer.innerHTML = `
-                        <div class="search-no-results">
-                            <i class="fa-solid fa-exclamation-circle"></i>
-                            <p>Error searching. Please try again.</p>
-                        </div>
-                    `;
-                }
+                waitForMinDelay(skeletonStart).then(() => {
+                    if (requestSeq !== searchAllRequestSeq) return;
+                    searchAllSkeletonStart = 0;
+                    if (searchResultsContainer) {
+                        searchResultsContainer.innerHTML = `
+                            <div class="search-no-results">
+                                <i class="fa-solid fa-exclamation-circle"></i>
+                                <p>Error searching. Please try again.</p>
+                            </div>
+                        `;
+                    }
+                });
             });
     }
     
@@ -162,6 +181,8 @@ function initSearchAllModal() {
         clearSearchInput.addEventListener('click', function() {
             if (searchAllInput) searchAllInput.value = '';
             this.style.display = 'none';
+            searchAllSkeletonStart = 0;
+            searchAllRequestSeq += 1;
             if (searchResultsContainer) {
                 searchResultsContainer.innerHTML = `
                     <div class="search-placeholder">
@@ -185,6 +206,8 @@ function initSearchAllModal() {
             if (searchAllTimeout) clearTimeout(searchAllTimeout);
             
             if (query.length < 2) {
+                searchAllSkeletonStart = 0;
+                searchAllRequestSeq += 1;
                 if (searchResultsContainer) {
                     searchResultsContainer.innerHTML = `
                         <div class="search-placeholder">
@@ -197,11 +220,23 @@ function initSearchAllModal() {
             }
             
             if (searchResultsContainer) {
+                searchAllSkeletonStart = Date.now();
                 searchResultsContainer.innerHTML = `
-                    <div class="search-loading">
-                        <i class="fa-solid fa-spinner fa-spin"></i>
-                        <p>Searching...</p>
+                    <div class="search-loading search-loading-skeleton" aria-hidden="true">
+                        <div class="search-loading-skeleton-row">
+                            <span class="search-loading-skeleton-avatar"></span>
+                            <span class="search-loading-skeleton-line search-loading-skeleton-line-lg"></span>
+                        </div>
+                        <div class="search-loading-skeleton-row">
+                            <span class="search-loading-skeleton-avatar"></span>
+                            <span class="search-loading-skeleton-line search-loading-skeleton-line-md"></span>
+                        </div>
+                        <div class="search-loading-skeleton-row">
+                            <span class="search-loading-skeleton-avatar"></span>
+                            <span class="search-loading-skeleton-line search-loading-skeleton-line-sm"></span>
+                        </div>
                     </div>
+                    <span class="sr-only">Searching...</span>
                 `;
             }
             

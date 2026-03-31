@@ -237,6 +237,31 @@
     }
 
     // ==========================================
+    // SKELETON MINIMUM DISPLAY DELAY
+    // ==========================================
+    var DEFAULT_SKELETON_DELAY_MS = 350;
+
+    function getSkeletonDelayMs(custom) {
+        if (typeof custom === 'number' && !isNaN(custom)) return custom;
+        if (typeof window.UI_MIN_SKELETON_MS === 'number' && !isNaN(window.UI_MIN_SKELETON_MS)) {
+            return window.UI_MIN_SKELETON_MS;
+        }
+        return DEFAULT_SKELETON_DELAY_MS;
+    }
+
+    function waitForMinDelay(startTime, minMs) {
+        var start = typeof startTime === 'number' ? startTime : Date.now();
+        var minDelay = getSkeletonDelayMs(minMs);
+        var elapsed = Date.now() - start;
+        var remaining = Math.max(0, minDelay - elapsed);
+        return new Promise(function (resolve) { setTimeout(resolve, remaining); });
+    }
+
+    if (typeof window.UI_MIN_SKELETON_MS !== 'number') {
+        window.UI_MIN_SKELETON_MS = DEFAULT_SKELETON_DELAY_MS;
+    }
+
+    // ==========================================
     // BUTTON LOADING STATE
     // ==========================================
     function setButtonLoading(btn, loading, originalText) {
@@ -361,6 +386,7 @@
         formatDate: formatDate, formatTime: formatTime, generateTimestamp: generateTimestamp,
         // Functional
         debounce: debounce, throttle: throttle,
+        getSkeletonDelayMs: getSkeletonDelayMs, waitForMinDelay: waitForMinDelay,
         // Buttons
         setButtonLoading: setButtonLoading,
         // Validation
@@ -395,6 +421,8 @@
     window.normalizeImageIdentifier = normalizeImageIdentifier;
     window.debounce                = debounce;
     window.throttle                = throttle;
+    window.getSkeletonDelayMs      = getSkeletonDelayMs;
+    window.waitForMinDelay         = waitForMinDelay;
     window.setButtonLoading        = setButtonLoading;
     window.validateForm            = validateForm;
 

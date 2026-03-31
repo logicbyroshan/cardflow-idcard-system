@@ -83,7 +83,11 @@
     <div class="blocking-overlay-content" id="blockingOverlayContent">
       <!-- Icon with state classes -->
       <div class="blocking-overlay-icon" id="blockingOverlayIcon">
-        <i class="fa-solid fa-gear fa-spin" id="blockingOverlayIconInner"></i>
+        <i class="fa-solid fa-gear" id="blockingOverlayIconInner" aria-hidden="true"></i>
+        <div class="blocking-overlay-skeleton" aria-hidden="true">
+          <span class="blocking-overlay-skeleton-block blocking-overlay-skeleton-circle"></span>
+          <span class="blocking-overlay-skeleton-block blocking-overlay-skeleton-line"></span>
+        </div>
       </div>
 
       <!-- Title -->

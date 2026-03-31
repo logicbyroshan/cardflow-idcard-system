@@ -5,6 +5,10 @@
 
 {% block extra_css %}
 <style>
+  @keyframes imp-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
   .imp-page { padding: 16px 20px; }
 
   /* Role filter pills */
@@ -133,6 +137,53 @@
     color: var(--text-muted, #888);
   }
   .imp-empty i { font-size: 36px; display: block; margin-bottom: 12px; color: var(--text-light, #aaa); }
+
+  .imp-skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .imp-skeleton-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+  }
+  .imp-skeleton-block {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background-size: 200% 100%;
+    animation: imp-skeleton-shimmer 1.35s linear infinite;
+  }
+  .imp-skeleton-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+  .imp-skeleton-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .imp-skeleton-title {
+    width: 56%;
+    height: 12px;
+    margin-bottom: 8px;
+  }
+  .imp-skeleton-subtitle {
+    width: 82%;
+    height: 10px;
+  }
+  .imp-skeleton-role {
+    width: 74px;
+    height: 22px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
 </style>
 {% endblock %}
 
@@ -174,9 +225,17 @@
 
   <!-- User Grid -->
   <div id="impGrid" class="imp-grid">
-    <div class="imp-empty">
-      <i class="fa-solid fa-spinner fa-spin"></i>
-      Loading users...
+    <div class="imp-skeleton-grid" aria-hidden="true">
+      {% for _ in "123456" %}
+      <div class="imp-skeleton-card">
+        <div class="imp-skeleton-block imp-skeleton-avatar"></div>
+        <div class="imp-skeleton-main">
+          <div class="imp-skeleton-block imp-skeleton-title"></div>
+          <div class="imp-skeleton-block imp-skeleton-subtitle"></div>
+        </div>
+        <div class="imp-skeleton-block imp-skeleton-role"></div>
+      </div>
+      {% endfor %}
     </div>
   </div>
 

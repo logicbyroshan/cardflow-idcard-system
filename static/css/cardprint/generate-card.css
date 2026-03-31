@@ -462,6 +462,40 @@
   color: #d1d5db;
 }
 
+@keyframes gen-pdf-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.gen-pdf-skeleton {
+  width: min(320px, 85%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.gen-pdf-skeleton-block {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+  background-size: 200% 100%;
+  animation: gen-pdf-skeleton-shimmer 1.4s linear infinite;
+}
+
+.gen-pdf-skeleton-title {
+  width: 42%;
+  height: 12px;
+}
+
+.gen-pdf-skeleton-line {
+  width: 78%;
+  height: 10px;
+}
+
+.gen-pdf-skeleton-line-short {
+  width: 56%;
+}
+
 .gen-canvas-info {
   font-size: 11px;
   color: var(--text-muted, #9ca3af);

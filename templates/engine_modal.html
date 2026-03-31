@@ -176,8 +176,12 @@
 
         {# Loading overlay #}
         <div id="aeLoading" class="ae-loading" style="display:none;">
-          <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-          <span>Loading image...</span>
+          <div class="ae-loading-skeleton" aria-hidden="true">
+            <div class="ae-loading-skeleton-block ae-loading-skeleton-title"></div>
+            <div class="ae-loading-skeleton-block ae-loading-skeleton-line"></div>
+            <div class="ae-loading-skeleton-block ae-loading-skeleton-line ae-loading-skeleton-line-short"></div>
+          </div>
+          <span class="sr-only">Loading image...</span>
         </div>
 
         {# Phase 8: Error overlay  -  shown when image fails to load or save fails #}

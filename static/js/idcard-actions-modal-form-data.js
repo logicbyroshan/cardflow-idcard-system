@@ -109,8 +109,8 @@ function showDeferredHeifPreview(previewEl) {
 function showPreparingHeifPreview(previewEl) {
     if (!previewEl) return;
     previewEl.classList.remove('no-path', 'has-image', 'path-not-found');
-    previewEl.classList.add('pending-image');
-    previewEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span style="display:block;margin-top:6px;font-size:11px;line-height:1.2;">Preparing preview...</span>';
+    previewEl.classList.add('pending-image', 'pending-image-skeleton');
+    previewEl.innerHTML = '<div class="image-preview-skeleton" aria-hidden="true"><span class="image-preview-skeleton-block image-preview-skeleton-thumb"></span><span class="image-preview-skeleton-block image-preview-skeleton-line"></span></div><span class="image-preview-skeleton-text">Preparing preview...</span>';
 }
 
 function showPreviewNotAvailable(previewEl) {
@@ -261,14 +261,20 @@ async function setPreviewFromFile(previewEl, file, altText) {
     const heifLike = isHeifLikeFile(file);
     const requestId = String(Date.now()) + '-' + String(Math.random()).slice(2);
     previewEl.dataset.previewRequestId = requestId;
+    var skeletonStart = null;
 
     if (heifLike) {
         showPreparingHeifPreview(previewEl);
+        skeletonStart = Date.now();
     }
 
     try {
         const dataUrl = await getPreviewDataUrl(file);
         if (previewEl.dataset.previewRequestId !== requestId) return;
+
+        if (skeletonStart != null && typeof window.waitForMinDelay === 'function') {
+            await window.waitForMinDelay(skeletonStart);
+        }
 
         previewEl.classList.remove('no-path', 'pending-image', 'path-not-found');
         previewEl.classList.add('has-image');
@@ -287,6 +293,9 @@ async function setPreviewFromFile(previewEl, file, altText) {
         previewEl.appendChild(img);
     } catch (err) {
         if (previewEl.dataset.previewRequestId !== requestId) return;
+        if (skeletonStart != null && typeof window.waitForMinDelay === 'function') {
+            await window.waitForMinDelay(skeletonStart);
+        }
         if (heifLike) {
             showDeferredHeifPreview(previewEl);
         } else {

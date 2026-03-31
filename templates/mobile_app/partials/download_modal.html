@@ -32,12 +32,16 @@
                      'complete': downloadModal.state === 'complete',
                      'error': downloadModal.state === 'error'
                  }">
-                <i :class="{
-                    'fa-solid fa-gear fa-spin': downloadModal.state === 'preparing',
-                    'fa-solid fa-download': downloadModal.state === 'downloading',
-                    'fa-solid fa-check': downloadModal.state === 'complete',
-                    'fa-solid fa-xmark': downloadModal.state === 'error'
-                }"></i>
+                <template x-if="downloadModal.state === 'preparing'">
+                    <span class="skeleton-line h-10 w-10 rounded-2xl" aria-hidden="true"></span>
+                </template>
+                <template x-if="downloadModal.state !== 'preparing'">
+                    <i :class="{
+                        'fa-solid fa-download': downloadModal.state === 'downloading',
+                        'fa-solid fa-check': downloadModal.state === 'complete',
+                        'fa-solid fa-xmark': downloadModal.state === 'error'
+                    }"></i>
+                </template>
             </div>
 
             <!-- Title -->
@@ -84,7 +88,7 @@
         <div class="download-modal-status"
              x-show="downloadModal.statusText && (downloadModal.state === 'preparing' || downloadModal.state === 'downloading')">
             <p class="download-status-text">
-                <i class="fa-solid fa-circle-notch"></i>
+                <span class="skeleton-line h-2.5 w-2.5 rounded-full" aria-hidden="true"></span>
                 <span x-text="downloadModal.statusText"></span>
             </p>
         </div>

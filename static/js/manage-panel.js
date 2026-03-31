@@ -290,16 +290,50 @@ async function loadTargetUsers() {
     renderUserPicker();
     return;
   }
+
+  var list = document.getElementById('userPickerList');
+  var skeletonStart = null;
+  if (list) {
+    list.innerHTML = `
+      <div class="user-picker-skeleton" aria-hidden="true">
+        ${Array.from({ length: 4 }).map(() => `
+          <div class="user-picker-skeleton-row">
+            <span class="user-picker-skeleton-block user-picker-skeleton-check"></span>
+            <span class="user-picker-skeleton-block user-picker-skeleton-name"></span>
+            <span class="user-picker-skeleton-block user-picker-skeleton-role"></span>
+          </div>
+        `).join('')}
+      </div>
+      <span class="sr-only">Loading users...</span>
+    `;
+    skeletonStart = Date.now();
+  }
+
   try {
     const res = await fetch('/api/notifications/admin/target-users/');
-    if (!res.ok) { console.error('Failed to load users: HTTP', res.status); return; }
+    if (!res.ok) {
+      console.error('Failed to load users: HTTP', res.status);
+      if (list) {
+        if (skeletonStart != null) await waitForMinDelay(skeletonStart);
+        list.innerHTML = '<div class="user-picker-empty">Failed to load users</div>';
+      }
+      return;
+    }
     const data = await res.json();
     if (data.success) {
       allUsers = data.users;
+      if (skeletonStart != null) await waitForMinDelay(skeletonStart);
       renderUserPicker();
+    } else if (list) {
+      if (skeletonStart != null) await waitForMinDelay(skeletonStart);
+      list.innerHTML = '<div class="user-picker-empty">Failed to load users</div>';
     }
   } catch (err) {
     console.error('Failed to load users:', err);
+    if (list) {
+      if (skeletonStart != null) await waitForMinDelay(skeletonStart);
+      list.innerHTML = '<div class="user-picker-empty">Network error loading users</div>';
+    }
   }
 }
 
@@ -907,17 +941,27 @@ window.loadEmailLogs = function (page) {
   if (type)   url += '&email_type=' + encodeURIComponent(type);
 
   const tbody = document.getElementById('emailLogsBody');
+  var skeletonStart = null;
   if (tbody) {
     tbody.innerHTML =
       '<tr><td colspan="7" class="notif-table-empty-cell">' +
-      '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>' +
-      '<p>Loading</p></div></td></tr>';
+      '<div class="email-logs-skeleton" aria-hidden="true">' +
+      '<div class="email-logs-skeleton-row"><span class="email-logs-skeleton-block email-logs-skeleton-id"></span><span class="email-logs-skeleton-block email-logs-skeleton-name"></span><span class="email-logs-skeleton-block email-logs-skeleton-email"></span><span class="email-logs-skeleton-block email-logs-skeleton-type"></span><span class="email-logs-skeleton-block email-logs-skeleton-status"></span><span class="email-logs-skeleton-block email-logs-skeleton-time"></span><span class="email-logs-skeleton-block email-logs-skeleton-action"></span></div>' +
+      '<div class="email-logs-skeleton-row"><span class="email-logs-skeleton-block email-logs-skeleton-id"></span><span class="email-logs-skeleton-block email-logs-skeleton-name"></span><span class="email-logs-skeleton-block email-logs-skeleton-email"></span><span class="email-logs-skeleton-block email-logs-skeleton-type"></span><span class="email-logs-skeleton-block email-logs-skeleton-status"></span><span class="email-logs-skeleton-block email-logs-skeleton-time"></span><span class="email-logs-skeleton-block email-logs-skeleton-action"></span></div>' +
+      '<div class="email-logs-skeleton-row"><span class="email-logs-skeleton-block email-logs-skeleton-id"></span><span class="email-logs-skeleton-block email-logs-skeleton-name"></span><span class="email-logs-skeleton-block email-logs-skeleton-email"></span><span class="email-logs-skeleton-block email-logs-skeleton-type"></span><span class="email-logs-skeleton-block email-logs-skeleton-status"></span><span class="email-logs-skeleton-block email-logs-skeleton-time"></span><span class="email-logs-skeleton-block email-logs-skeleton-action"></span></div>' +
+      '</div><span class="sr-only">Loading email logs...</span></td></tr>';
+    skeletonStart = Date.now();
   }
 
   fetch(url, { headers: { 'X-CSRFToken': getCSRFToken() } })
     .then(r => r.json())
     .then(function (data) {
-      if (!data.success) return;
+      if (!data.success) return null;
+      var delay = skeletonStart != null ? waitForMinDelay(skeletonStart) : Promise.resolve();
+      return delay.then(function () { return data; });
+    })
+    .then(function (data) {
+      if (!data) return;
       _emailLogsById = {};
       (data.logs || []).forEach(function (log) { _emailLogsById[log.id] = log; });
 
@@ -1415,7 +1459,6 @@ function renderServerInfo(snapshot, fromCache) {
       </div>`;
     }).join('');
   }
-
   if (!otherUsageBreakdown.length) {
     otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details unavailable</p><span>No extra system-level detail could be estimated.</span></div>`;
   } else {

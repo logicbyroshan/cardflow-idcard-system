@@ -29,6 +29,7 @@
     var _toastTimeout    = null;
     var _progressTimeout = null;
     var _progressCancelCb = null;  // cancel callback for progress toast
+    var _progressSkeletonStart = 0;
 
     // ------------------------------------------
     // ICON MAP
@@ -137,8 +138,9 @@
         var cancelBtn  = document.getElementById('toastCancelBtn');
 
         if (msgEl)  msgEl.textContent = message;
-        if (iconEl) iconEl.className  = 'fa-solid fa-spinner fa-spin';
+        if (iconEl) iconEl.className  = 'toast-skeleton-icon';
         if (progressEl) progressEl.style.display = 'block';
+        if (!_progressSkeletonStart) _progressSkeletonStart = Date.now();
 
         // Show cancel/stop button when a cancel callback is registered
         if (cancelBtn) {
@@ -146,7 +148,7 @@
         }
 
         if (msgEl)  msgEl.textContent = message;
-        if (iconEl) iconEl.className  = 'fa-solid fa-spinner fa-spin';
+        if (iconEl) iconEl.className  = 'toast-skeleton-icon';
         if (progressEl) progressEl.style.display = 'block';
 
         if (pctEl) {
@@ -178,6 +180,13 @@
         message = message || 'Successfully downloaded!';
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
         _progressCancelCb = null;
+
+        if (_progressSkeletonStart && typeof window.waitForMinDelay === 'function') {
+            var start = _progressSkeletonStart;
+            _progressSkeletonStart = 0;
+            window.waitForMinDelay(start).then(function () { showDownloadComplete(message); });
+            return;
+        }
 
         var toast      = _ensureEl();
         var msgEl      = document.getElementById('toastMessage')      || toast.querySelector('span');
@@ -212,6 +221,7 @@
         if (_toastTimeout)    { clearTimeout(_toastTimeout);    _toastTimeout    = null; }
         if (_progressTimeout) { clearTimeout(_progressTimeout); _progressTimeout = null; }
         _progressCancelCb = null;
+        _progressSkeletonStart = 0;
         var cancelBtn = document.getElementById('toastCancelBtn');
         if (cancelBtn) cancelBtn.style.display = 'none';
     }

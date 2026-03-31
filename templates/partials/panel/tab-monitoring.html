@@ -1,6 +1,31 @@
 <!-- === MONITORING TAB === -->
 <div class="panel-tab-content" id="tab-monitoring">
 
+  <style>
+    @keyframes monitoring-skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .monitoring-skeleton-wrap {
+      padding: 8px 0;
+    }
+    .monitoring-skeleton-block {
+      display: block;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+      background-size: 200% 100%;
+      animation: monitoring-skeleton-shimmer 1.4s linear infinite;
+      margin: 0 auto;
+    }
+    .monitoring-skeleton-idx { width: 24px; height: 11px; }
+    .monitoring-skeleton-type { width: 86%; height: 12px; }
+    .monitoring-skeleton-status { width: 78%; height: 24px; border-radius: 9999px; }
+    .monitoring-skeleton-user { width: 92%; height: 12px; }
+    .monitoring-skeleton-progress { width: 82%; height: 10px; }
+    .monitoring-skeleton-time { width: 88%; height: 11px; }
+    .monitoring-skeleton-action { width: 22px; height: 22px; border-radius: 6px; }
+  </style>
+
   <!-- Header bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
@@ -20,7 +45,7 @@
   <!-- Stats cards -->
   <div class="system-grid mb-4" id="monitoringStats">
     <div class="system-card">
-      <div class="system-card-header"><i class="fa-solid fa-spinner"></i> Active Tasks</div>
+      <div class="system-card-header"><i class="fa-solid fa-bolt"></i> Active Tasks</div>
       <div class="system-card-body">
         <span id="statActiveTasks" class="monitor-stat-value monitor-stat-active"> - </span>
       </div>
@@ -74,14 +99,18 @@
           </tr>
         </thead>
         <tbody id="monitoringTasksBody">
-          <tr class="notif-table-empty">
-            <td colspan="8">
-              <div class="empty-state">
-                <i class="fa-solid fa-spinner fa-spin"></i>
-                <p>Loading...</p>
-              </div>
-            </td>
+          {% for _ in "123" %}
+          <tr class="notif-table-empty" aria-hidden="true">
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-idx"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-type"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-status"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-user"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-progress"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-time"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-time"></span></div></td>
+            <td><div class="monitoring-skeleton-wrap"><span class="monitoring-skeleton-block monitoring-skeleton-action"></span></div></td>
           </tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>

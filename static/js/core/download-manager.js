@@ -64,7 +64,7 @@
 
         // Set preparing state
         if (content) content.className = 'blocking-overlay-content preparing';
-        if (iconEl) iconEl.className = 'fa-solid fa-gear fa-spin';
+        if (iconEl) iconEl.className = 'fa-solid fa-gear';
         if (titleEl) titleEl.textContent = 'Preparing Download';
         if (msgEl) msgEl.textContent = 'Generating ' + name + '...';
         if (barEl) { barEl.style.width = '0%'; barEl.classList.add('indeterminate'); }
@@ -219,9 +219,10 @@
         var topRow = document.createElement('div');
         topRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
 
-        var spinner = document.createElement('i');
-        spinner.className = 'fa-solid fa-spinner fa-spin';
-        spinner.style.cssText = 'font-size:16px;flex-shrink:0;';
+        var spinner = document.createElement('span');
+        spinner.className = 'dl-toast-skeleton-icon';
+        spinner.setAttribute('aria-hidden', 'true');
+        spinner.style.cssText = 'flex-shrink:0;';
         topRow.appendChild(spinner);
 
         var nameSpan = document.createElement('span');
@@ -334,49 +335,62 @@
 
         dl.status = status;
 
-        var icon = el.querySelector('i:first-child');
-        var nameEl = el.querySelector('.dl-toast-name');
-        var pctEl = el.querySelector('.dl-toast-pct');
-        var bar = el.querySelector('.dl-toast-bar');
-        var etaEl = el.querySelector('.dl-toast-eta');
-        var cancelBtn = el.querySelector('.dl-toast-cancel');
+        function applyFinish() {
+            var icon = el.querySelector('i:first-child');
+            var nameEl = el.querySelector('.dl-toast-name');
+            var pctEl = el.querySelector('.dl-toast-pct');
+            var bar = el.querySelector('.dl-toast-bar');
+            var etaEl = el.querySelector('.dl-toast-eta');
+            var cancelBtn = el.querySelector('.dl-toast-cancel');
 
-        // Update icon
-        if (icon) {
-            icon.className = status === 'complete'
-                ? 'fa-solid fa-check-circle'
-                : status === 'cancelled'
-                    ? 'fa-solid fa-ban'
-                    : 'fa-solid fa-times-circle';
-            icon.style.animation = 'none';
+            // Update icon
+            if (icon) {
+                icon.className = status === 'complete'
+                    ? 'fa-solid fa-check-circle'
+                    : status === 'cancelled'
+                        ? 'fa-solid fa-ban'
+                        : 'fa-solid fa-times-circle';
+                icon.style.animation = 'none';
+            }
+
+            // Update message
+            if (nameEl) nameEl.textContent = message || dl.name;
+            if (pctEl) pctEl.textContent = status === 'complete' ? '100%' : '';
+            if (bar) bar.style.width = status === 'complete' ? '100%' : bar.style.width;
+            if (etaEl) etaEl.textContent = '';
+
+            // Style based on status
+            if (status === 'complete') {
+                el.style.background = 'linear-gradient(135deg,#10b981 0%,#059669 100%)';
+            } else if (status === 'cancelled') {
+                el.style.background = 'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)';
+            } else {
+                el.style.background = 'linear-gradient(135deg,#ef4444 0%,#dc2626 100%)';
+            }
+
+            // Change cancel button to dismiss (X)
+            if (cancelBtn) {
+                cancelBtn.title = 'Dismiss';
+                cancelBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    _removeToast(dl.id);
+                };
+            }
+
+            // Auto-dismiss after duration
+            setTimeout(function () { _removeToast(dl.id); }, COMPLETE_TOAST_DURATION);
         }
 
-        // Update message
-        if (nameEl) nameEl.textContent = message || dl.name;
-        if (pctEl) pctEl.textContent = status === 'complete' ? '100%' : '';
-        if (bar) bar.style.width = status === 'complete' ? '100%' : bar.style.width;
-        if (etaEl) etaEl.textContent = '';
-
-        // Style based on status
-        if (status === 'complete') {
-            el.style.background = 'linear-gradient(135deg,#10b981 0%,#059669 100%)';
-        } else if (status === 'cancelled') {
-            el.style.background = 'linear-gradient(135deg,#f59e0b 0%,#d97706 100%)';
-        } else {
-            el.style.background = 'linear-gradient(135deg,#ef4444 0%,#dc2626 100%)';
+        if ((status === 'complete' || status === 'error') && dl.skeletonStart && typeof window.waitForMinDelay === 'function') {
+            var start = dl.skeletonStart;
+            dl.skeletonStart = null;
+            window.waitForMinDelay(start).then(function () {
+                if (dl.status !== status) return;
+                applyFinish();
+            });
+            return;
         }
-
-        // Change cancel button to dismiss (X)
-        if (cancelBtn) {
-            cancelBtn.title = 'Dismiss';
-            cancelBtn.onclick = function (e) {
-                e.stopPropagation();
-                _removeToast(dl.id);
-            };
-        }
-
-        // Auto-dismiss after duration
-        setTimeout(function () { _removeToast(dl.id); }, COMPLETE_TOAST_DURATION);
+        applyFinish();
     }
 
     function _removeToast(id) {
@@ -659,7 +673,8 @@
             loaded: 0,
             total: 0,
             toastEl: toastEl,
-            status: 'pending'
+            status: 'pending',
+            skeletonStart: Date.now()
         };
 
         var activeCount = _getActiveCount();
@@ -735,7 +750,8 @@
             loaded: 0,
             total: 0,
             toastEl: toastEl,
-            status: 'downloading'
+            status: 'downloading',
+            skeletonStart: Date.now()
         };
 
         var dl = _active[id];

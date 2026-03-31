@@ -169,7 +169,12 @@
             <div class="gen-card-wrapper" id="genCardWrapper">
               <canvas id="genCardCanvas"></canvas>
               <div class="gen-pdf-loading hidden" id="pdfLoadingOverlay">
-                <i class="fa-solid fa-spinner fa-spin"></i> Loading template...
+                <div class="gen-pdf-skeleton" aria-hidden="true">
+                  <div class="gen-pdf-skeleton-block gen-pdf-skeleton-title"></div>
+                  <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line"></div>
+                  <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line gen-pdf-skeleton-line-short"></div>
+                </div>
+                <span class="sr-only">Loading template...</span>
               </div>
               <div class="gen-no-template" id="noTemplateMsg" {% if template.front_pdf %}hidden{% endif %}>
                 <i class="fa-solid fa-file-pdf"></i>

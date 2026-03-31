@@ -5,6 +5,67 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/idcard-group.css' %}">
+<style>
+  @keyframes groups-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .groups-skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .groups-skeleton-card {
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 16px;
+  }
+  .groups-skeleton-block {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background-size: 200% 100%;
+    animation: groups-skeleton-shimmer 1.4s linear infinite;
+  }
+  .groups-skeleton-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .groups-skeleton-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  .groups-skeleton-title {
+    height: 12px;
+    width: 65%;
+    margin-bottom: 8px;
+  }
+  .groups-skeleton-subtitle {
+    height: 10px;
+    width: 48%;
+  }
+  .groups-skeleton-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .groups-skeleton-stat {
+    height: 44px;
+    border-radius: 10px;
+  }
+  .groups-skeleton-row {
+    height: 36px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .groups-skeleton-row:last-child {
+    margin-bottom: 0;
+  }
+</style>
 {% endblock %}
 
 {% block breadcrumb %}
@@ -20,9 +81,25 @@
   </div>
   
   <div class="groups-container" id="groupsContainer">
-    <div class="loading-state">
-      <i class="fa-solid fa-spinner fa-spin"></i>
-      <h3>Loading groups...</h3>
+    <div class="groups-skeleton-grid" aria-hidden="true">
+      {% for _ in "123" %}
+      <div class="groups-skeleton-card">
+        <div class="groups-skeleton-head">
+          <div class="groups-skeleton-block groups-skeleton-icon"></div>
+          <div class="w-full">
+            <div class="groups-skeleton-block groups-skeleton-title"></div>
+            <div class="groups-skeleton-block groups-skeleton-subtitle"></div>
+          </div>
+        </div>
+        <div class="groups-skeleton-stats">
+          <div class="groups-skeleton-block groups-skeleton-stat"></div>
+          <div class="groups-skeleton-block groups-skeleton-stat"></div>
+          <div class="groups-skeleton-block groups-skeleton-stat"></div>
+        </div>
+        <div class="groups-skeleton-block groups-skeleton-row"></div>
+        <div class="groups-skeleton-block groups-skeleton-row"></div>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>

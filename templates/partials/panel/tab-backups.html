@@ -1,6 +1,61 @@
 <!-- Backups Tab Content -->
 <div class="panel-tab-content" id="tab-backups">
 
+  <style>
+    @keyframes backup-skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .backup-skeleton-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+    .backup-skeleton-item:last-child {
+      margin-bottom: 0;
+    }
+    .backup-skeleton-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .backup-skeleton-block {
+      border-radius: 8px;
+      background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+      background-size: 200% 100%;
+      animation: backup-skeleton-shimmer 1.4s linear infinite;
+    }
+    .backup-skeleton-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .backup-skeleton-title {
+      height: 12px;
+      width: 180px;
+      margin-bottom: 8px;
+    }
+    .backup-skeleton-subtitle {
+      height: 10px;
+      width: 120px;
+    }
+    .backup-skeleton-btn {
+      width: 84px;
+      height: 32px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+  </style>
+
   <!-- Actions bar -->
   <div class="backup-tab-actions">
     <h3 class="backup-tab-title"><i class="fa-solid fa-database"></i> Backup Management</h3>
@@ -11,9 +66,18 @@
 
   <!-- Backup list container -->
   <div id="backupsList" class="backup-list">
-    <div class="backup-loading">
-      <i class="fa-solid fa-spinner fa-spin"></i> Loading backups...
+    {% for _ in "123" %}
+    <div class="backup-skeleton-item" aria-hidden="true">
+      <div class="backup-skeleton-left">
+        <div class="backup-skeleton-block backup-skeleton-icon"></div>
+        <div>
+          <div class="backup-skeleton-block backup-skeleton-title"></div>
+          <div class="backup-skeleton-block backup-skeleton-subtitle"></div>
+        </div>
+      </div>
+      <div class="backup-skeleton-block backup-skeleton-btn"></div>
     </div>
+    {% endfor %}
   </div>
 
   <!-- Delete now modal -->

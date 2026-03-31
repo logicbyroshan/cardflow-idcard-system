@@ -812,13 +812,30 @@ body[style*="overflow:hidden"] {
   animation: indeterminate-progress 1.5s infinite ease-in-out;
 }
 
+@keyframes toast-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.toast-skeleton-icon,
+.dl-toast-skeleton-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.35) 25%, rgba(255,255,255,0.6) 37%, rgba(255,255,255,0.35) 63%);
+  background-size: 200% 100%;
+  animation: toast-skeleton-shimmer 1.2s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 /* Toast Downloading State (gradient + min-width kept) */
 .toast.downloading {
   min-width: 320px;
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
 }
 
-.toast.downloading i {
+.toast.downloading i.fa-spinner {
   animation: spin-icon 1s linear infinite;
 }
 
@@ -1336,10 +1353,49 @@ td.email-col {
   transition: background 0.3s, color 0.3s;
 }
 
+@keyframes blocking-overlay-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.blocking-overlay-skeleton {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.blocking-overlay-skeleton-block {
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+  background-size: 200% 100%;
+  animation: blocking-overlay-skeleton-shimmer 1.2s linear infinite;
+}
+
+.blocking-overlay-skeleton-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+}
+
+.blocking-overlay-skeleton-line {
+  width: 44px;
+  height: 8px;
+  border-radius: 6px;
+}
+
 /* State: Preparing (gear spinning) */
 .blocking-overlay-content.preparing .blocking-overlay-icon {
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
   color: #6366f1;
+}
+
+.blocking-overlay-content.preparing #blockingOverlayIconInner {
+  display: none;
+}
+
+.blocking-overlay-content.preparing .blocking-overlay-skeleton {
+  display: flex;
 }
 
 /* State: Downloading */

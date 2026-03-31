@@ -59,7 +59,11 @@
     </table>
     <!-- Loading indicator for lazy loading -->
     <div class="lazy-load-indicator" id="lazyLoadIndicator" style="display: none;">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-        <span>Loading more records...</span>
+        <div class="lazy-skeleton-shell" aria-hidden="true">
+            {% for _ in "12345678" %}
+            <span class="lazy-skeleton-cell"></span>
+            {% endfor %}
+        </div>
+        <span class="sr-only">Loading more records...</span>
     </div>
 </div>

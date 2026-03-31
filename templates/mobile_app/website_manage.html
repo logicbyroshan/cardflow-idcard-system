@@ -414,7 +414,11 @@
             </div>
             <div class="overflow-y-auto p-3 pb-6">
                 <template x-if="categoryPreview.loading">
-                    <div class="py-12 text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i><span class="text-xs">Loading photos...</span></div>
+                    <div class="grid grid-cols-3 gap-2 py-2" aria-hidden="true">
+                        <template x-for="i in 9" :key="'cat-preview-skeleton-' + i">
+                            <div class="skeleton-line aspect-square rounded-xl"></div>
+                        </template>
+                    </div>
                 </template>
                 <template x-if="!categoryPreview.loading && (!categoryPreview.items || categoryPreview.items.length === 0)">
                     <div class="py-12 text-center text-gray-400 text-xs">No uploaded photos found.</div>

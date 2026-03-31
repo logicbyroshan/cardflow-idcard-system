@@ -67,6 +67,50 @@
     .notif-priority.normal { background: #eff6ff; color: #1d4ed8; }
     .notif-priority.high { background: #fef3c7; color: #b45309; }
     .notif-priority.urgent { background: #fef2f2; color: #b91c1c; }
+    @keyframes notif-skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .notif-skeleton-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid #e5e7eb;
+      margin-top: -1px;
+      background: #fff;
+    }
+    .notif-skeleton-item:first-child { margin-top: 0; }
+    .notif-skeleton-block {
+      border-radius: 8px;
+      background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+      background-size: 200% 100%;
+      animation: notif-skeleton-shimmer 1.4s linear infinite;
+    }
+    .notif-skeleton-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .notif-skeleton-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .notif-skeleton-title {
+      height: 12px;
+      width: 46%;
+      margin-bottom: 8px;
+    }
+    .notif-skeleton-msg {
+      height: 11px;
+      width: 85%;
+      margin-bottom: 10px;
+    }
+    .notif-skeleton-meta {
+      height: 10px;
+      width: 58%;
+    }
     .notif-empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
     .notif-empty-state i { font-size: 40px; margin-bottom: 12px; display: block; }
     .notif-empty-state p { font-size: 14px; font-weight: 600; color: #64748b; }
@@ -102,10 +146,16 @@
       <!-- Body -->
       <div class="notif-page-body">
         <div class="notif-list" id="notifPageList">
-          <div class="notif-empty-state">
-            <i class="fa-solid fa-spinner fa-spin"></i>
-            <p>Loading...</p>
+          {% for _ in "12345" %}
+          <div class="notif-skeleton-item" aria-hidden="true">
+            <div class="notif-skeleton-block notif-skeleton-icon"></div>
+            <div class="notif-skeleton-body">
+              <div class="notif-skeleton-block notif-skeleton-title"></div>
+              <div class="notif-skeleton-block notif-skeleton-msg"></div>
+              <div class="notif-skeleton-block notif-skeleton-meta"></div>
+            </div>
           </div>
+          {% endfor %}
         </div>
 
         <div class="notif-load-more" id="notifPageLoadMore" style="display:none;">

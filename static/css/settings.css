@@ -458,6 +458,69 @@
     font-size: 13px;
 }
 
+@keyframes settings-template-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.settings-template-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-template-skeleton-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.settings-template-skeleton-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-template-skeleton-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.settings-template-skeleton-block {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background-size: 200% 100%;
+    animation: settings-template-skeleton-shimmer 1.4s linear infinite;
+}
+
+.settings-template-skeleton-title {
+    width: 42%;
+    height: 12px;
+    margin-bottom: 8px;
+}
+
+.settings-template-skeleton-line {
+    width: 92%;
+    height: 10px;
+    margin-bottom: 6px;
+}
+
+.settings-template-skeleton-line-short {
+    width: 65%;
+    margin-bottom: 0;
+}
+
+.settings-template-skeleton-btn {
+    width: 34px;
+    height: 26px;
+    border-radius: 6px;
+}
+
 .settings-template-create-box {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
