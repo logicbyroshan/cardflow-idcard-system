@@ -41,12 +41,60 @@
         warning: 'fa-exclamation-triangle'
     };
 
+    function _wireCancelButton(cancelBtn) {
+        if (!cancelBtn || cancelBtn.dataset.toastWired === '1') return;
+        cancelBtn.addEventListener('click', function () {
+            if (typeof _progressCancelCb === 'function') {
+                _progressCancelCb();
+                _progressCancelCb = null;
+            }
+            hideToast();
+        });
+        cancelBtn.dataset.toastWired = '1';
+    }
+
+    function _ensureCancelButton(toast) {
+        if (!toast) return null;
+        var cancelBtn = document.getElementById('toastCancelBtn');
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.id = 'toastCancelBtn';
+            cancelBtn.type = 'button';
+            cancelBtn.title = 'Cancel';
+            cancelBtn.style.cssText = 'display:none;background:none;border:none;color:inherit;cursor:pointer;' +
+                'margin-left:10px;padding:2px 6px;font-size:1.1em;opacity:.7;transition:opacity .2s;';
+            cancelBtn.onmouseover = function () { this.style.opacity = 1; };
+            cancelBtn.onmouseout = function () { this.style.opacity = .7; };
+
+            var icon = document.createElement('i');
+            icon.className = 'fa-solid fa-xmark';
+            cancelBtn.appendChild(icon);
+
+            var row = toast.querySelector('.toast-message-row');
+            if (row) {
+                row.appendChild(cancelBtn);
+            } else {
+                var pctEl = document.getElementById('toastPercent') || toast.querySelector('#toastPercent');
+                if (pctEl && pctEl.parentNode) {
+                    pctEl.insertAdjacentElement('afterend', cancelBtn);
+                } else {
+                    toast.appendChild(cancelBtn);
+                }
+            }
+        }
+        _wireCancelButton(cancelBtn);
+        return cancelBtn;
+    }
+
     // ------------------------------------------
     // ENSURE DOM ELEMENT EXISTS (for progress toasts & fallback)
     // ------------------------------------------
     function _ensureEl() {
         var toast = document.getElementById('toast');
-        if (toast) return toast;
+        if (toast) {
+            _ensureCancelButton(toast);
+            return toast;
+        }
         toast = document.createElement('div');
         toast.id = 'toast';
         toast.className = 'toast';
@@ -65,17 +113,7 @@
             '  <div id="toastProgressBar" class="toast-progress-bar"></div>' +
             '</div>';
         document.body.appendChild(toast);
-        // Wire cancel button
-        var cancelBtn = document.getElementById('toastCancelBtn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function () {
-                if (typeof _progressCancelCb === 'function') {
-                    _progressCancelCb();
-                    _progressCancelCb = null;
-                }
-                hideToast();
-            });
-        }
+        _ensureCancelButton(toast);
         return toast;
     }
 

@@ -197,7 +197,7 @@
         if (c) return c;
         c = document.createElement('div');
         c.id = TOAST_CONTAINER_ID;
-        c.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:99999;' +
+        c.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:99999;' +
             'display:flex;flex-direction:column-reverse;gap:8px;max-width:380px;width:100%;pointer-events:none;';
         document.body.appendChild(c);
         return c;
