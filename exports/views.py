@@ -751,6 +751,8 @@ def api_export_status(request, task_id: str) -> JsonResponse:
         'message': status['message'],
         'download_url': status.get('download_url', ''),
         'filename': status.get('filename', ''),
+        'file_size_bytes': status.get('file_size_bytes', 0),
+        'file_size_label': status.get('file_size_label', ''),
     })
 
 

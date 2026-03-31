@@ -1127,27 +1127,27 @@ td.email-col {
 }
 
 /* ===========================================
-   TOAST POSITION — Left-bottom corner
+   TOAST POSITION — Right-bottom corner
    =========================================== */
 .toast {
-  right: auto !important;
-  left: 12px !important;
+  left: auto !important;
+  right: 12px !important;
 }
 
 .toast-wrapper,
 .alpine-toast-wrapper {
-  right: auto !important;
-  left: 8px !important;
+  left: auto !important;
+  right: 8px !important;
 }
 
 @media (max-width: 640px) {
   .toast {
-    right: auto !important;
-    left: 16px !important;
+    left: auto !important;
+    right: 16px !important;
   }
   .alpine-toast-wrapper {
-    right: auto !important;
-    left: 16px !important;
+    left: auto !important;
+    right: 16px !important;
   }
 }
 

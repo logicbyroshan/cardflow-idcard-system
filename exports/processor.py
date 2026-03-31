@@ -337,18 +337,20 @@ def process_export_pdf(task):
         
         relative_path = os.path.relpath(pdf_path, settings.MEDIA_ROOT)
         
+        size_bytes = len(pdf_bytes)
+
         # Store results
         task.metadata['result'] = {
             'filename': filename,
             'path': relative_path,
-            'card_count': result.card_count
+            'card_count': result.card_count,
+            'file_size_bytes': size_bytes,
         }
         task.save(update_fields=['metadata'])
         
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
 
-        size_bytes = os.path.getsize(pdf_path) if os.path.exists(pdf_path) else 0
         logger.info(
             "EXPORT_DONE type=pdf task_id=%d cards=%d size_mb=%.2f",
             task.id, result.card_count, size_bytes / (1024 * 1024),

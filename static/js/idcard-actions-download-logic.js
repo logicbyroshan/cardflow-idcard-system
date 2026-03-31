@@ -106,6 +106,29 @@ function _getActiveFilters() {
     return filters;
 }
 
+function _formatSizeLabel(sizeBytes) {
+    var value = Number(sizeBytes || 0);
+    if (!isFinite(value) || value <= 0) return '';
+
+    var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var idx = 0;
+    while (value >= 1024 && idx < units.length - 1) {
+        value = value / 1024;
+        idx += 1;
+    }
+
+    return value.toFixed(idx === 0 ? 0 : 1) + ' ' + units[idx];
+}
+
+function _getExportSizeLabel(data) {
+    if (!data || typeof data !== 'object') return '';
+
+    var fromServer = String(data.file_size_label || '').trim();
+    if (fromServer) return fromServer;
+
+    return _formatSizeLabel(data.file_size_bytes);
+}
+
 // ==========================================
 // DOWNLOAD IMAGES (Separate ZIP per image column)
 // Uses DownloadManager.startImageDownload for JSON-based response
@@ -630,8 +653,13 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
             }
 
             if (data.state === 'completed') {
+                var sizeLabel = _getExportSizeLabel(data);
+                var readyMessage = sizeLabel
+                    ? ('PDF ready (' + sizeLabel + ')! Starting download...')
+                    : 'PDF ready! Starting download...';
+
                 if (typeof showProgressToast === 'function') {
-                    showProgressToast('PDF ready! Starting download...', 100);
+                    showProgressToast(readyMessage, 100);
                 }
                 // Trigger download
                 setTimeout(function() {
@@ -643,7 +671,10 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
                     a.click();
                     document.body.removeChild(a);
                     if (typeof showDownloadComplete === 'function') {
-                        showDownloadComplete('PDF file downloaded successfully!');
+                        var doneMessage = sizeLabel
+                            ? ('PDF file downloaded successfully! (' + sizeLabel + ')')
+                            : 'PDF file downloaded successfully!';
+                        showDownloadComplete(doneMessage);
                     }
                 }, 500);
             } else if (data.state === 'failed') {

@@ -57,6 +57,26 @@ def _safe_media_relative_path(path_value: Any) -> str:
     return os.path.relpath(candidate, media_root).replace('\\', '/')
 
 
+def _format_file_size(size_bytes: Any) -> str:
+    """Format a byte count into a short human-readable label."""
+    try:
+        value = int(size_bytes or 0)
+    except (TypeError, ValueError):
+        return ''
+    if value <= 0:
+        return ''
+
+    units = ['B', 'KB', 'MB', 'GB', 'TB']
+    amount = float(value)
+    unit_idx = 0
+    while amount >= 1024 and unit_idx < len(units) - 1:
+        amount /= 1024.0
+        unit_idx += 1
+
+    precision = 0 if unit_idx == 0 else 1
+    return f"{amount:.{precision}f} {units[unit_idx]}"
+
+
 class BackgroundExportManager:
     """
     Facade that queues PDF exports via BackgroundTask + BackgroundWorker.
@@ -155,6 +175,34 @@ class BackgroundExportManager:
 
         progress = task.progress_percentage
 
+        result_meta = task.metadata.get('result', {}) if isinstance(task.metadata, dict) else {}
+
+        # Build download URL from result_path (relative to MEDIA_ROOT)
+        download_url = ''
+        filename = ''
+        safe_result_rel = ''
+        if task.status == 'completed' and task.result_path:
+            safe_result_rel = _safe_media_relative_path(task.result_path)
+            if safe_result_rel:
+                download_url = settings.MEDIA_URL.rstrip('/') + '/' + safe_result_rel
+            filename = result_meta.get('filename', os.path.basename(task.result_path))
+
+        file_size_bytes = 0
+        try:
+            file_size_bytes = int(result_meta.get('file_size_bytes') or 0)
+        except (TypeError, ValueError):
+            file_size_bytes = 0
+
+        if task.status == 'completed' and file_size_bytes <= 0 and safe_result_rel:
+            full_path = os.path.join(settings.MEDIA_ROOT, safe_result_rel.replace('/', os.sep))
+            if os.path.exists(full_path):
+                try:
+                    file_size_bytes = os.path.getsize(full_path)
+                except OSError:
+                    file_size_bytes = 0
+
+        file_size_label = _format_file_size(file_size_bytes)
+
         # Human-readable message
         if task.status == 'pending':
             message = 'Queued, waiting to start...'
@@ -167,24 +215,19 @@ class BackgroundExportManager:
             else:
                 message = 'Generating PDF...'
         elif task.status == 'completed':
-            result_meta = task.metadata.get('result', {})
             count = result_meta.get('card_count', '')
-            message = f'Export complete ({count} cards)' if count else 'Export complete'
+            if count and file_size_label:
+                message = f'Export complete ({count} cards, {file_size_label})'
+            elif count:
+                message = f'Export complete ({count} cards)'
+            elif file_size_label:
+                message = f'Export complete ({file_size_label})'
+            else:
+                message = 'Export complete'
         elif task.status == 'failed':
             message = task.error_message or 'Export failed. Please try again.'
         else:
             message = task.status
-
-        # Build download URL from result_path (relative to MEDIA_ROOT)
-        download_url = ''
-        filename = ''
-        if task.status == 'completed' and task.result_path:
-            rel = _safe_media_relative_path(task.result_path)
-            if rel:
-                download_url = settings.MEDIA_URL.rstrip('/') + '/' + rel
-            filename = task.metadata.get('result', {}).get(
-                'filename', os.path.basename(task.result_path)
-            )
 
         return {
             'state': state,
@@ -192,4 +235,6 @@ class BackgroundExportManager:
             'message': message,
             'download_url': download_url,
             'filename': filename,
+            'file_size_bytes': file_size_bytes,
+            'file_size_label': file_size_label,
         }
