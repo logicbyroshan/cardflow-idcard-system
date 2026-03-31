@@ -159,7 +159,7 @@ class ExportService:
         
         result = cards.order_by('-id')
         # Safety cap when no specific card_ids provided
-        if not card_ids:
+        if not card_ids and not PermissionService.is_super_admin(self.user):
             result = result[:MAX_EXPORT_CARDS]
         return result
     
@@ -264,7 +264,8 @@ class ExportService:
         card_ids: Optional[List[int]] = None,
         doc_format: str = 'docx',
         status: str = '',
-        template_id: Optional[int] = None
+        template_id: Optional[int] = None,
+        allow_large: Optional[bool] = None,
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -287,9 +288,12 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
+        if allow_large is None:
+            allow_large = PermissionService.is_super_admin(self.user)
+
         return self._word_exporter.export_cards(
             context.table, context.cards, doc_format=doc_format, status=status,
-            template_id=template_id
+            template_id=template_id, allow_large=allow_large
         )
     
     # =========================================================================
@@ -343,6 +347,7 @@ class ExportService:
         card_ids: Optional[List[int]] = None,
         status: str = '',
         rename_options: Optional[Dict[str, Any]] = None,
+        allow_large_base64: Optional[bool] = None,
     ) -> ZipExportResult:
         """
         Export images as ZIP files (one per image field).
@@ -363,11 +368,15 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
+        if allow_large_base64 is None:
+            allow_large_base64 = PermissionService.is_super_admin(self.user)
+
         return self._zip_exporter.export_images(
             context.table,
             context.cards,
             status=status,
             rename_options=rename_options,
+            allow_large_base64=allow_large_base64,
         )
     
     # =========================================================================

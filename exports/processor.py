@@ -410,8 +410,10 @@ def process_export_docx(task):
     
     try:
         # Use existing Word exporter
+        from core.services.permission_service import PermissionService
+        allow_large = PermissionService.is_super_admin(getattr(task, 'user', None))
         exporter = WordExporter()
-        result = exporter.export_cards(table, cards_qs, status=status_filter)
+        result = exporter.export_cards(table, cards_qs, status=status_filter, allow_large=allow_large)
         
         if not result.success:
             task.mark_failed(result.message)

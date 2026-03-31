@@ -83,7 +83,8 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         cards: QuerySet,
         doc_format: str = 'docx',
         status: str = '',
-        template_id: int = None
+        template_id: int = None,
+        allow_large: bool = False,
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -127,7 +128,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         # Hard cap to prevent OOM — python-docx embeds all images in memory
         MAX_WORD_CARDS = 5000
         card_count = cards.count()
-        if card_count > MAX_WORD_CARDS:
+        if not allow_large and card_count > MAX_WORD_CARDS:
             return WordExportResult(
                 success=False,
                 message=f'Word export limited to {MAX_WORD_CARDS} cards (requested {card_count}). Use Excel or reduce your selection.'

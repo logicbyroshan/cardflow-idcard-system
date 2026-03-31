@@ -31,6 +31,19 @@ class ActivityService:
         r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
         re.IGNORECASE,
     )
+    EXPORT_LABELS = {
+        'export_zip': 'IMAGES',
+        'export_pdf': 'PDF',
+        'export_docx': 'WORD',
+        'export_excel': 'XLSX',
+        'images': 'IMAGES',
+        'pdf': 'PDF',
+        'docx': 'WORD',
+        'doc': 'WORD',
+        'xlsx': 'XLSX',
+        'download_all': 'DOWNLOAD-ALL',
+        'pdf_zip': 'PDF-ZIP',
+    }
 
     # ── helpers ──────────────────────────────────────────────
 
@@ -216,6 +229,37 @@ class ActivityService:
             target_model='Staff',
             target_id=staff.pk,
             target_name=name,
+        )
+
+    @classmethod
+    def log_export_failed(
+        cls,
+        request=None,
+        user=None,
+        export_type='export',
+        message='',
+        table_id=None,
+        table_name='',
+        source='sync',
+    ):
+        label = cls.EXPORT_LABELS.get(export_type, '').strip()
+        if not label:
+            raw = str(export_type or 'export').replace('export_', '').strip().upper()
+            label = raw or 'EXPORT'
+        source_label = 'sync' if str(source or '').lower() != 'async' else 'async'
+        desc = f'Export failed ({source_label}) [{label}]'
+        if table_name:
+            desc += f' for "{table_name}"'
+        if message:
+            desc += f': {message}'
+        cls.log(
+            'other',
+            desc,
+            user=user,
+            request=request,
+            target_model='Export',
+            target_id=table_id,
+            target_name=table_name,
         )
 
     @classmethod

@@ -658,6 +658,35 @@ class BackgroundTask(models.Model):
         self.completed_at = timezone.now()
         self.save(update_fields=["status", "error_message", "completed_at", "updated_at"])
         self.cleanup_files()
+        try:
+            if self.task_type in ("export_zip", "export_pdf", "export_docx", "export_excel"):
+                from core.services.activity_service import ActivityService
+                from idcards.models import IDCardTable
+
+                table_id = None
+                table_name = ''
+                metadata = self.metadata or {}
+                if isinstance(metadata, dict):
+                    table_id = metadata.get('table_id')
+                if table_id:
+                    table_name = (
+                        IDCardTable.objects.filter(id=table_id)
+                        .values_list('name', flat=True)
+                        .first()
+                    ) or ''
+
+                ActivityService.log_export_failed(
+                    request=None,
+                    user=self.user,
+                    export_type=self.task_type,
+                    message=self.error_message,
+                    table_id=table_id,
+                    table_name=table_name,
+                    source='async',
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Failed to log export failure activity')
     
     def update_progress(self, progress, total=None):
         """Update progress counter efficiently"""

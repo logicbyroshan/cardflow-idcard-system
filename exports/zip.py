@@ -97,6 +97,7 @@ class ZipExporter:
         cards: QuerySet,
         status: str = '',
         rename_options: Optional[Dict[str, Any]] = None,
+        allow_large_base64: bool = False,
     ) -> ZipExportResult:
         """
         Export images as separate ZIP files for each image field.
@@ -150,6 +151,7 @@ class ZipExporter:
                     clean_client_name=clean_client_name,
                     clean_table_name=clean_table_name,
                     status=status,
+                    allow_large_base64=allow_large_base64,
                 )
             
             # Create a SINGLE ZIP with subdirectories per image field
@@ -158,6 +160,7 @@ class ZipExporter:
             zip_tmp.close()
             
             MAX_IMAGES_PER_ZIP = 5000
+            max_images = None if allow_large_base64 else MAX_IMAGES_PER_ZIP
             
             try:
                 with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -171,7 +174,7 @@ class ZipExporter:
                         field_count = 0
                         
                         for card in cards.iterator(chunk_size=100):
-                            if total_images >= MAX_IMAGES_PER_ZIP:
+                            if max_images is not None and total_images >= max_images:
                                 break
                             
                             img_path = ImageService.get_image_path_for_card(
@@ -215,7 +218,7 @@ class ZipExporter:
                     )
 
                 zip_size = os.path.getsize(zip_tmp_path)
-                if zip_size > MAX_BASE64_ZIP_BYTES:
+                if not allow_large_base64 and zip_size > MAX_BASE64_ZIP_BYTES:
                     os.unlink(zip_tmp_path)
                     return ZipExportResult(
                         success=False,
@@ -274,6 +277,7 @@ class ZipExporter:
         clean_client_name: str,
         clean_table_name: str,
         status: str,
+        allow_large_base64: bool = False,
     ) -> ZipExportResult:
         """Create one ZIP that contains one PDF per selected photo column."""
         selected_keys = [
@@ -319,10 +323,12 @@ class ZipExporter:
                     pdf_tmp_path = pdf_tmp.name
                     pdf_tmp.close()
                     try:
+                        max_pages = None if allow_large_base64 else 5000
                         page_count = self._write_image_field_pdf(
                             cards=cards,
                             field_name=field_name,
                             pdf_path=pdf_tmp_path,
+                            max_pages=max_pages,
                         )
                         if page_count <= 0:
                             continue
@@ -345,7 +351,7 @@ class ZipExporter:
                 )
 
             zip_size = os.path.getsize(zip_tmp_path)
-            if zip_size > MAX_BASE64_ZIP_BYTES:
+            if not allow_large_base64 and zip_size > MAX_BASE64_ZIP_BYTES:
                 return ZipExportResult(
                     success=False,
                     message='Selected PDF ZIP is too large for inline download. Please export fewer cards.'
@@ -391,7 +397,7 @@ class ZipExporter:
             except OSError:
                 pass
 
-    def _write_image_field_pdf(self, cards: QuerySet, field_name: str, pdf_path: str) -> int:
+    def _write_image_field_pdf(self, cards: QuerySet, field_name: str, pdf_path: str, max_pages: Optional[int] = 5000) -> int:
         """Write one PDF where each page contains one image from the given field."""
         from reportlab.pdfgen import canvas
         from reportlab.lib.utils import ImageReader
@@ -402,7 +408,7 @@ class ZipExporter:
 
         try:
             for card in cards.iterator(chunk_size=100):
-                if page_count >= MAX_IMAGES_PER_PDF:
+                if max_pages is not None and page_count >= max_pages:
                     break
 
                 img_path = ImageService.get_image_path_for_card(

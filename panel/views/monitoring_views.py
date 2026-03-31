@@ -358,7 +358,7 @@ def api_monitoring_data(request):
 
     from django.utils import timezone
     from datetime import timedelta
-    from core.models import BackgroundTask, BackupTask
+    from core.models import BackgroundTask, BackupTask, ActivityLog
 
     now = timezone.now()
     since_24h = now - timedelta(hours=24)
@@ -386,9 +386,9 @@ def api_monitoring_data(request):
         'cancelled': 'secondary',
     }
 
-    recent_tasks = []
+    recent_items = []
     for t in recent_qs:
-        recent_tasks.append({
+        recent_items.append({
             'id': t.id,
             'task_type': t.get_task_type_display(),
             'status': t.status,
@@ -396,10 +396,39 @@ def api_monitoring_data(request):
             'status_color': STATUS_COLOR.get(t.status, 'secondary'),
             'progress_pct': t.progress_percentage,
             'user': t.user.get_full_name() or t.user.username if t.user else '—',
-            'created_at': t.created_at.strftime('%d-%m-%Y %H:%M'),
-            'completed_at': t.completed_at.strftime('%d-%m-%Y %H:%M') if t.completed_at else None,
+            'created_at': t.created_at,
+            'completed_at': t.completed_at,
             'error': (t.error_message or '')[:120] if t.status == 'failed' else '',
         })
+
+    export_fail_logs = (
+        ActivityLog.objects
+        .filter(target_model='Export', description__startswith='Export failed (sync)')
+        .select_related('user')
+        .order_by('-created_at')[:10]
+    )
+    for log in export_fail_logs:
+        recent_items.append({
+            'id': f'log-{log.id}',
+            'task_type': 'Export (sync)',
+            'status': 'failed',
+            'status_display': 'Failed',
+            'status_color': STATUS_COLOR.get('failed', 'danger'),
+            'progress_pct': 0,
+            'user': log.user.get_full_name() or log.user.username if log.user else '—',
+            'created_at': log.created_at,
+            'completed_at': log.created_at,
+            'error': (log.description or '')[:120],
+        })
+
+    recent_items.sort(key=lambda item: item.get('created_at') or now, reverse=True)
+    recent_tasks = []
+    for item in recent_items[:20]:
+        created_at = item.get('created_at')
+        completed_at = item.get('completed_at')
+        item['created_at'] = created_at.strftime('%d-%m-%Y %H:%M') if created_at else ''
+        item['completed_at'] = completed_at.strftime('%d-%m-%Y %H:%M') if completed_at else None
+        recent_tasks.append(item)
 
     backup_qs = (
         BackupTask.objects

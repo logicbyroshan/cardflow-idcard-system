@@ -50,7 +50,7 @@ def _get_status_from_request(request) -> str:
     return status if status in _VALID_STATUSES else ''
 
 
-def _normalize_positive_int_ids(values, max_items: int = MAX_EXPORT_CARD_IDS) -> List[int]:
+def _normalize_positive_int_ids(values, max_items: Optional[int] = MAX_EXPORT_CARD_IDS) -> List[int]:
     """Normalize mixed payload IDs to unique positive integers with a hard cap."""
     if not isinstance(values, list):
         return []
@@ -68,7 +68,7 @@ def _normalize_positive_int_ids(values, max_items: int = MAX_EXPORT_CARD_IDS) ->
             continue
         seen.add(number)
         out.append(number)
-        if len(out) >= max_items:
+        if max_items is not None and len(out) >= max_items:
             break
     return out
 
@@ -89,6 +89,8 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
         List of card IDs or None if no valid IDs found
     """
     card_ids = None
+    user = getattr(request, 'user', None)
+    is_super_admin = bool(user and getattr(user, 'is_authenticated', False) and PermissionService.is_super_admin(user))
     
     # Try JSON body first
     if request.content_type == 'application/json':
@@ -110,7 +112,10 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     
     # Validate and filter
     if card_ids:
-        card_ids = _normalize_positive_int_ids(card_ids, max_items=MAX_EXPORT_CARD_IDS)
+        max_items = None
+        if not is_super_admin:
+            max_items = MAX_EXPORT_CARD_IDS
+        card_ids = _normalize_positive_int_ids(card_ids, max_items=max_items)
     
     # Fallback: if no card_ids provided but table_id is available,
     # fetch ALL card IDs for the requested status from the database,
@@ -181,7 +186,13 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
                         qs = qs.filter(downloaded_at__lte=dt)
                 except (ValueError, TypeError):
                     pass
-            card_ids = list(qs.order_by('id').values_list('id', flat=True)[:MAX_EXPORT_CARD_IDS])
+            max_items = None
+            if not is_super_admin:
+                max_items = MAX_EXPORT_CARD_IDS
+            if max_items is None:
+                card_ids = list(qs.order_by('id').values_list('id', flat=True))
+            else:
+                card_ids = list(qs.order_by('id').values_list('id', flat=True)[:max_items])
         except Exception as e:
             logger.warning("Export card_ids fallback query failed for table %s: %s", table_id, e)
     
@@ -315,6 +326,32 @@ def _check_export_client_scope(request, table_id):
     return None
 
 
+def _log_export_failure(request, export_type, message, table_id=None, table_name=''):
+    try:
+        from core.services.activity_service import ActivityService
+
+        resolved_table_name = table_name or ''
+        resolved_table_id = table_id
+        if not resolved_table_name and table_id:
+            resolved_table_name = (
+                IDCardTable.objects.filter(id=table_id)
+                .values_list('name', flat=True)
+                .first()
+            ) or ''
+
+        ActivityService.log_export_failed(
+            request=request,
+            user=getattr(request, 'user', None),
+            export_type=export_type,
+            message=message,
+            table_id=resolved_table_id,
+            table_name=resolved_table_name,
+            source='sync',
+        )
+    except Exception:
+        logger.exception('Failed to write export failure activity log')
+
+
 def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurrent=3, ttl=300):
     """Allow up to max_concurrent concurrent exports per user/table/type.
 
@@ -392,6 +429,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
         result = service.export_excel(table_id, card_ids, status=_get_status_from_request(request))
         
         if not result.success:
+            _log_export_failure(request, 'xlsx', result.message, table_id=table_id)
             return JsonResponse({
                 'success': False,
                 'message': result.message
@@ -401,6 +439,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
         return result.response
     except Exception as e:
         logger.exception("Export XLSX failed: %s", e)
+        _log_export_failure(request, 'xlsx', str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
         _release_export_lock(lock_key)
@@ -443,6 +482,8 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     scope_error = _check_export_client_scope(request, table_id)
     if scope_error:
         return scope_error
+
+    is_super_admin = PermissionService.is_super_admin(request.user)
     
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
@@ -478,9 +519,17 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many Word exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_word(table_id, card_ids, doc_format=doc_format, status=_get_status_from_request(request), template_id=template_id)
+        result = service.export_word(
+            table_id,
+            card_ids,
+            doc_format=doc_format,
+            status=_get_status_from_request(request),
+            template_id=template_id,
+            allow_large=is_super_admin,
+        )
         
         if not result.success:
+            _log_export_failure(request, doc_format, result.message, table_id=table_id)
             return JsonResponse({
                 'success': False,
                 'message': result.message
@@ -490,6 +539,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         return result.response
     except Exception as e:
         logger.exception("Export DOCX failed: %s", e)
+        _log_export_failure(request, doc_format, str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
         _release_export_lock(lock_key)
@@ -528,6 +578,8 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     scope_error = _check_export_client_scope(request, table_id)
     if scope_error:
         return scope_error
+
+    is_super_admin = PermissionService.is_super_admin(request.user)
     
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
@@ -537,7 +589,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         }, status=400)
     
     # Apply PDF-specific limit (more strict for memory reasons)
-    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
+    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS and not is_super_admin:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
     # Extract template_id from request.
@@ -567,6 +619,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id, font_mode=font_mode, shorten_titles=shorten_titles)
         
         if not result.success:
+            _log_export_failure(request, 'pdf', result.message, table_id=table_id)
             return JsonResponse({
                 'success': False,
                 'message': result.message
@@ -576,6 +629,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         return result.response
     except Exception as e:
         logger.exception("Export PDF failed: %s", e)
+        _log_export_failure(request, 'pdf', str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
         _release_export_lock(lock_key)
@@ -613,6 +667,8 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     scope_error = _check_export_client_scope(request, table_id)
     if scope_error:
         return scope_error
+
+    is_super_admin = PermissionService.is_super_admin(request.user)
     
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
@@ -621,7 +677,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
-    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS:
+    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS and not is_super_admin:
         card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
     template_id = None
@@ -750,6 +806,8 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     scope_error = _check_export_client_scope(request, table_id)
     if scope_error:
         return scope_error
+
+    is_super_admin = PermissionService.is_super_admin(request.user)
     
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
@@ -759,7 +817,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         }, status=400)
     
     # Apply ZIP-specific limit (memory-intensive)
-    if len(card_ids) > MAX_ZIP_EXPORT_CARD_IDS:
+    if len(card_ids) > MAX_ZIP_EXPORT_CARD_IDS and not is_super_admin:
         card_ids = card_ids[:MAX_ZIP_EXPORT_CARD_IDS]
     
     # Concurrent export guard
@@ -774,12 +832,18 @@ def api_export_images(request, table_id: int) -> JsonResponse:
             card_ids,
             status=_get_status_from_request(request),
             rename_options=rename_options,
+            allow_large_base64=is_super_admin,
         )
-        
+        response_payload = zip_result_to_dict(result)
+        if not response_payload.get('success'):
+            _log_export_failure(request, 'images', response_payload.get('message', 'Image export failed'), table_id=table_id)
+            return JsonResponse(response_payload)
+
         logger.info("Export ZIP: user=%s table=%d cards=%d", request.user.id, table_id, len(card_ids))
-        return JsonResponse(zip_result_to_dict(result))
+        return JsonResponse(response_payload)
     except Exception as e:
         logger.exception("Export ZIP failed: %s", e)
+        _log_export_failure(request, 'images', str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
         _release_export_lock(lock_key)
@@ -1002,6 +1066,7 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
                     os.remove(tp)
                 except OSError:
                     pass
+            _log_export_failure(request, 'download_all', 'No cards found in any list to export', table_id=table_id)
             return JsonResponse({
                 'success': False,
                 'message': 'No cards found in any list to export'
@@ -1044,6 +1109,7 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         })
     except Exception as e:
         logger.exception("Export DOWNLOAD-ALL failed: %s", e)
+        _log_export_failure(request, 'download_all', str(e), table_id=table_id)
         return JsonResponse({'success': False, 'message': 'Export failed. Please try again or reduce the number of cards.'}, status=500)
     finally:
         _release_export_lock(lock_key)
