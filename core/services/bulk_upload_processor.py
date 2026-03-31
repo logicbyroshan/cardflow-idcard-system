@@ -263,7 +263,18 @@ def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
     CRITICAL: Uses openpyxl's read_only mode for memory efficiency.
     """
     import openpyxl
-    from core.services.base import BaseService
+
+    def _clean_header_cell(value):
+        if value is None:
+            return ''
+        return (
+            str(value)
+            .strip()
+            .replace('_x000D_', '')
+            .replace('_X000D_', '')
+            .replace('_x000d_', '')
+            .replace('\r', '')
+        )
     
     # Read magic bytes to detect format
     with open(file_path, 'rb') as f:
@@ -286,8 +297,7 @@ def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
         try:
             header_row = next(row_iter)
             headers = [
-                str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
-                if cell else ''
+                _clean_header_cell(cell)
                 for cell in header_row
             ]
         except StopIteration:
@@ -308,7 +318,7 @@ def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
         # Get headers
         for col_idx in range(ws.ncols):
             cell_val = ws.cell_value(0, col_idx)
-            headers.append(str(cell_val).strip() if cell_val else '')
+            headers.append(_clean_header_cell(cell_val))
         
         # Get data rows
         for row_idx in range(1, ws.nrows):
@@ -330,7 +340,6 @@ def _parse_csv_file(file_path, table_fields, image_fields, all_table_fields):
     Parse CSV file and return rows with header mapping.
     """
     import csv
-    from core.services.base import BaseService
     
     rows_data = []
     headers = []
@@ -340,7 +349,7 @@ def _parse_csv_file(file_path, table_fields, image_fields, all_table_fields):
         
         # Get headers
         try:
-            headers = [h.strip() for h in next(reader)]
+            headers = [str(h).strip() for h in next(reader)]
         except StopIteration:
             return [], [], {}, {}
         

@@ -16,6 +16,7 @@ NO STUBS. Real implementations only.
 import os
 import time
 import logging
+import threading
 from datetime import datetime
 from typing import Optional
 
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Module-level counter to avoid collisions within the same process
 _global_counter = 0
+_counter_lock = threading.Lock()
 
 
 class ImageRenamer:
@@ -80,8 +82,9 @@ class ImageRenamer:
     def _get_next_counter(cls) -> int:
         """Get a process-unique counter value to avoid intra-batch collisions."""
         global _global_counter
-        _global_counter = (_global_counter + 1) % 100
-        return _global_counter
+        with _counter_lock:
+            _global_counter = (_global_counter + 1) % 100
+            return _global_counter
     
     @classmethod
     def generate_filename(
@@ -329,7 +332,11 @@ class ImageRenamer:
                 upload_prefix=upload_prefix,
             ).split('.', 1)[0]
         now = datetime.now()
-        ext = cls.normalize_extension(new_extension) if new_extension else '.jpg'
+        if new_extension:
+            ext = cls.normalize_extension(new_extension)
+        else:
+            _, existing_ext = os.path.splitext(os.path.basename(existing_path or ''))
+            ext = cls.normalize_extension(existing_ext or '.jpg')
         return f"{original_base}_{now.strftime('%H%M%S')}{ext}"
     
     @classmethod

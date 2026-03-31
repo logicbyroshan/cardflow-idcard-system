@@ -14,7 +14,6 @@ import random
 import string
 import logging
 from io import BytesIO
-from datetime import datetime
 from typing import Optional, Tuple, Iterable
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -232,29 +231,13 @@ def generate_image_filename(batch_counter: int = 1, extension: str = '.jpg', upl
     Returns:
         New filename string (role prefix + 14 digits + extension)
     """
-    try:
-        ext = _normalize_extension(extension)
-        prefix = str(upload_prefix or '').strip().lower()
-        if prefix not in ('a', 'c'):
-            prefix = 'a'
-        now = datetime.now()
-        time_part = now.strftime('%H%M%S')
-        microseconds = now.microsecond
-        milliseconds = microseconds // 1000
-        micros = microseconds % 1000
-        mmm = str(milliseconds).zfill(3)
-        uuu = str(micros).zfill(3)
-        counter = batch_counter % 100
-        filename = f"{prefix}{time_part}{mmm}{uuu}{counter:02d}{ext}"
-        return filename
-    except Exception:
-        prefix = str(upload_prefix or '').strip().lower()
-        if prefix not in ('a', 'c'):
-            prefix = 'a'
-        ext = _normalize_extension(extension or '.jpg')
-        now = datetime.now()
-        fallback_base = f"{now.strftime('%H%M%S')}{str(now.microsecond).zfill(6)[:6]}{batch_counter % 100:02d}"
-        return f"{prefix}{fallback_base}{ext}"
+    from .services.image_rename import ImageRenamer
+
+    return ImageRenamer.generate_filename(
+        batch_counter=batch_counter,
+        extension=extension,
+        upload_prefix=upload_prefix,
+    )
 
 
 def generate_updated_filename(existing_path: str, new_extension: Optional[str] = None, upload_prefix: str = 'a') -> str:
@@ -263,36 +246,13 @@ def generate_updated_filename(existing_path: str, new_extension: Optional[str] =
     Keeps the ORIGINAL base token and adds underscore + 6-digit HHMMSS.
     Base token can be either legacy 14-digit or new prefixed (a/c + 14-digit).
     """
-    try:
-        if existing_path and existing_path not in ['NOT_FOUND', '', 'PENDING']:
-            filename = os.path.basename(existing_path)
-        else:
-            return generate_image_filename(1, new_extension or '.jpg', upload_prefix=upload_prefix)
-        
-        base_name, current_ext = os.path.splitext(filename)
-        ext = _normalize_extension(new_extension) if new_extension else current_ext
-        
-        # If it already has underscore updates, extract original base
-        if '_' in base_name:
-            original_base = base_name.split('_')[0]
-        else:
-            original_base = base_name
+    from .services.image_rename import ImageRenamer
 
-        is_legacy_base = len(original_base) == 14 and original_base.isdigit()
-        is_prefixed_base = (
-            len(original_base) == 15
-            and original_base[0].lower() in ('a', 'c')
-            and original_base[1:].isdigit()
-        )
-        if not (is_legacy_base or is_prefixed_base):
-            return generate_image_filename(1, ext or '.jpg', upload_prefix=upload_prefix)
-        
-        now = datetime.now()
-        update_time = now.strftime('%H%M%S')
-        new_filename = f"{original_base}_{update_time}{ext}"
-        return new_filename
-    except Exception:
-        return generate_image_filename(1, new_extension or '.jpg', upload_prefix=upload_prefix)
+    return ImageRenamer.generate_updated_filename(
+        existing_path=existing_path,
+        new_extension=new_extension,
+        upload_prefix=upload_prefix,
+    )
 
 
 def _normalize_extension(ext: str) -> str:

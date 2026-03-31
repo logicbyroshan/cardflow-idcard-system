@@ -264,6 +264,18 @@ def _parse_excel_file(uploaded_file, file_name, table_fields, image_fields,
     Returns error_response=None on success, or a JsonResponse on failure."""
     import openpyxl
     from io import BytesIO
+
+    def _clean_header_cell(value):
+        if value is None:
+            return ''
+        return (
+            str(value)
+            .strip()
+            .replace('_x000D_', '')
+            .replace('_X000D_', '')
+            .replace('_x000d_', '')
+            .replace('\r', '')
+        )
     
     try:
         file_content = uploaded_file.read()
@@ -280,21 +292,27 @@ def _parse_excel_file(uploaded_file, file_name, table_fields, image_fields,
         rows_data = []
         
         if is_zip or file_name.endswith('.xlsx'):
+            wb = None
             try:
-                wb = openpyxl.load_workbook(BytesIO(file_content))
+                # Read-only/data-only keeps memory stable for larger uploads.
+                wb = openpyxl.load_workbook(BytesIO(file_content), read_only=True, data_only=True)
                 ws = wb.active
-                for cell in ws[1]:
-                    if cell.value:
-                        headers.append(str(cell.value).strip()
-                                       .replace('_x000D_', '').replace('_X000D_', '')
-                                       .replace('_x000d_', '').replace('\r', ''))
-                for row in ws.iter_rows(min_row=2, values_only=True):
+
+                row_iter = ws.iter_rows(values_only=True)
+                header_row = next(row_iter, None)
+                if header_row is not None:
+                    headers = [_clean_header_cell(cell) for cell in header_row]
+
+                for row in row_iter:
                     rows_data.append(row)
             except Exception as xlsx_error:
                 if not is_zip:
                     is_old_xls = True
                 else:
                     raise xlsx_error
+            finally:
+                if wb is not None:
+                    wb.close()
         
         if is_old_xls or (file_name.endswith('.xls') and not file_name.endswith('.xlsx') and not headers):
             try:
@@ -304,8 +322,7 @@ def _parse_excel_file(uploaded_file, file_name, table_fields, image_fields,
                 headers = []
                 for col_idx in range(ws.ncols):
                     cell_value = ws.cell_value(0, col_idx)
-                    if cell_value:
-                        headers.append(str(cell_value).strip())
+                    headers.append(_clean_header_cell(cell_value))
                 rows_data = []
                 for row_idx in range(1, ws.nrows):
                     row = []

@@ -88,7 +88,13 @@ class ImageCoreMixin:
         if not path:
             return False
 
-        candidate = str(path).strip().replace('\\', '/')
+        raw_candidate = str(path)
+        if '\x00' in raw_candidate:
+            return False
+        if any(ord(ch) < 32 for ch in raw_candidate if ch not in ('\t', '\n', '\r')):
+            return False
+
+        candidate = raw_candidate.strip().replace('\\', '/')
         if not candidate:
             return False
 
@@ -108,6 +114,11 @@ class ImageCoreMixin:
         # Block Windows drive-like prefixes (e.g., C:/foo)
         first_part = normalized.split('/', 1)[0]
         if ':' in first_part:
+            return False
+
+        media_root = os.path.abspath(settings.MEDIA_ROOT)
+        resolved = os.path.abspath(os.path.join(media_root, normalized))
+        if not (resolved == media_root or resolved.startswith(media_root + os.sep)):
             return False
 
         return True
