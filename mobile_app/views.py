@@ -485,6 +485,16 @@ def _validate_image(photo):
     return True, '', normalized_upload
 
 
+def _unpack_validate_image_result(result, original_photo):
+    if isinstance(result, tuple):
+        if len(result) == 3:
+            return result
+        if len(result) == 2:
+            ok, err = result
+            return ok, err, original_photo if ok else None
+    return False, 'Invalid image validation response', None
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEWS
 # ---------------------------------------------------------------------------
@@ -2077,7 +2087,7 @@ def api_upload_photo(request, table_id):
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
 
-    _ok, _err, photo = _validate_image(photo)
+    _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
     if not _ok:
         return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
@@ -2153,7 +2163,7 @@ def api_card_add(request, table_id):
         # Validate photo BEFORE writing card to DB
         photo = request.FILES.get('photo')
         if photo:
-            _ok, _err, photo = _validate_image(photo)
+            _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
             if not _ok:
                 return JsonResponse({'success': False, 'message': _err}, status=400)
 
@@ -2198,7 +2208,7 @@ def api_card_update(request, table_id, card_id):
 
         photo = request.FILES.get('photo')
         if photo:
-            _ok, _err, photo = _validate_image(photo)
+            _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
             if not _ok:
                 return JsonResponse({'success': False, 'message': _err}, status=400)
             import os, uuid
