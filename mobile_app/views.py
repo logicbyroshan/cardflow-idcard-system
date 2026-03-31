@@ -47,6 +47,7 @@ from accounts.services import AuthService
 from core.services.activity_service import ActivityService
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
+from mediafiles.services.image_thumbnail import ThumbnailService
 
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
@@ -2133,6 +2134,8 @@ def api_upload_photo(request, table_id):
             # Legacy compatibility: keep ImageField pointer aligned with latest path.
             if final_value:
                 card.photo = final_value
+                # Extra safety: ensure thumbnail exists even if initial creation failed.
+                ThumbnailService.ensure_thumbnail_exists(final_value)
 
             card.save(update_fields=['field_data', 'modified_by', 'photo'])
             photo_url = get_card_photo_url(card, field_data)
@@ -2170,6 +2173,8 @@ def api_upload_photo(request, table_id):
             field_data['PHOTO'] = final_value
             card.field_data = field_data
             card.photo = final_value
+            # Extra safety: ensure thumbnail exists even if initial creation failed.
+            ThumbnailService.ensure_thumbnail_exists(final_value)
 
         card.modified_by = getattr(request.user, 'username', '') or card.modified_by
         update_fields = ['modified_by']
