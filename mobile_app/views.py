@@ -2143,14 +2143,46 @@ def api_upload_photo(request, table_id):
                 'field_name': preferred_field_name,
             })
 
-        # Fallback for tables that have no configured image fields.
-        import os, uuid
-        ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
-        safe_name = f'{uuid.uuid4().hex}{ext}'
-        card.photo.save(safe_name, photo, save=True)
+        # Fallback for tables with no configured image fields:
+        # still route through ImageService so filenames follow timestamp policy.
+        field_data = card.field_data or {}
+        existing_value = ''
+        try:
+            existing_value = card.photo.name or ''
+        except Exception:
+            existing_value = ''
+
+        media_result = ImageService.process_image_field(
+            field_name='PHOTO',
+            new_value=None,
+            existing_value=existing_value,
+            client=card.table.group.client,
+            card=card,
+            uploaded_file=photo,
+            batch_counter=1,
+            uploaded_by=request.user,
+        )
+        if not media_result.success:
+            return JsonResponse({'success': False, 'message': media_result.message or 'Upload failed'}, status=400)
+
+        final_value = (media_result.data or {}).get('final_value', existing_value)
+        if final_value:
+            field_data['PHOTO'] = final_value
+            card.field_data = field_data
+            card.photo = final_value
+
         card.modified_by = getattr(request.user, 'username', '') or card.modified_by
-        card.save(update_fields=['modified_by'])
-        return JsonResponse({'success': True, 'message': 'Photo uploaded', 'photo_url': get_card_photo_url(card)})
+        update_fields = ['modified_by']
+        if final_value:
+            update_fields.extend(['field_data', 'photo'])
+        card.save(update_fields=update_fields)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Photo uploaded',
+            'photo_url': get_card_photo_url(card, field_data),
+            'field_name': 'PHOTO',
+        })
     except IDCard.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Card not found'}, status=404)
     except Exception:
