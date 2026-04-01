@@ -231,6 +231,14 @@ body:has(.idcard-actions-page) {
     hyphens: none !important;
 }
 
+/* Contact/mobile fields may contain multiple phone numbers; allow wrapping. */
+.idcard-table td.dynamic-field.phone-col {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.25;
+}
+
 /* Long text fields like address - wrap freely */
 .idcard-table td.dynamic-field.long-text {
     white-space: normal;

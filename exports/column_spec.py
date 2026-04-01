@@ -215,12 +215,12 @@ _s('health_id', 9, 15, 21, False, 'center',
    'min-w-[90px] text-center whitespace-nowrap id-number-col')
 
 # ── Phone / Mobile ───────────────────────────────────────────────────
-# wrap=True so slash-joined double numbers (e.g. 98765/98766) can flow to
-# two lines; break-words ensures a single long token breaks as last resort.
-_s('mobile', 10, 10, 22, False, 'center',
+# Allow wrapping so multiple numbers in one field (2-3 contacts) can flow
+# to the next line instead of stretching or clipping the row.
+_s('mobile', 10, 10, 22, True, 'center',
    6.5, 12.5, 2.4, 4.8,
    'min-w-[105px] max-w-[145px]',
-   'min-w-[105px] max-w-[145px] text-center whitespace-nowrap phone-col')
+   'min-w-[105px] max-w-[145px] text-center whitespace-normal break-words phone-col')
 
 # ── Email ────────────────────────────────────────────────────────────
 _s('email', 10, 22, 40, True, 'left',
