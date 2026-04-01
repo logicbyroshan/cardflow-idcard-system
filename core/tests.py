@@ -1086,10 +1086,10 @@ class ReuploadDirectTaskFlowTests(TestCase):
 
         zip_path = os.path.join(self._tmp_media.name, 'legacy_names.zip')
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr('PHOTO/1722611171496-1047.jpg', b'abc')
+            zf.writestr('PHOTO/1753102311405-264175116.jpg', b'abc')
 
         index, _, stats = _build_zip_image_index(zip_path)
-        self.assertIn('1722611171496-1047', index)
+        self.assertIn('1753102311405-264175116', index)
         self.assertEqual(stats.get('duplicate_name_keys'), 0)
 
     def test_zip_index_blocks_duplicate_exact_stems(self):
@@ -1145,18 +1145,18 @@ class ReuploadDirectTaskFlowTests(TestCase):
 
         self.card.field_data = {
             'NAME': 'TOKEN USER',
-            'PHOTO': 'PENDING:1722611171496-1047',
+            'PHOTO': 'PENDING:1753102311405-264175116',
         }
         self.card.save(update_fields=['field_data'])
 
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr('PHOTO/1722611171496-1047.jpg', b'fake-image-bytes-67890')
+            zf.writestr('PHOTO/1753102311405-264175116.jpg', b'fake-image-bytes-67890')
         upload = SimpleUploadedFile('reupload.zip', buf.getvalue(), content_type='application/zip')
 
         mock_result = type('Result', (), {
             'success': True,
-            'data': {'final_value': 'adarshimg/1722611171496-1047_121314.jpg'},
+            'data': {'final_value': 'adarshimg/1753102311405-264175116_121314.jpg'},
         })()
 
         with patch('core.views.idcard_bulk_api.validate_image_bytes', return_value=(True, None)), \
@@ -1181,5 +1181,5 @@ class ReuploadDirectTaskFlowTests(TestCase):
         self.card.refresh_from_db()
         self.assertEqual(
             self.card.field_data.get('PHOTO'),
-            'adarshimg/1722611171496-1047_121314.jpg',
+            'adarshimg/1753102311405-264175116_121314.jpg',
         )

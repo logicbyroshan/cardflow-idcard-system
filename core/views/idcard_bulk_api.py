@@ -41,7 +41,7 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 _REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
-_REUPLOAD_NAME_BASE_NUM_SUFFIX_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})[-_]\d{1,8}$')
+_REUPLOAD_NAME_BASE_NUM_SUFFIX_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})[-_]\d{1,20}$')
 
 # Keep strict matching first; legacy timestamp-number stems are fallback only.
 REUPLOAD_ALLOW_LEGACY_FALLBACK = True
