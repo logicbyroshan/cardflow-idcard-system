@@ -41,6 +41,7 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 _REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
+_REUPLOAD_NAME_BASE_LEGACY_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})$')
 _REUPLOAD_NAME_BASE_NUM_SUFFIX_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})[-_]\d{1,20}$')
 
 # Keep strict matching first; legacy timestamp-number stems are fallback only.
@@ -60,8 +61,8 @@ def _is_strict_reupload_stem(stem):
 
 
 def _is_legacy_reupload_stem(stem):
-    """Legacy stems seen in historical XLSX references (e.g. 1722611171496-1047)."""
-    return bool(_REUPLOAD_NAME_BASE_NUM_SUFFIX_RE.match(stem))
+    """Legacy stems seen in historical XLSX references."""
+    return bool(_REUPLOAD_NAME_BASE_LEGACY_RE.match(stem) or _REUPLOAD_NAME_BASE_NUM_SUFFIX_RE.match(stem))
 
 
 def _is_supported_reupload_stem(stem):
