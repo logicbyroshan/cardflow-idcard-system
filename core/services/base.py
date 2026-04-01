@@ -4,6 +4,7 @@ Contains: ServiceResult dataclass, BaseService class, common utilities
 """
 from dataclasses import dataclass, field
 from typing import Any, Optional, Dict, List, Union
+import os
 import re
 
 # Import canonical constants from mediafiles
@@ -418,6 +419,28 @@ class BaseService:
         path = path.lstrip('/')
         
         return path
+
+    @staticmethod
+    def image_path_basename(path: str) -> str:
+        """Return only the filename part of an image path or URL-like value."""
+        if not path:
+            return ''
+
+        raw = str(path).strip()
+        if not raw or raw == 'NOT_FOUND' or raw.startswith('PENDING:'):
+            return ''
+
+        normalized = raw.replace('\\', '/').split('?', 1)[0].split('#', 1)[0]
+        return os.path.basename(normalized).strip()
+
+    @classmethod
+    def image_filename_contains_query(cls, path: str, query: str) -> bool:
+        """Case-insensitive contains match against image filename basename only."""
+        needle = (query or '').strip().lower()
+        if not needle:
+            return False
+        base_name = cls.image_path_basename(path)
+        return bool(base_name and needle in base_name.lower())
     
     @staticmethod
     def validate_image_path(path: str, media_root: str = None) -> bool:

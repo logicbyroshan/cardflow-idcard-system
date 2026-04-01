@@ -347,10 +347,54 @@ class GlobalSearchTests(TestCase):
         cache.clear()
 
         self.client.login(username='admin@test.com', password='adminpass1')
-        response = self.client.get('/panel/api/global-search/?q=ROS-IMAGE-PATH-123')
+        response = self.client.get('/panel/api/global-search/?q=adarshimg')
         data = response.json()
         self.assertTrue(data['success'])
         self.assertEqual(data['count'], 0)
+
+    def test_search_matches_image_filename_basename(self):
+        _create_card(self.table, {
+            'NAME': 'DELTA',
+            'CLASS': '9',
+            'PHOTO': 'adarshimg/ROS-IMAGE-PATH-123.jpg',
+        })
+        cache.clear()
+
+        self.client.login(username='admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/global-search/?q=ROS-IMAGE-PATH-123')
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertGreater(data['count'], 0)
+
+
+class IDCardListSearchTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('list-admin@test.com', 'adminpass1')
+        _, self.client_obj = _create_client_user('list-client@test.com', 'clientpass1')
+        self.group, self.table = _create_table(self.client_obj)
+        _create_card(self.table, {'NAME': 'ALPHA', 'CLASS': '5'})
+        self.photo_card = _create_card(self.table, {
+            'NAME': 'BRAVO',
+            'CLASS': '6',
+            'PHOTO': 'adarshimg/LIST-PHOTO-SEARCH-777.jpg',
+        })
+
+    def test_list_search_matches_image_filename_basename(self):
+        self.client.login(username='list-admin@test.com', password='adminpass1')
+        response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?search=PHOTO-SEARCH-777')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['total_count'], 1)
+        self.assertEqual(data['cards'][0]['id'], self.photo_card.id)
+
+    def test_list_search_does_not_match_image_directory(self):
+        self.client.login(username='list-admin@test.com', password='adminpass1')
+        response = self.client.get(f'/panel/api/table/{self.table.id}/cards/?search=adarshimg')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['total_count'], 0)
 
 
 # ── Middleware Tests ──

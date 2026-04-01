@@ -11,7 +11,7 @@
       <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
       {% endif %}
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-      <a href="{% url 'cardprint:generate_card_overview' %}" class="breadcrumb-item">Generate Card</a>
+      <a href="{% url 'active_clients' %}" class="breadcrumb-item">Active Clients</a>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
       <span class="breadcrumb-item">{{ client.name }}</span>
       <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
@@ -23,10 +23,6 @@
   </div>
   <div class="nav-right">
     <div class="action-tabs">
-      <a href="{% url 'cardprint:print_cards' table.id %}?step=print_list" class="action-tab print-list-tab {% if current_step == 'print_list' %}active{% endif %}">
-        <span class="tab-label">Print List</span>
-        <span class="tab-count">{{ step_counts.print_list }}</span>
-      </a>
       <a href="{% url 'cardprint:print_cards' table.id %}?step=generate_list" class="action-tab print-generate-tab {% if current_step == 'generate_list' %}active{% endif %}">
         <span class="tab-label">Generate List</span>
         <span class="tab-count">{{ step_counts.generate_list }}</span>

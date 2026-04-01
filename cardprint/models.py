@@ -1,7 +1,7 @@
 """
 Card Print Models
 =================
-Tracks print requests for ID cards (approved → print_list → generate_list → finalized → pool).
+Tracks print requests for ID cards (approved → generate_list → finalized → pool).
 Modelled after ReprintRequest but for the print workflow.
 
 The PrintRequest is a SEPARATE model that references the original IDCard
@@ -18,10 +18,9 @@ logger = logging.getLogger(__name__)
 class PrintRequest(models.Model):
     """
     Tracks print requests for approved ID cards.
-    Workflow: print_list → generate_list (via Send to Generate) → finalized (via Generate Card PDF) → pool
+    Workflow: generate_list (queued for generation) → finalized (via Generate Card PDF) → pool
     """
     PRINT_STATUS_CHOICES = [
-        ('print_list', 'Print List'),
         ('generate_list', 'Generate List'),
         ('finalized', 'Finalized'),
         ('pool', 'Pool'),
@@ -40,7 +39,7 @@ class PrintRequest(models.Model):
     status = models.CharField(
         max_length=20,
         choices=PRINT_STATUS_CHOICES,
-        default='print_list',
+        default='generate_list',
         db_index=True,
     )
     requested_by = models.ForeignKey(

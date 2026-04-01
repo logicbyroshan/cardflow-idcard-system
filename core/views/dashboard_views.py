@@ -515,11 +515,9 @@ def api_global_search(request):
         
         results = []
         query_upper = query.upper()
-        non_searchable_field_types = {
-            'photo', 'mother_photo', 'father_photo', 'image',
-            'signature', 'file', 'barcode', 'qr_code'
-        }
-        non_searchable_name_tokens = ('PHOTO', 'IMAGE', 'SIGN', 'BARCODE', 'QR', 'FILE')
+        image_field_types = {'photo', 'mother_photo', 'father_photo', 'image', 'signature'}
+        non_searchable_field_types = {'file', 'barcode', 'qr_code'}
+        non_searchable_name_tokens = ('BARCODE', 'QR', 'FILE')
         
         # Build base queryset - scope by user role
         base_cards = IDCard.objects.select_related(
@@ -588,6 +586,21 @@ def api_global_search(request):
                     
                 field_name_upper = str(field_name).upper()
                 field_type = field_type_by_name.get(field_name_upper, '')
+
+                is_image_field = (
+                    field_type in image_field_types
+                    or ((not field_type) and ('PHOTO' in field_name_upper or 'IMAGE' in field_name_upper or 'SIGN' in field_name_upper))
+                )
+
+                if is_image_field:
+                    if filter_type != 'all':
+                        continue
+                    image_basename = IDCardService.image_path_basename(field_value)
+                    if image_basename and query_upper in image_basename.upper():
+                        matched_field = field_name
+                        matched_value = image_basename
+                        break
+                    continue
 
                 # Ignore image/file-like columns so storage paths do not pollute search.
                 if field_type in non_searchable_field_types:

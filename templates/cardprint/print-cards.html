@@ -20,7 +20,7 @@
     var CLIENT_ID = {{ client.id }};
     var CLIENT_NAME = '{{ client.name|escapejs }}';
     var TABLE_NAME = '{{ table.name|escapejs }}';
-    var CURRENT_STEP = '{{ current_step|default:"print_list"|escapejs }}';
+    var CURRENT_STEP = '{{ current_step|default:"generate_list"|escapejs }}';
     var TABLE_FIELDS = {{ table_fields_json|safe }};
     var FIELD_CONFIG = {{ field_config_json|safe }};
     var HAS_FRONT_PDF = {{ has_template_front_pdf|yesno:"true,false" }};
@@ -107,52 +107,6 @@
       {% include 'cardprint/partials/content.html' %}
     </div>
   </main>
-
-  <!--  Configure & Print Modal  -->
-  <div class="modal-overlay" id="configureModal">
-    <div class="modal-container max-w-[520px]">
-      <div class="modal-header">
-        <h3><i class="fa-solid fa-sliders"></i> Select Fields for Generate List</h3>
-        <button class="modal-close-btn" id="configureModalClose" title="Close">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-      <div class="modal-body px-5 py-4 max-h-[70vh] overflow-y-auto">
-
-        <!-- Card Sides -->
-        <div class="mb-4">
-          <label class="font-semibold text-[13px] block mb-1.5">Card Type</label>
-          <div class="flex gap-2">
-            <button class="btn btn-sm cfg-side-btn active" id="cfgSingleBtn" data-sides="1">1-Sided</button>
-            <button class="btn btn-sm cfg-side-btn" id="cfgDoubleBtn" data-sides="2">2-Sided</button>
-          </div>
-        </div>
-
-        <!-- Front Fields -->
-        <div class="mb-4">
-          <label class="font-semibold text-[13px] block mb-1.5">
-            <i class="fa-solid fa-square text-blue-500 text-[10px]"></i> Front Side Fields
-          </label>
-          <div id="cfgFrontFields" class="cfg-field-list"></div>
-        </div>
-
-        <!-- Back Fields (hidden for 1-sided) -->
-        <div id="cfgBackSection" class="mb-4 hidden">
-          <label class="font-semibold text-[13px] block mb-1.5">
-            <i class="fa-regular fa-square text-indigo-500 text-[10px]"></i> Back Side Fields
-          </label>
-          <div id="cfgBackFields" class="cfg-field-list"></div>
-        </div>
-
-      </div>
-      <div class="modal-footer flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
-        <button class="btn btn-gray btn-sm" id="configureModalCancel">Cancel</button>
-        <button class="btn btn-green btn-sm" id="configureModalGenerate">
-          <i class="fa-solid fa-forward"></i> Move to Generate List
-        </button>
-      </div>
-    </div>
-  </div>
 
   {% include 'partials/idcard/side-modal.html' %}
   {% include 'partials/components/toast.html' %}

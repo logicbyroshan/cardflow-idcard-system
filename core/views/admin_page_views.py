@@ -17,6 +17,7 @@ from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
+from cardprint.models import PrintRequest
 from ..models import User, SystemSettings, Notification, EmailLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx
@@ -312,7 +313,7 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
 
     # ── Search ──
     if search_query:
-        id_cards_query = id_cards_query.filter(field_data__icontains=search_query)
+        id_cards_query = IDCardService._apply_search_filter(id_cards_query, search_query, table=table)
 
     # ── Exact class/section filter ──
     if class_filter or section_filter:
@@ -386,6 +387,18 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
                 card_id__in=scoped_cards_qs.values('id'),
             ).count(),
         }
+        print_counts = {
+            'generate_list': PrintRequest.objects.filter(
+                table=table,
+                status='generate_list',
+                card_id__in=scoped_cards_qs.values('id'),
+            ).count(),
+            'finalized': PrintRequest.objects.filter(
+                table=table,
+                status='finalized',
+                card_id__in=scoped_cards_qs.values('id'),
+            ).count(),
+        }
     else:
         status_counts = IDCardService.get_status_counts(table)
         reprint_counts = {
@@ -400,6 +413,16 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
                 card__status='download',
             ).count(),
         }
+        print_counts = {
+            'generate_list': PrintRequest.objects.filter(
+                table=table,
+                status='generate_list',
+            ).count(),
+            'finalized': PrintRequest.objects.filter(
+                table=table,
+                status='finalized',
+            ).count(),
+        }
 
     return {
         'active_page': active_page,
@@ -411,6 +434,7 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         'current_status': status_filter,
         'status_counts': status_counts,
         'reprint_counts': reprint_counts,
+        'print_counts': print_counts,
         'total_count': total_count,
         'has_more': True,
         'initial_load_limit': per_page,

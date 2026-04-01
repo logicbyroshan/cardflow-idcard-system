@@ -5,7 +5,7 @@ All mutations for PrintRequest go through this service.
 Views must NOT call .save(), .create(), .delete() directly.
 Modelled after ReprintWorkflowService.
 
-Workflow: print_list → generate_list (via Send to Generate) → finalized (via Generate Card PDF) → pool
+Workflow: generate_list (queued) → finalized (via Generate Card PDF) → pool
 """
 import io
 import logging
@@ -24,12 +24,11 @@ class PrintWorkflowService:
     """Service layer for the card-print workflow."""
 
     ALLOWED_TRANSITIONS = {
-        'print_list': ['generate_list'],
         'generate_list': ['finalized'],
         'finalized': ['pool'],
     }
 
-    VALID_STATUSES = ['print_list', 'generate_list', 'finalized', 'pool']
+    VALID_STATUSES = ['generate_list', 'finalized', 'pool']
 
     @classmethod
     def create_requests(cls, table, card_ids, user):
@@ -48,7 +47,7 @@ class PrintWorkflowService:
                 PrintRequest.objects.select_for_update().filter(
                     table=table,
                     card_id__in=card_ids,
-                    status__in=['print_list', 'generate_list', 'finalized'],
+                    status__in=['generate_list', 'finalized'],
                 ).values_list('card_id', flat=True)
             )
 
@@ -61,7 +60,7 @@ class PrintWorkflowService:
                 to_create.append(PrintRequest(
                     card_id=cid,
                     table=table,
-                    status='print_list',
+                    status='generate_list',
                     requested_by=user,
                 ))
 
@@ -75,78 +74,8 @@ class PrintWorkflowService:
         )
         return ServiceResult(
             success=True,
-            message=f'{created} card(s) sent to print list',
+            message=f'{created} card(s) added to generate list',
             data={'created': created, 'skipped': skipped},
-        )
-
-    @classmethod
-    def bulk_send_to_generate(cls, request_ids, user):
-        """Transition print_list → generate_list for a batch of PrintRequest IDs.
-
-        Returns ServiceResult with data: {updated: int, skipped: int}
-        """
-        target_status = 'generate_list'
-        valid_from = [s for s, targets in cls.ALLOWED_TRANSITIONS.items() if target_status in targets]
-
-        with transaction.atomic():
-            qs = PrintRequest.objects.select_for_update().filter(
-                id__in=request_ids,
-                status__in=valid_from,
-            )
-            updated = qs.update(status=target_status, updated_at=timezone.now())
-
-        skipped = len(request_ids) - updated
-        logger.info(
-            'PrintWorkflow: send_to_generate updated=%d skipped=%d user=%s',
-            updated, skipped, user.username,
-        )
-        if not updated:
-            return ServiceResult(
-                success=False,
-                message='No print list items eligible to send to generate.',
-                data={'updated': 0, 'skipped': skipped},
-            )
-        return ServiceResult(
-            success=True,
-            message=f'{updated} item(s) sent to generate list',
-            data={'updated': updated, 'skipped': skipped},
-        )
-
-    @classmethod
-    def bulk_move_to_print_list(cls, request_ids, user, from_status):
-        """Move items back to print_list from generate_list/finalized.
-
-        Returns ServiceResult with data: {updated: int, skipped: int}
-        """
-        if from_status not in ('generate_list', 'finalized'):
-            return ServiceResult(
-                success=False,
-                message='Invalid source status for move-to-print operation.',
-                data={'updated': 0, 'skipped': len(request_ids or [])},
-            )
-
-        with transaction.atomic():
-            qs = PrintRequest.objects.select_for_update().filter(
-                id__in=request_ids,
-                status=from_status,
-            )
-            updated = qs.update(status='print_list', updated_at=timezone.now())
-
-        skipped = len(request_ids) - updated
-        logger.info(
-            'PrintWorkflow: move_to_print from=%s updated=%d skipped=%d user=%s',
-            from_status, updated, skipped, user.username,
-        )
-        if not updated:
-            return ServiceResult(
-                success=False,
-                message='No items eligible to move back to print list.',
-                data={'updated': 0, 'skipped': skipped},
-            )
-        return ServiceResult(
-            success=True,
-            message=f'{updated} item(s) moved to print list',
-            data={'updated': updated, 'skipped': skipped},
         )
 
     @classmethod
@@ -215,34 +144,6 @@ class PrintWorkflowService:
             message=f'{updated} item(s) moved to pool',
             data={'updated': updated, 'skipped': skipped},
         )
-
-    @classmethod
-    def delete_requests(cls, request_ids, user):
-        """Remove PrintRequest rows (only print_list status).
-
-        Returns ServiceResult with data: {deleted: int, skipped: int}
-        """
-        if not request_ids:
-            return ServiceResult(success=False, message='No request IDs provided')
-
-        with transaction.atomic():
-            qs = PrintRequest.objects.select_for_update().filter(
-                id__in=request_ids,
-                status='print_list',
-            )
-            deleted, _ = qs.delete()
-
-        skipped = len(request_ids) - deleted
-        logger.info(
-            'PrintWorkflow: deleted=%d skipped=%d user=%s',
-            deleted, skipped, user.username,
-        )
-        return ServiceResult(
-            success=True,
-            message=f'{deleted} item(s) removed from print list',
-            data={'deleted': deleted, 'skipped': skipped},
-        )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PDF GENERATION SERVICE

@@ -192,18 +192,23 @@ class IDCardCardService(BaseService):
         if not table or not table.fields:
             return queryset.filter(**{f'{json_field}__icontains': search})
 
-        # Use only non-image fields for search to avoid scanning path-like values.
+        # Split fields so text uses DB filtering and image columns use
+        # basename-only matching (filename, not directory path).
         text_fields = []
+        image_fields = []
         for field in (table.fields or []):
             fname = (field or {}).get('name', '')
             if not fname or fname.startswith('__'):
                 continue
             if cls.is_image_field(field):
+                image_fields.append(fname)
                 continue
             text_fields.append(fname)
 
-        if not text_fields:
+        if not text_fields and not image_fields:
             return queryset.filter(**{f'{json_field}__icontains': search})
+
+        matched_ids = set()
 
         q = Q()
 
@@ -220,9 +225,27 @@ class IDCardCardService(BaseService):
             annotations[alias] = Cast(KeyTextTransform(field_name, json_field), CharField())
             q |= Q(**{f'{alias}__icontains': search})
 
-        if annotations:
-            queryset = queryset.annotate(**annotations)
-        return queryset.filter(q)
+        if q:
+            text_qs = queryset
+            if annotations:
+                text_qs = text_qs.annotate(**annotations)
+            matched_ids.update(text_qs.filter(q).values_list(id_lookup, flat=True))
+
+        if image_fields:
+            candidate_rows = queryset.filter(**{f'{json_field}__icontains': search}).values(id_lookup, json_field)
+            for row in candidate_rows.iterator(chunk_size=500):
+                field_data = row.get(json_field) or {}
+                if not isinstance(field_data, dict):
+                    continue
+                if any(cls.image_filename_contains_query(field_data.get(fname, ''), search) for fname in image_fields):
+                    row_id = row.get(id_lookup)
+                    if row_id is not None:
+                        matched_ids.add(row_id)
+
+        if not matched_ids:
+            return queryset.none()
+
+        return queryset.filter(**{f'{id_lookup}__in': list(matched_ids)})
 
     # ==================== Serialization ====================
 

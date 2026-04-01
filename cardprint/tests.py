@@ -36,7 +36,7 @@ class CardPrintModelTests(TestCase):
 		pr = PrintRequest.objects.create(
 			card=self.card,
 			table=self.table,
-			status='print_list',
+			status='generate_list',
 		)
 		self.assertIn(f'Print #{pr.id}', str(pr))
 		self.assertIn(f'Card #{self.card.id}', str(pr))
@@ -84,10 +84,10 @@ class PrintWorkflowServiceTests(TestCase):
 		self.card_1 = IDCard.objects.create(table=self.table, field_data={'Name': 'A'}, status='approved')
 		self.card_2 = IDCard.objects.create(table=self.table, field_data={'Name': 'B'}, status='approved')
 
-		self.pr_print = PrintRequest.objects.create(
+		self.pr_generate = PrintRequest.objects.create(
 			card=self.card_1,
 			table=self.table,
-			status='print_list',
+			status='generate_list',
 			requested_by=self.user,
 		)
 
@@ -110,9 +110,9 @@ class PrintWorkflowServiceTests(TestCase):
 		self.assertTrue(result.success)
 		self.assertEqual(result.data['created'], 1)
 		self.assertEqual(result.data['skipped'], 1)
-		self.assertTrue(PrintRequest.objects.filter(card=self.card_2, status='print_list').exists())
+		self.assertTrue(PrintRequest.objects.filter(card=self.card_2, status='generate_list').exists())
 
-	def test_bulk_send_to_generate_transitions_only_print_list(self):
+	def test_bulk_generate_transitions_only_generate_list(self):
 		from cardprint.services import PrintWorkflowService
 		from cardprint.models import PrintRequest
 
@@ -122,21 +122,14 @@ class PrintWorkflowServiceTests(TestCase):
 			status='finalized',
 			requested_by=self.user,
 		)
-		result = PrintWorkflowService.bulk_send_to_generate([self.pr_print.id, pr_finalized.id], self.user)
+		result = PrintWorkflowService.bulk_generate([self.pr_generate.id, pr_finalized.id], self.user)
 
 		self.assertTrue(result.success)
 		self.assertEqual(result.data['updated'], 1)
-		self.pr_print.refresh_from_db()
+		self.pr_generate.refresh_from_db()
 		pr_finalized.refresh_from_db()
-		self.assertEqual(self.pr_print.status, 'generate_list')
+		self.assertEqual(self.pr_generate.status, 'finalized')
 		self.assertEqual(pr_finalized.status, 'finalized')
-
-	def test_bulk_move_to_print_list_rejects_invalid_source(self):
-		from cardprint.services import PrintWorkflowService
-
-		result = PrintWorkflowService.bulk_move_to_print_list([self.pr_print.id], self.user, 'print_list')
-		self.assertFalse(result.success)
-		self.assertIn('Invalid source status', result.message)
 
 	def test_bulk_mark_pool_moves_only_finalized(self):
 		from cardprint.services import PrintWorkflowService
@@ -148,27 +141,11 @@ class PrintWorkflowServiceTests(TestCase):
 			status='finalized',
 			requested_by=self.user,
 		)
-		result = PrintWorkflowService.bulk_mark_pool([self.pr_print.id, pr_finalized.id], self.user)
+		result = PrintWorkflowService.bulk_mark_pool([self.pr_generate.id, pr_finalized.id], self.user)
 		self.assertTrue(result.success)
 		self.assertEqual(result.data['updated'], 1)
 		pr_finalized.refresh_from_db()
 		self.assertEqual(pr_finalized.status, 'pool')
-
-	def test_delete_requests_deletes_only_print_list(self):
-		from cardprint.services import PrintWorkflowService
-		from cardprint.models import PrintRequest
-
-		pr_generate = PrintRequest.objects.create(
-			card=self.card_2,
-			table=self.table,
-			status='generate_list',
-			requested_by=self.user,
-		)
-		result = PrintWorkflowService.delete_requests([self.pr_print.id, pr_generate.id], self.user)
-		self.assertTrue(result.success)
-		self.assertEqual(result.data['deleted'], 1)
-		self.assertFalse(PrintRequest.objects.filter(id=self.pr_print.id).exists())
-		self.assertTrue(PrintRequest.objects.filter(id=pr_generate.id).exists())
 
 
 class CardPrintApiIntegrationTests(TestCase):
@@ -240,13 +217,13 @@ class CardPrintApiIntegrationTests(TestCase):
 			perm_finalized_list=True,
 		)
 
-		self.pr_print = PrintRequest.objects.create(
+		self.pr_generate_a = PrintRequest.objects.create(
 			card=self.card_approved_1,
 			table=self.table,
-			status='print_list',
+			status='generate_list',
 			requested_by=self.super_admin,
 		)
-		self.pr_generate = PrintRequest.objects.create(
+		self.pr_generate_b = PrintRequest.objects.create(
 			card=self.card_approved_2,
 			table=self.table,
 			status='generate_list',
@@ -295,18 +272,18 @@ class CardPrintApiIntegrationTests(TestCase):
 
 		fresh_card.refresh_from_db()
 		self.assertEqual(fresh_card.status, 'download')
-		self.assertTrue(PrintRequest.objects.filter(card=fresh_card, status='print_list').exists())
+		self.assertTrue(PrintRequest.objects.filter(card=fresh_card, status='generate_list').exists())
 
-	def test_print_list_returns_items(self):
+	def test_generate_list_returns_items(self):
 		self.client.force_login(self.assigned_staff_user)
-		response = self.client.get(self._url('api_print_list'))
+		response = self.client.get(self._url('api_print_generate_list'))
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.json()['status'], 'ok')
 		self.assertGreaterEqual(len(response.json()['items']), 1)
 
-	def test_print_list_clamps_offset_and_limit(self):
+	def test_generate_list_clamps_offset_and_limit(self):
 		self.client.force_login(self.assigned_staff_user)
-		response = self.client.get(self._url('api_print_list'), {'offset': -50, 'limit': 99999})
+		response = self.client.get(self._url('api_print_generate_list'), {'offset': -50, 'limit': 99999})
 		self.assertEqual(response.status_code, 200)
 		payload = response.json()
 		self.assertEqual(payload['offset'], 0)
@@ -320,28 +297,15 @@ class CardPrintApiIntegrationTests(TestCase):
 		self.assertEqual(payload['offset'], 0)
 		self.assertEqual(payload['limit'], 500)
 
-	def test_print_generate_and_back_to_print(self):
+	def test_generate_pdf_moves_rows_to_finalized(self):
 		self.client.force_login(self.assigned_staff_user)
-
-		to_generate = self.client.post(
-			self._url('api_print_generate'),
-			data=json.dumps({'request_ids': [self.pr_print.id]}),
-			content_type='application/json',
-		)
-		self.assertEqual(to_generate.status_code, 200)
-
-		self.pr_print.refresh_from_db()
-		self.assertEqual(self.pr_print.status, 'generate_list')
-
-		back_to_print = self.client.post(
-			self._url('api_print_generate_to_print'),
-			data=json.dumps({'request_ids': [self.pr_print.id]}),
-			content_type='application/json',
-		)
-		self.assertEqual(back_to_print.status_code, 200)
-
-		self.pr_print.refresh_from_db()
-		self.assertEqual(self.pr_print.status, 'print_list')
+		response = self.client.get(self._url('api_print_step_counts'))
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['status'], 'ok')
+		self.assertNotIn('print_list', payload)
+		self.assertIn('generate_list', payload)
+		self.assertIn('finalized', payload)
 
 	def test_field_config_save_validation_and_success(self):
 		self.client.force_login(self.assigned_staff_user)
@@ -373,17 +337,17 @@ class CardPrintApiIntegrationTests(TestCase):
 	def test_mark_pool_moves_finalized_items(self):
 		from cardprint.models import PrintRequest
 
-		self.pr_generate.status = 'finalized'
-		self.pr_generate.save(update_fields=['status'])
+		self.pr_generate_b.status = 'finalized'
+		self.pr_generate_b.save(update_fields=['status'])
 
 		self.client.force_login(self.assigned_staff_user)
 		response = self.client.post(
 			self._url('api_print_mark_pool'),
-			data=json.dumps({'request_ids': [self.pr_generate.id]}),
+			data=json.dumps({'request_ids': [self.pr_generate_b.id]}),
 			content_type='application/json',
 		)
 		self.assertEqual(response.status_code, 200)
 
-		self.pr_generate.refresh_from_db()
-		self.assertEqual(self.pr_generate.status, 'pool')
-		self.assertTrue(PrintRequest.objects.filter(id=self.pr_generate.id, status='pool').exists())
+		self.pr_generate_b.refresh_from_db()
+		self.assertEqual(self.pr_generate_b.status, 'pool')
+		self.assertTrue(PrintRequest.objects.filter(id=self.pr_generate_b.id, status='pool').exists())

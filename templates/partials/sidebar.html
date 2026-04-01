@@ -66,9 +66,6 @@
     <a href="{% url 'active_clients' %}" id="activeClientsLink" class="{% if active_page == 'active_clients' %}active{% endif %}">
       <i class="fa-solid fa-user-check"></i><span>{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</span>
     </a>
-    <a href="{% url 'cardprint:generate_card_overview' %}" class="{% if active_page == 'generate_card' %}active{% endif %}">
-      <i class="fa-solid fa-id-card-clip"></i><span>Generate Card</span>
-    </a>
     {% endif %}
     {% endif %}
     

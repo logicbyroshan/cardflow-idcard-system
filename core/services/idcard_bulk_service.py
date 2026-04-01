@@ -127,12 +127,22 @@ class IDCardBulkService(BaseService):
 
             table = get_object_or_404(IDCardTable, id=table_id)
             query_upper = query.strip().upper()
+            query_int = int(query.strip()) if query.strip().isdigit() else None
+
+            field_type_by_name = {}
+            for field in (table.fields or []):
+                field_name = str((field or {}).get('name', '')).strip().upper()
+                if not field_name:
+                    continue
+                field_type_by_name[field_name] = str((field or {}).get('type', 'text')).strip().lower()
 
             MAX_SEARCH_RESULTS = 200
-            # Use DB-level filtering instead of Python iteration
-            cards = IDCard.objects.filter(
-                table=table, field_data__icontains=query.strip()
-            ).order_by('-id')[:MAX_SEARCH_RESULTS]
+            from .idcard_card_service import IDCardCardService
+            cards = (
+                IDCardCardService
+                ._apply_search_filter(IDCard.objects.filter(table=table), query.strip(), table=table)
+                .order_by('-id')[:MAX_SEARCH_RESULTS]
+            )
 
             results = []
             for card in cards:
@@ -141,8 +151,29 @@ class IDCardBulkService(BaseService):
                 matched_field = ''
                 matched_value = ''
 
+                if query_int is not None and card.id == query_int:
+                    match_found = True
+                    matched_field = 'ID'
+                    matched_value = str(card.id)
+
                 for field_name, field_value in field_data.items():
-                    if field_value and query_upper in str(field_value).upper():
+                    if not field_value:
+                        continue
+
+                    field_name_upper = str(field_name).strip().upper()
+                    field_type = field_type_by_name.get(field_name_upper, '')
+                    is_image_field = field_type in cls.IMAGE_FIELD_TYPES or (not field_type and cls.is_image_field_by_name(field_name))
+
+                    if is_image_field:
+                        base_name = cls.image_path_basename(field_value)
+                        if base_name and query_upper in base_name.upper():
+                            match_found = True
+                            matched_field = field_name
+                            matched_value = base_name
+                            break
+                        continue
+
+                    if query_upper in str(field_value).upper():
                         match_found = True
                         matched_field = field_name
                         matched_value = str(field_value)

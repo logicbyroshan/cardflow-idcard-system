@@ -325,6 +325,22 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
         </div>
         {% endif %}
+        {% if current_status == 'approved' and is_super_admin or current_status == 'approved' and is_admin_staff and perm_print_list or current_status == 'approved' and is_admin_staff and perm_finalized_list or current_status == 'approved' and is_client and perm_print_list or current_status == 'approved' and is_client and perm_finalized_list or current_status == 'approved' and is_client_staff and perm_print_list or current_status == 'approved' and is_client_staff and perm_finalized_list %}
+        <div class="action-nav-group reprint-links">
+            {% if is_super_admin or is_admin_staff and perm_print_list or is_client and perm_print_list or is_client_staff and perm_print_list %}
+            <a class="btn action-btn btn-blue reprint-nav-link" href="{% if is_client or is_client_staff %}{% url 'client:print_cards' table.id %}{% else %}{% url 'cardprint:print_cards' table.id %}{% endif %}?step=generate_list" title="Open Generate List">
+                <span class="btn-text">Generate List</span>
+                <span class="reprint-nav-count" id="approvedGenerateCount">{{ print_counts.generate_list|default:0 }}</span>
+            </a>
+            {% endif %}
+            {% if is_super_admin or is_admin_staff and perm_finalized_list or is_client and perm_finalized_list or is_client_staff and perm_finalized_list %}
+            <a class="btn action-btn btn-blue reprint-nav-link" href="{% if is_client or is_client_staff %}{% url 'client:print_cards' table.id %}{% else %}{% url 'cardprint:print_cards' table.id %}{% endif %}?step=finalized" title="Open Finalized List">
+                <span class="btn-text">Finalized List</span>
+                <span class="reprint-nav-count" id="approvedFinalizedCount">{{ print_counts.finalized|default:0 }}</span>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
         {% if current_status == 'pool' and perm_idcard_delete_from_pool %}
         <div class="pool-danger-zone">
             <button class="btn action-btn btn-danger-zone" id="deletePermanentBtnP" disabled title="DANGER: Permanently delete - Cannot be undone!">

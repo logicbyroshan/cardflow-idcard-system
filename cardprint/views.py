@@ -120,6 +120,11 @@ def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
     return [f for f in ordered_fields if f.get('name') in allowed]
 
 
+def _promote_legacy_print_list(table):
+    """One-way compatibility: move legacy print_list rows into generate_list."""
+    PrintRequest.objects.filter(table=table, status='print_list').update(status='generate_list')
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
@@ -127,7 +132,7 @@ def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
 @login_required
 @require_any_admin
 def print_cards(request, table_id):
-    """Print Cards workflow page with tabs: Print List | Generate List | Finalized."""
+    """Print Cards workflow page with tabs: Generate List | Finalized."""
     table = get_object_or_404(
         IDCardTable.objects.select_related('group__client'), id=table_id,
     )
@@ -135,27 +140,25 @@ def print_cards(request, table_id):
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('active_clients')
 
-    current_step = request.GET.get('step', 'print_list')
-    if current_step not in ('print_list', 'generate_list', 'finalized'):
-        current_step = 'print_list'
+    _promote_legacy_print_list(table)
+
+    current_step = request.GET.get('step', 'generate_list')
+    if current_step not in ('generate_list', 'finalized'):
+        current_step = 'generate_list'
 
     # Step counts for tabs
     counts = PrintRequest.objects.filter(table=table).aggregate(
-        pl=Count('id', filter=Q(status='print_list')),
         fn=Count('id', filter=Q(status='finalized')),
         gl=Count('id', filter=Q(status='generate_list')),
     )
     step_counts = {
-        'print_list': counts['pl'],
         'finalized': counts['fn'],
         'generate_list': counts['gl'],
     }
 
     # Items for the current step
-    print_items = []
     generate_items = []
     finalized_items = []
-    print_total = 0
     generate_total = 0
     finalized_total = 0
 
@@ -163,28 +166,7 @@ def print_cards(request, table_id):
     template_obj = CardTemplate.objects.filter(table=table).first()
     selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
 
-    if current_step == 'print_list':
-        base_qs = PrintRequest.objects.filter(table=table, status='print_list')
-        print_total = base_qs.count()
-        pr_qs = base_qs.select_related('card', 'requested_by').order_by('-created_at')[:200]
-        for idx, pr in enumerate(pr_qs):
-            card = pr.card
-            fd = card.field_data or {}
-            fd_upper = {k.upper(): v for k, v in fd.items()}
-            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
-            req_by = pr.requested_by
-            print_items.append({
-                'pr_id': pr.id,
-                'card_id': card.id,
-                'sr_no': idx + 1,
-                'status': card.status,
-                'status_display': card.get_status_display(),
-                'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-                'requested_at': localtime(pr.created_at).strftime('%d %b %Y %H:%M'),
-                'ordered_fields': ordered_fields,
-            })
-
-    elif current_step == 'generate_list':
+    if current_step == 'generate_list':
         base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
         generate_total = base_qs.count()
         pr_qs = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:200]
@@ -242,18 +224,15 @@ def print_cards(request, table_id):
 
     import json as _json
     context = {
-        'active_page': 'generate_card',
+        'active_page': 'active_clients',
         'user_role': get_user_role(user),
         'table': table,
         'group': table.group,
         'client': table.group.client,
         'current_step': current_step,
         'step_counts': step_counts,
-        'print_items': print_items,
         'generate_items': generate_items,
         'finalized_items': finalized_items,
-        'print_total': print_total,
-        'print_has_more': print_total > len(print_items),
         'generate_total': generate_total,
         'generate_has_more': generate_total > len(generate_items),
         'generate_display_fields': [
@@ -281,7 +260,7 @@ def print_cards(request, table_id):
 @login_required
 @api_require_permission('perm_print_list')
 def api_print_send(request, table_id):
-    """Send approved cards to the print list.
+    """Send approved cards to generate list.
 
     Body: { "card_ids": [1, 2, 3] }
     Only cards in 'approved' status are accepted.
@@ -289,6 +268,8 @@ def api_print_send(request, table_id):
     table, err = _check_print_table_scope(request.user, table_id)
     if err:
         return err
+
+    _promote_legacy_print_list(table)
 
     try:
         data = json.loads(request.body)
@@ -326,7 +307,7 @@ def api_print_send(request, table_id):
 
     return JsonResponse({
         'status': 'ok',
-        'message': f"{result.data['created']} card(s) sent to print list"
+        'message': f"{result.data['created']} card(s) added to generate list"
                    + (f" ({result.data['skipped']} already in list)" if result.data['skipped'] else ''),
         'created': result.data['created'],
         'skipped': result.data['skipped'],
@@ -336,211 +317,30 @@ def api_print_send(request, table_id):
 @require_http_methods(["GET"])
 @login_required
 @api_require_permission('perm_print_list')
-def api_print_list(request, table_id):
-    """List print_list items with pagination and search."""
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    query = request.GET.get('q', '').strip()
-    offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
-
-    pr_qs = PrintRequest.objects.filter(
-        table=table, status='print_list',
-    ).select_related('card', 'requested_by').order_by('-created_at')
-
-    if query:
-        pr_qs = IDCardService._apply_search_filter(
-            pr_qs,
-            query,
-            table=table,
-            json_field='card__field_data',
-            id_lookup='card__id',
-        )
-
-    total = pr_qs.count()
-    batch = list(pr_qs[offset:offset + limit + 1])
-    has_more = len(batch) > limit
-    if has_more:
-        batch = batch[:limit]
-
-    items = []
-    for idx, pr in enumerate(batch):
-        card = pr.card
-        fd = card.field_data or {}
-        fd_upper = {k.upper(): v for k, v in fd.items()}
-        ordered_fields = _build_ordered_fields(table, fd, fd_upper)
-        req_by = pr.requested_by
-        items.append({
-            'pr_id': pr.id,
-            'card_id': card.id,
-            'sr_no': offset + idx + 1,
-            'status': card.status,
-            'status_display': card.get_status_display(),
-            'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-            'requested_at': localtime(pr.created_at).strftime('%d %b %Y %H:%M'),
-            'ordered_fields': ordered_fields,
-        })
-
-    return JsonResponse({
-        'status': 'ok',
-        'items': items,
-        'total': total,
-        'has_more': has_more,
-        'offset': offset,
-        'limit': limit,
-    })
-
-
-@require_http_methods(["GET"])
-@login_required
-@api_require_permission('perm_print_list')
 def api_print_step_counts(request, table_id):
-    """Return step counts for the print workflow tabs."""
+    """Return step counts for the generate/finalized workflow tabs."""
     table, err = _check_print_table_scope(request.user, table_id)
     if err:
         return err
+
+    _promote_legacy_print_list(table)
 
     counts = PrintRequest.objects.filter(table=table).aggregate(
-        pl=Count('id', filter=Q(status='print_list')),
         gl=Count('id', filter=Q(status='generate_list')),
         fn=Count('id', filter=Q(status='finalized')),
         po=Count('id', filter=Q(status='pool')),
     )
     return JsonResponse({
         'status': 'ok',
-        'print_list': counts['pl'],
         'generate_list': counts['gl'],
         'finalized': counts['fn'],
         'pool': counts['po'],
     })
 
 
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_print_remove(request, table_id):
-    """Remove items from the print list.
-
-    Body: { "request_ids": [1, 2, 3] }
-    """
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    request_ids = data.get('request_ids', [])
-    if not request_ids:
-        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
-
-    valid_ids = list(
-        PrintRequest.objects.filter(
-            id__in=request_ids, table=table, status='print_list',
-        ).values_list('id', flat=True)
-    )
-
-    result = PrintWorkflowService.delete_requests(valid_ids, request.user)
-    return JsonResponse({
-        'status': 'ok',
-        'message': f"{result.data['deleted']} item(s) removed from print list",
-        'deleted': result.data['deleted'],
-        'skipped': result.data['skipped'],
-    })
-
-
-
 # ---------------------------------------------------------------------------
-# 3-STEP API VIEWS: Generate, Finalized List, Mark Pool, Pool List
+# 2-STEP API VIEWS: Generate, Finalized List, Mark Pool, Pool List
 # ---------------------------------------------------------------------------
-
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_print_generate(request, table_id):
-    """Send to Generate: transition print_list → generate_list for selected items.
-
-    Body: { "request_ids": [1, 2, 3] }
-    """
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    request_ids = data.get('request_ids', [])
-    if not request_ids:
-        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
-
-    valid_ids = list(
-        PrintRequest.objects.filter(
-            id__in=request_ids, table=table, status='print_list',
-        ).values_list('id', flat=True)
-    )
-    if not valid_ids:
-        return JsonResponse(
-            {'status': 'error', 'message': 'No valid print list items found'},
-            status=400,
-        )
-
-    result = PrintWorkflowService.bulk_send_to_generate(valid_ids, request.user)
-    if not result.success:
-        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
-    return JsonResponse({
-        'status': 'ok',
-        'message': f"{result.data['updated']} item(s) sent to generate list",
-        'updated': result.data['updated'],
-        'skipped': result.data['skipped'],
-    })
-
-
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_print_generate_to_print(request, table_id):
-    """Move generate_list items back to print_list.
-
-    Body: { "request_ids": [1, 2, 3] }
-    """
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    request_ids = data.get('request_ids', [])
-    if not request_ids:
-        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
-
-    valid_ids = list(
-        PrintRequest.objects.filter(
-            id__in=request_ids, table=table, status='generate_list',
-        ).values_list('id', flat=True)
-    )
-    if not valid_ids:
-        return JsonResponse(
-            {'status': 'error', 'message': 'No valid generate list items found'},
-            status=400,
-        )
-
-    result = PrintWorkflowService.bulk_move_to_print_list(valid_ids, request.user, 'generate_list')
-    if not result.success:
-        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
-    return JsonResponse({
-        'status': 'ok',
-        'message': f"{result.data['updated']} item(s) moved to print list",
-        'updated': result.data['updated'],
-        'skipped': result.data['skipped'],
-    })
 
 
 @require_http_methods(["GET"])
@@ -551,6 +351,8 @@ def api_print_generate_list(request, table_id):
     table, err = _check_print_table_scope(request.user, table_id)
     if err:
         return err
+
+    _promote_legacy_print_list(table)
 
     query = request.GET.get('q', '').strip()
     offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
@@ -602,41 +404,6 @@ def api_print_generate_list(request, table_id):
         'has_more': has_more,
         'offset': offset,
         'limit': limit,
-    })
-
-
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_print_generate_all(request, table_id):
-    """Move ALL print_list items to generate_list for this table.
-
-    Called from the Configure & Print modal.
-    Returns the count moved and the editor redirect URL.
-    """
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    all_ids = list(
-        PrintRequest.objects.filter(
-            table=table, status='print_list',
-        ).values_list('id', flat=True)
-    )
-    if not all_ids:
-        return JsonResponse(
-            {'status': 'error', 'message': 'No cards in print list to generate'},
-            status=400,
-        )
-
-    result = PrintWorkflowService.bulk_send_to_generate(all_ids, request.user)
-    if not result.success:
-        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
-    return JsonResponse({
-        'status': 'ok',
-        'message': f"{result.data['updated']} card(s) sent to generate list",
-        'updated': result.data['updated'],
-        'redirect_url': f'/print/generate-card/table/{table.id}/',
     })
 
 
@@ -788,49 +555,6 @@ def api_print_mark_pool(request, table_id):
     })
 
 
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_finalized_list')
-def api_print_finalized_to_print(request, table_id):
-    """Move finalized items back to print_list.
-
-    Body: { "request_ids": [1, 2, 3] }
-    """
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    request_ids = data.get('request_ids', [])
-    if not request_ids:
-        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
-
-    valid_ids = list(
-        PrintRequest.objects.filter(
-            id__in=request_ids, table=table, status='finalized',
-        ).values_list('id', flat=True)
-    )
-    if not valid_ids:
-        return JsonResponse(
-            {'status': 'error', 'message': 'No valid finalized items found'},
-            status=400,
-        )
-
-    result = PrintWorkflowService.bulk_move_to_print_list(valid_ids, request.user, 'finalized')
-    if not result.success:
-        return JsonResponse({'status': 'error', 'message': result.message}, status=400)
-    return JsonResponse({
-        'status': 'ok',
-        'message': f"{result.data['updated']} item(s) moved to print list",
-        'updated': result.data['updated'],
-        'skipped': result.data['skipped'],
-    })
-
-
 @require_http_methods(["GET"])
 @login_required
 @api_require_permission('perm_print_list')
@@ -892,39 +616,6 @@ def api_print_pool_list(request, table_id):
 # ===========================================================================
 # GENERATE CARD � PAGE VIEWS
 # ===========================================================================
-
-
-
-
-@login_required
-@require_any_admin
-def generate_card_overview(request):
-    """Overview: lists all accessible tables with print workflow counts."""
-    user = request.user
-    qs = IDCardTable.objects.filter(
-        is_active=True,
-        deleted_by_client=False,
-    ).select_related('group__client').annotate(
-        print_list_count=Count('print_requests', filter=Q(print_requests__status='print_list')),
-        generate_count=Count('print_requests', filter=Q(print_requests__status='generate_list')),
-        finalized_count=Count('print_requests', filter=Q(print_requests__status='finalized')),
-        pool_count=Count('print_requests', filter=Q(print_requests__status='pool')),
-    ).order_by('group__client__name', 'name')
-
-    if not PermissionService.is_super_admin(user):
-        staff_profile = getattr(user, 'staff_profile', None)
-        if staff_profile and staff_profile.staff_type == 'admin_staff':
-            assigned = staff_profile.assigned_clients.values_list('id', flat=True)
-            qs = qs.filter(group__client_id__in=assigned)
-
-    context = {
-        'active_page': 'generate_card',
-        'user_role': get_user_role(user),
-        'tables': qs,
-    }
-    return render(request, 'cardprint/generate-card-overview.html', context)
-
-
 @login_required
 @require_any_admin
 def generate_card(request, table_id):
@@ -955,7 +646,7 @@ def generate_card(request, table_id):
     field_config = template_obj.field_config or {}
 
     context = {
-        'active_page': 'generate_card',
+        'active_page': 'active_clients',
         'user_role': get_user_role(user),
         'table': table,
         'group': table.group,

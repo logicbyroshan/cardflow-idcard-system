@@ -34,41 +34,10 @@ function refreshStepCounts() {
   ApiClient.get('/print/api/table/' + TABLE_ID + '/step-counts/')
     .then(function(data) {
       if (data.status === 'ok') {
-        updateTabCount('.print-list-tab .tab-count', data.print_list || 0);
         updateTabCount('.print-generate-tab .tab-count', data.generate_list || 0);
         updateTabCount('.print-finalized-tab .tab-count', data.finalized || 0);
       }
     }).catch(function() {});
-}
-
-function wireBackButton(buttonId, fallbackUrl) {
-  var btn = document.getElementById(buttonId);
-  if (!btn) return;
-
-  function goBack() {
-    var referrer = document.referrer;
-    try {
-      if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
-        window.location.href = referrer;
-        return;
-      }
-    } catch (_e) {}
-    if (fallbackUrl) window.location.href = fallbackUrl;
-  }
-
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    goBack();
-  });
-
-  document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'b') {
-      var tag = (e.target && e.target.tagName ? e.target.tagName : '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
-      e.preventDefault();
-      goBack();
-    }
-  });
 }
 
 /** Render a single image cell as HTML */
@@ -241,305 +210,13 @@ function createPaginator(opts) {
 
 
 /* 
-   CONFIGURE & PRINT MODAL
-    */
-(function configureModal() {
-  var modal      = document.getElementById('configureModal');
-  var closeBtn   = document.getElementById('configureModalClose');
-  var cancelBtn  = document.getElementById('configureModalCancel');
-  var generateBtn = document.getElementById('configureModalGenerate');
-  var printAllBtn = document.getElementById('printAllBtn');
-
-  if (!modal || !printAllBtn) return;
-
-  var TABLE_FIELDS = window.TABLE_FIELDS || [];
-  var FIELD_CONFIG = window.FIELD_CONFIG || {};
-  var isTwoSided  = !!(FIELD_CONFIG.is_two_sided);
-
-  var singleBtn = document.getElementById('cfgSingleBtn');
-  var doubleBtn = document.getElementById('cfgDoubleBtn');
-  var backSection = document.getElementById('cfgBackSection');
-  var frontFieldsDiv = document.getElementById('cfgFrontFields');
-  var backFieldsDiv  = document.getElementById('cfgBackFields');
-
-  // Build field checkboxes
-  function buildFieldCheckboxes(container, side) {
-    var selectedFields = (side === 'front') ? (FIELD_CONFIG.front_fields || []) : (FIELD_CONFIG.back_fields || []);
-    container.innerHTML = '';
-    TABLE_FIELDS.forEach(function(f) {
-      var checked = selectedFields.indexOf(f.name) >= 0;
-      var isImg = isImageField(f.type, f.name);
-      var label = document.createElement('label');
-      label.className = 'cfg-field-item';
-      label.innerHTML =
-        '<input type="checkbox" value="' + escapeHtml(f.name) + '"' + (checked ? ' checked' : '') + '>' +
-        '<span>' + escapeHtml(f.name) + (isImg ? ' <i class="fa-solid fa-image text-gray-400 text-[10px]"></i>' : '') + '</span>';
-      container.appendChild(label);
-    });
-  }
-
-  function getCheckedFields(container) {
-    return Array.from(container.querySelectorAll('input[type=checkbox]:checked')).map(function(cb) { return cb.value; });
-  }
-
-  // Side toggle
-  function setSides(two) {
-    isTwoSided = two;
-    singleBtn.classList.toggle('active', !two);
-    doubleBtn.classList.toggle('active', two);
-    backSection.classList.toggle('hidden', !two);
-  }
-
-  singleBtn.addEventListener('click', function() { setSides(false); });
-  doubleBtn.addEventListener('click', function() { setSides(true); });
-
-  // Open modal
-  function openModal() {
-    buildFieldCheckboxes(frontFieldsDiv, 'front');
-    buildFieldCheckboxes(backFieldsDiv, 'back');
-    setSides(isTwoSided);
-    modal.classList.add('show');
-  }
-
-  function closeModal() {
-    modal.classList.remove('show');
-  }
-
-  printAllBtn.addEventListener('click', openModal);
-  closeBtn.addEventListener('click', closeModal);
-  cancelBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', function(e) {
-    if (e.target === modal) closeModal();
-  });
-
-  // Generate button handler
-  generateBtn.addEventListener('click', function() {
-    var frontFields = getCheckedFields(frontFieldsDiv);
-    var backFields  = isTwoSided ? getCheckedFields(backFieldsDiv) : [];
-
-    if (frontFields.length === 0) {
-      showToast('Select at least one front side field.', 'warning');
-      return;
-    }
-
-    generateBtn.disabled = true;
-    generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Moving';
-
-    // Step 1: Save field_config
-    ApiClient.post('/print/api/table/' + TABLE_ID + '/field-config/', {
-      is_two_sided: isTwoSided,
-      front_fields: frontFields,
-      back_fields: backFields,
-    })
-    .then(function(data) {
-      if (data.status !== 'ok') throw new Error(data.message || 'Failed to save config');
-
-      // Keep runtime field config in sync so generate editor dropdowns use latest selections.
-      window.FIELD_CONFIG = {
-        is_two_sided: isTwoSided,
-        front_fields: frontFields,
-        back_fields: backFields,
-      };
-
-      // Step 2: Move all print_list -> generate_list
-      return ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-all/', {});
-    })
-    .then(function(data) {
-      if (data.status !== 'ok') throw new Error(data.message || 'Failed to send to generate');
-      showToast(data.message || 'Cards sent to generate list!', 'success');
-      // Step 3: Go to Generate List tab; editor opens only when user clicks Generate there.
-      closeModal();
-      window.location.href = '/print/table/' + TABLE_ID + '/?step=generate_list';
-    })
-    .catch(function(err) {
-      showToast(err.message || 'Something went wrong', 'error');
-      console.error('[ConfigureModal] Error:', err);
-      generateBtn.disabled = false;
-      generateBtn.innerHTML = '<i class="fa-solid fa-forward"></i> Move to Generate List';
-    });
-  });
-})();
-
-
-/* 
-   STEP 1: PRINT LIST (status = print_list)
-   Actions: Print All (opens modal), Remove (bulk + single)
-    */
-(function printListStep() {
-  var tableBody     = document.getElementById('printListTableBody');
-  var searchInput   = document.getElementById('printListSearchInput');
-  var searchClearBtn = document.getElementById('printListSearchClearBtn');
-  var removeBtn     = document.getElementById('removeFromPrintBtn');
-  var viewBtn       = document.getElementById('printListViewBtn');
-  var showingRange  = document.getElementById('printListShowingRange');
-  var totalCountEl  = document.getElementById('printListTotalCount');
-
-  if (!tableBody) return;
-
-  wireBackButton('printListBackBtn', '/print/generate-card/');
-
-  var paginator = createPaginator({
-    barId: 'printListPaginationBar',
-    prefix: 'printList',
-    getTableBody: function() { return tableBody; }
-  });
-  if (paginator) paginator.paginate();
-
-  function getRows() {
-    return Array.from(tableBody.querySelectorAll('tr[data-pr-id]'));
-  }
-  function getAllPrIds() {
-    return getRows().map(function(row) { return parseInt(row.dataset.prId, 10); })
-      .filter(function(v) { return Number.isFinite(v); });
-  }
-  function getAllCardIds() {
-    return getRows().map(function(row) { return parseInt(row.dataset.cardId, 10); })
-      .filter(function(v) { return Number.isFinite(v); });
-  }
-
-  function updateSelectionUI() {
-    var count = getAllPrIds().length;
-    if (removeBtn)   removeBtn.disabled   = count === 0;
-    if (viewBtn)     viewBtn.disabled     = count === 0;
-    if (paginator) paginator.updateSelectionCount(0);
-  }
-
-  // Single-row remove
-  if (tableBody) {
-    tableBody.addEventListener('click', async function(e) {
-      var rmBtn = e.target.closest('.btn-remove-single');
-      if (rmBtn) {
-        var prId = parseInt(rmBtn.dataset.prId);
-        if (prId) {
-          var ok = await showConfirm({ title: 'Remove Card?', text: 'Remove this card from the print list?', icon: 'fa-solid fa-xmark', confirmLabel: 'Remove', hideWarning: true });
-          if (ok) performRemove([prId]);
-        }
-      }
-    });
-  }
-
-  // Bulk Remove
-  if (removeBtn) {
-    removeBtn.addEventListener('click', async function() {
-      var ids = getAllPrIds();
-      if (ids.length === 0) return;
-      var ok = await showConfirm({ title: 'Remove All Items?', text: 'Remove all ' + ids.length + ' item(s) from the print list?', icon: 'fa-solid fa-xmark', confirmLabel: 'Remove All', hideWarning: true });
-      if (!ok) return;
-      performRemove(ids);
-    });
-  }
-
-  // View
-  if (viewBtn) {
-    viewBtn.addEventListener('click', function() {
-      var cardIds = getAllCardIds();
-      if (cardIds.length === 0) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
-    });
-  }
-
-  // Remove API
-  function performRemove(prIds) {
-    ApiClient.post('/print/api/table/' + TABLE_ID + '/remove/', { request_ids: prIds })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        showToast(data.message || 'Removed from print list', 'success');
-        prIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
-        refreshStepCounts();
-      } else {
-        showToast(data.message || 'Failed to remove', 'error');
-      }
-    }).catch(function(err) {
-      showToast('Network error', 'error');
-      console.error('[PrintList] Remove error:', err);
-    });
-  }
-
-  // Search
-  var searchTimer = null;
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      clearTimeout(searchTimer);
-      var q = this.value.trim();
-      if (searchClearBtn) searchClearBtn.style.display = q ? '' : 'none';
-      searchTimer = setTimeout(function() { fetchPrintListItems(q); }, 350);
-    });
-  }
-  if (searchClearBtn) {
-    searchClearBtn.addEventListener('click', function() {
-      searchInput.value = '';
-      searchClearBtn.style.display = 'none';
-      searchInput.focus();
-      fetchPrintListItems('');
-    });
-    searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
-  }
-
-  function fetchPrintListItems(query) {
-    var url = '/print/api/table/' + TABLE_ID + '/list/?q=' + encodeURIComponent(query || '') + '&limit=200';
-    ApiClient.get(url)
-    .then(function(data) {
-      if (data.status === 'ok') renderPrintListItems(data.items || [], data.total || 0);
-    }).catch(function(err) { console.error('[PrintList] Search failed:', err); });
-  }
-
-  function renderPrintListItems(items, total) {
-    if (items.length === 0) {
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-print"></i><span>No cards in print list</span></div></td></tr>';
-      if (showingRange) showingRange.textContent = '0';
-      if (totalCountEl) totalCountEl.textContent = total;
-      updateSelectionUI();
-      return;
-    }
-    var html = '';
-    items.forEach(function(item, idx) {
-      html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
-      html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
-      html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.requested_at || '-') + '</td>';
-      html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';
-      html += '<button class="btn-remove-single" data-pr-id="' + item.pr_id + '" title="Remove"><i class="fa-solid fa-trash"></i></button>';
-      html += '</div></td>';
-      html += '<td class="w-[65px] px-[1px] py-1 align-middle text-center"><span class="status-badge status-' + item.status + '">' + escapeHtml(item.status_display || item.status || '-') + '</span></td>';
-      html += '</tr>';
-    });
-    tableBody.innerHTML = html;
-    if (showingRange) showingRange.textContent = '1-' + items.length;
-    if (totalCountEl) totalCountEl.textContent = total;
-    updateSelectionUI();
-    if (paginator) { paginator.reset(); paginator.paginate(); }
-  }
-
-  function updatePagination() {
-    var rows = tableBody.querySelectorAll('tr:not(.no-data-row)');
-    if (rows.length === 0) {
-      if (showingRange) showingRange.textContent = '0';
-      if (totalCountEl) totalCountEl.textContent = '0';
-      var pBar = document.getElementById('printListPaginationBar');
-      if (pBar) pBar.style.display = 'none';
-      tableBody.innerHTML = '<tr class="no-data-row"><td colspan="50" class="no-data-cell"><div class="no-data"><i class="fa-solid fa-print"></i><span>No cards in print list</span></div></td></tr>';
-    } else {
-      if (paginator) paginator.paginate();
-    }
-  }
-})();
-
-
-/* 
-   STEP 2: GENERATE LIST (status = generate_list)
+   STEP 1: GENERATE LIST (status = generate_list)
    Actions: Continue Generate (bulk selected), View
     */
 (function generateListStep() {
   var tableBody      = document.getElementById('generateListTableBody');
   var searchInput    = document.getElementById('generateListSearchInput');
   var searchClearBtn = document.getElementById('generateListSearchClearBtn');
-  var moveToPrintBtn = document.getElementById('generateListMoveToPrintBtn');
   var continueBtn    = document.getElementById('continueGenerateBtn');
   var viewBtn        = document.getElementById('generateListViewBtn');
   var showingRange   = document.getElementById('generateListShowingRange');
@@ -568,7 +245,6 @@ function createPaginator(opts) {
 
   function updateSelectionUI() {
     var count = getAllPrIds().length;
-    if (moveToPrintBtn) moveToPrintBtn.disabled = count === 0;
     if (continueBtn) continueBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count === 0;
     if (paginator) paginator.updateSelectionCount(0);
@@ -594,32 +270,6 @@ function createPaginator(opts) {
       var ids = getAllPrIds();
       if (ids.length === 0) return;
       openGeneratorWithSelection(ids);
-    });
-  }
-
-  if (moveToPrintBtn) {
-    moveToPrintBtn.addEventListener('click', async function() {
-      var ids = getAllPrIds();
-      if (ids.length === 0) return;
-      var ok = await showConfirm({ title: 'Move All to Print List?', text: 'Move all ' + ids.length + ' item(s) back to print list?', icon: 'fa-solid fa-arrow-rotate-left', confirmLabel: 'Move All', btnClass: 'btn-primary', hideWarning: true });
-      if (!ok) return;
-      ApiClient.post('/print/api/table/' + TABLE_ID + '/generate-to-print/', { request_ids: ids })
-      .then(function(data) {
-        if (data.status === 'ok') {
-          showToast(data.message || 'Moved to print list', 'success');
-          ids.forEach(function(id) {
-            var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
-            if (row) row.remove();
-          });
-          refreshStepCounts();
-          fetchGenerateItems(searchInput ? searchInput.value.trim() : '');
-        } else {
-          showToast(data.message || 'Failed to move items', 'error');
-        }
-      }).catch(function(err) {
-        showToast('Network error', 'error');
-        console.error('[GenerateList] Move to print error:', err);
-      });
     });
   }
 
@@ -686,7 +336,7 @@ function createPaginator(opts) {
 
 
 /* 
-   STEP 3: FINALIZED LIST (status = finalized)
+  STEP 2: FINALIZED LIST (status = finalized)
    Actions: Move to Pool (bulk + single)
     */
 (function finalizedStep() {
@@ -694,7 +344,6 @@ function createPaginator(opts) {
   var selectAllCb   = document.getElementById('finalizedSelectAll');
   var searchInput   = document.getElementById('finalizedSearchInput');
   var searchClearBtn = document.getElementById('finalizedSearchClearBtn');
-  var moveToPrintBtn = document.getElementById('finalizedMoveToPrintBtn');
   var poolBtn       = document.getElementById('finalizedMoveToPoolBtn');
   var viewBtn       = document.getElementById('finalizedViewBtn');
   var showingRange  = document.getElementById('finalizedShowingRange');
@@ -724,7 +373,6 @@ function createPaginator(opts) {
   function updateSelectionUI() {
     var ids = getSelectedPrIds();
     var count = ids.length;
-    if (moveToPrintBtn) moveToPrintBtn.disabled = count === 0;
     if (poolBtn) poolBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
     if (paginator) paginator.updateSelectionCount(count);
@@ -772,17 +420,6 @@ function createPaginator(opts) {
     });
   }
 
-  // Bulk Move to Print List
-  if (moveToPrintBtn) {
-    moveToPrintBtn.addEventListener('click', async function() {
-      var ids = getSelectedPrIds();
-      if (ids.length === 0) return;
-      var ok = await showConfirm({ title: 'Move to Print List?', text: 'Move ' + ids.length + ' item(s) back to print list?', icon: 'fa-solid fa-arrow-rotate-left', confirmLabel: 'Move', btnClass: 'btn-primary', hideWarning: true });
-      if (!ok) return;
-      performMoveToPrint(ids);
-    });
-  }
-
   // View
   if (viewBtn) {
     viewBtn.addEventListener('click', function() {
@@ -811,28 +448,6 @@ function createPaginator(opts) {
     }).catch(function(err) {
       showToast('Network error', 'error');
       console.error('[Finalized] Move to pool error:', err);
-    });
-  }
-
-  // Move to Print List API (finalized -> print_list)
-  function performMoveToPrint(prIds) {
-    ApiClient.post('/print/api/table/' + TABLE_ID + '/finalized-to-print/', { request_ids: prIds })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        showToast(data.message || 'Moved to print list', 'success');
-        prIds.forEach(function(id) {
-          var row = tableBody.querySelector('tr[data-pr-id="' + id + '"]');
-          if (row) row.remove();
-        });
-        updatePagination();
-        updateSelectionUI();
-        refreshStepCounts();
-      } else {
-        showToast(data.message || 'Failed', 'error');
-      }
-    }).catch(function(err) {
-      showToast('Network error', 'error');
-      console.error('[Finalized] Move to print error:', err);
     });
   }
 
