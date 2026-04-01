@@ -26,7 +26,9 @@ from django.utils import timezone as django_tz
 
 logger = logging.getLogger(__name__)
 
-MAX_BASE64_ZIP_BYTES = 25 * 1024 * 1024  # 25MB raw ZIP before base64 expansion
+# Minimum export size floor for non-super-admin inline payloads.
+# Super admin path remains unlimited (allow_large_base64=True bypasses this check).
+MAX_BASE64_ZIP_BYTES = 1 * 1024 * 1024 * 1024  # 1 GB raw ZIP before base64 expansion
 
 from django.db.models import QuerySet
 from django.core.files.storage import default_storage
@@ -159,9 +161,6 @@ class ZipExporter:
             zip_tmp_path = zip_tmp.name
             zip_tmp.close()
             
-            MAX_IMAGES_PER_ZIP = 5000
-            max_images = None if allow_large_base64 else MAX_IMAGES_PER_ZIP
-            
             try:
                 with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                     for field_info in image_fields:
@@ -174,8 +173,6 @@ class ZipExporter:
                         field_count = 0
                         
                         for card in cards.iterator(chunk_size=100):
-                            if max_images is not None and total_images >= max_images:
-                                break
                             
                             img_path = ImageService.get_image_path_for_card(
                                 card=card,
@@ -222,7 +219,7 @@ class ZipExporter:
                     os.unlink(zip_tmp_path)
                     return ZipExportResult(
                         success=False,
-                        message='Selected images are too large for inline ZIP download. Please export fewer cards.'
+                        message='Selected images exceed the 1 GB inline ZIP limit for this account.'
                     )
                 
                 # Read from disk and base64-encode
@@ -323,7 +320,7 @@ class ZipExporter:
                     pdf_tmp_path = pdf_tmp.name
                     pdf_tmp.close()
                     try:
-                        max_pages = None if allow_large_base64 else 5000
+                        max_pages = None
                         page_count = self._write_image_field_pdf(
                             cards=cards,
                             field_name=field_name,
@@ -354,7 +351,7 @@ class ZipExporter:
             if not allow_large_base64 and zip_size > MAX_BASE64_ZIP_BYTES:
                 return ZipExportResult(
                     success=False,
-                    message='Selected PDF ZIP is too large for inline download. Please export fewer cards.'
+                    message='Selected PDF ZIP exceeds the 1 GB inline ZIP limit for this account.'
                 )
 
             with open(zip_tmp_path, 'rb') as f:
@@ -397,14 +394,13 @@ class ZipExporter:
             except OSError:
                 pass
 
-    def _write_image_field_pdf(self, cards: QuerySet, field_name: str, pdf_path: str, max_pages: Optional[int] = 5000) -> int:
+    def _write_image_field_pdf(self, cards: QuerySet, field_name: str, pdf_path: str, max_pages: Optional[int] = None) -> int:
         """Write one PDF where each page contains one image from the given field."""
         from reportlab.pdfgen import canvas
         from reportlab.lib.utils import ImageReader
 
         pdf_canvas = canvas.Canvas(pdf_path)
         page_count = 0
-        MAX_IMAGES_PER_PDF = 5000
 
         try:
             for card in cards.iterator(chunk_size=100):
@@ -487,17 +483,10 @@ class ZipExporter:
         images_count = 0
         used_names = {}
         
-        # Maximum images per ZIP to prevent memory issues
-        MAX_IMAGES_PER_ZIP = 5000
-        
         try:
             with zipfile.ZipFile(zip_tmp_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                 # Use iterator() for memory-efficient QuerySet iteration
                 for card in cards.iterator(chunk_size=100):
-                    if images_count >= MAX_IMAGES_PER_ZIP:
-                        logger.warning("ZIP export reached image limit for field %s", field_name)
-                        break
-                    
                     # Phase 3: Use ImageService with CardMedia + fallback
                     img_path = ImageService.get_image_path_for_card(
                         card=card,
@@ -860,14 +849,6 @@ def export_images_to_disk(
                         continue
 
                     try:
-                        if not default_storage.exists(img_path):
-                            continue
-                        with default_storage.open(img_path, 'rb') as img_file:
-                            img_data = img_file.read()
-
-                        if not img_data or len(img_data) < 100:
-                            continue
-
                         base = os.path.basename(img_path)
                         if base in used_names:
                             used_names[base] += 1
@@ -876,6 +857,44 @@ def export_images_to_disk(
                         else:
                             used_names[base] = 0
                             download_filename = base
+
+                        # Fast path for FileSystem storage: add file directly to ZIP
+                        # without reading full bytes into Python memory.
+                        real_path = None
+                        real_size = 0
+                        try:
+                            real_path = default_storage.path(img_path)
+                            if real_path and os.path.exists(real_path):
+                                real_size = os.path.getsize(real_path)
+                        except (AttributeError, NotImplementedError, OSError):
+                            real_path = None
+                            real_size = 0
+
+                        if real_path and real_size >= 100:
+                            if part_size + real_size > ZIP_SPLIT_THRESHOLD and total_images > 0:
+                                zf.close()
+                                all_parts.append((current_zip_path, current_zip_fn, total_images))
+                                part_num += 1
+                                current_zip_fn = zip_filename.replace('.zip', f'_part{part_num}.zip')
+                                current_zip_path = os.path.join(output_dir, current_zip_fn)
+                                zf = zipfile.ZipFile(current_zip_path, 'w', compression=zipfile.ZIP_STORED)
+                                part_size = 0
+
+                            arcname = f"{folder_name}/{download_filename}"
+                            zf.write(real_path, arcname=arcname)
+                            part_size += real_size
+                            total_images += 1
+                            current_progress += 1
+                            if progress_callback:
+                                progress_callback(current_progress, total_cards * len(image_fields))
+                            continue
+
+                        # Fallback for non-local storages: read and write bytes.
+                        with default_storage.open(img_path, 'rb') as img_file:
+                            img_data = img_file.read()
+
+                        if not img_data or len(img_data) < 100:
+                            continue
 
                         # Check split threshold
                         if part_size + len(img_data) > ZIP_SPLIT_THRESHOLD and total_images > 0:

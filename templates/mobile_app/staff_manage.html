@@ -460,7 +460,7 @@ function staffApp() {
                 return;
             }
             try {
-                const res = await fetch(`/api/staff/${this.editingId}/set-temp-password/`, {
+                const res = await fetch(`/panel/api/staff/${this.editingId}/set-temp-password/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ password: String(password).trim() }),

@@ -25,7 +25,11 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 _NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
-_NAME_BASE_6_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})_\d{6}$')
+_NAME_BASE_NUM_SUFFIX_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})[-_]\d{1,8}$')
+
+# Keep strict stem matching as primary behavior.
+# Legacy timestamp-number stems are only accepted through fallback.
+REUPLOAD_ALLOW_LEGACY_FALLBACK = True
 
 
 def _extract_stem_exact(value):
@@ -35,9 +39,32 @@ def _extract_stem_exact(value):
     return stem.strip()
 
 
+def _is_strict_reupload_stem(stem):
+    """Strict canonical stems from system-generated image names."""
+    return bool(_NAME_BASE_RE.match(stem))
+
+
+def _is_legacy_reupload_stem(stem):
+    """Legacy stems seen in historical XLSX references (e.g. 1722611171496-1047)."""
+    return bool(_NAME_BASE_NUM_SUFFIX_RE.match(stem))
+
+
 def _is_supported_reupload_stem(stem):
-    """Allow only canonical system stems for strict exact matching."""
-    return bool(_NAME_BASE_RE.match(stem) or _NAME_BASE_6_RE.match(stem))
+    """Validation used while indexing ZIP entries."""
+    if _is_strict_reupload_stem(stem):
+        return True
+    return bool(REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_legacy_reupload_stem(stem))
+
+
+def _resolve_reupload_zip_entry(stem, zip_index):
+    """Resolve match with strict-first behavior and optional legacy fallback."""
+    if not stem:
+        return None
+    if _is_strict_reupload_stem(stem):
+        return zip_index.get(stem)
+    if REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_legacy_reupload_stem(stem):
+        return zip_index.get(stem)
+    return None
 
 
 def _db_retry(fn, max_retries=5, base_delay=1.0):
@@ -257,13 +284,9 @@ def process_reupload_images(task):
                     if not match_key:
                         continue
 
-                    if not _is_supported_reupload_stem(match_key):
+                    zip_entry = _resolve_reupload_zip_entry(match_key, zip_image_index)
+                    if not zip_entry:
                         continue
-
-                    # Legacy basename matching only.
-                    if match_key not in zip_image_index:
-                        continue
-                    zip_entry = zip_image_index[match_key]
                     matched_count += 1
                     
                     try:
@@ -555,11 +578,7 @@ def _run_reupload_preflight(
                 continue
 
             expected_targets += 1
-            has_fallback_hit = bool(
-                match_key
-                and _is_supported_reupload_stem(match_key)
-                and match_key in zip_image_index
-            )
+            has_fallback_hit = bool(_resolve_reupload_zip_entry(match_key, zip_image_index))
 
             if has_fallback_hit:
                 matched_targets += 1

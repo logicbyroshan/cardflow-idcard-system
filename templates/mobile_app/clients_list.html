@@ -644,7 +644,7 @@ function clientsApp() {
                 return;
             }
             try {
-                const res = await fetch(`/api/client/${this.editingClientId}/set-temp-password/`, {
+                const res = await fetch(`/panel/api/client/${this.editingClientId}/set-temp-password/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ password: String(password).trim() }),

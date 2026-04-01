@@ -12,8 +12,10 @@ Features:
 import json
 import base64
 import logging
+import os
 from typing import List, Optional, Dict, Any
 
+from django.conf import settings
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
@@ -31,7 +33,8 @@ from .zip import ZipExporter, zip_result_to_dict
 
 logger = logging.getLogger(__name__)
 
-MAX_EXPORT_CARD_IDS = 5000
+# None means no ID-count cap at request parsing stage.
+MAX_EXPORT_CARD_IDS: Optional[int] = None
 
 _VALID_STATUSES = {'pending', 'verified', 'approved', 'download', 'pool'}
 
@@ -112,9 +115,7 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     
     # Validate and filter
     if card_ids:
-        max_items = None
-        if not is_super_admin:
-            max_items = MAX_EXPORT_CARD_IDS
+        max_items = None if is_super_admin else MAX_EXPORT_CARD_IDS
         card_ids = _normalize_positive_int_ids(card_ids, max_items=max_items)
     
     # Fallback: if no card_ids provided but table_id is available,
@@ -186,9 +187,7 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
                         qs = qs.filter(downloaded_at__lte=dt)
                 except (ValueError, TypeError):
                     pass
-            max_items = None
-            if not is_super_admin:
-                max_items = MAX_EXPORT_CARD_IDS
+            max_items = None if is_super_admin else MAX_EXPORT_CARD_IDS
             if max_items is None:
                 card_ids = list(qs.order_by('id').values_list('id', flat=True))
             else:
@@ -376,6 +375,56 @@ def _release_export_lock(lock_key):
         django_cache.delete(lock_key)
 
 
+def _safe_media_download_url(file_path: str) -> str:
+    """Build MEDIA_URL for an absolute file path only when it stays under MEDIA_ROOT."""
+    raw = str(file_path or '').strip()
+    if not raw:
+        return ''
+
+    media_root = os.path.abspath(settings.MEDIA_ROOT)
+    candidate = os.path.abspath(raw)
+    try:
+        if os.path.commonpath([media_root, candidate]) != media_root:
+            return ''
+    except ValueError:
+        return ''
+
+    rel_path = os.path.relpath(candidate, media_root).replace('\\', '/')
+    return f"{settings.MEDIA_URL.rstrip('/')}/{rel_path}"
+
+
+def _disk_zip_result_to_payload(disk_result) -> Dict[str, Any]:
+    """Convert disk ZIP export result to JSON payload consumed by the frontend."""
+    zip_files = []
+    for zf in getattr(disk_result, 'zip_files', []) or []:
+        download_url = _safe_media_download_url(getattr(zf, 'path', ''))
+        if not download_url:
+            continue
+        zip_files.append({
+            'field_name': getattr(zf, 'field_name', 'ALL') or 'ALL',
+            'filename': getattr(zf, 'filename', 'images.zip') or 'images.zip',
+            'download_url': download_url,
+            'image_count': int(getattr(zf, 'image_count', 0) or 0),
+        })
+
+    if not zip_files:
+        return {
+            'success': False,
+            'message': 'Large image export failed. Please try again.',
+        }
+
+    payload = {
+        'success': True,
+        'zip_files': zip_files,
+        'total_images': int(getattr(disk_result, 'total_images', 0) or 0),
+        'total_zips': len(zip_files),
+    }
+    if len(zip_files) == 1:
+        payload['download_url'] = zip_files[0]['download_url']
+        payload['filename'] = zip_files[0]['filename']
+    return payload
+
+
 # =============================================================================
 # EXCEL EXPORT
 # =============================================================================
@@ -484,7 +533,7 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         return scope_error
 
     is_super_admin = PermissionService.is_super_admin(request.user)
-    
+
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
         return JsonResponse({
@@ -549,9 +598,6 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
 # PDF EXPORT
 # =============================================================================
 
-# PDF generation is memory-intensive
-MAX_PDF_EXPORT_CARD_IDS = 5000
-
 @login_required
 @require_POST
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
@@ -579,18 +625,12 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     if scope_error:
         return scope_error
 
-    is_super_admin = PermissionService.is_super_admin(request.user)
-    
     card_ids = _get_card_ids_from_request(request, table_id=table_id)
     if not card_ids:
         return JsonResponse({
             'success': False,
             'message': 'No cards selected for export'
         }, status=400)
-    
-    # Apply PDF-specific limit (more strict for memory reasons)
-    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS and not is_super_admin:
-        card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
     
     # Extract template_id from request.
     # Font mode is intentionally locked to 'auto' for consistent layout.
@@ -677,9 +717,6 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
-    if len(card_ids) > MAX_PDF_EXPORT_CARD_IDS and not is_super_admin:
-        card_ids = card_ids[:MAX_PDF_EXPORT_CARD_IDS]
-    
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
@@ -760,9 +797,6 @@ def api_export_status(request, task_id: str) -> JsonResponse:
 # IMAGE ZIP EXPORT
 # =============================================================================
 
-# Image/ZIP exports
-MAX_ZIP_EXPORT_CARD_IDS = 5000
-
 @login_required
 @require_POST
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='export')
@@ -818,10 +852,8 @@ def api_export_images(request, table_id: int) -> JsonResponse:
             'message': 'No cards selected for export'
         }, status=400)
     
-    # Apply ZIP-specific limit (memory-intensive)
-    if len(card_ids) > MAX_ZIP_EXPORT_CARD_IDS and not is_super_admin:
-        card_ids = card_ids[:MAX_ZIP_EXPORT_CARD_IDS]
-    
+    export_status = _get_status_from_request(request)
+
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'images')
     if not acquired:
@@ -829,13 +861,50 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     try:
         service = ExportService(request.user)
         rename_options = _get_image_rename_options_from_request(request)
+        is_pdf_zip_mode = bool(rename_options and rename_options.get('output_format') == 'pdf_zip')
         result = service.export_images(
             table_id,
             card_ids,
-            status=_get_status_from_request(request),
+            status=export_status,
             rename_options=rename_options,
             allow_large_base64=is_super_admin,
         )
+
+        # Fallback: when inline base64 payload is too large for non-super-admin,
+        # generate disk-based ZIP(s) and return direct download URL(s).
+        too_large_inline = (
+            not is_super_admin
+            and not is_pdf_zip_mode
+            and not result.success
+            and (
+                'too large for inline' in str(result.message or '').lower()
+                or 'inline zip limit' in str(result.message or '').lower()
+            )
+        )
+        if too_large_inline:
+            from core.services.background_worker import ensure_exports_directory
+            from .zip import export_images_to_disk as _export_images_disk
+
+            table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
+            cards_qs = service.get_scoped_cards(table, card_ids)
+            output_dir = ensure_exports_directory()
+            disk_result = _export_images_disk(
+                table,
+                cards_qs,
+                output_dir=output_dir,
+                status=export_status,
+            )
+            disk_payload = _disk_zip_result_to_payload(disk_result)
+            if disk_payload.get('success'):
+                logger.info(
+                    "Export ZIP fallback-to-disk: user=%s table=%d cards=%d zips=%d",
+                    request.user.id,
+                    table_id,
+                    len(card_ids),
+                    disk_payload.get('total_zips', 0),
+                )
+                return JsonResponse(disk_payload)
+
         response_payload = zip_result_to_dict(result)
         if not response_payload.get('success'):
             _log_export_failure(request, 'images', response_payload.get('message', 'Image export failed'), table_id=table_id)
@@ -977,8 +1046,8 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'A bulk download is already in progress. Please wait.'}, status=429)
     try:
         import uuid as _uuid
-        from .tasks import EXPORT_TEMP_DIR, _ensure_export_dir
-        _ensure_export_dir()
+        from core.services.background_worker import ensure_exports_directory
+        EXPORT_TEMP_DIR = ensure_exports_directory()
         
         service = ExportService(request.user)
         excel_exporter = ExcelExporter()
@@ -993,9 +1062,6 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         clean_client = clean_filename(client_name) if client_name else ''
         clean_table = clean_filename(table.name)
         
-        # Export limits per download-all
-        MAX_CARDS_PER_STATUS = 15000
-        MAX_TOTAL_CARDS = 15000
         total_cards_processed = 0
         file_entries = []  # list of (filename, disk_path) for combined ZIP
         temp_files = []  # track for cleanup on error
@@ -1007,15 +1073,9 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
             card_count = cards_qs.count()
             if card_count == 0:
                 continue
-            
-            remaining_capacity = MAX_TOTAL_CARDS - total_cards_processed
-            if remaining_capacity <= 0:
-                logger.warning("Download-all reached total card limit for table %d", table_id)
-                break
-            
-            effective_limit = min(MAX_CARDS_PER_STATUS, remaining_capacity, card_count)
-            cards = cards_qs[:effective_limit]
-            total_cards_processed += effective_limit
+
+            cards = cards_qs
+            total_cards_processed += card_count
             
             if clean_client:
                 base_name = f"{clean_client}_{clean_table}_{status_label}"
@@ -1083,7 +1143,9 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         combined_path = os.path.join(EXPORT_TEMP_DIR, f"{task_id}_{combined_name}")
         
         import zipfile as _zf
-        with _zf.ZipFile(combined_path, 'w', _zf.ZIP_DEFLATED) as combined_zip:
+        # Most members are already compressed (.xlsx/.zip), so storing avoids
+        # expensive recompression with negligible size impact.
+        with _zf.ZipFile(combined_path, 'w', _zf.ZIP_STORED) as combined_zip:
             for entry_name, entry_path in file_entries:
                 combined_zip.write(entry_path, arcname=entry_name)
         
@@ -1107,7 +1169,7 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
             'filename': combined_name,
             'total_files': len(file_entries),
             'total_cards': total_cards_processed,
-            'note': f"Limited to {MAX_TOTAL_CARDS} total cards" if total_cards_processed >= MAX_TOTAL_CARDS else None
+            'note': None,
         })
     except Exception as e:
         logger.exception("Export DOWNLOAD-ALL failed: %s", e)

@@ -117,12 +117,10 @@ class ExportService:
         """
         Get cards scoped to user's access level.
         Delegates role-based filtering to PermissionService.
-        Safety cap of 5000 records when no card_ids provided.
         """
-        MAX_EXPORT_CARDS = 5000
         # Base queryset
         if card_ids:
-            normalized_ids = self._normalize_positive_int_ids(card_ids)[:MAX_EXPORT_CARDS]
+            normalized_ids = self._normalize_positive_int_ids(card_ids)
             if not normalized_ids:
                 return IDCard.objects.none()
             cards = IDCard.objects.filter(table=table, id__in=normalized_ids)
@@ -157,11 +155,7 @@ class ExportService:
         else:
             cards = cards.none()
         
-        result = cards.order_by('-id')
-        # Safety cap when no specific card_ids provided
-        if not card_ids and not PermissionService.is_super_admin(self.user):
-            result = result[:MAX_EXPORT_CARDS]
-        return result
+        return cards.order_by('-id')
     
     def _prepare_context(
         self,

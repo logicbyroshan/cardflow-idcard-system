@@ -392,6 +392,14 @@ def process_export_docx(task):
     # Get cards
     card_ids = metadata.get('card_ids', [])
     status_filter = metadata.get('status', '')
+    doc_format = str(metadata.get('doc_format', 'docx') or 'docx').strip().lower()
+    if doc_format not in ('docx', 'doc'):
+        doc_format = 'docx'
+    template_id = metadata.get('template_id')
+    try:
+        template_id = int(template_id) if template_id not in (None, '') else None
+    except (TypeError, ValueError):
+        template_id = None
     
     if card_ids:
         cards_qs = IDCard.objects.filter(table=table, id__in=card_ids)
@@ -415,7 +423,14 @@ def process_export_docx(task):
         from core.services.permission_service import PermissionService
         allow_large = PermissionService.is_super_admin(getattr(task, 'user', None))
         exporter = WordExporter()
-        result = exporter.export_cards(table, cards_qs, status=status_filter, allow_large=allow_large)
+        result = exporter.export_cards(
+            table,
+            cards_qs,
+            doc_format=doc_format,
+            status=status_filter,
+            template_id=template_id,
+            allow_large=allow_large,
+        )
         
         if not result.success:
             task.mark_failed(result.message)
@@ -430,7 +445,8 @@ def process_export_docx(task):
         # Save to file
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
-        filename = generate_export_filename(table.name, 'docx', client_name=client_name, status=status_filter)
+        extension = 'doc' if doc_format == 'doc' else 'docx'
+        filename = generate_export_filename(table.name, extension, client_name=client_name, status=status_filter)
         
         docx_path = os.path.join(exports_dir, filename)
         

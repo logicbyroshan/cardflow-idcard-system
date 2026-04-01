@@ -41,7 +41,10 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 _REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
-_REUPLOAD_NAME_BASE_6_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})_\d{6}$')
+_REUPLOAD_NAME_BASE_NUM_SUFFIX_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})[-_]\d{1,8}$')
+
+# Keep strict matching first; legacy timestamp-number stems are fallback only.
+REUPLOAD_ALLOW_LEGACY_FALLBACK = True
 
 
 def _extract_reupload_stem(value):
@@ -51,9 +54,32 @@ def _extract_reupload_stem(value):
     return stem.strip()
 
 
+def _is_strict_reupload_stem(stem):
+    """Strict canonical stems from system-generated image names."""
+    return bool(_REUPLOAD_NAME_BASE_RE.match(stem))
+
+
+def _is_legacy_reupload_stem(stem):
+    """Legacy stems seen in historical XLSX references (e.g. 1722611171496-1047)."""
+    return bool(_REUPLOAD_NAME_BASE_NUM_SUFFIX_RE.match(stem))
+
+
 def _is_supported_reupload_stem(stem):
-    """Allow only canonical reupload stems for strict exact matching."""
-    return bool(_REUPLOAD_NAME_BASE_RE.match(stem) or _REUPLOAD_NAME_BASE_6_RE.match(stem))
+    """Validation used while indexing ZIP entries."""
+    if _is_strict_reupload_stem(stem):
+        return True
+    return bool(REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_legacy_reupload_stem(stem))
+
+
+def _resolve_reupload_photo(stem, zip_photos):
+    """Resolve match with strict-first behavior and optional legacy fallback."""
+    if not stem:
+        return None
+    if _is_strict_reupload_stem(stem):
+        return zip_photos.get(stem)
+    if REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_legacy_reupload_stem(stem):
+        return zip_photos.get(stem)
+    return None
 
 
 @require_http_methods(["POST"])
@@ -656,12 +682,9 @@ def api_idcard_reupload_images(request, table_id):
                             if not match_key:
                                 continue
 
-                            if not _is_supported_reupload_stem(match_key):
-                                continue
-
-                            # Try to find matching photo in ZIP
-                            if match_key in zip_photos:
-                                photo_info = zip_photos[match_key]
+                            # Try strict-first matching with optional legacy fallback.
+                            photo_info = _resolve_reupload_photo(match_key, zip_photos)
+                            if photo_info:
                                 matched_count += 1
 
                                 try:

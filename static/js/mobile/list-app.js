@@ -521,24 +521,34 @@ function listApp() {
 
         // ========== Download Modal Methods ==========
         showDownloadModal(type, itemCount) {
+            const titleByType = {
+                pdf: 'Generating PDF',
+                img: 'Preparing Images',
+                xlsx: 'Preparing Excel',
+            };
+            const statusByType = {
+                pdf: 'Rendering cards...',
+                img: 'Compressing images...',
+                xlsx: 'Building spreadsheet...',
+            };
             this.downloadModal = {
                 show: true,
                 state: 'preparing',
-                title: type === 'pdf' ? 'Generating PDF' : 'Preparing Images',
+                title: titleByType[type] || 'Preparing Download',
                 subtitle: 'Please wait while we prepare your download...',
                 itemCount: itemCount,
                 progress: -1,
                 estimatedTime: this._estimateDownloadTime(itemCount, type),
                 sizeInfo: '',
-                statusText: type === 'pdf' ? 'Rendering cards...' : 'Compressing images...',
+                statusText: statusByType[type] || 'Preparing file...',
                 cancelling: false,
                 abortController: new AbortController(),
             };
         },
 
         _estimateDownloadTime(count, type) {
-            // Rough estimate: PDF ~0.5s/card, IMG ~1s/card
-            const secondsPerItem = type === 'pdf' ? 0.5 : 1;
+            // Rough estimate: PDF ~0.5s/card, IMG ~1s/card, XLSX ~0.35s/card
+            const secondsPerItem = type === 'pdf' ? 0.5 : (type === 'xlsx' ? 0.35 : 1);
             const totalSecs = Math.ceil(count * secondsPerItem);
             if (totalSecs < 60) return '~' + totalSecs + 's remaining';
             const mins = Math.floor(totalSecs / 60);
@@ -593,6 +603,75 @@ function listApp() {
             this.downloadModal.show = false;
             this.downloadModal.abortController = null;
             this.downloadModal.cancelling = false;
+        },
+
+        async _pollMobileExportTask(taskId, options = {}) {
+            for (let i = 0; i < 300; i++) {
+                if (this.downloadModal.abortController?.signal?.aborted) {
+                    throw new Error('AbortError');
+                }
+
+                const statusRes = await fetch('/panel/api/task-status/' + taskId + '/', {
+                    headers: { 'X-CSRFToken': CSRF },
+                    signal: this.downloadModal.abortController?.signal,
+                });
+                const data = await statusRes.json().catch(() => ({}));
+
+                if (data.status === 'completed' && data.download_url) {
+                    this.updateDownloadProgress(95, options.readyText || 'Saving file...');
+                    const a = document.createElement('a');
+                    a.href = data.download_url;
+                    const resultFilename = data.result && data.result.filename ? data.result.filename : '';
+                    a.download = resultFilename || options.fallbackFilename || 'export';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+
+                    if (typeof options.afterSuccess === 'function') {
+                        await options.afterSuccess();
+                    }
+
+                    this.completeDownload(true, options.successText || 'File saved to your device');
+                    return;
+                }
+
+                if (data.status === 'failed' || data.status === 'cancelled') {
+                    this.completeDownload(false, data.error_message || options.failText || 'Export failed');
+                    return;
+                }
+
+                const p = Math.max(10, Math.min(90, Number(data.progress_percentage || data.progress || 0)));
+                this.updateDownloadProgress(p, data.status_display || options.progressText || 'Processing export...');
+                await new Promise(r => setTimeout(r, 2000));
+            }
+            this.completeDownload(false, options.timeoutText || 'Export timed out');
+        },
+
+        async _startMobileAsyncExport(exportType, cardIds, options = {}, extraPayload = {}) {
+            this.updateDownloadProgress(10, options.startText || 'Sending request...');
+
+            const body = Object.assign({
+                export_type: exportType,
+                card_ids: cardIds,
+                status: LIST_TYPE,
+            }, extraPayload);
+
+            const res = await fetch('/panel/api/table/' + TABLE_ID + '/export-task/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                body: JSON.stringify(body),
+                signal: this.downloadModal.abortController?.signal,
+            });
+
+            this.updateDownloadProgress(30, options.queueText || 'Queued for background export...');
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok || !data.success || !data.task_id) {
+                this.completeDownload(false, data.message || options.failText || 'Failed to start export task');
+                return;
+            }
+
+            await this._pollMobileExportTask(data.task_id, options);
         },
 
         _generateNumericCode(len = 10) {
@@ -2163,6 +2242,27 @@ function listApp() {
             }
             if (!idsToDownload.length) { this.showToast('No cards to download', 'error'); return; }
             this.showDownloadModal('img', idsToDownload.length);
+
+            // Large exports: use async background task flow to avoid request timeouts.
+            if (idsToDownload.length >= 500) {
+                try {
+                    await this._startMobileAsyncExport('zip', idsToDownload, {
+                        startText: 'Starting image export...',
+                        queueText: 'Queued for background image export...',
+                        progressText: 'Preparing image ZIP...',
+                        readyText: 'Saving image ZIP...',
+                        successText: 'Image ZIP saved to your device',
+                        failText: 'Image export failed',
+                        timeoutText: 'Image export timed out',
+                        fallbackFilename: 'images.zip',
+                    });
+                } catch (e) {
+                    if (e.name === 'AbortError') return;
+                    this.completeDownload(false, 'Image export failed');
+                }
+                return;
+            }
+
             try {
                 this.updateDownloadProgress(10, 'Preparing images...');
                 const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-images/', {
@@ -2269,6 +2369,35 @@ function listApp() {
             }
 
             this.loading = true;
+
+            // Large exports: use async background task flow like PDF.
+            if (idsToDownload.length >= 500) {
+                this.showDownloadModal('xlsx', idsToDownload.length);
+                try {
+                    await this._startMobileAsyncExport('xlsx', idsToDownload, {
+                        startText: 'Starting Excel export...',
+                        queueText: 'Queued for background Excel export...',
+                        progressText: 'Building spreadsheet...',
+                        readyText: 'Saving Excel file...',
+                        successText: 'Excel file saved to your device',
+                        failText: 'Excel export failed',
+                        timeoutText: 'Excel export timed out',
+                        fallbackFilename: 'export.xlsx',
+                        afterSuccess: async () => {
+                            if (LIST_TYPE === 'approved') {
+                                await this._moveCardsToDownloadAfterXlsx(idsToDownload);
+                            }
+                        },
+                    });
+                } catch (e) {
+                    if (e.name !== 'AbortError') {
+                        this.completeDownload(false, 'Excel export failed');
+                    }
+                }
+                this.loading = false;
+                return;
+            }
+
             try {
                 const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-xlsx/', {
                     method: 'POST',

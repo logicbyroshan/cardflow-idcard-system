@@ -2,7 +2,9 @@
 Tests for exports app.
 Covers: Permission scoping, export view access control, ExportService.
 """
+import os
 from django.test import TestCase
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.http import HttpResponse
@@ -368,6 +370,55 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         rename_opts = mocked_export.call_args.kwargs['rename_options']
         self.assertEqual(rename_opts['image_name_fields'], {'PHOTO': 'Name'})
 
+    def test_images_export_large_inline_falls_back_to_disk_urls(self):
+        from staff.models import Staff
+
+        staff_user = User.objects.create_user(
+            username='imgstaff@test.com',
+            email='imgstaff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            staff_type='admin_staff',
+            perm_idcard_bulk_download=True,
+        )
+        staff.assigned_clients.add(self.client_obj)
+
+        self.client.login(username='imgstaff@test.com', password='pass1234')
+
+        inline_fail = type('ZipResult', (), {
+            'success': False,
+            'message': 'Selected images are too large for inline ZIP download. Please export fewer cards.'
+        })()
+        disk_zip_info = type('DiskZipInfo', (), {
+            'field_name': 'ALL',
+            'filename': 'big_images.zip',
+            'path': os.path.join(settings.MEDIA_ROOT, 'exports', 'big_images.zip'),
+            'image_count': 5,
+        })()
+        disk_ok = type('DiskZipResult', (), {
+            'success': True,
+            'zip_files': [disk_zip_info],
+            'total_images': 5,
+            'total_zips': 1,
+        })()
+
+        with mock.patch('exports.views.ExportService.export_images', return_value=inline_fail):
+            with mock.patch('exports.zip.export_images_to_disk', return_value=disk_ok):
+                response = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({'card_ids': [1, 2, 3]}),
+                    content_type='application/json',
+                )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertTrue(payload.get('download_url', '').endswith('/exports/big_images.zip'))
+        self.assertEqual(len(payload.get('zip_files', [])), 1)
+
     def test_pdf_async_starts_background_task(self):
         self.client.login(username='exadmin@test.com', password='adminpass1')
 
@@ -435,3 +486,196 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         response = self.client.get(f'/panel/exports/status/{task.id}/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json().get('download_url'), '')
+
+
+class ExportDeepLimitAndRoleTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+
+        self.super_admin = User.objects.create_user(
+            username='deep-super@test.com',
+            email='deep-super@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        self.client_user = User.objects.create_user(
+            username='deep-client@test.com',
+            email='deep-client@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_user, name='Deep Client')
+        self.client_obj.perm_idcard_bulk_download = True
+        self.client_obj.save(update_fields=['perm_idcard_bulk_download'])
+
+        self.admin_staff_user = User.objects.create_user(
+            username='deep-adminstaff@test.com',
+            email='deep-adminstaff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.admin_staff = Staff.objects.create(
+            user=self.admin_staff_user,
+            staff_type='admin_staff',
+            perm_idcard_bulk_download=True,
+        )
+        self.admin_staff.assigned_clients.add(self.client_obj)
+
+        self.client_staff_user = User.objects.create_user(
+            username='deep-clientstaff@test.com',
+            email='deep-clientstaff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            perm_idcard_bulk_download=True,
+        )
+
+        group = IDCardGroup.objects.create(client=self.client_obj, name='Deep Group')
+        self.table = IDCardTable.objects.create(
+            group=group,
+            name='Deep Table',
+            fields=[
+                {'name': 'NAME', 'type': 'text', 'order': 1},
+                {'name': 'PHOTO', 'type': 'image', 'order': 2},
+            ],
+        )
+        self.card = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'Student A', 'PHOTO': 'clients_imgs/deep/photo_a.jpg'},
+            status='pending',
+        )
+
+    def _mock_file_response(self):
+        return type('Res', (), {'success': True, 'response': HttpResponse(b'ok')})
+
+    def test_role_matrix_client_and_client_staff_pdf_only(self):
+        # Client: PDF allowed, non-PDF exports blocked.
+        self.client.login(username='deep-client@test.com', password='pass1234')
+        with mock.patch('exports.views.ExportService.export_pdf', return_value=self._mock_file_response()):
+            pdf_resp = self.client.post(
+                f'/panel/exports/pdf/{self.table.id}/',
+                data=json.dumps({'card_ids': [self.card.id], 'status': 'approved'}),
+                content_type='application/json',
+            )
+        self.assertEqual(pdf_resp.status_code, 200)
+
+        xlsx_resp = self.client.post(
+            f'/panel/exports/xlsx/{self.table.id}/',
+            data=json.dumps({'card_ids': [self.card.id]}),
+            content_type='application/json',
+        )
+        self.assertEqual(xlsx_resp.status_code, 403)
+
+        docx_resp = self.client.post(
+            f'/panel/exports/docx/{self.table.id}/',
+            data=json.dumps({'card_ids': [self.card.id]}),
+            content_type='application/json',
+        )
+        self.assertEqual(docx_resp.status_code, 403)
+
+        images_resp = self.client.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({'card_ids': [self.card.id]}),
+            content_type='application/json',
+        )
+        self.assertEqual(images_resp.status_code, 403)
+
+        download_all_resp = self.client.post(
+            f'/panel/exports/download-all/{self.table.id}/',
+            data=json.dumps({}),
+            content_type='application/json',
+        )
+        self.assertEqual(download_all_resp.status_code, 403)
+
+        # Client staff: same PDF-only policy.
+        self.client.logout()
+        self.client.login(username='deep-clientstaff@test.com', password='pass1234')
+        with mock.patch('exports.views.ExportService.export_pdf', return_value=self._mock_file_response()):
+            pdf_staff_resp = self.client.post(
+                f'/panel/exports/pdf/{self.table.id}/',
+                data=json.dumps({'card_ids': [self.card.id], 'status': 'download'}),
+                content_type='application/json',
+            )
+        self.assertEqual(pdf_staff_resp.status_code, 200)
+
+        images_staff_resp = self.client.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({'card_ids': [self.card.id]}),
+            content_type='application/json',
+        )
+        self.assertEqual(images_staff_resp.status_code, 403)
+
+    def test_download_all_success_for_admin_staff(self):
+        fake_xlsx = type('X', (), {'success': True, 'response': HttpResponse(b'xlsx-bytes')})()
+        fake_disk = type('D', (), {'success': False, 'zip_files': []})()
+
+        self.client.login(username='deep-adminstaff@test.com', password='pass1234')
+        with mock.patch('exports.views.ExcelExporter.export_cards', return_value=fake_xlsx):
+            with mock.patch('exports.zip.export_images_to_disk', return_value=fake_disk):
+                response = self.client.post(
+                    f'/panel/exports/download-all/{self.table.id}/',
+                    data=json.dumps({}),
+                    content_type='application/json',
+                )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertTrue(str(payload.get('download_url', '')).endswith('.zip'))
+
+    def test_zip_inline_1gb_boundary_and_super_admin_bypass(self):
+        from exports.zip import ZipExporter, MAX_BASE64_ZIP_BYTES
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = b'a' * 256
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/photo_a.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    with mock.patch('exports.zip.os.path.getsize', return_value=MAX_BASE64_ZIP_BYTES):
+                        boundary_ok = exporter.export_images(self.table, cards, allow_large_base64=False)
+
+                    with mock.patch('exports.zip.os.path.getsize', return_value=MAX_BASE64_ZIP_BYTES + 1):
+                        over_limit_blocked = exporter.export_images(self.table, cards, allow_large_base64=False)
+
+                    with mock.patch('exports.zip.os.path.getsize', return_value=MAX_BASE64_ZIP_BYTES + 1):
+                        super_admin_ok = exporter.export_images(self.table, cards, allow_large_base64=True)
+
+        self.assertTrue(boundary_ok.success)
+        self.assertFalse(over_limit_blocked.success)
+        self.assertIn('1 GB inline ZIP limit', over_limit_blocked.message)
+        self.assertTrue(super_admin_ok.success)
+
+    def test_pdf_zip_1gb_boundary_and_super_admin_bypass(self):
+        from exports.zip import ZipExporter, MAX_BASE64_ZIP_BYTES
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'output_format': 'pdf_zip',
+            'image_name_fields': {'PHOTO': 'NAME'},
+        }
+
+        with mock.patch.object(ZipExporter, '_write_image_field_pdf', return_value=1):
+            with mock.patch('exports.zip.os.path.getsize', return_value=MAX_BASE64_ZIP_BYTES + 1):
+                blocked = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=False)
+
+            with mock.patch('exports.zip.os.path.getsize', return_value=MAX_BASE64_ZIP_BYTES + 1):
+                allowed_super = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertFalse(blocked.success)
+        self.assertIn('1 GB inline ZIP limit', blocked.message)
+        self.assertTrue(allowed_super.success)

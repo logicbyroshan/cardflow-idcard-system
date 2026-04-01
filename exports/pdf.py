@@ -352,14 +352,6 @@ class PdfExporter:
                 message='No cards to export!'
             )
 
-        MAX_PDF_CARDS = 5000
-        card_count = cards.count()
-        if card_count > MAX_PDF_CARDS:
-            return PdfExportResult(
-                success=False,
-                message=f'PDF export limited to {MAX_PDF_CARDS} cards (requested {card_count}). Use Excel or reduce your selection.'
-            )
-
         try:
             # Get all fields (text + image)
             all_fields = table.fields or []
@@ -387,7 +379,7 @@ class PdfExporter:
                 )
 
             # Sort cards for export (Class → Section → Name)
-            cards_list = sort_cards_for_export(list(cards[:MAX_PDF_CARDS]), table.fields)
+            cards_list = sort_cards_for_export(list(cards), table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list, shorten_titles=shorten_titles)
 
             # ── Resolve font mode ────────────────────────────────

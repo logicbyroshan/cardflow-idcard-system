@@ -125,15 +125,6 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                 message='No cards to export!'
             )
 
-        # Hard cap to prevent OOM — python-docx embeds all images in memory
-        MAX_WORD_CARDS = 5000
-        card_count = cards.count()
-        if not allow_large and card_count > MAX_WORD_CARDS:
-            return WordExportResult(
-                success=False,
-                message=f'Word export limited to {MAX_WORD_CARDS} cards (requested {card_count}). Use Excel or reduce your selection.'
-            )
-        
         try:
             # Separate fields by type: text fields first, then image fields
             field_info = separate_fields_by_type(table.fields or [])

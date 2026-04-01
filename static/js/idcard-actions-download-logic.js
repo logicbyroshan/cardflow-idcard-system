@@ -129,6 +129,159 @@ function _getExportSizeLabel(data) {
     return _formatSizeLabel(data.file_size_bytes);
 }
 
+/**
+ * Compute effective export count.
+ * If explicit card_ids is empty, treat as "all cards" and use table total.
+ */
+function _getEffectiveExportCount(cardIds) {
+    var totalCards = (window.IDCardApp && window.IDCardApp.lazyLoadState)
+        ? (window.IDCardApp.lazyLoadState.totalCount || 0)
+        : 0;
+    return (cardIds && cardIds.length > 0) ? cardIds.length : totalCards;
+}
+
+/**
+ * Start a generic async export task (xlsx/docx/zip) and poll task-status.
+ */
+function _downloadExportAsync(tableId, exportType, cardIds, options) {
+    options = options || {};
+    var _asyncCancelled = false;
+
+    var cancelFn = function () {
+        _asyncCancelled = true;
+        if (typeof showToast === 'function') {
+            showToast((options.cancelLabel || 'Export') + ' cancelled', 'info');
+        }
+    };
+
+    if (typeof showProgressToast === 'function') {
+        showProgressToast(options.startMessage || 'Starting export...', 5, cancelFn);
+    }
+
+    var body = Object.assign({
+        export_type: exportType,
+        card_ids: cardIds,
+        status: _getCurrentStatus()
+    }, _getActiveFilters(), (options.extraPayload || {}));
+
+    var startReq;
+    if (typeof apiCall === 'function') {
+        startReq = apiCall('/api/table/' + tableId + '/export-task/', 'POST', body, { timeout: 30000 });
+    } else {
+        startReq = fetch('/api/table/' + tableId + '/export-task/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
+            },
+            body: JSON.stringify(body)
+        }).then(function (r) { return r.json(); });
+    }
+
+    startReq
+        .then(function (data) {
+            if (!data || !data.success || !data.task_id) {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast((data && data.message) || 'Failed to start export task', false);
+                return;
+            }
+            _pollGenericTaskStatus(data.task_id, options, function () { return _asyncCancelled; }, cancelFn);
+        })
+        .catch(function (err) {
+            if (typeof hideProgressToast === 'function') hideProgressToast();
+            if (typeof showToast === 'function') showToast('Failed to start export. Please try again.', false);
+            console.error('Async export start error:', err);
+        });
+}
+
+/**
+ * Poll /api/task-status/<id>/ until completed/failed.
+ */
+function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
+    options = options || {};
+    var pollCount = 0;
+    var maxPolls = options.maxPolls || 300; // up to 10 minutes at 2s interval
+
+    function poll() {
+        if (typeof isCancelled === 'function' && isCancelled()) {
+            if (typeof hideProgressToast === 'function') hideProgressToast();
+            return;
+        }
+
+        pollCount++;
+        if (pollCount > maxPolls) {
+            if (typeof hideProgressToast === 'function') hideProgressToast();
+            if (typeof showToast === 'function') showToast(options.timeoutMessage || 'Export timed out. Please try again with fewer cards.', false);
+            return;
+        }
+
+        fetch('/api/task-status/' + taskId + '/', {
+            headers: {
+                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
+            }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || !data.success) {
+                    if (typeof hideProgressToast === 'function') hideProgressToast();
+                    if (typeof showToast === 'function') showToast((data && data.message) || 'Export task not found', false);
+                    return;
+                }
+
+                if (data.status === 'completed') {
+                    if (!data.download_url) {
+                        if (typeof hideProgressToast === 'function') hideProgressToast();
+                        if (typeof showToast === 'function') showToast('Export completed but download link is missing', false);
+                        return;
+                    }
+
+                    if (typeof showProgressToast === 'function') {
+                        showProgressToast(options.readyMessage || 'Export ready! Starting download...', 100);
+                    }
+
+                    setTimeout(function () {
+                        var a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = data.download_url;
+                        a.download = (data.result && data.result.filename) || options.fallbackFilename || 'export';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+
+                        if (typeof showDownloadComplete === 'function') {
+                            showDownloadComplete(options.completeMessage || 'File downloaded successfully!');
+                        }
+                        if (typeof options.onComplete === 'function') {
+                            try { options.onComplete(); } catch (e) { console.error(e); }
+                        }
+                    }, 400);
+                    return;
+                }
+
+                if (data.status === 'failed' || data.status === 'cancelled') {
+                    if (typeof hideProgressToast === 'function') hideProgressToast();
+                    if (typeof showToast === 'function') showToast(data.error_message || options.failMessage || 'Export failed', false);
+                    return;
+                }
+
+                var pct = Math.max(5, Math.min(data.progress_percentage || 0, 95));
+                var msg = options.processingMessage
+                    ? options.processingMessage(data)
+                    : ('Processing export... ' + (data.progress || 0) + '/' + (data.total || '?'));
+                if (typeof showProgressToast === 'function') {
+                    showProgressToast(msg, pct, cancelFn);
+                }
+                setTimeout(poll, _POLL_INTERVAL);
+            })
+            .catch(function (err) {
+                console.error('Task status poll error:', err);
+                setTimeout(poll, _POLL_INTERVAL * 2);
+            });
+    }
+
+    setTimeout(poll, 1000);
+}
+
 // ==========================================
 // DOWNLOAD IMAGES (Separate ZIP per image column)
 // Uses DownloadManager.startImageDownload for JSON-based response
@@ -146,6 +299,25 @@ function downloadImages(cardIds, renameOptions) {
         requestBody.rename_options = renameOptions;
     }
     const isPdfZipMode = !!(renameOptions && renameOptions.enabled === true && renameOptions.output_format === 'pdf_zip');
+    const effectiveCount = _getEffectiveExportCount(cardIds);
+
+    // For large standard image exports, use background task flow.
+    // Keep sync mode for rename/pdf-zip so existing behavior remains unchanged.
+    if (effectiveCount >= _ASYNC_EXPORT_THRESHOLD && !renameOptions && !isPdfZipMode) {
+        _downloadExportAsync(tableId, 'zip', cardIds, {
+            startMessage: 'Starting image export...',
+            readyMessage: 'Image ZIP ready! Starting download...',
+            completeMessage: 'Image ZIP downloaded successfully!',
+            timeoutMessage: 'Image export timed out. Please try again with fewer cards.',
+            failMessage: 'Image export failed',
+            cancelLabel: 'Image export',
+            fallbackFilename: 'images.zip',
+            processingMessage: function (data) {
+                return data.status_display || ('Preparing image ZIP... ' + (data.progress_percentage || 0) + '%');
+            }
+        });
+        return;
+    }
 
     // Use DownloadManager if available
     if (window.DownloadManager) {
@@ -294,6 +466,30 @@ function downloadDocx(cardIds, format, templateId) {
     var _docxModal = document.getElementById('downloadDocxModal');
     if (_docxModal) _docxModal.style.display = 'none';
 
+    const effectiveCount = _getEffectiveExportCount(cardIds);
+    if (effectiveCount >= _ASYNC_EXPORT_THRESHOLD) {
+        _downloadExportAsync(tableId, 'docx', cardIds, {
+            startMessage: 'Starting ' + format.toUpperCase() + ' export...',
+            readyMessage: format.toUpperCase() + ' ready! Starting download...',
+            completeMessage: 'Document downloaded successfully!',
+            timeoutMessage: 'Document export timed out. Please try again with fewer cards.',
+            failMessage: 'Document export failed',
+            cancelLabel: 'Document export',
+            fallbackFilename: format === 'doc' ? 'export.doc' : 'export.docx',
+            extraPayload: {
+                format: format || 'docx',
+                template_id: templateId || ''
+            },
+            onComplete: function() {
+                _moveCardsToDownloadIfApproved(cardIds);
+            },
+            processingMessage: function (data) {
+                return data.status_display || ('Preparing ' + format.toUpperCase() + '... ' + (data.progress_percentage || 0) + '%');
+            }
+        });
+        return;
+    }
+
     // Use DownloadManager if available
     if (window.DownloadManager) {
         window.DownloadManager.start({
@@ -385,6 +581,29 @@ function downloadXlsx(cardIds) {
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+        return;
+    }
+
+    const effectiveCount = _getEffectiveExportCount(cardIds);
+    if (effectiveCount >= _ASYNC_EXPORT_THRESHOLD) {
+        _downloadExportAsync(tableId, 'xlsx', cardIds, {
+            startMessage: 'Starting Excel export...',
+            readyMessage: 'Excel ready! Starting download...',
+            completeMessage: 'Excel file downloaded successfully!',
+            timeoutMessage: 'Excel export timed out. Please try again with fewer cards.',
+            failMessage: 'Excel export failed',
+            cancelLabel: 'Excel export',
+            fallbackFilename: 'export.xlsx',
+            onComplete: function() {
+                if (_getCurrentStatus() === 'approved') {
+                    downloadImages(cardIds);
+                }
+                _moveCardsToDownloadIfApproved(cardIds);
+            },
+            processingMessage: function (data) {
+                return data.status_display || ('Preparing Excel... ' + (data.progress_percentage || 0) + '%');
+            }
+        });
         return;
     }
 
@@ -489,6 +708,11 @@ function downloadXlsx(cardIds) {
  * use async/background PDF generation to avoid proxy timeouts.
  */
 var _ASYNC_PDF_THRESHOLD = 500;
+
+/**
+ * Threshold for async XLSX/DOCX/ZIP task routing.
+ */
+var _ASYNC_EXPORT_THRESHOLD = 500;
 
 /**
  * Poll interval for checking async export status (ms).

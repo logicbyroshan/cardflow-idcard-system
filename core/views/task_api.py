@@ -54,7 +54,7 @@ MAX_ZIP_SIZE = 950 * 1024 * 1024          # 950 MB for ZIP archives (buffer belo
 ALLOWED_ZIP_EXTENSIONS = ('.zip',)
 
 
-def _normalize_positive_int_ids(raw_ids, *, max_items=5000):
+def _normalize_positive_int_ids(raw_ids, *, max_items=None):
     """Normalize arbitrary payload values into unique positive integer IDs."""
     if not isinstance(raw_ids, (list, tuple)):
         return []
@@ -71,7 +71,7 @@ def _normalize_positive_int_ids(raw_ids, *, max_items=5000):
             continue
         seen.add(val)
         normalized.append(val)
-        if len(normalized) >= max_items:
+        if max_items is not None and len(normalized) >= max_items:
             break
     return normalized
 
@@ -792,16 +792,34 @@ def api_create_export_task(request, table_id):
         card_ids = _normalize_positive_int_ids(card_ids)
         
         status_filter = data.get('status', '')
+
+        # Optional export settings (currently used by async DOCX exports).
+        doc_format = str(data.get('format', 'docx') or 'docx').strip().lower()
+        if doc_format not in ('docx', 'doc'):
+            doc_format = 'docx'
+
+        template_id = None
+        tpl_val = data.get('template_id', '')
+        if tpl_val not in ('', None):
+            try:
+                template_id = int(tpl_val)
+            except (TypeError, ValueError):
+                template_id = None
+
+        metadata = {
+            'table_id': table_id,
+            'card_ids': card_ids,
+            'status': status_filter,
+        }
+        if task_type == 'export_docx':
+            metadata['doc_format'] = doc_format
+            metadata['template_id'] = template_id
         
         # Create BackgroundTask atomically (prevents race conditions)
         task, error_msg = BackgroundTask.create_if_no_active(
             user=request.user,
             task_type=task_type,
-            metadata={
-                'table_id': table_id,
-                'card_ids': card_ids,
-                'status': status_filter,
-            }
+            metadata=metadata,
         )
         
         if not task:
