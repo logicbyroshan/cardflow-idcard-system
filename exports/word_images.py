@@ -93,9 +93,12 @@ class WordImagesMixin:
                 logger.warning("Word export: Image load error for %s: %s", img_path, e)
         
         # Missing/pending image → draw an empty bordered rectangle
-        # (no placeholder image, no text — just empty space with a border)
+        # (no placeholder image, no text — just empty space with a border).
+        # Keep placeholder at least ROW_HEIGHT_CM so image rows remain visually
+        # consistent even when the source image is missing.
+        placeholder_h = max(fixed_height_cm or 0, getattr(self, 'ROW_HEIGHT_CM', 2.5))
         self._add_empty_image_box(cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                                   parse_xml, nsdecls, fixed_width_cm, fixed_height_cm)
+                                   parse_xml, nsdecls, fixed_width_cm, placeholder_h)
 
     def _add_empty_image_box(self, cell, Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
                               parse_xml, nsdecls, fixed_width_cm, fixed_height_cm=None):

@@ -3,8 +3,8 @@ Tests for exports app.
 Covers: Permission scoping, export view access control, ExportService.
 """
 import os
-from django.test import TestCase
 from django.conf import settings
+from django.test import TestCase, SimpleTestCase
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.http import HttpResponse
@@ -487,7 +487,6 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json().get('download_url'), '')
 
-
 class ExportDeepLimitAndRoleTests(TestCase):
     def setUp(self):
         from client.models import Client
@@ -679,3 +678,157 @@ class ExportDeepLimitAndRoleTests(TestCase):
         self.assertFalse(blocked.success)
         self.assertIn('1 GB inline ZIP limit', blocked.message)
         self.assertTrue(allowed_super.success)
+
+
+class WordLayoutTuningTests(SimpleTestCase):
+    def test_dense_width_allocator_keeps_table_inside_page(self):
+        from exports.word import WordExporter
+
+        exporter = WordExporter()
+
+        text_fields = [
+            {'name': 'NAME', 'is_image': False, 'type': 'text'},
+            {'name': 'FATHER_NAME', 'is_image': False, 'type': 'text'},
+            {'name': 'ADDRESS', 'is_image': False, 'type': 'textarea'},
+            {'name': 'EMAIL', 'is_image': False, 'type': 'text'},
+            {'name': 'DEPARTMENT', 'is_image': False, 'type': 'text'},
+            {'name': 'DESIGNATION', 'is_image': False, 'type': 'text'},
+            {'name': 'MEDICAL_CONDITION', 'is_image': False, 'type': 'text'},
+            {'name': 'ALLERGIES', 'is_image': False, 'type': 'text'},
+        ]
+        # Add extra long-text columns to force dense layout path (>20 columns total)
+        text_fields.extend([
+            {'name': f'LONG_TEXT_{i}', 'is_image': False, 'type': 'text'}
+            for i in range(1, 11)
+        ])
+        image_fields = [
+            {
+                'name': f'PHOTO_{i}',
+                'is_image': True,
+                'type': 'photo',
+                'image_width_cm': 1.9,
+                'image_height_cm': 2.5,
+                'image_subtype': 'photo',
+            }
+            for i in range(1, 7)
+        ]
+        ordered_fields = text_fields + image_fields
+        num_cols = 1 + len(ordered_fields)
+
+        class _Card:
+            def __init__(self, data):
+                self.field_data = data
+
+        cards = []
+        for i in range(8):
+            row = {}
+            for f in text_fields:
+                row[f['name']] = (
+                    f"VERY LONG VALUE {i} FOR {f['name']} WITH MULTIPLE WORDS "
+                    f"ANDLONGUNBREAKABLETOKEN{i}XYZABCDEFGHIJK"
+                )
+            cards.append(_Card(row))
+
+        widths = exporter._calculate_column_widths(ordered_fields, cards, num_cols)
+        total_width = sum(widths.get(i, 0.0) for i in range(num_cols))
+
+        self.assertLessEqual(total_width, exporter.PAGE_WIDTH_CM + 0.05)
+        self.assertGreaterEqual(total_width, exporter.PAGE_WIDTH_CM - 0.30)
+
+        text_col_indexes = [0] + [
+            1 + idx for idx, f in enumerate(ordered_fields) if not f['is_image']
+        ]
+        self.assertTrue(all(widths[i] >= 0.55 for i in text_col_indexes))
+
+    def test_create_data_tables_uses_atleast_height_for_image_rows(self):
+        from exports.word import WordExporter
+        from docx import Document
+        from docx.shared import Cm, Pt, RGBColor
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml import parse_xml, OxmlElement
+        from docx.oxml.ns import nsdecls, qn
+        from PIL import Image, ImageOps
+
+        exporter = WordExporter()
+        doc = Document()
+
+        ordered_fields = [
+            {'name': 'ADDRESS', 'is_image': False, 'type': 'textarea'},
+            {
+                'name': 'PHOTO',
+                'is_image': True,
+                'type': 'photo',
+                'image_width_cm': 1.9,
+                'image_height_cm': 2.5,
+                'image_subtype': 'photo',
+            },
+        ]
+        column_widths = {0: 1.0, 1: 4.0, 2: 1.9}
+
+        class _Card:
+            def __init__(self, data):
+                self.field_data = data
+
+        cards = [_Card({'ADDRESS': 'LONG ADDRESS VALUE FOR WRAP TEST', 'PHOTO': ''})]
+
+        with mock.patch.object(exporter, '_add_data_row') as mocked_add_row:
+            exporter._create_data_tables(
+                doc=doc,
+                cards_list=cards,
+                ordered_fields=ordered_fields,
+                column_widths=column_widths,
+                num_cols=3,
+                Cm=Cm,
+                Pt=Pt,
+                RGBColor=RGBColor,
+                WD_TABLE_ALIGNMENT=WD_TABLE_ALIGNMENT,
+                WD_ALIGN_PARAGRAPH=WD_ALIGN_PARAGRAPH,
+                parse_xml=parse_xml,
+                nsdecls=nsdecls,
+                OxmlElement=OxmlElement,
+                qn=qn,
+                Image=Image,
+                ImageOps=ImageOps,
+                class_field_name=None,
+            )
+
+        self.assertTrue(mocked_add_row.called)
+        call_kwargs = mocked_add_row.call_args.kwargs
+        self.assertEqual(call_kwargs.get('h_rule'), 'atLeast')
+        self.assertGreaterEqual(call_kwargs.get('row_height_cm', 0), exporter.ROW_HEIGHT_CM)
+
+    def test_missing_image_placeholder_uses_row_height_minimum(self):
+        from exports.word import WordExporter
+        from docx import Document
+        from docx.shared import Cm, Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import nsdecls
+        from PIL import Image, ImageOps
+
+        exporter = WordExporter()
+        doc = Document()
+        table = doc.add_table(rows=1, cols=1)
+        cell = table.rows[0].cells[0]
+
+        with mock.patch.object(exporter, '_add_empty_image_box') as mocked_empty_box:
+            exporter._add_image_to_cell(
+                cell=cell,
+                img_path='',
+                Cm=Cm,
+                Pt=Pt,
+                RGBColor=RGBColor,
+                WD_ALIGN_PARAGRAPH=WD_ALIGN_PARAGRAPH,
+                parse_xml=parse_xml,
+                nsdecls=nsdecls,
+                Image=Image,
+                ImageOps=ImageOps,
+                fixed_width_cm=1.9,
+                fixed_height_cm=1.0,
+                image_subtype='photo',
+            )
+
+        self.assertTrue(mocked_empty_box.called)
+        args = mocked_empty_box.call_args.args
+        self.assertAlmostEqual(args[8], exporter.ROW_HEIGHT_CM, places=2)

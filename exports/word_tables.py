@@ -129,6 +129,11 @@ class WordTablesMixin:
                     'branch': 1.08,
                 }
                 boost = verbose_weight_boost.get(spec.category, 1.0)
+                # Global long-text boost: for any wrapping column with large
+                # content envelope, keep more horizontal room under dense
+                # layouts so values stay readable.
+                if spec.wrap and spec.max_chars >= 20:
+                    boost = max(boost, 1.18)
                 representative = max(spec.min_chars, int(round(representative * boost)))
                 if spec.max_chars > 0:
                     representative = min(representative, spec.max_chars)
@@ -167,7 +172,8 @@ class WordTablesMixin:
             'spouse_name': 4.0,
             'reporting_manager': 3.5,
             'email': 3.5,
-            'address': 2.5,
+            # Keep address readable in dense exports while still bounded.
+            'address': 3.2,
             'allergies': 2.8,
             'medical_condition': 2.8,
             'department': 3.0,
@@ -177,8 +183,14 @@ class WordTablesMixin:
         }
         _dense_word = num_cols > 20  # >20 data columns (includes Sr No)
 
-        # Step 4: Build final widths — proportional, then clamp by spec
+        # Step 4: Build final widths with bounded allocation.
+        # Goal: keep total width inside page margins while avoiding extremely
+        # narrow text columns that cause ugly wrapping/clipping.
         column_widths = {}
+        text_min_cm = {}
+        text_target_cm = {}
+        text_max_cm = {}
+
         for col_idx in range(num_cols):
             if col_idx in image_widths:
                 column_widths[col_idx] = image_widths[col_idx]
@@ -189,6 +201,9 @@ class WordTablesMixin:
                 eff_max_cm = spec.word_max_cm
                 if _dense_word and spec.category in _DENSE_WORD_MAX:
                     eff_max_cm = min(eff_max_cm, _DENSE_WORD_MAX[spec.category])
+                elif _dense_word and spec.wrap:
+                    # Generic dense-mode cap for any long wrapping text field.
+                    eff_max_cm = min(eff_max_cm, max(spec.word_min_cm * 2.0, 2.8))
                 elif spec.category in {
                     'full_name', 'parent_name', 'guardian_name', 'spouse_name',
                     'reporting_manager', 'address', 'email', 'allergies',
@@ -197,17 +212,90 @@ class WordTablesMixin:
                     # Sparse/medium tables can afford a little more width for
                     # verbose text columns before wrapping hard.
                     eff_max_cm = min(spec.word_max_cm * 1.15, spec.word_max_cm + 0.5)
-                clamped = max(spec.word_min_cm, min(raw_cm, eff_max_cm))
-                column_widths[col_idx] = clamped
+
+                min_cm = max(0.6, spec.word_min_cm)
+                target_cm = max(min_cm, min(raw_cm, eff_max_cm))
+
+                text_min_cm[col_idx] = min_cm
+                text_target_cm[col_idx] = target_cm
+                text_max_cm[col_idx] = max(target_cm, eff_max_cm)
             else:
                 column_widths[col_idx] = 1.5
 
-        # Normalize text column widths so they exactly fill remaining space
-        text_total = sum(column_widths[k] for k in text_weights)
-        if text_total > 0:
-            scale = remaining / text_total
-            for k in text_weights:
-                column_widths[k] = round(column_widths[k] * scale, 2)
+        text_keys = list(text_weights.keys())
+        if text_keys:
+            allocated = {k: text_min_cm.get(k, 0.8) for k in text_keys}
+            min_total = sum(allocated.values())
+
+            if min_total > remaining:
+                # Hard fallback: if even all mins do not fit, compress to a
+                # readable floor per column while still respecting page width.
+                floor_cm = {}
+                for k in text_keys:
+                    spec = text_specs.get(k, sr_spec)
+                    if k == 0:
+                        base_floor = 0.6  # Sr No can be the narrowest
+                    elif spec.wrap:
+                        base_floor = 0.75
+                    else:
+                        base_floor = 0.65
+                    floor_cm[k] = min(allocated[k], base_floor)
+
+                floor_total = sum(floor_cm.values())
+                if floor_total > remaining and floor_total > 0:
+                    scale = remaining / floor_total
+                    allocated = {k: floor_cm[k] * scale for k in text_keys}
+                else:
+                    allocated = dict(floor_cm)
+                    extra = max(0.0, remaining - floor_total)
+                    grow_need = {k: max(text_min_cm[k] - allocated[k], 0.0) for k in text_keys}
+                    need_total = sum(grow_need.values())
+                    if extra > 0 and need_total > 0:
+                        for k in text_keys:
+                            allocated[k] += extra * (grow_need[k] / need_total)
+                    elif extra > 0:
+                        even_add = extra / len(text_keys)
+                        for k in text_keys:
+                            allocated[k] += even_add
+            else:
+                extra = max(0.0, remaining - min_total)
+
+                def _distribute(limit_map, extra_amount):
+                    if extra_amount <= 1e-9:
+                        return 0.0
+                    needs = {k: max(limit_map[k] - allocated[k], 0.0) for k in text_keys}
+                    need_total = sum(needs.values())
+                    if need_total <= 1e-9:
+                        return extra_amount
+                    used = 0.0
+                    for k in text_keys:
+                        need = needs[k]
+                        if need <= 0:
+                            continue
+                        add = extra_amount * (need / need_total)
+                        add = min(add, need)
+                        allocated[k] += add
+                        used += add
+                    return max(0.0, extra_amount - used)
+
+                # Pass 1: move from min -> target
+                extra = _distribute(text_target_cm, extra)
+                # Pass 2: if room remains, move from target -> max
+                extra = _distribute(text_max_cm, extra)
+                # Pass 3: final even spread (rare rounding leftovers)
+                if extra > 1e-6 and text_keys:
+                    even_add = extra / len(text_keys)
+                    for k in text_keys:
+                        allocated[k] += even_add
+
+            rounded = {k: round(max(0.35, allocated[k]), 2) for k in text_keys}
+            drift = round(remaining - sum(rounded.values()), 2)
+            if abs(drift) >= 0.01 and text_keys:
+                adj_key = max(rounded, key=lambda x: rounded[x])
+                rounded[adj_key] = round(max(0.35, rounded[adj_key] + drift), 2)
+
+            for k in text_keys:
+                column_widths[k] = rounded[k]
 
         return column_widths
 
@@ -303,14 +391,15 @@ class WordTablesMixin:
                 image_fixed_widths[field['name']] = w
                 image_fixed_heights[field['name']] = h
                 max_image_height = max(max_image_height, h)
-        # Dynamic row height: tallest image + minimal padding, or default 0.8cm
-        _MAX_ROW_HEIGHT_CM = 2.6  # hard cap: keeps 6 rows inside A4 landscape budget
-        row_height_cm = round(max_image_height + 0.15, 2) if max_image_height > 0 else 0.8
-        row_height_cm = min(row_height_cm, _MAX_ROW_HEIGHT_CM)
-        # Image rows use 'exact' height so wrapped text cannot push a row taller
-        # than the page budget allows (6 rows must always fit).
-        # Text-only rows keep 'atLeast' so multi-line cells are never clipped.
-        _row_h_rule = 'exact' if max_image_height > 0 else 'atLeast'
+        # Row height policy:
+        # - With image columns, keep a consistent visual baseline (2.5 cm min)
+        #   but allow rows to expand for long wrapped text (e.g., address).
+        # - Without image columns, keep compact text baseline.
+        if max_image_height > 0:
+            row_height_cm = max(self.ROW_HEIGHT_CM, round(max_image_height, 2))
+        else:
+            row_height_cm = 0.8
+        _row_h_rule = 'atLeast'
 
         # Create ONE table with a header row
         table_obj = doc.add_table(rows=1, cols=num_cols)
@@ -493,31 +582,31 @@ class WordTablesMixin:
         """Insert zero-width spaces in very long unbreakable words.
 
         Rules:
-          1. Words ≤ 6 chars: leave untouched.
-          2. Words > 6 chars with no natural break opportunity: insert
-              U+200B (ZERO-WIDTH SPACE) every 6 chars so Word can wrap
+          1. Words <= 12 chars: leave untouched.
+          2. Words > 12 chars with no natural break opportunity: insert
+              U+200B (ZERO-WIDTH SPACE) every 10 chars so Word can wrap
            the text without inserting ANY visible character or dash.
           3. Natural separators (, / ; : - @ . _) already act as break points.
         4. NEVER insert U+00AD (soft hyphen) — it can render as a dash
            when the text is copied from the document.
         """
         import re as _re
-        if not text or len(text) <= 8:
+        if not text or len(text) <= 14:
             return text
 
         ZWSP = '\u200B'  # zero-width space — breaks without any visible char
 
         def _insert_zwsp(word):
-            """Insert ZWSP every 6 chars in a long word."""
-            if len(word) <= 6:
+            """Insert ZWSP every 10 chars in a long unbroken word."""
+            if len(word) <= 12:
                 return word
-            parts = [word[i:i+6] for i in range(0, len(word), 6)]
+            parts = [word[i:i+10] for i in range(0, len(word), 10)]
             return ZWSP.join(parts)
 
         tokens = text.split(' ')
         processed = []
         for token in tokens:
-            if not token or len(token) <= 6:
+            if not token or len(token) <= 12:
                 processed.append(token)
                 continue
             # Split on natural separators first; process each sub-part
@@ -526,7 +615,7 @@ class WordTablesMixin:
             for sp in sub_parts:
                 if sp in (',', '/', ';', ':', '-', '@', '.', '_'):
                     result.append(sp)
-                elif len(sp) > 6:
+                elif len(sp) > 12:
                     result.append(_insert_zwsp(sp))
                 else:
                     result.append(sp)
