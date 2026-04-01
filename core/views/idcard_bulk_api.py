@@ -10,6 +10,7 @@ Contains:
 import json
 import logging
 import os
+import re
 
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
@@ -38,6 +39,21 @@ from .idcard_helpers import (
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+_REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
+_REUPLOAD_NAME_BASE_6_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})_\d{6}$')
+
+
+def _extract_reupload_stem(value):
+    """Extract filename stem without fuzzy normalization."""
+    base_name = os.path.basename(str(value or '').strip())
+    stem, _ = os.path.splitext(base_name)
+    return stem.strip()
+
+
+def _is_supported_reupload_stem(stem):
+    """Allow only canonical reupload stems for strict exact matching."""
+    return bool(_REUPLOAD_NAME_BASE_RE.match(stem) or _REUPLOAD_NAME_BASE_6_RE.match(stem))
 
 
 @require_http_methods(["POST"])
@@ -497,7 +513,10 @@ def api_idcard_reupload_images(request, table_id):
             target_field = image_field_names[0]
         
         # Extract photos from ZIP — use temp file if available (avoids OOM on large uploads)
-        zip_photos = {}  # { normalized_key: { bytes, ext, original_name } }
+        # Uses strict canonical stem keys for exact matching consistency.
+        zip_photos = {}  # { exact_key: { bytes, ext, original_name } }
+        duplicate_name_keys = 0
+        duplicate_stems = set()
         
         try:
             zip_file = request.FILES['photos_zip']
@@ -522,6 +541,10 @@ def api_idcard_reupload_images(request, table_id):
                 for zip_info in zf.infolist():
                     if zip_info.is_dir():
                         continue
+
+                    # Match async reupload constraints.
+                    if zip_info.file_size > 20 * 1024 * 1024:  # 20MB
+                        continue
                     
                     file_in_zip = zip_info.filename
                     base_name = os.path.basename(file_in_zip)
@@ -533,21 +556,34 @@ def api_idcard_reupload_images(request, table_id):
                             image_bytes = zf.read(zip_info.filename)
                             is_valid, error_msg = validate_image_bytes(image_bytes)
                             if is_valid:
-                                normalized_key = BaseService.normalize_image_identifier(name_without_ext)
-                                if normalized_key:
-                                    # Deterministic: if duplicate key, keep alphabetically-first filename
-                                    existing = zip_photos.get(normalized_key)
-                                    if existing is None or base_name < existing['original_name']:
-                                        zip_photos[normalized_key] = {
-                                            'bytes': image_bytes,
-                                            'ext': ext,
-                                            'original_name': base_name
-                                        }
+                                exact_key = _extract_reupload_stem(name_without_ext)
+                                if not exact_key or not _is_supported_reupload_stem(exact_key):
+                                    continue
+
+                                existing = zip_photos.get(exact_key)
+                                if existing is None:
+                                    zip_photos[exact_key] = {
+                                        'bytes': image_bytes,
+                                        'ext': ext,
+                                        'original_name': base_name
+                                    }
+                                else:
+                                    duplicate_name_keys += 1
+                                    duplicate_stems.add(exact_key)
                         except Exception:
                             continue
+
+            for key in duplicate_stems:
+                zip_photos.pop(key, None)
         except Exception as zip_error:
             logger.exception('Error reading ZIP file: %s', zip_error)
             return JsonResponse({'success': False, 'message': 'Error reading ZIP file. Please check the file and try again.'}, status=400)
+
+        if duplicate_name_keys > 0:
+            return JsonResponse({
+                'success': False,
+                'message': 'ZIP contains duplicate image names for exact matching. Please keep one file per image name and retry.'
+            }, status=400)
         
         if not zip_photos:
             return JsonResponse({'success': False, 'message': 'No valid images found in ZIP file!'}, status=400)
@@ -589,7 +625,6 @@ def api_idcard_reupload_images(request, table_id):
         for batch_start in range(0, len(all_card_ids), REUPLOAD_BATCH_SIZE):
             batch_ids = all_card_ids[batch_start:batch_start + REUPLOAD_BATCH_SIZE]
             batch_new_paths = []
-            batch_old_paths_to_delete = []
 
             try:
                 with transaction.atomic():
@@ -608,18 +643,20 @@ def api_idcard_reupload_images(request, table_id):
 
                             if current_value.startswith('PENDING:'):
                                 # Extract the reference from PENDING:reference
-                                match_key = BaseService.normalize_image_identifier(current_value[8:])
+                                match_key = _extract_reupload_stem(current_value[8:])
                             elif current_value and current_value not in ('NOT_FOUND', ''):
                                 # Has existing image - extract filename for matching
                                 existing_path = current_value
-                                existing_filename = os.path.splitext(os.path.basename(current_value))[0]
-                                match_key = BaseService.normalize_image_identifier(existing_filename)
+                                match_key = _extract_reupload_stem(current_value)
                             else:
                                 # No current value - skip unless we want to match by card data
                                 # Could extend to match by NAME or other field values
                                 continue
 
                             if not match_key:
+                                continue
+
+                            if not _is_supported_reupload_stem(match_key):
                                 continue
 
                             # Try to find matching photo in ZIP
@@ -640,7 +677,7 @@ def api_idcard_reupload_images(request, table_id):
                                             card=card,
                                             batch_counter=batch_counter,
                                             original_ext=photo_info['ext'],
-                                            delete_old_after_save=False,
+                                            delete_old_after_save=True,
                                             uploaded_by=request.user if request.user.is_authenticated else None,
                                         )
                                     else:
@@ -659,9 +696,6 @@ def api_idcard_reupload_images(request, table_id):
                                         field_data[img_field] = saved_path
                                         card_updated = True
                                         batch_new_paths.append(saved_path)
-                                        old_path = result.data.get('old_path_to_delete')
-                                        if old_path and old_path != saved_path:
-                                            batch_old_paths_to_delete.append(old_path)
                                         logger.debug("Reupload: Card %s field %s updated to %s",
                                                    card.pk, img_field, saved_path)
                                     else:
@@ -682,18 +716,6 @@ def api_idcard_reupload_images(request, table_id):
                         pass
                 raise
 
-            # DB commit succeeded: now remove superseded old files.
-            if batch_old_paths_to_delete:
-                from mediafiles.models import CardMedia
-
-                for old_path in set(batch_old_paths_to_delete):
-                    try:
-                        if CardMedia.objects.filter(file=old_path).exists():
-                            continue
-                        ImageService.delete_image(old_path)
-                    except Exception:
-                        continue
-        
         # Build response
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"
         response = {

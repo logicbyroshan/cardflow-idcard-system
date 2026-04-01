@@ -1092,3 +1092,39 @@ class ReuploadDirectTaskFlowTests(TestCase):
         index, _, stats = _build_zip_image_index(zip_path)
         self.assertNotIn('20240101121212', index)
         self.assertGreater(stats.get('duplicate_name_keys', 0), 0)
+
+    def test_sync_reupload_replace_uses_immediate_old_image_cleanup(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        zip_bytes = self._make_reupload_zip()
+        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
+        mock_result = type('Result', (), {
+            'success': True,
+            'data': {'final_value': 'adarshimg/20240101121212_121314.jpg'},
+        })()
+
+        with patch('core.views.idcard_bulk_api.validate_image_bytes', return_value=(True, None)), \
+             patch('core.views.idcard_bulk_api.ImageService.replace_image', return_value=mock_result) as mock_replace:
+            response = self.client.post(
+                f'/panel/api/table/{self.table.id}/cards/reupload-images/',
+                data={
+                    'photos_zip': upload,
+                    'card_ids': json.dumps([self.card.id]),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('updated_count'), 1)
+
+        self.assertEqual(mock_replace.call_count, 1)
+        kwargs = mock_replace.call_args.kwargs
+        self.assertTrue(kwargs.get('delete_old_after_save'))
+        self.assertEqual(kwargs.get('existing_path'), 'adarshimg/20240101121212.jpg')
+
+        self.card.refresh_from_db()
+        self.assertEqual(
+            self.card.field_data.get('PHOTO'),
+            'adarshimg/20240101121212_121314.jpg',
+        )

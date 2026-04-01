@@ -226,7 +226,6 @@ def process_reupload_images(task):
         pending_updates = []  # Accumulated cards for bulk_update; flushed every FLUSH_EVERY
         pending_media_deletes = []  # (card_pk, field_name) tuples for batch CardMedia cleanup
         pending_media_creates = []  # kwargs dicts for batch CardMedia creation
-        pending_storage_deletes = []  # old paths to delete only AFTER DB commit
         FLUSH_EVERY = 100  # larger batches → fewer DB writes → less lock contention
 
         for idx, card in enumerate(cards_qs.iterator(chunk_size=200)):
@@ -238,8 +237,8 @@ def process_reupload_images(task):
                     current_value = field_data.get(img_field) or ''
                     
                     # ── Determine what to match against ──────────────────
-                    # We try up to THREE strategies in priority order so
-                    # that both old cards (no __ref_) and new cards match.
+                    # Reupload matching uses the CURRENT DB filename stem
+                    # (or PENDING reference), not __ref metadata.
                     match_key = None
                     existing_path = None
                     
@@ -249,16 +248,9 @@ def process_reupload_images(task):
                     elif current_value and current_value not in ('NOT_FOUND', ''):
                         # Has existing saved image
                         existing_path = current_value
-                        # Strategy 2: stored original reference (added by bulk upload)
-                        ref_key = f'__ref_{img_field}'
-                        original_ref = field_data.get(ref_key, '')
-                        if original_ref:
-                            match_key = _extract_stem_exact(original_ref)
-                        else:
-                            # Strategy 3 (fallback): auto-generated filename
-                            # Works only when user names ZIP files to match the
-                            # saved filenames (rare, but keeps backward compat).
-                            match_key = _extract_stem_exact(current_value)
+                        # Strategy 2: current saved filename stem
+                        # (ensures DB name is the matching source of truth).
+                        match_key = _extract_stem_exact(current_value)
                     else:
                         continue
                     
@@ -301,6 +293,7 @@ def process_reupload_images(task):
                                 card=None,  # defer CardMedia to batch
                                 batch_counter=batch_counter,
                                 original_ext=zip_entry['ext'],
+                                delete_old_after_save=True,
                                 uploaded_by=task_user,
                             )
                         else:
@@ -318,18 +311,10 @@ def process_reupload_images(task):
                             saved_path = result.data['final_value']
 
                             field_data[img_field] = saved_path
-                            # Preserve original reference for future reuploads
-                            # (the ZIP entry's original name without extension)
-                            ref_key = f'__ref_{img_field}'
-                            if not field_data.get(ref_key):
-                                field_data[ref_key] = zip_entry.get('original_name', '').rsplit('.', 1)[0] or match_key
                             card_updated = True
                             # Queue CardMedia ops for batch flush
                             if existing_path:
                                 pending_media_deletes.append((card.pk, img_field))
-                                old_path = result.data.get('old_path_to_delete')
-                                if old_path and old_path != saved_path:
-                                    pending_storage_deletes.append(old_path)
                             pending_media_creates.append({
                                 'card': card,
                                 'client': client,
@@ -357,13 +342,12 @@ def process_reupload_images(task):
             if (idx + 1) % FLUSH_EVERY == 0 or idx == total_cards - 1:
                 _flush_batch(
                     pending_updates, pending_media_deletes,
-                    pending_media_creates, pending_storage_deletes,
+                    pending_media_creates,
                     IDCard, ImageService, client,
                 )
                 pending_updates = []
                 pending_media_deletes = []
                 pending_media_creates = []
-                pending_storage_deletes = []
                 _db_retry(lambda _idx=idx: task.update_progress(_idx + 1))
 
         # Safety flush: if the iterator returned fewer rows than total_cards
@@ -372,13 +356,12 @@ def process_reupload_images(task):
         if pending_updates or pending_media_creates:
             _flush_batch(
                 pending_updates, pending_media_deletes,
-                pending_media_creates, pending_storage_deletes,
+                pending_media_creates,
                 IDCard, ImageService, client,
             )
             pending_updates = []
             pending_media_deletes = []
             pending_media_creates = []
-            pending_storage_deletes = []
 
         # Build result
         result_msg = f"Updated {updated_count} cards with {matched_count} images matched"
@@ -422,7 +405,6 @@ def _flush_batch(
     pending_updates,
     pending_media_deletes,
     pending_media_creates,
-    pending_storage_deletes,
     IDCard,
     ImageService,
     client,
@@ -431,7 +413,6 @@ def _flush_batch(
     Flush accumulated DB writes in a single retried transaction.
 
     Groups IDCard bulk_update + CardMedia delete/create into one write.
-    Old image file deletion is deferred until after DB commit succeeds.
     """
     if not pending_updates and not pending_media_creates:
         return
@@ -491,26 +472,6 @@ def _flush_batch(
                     cleanup_err,
                 )
         raise
-
-    # DB commit succeeded: now it is safe to remove old replaced files.
-    if pending_storage_deletes:
-        from mediafiles.models import CardMedia
-
-        for old_path in set(pending_storage_deletes):
-            if not old_path:
-                continue
-            try:
-                # If any row still references this file, do not delete it.
-                if CardMedia.objects.filter(file=old_path).exists():
-                    continue
-                ImageService.delete_image(old_path)
-            except Exception as delete_err:
-                logger.warning(
-                    "Deferred old-image delete failed for %s: %s",
-                    old_path,
-                    delete_err,
-                )
-
 
 def _build_zip_image_index(zip_path):
     """
@@ -589,12 +550,7 @@ def _run_reupload_preflight(
             if current_value.startswith('PENDING:'):
                 match_key = _extract_stem_exact(current_value[8:])
             elif current_value and current_value not in ('NOT_FOUND', ''):
-                ref_key = f'__ref_{img_field}'
-                original_ref = field_data.get(ref_key, '')
-                if original_ref:
-                    match_key = _extract_stem_exact(original_ref)
-                else:
-                    match_key = _extract_stem_exact(current_value)
+                match_key = _extract_stem_exact(current_value)
             else:
                 continue
 
