@@ -92,8 +92,6 @@ let reuploadActionsCardCount = null;
 let reuploadActionsProgress = null;
 let reuploadActionsBar = null;
 let reuploadActionsStatus = null;
-let reuploadActionsPreflightToken = null;
-let reuploadActionsPreflightReady = false;
 
 const STATUS_LABELS = {
     pending: 'Pending',
@@ -123,11 +121,9 @@ function openReuploadActionsModal() {
     if (reuploadActionsCardCount) reuploadActionsCardCount.textContent = pendingReuploadCardIds.length;
     if (reuploadActionsFileInput) reuploadActionsFileInput.value = '';
     if (reuploadActionsFileName) reuploadActionsFileName.textContent = 'Click or drag & drop a ZIP file';
-    reuploadActionsPreflightToken = null;
-    reuploadActionsPreflightReady = false;
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.disabled = true;
-        reuploadActionsConfirmBtn.textContent = 'Run Preflight';
+        reuploadActionsConfirmBtn.textContent = 'Start Reupload';
     }
     if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
     if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
@@ -138,8 +134,6 @@ function closeReuploadActionsModal() {
     if (!reuploadActionsModal) return;
     reuploadActionsModal.style.display = 'none';
     if (reuploadActionsFileInput) reuploadActionsFileInput.value = '';
-    reuploadActionsPreflightToken = null;
-    reuploadActionsPreflightReady = false;
     pendingReuploadCardIds = [];
 }
 
@@ -201,11 +195,9 @@ function initReuploadHandlers() {
                     return;
                 }
                 if (reuploadActionsFileName) reuploadActionsFileName.textContent = file.name;
-                reuploadActionsPreflightToken = null;
-                reuploadActionsPreflightReady = false;
                 if (reuploadActionsConfirmBtn) {
                     reuploadActionsConfirmBtn.disabled = false;
-                    reuploadActionsConfirmBtn.textContent = 'Run Preflight';
+                    reuploadActionsConfirmBtn.textContent = 'Start Reupload';
                 }
             }
         });
@@ -223,14 +215,6 @@ function initReuploadHandlers() {
         if (!reuploadActionsConfirmBtn) return;
         reuploadActionsConfirmBtn.textContent = label;
         reuploadActionsConfirmBtn.disabled = !!disabled;
-    }
-
-    function _summarizePreflight(result) {
-        const p = (result && result.preflight) ? result.preflight : {};
-        const expected = p.expected_targets || 0;
-        const matched = p.matched_targets || 0;
-        const missing = p.missing_targets || 0;
-        return 'Preflight: expected ' + expected + ', matched ' + matched + ', missing ' + missing + '.';
     }
 
     function _pollReuploadTask(taskId) {
@@ -260,12 +244,10 @@ function initReuploadHandlers() {
                         }, 1500);
                     } else if (t.status === 'failed' || t.status === 'cancelled') {
                         clearInterval(pollInterval);
-                        const errMsg = t.error_message || 'Reupload failed. Please run preflight again.';
+                        const errMsg = t.error_message || 'Reupload failed. Please try again.';
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = errMsg;
                         if (typeof showToast === 'function') showToast(errMsg, false);
-                        reuploadActionsPreflightToken = null;
-                        reuploadActionsPreflightReady = false;
-                        _setReuploadButton('Run Preflight', false);
+                        _setReuploadButton('Start Reupload', false);
                     } else {
                         const pct = 80 + Math.round((t.progress_percentage || 0) * 0.19);
                         if (reuploadActionsBar) reuploadActionsBar.style.width = Math.min(pct, 99) + '%';
@@ -285,16 +267,18 @@ function initReuploadHandlers() {
         }, 2000);
     }
 
-    function _startReuploadTaskWithToken(tableId) {
-        if (!reuploadActionsPreflightToken) return;
-        _setReuploadButton('Starting...', true);
+    function _startReuploadTask(tableId) {
+        if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
+
+        _setReuploadButton('Uploading ZIP...', true);
         if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'block';
-        if (reuploadActionsBar) reuploadActionsBar.style.width = '80%';
-        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Starting background task...';
+        if (reuploadActionsBar) reuploadActionsBar.style.width = '10%';
+        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Uploading ZIP...';
 
         const formData = new FormData();
-        formData.append('preflight_token', reuploadActionsPreflightToken);
-        formData.append('strict_mode', '1');
+        formData.append('photos_zip', reuploadActionsFileInput.files[0]);
+        formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
+        formData.append('status', _getCurrentStatus());
 
         fetch(`/api/table/${tableId}/reupload-task/`, {
             method: 'POST',
@@ -311,6 +295,7 @@ function initReuploadHandlers() {
             })
             .then(function(result) {
                 if (result.status === 200 && result.data && result.data.success) {
+                    if (reuploadActionsBar) reuploadActionsBar.style.width = '80%';
                     if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing images...';
                     _pollReuploadTask(result.data.task_id);
                     return;
@@ -328,117 +313,6 @@ function initReuploadHandlers() {
             });
     }
 
-    function _runReuploadPreflight(tableId) {
-        if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
-
-        _setReuploadButton('Uploading ZIP...', true);
-        if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'block';
-        if (reuploadActionsBar) reuploadActionsBar.style.width = '0%';
-        if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Starting preflight upload...';
-
-        const formData = new FormData();
-        formData.append('photos_zip', reuploadActionsFileInput.files[0]);
-        formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
-        formData.append('status', _getCurrentStatus());
-        formData.append('strict_mode', '1');
-
-        const preflightUrl = `/api/table/${tableId}/reupload-preflight/`;
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', preflightUrl, true);
-        xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.timeout = 300000;
-
-        var uploadDone = false;
-        var lastProgress = Date.now();
-        var stallTimer = setInterval(function() {
-            if (uploadDone) { clearInterval(stallTimer); return; }
-            if (Date.now() - lastProgress > 30000) {
-                clearInterval(stallTimer);
-                uploadDone = true;
-                xhr.abort();
-                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Preflight upload stalled. Please try again.';
-                if (typeof showToast === 'function') showToast('Preflight upload stalled. Please check server/network and retry.', false);
-                _setReuploadButton('Run Preflight', false);
-            }
-        }, 5000);
-
-        function cleanupUploadState() {
-            uploadDone = true;
-            clearInterval(stallTimer);
-        }
-
-        xhr.upload.onprogress = function(event) {
-            lastProgress = Date.now();
-            if (event.lengthComputable) {
-                const uploadPct = Math.round((event.loaded / event.total) * 90);
-                if (reuploadActionsBar) reuploadActionsBar.style.width = uploadPct + '%';
-                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Uploading ZIP for preflight... ' + Math.round((event.loaded / event.total) * 100) + '%';
-            }
-        };
-
-        xhr.onload = function() {
-            if (uploadDone) return;
-            cleanupUploadState();
-            try {
-                const result = JSON.parse(xhr.responseText || '{}');
-                if (xhr.status === 200 && result.success) {
-                    if (result.can_start && result.preflight_token) {
-                        reuploadActionsPreflightToken = result.preflight_token;
-                        reuploadActionsPreflightReady = true;
-                        if (reuploadActionsBar) reuploadActionsBar.style.width = '100%';
-                        const summaryText = _summarizePreflight(result);
-                        if (reuploadActionsStatus) {
-                            reuploadActionsStatus.textContent = summaryText + ' Click Start Reupload to continue.';
-                        }
-                        if (typeof showToast === 'function') showToast(summaryText, true);
-                        _setReuploadButton('Start Reupload', false);
-                    } else {
-                        reuploadActionsPreflightToken = null;
-                        reuploadActionsPreflightReady = false;
-                        const reasons = Array.isArray(result.blocked_reasons) ? result.blocked_reasons : [];
-                        const blockedText = reasons.length ? reasons.join(' ') : (result.message || 'Preflight blocked.');
-                        if (reuploadActionsStatus) reuploadActionsStatus.textContent = blockedText;
-                        if (typeof showToast === 'function') showToast(blockedText, false);
-                        _setReuploadButton('Run Preflight', false);
-                    }
-                    return;
-                }
-
-                const errMsg = (result && result.message) ? result.message : ('Preflight failed (HTTP ' + xhr.status + ')');
-                if (reuploadActionsStatus) reuploadActionsStatus.textContent = errMsg;
-                if (typeof showToast === 'function') showToast(errMsg, false);
-                _setReuploadButton('Run Preflight', false);
-            } catch (e) {
-                console.error('Preflight parse error:', e, 'Status:', xhr.status);
-                if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Error processing preflight response.';
-                if (typeof showToast === 'function') showToast('Error processing preflight response.', false);
-                _setReuploadButton('Run Preflight', false);
-            }
-        };
-
-        xhr.onerror = function() {
-            if (uploadDone) return;
-            cleanupUploadState();
-            if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Preflight upload failed. Check connection and retry.';
-            if (typeof showToast === 'function') showToast('Preflight upload failed. Check connection and retry.', false);
-            _setReuploadButton('Run Preflight', false);
-            if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
-        };
-
-        xhr.ontimeout = function() {
-            if (uploadDone) return;
-            cleanupUploadState();
-            if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Preflight upload timed out. Try a smaller ZIP.';
-            if (typeof showToast === 'function') showToast('Preflight upload timed out. Try a smaller ZIP.', 'warning');
-            _setReuploadButton('Run Preflight', false);
-            if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'none';
-        };
-
-        xhr.send(formData);
-    }
-
-    // Confirm now runs two steps: preflight first, explicit start second.
     if (reuploadActionsConfirmBtn) {
         reuploadActionsConfirmBtn.addEventListener('click', function() {
             if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
@@ -449,12 +323,7 @@ function initReuploadHandlers() {
                 return;
             }
 
-            if (reuploadActionsPreflightReady && reuploadActionsPreflightToken) {
-                _startReuploadTaskWithToken(tableId);
-                return;
-            }
-
-            _runReuploadPreflight(tableId);
+            _startReuploadTask(tableId);
         });
     }
 

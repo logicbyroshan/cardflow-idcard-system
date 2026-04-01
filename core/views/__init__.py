@@ -131,7 +131,6 @@ from .task_api import (
     api_task_list,
     api_task_active,
     api_create_bulk_upload_task,
-    api_reupload_preflight,
     api_create_reupload_task,
     api_create_export_task,
 )

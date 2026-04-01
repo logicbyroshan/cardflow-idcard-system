@@ -205,7 +205,6 @@ urlpatterns = [
     path('api/tasks/', views.api_task_list, name='api_task_list'),
     path('api/task-active/', views.api_task_active, name='api_task_active'),
     path('api/table/<int:table_id>/bulk-upload-task/', views.api_create_bulk_upload_task, name='api_create_bulk_upload_task'),
-    path('api/table/<int:table_id>/reupload-preflight/', views.api_reupload_preflight, name='api_reupload_preflight'),
     path('api/table/<int:table_id>/reupload-task/', views.api_create_reupload_task, name='api_create_reupload_task'),
     path('api/table/<int:table_id>/export-task/', views.api_create_export_task, name='api_create_export_task'),
     

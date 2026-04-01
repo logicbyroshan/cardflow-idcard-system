@@ -998,10 +998,9 @@ class SecurityApiRegressionTests(TestCase):
         self.assertIsNotNone(payload['card']['updated_at'])
 
 
-class ReuploadPreflightTokenFlowTests(TestCase):
+class ReuploadDirectTaskFlowTests(TestCase):
     def setUp(self):
         self.admin = _create_super_admin('reupload-admin@test.com', 'adminpass1')
-        self.other_admin = _create_super_admin('reupload-other@test.com', 'adminpass1')
         _, self.client_obj = _create_client_user('reupload-client@test.com', 'clientpass1')
         _group, self.table = _create_table(self.client_obj, fields=[
             {'name': 'NAME', 'type': 'text', 'order': 1},
@@ -1024,60 +1023,31 @@ class ReuploadPreflightTokenFlowTests(TestCase):
         self._media_override.disable()
         self._tmp_media.cleanup()
 
-    def _make_reupload_zip(self, include_manifest=True):
+    def _make_reupload_zip(self):
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
             zf.writestr('PHOTO/20240101121212.jpg', b'fake-image-bytes-12345')
-            if include_manifest:
-                manifest = {
-                    'version': 1,
-                    'entries': [
-                        {
-                            'card_id': self.card.id,
-                            'field_name': 'PHOTO',
-                            'zip_path': 'PHOTO/20240101121212.jpg',
-                            'sha256': 'abc123',
-                            'size': 22,
-                        }
-                    ],
-                }
-                zf.writestr('_reupload_manifest.json', json.dumps(manifest))
         return buf.getvalue()
 
-    def test_preflight_success_then_create_task_with_token(self):
+    def test_create_reupload_task_direct_upload_success(self):
         self.client.login(username='reupload-admin@test.com', password='adminpass1')
 
-        zip_bytes = self._make_reupload_zip(include_manifest=True)
+        zip_bytes = self._make_reupload_zip()
         upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
-
-        preflight_resp = self.client.post(
-            f'/panel/api/table/{self.table.id}/reupload-preflight/',
-            data={
-                'photos_zip': upload,
-                'card_ids': json.dumps([self.card.id]),
-                'strict_mode': '1',
-                'status': 'pending',
-            },
-        )
-
-        self.assertEqual(preflight_resp.status_code, 200)
-        preflight_payload = preflight_resp.json()
-        self.assertTrue(preflight_payload['success'])
-        self.assertTrue(preflight_payload['can_start'])
-        self.assertTrue(preflight_payload.get('preflight_token'))
-
-        token = preflight_payload['preflight_token']
 
         with patch('core.views.task_api.background_worker.submit_task') as mock_submit:
             create_resp = self.client.post(
                 f'/panel/api/table/{self.table.id}/reupload-task/',
-                data={'preflight_token': token},
+                data={
+                    'photos_zip': upload,
+                    'card_ids': json.dumps([self.card.id]),
+                    'status': 'pending',
+                },
             )
 
         self.assertEqual(create_resp.status_code, 200)
         create_payload = create_resp.json()
         self.assertTrue(create_payload['success'])
-        self.assertTrue(create_payload['created_from_preflight'])
         self.assertIn('task_id', create_payload)
         mock_submit.assert_called_once()
 
@@ -1086,68 +1056,39 @@ class ReuploadPreflightTokenFlowTests(TestCase):
         self.assertEqual(task.task_type, 'reupload_images')
         self.assertEqual(task.metadata.get('table_id'), self.table.id)
         self.assertEqual(task.metadata.get('card_ids'), [self.card.id])
-        self.assertTrue(task.metadata.get('strict_mode'))
+        self.assertEqual(task.metadata.get('status_filter'), 'pending')
 
-    def test_preflight_strict_mode_blocks_when_manifest_missing(self):
+    def test_create_reupload_task_requires_zip(self):
         self.client.login(username='reupload-admin@test.com', password='adminpass1')
 
-        zip_bytes = self._make_reupload_zip(include_manifest=False)
-        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
-
-        preflight_resp = self.client.post(
-            f'/panel/api/table/{self.table.id}/reupload-preflight/',
-            data={
-                'photos_zip': upload,
-                'card_ids': json.dumps([self.card.id]),
-                'strict_mode': '1',
-            },
-        )
-
-        self.assertEqual(preflight_resp.status_code, 200)
-        payload = preflight_resp.json()
-        self.assertTrue(payload['success'])
-        self.assertFalse(payload['can_start'])
-        self.assertFalse(payload.get('preflight_token'))
-        reasons = payload.get('blocked_reasons', [])
-        self.assertTrue(any('manifest' in r.lower() for r in reasons))
-
-    def test_preflight_token_rejected_for_different_user(self):
-        self.client.login(username='reupload-admin@test.com', password='adminpass1')
-
-        zip_bytes = self._make_reupload_zip(include_manifest=True)
-        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
-        preflight_resp = self.client.post(
-            f'/panel/api/table/{self.table.id}/reupload-preflight/',
-            data={'photos_zip': upload, 'card_ids': json.dumps([self.card.id])},
-        )
-        token = preflight_resp.json()['preflight_token']
-
-        self.client.logout()
-        self.client.login(username='reupload-other@test.com', password='adminpass1')
         create_resp = self.client.post(
             f'/panel/api/table/{self.table.id}/reupload-task/',
-            data={'preflight_token': token},
+            data={'card_ids': json.dumps([self.card.id])},
         )
 
         self.assertEqual(create_resp.status_code, 400)
-        self.assertIn('does not belong to current user', create_resp.json().get('message', '').lower())
+        self.assertIn('no zip file uploaded', create_resp.json().get('message', '').lower())
 
-    def test_preflight_token_expired_returns_clear_error(self):
-        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+    def test_zip_index_ignores_non_exact_stems(self):
+        from core.services.reupload_processor import _build_zip_image_index
 
-        zip_bytes = self._make_reupload_zip(include_manifest=True)
-        upload = SimpleUploadedFile('reupload.zip', zip_bytes, content_type='application/zip')
-        preflight_resp = self.client.post(
-            f'/panel/api/table/{self.table.id}/reupload-preflight/',
-            data={'photos_zip': upload, 'card_ids': json.dumps([self.card.id])},
-        )
-        token = preflight_resp.json()['preflight_token']
+        zip_path = os.path.join(self._tmp_media.name, 'bad_names.zip')
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212_copy.jpg', b'abc')
+            zf.writestr('PHOTO/random_name.jpg', b'abc')
 
-        with patch('core.views.task_api._consume_reupload_preflight_token', return_value=(None, 'Preflight token expired. Please run preflight again.')):
-            create_resp = self.client.post(
-                f'/panel/api/table/{self.table.id}/reupload-task/',
-                data={'preflight_token': token},
-            )
+        index, _, stats = _build_zip_image_index(zip_path)
+        self.assertEqual(index, {})
+        self.assertEqual(stats.get('duplicate_name_keys'), 0)
 
-        self.assertEqual(create_resp.status_code, 400)
-        self.assertIn('expired', create_resp.json().get('message', '').lower())
+    def test_zip_index_blocks_duplicate_exact_stems(self):
+        from core.services.reupload_processor import _build_zip_image_index
+
+        zip_path = os.path.join(self._tmp_media.name, 'dup_names.zip')
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'abc')
+            zf.writestr('SIGN/20240101121212.png', b'def')
+
+        index, _, stats = _build_zip_image_index(zip_path)
+        self.assertNotIn('20240101121212', index)
+        self.assertGreater(stats.get('duplicate_name_keys', 0), 0)
