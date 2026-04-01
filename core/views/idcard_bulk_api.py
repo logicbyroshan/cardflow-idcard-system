@@ -41,10 +41,9 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 _REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
-_REUPLOAD_NAME_BASE_LEGACY_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})$')
-_REUPLOAD_NAME_BASE_NUM_SUFFIX_RE = re.compile(r'^(?:[ac]\d{10,16}|\d{10,16})[-_]\d{1,20}$')
 
 # Keep strict matching first; legacy timestamp-number stems are fallback only.
+# Fallback is intentionally permissive and matches any non-empty filename stem.
 REUPLOAD_ALLOW_LEGACY_FALLBACK = True
 
 
@@ -60,25 +59,25 @@ def _is_strict_reupload_stem(stem):
     return bool(_REUPLOAD_NAME_BASE_RE.match(stem))
 
 
-def _is_legacy_reupload_stem(stem):
-    """Legacy stems seen in historical XLSX references."""
-    return bool(_REUPLOAD_NAME_BASE_LEGACY_RE.match(stem) or _REUPLOAD_NAME_BASE_NUM_SUFFIX_RE.match(stem))
+def _is_fallback_reupload_stem(stem):
+    """Fallback accepts any non-empty exact stem from DB/ZIP names."""
+    return bool(str(stem or '').strip())
 
 
 def _is_supported_reupload_stem(stem):
     """Validation used while indexing ZIP entries."""
     if _is_strict_reupload_stem(stem):
         return True
-    return bool(REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_legacy_reupload_stem(stem))
+    return bool(REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_fallback_reupload_stem(stem))
 
 
 def _resolve_reupload_photo(stem, zip_photos):
-    """Resolve match with strict-first behavior and optional legacy fallback."""
+    """Resolve match with strict-first behavior and open fallback."""
     if not stem:
         return None
-    if _is_strict_reupload_stem(stem):
+    if _is_strict_reupload_stem(stem) and stem in zip_photos:
         return zip_photos.get(stem)
-    if REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_legacy_reupload_stem(stem):
+    if REUPLOAD_ALLOW_LEGACY_FALLBACK and _is_fallback_reupload_stem(stem):
         return zip_photos.get(stem)
     return None
 
