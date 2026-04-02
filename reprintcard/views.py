@@ -875,13 +875,13 @@ def api_download_list(request, table_id):
 
 
 # ---------------------------------------------------------------------------
-# SEND TO PRINT (confirmed → cardprint print list)
+# SEND TO PRINT (confirmed -> cardprint generate list)
 # ---------------------------------------------------------------------------
 
 @require_http_methods(["POST"])
 @login_required
 def api_reprint_send_to_print(request, table_id):
-    """Send requested reprint items to the cardprint Print List.
+    """Send requested reprint items to the cardprint Generate List.
 
     Body: { "rr_ids": [1, 2, 3] }
     Extracts card IDs from requested reprint requests and creates
@@ -934,7 +934,7 @@ def api_reprint_send_to_print(request, table_id):
         return JsonResponse({'status': 'error', 'message': result.message}, status=400)
 
     # Always move eligible rows from requested -> confirmed, even when
-    # print rows were skipped because they already existed in print_list.
+    # print rows were skipped because they already existed in generate_list.
     moved_count = ReprintRequest.objects.filter(
         id__in=eligible_rr_ids,
         table=table,
@@ -945,7 +945,7 @@ def api_reprint_send_to_print(request, table_id):
     return JsonResponse({
         'status': 'ok',
         'message': f"{moved_count} request(s) moved to Confirmed List"
-                   + (f" ({result.data['created']} added to print list" + (f", {result.data['skipped']} already in print list" if result.data['skipped'] else '') + ")" if (result.data['created'] or result.data['skipped']) else ''),
+                   + (f" ({result.data['created']} added to generate list" + (f", {result.data['skipped']} already in generate list" if result.data['skipped'] else '') + ")" if (result.data['created'] or result.data['skipped']) else ''),
         'created': result.data['created'],
         'skipped': result.data['skipped'],
         'moved': moved_count,

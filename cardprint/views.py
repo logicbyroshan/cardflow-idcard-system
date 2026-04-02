@@ -2,7 +2,7 @@
 Card Print Views
 ================
 Page views + API endpoints for the Print Cards workflow:
-  Print List → Generate List → Finalized → Pool
+    Approved → Generate List → Finalized → Pool
   + Generate Card editor page + PDF generation API.
 
 ARCHITECTURE RULES (same as reprint):
@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.timezone import localtime
@@ -155,6 +156,7 @@ def print_cards(request, table_id):
         'finalized': counts['fn'],
         'generate_list': counts['gl'],
     }
+    approved_count = IDCard.objects.filter(table=table, status='approved').count()
 
     # Items for the current step
     generate_items = []
@@ -231,6 +233,7 @@ def print_cards(request, table_id):
         'client': table.group.client,
         'current_step': current_step,
         'step_counts': step_counts,
+        'approved_count': approved_count,
         'generate_items': generate_items,
         'finalized_items': finalized_items,
         'generate_total': generate_total,
@@ -330,11 +333,13 @@ def api_print_step_counts(request, table_id):
         fn=Count('id', filter=Q(status='finalized')),
         po=Count('id', filter=Q(status='pool')),
     )
+    approved_count = IDCard.objects.filter(table=table, status='approved').count()
     return JsonResponse({
         'status': 'ok',
         'generate_list': counts['gl'],
         'finalized': counts['fn'],
         'pool': counts['po'],
+        'approved': approved_count,
     })
 
 
@@ -552,6 +557,118 @@ def api_print_mark_pool(request, table_id):
         'message': f"{result.data['updated']} item(s) moved to pool",
         'updated': result.data['updated'],
         'skipped': result.data['skipped'],
+    })
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_print_retrieve_generate(request, table_id):
+    """Move generate-list items back to approved list.
+
+    Body: { "request_ids": [1, 2, 3] }
+    """
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    request_ids = data.get('request_ids', [])
+    if not request_ids:
+        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
+
+    prs = list(
+        PrintRequest.objects.filter(
+            id__in=request_ids,
+            table=table,
+            status='generate_list',
+        ).values('id', 'card_id')
+    )
+    if not prs:
+        return JsonResponse({'status': 'error', 'message': 'No valid generate-list items found'}, status=400)
+
+    valid_request_ids = [row['id'] for row in prs]
+    card_ids = [row['card_id'] for row in prs]
+
+    with transaction.atomic():
+        # Move cards back to approved list.
+        IDCard.objects.filter(
+            id__in=card_ids,
+            table=table,
+        ).update(status='approved')
+
+        # Remove from active print workflow.
+        updated = PrintRequest.objects.filter(
+            id__in=valid_request_ids,
+            table=table,
+            status='generate_list',
+        ).update(status='pool', updated_at=timezone.now())
+
+    return JsonResponse({
+        'status': 'ok',
+        'message': f'{updated} item(s) moved back to approved list',
+        'updated': updated,
+        'skipped': len(request_ids) - updated,
+    })
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_finalized_list')
+def api_print_retrieve_finalized(request, table_id):
+    """Move finalized items back to pending list.
+
+    Body: { "request_ids": [1, 2, 3] }
+    """
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    request_ids = data.get('request_ids', [])
+    if not request_ids:
+        return JsonResponse({'status': 'error', 'message': 'No items selected'}, status=400)
+
+    prs = list(
+        PrintRequest.objects.filter(
+            id__in=request_ids,
+            table=table,
+            status='finalized',
+        ).values('id', 'card_id')
+    )
+    if not prs:
+        return JsonResponse({'status': 'error', 'message': 'No valid finalized items found'}, status=400)
+
+    valid_request_ids = [row['id'] for row in prs]
+    card_ids = [row['card_id'] for row in prs]
+
+    with transaction.atomic():
+        # Move cards back to pending list.
+        IDCard.objects.filter(
+            id__in=card_ids,
+            table=table,
+        ).update(status='pending')
+
+        # Remove from active print workflow.
+        updated = PrintRequest.objects.filter(
+            id__in=valid_request_ids,
+            table=table,
+            status='finalized',
+        ).update(status='pool', updated_at=timezone.now())
+
+    return JsonResponse({
+        'status': 'ok',
+        'message': f'{updated} item(s) moved back to pending list',
+        'updated': updated,
+        'skipped': len(request_ids) - updated,
     })
 
 

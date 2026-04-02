@@ -1,6 +1,6 @@
 /**
  * Print Cards  Single-file JS for the Print Cards workflow.
- * Steps: Print List  (Configure & Generate)  Finalized
+ * Steps: Generate List  (Configure & Generate)  Finalized
  *
  * Self-contained for the cardprint app.
  */
@@ -34,10 +34,106 @@ function refreshStepCounts() {
   ApiClient.get('/print/api/table/' + TABLE_ID + '/step-counts/')
     .then(function(data) {
       if (data.status === 'ok') {
+        updateTabCount('.print-approved-tab .tab-count', data.approved || 0);
         updateTabCount('.print-generate-tab .tab-count', data.generate_list || 0);
         updateTabCount('.print-finalized-tab .tab-count', data.finalized || 0);
       }
     }).catch(function() {});
+}
+
+function _filenameFromDisposition(disposition, fallbackName) {
+  if (!disposition) return fallbackName;
+  var m = disposition.match(/filename\*=UTF-8''([^;]+)/i) || disposition.match(/filename="?([^";]+)"?/i);
+  if (!m || !m[1]) return fallbackName;
+  try {
+    return decodeURIComponent(m[1].replace(/\+/g, '%20'));
+  } catch (e) {
+    return m[1];
+  }
+}
+
+function _triggerUrlDownload(url, filename) {
+  var a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  if (filename) a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function _downloadBlobExport(url, payload, fallbackFilename, successMessage) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
+    },
+    body: JSON.stringify(payload),
+  }).then(function(resp) {
+    var contentType = (resp.headers.get('Content-Type') || '').toLowerCase();
+    if (!resp.ok) {
+      if (contentType.indexOf('application/json') !== -1) {
+        return resp.json().then(function(data) {
+          throw new Error((data && data.message) || ('Export failed (HTTP ' + resp.status + ')'));
+        });
+      }
+      throw new Error('Export failed (HTTP ' + resp.status + ')');
+    }
+    if (contentType.indexOf('application/json') !== -1) {
+      return resp.json().then(function(data) {
+        throw new Error((data && data.message) || 'Export failed');
+      });
+    }
+    return resp.blob().then(function(blob) {
+      var filename = _filenameFromDisposition(resp.headers.get('Content-Disposition'), fallbackFilename);
+      if (typeof ApiClient !== 'undefined' && ApiClient.downloadBlob) {
+        ApiClient.downloadBlob(blob, filename);
+      } else {
+        var blobUrl = window.URL.createObjectURL(blob);
+        _triggerUrlDownload(blobUrl, filename);
+        window.URL.revokeObjectURL(blobUrl);
+      }
+      showToast(successMessage || 'Download complete', 'success');
+    });
+  });
+}
+
+function _downloadImageExport(url, payload) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
+    },
+    body: JSON.stringify(payload),
+  }).then(function(resp) {
+    return resp.json().then(function(data) {
+      if (!resp.ok || !data || !data.success) {
+        throw new Error((data && data.message) || ('Image export failed (HTTP ' + resp.status + ')'));
+      }
+
+      var files = [];
+      if (Array.isArray(data.files) && data.files.length) files = data.files;
+      else if (Array.isArray(data.zip_files) && data.zip_files.length) files = data.zip_files;
+      else if (data.download_url) files = [{ download_url: data.download_url, filename: data.filename || 'images.zip' }];
+
+      if (!files.length) {
+        throw new Error('No image files available to download');
+      }
+
+      files.forEach(function(item) {
+        if (item.download_url) {
+          _triggerUrlDownload(item.download_url, item.filename || 'images.zip');
+          return;
+        }
+        if (item.data && typeof ApiClient !== 'undefined' && ApiClient.downloadBase64) {
+          ApiClient.downloadBase64(item.data, item.filename || 'images.zip', 'application/zip');
+        }
+      });
+      showToast('Image download started', 'success');
+    });
+  });
 }
 
 /** Render a single image cell as HTML */
@@ -219,6 +315,11 @@ function createPaginator(opts) {
   var searchClearBtn = document.getElementById('generateListSearchClearBtn');
   var continueBtn    = document.getElementById('continueGenerateBtn');
   var viewBtn        = document.getElementById('generateListViewBtn');
+  var retrieveBtn    = document.getElementById('generateRetrieveBtn');
+  var dlImgBtn       = document.getElementById('generateDownloadImgBtn');
+  var dlDocxBtn      = document.getElementById('generateDownloadDocxBtn');
+  var dlXlsxBtn      = document.getElementById('generateDownloadXlsxBtn');
+  var dlPdfBtn       = document.getElementById('generateDownloadPdfBtn');
   var showingRange   = document.getElementById('generateListShowingRange');
   var totalCountEl   = document.getElementById('generateListTotalCount');
 
@@ -247,6 +348,11 @@ function createPaginator(opts) {
     var count = getAllPrIds().length;
     if (continueBtn) continueBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count === 0;
+    if (retrieveBtn) retrieveBtn.disabled = count === 0;
+    if (dlImgBtn) dlImgBtn.disabled = count === 0;
+    if (dlDocxBtn) dlDocxBtn.disabled = count === 0;
+    if (dlXlsxBtn) dlXlsxBtn.disabled = count === 0;
+    if (dlPdfBtn) dlPdfBtn.disabled = count === 0;
     if (paginator) paginator.updateSelectionCount(0);
   }
 
@@ -280,6 +386,75 @@ function createPaginator(opts) {
       if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
     });
   }
+
+  if (retrieveBtn) {
+    retrieveBtn.addEventListener('click', async function() {
+      var prIds = getAllPrIds();
+      if (prIds.length === 0) return;
+      var ok = true;
+      if (typeof showConfirm === 'function') {
+        ok = await showConfirm({
+          title: 'Retrieve to Approved?',
+          text: 'Move ' + prIds.length + ' item(s) from Generate List back to Approved List?',
+          icon: 'fa-solid fa-arrow-rotate-left',
+          confirmLabel: 'Retrieve',
+          btnClass: 'btn-primary',
+          hideWarning: true,
+        });
+      } else {
+        ok = window.confirm('Move selected items back to Approved List?');
+      }
+      if (!ok) return;
+
+      ApiClient.post('/print/api/table/' + TABLE_ID + '/retrieve-generate/', { request_ids: prIds })
+        .then(function(data) {
+          if (!data || data.status !== 'ok') {
+            showToast((data && data.message) || 'Retrieve failed', 'error');
+            return;
+          }
+          showToast(data.message || 'Moved back to approved list', 'success');
+          fetchGenerateItems(searchInput ? searchInput.value.trim() : '');
+          refreshStepCounts();
+        })
+        .catch(function(err) {
+          showToast((err && err.message) || 'Retrieve failed', 'error');
+        });
+    });
+  }
+
+  function runGenerateDownload(kind) {
+    var cardIds = getAllCardIds();
+    if (cardIds.length === 0) {
+      showToast('No cards available to download', 'error');
+      return;
+    }
+
+    var payload = { card_ids: cardIds };
+    if (kind === 'img') {
+      _downloadImageExport('/api/table/' + TABLE_ID + '/cards/download-images/', payload)
+        .catch(function(err) { showToast((err && err.message) || 'Image export failed', 'error'); });
+      return;
+    }
+    if (kind === 'docx') {
+      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-docx/', payload, 'cards.docx', 'Word download complete')
+        .catch(function(err) { showToast((err && err.message) || 'Word export failed', 'error'); });
+      return;
+    }
+    if (kind === 'xlsx') {
+      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-xlsx/', payload, 'cards.xlsx', 'Excel download complete')
+        .catch(function(err) { showToast((err && err.message) || 'Excel export failed', 'error'); });
+      return;
+    }
+    if (kind === 'pdf') {
+      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-pdf/', payload, 'cards.pdf', 'PDF download complete')
+        .catch(function(err) { showToast((err && err.message) || 'PDF export failed', 'error'); });
+    }
+  }
+
+  if (dlImgBtn) dlImgBtn.addEventListener('click', function() { runGenerateDownload('img'); });
+  if (dlDocxBtn) dlDocxBtn.addEventListener('click', function() { runGenerateDownload('docx'); });
+  if (dlXlsxBtn) dlXlsxBtn.addEventListener('click', function() { runGenerateDownload('xlsx'); });
+  if (dlPdfBtn) dlPdfBtn.addEventListener('click', function() { runGenerateDownload('pdf'); });
 
   var searchTimer = null;
   if (searchInput) {
@@ -346,6 +521,11 @@ function createPaginator(opts) {
   var searchClearBtn = document.getElementById('finalizedSearchClearBtn');
   var poolBtn       = document.getElementById('finalizedMoveToPoolBtn');
   var viewBtn       = document.getElementById('finalizedViewBtn');
+  var retrieveBtn   = document.getElementById('finalizedRetrieveBtn');
+  var dlImgBtn      = document.getElementById('finalizedDownloadImgBtn');
+  var dlDocxBtn     = document.getElementById('finalizedDownloadDocxBtn');
+  var dlXlsxBtn     = document.getElementById('finalizedDownloadXlsxBtn');
+  var dlPdfBtn      = document.getElementById('finalizedDownloadPdfBtn');
   var showingRange  = document.getElementById('finalizedShowingRange');
   var totalCountEl  = document.getElementById('finalizedTotalCount');
 
@@ -369,12 +549,31 @@ function createPaginator(opts) {
     return getCheckboxes().filter(function(cb) { return cb.checked; })
       .map(function(cb) { return parseInt(cb.closest('tr').dataset.cardId); });
   }
+  function getAllPrIds() {
+    return Array.from(tableBody.querySelectorAll('tr[data-pr-id]'))
+      .map(function(row) { return parseInt(row.dataset.prId, 10); })
+      .filter(function(v) { return Number.isFinite(v); });
+  }
+  function getAllCardIds() {
+    return Array.from(tableBody.querySelectorAll('tr[data-card-id]'))
+      .map(function(row) { return parseInt(row.dataset.cardId, 10); })
+      .filter(function(v) { return Number.isFinite(v); });
+  }
+  function getCardIdsForDownload() {
+    var selected = getSelectedCardIds();
+    return selected.length > 0 ? selected : getAllCardIds();
+  }
 
   function updateSelectionUI() {
     var ids = getSelectedPrIds();
     var count = ids.length;
     if (poolBtn) poolBtn.disabled = count === 0;
     if (viewBtn) viewBtn.disabled = count !== 1;
+    if (retrieveBtn) retrieveBtn.disabled = count === 0;
+    if (dlImgBtn) dlImgBtn.disabled = count === 0;
+    if (dlDocxBtn) dlDocxBtn.disabled = count === 0;
+    if (dlXlsxBtn) dlXlsxBtn.disabled = count === 0;
+    if (dlPdfBtn) dlPdfBtn.disabled = count === 0;
     if (paginator) paginator.updateSelectionCount(count);
     if (selectAllCb) {
       var allCbs = getCheckboxes();
@@ -428,6 +627,75 @@ function createPaginator(opts) {
       if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
     });
   }
+
+  if (retrieveBtn) {
+    retrieveBtn.addEventListener('click', async function() {
+      var ids = getSelectedPrIds();
+      if (ids.length === 0) return;
+      var ok = true;
+      if (typeof showConfirm === 'function') {
+        ok = await showConfirm({
+          title: 'Retrieve to Pending?',
+          text: 'Move ' + ids.length + ' item(s) from Finalized List back to Pending List?',
+          icon: 'fa-solid fa-arrow-rotate-left',
+          confirmLabel: 'Retrieve',
+          btnClass: 'btn-primary',
+          hideWarning: true,
+        });
+      } else {
+        ok = window.confirm('Move selected finalized items back to Pending List?');
+      }
+      if (!ok) return;
+
+      ApiClient.post('/print/api/table/' + TABLE_ID + '/retrieve-finalized/', { request_ids: ids })
+        .then(function(data) {
+          if (!data || data.status !== 'ok') {
+            showToast((data && data.message) || 'Retrieve failed', 'error');
+            return;
+          }
+          showToast(data.message || 'Moved back to pending list', 'success');
+          fetchFinalizedItems(searchInput ? searchInput.value.trim() : '');
+          refreshStepCounts();
+        })
+        .catch(function(err) {
+          showToast((err && err.message) || 'Retrieve failed', 'error');
+        });
+    });
+  }
+
+  function runFinalizedDownload(kind) {
+    var cardIds = getCardIdsForDownload();
+    if (cardIds.length === 0) {
+      showToast('No cards selected for download', 'error');
+      return;
+    }
+
+    var payload = { card_ids: cardIds };
+    if (kind === 'img') {
+      _downloadImageExport('/api/table/' + TABLE_ID + '/cards/download-images/', payload)
+        .catch(function(err) { showToast((err && err.message) || 'Image export failed', 'error'); });
+      return;
+    }
+    if (kind === 'docx') {
+      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-docx/', payload, 'cards.docx', 'Word download complete')
+        .catch(function(err) { showToast((err && err.message) || 'Word export failed', 'error'); });
+      return;
+    }
+    if (kind === 'xlsx') {
+      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-xlsx/', payload, 'cards.xlsx', 'Excel download complete')
+        .catch(function(err) { showToast((err && err.message) || 'Excel export failed', 'error'); });
+      return;
+    }
+    if (kind === 'pdf') {
+      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-pdf/', payload, 'cards.pdf', 'PDF download complete')
+        .catch(function(err) { showToast((err && err.message) || 'PDF export failed', 'error'); });
+    }
+  }
+
+  if (dlImgBtn) dlImgBtn.addEventListener('click', function() { runFinalizedDownload('img'); });
+  if (dlDocxBtn) dlDocxBtn.addEventListener('click', function() { runFinalizedDownload('docx'); });
+  if (dlXlsxBtn) dlXlsxBtn.addEventListener('click', function() { runFinalizedDownload('xlsx'); });
+  if (dlPdfBtn) dlPdfBtn.addEventListener('click', function() { runFinalizedDownload('pdf'); });
 
   // Move to Pool API (finalized  pool)
   function performMoveToPool(prIds) {

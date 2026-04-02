@@ -974,8 +974,8 @@ function requestListStep() {
       var ids = getSelectedRrIds();
       if (!ids.length) return;
       var ok = await showConfirm({
-        title: 'Send to Print?',
-        text: 'Send ' + ids.length + ' item(s) to Print List and move to Confirmed List?',
+        title: 'Send to Generate List?',
+        text: 'Send ' + ids.length + ' item(s) to Generate List and move to Confirmed List?',
         icon: 'fa-solid fa-print',
         confirmLabel: 'Send',
         hideWarning: true,

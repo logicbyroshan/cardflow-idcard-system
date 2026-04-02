@@ -4,11 +4,14 @@ Client Views — shared admin-template pages.
 Page views that render the same templates used by the admin panel
 but scoped to the current client's data and permissions.
 """
+import json
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Count, Q
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
+from django.utils.timezone import localtime
 
 from idcards.models import IDCard, IDCardTable
 from core.services import IDCardService
@@ -399,7 +402,13 @@ def client_print_cards(request, table_id):
     """
     Print Cards page for clients — same template as admin cardprint/print-cards.html.
     """
-    from cardprint.models import PrintRequest
+    from cardprint.models import PrintRequest, CardTemplate
+    from cardprint.views import (
+        _build_ordered_fields,
+        _filter_ordered_fields_by_names,
+        _get_selected_generate_field_names,
+        _promote_legacy_print_list,
+    )
 
     user = request.user
     client = _get_client_for_request(user)
@@ -412,84 +421,86 @@ def client_print_cards(request, table_id):
     if not ClientAccessService.can_access_table(user, table):
         return redirect(reverse('client:idcard_group'))
 
-    current_step = request.GET.get('step', 'print_list')
-    if current_step not in ('print_list', 'download'):
-        current_step = 'print_list'
+    _promote_legacy_print_list(table)
+
+    current_step = request.GET.get('step', 'generate_list')
+    if current_step not in ('generate_list', 'finalized'):
+        current_step = 'generate_list'
 
     # Step counts
     from django.db.models import Count as AggCount
     step_counts_raw = PrintRequest.objects.filter(table=table).aggregate(
-        pl=AggCount('id', filter=Q(status='print_list')),
-        dl=AggCount('id', filter=Q(status='downloaded')),
+        gl=AggCount('id', filter=Q(status='generate_list')),
+        fn=AggCount('id', filter=Q(status='finalized')),
     )
     step_counts = {
-        'print_list': step_counts_raw['pl'],
-        'download': step_counts_raw['dl'],
+        'generate_list': step_counts_raw['gl'],
+        'finalized': step_counts_raw['fn'],
     }
+    approved_count = IDCard.objects.filter(table=table, status='approved').count()
 
     INITIAL_LOAD_LIMIT = 100
 
-    print_items = []
-    print_total = 0
-    if current_step == 'print_list':
-        pr_qs = PrintRequest.objects.filter(
-            table=table, status='print_list',
-        ).select_related('card', 'requested_by').order_by('-created_at')
-        print_total = pr_qs.count()
-        pr_batch = pr_qs[:INITIAL_LOAD_LIMIT]
+    generate_items = []
+    finalized_items = []
+    generate_total = 0
+    finalized_total = 0
+
+    template_obj = CardTemplate.objects.filter(table=table).first()
+    selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
+
+    if current_step == 'generate_list':
+        base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
+        generate_total = base_qs.count()
+        pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
         for idx, pr in enumerate(pr_batch):
             card = pr.card
             fd = card.field_data or {}
             fd_upper = {k.upper(): v for k, v in fd.items()}
-            ordered_fields = []
-            for field in table.fields:
-                fname = field['name']
-                ftype = field.get('type', 'text')
-                fval = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
-                ordered_fields.append({'name': fname, 'type': ftype, 'value': fval})
+            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
+            ordered_fields = _filter_ordered_fields_by_names(ordered_fields, selected_generate_field_names)
             req_by = pr.requested_by
-            print_items.append({
+            generate_items.append({
                 'pr_id': pr.id,
                 'card_id': card.id,
                 'sr_no': idx + 1,
                 'status': card.status,
-                'get_status_display': card.get_status_display(),
+                'status_display': card.get_status_display(),
                 'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-                'requested_at': pr.created_at,
+                'moved_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
                 'ordered_fields': ordered_fields,
-                'updated_at': card.updated_at,
             })
 
-    download_items = []
-    download_total = 0
-    if current_step == 'download':
-        dl_qs = PrintRequest.objects.filter(
-            table=table, status='downloaded',
-        ).select_related('card', 'requested_by').order_by('-updated_at')
-        download_total = dl_qs.count()
-        dl_batch = dl_qs[:INITIAL_LOAD_LIMIT]
-        for idx, pr in enumerate(dl_batch):
+    if current_step == 'finalized':
+        base_qs = PrintRequest.objects.filter(table=table, status='finalized')
+        finalized_total = base_qs.count()
+        pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
+        for idx, pr in enumerate(pr_batch):
             card = pr.card
             fd = card.field_data or {}
             fd_upper = {k.upper(): v for k, v in fd.items()}
-            ordered_fields = []
-            for field in table.fields:
-                fname = field['name']
-                ftype = field.get('type', 'text')
-                fval = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
-                ordered_fields.append({'name': fname, 'type': ftype, 'value': fval})
+            ordered_fields = _build_ordered_fields(table, fd, fd_upper)
             req_by = pr.requested_by
-            download_items.append({
+            finalized_items.append({
                 'pr_id': pr.id,
                 'card_id': card.id,
                 'sr_no': idx + 1,
                 'status': card.status,
-                'get_status_display': card.get_status_display(),
+                'status_display': card.get_status_display(),
                 'requested_by_name': req_by.get_full_name() or req_by.username if req_by else 'System',
-                'downloaded_at': pr.updated_at,
+                'finalized_at': localtime(pr.updated_at).strftime('%d %b %Y %H:%M'),
                 'ordered_fields': ordered_fields,
-                'updated_at': card.updated_at,
             })
+
+    field_config = template_obj.field_config if template_obj else {}
+    front_pdf_url = template_obj.front_pdf.url if template_obj and template_obj.front_pdf else ''
+    back_pdf_url = template_obj.back_pdf.url if template_obj and template_obj.back_pdf else ''
+    template_data = {
+        'is_two_sided': template_obj.is_two_sided if template_obj else False,
+        'field_mappings': template_obj.field_mappings if template_obj else {'front': {}, 'back': {}},
+        'font_size': template_obj.font_size if template_obj else 8,
+        'font_family': template_obj.font_family if template_obj else 'Helvetica-Bold',
+    }
 
     context = {
         'active_page': 'idcard_group',
@@ -499,12 +510,24 @@ def client_print_cards(request, table_id):
         'client': table.group.client,
         'current_step': current_step,
         'step_counts': step_counts,
-        'print_items': print_items,
-        'print_total': print_total,
-        'print_has_more': print_total > INITIAL_LOAD_LIMIT,
-        'download_items': download_items,
-        'download_total': download_total,
-        'download_has_more': download_total > INITIAL_LOAD_LIMIT,
+        'approved_count': approved_count,
+        'generate_items': generate_items,
+        'finalized_items': finalized_items,
+        'generate_total': generate_total,
+        'generate_has_more': generate_total > len(generate_items),
+        'generate_display_fields': [
+            f for f in (table.fields or [])
+            if f.get('name') in set(selected_generate_field_names)
+        ],
+        'finalized_total': finalized_total,
+        'finalized_has_more': finalized_total > len(finalized_items),
+        'table_fields_json': json.dumps(table.fields if table.fields else []),
+        'field_config_json': json.dumps(field_config),
+        'has_template_front_pdf': bool(template_obj and template_obj.front_pdf),
+        'has_template_back_pdf': bool(template_obj and template_obj.back_pdf),
+        'template_data_json': json.dumps(template_data),
+        'front_pdf_url': front_pdf_url,
+        'back_pdf_url': back_pdf_url,
         'initial_load_limit': INITIAL_LOAD_LIMIT,
     }
     return render(request, 'cardprint/print-cards.html', context)

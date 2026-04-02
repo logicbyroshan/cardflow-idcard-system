@@ -448,6 +448,6 @@ class ReprintApiIntegrationTests(TestCase):
 			PrintRequest.objects.filter(
 				table=self.table,
 				card_id=self.card_a.id,
-				status='print_list',
+				status='generate_list',
 			).exists()
 		)

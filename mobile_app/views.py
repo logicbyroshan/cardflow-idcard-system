@@ -1739,7 +1739,7 @@ def reprint_table(request, table_id):
                 else:
                     result = PrintWorkflowService.create_requests(table, card_ids, user)
                     if not result.success:
-                        notice = {'message': result.message or 'Could not send selected items to print list.', 'type': 'error'}
+                        notice = {'message': result.message or 'Could not send selected items to generate list.', 'type': 'error'}
                     else:
                         moved_count = ReprintRequest.objects.filter(
                             id__in=eligible_rr_ids,

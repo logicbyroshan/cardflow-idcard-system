@@ -23,6 +23,8 @@ urlpatterns = [
     path('api/table/<int:table_id>/field-config/', views.api_field_config_save, name='api_field_config_save'),
     path('api/table/<int:table_id>/finalized-list/', views.api_print_finalized_list, name='api_print_finalized_list'),
     path('api/table/<int:table_id>/mark-pool/', views.api_print_mark_pool, name='api_print_mark_pool'),
+    path('api/table/<int:table_id>/retrieve-generate/', views.api_print_retrieve_generate, name='api_print_retrieve_generate'),
+    path('api/table/<int:table_id>/retrieve-finalized/', views.api_print_retrieve_finalized, name='api_print_retrieve_finalized'),
     path('api/table/<int:table_id>/pool-list/', views.api_print_pool_list, name='api_print_pool_list'),
 
     # ── Generate Card API endpoints ──
