@@ -4,7 +4,6 @@
   <!-- Notification Actions Bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <span class="notif-panel-kicker"><i class="fa-solid fa-bell"></i> Broadcast Center</span>
       <div class="notif-search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="notifSearch" placeholder="Search notifications..." oninput="debounceSearch()">
@@ -64,4 +63,8 @@
       <i class="fa-solid fa-arrow-down"></i> Load More
     </button>
   </div>
+
+  {% if is_super_admin %}
+  {% include 'partials/panel/tab-maintenance.html' %}
+  {% endif %}
 </div>

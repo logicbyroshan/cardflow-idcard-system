@@ -1042,6 +1042,54 @@ class SecurityApiRegressionTests(TestCase):
         self.assertIsNotNone(payload['card']['updated_at'])
 
 
+class CardHistoryApiTests(TestCase):
+    def setUp(self):
+        from core.models import ActivityLog
+
+        self.admin = _create_super_admin('card-history-admin@test.com', 'adminpass1')
+        self.client_user_a, self.client_a = _create_client_user('card-history-client-a@test.com', 'clientpass1')
+        self.client_user_b, self.client_b = _create_client_user('card-history-client-b@test.com', 'clientpass1')
+        _group, self.table_a = _create_table(self.client_a)
+        self.card_a = _create_card(self.table_a, field_data={'NAME': 'History Card', 'CLASS': '10'})
+
+        ActivityLog.objects.create(
+            user=self.admin,
+            action='card_status',
+            description='Card moved from Pending to Verified',
+            target_model='IDCard',
+            target_id=self.card_a.id,
+            target_name=f'Card #{self.card_a.id}',
+        )
+        ActivityLog.objects.create(
+            user=self.admin,
+            action='card_update',
+            description='Field "NAME" updated',
+            target_model='IDCard',
+            target_id=self.card_a.id,
+            target_name=f'Card #{self.card_a.id}',
+        )
+
+    def test_history_api_returns_card_events(self):
+        self.client.login(username='card-history-admin@test.com', password='adminpass1')
+
+        response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['card_id'], self.card_a.id)
+        self.assertGreaterEqual(len(payload['events']), 2)
+        self.assertIn('what', payload['events'][0])
+        self.assertIn('who', payload['events'][0])
+        self.assertIn('when', payload['events'][0])
+
+    def test_history_api_denies_outside_client_scope(self):
+        self.client.login(username='card-history-client-b@test.com', password='clientpass1')
+
+        response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
+        self.assertEqual(response.status_code, 403)
+
+
 class ReuploadDirectTaskFlowTests(TestCase):
     def setUp(self):
         self.admin = _create_super_admin('reupload-admin@test.com', 'adminpass1')

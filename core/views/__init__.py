@@ -95,6 +95,7 @@ from .idcard_api import (
     api_idcard_cards_json,
     api_idcard_create,
     api_idcard_get,
+    api_idcard_history,
     api_idcard_update,
     api_idcard_update_field,
     api_idcard_delete,

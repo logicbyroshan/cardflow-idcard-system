@@ -147,6 +147,24 @@ class StaffPermissionViewTests(TestCase):
         response = self.client.get('/panel/manage-staff/')
         self.assertIn(response.status_code, [302, 403])
 
+    def test_manage_staff_renders_all_rows_not_first_ten_only(self):
+        from staff.models import Staff
+
+        for idx in range(12):
+            u = User.objects.create_user(
+                username=f'admin{idx}@test.com',
+                email=f'admin{idx}@test.com',
+                password='pass1234',
+                role='admin_staff',
+            )
+            Staff.objects.create(user=u, staff_type='admin_staff')
+
+        self.client.login(username='sa@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-staff/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['staff_list']), 12)
+        self.assertEqual(response.context['page_obj'].paginator.count, 12)
+
 
 class AdminStaffPermissionServiceTests(TestCase):
     def test_assign_permissions_rejects_invalid_codename(self):

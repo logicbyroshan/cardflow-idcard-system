@@ -475,6 +475,8 @@ def api_operations_feed(request):
     from django.db.models import Q
     from django.utils import timezone
     from django.utils.timesince import timesince as django_timesince
+    from django.contrib.sessions.models import Session
+    from client.models import Client
     from core.models import ActivityLog, BackgroundTask, BackupTask
     from core.services.permission_service import PermissionService
 
@@ -504,10 +506,16 @@ def api_operations_feed(request):
     user_role = (request.GET.get('user_role', '') or '').strip()
     task_status = (request.GET.get('task_status', '') or '').strip()
     action = (request.GET.get('action', '') or '').strip()
+    client_id = _parse_int(request.GET.get('client_id', ''), 0, min_value=0)
 
+    include_client_logs = source in ('client_logs', 'client_log', 'client-history', 'client_history')
     include_background = source in ('all', 'tasks', 'task', 'background', 'background_tasks')
     include_backups = source in ('all', 'tasks', 'task', 'backups', 'backup')
     include_logs = source in ('all', 'logs', 'log', 'activity')
+    if include_client_logs:
+        include_background = False
+        include_backups = False
+        include_logs = True
 
     active_tasks = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
     pending_tasks = BackgroundTask.objects.filter(status='pending').count()
@@ -520,6 +528,29 @@ def api_operations_feed(request):
 
     action_display_map = dict(ActivityLog.ACTION_CHOICES)
     items = []
+    clients_payload = []
+
+    def _active_device_counts(user_ids):
+        """Count active browser/device sessions per user by fingerprint."""
+        ids = {str(uid) for uid in (user_ids or []) if uid}
+        if not ids:
+            return {}
+
+        devices_by_user = {}
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+
+            user_id_str = str(data.get('_auth_user_id') or '')
+            if user_id_str not in ids:
+                continue
+
+            fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
+            devices_by_user.setdefault(user_id_str, set()).add(fingerprint)
+
+        return {int(uid): len(fps) for uid, fps in devices_by_user.items()}
 
     if include_background:
         bg_qs = BackgroundTask.objects.select_related('user').order_by('-created_at')
@@ -609,13 +640,33 @@ def api_operations_feed(request):
             })
 
     if include_logs:
-        log_qs = ActivityLog.objects.select_related('user').order_by('-created_at')
-        if user_role:
-            log_qs = log_qs.filter(user__role=user_role)
-        if action:
-            log_qs = log_qs.filter(action=action)
+        if include_client_logs:
+            clients_qs = Client.objects.select_related('user').order_by('name')
+            clients_payload = [
+                {
+                    'id': client.id,
+                    'name': client.name,
+                    'status': client.status,
+                    'user_id': client.user_id,
+                    'user_active': bool(getattr(client.user, 'is_active', False)),
+                }
+                for client in clients_qs
+            ]
+
+        log_qs = ActivityLog.objects.select_related('user', 'user__client_profile').order_by('-created_at')
+
+        if include_client_logs:
+            log_qs = log_qs.filter(user__role='client', action__in=['login', 'logout'])
+            if client_id:
+                log_qs = log_qs.filter(user__client_profile__id=client_id)
+        else:
+            if user_role:
+                log_qs = log_qs.filter(user__role=user_role)
+            if action:
+                log_qs = log_qs.filter(action=action)
+
         if search:
-            log_qs = log_qs.filter(
+            base_search_q = (
                 Q(description__icontains=search)
                 | Q(target_name__icontains=search)
                 | Q(user__username__icontains=search)
@@ -623,8 +674,45 @@ def api_operations_feed(request):
                 | Q(user__last_name__icontains=search)
                 | Q(action__icontains=search)
             )
+            if include_client_logs:
+                base_search_q = base_search_q | Q(user__client_profile__name__icontains=search)
+            log_qs = log_qs.filter(base_search_q)
 
-        for log in log_qs[:fetch_cap]:
+        log_rows = list(log_qs[:fetch_cap])
+        device_counts = {}
+        if include_client_logs:
+            device_counts = _active_device_counts([log.user_id for log in log_rows if getattr(log, 'user_id', None)])
+
+        for log in log_rows:
+            if include_client_logs:
+                client_profile = getattr(log.user, 'client_profile', None) if log.user else None
+                client_name = client_profile.name if client_profile else (log.user.get_full_name() or log.user.username if log.user else 'Client')
+                active_devices = int(device_counts.get(log.user_id, 0) or 0)
+                items.append({
+                    'source_type': 'client_activity_log',
+                    'source_label': 'Client History',
+                    'event_title': action_display_map.get(log.action, log.action),
+                    'event_subtitle': client_name,
+                    'status': '',
+                    'status_display': '',
+                    'action': log.action,
+                    'action_display': action_display_map.get(log.action, log.action),
+                    'description': log.description or '',
+                    'target_name': '',
+                    'user': client_name,
+                    'ip_address': log.ip_address or '',
+                    'progress_text': f'Active devices: {active_devices}',
+                    'error': '',
+                    'icon_class': log.icon_class,
+                    'icon_color': log.icon_color,
+                    'client_id': client_profile.id if client_profile else None,
+                    'active_devices': active_devices,
+                    'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
+                    'time_ago': django_timesince(log.created_at, now) + ' ago',
+                    'created_at_dt': log.created_at,
+                })
+                continue
+
             user_name = log.user.get_full_name() or log.user.username if log.user else 'System'
             items.append({
                 'source_type': 'activity_log',
@@ -653,7 +741,8 @@ def api_operations_feed(request):
     source_counts = {
         'background_task': sum(1 for row in items if row.get('source_type') == 'background_task'),
         'backup_task': sum(1 for row in items if row.get('source_type') == 'backup_task'),
-        'activity_log': sum(1 for row in items if row.get('source_type') == 'activity_log'),
+        'activity_log': sum(1 for row in items if row.get('source_type') in ('activity_log', 'client_activity_log')),
+        'client_activity_log': sum(1 for row in items if row.get('source_type') == 'client_activity_log'),
     }
     paged_items = items[offset:offset + limit]
 
@@ -671,6 +760,7 @@ def api_operations_feed(request):
             'completed_24h': completed_24h,
             'failed_24h': failed_24h,
         },
+        'clients': clients_payload,
     })
 
 

@@ -175,6 +175,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/filter-options/', views.api_idcard_filter_options, name='api_idcard_filter_options'),
     path('api/table/<int:table_id>/card/create/', views.api_idcard_create, name='api_idcard_create'),
     path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
+    path('api/card/<int:card_id>/history/', views.api_idcard_history, name='api_idcard_history'),
     path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),
     path('api/card/<int:card_id>/update-field/', views.api_idcard_update_field, name='api_idcard_update_field'),
     path('api/image/preview-convert/', views.api_image_preview_convert, name='api_image_preview_convert'),

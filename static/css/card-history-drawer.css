@@ -1,0 +1,149 @@
+.card-history-col-head,
+.card-history-col-cell {
+  width: 46px;
+  min-width: 46px;
+  text-align: center;
+  position: sticky;
+  right: 0;
+  z-index: 14;
+  background: #ffffff;
+}
+
+.card-history-col-head {
+  z-index: 24;
+  font-weight: 600;
+}
+
+.card-history-trigger {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.card-history-trigger:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.card-history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.36);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  z-index: 80;
+}
+
+.card-history-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.card-history-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(420px, 94vw);
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -14px 0 36px rgba(15, 23, 42, 0.22);
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-history-drawer.open {
+  transform: translateX(0);
+}
+
+.card-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.card-history-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.card-history-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.card-history-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.card-history-body {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+  background: #f8fafc;
+}
+
+.card-history-loading,
+.card-history-empty,
+.card-history-error {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 14px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.card-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-history-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 11px;
+}
+
+.card-history-when {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.card-history-what {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.card-history-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #334155;
+}

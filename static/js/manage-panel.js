@@ -83,6 +83,9 @@ function switchTab(tabName) {
   const tabPane = document.getElementById(`tab-${tabName}`);
   if (tabBtn) tabBtn.classList.add('active');
   if (tabPane) tabPane.classList.add('active');
+  if (tabName === 'notifications' && typeof loadMaintenanceStatus === 'function') {
+    loadMaintenanceStatus();
+  }
   _saveManagePanelTab(tabName);
 }
 
@@ -673,29 +676,67 @@ let operationsTotal = 0;
 let opsSearchTimer = null;
 let opsAutoRefreshTimer = null;
 
+function populateOpsClientFilter(clients) {
+  const select = document.getElementById('opsClientFilter');
+  if (!select) return;
+
+  const selectedValue = String(select.value || '');
+  const rows = Array.isArray(clients) ? clients : [];
+  let optionsHtml = '<option value="">All Clients</option>';
+
+  optionsHtml += rows.map((client) => {
+    const id = String(client.id || '');
+    if (!id) return '';
+    const suffix = client.status ? ` (${client.status})` : '';
+    return `<option value="${id}">${escHtml(client.name || 'Client')}${escHtml(suffix)}</option>`;
+  }).join('');
+
+  select.innerHTML = optionsHtml;
+  if (selectedValue && rows.some((c) => String(c.id) === selectedValue)) {
+    select.value = selectedValue;
+  }
+}
+
 function handleOpsSourceChange() {
   const source = document.getElementById('opsSourceFilter')?.value || 'all';
   const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
   const actionFilter = document.getElementById('opsActionFilter');
+  const userRoleFilter = document.getElementById('opsUserTypeFilter');
+  const clientFilter = document.getElementById('opsClientFilter');
+  const clientMode = source === 'client_logs';
 
   if (taskStatusFilter) {
     const taskOnly = source === 'tasks' || source === 'backups';
-    taskStatusFilter.disabled = source === 'logs';
-    taskStatusFilter.style.opacity = source === 'logs' ? '0.65' : '1';
+    taskStatusFilter.disabled = source === 'logs' || clientMode;
+    taskStatusFilter.style.opacity = source === 'logs' || clientMode ? '0.65' : '1';
     if (!taskOnly) taskStatusFilter.value = '';
   }
 
   if (actionFilter) {
-    actionFilter.disabled = source === 'tasks' || source === 'backups';
-    actionFilter.style.opacity = source === 'tasks' || source === 'backups' ? '0.65' : '1';
-    if (source !== 'logs') actionFilter.value = '';
+    const disableAction = source === 'tasks' || source === 'backups' || clientMode;
+    actionFilter.disabled = disableAction;
+    actionFilter.style.opacity = disableAction ? '0.65' : '1';
+    if (source !== 'logs' && !clientMode) actionFilter.value = '';
+    if (clientMode) actionFilter.value = '';
+  }
+
+  if (userRoleFilter) {
+    userRoleFilter.disabled = clientMode;
+    userRoleFilter.style.opacity = clientMode ? '0.65' : '1';
+    if (clientMode) userRoleFilter.value = '';
+  }
+
+  if (clientFilter) {
+    clientFilter.disabled = !clientMode;
+    clientFilter.style.opacity = clientMode ? '1' : '0.65';
+    if (!clientMode) clientFilter.value = '';
   }
 
   loadOperationsFeed();
 }
 
 function resetOperationsFilters() {
-  const ids = ['opsSearch', 'opsSourceFilter', 'opsUserTypeFilter', 'opsTaskStatusFilter', 'opsActionFilter'];
+  const ids = ['opsSearch', 'opsSourceFilter', 'opsClientFilter', 'opsUserTypeFilter', 'opsTaskStatusFilter', 'opsActionFilter'];
   ids.forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -736,11 +777,15 @@ function _opsSourceBadge(sourceType, sourceLabel) {
     ? 'ops-source-badge task'
     : sourceType === 'backup_task'
       ? 'ops-source-badge backup'
-      : 'ops-source-badge log';
+      : sourceType === 'client_activity_log'
+        ? 'ops-source-badge client'
+        : 'ops-source-badge log';
   const icon = sourceType === 'background_task'
     ? 'fa-gears'
     : sourceType === 'backup_task'
       ? 'fa-database'
+      : sourceType === 'client_activity_log'
+        ? 'fa-building-user'
       : 'fa-clock-rotate-left';
   return `<span class="${cls}"><i class="fa-solid ${icon}"></i> ${escHtml(label)}</span>`;
 }
@@ -801,19 +846,32 @@ async function loadOperationsFeed() {
   try {
     const search = document.getElementById('opsSearch')?.value || '';
     const source = document.getElementById('opsSourceFilter')?.value || 'all';
-    const userRole = document.getElementById('opsUserTypeFilter')?.value || '';
-    const taskStatus = document.getElementById('opsTaskStatusFilter')?.value || '';
-    const action = document.getElementById('opsActionFilter')?.value || '';
+    const clientMode = source === 'client_logs';
+    const clientId = document.getElementById('opsClientFilter')?.value || '';
+    const userRole = clientMode ? '' : (document.getElementById('opsUserTypeFilter')?.value || '');
+    const taskStatus = clientMode ? '' : (document.getElementById('opsTaskStatusFilter')?.value || '');
+    const action = clientMode ? '' : (document.getElementById('opsActionFilter')?.value || '');
 
     const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
     const actionFilter = document.getElementById('opsActionFilter');
+    const userRoleFilter = document.getElementById('opsUserTypeFilter');
+    const clientFilter = document.getElementById('opsClientFilter');
     if (taskStatusFilter) {
-      taskStatusFilter.disabled = source === 'logs';
-      taskStatusFilter.style.opacity = source === 'logs' ? '0.65' : '1';
+      taskStatusFilter.disabled = source === 'logs' || clientMode;
+      taskStatusFilter.style.opacity = source === 'logs' || clientMode ? '0.65' : '1';
     }
     if (actionFilter) {
-      actionFilter.disabled = source === 'tasks' || source === 'backups';
-      actionFilter.style.opacity = source === 'tasks' || source === 'backups' ? '0.65' : '1';
+      const disableAction = source === 'tasks' || source === 'backups' || clientMode;
+      actionFilter.disabled = disableAction;
+      actionFilter.style.opacity = disableAction ? '0.65' : '1';
+    }
+    if (userRoleFilter) {
+      userRoleFilter.disabled = clientMode;
+      userRoleFilter.style.opacity = clientMode ? '0.65' : '1';
+    }
+    if (clientFilter) {
+      clientFilter.disabled = !clientMode;
+      clientFilter.style.opacity = clientMode ? '1' : '0.65';
     }
 
     let url = `/api/operations-feed/?limit=${OPS_LIMIT}&offset=0&source=${encodeURIComponent(source)}`;
@@ -821,6 +879,7 @@ async function loadOperationsFeed() {
     if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
     if (taskStatus) url += `&task_status=${encodeURIComponent(taskStatus)}`;
     if (action) url += `&action=${encodeURIComponent(action)}`;
+    if (clientMode && clientId) url += `&client_id=${encodeURIComponent(clientId)}`;
 
     const res = await fetch(url);
     if (!res.ok) {
@@ -832,6 +891,13 @@ async function loadOperationsFeed() {
 
     operationsFeed = data.items || [];
     operationsTotal = data.total || operationsFeed.length;
+    if (Array.isArray(data.clients)) {
+      populateOpsClientFilter(data.clients);
+      if (clientMode && clientId) {
+        const clientEl = document.getElementById('opsClientFilter');
+        if (clientEl) clientEl.value = clientId;
+      }
+    }
 
     const stats = data.stats || {};
     const sourceCounts = data.source_counts || {};

@@ -52,7 +52,6 @@ def manage_staff(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
     
-    page_number = request.GET.get('page', 1)
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
@@ -74,8 +73,12 @@ def manage_staff(request):
     elif status_filter == 'inactive':
         staff_qs = staff_qs.filter(user__is_active=False)
     
-    paginator = Paginator(staff_qs, per_page)
-    page_obj = paginator.get_page(page_number)
+    # This page already uses client-side pagination/search over rendered rows.
+    # Keep server pagination as a single page with the full filtered queryset
+    # to avoid "10 of 10" mismatches when more rows exist.
+    full_page_size = max(staff_qs.count(), 1)
+    paginator = Paginator(staff_qs, full_page_size)
+    page_obj = paginator.get_page(1)
     
     context = {
         'active_page': 'manage_staff',
@@ -111,7 +114,6 @@ def manage_clients(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
     
-    page_number = request.GET.get('page', 1)
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
@@ -128,8 +130,12 @@ def manage_clients(request):
     if status_filter and status_filter in ('active', 'inactive', 'suspended'):
         clients_qs = clients_qs.filter(status=status_filter)
     
-    paginator = Paginator(clients_qs, per_page)
-    page_obj = paginator.get_page(page_number)
+    # This page already uses client-side pagination/search over rendered rows.
+    # Keep server pagination as a single page with the full filtered queryset
+    # to avoid "10 of 10" mismatches when more rows exist.
+    full_page_size = max(clients_qs.count(), 1)
+    paginator = Paginator(clients_qs, full_page_size)
+    page_obj = paginator.get_page(1)
     
     context = {
         'active_page': 'manage_clients',

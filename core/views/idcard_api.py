@@ -44,6 +44,7 @@ from .idcard_card_api import (
     api_idcard_filter_options,
     api_idcard_create,
     api_idcard_get,
+    api_idcard_history,
     api_idcard_update,
     api_idcard_delete,
     api_idcard_update_field,

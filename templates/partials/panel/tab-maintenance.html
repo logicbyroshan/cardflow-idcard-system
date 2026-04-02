@@ -1,16 +1,15 @@
-<!-- === MAINTENANCE TAB === -->
-<div class="panel-tab-content maintenance-panel-theme" id="tab-maintenance">
+<!-- === MAINTENANCE SECTION (embedded in Notifications) === -->
+<div class="panel-inline-maintenance maintenance-panel-theme" id="notificationMaintenanceSection">
 
   <!-- Header bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <span class="maintenance-panel-kicker"><i class="fa-solid fa-screwdriver-wrench"></i> Uptime Control</span>
       <span class="panel-title">
         <i class="fa-solid fa-gear"></i>
         System Maintenance
       </span>
-      <span id="mtStatusBadge" class="email-status-badge" style="background: rgba(34,197,94,.12); color: #16a34a;">
-        <i class="fa-solid fa-circle-check"></i> Inactive
+      <span id="mtStatusBadge" class="maintenance-status-text">
+        Status: Inactive
       </span>
     </div>
     <div class="notif-actions-right">
@@ -137,9 +136,8 @@
     var disableBtn = document.getElementById('mtDisableBtn');
 
     if (status.enabled) {
-      badge.style.background = 'rgba(239,68,68,.12)';
-      badge.style.color = '#dc2626';
-      badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Active';
+      badge.textContent = 'Status: Active';
+      badge.classList.add('is-active');
       var msg = 'Maintenance mode is active';
       if (status.end_time) {
         var end = new Date(status.end_time);
@@ -149,9 +147,8 @@
       enableBtn.style.display = 'none';
       disableBtn.style.display = '';
     } else {
-      badge.style.background = 'rgba(34,197,94,.12)';
-      badge.style.color = '#16a34a';
-      badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inactive';
+      badge.textContent = 'Status: Inactive';
+      badge.classList.remove('is-active');
       label.textContent = 'System is running normally';
       enableBtn.style.display = '';
       disableBtn.style.display = 'none';
@@ -201,11 +198,11 @@
   }
   window.loadMaintenanceStatus = loadMaintenanceStatus;
 
-  // Auto-load when tab is opened
+  // Load maintenance status after page is ready.
   document.addEventListener('DOMContentLoaded', function() {
-    var tab = document.querySelector('[data-tab="maintenance"]');
-    if (tab) {
-      tab.addEventListener('click', loadMaintenanceStatus);
+    var section = document.getElementById('notificationMaintenanceSection');
+    if (section) {
+      loadMaintenanceStatus();
     }
   });
 })();

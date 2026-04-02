@@ -466,6 +466,14 @@ class WorkflowService:
         # plain field edits do NOT push a card to the top of the list.
         update_kwargs['status_changed_at'] = timezone.now()
 
+        card_status_pairs = list(
+            IDCard.objects.filter(
+                table=table,
+                id__in=eligible_ids,
+                status__in=valid_from,
+            ).values_list('id', 'status')
+        )
+
         # Re-check status in WHERE clause to handle concurrent modifications
         # safely (a card whose status changed since step 3 will simply not match)
         with transaction.atomic():
@@ -483,7 +491,7 @@ class WorkflowService:
         )
 
         # ── 7. Activity log ─────────────────────────────────────────
-        cls._log_bulk_transition(table, updated_count, target_status, user, request)
+        cls._log_bulk_transition(table, card_status_pairs, target_status, user, request)
 
         # ── 8. Build response ───────────────────────────────────────
         total_skipped = len(skipped_mandatory_ids) + len(skipped_image_ids)
@@ -522,12 +530,24 @@ class WorkflowService:
                 client_name = card.table.group.client.name
             except Exception:
                 pass
-            ActivityService.log_card_status(request, new_status, 1, client_name)
+            status_labels = dict(IDCard.STATUS_CHOICES)
+            old_label = status_labels.get(_old_status, str(_old_status).replace('_', ' ').title())
+            new_label = status_labels.get(new_status, str(new_status).replace('_', ' ').title())
+            client_suffix = f' for {client_name}' if client_name else ''
+            ActivityService.log(
+                'card_status',
+                f'Card moved from {old_label} to {new_label}{client_suffix}',
+                user=_user,
+                request=request,
+                target_model='IDCard',
+                target_id=card.id,
+                target_name=f'Card #{card.id}',
+            )
         except Exception:
             logger.exception('WorkflowService: failed to log transition')
 
     @staticmethod
-    def _log_bulk_transition(table, count, new_status, user, request):
+    def _log_bulk_transition(table, card_status_pairs, new_status, user, request):
         """Log a bulk transition."""
         try:
             from core.services.activity_service import ActivityService
@@ -536,7 +556,24 @@ class WorkflowService:
                 client_name = table.group.client.name
             except Exception:
                 pass
-            ActivityService.log_card_status(request, new_status, count, client_name)
+            if not card_status_pairs:
+                return
+
+            status_labels = dict(IDCard.STATUS_CHOICES)
+            new_label = status_labels.get(new_status, str(new_status).replace('_', ' ').title())
+            client_suffix = f' for {client_name}' if client_name else ''
+
+            for card_id, old_status in card_status_pairs:
+                old_label = status_labels.get(old_status, str(old_status).replace('_', ' ').title())
+                ActivityService.log(
+                    'card_status',
+                    f'Card moved from {old_label} to {new_label}{client_suffix}',
+                    user=user,
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
         except Exception:
             logger.exception('WorkflowService: failed to log bulk transition')
 

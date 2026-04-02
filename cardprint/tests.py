@@ -147,6 +147,25 @@ class PrintWorkflowServiceTests(TestCase):
 		pr_finalized.refresh_from_db()
 		self.assertEqual(pr_finalized.status, 'pool')
 
+	def test_create_requests_logs_per_card_activity(self):
+		from cardprint.services import PrintWorkflowService
+		from core.models import ActivityLog
+
+		result = PrintWorkflowService.create_requests(
+			self.table,
+			[self.card_2.id],
+			self.user,
+		)
+		self.assertTrue(result.success)
+
+		self.assertTrue(
+			ActivityLog.objects.filter(
+				action='card_status',
+				target_model='IDCard',
+				target_id=self.card_2.id,
+			).exists()
+		)
+
 
 class CardPrintApiIntegrationTests(TestCase):
 	def setUp(self):

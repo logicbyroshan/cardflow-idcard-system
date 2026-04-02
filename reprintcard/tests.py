@@ -199,6 +199,26 @@ class ReprintWorkflowServiceTests(TestCase):
 		info = ReprintWorkflowService.debug_reprint(987654)
 		self.assertIn('error', info)
 
+	def test_bulk_transition_logs_per_card_activity_entries(self):
+		from reprintcard.services import ReprintWorkflowService
+		from core.models import ActivityLog
+
+		result = ReprintWorkflowService.bulk_transition(
+			table=self.table,
+			rr_ids=[self.rr_requested.id],
+			target_status='confirmed',
+			user=self.owner,
+		)
+		self.assertTrue(result.success)
+
+		self.assertTrue(
+			ActivityLog.objects.filter(
+				action='reprint_status',
+				target_model='IDCard',
+				target_id=self.rr_requested.card_id,
+			).exists()
+		)
+
 
 class ReprintApiIntegrationTests(TestCase):
 	def setUp(self):

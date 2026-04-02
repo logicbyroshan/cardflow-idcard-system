@@ -23,6 +23,7 @@ from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
+from core.services.activity_service import ActivityService
 from core.views.base import get_user_role, require_any_admin
 from core.views.idcard_helpers import _get_class_section_field_names, _build_class_filter_q
 
@@ -689,7 +690,7 @@ def api_reprint_reject(request, table_id):
 
     rr_ids = body.get('rr_ids', [])
 
-    result = ReprintWorkflowService.reject_requests(table=table, rr_ids=rr_ids)
+    result = ReprintWorkflowService.reject_requests(table=table, rr_ids=rr_ids, user=request.user)
 
     if result.success:
         return JsonResponse({
@@ -941,6 +942,17 @@ def api_reprint_send_to_print(request, table_id):
         status='requested',
         card__status='download',
     ).update(status='confirmed')
+
+    if moved_count:
+        for card_id in card_ids:
+            ActivityService.log(
+                'reprint_status',
+                'Reprint sent to print list and moved to confirmed',
+                user=request.user,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name=f'Card #{card_id}',
+            )
 
     return JsonResponse({
         'status': 'ok',

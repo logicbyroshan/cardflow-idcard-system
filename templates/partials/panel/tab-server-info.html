@@ -22,9 +22,8 @@
   </div>
 
   <div class="server-section-label server-section-label-infra">
-    <span class="server-section-kicker">Infrastructure</span>
-    <h4><i class="fa-solid fa-microchip"></i> Live Server Metrics</h4>
-    <p>Real-time disk, memory, CPU, host and database snapshot.</p>
+    <h4><i class="fa-solid fa-microchip"></i> Live Server &amp; Platform Metrics</h4>
+    <p>Real-time disk, CPU, memory, host, database, and core application health in one section.</p>
   </div>
 
   <div class="server-info-overview" id="serverInfoOverview">
@@ -77,49 +76,30 @@
           <div class="system-row"><span class="system-label">Status</span><span class="system-value" id="serverDbStatus">-</span></div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div class="server-section-label server-section-label-app">
-    <span class="server-section-kicker">Application</span>
-    <h4><i class="fa-solid fa-layer-group"></i> Platform Overview</h4>
-    <p>Brand-level app health, totals, and communication stack in one place.</p>
-  </div>
-
-  <div class="server-app-grid">
-    <div class="system-card server-card server-card-app" style="margin-top:0;">
-      <div class="system-card-header"><i class="fa-solid fa-circle-info"></i> Application</div>
-      <div class="system-card-body">
-        <div class="system-row"><span class="system-label">Version</span><span class="system-value system-value-strong">{{ APP_VERSION|default:"v1.3.0" }}</span></div>
-        <div class="system-row"><span class="system-label">Environment</span><span class="system-value system-pill {% if environment == 'Production' %}system-pill-ok{% else %}system-pill-warn{% endif %}">{{ environment|default:"Production" }}</span></div>
-        <div class="system-row"><span class="system-label">Django</span><span class="system-value">{{ django_version|default:"5.x" }}</span></div>
-        <div class="system-row"><span class="system-label">Debug Mode</span><span class="system-value system-pill {% if debug_mode %}system-pill-warn{% else %}system-pill-ok{% endif %}">{% if debug_mode %}On{% else %}Off{% endif %}</span></div>
+      <div class="system-card server-card server-card-app">
+        <div class="system-card-header"><i class="fa-solid fa-circle-info"></i> Application</div>
+        <div class="system-card-body">
+          <div class="system-row"><span class="system-label">Version</span><span class="system-value system-value-strong">{{ APP_VERSION|default:"v1.3.0" }}</span></div>
+          <div class="system-row"><span class="system-label">Environment</span><span class="system-value system-pill {% if environment == 'Production' %}system-pill-ok{% else %}system-pill-warn{% endif %}">{{ environment|default:"Production" }}</span></div>
+          <div class="system-row"><span class="system-label">Django</span><span class="system-value">{{ django_version|default:"5.x" }}</span></div>
+          <div class="system-row"><span class="system-label">Debug Mode</span><span class="system-value system-pill {% if debug_mode %}system-pill-warn{% else %}system-pill-ok{% endif %}">{% if debug_mode %}On{% else %}Off{% endif %}</span></div>
+        </div>
       </div>
-    </div>
 
-    <div class="system-card server-card server-card-totals" style="margin-top:0;">
-      <div class="system-card-header"><i class="fa-solid fa-users"></i> Platform Totals</div>
-      <div class="system-card-body">
-        <div class="system-row"><span class="system-label">Total Users</span><span class="system-value server-kpi-value">{{ total_users|default:0 }}</span></div>
-        <div class="system-row"><span class="system-label">Total Clients</span><span class="system-value server-kpi-value">{{ total_clients|default:0 }}</span></div>
-        <div class="system-row"><span class="system-label">Total Cards</span><span class="system-value server-kpi-value">{{ total_cards|default:0 }}</span></div>
-        <div class="system-row"><span class="system-label">Notifications</span><span class="system-value server-kpi-value">{{ total_notifications|default:0 }}</span></div>
-      </div>
-    </div>
-
-    <div class="system-card server-card server-card-team" style="margin-top:0;">
-      <div class="system-card-header"><i class="fa-solid fa-envelope"></i> Team &amp; Email</div>
-      <div class="system-card-body">
-        <div class="system-row"><span class="system-label">Admin Staff</span><span class="system-value server-kpi-value">{{ total_admin_staff|default:0 }}</span></div>
-        <div class="system-row"><span class="system-label">Client Staff</span><span class="system-value server-kpi-value">{{ total_client_staff|default:0 }}</span></div>
-        <div class="system-row"><span class="system-label">Email Backend</span><span class="system-value">{{ email_backend|default:"SMTP" }}</span></div>
-        <div class="system-row"><span class="system-label">From Address</span><span class="system-value system-value-small">{{ email_from|default:" - " }}</span></div>
+      <div class="system-card server-card server-card-team">
+        <div class="system-card-header"><i class="fa-solid fa-envelope"></i> Team &amp; Email</div>
+        <div class="system-card-body">
+          <div class="system-row"><span class="system-label">Admin Staff</span><span class="system-value server-kpi-value">{{ total_admin_staff|default:0 }}</span></div>
+          <div class="system-row"><span class="system-label">Client Staff</span><span class="system-value server-kpi-value">{{ total_client_staff|default:0 }}</span></div>
+          <div class="system-row"><span class="system-label">Email Backend</span><span class="system-value">{{ email_backend|default:"SMTP" }}</span></div>
+          <div class="system-row"><span class="system-label">From Address</span><span class="system-value system-value-small">{{ email_from|default:" - " }}</span></div>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="server-section-label server-section-label-storage">
-    <span class="server-section-kicker">Storage Intelligence</span>
     <h4><i class="fa-solid fa-folder-tree"></i> Breakdown &amp; Distribution</h4>
     <p>Understand where usage is growing across project folders and other system areas.</p>
   </div>

@@ -83,6 +83,34 @@ class ClientAccessControlTests(TestCase):
         self.assertIn(response.status_code, [302, 403])
 
 
+class ManageClientsPaginationTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+
+        self.super_admin = User.objects.create_user(
+            username='sa-manage-clients@test.com',
+            email='sa-manage-clients@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+        for idx in range(12):
+            owner = User.objects.create_user(
+                username=f'client-owner-{idx}@test.com',
+                email=f'client-owner-{idx}@test.com',
+                password='pass1234',
+                role='client',
+            )
+            Client.objects.create(user=owner, name=f'Client {idx}')
+
+    def test_manage_clients_renders_all_rows_not_first_ten_only(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['clients']), 12)
+        self.assertEqual(response.context['page_obj'].paginator.count, 12)
+
+
 class ClientAccessServiceTests(TestCase):
     """Tests for ClientAccessService."""
 

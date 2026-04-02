@@ -265,6 +265,53 @@ class WorkflowServiceTests(TestCase):
 		self.card_good_pending.refresh_from_db()
 		self.assertEqual(self.card_good_pending.status, 'verified')
 
+	def test_transition_logs_per_card_activity_entry(self):
+		from idcards.services_workflow import WorkflowService
+		from core.models import ActivityLog
+
+		result = WorkflowService.transition(
+			self.card_good_pending,
+			'verified',
+			user=self.client_user,
+		)
+		self.assertTrue(result.success)
+
+		self.assertTrue(
+			ActivityLog.objects.filter(
+				action='card_status',
+				target_model='IDCard',
+				target_id=self.card_good_pending.id,
+			).exists()
+		)
+
+	def test_bulk_transition_logs_each_card_activity_entry(self):
+		from idcards.models import IDCard
+		from idcards.services_workflow import WorkflowService
+		from core.models import ActivityLog
+
+		second_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'Name': 'Second', 'Photo': 'adarshimg/second.jpg', 'Class': '10'},
+			status='pending',
+		)
+
+		result = WorkflowService.bulk_transition(
+			table=self.table,
+			card_ids=[self.card_good_pending.id, second_card.id],
+			target_status='verified',
+			user=self.client_user,
+		)
+		self.assertTrue(result.success)
+
+		logged_ids = set(
+			ActivityLog.objects.filter(
+				action='card_status',
+				target_model='IDCard',
+			).values_list('target_id', flat=True)
+		)
+		self.assertIn(self.card_good_pending.id, logged_ids)
+		self.assertIn(second_card.id, logged_ids)
+
 	def test_bulk_transition_normalizes_invalid_card_ids(self):
 		from idcards.services_workflow import WorkflowService
 

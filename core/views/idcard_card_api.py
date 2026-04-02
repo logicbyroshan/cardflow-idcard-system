@@ -3,7 +3,7 @@ ID Card Card API — card CRUD, status changes, search, and filters.
 
 Contains:
 - api_idcard_list, api_idcard_cards_json, api_idcard_all_ids, api_idcard_filter_options
-- api_idcard_create, api_idcard_get, api_idcard_update, api_idcard_delete
+- api_idcard_create, api_idcard_get, api_idcard_history, api_idcard_update, api_idcard_delete
 - api_idcard_update_field, api_idcard_change_status
 - api_idcard_bulk_status, api_idcard_bulk_delete
 - api_generate_delete_code, api_generate_upgrade_code, api_upgrade_all_classes
@@ -813,6 +813,21 @@ def api_idcard_create(request, table_id):
         )
 
         if result.success:
+            try:
+                created_card = (result.data or {}).get('card') or {}
+                created_card_id = created_card.get('id')
+                if created_card_id:
+                    ActivityService.log(
+                        'card_create',
+                        'ID card created',
+                        user=request.user if request.user.is_authenticated else None,
+                        request=request,
+                        target_model='IDCard',
+                        target_id=created_card_id,
+                        target_name=f'Card #{created_card_id}',
+                    )
+            except Exception:
+                pass
             return JsonResponse({
                 'success': True,
                 'message': result.message,
@@ -852,6 +867,90 @@ def api_idcard_get(request, card_id):
             card_payload['deleted_at'] = None
         return JsonResponse({'success': True, 'card': card_payload})
     return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+
+@require_http_methods(["GET"])
+@api_require_any_authenticated
+def api_idcard_history(request, card_id):
+    """Return per-card timeline entries for the action-list history drawer."""
+    from django.utils.timezone import localtime
+    from core.models import ActivityLog
+
+    card, err = _check_client_scope_by_card(request.user, card_id)
+    if err:
+        return err
+    if not _is_card_in_client_staff_scope(request.user, card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    history_qs = (
+        ActivityLog.objects
+        .filter(target_model='IDCard', target_id=card.id)
+        .select_related('user')
+        .order_by('-created_at')[:80]
+    )
+
+    is_client_viewer = PermissionService.is_client_role(request.user)
+    role_map = {}
+    if is_client_viewer:
+        usernames = {
+            entry.user.username
+            for entry in history_qs
+            if entry.user and entry.user.username
+        }
+        if usernames:
+            from core.models import User as _User
+            role_map = {
+                username: role
+                for username, role in _User.objects.filter(username__in=usernames).values_list('username', 'role')
+            }
+
+    events = []
+    for entry in history_qs:
+        actor = entry.user
+        actor_name = ''
+        if actor:
+            actor_name = actor.get_full_name() or actor.username
+        else:
+            actor_name = 'System'
+
+        if is_client_viewer:
+            actor_role = role_map.get(getattr(actor, 'username', ''), '') if actor else ''
+            if actor and actor_role not in ('client', 'client_staff'):
+                continue
+            actor_name = _client_modifier_display_name(card.table)
+
+        when_dt = localtime(entry.created_at)
+        events.append({
+            'id': entry.id,
+            'action': entry.get_action_display(),
+            'what': entry.description,
+            'who': actor_name,
+            'when': when_dt.strftime('%d-%b-%Y %H:%M'),
+            'when_iso': entry.created_at.isoformat(),
+        })
+
+    if not events:
+        snapshot_dt = card.status_changed_at or card.updated_at or card.created_at
+        snapshot_when = localtime(snapshot_dt) if snapshot_dt else None
+        fallback_actor = (card.modified_by or '').strip() or 'System'
+        if is_client_viewer and fallback_actor not in ('System',):
+            fallback_actor = _client_modifier_display_name(card.table)
+        events.append({
+            'id': f'snapshot-{card.id}',
+            'action': 'Status Snapshot',
+            'what': f'Current status: {card.get_status_display()}',
+            'who': fallback_actor,
+            'when': snapshot_when.strftime('%d-%b-%Y %H:%M') if snapshot_when else '',
+            'when_iso': snapshot_dt.isoformat() if snapshot_dt else '',
+        })
+
+    return JsonResponse({
+        'success': True,
+        'card_id': card.id,
+        'card_status': card.status,
+        'card_status_display': card.get_status_display(),
+        'events': events,
+    })
 
 
 @require_http_methods(["POST", "PUT"])
@@ -897,6 +996,18 @@ def api_idcard_update(request, card_id):
 
         if result.success:
             card_data = result.data['card']
+            try:
+                ActivityService.log(
+                    'card_update',
+                    'ID card updated',
+                    user=request.user if request.user.is_authenticated else None,
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
+            except Exception:
+                pass
             response_card = {
                 'id': card_data['id'],
                 'field_data': card_data['field_data'],
@@ -995,6 +1106,19 @@ def api_idcard_update_field(request, card_id):
                     invalidate_filter_options_cache(_card.table_id)
                 elif section_field_name and normalized_field == str(section_field_name).strip().lower():
                     invalidate_filter_options_cache(_card.table_id)
+            except Exception:
+                pass
+
+            try:
+                ActivityService.log(
+                    'card_update',
+                    f'Field "{field}" updated',
+                    user=request.user if request.user.is_authenticated else None,
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
             except Exception:
                 pass
 

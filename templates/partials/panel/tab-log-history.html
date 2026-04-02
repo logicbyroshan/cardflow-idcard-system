@@ -3,7 +3,6 @@
 
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <span class="log-panel-kicker"><i class="fa-solid fa-wave-square"></i> Ops Timeline</span>
       <div class="notif-search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="opsSearch" placeholder="Search users, tasks, logs, targets..." oninput="debounceOpsSearch()">
@@ -13,6 +12,10 @@
         <option value="tasks">Background Tasks</option>
         <option value="backups">Backup Tasks</option>
         <option value="logs">Activity Logs</option>
+        <option value="client_logs">Client Login History</option>
+      </select>
+      <select id="opsClientFilter" class="form-select-sm" onchange="loadOperationsFeed()" disabled>
+        <option value="">All Clients</option>
       </select>
       <select id="opsUserTypeFilter" class="form-select-sm" onchange="loadOperationsFeed()">
         <option value="">All User Types</option>
@@ -108,11 +111,11 @@
   </div>
 
   <div class="ops-summary-strip" id="opsSummaryStrip">
-    <span class="ops-summary-pill"><i class="fa-solid fa-arrow-down-wide-short"></i> <strong id="opsSortHint">Newest First</strong></span>
-    <span class="ops-summary-pill"><i class="fa-solid fa-clock"></i> <span id="opsLastUpdated">Not updated yet</span></span>
-    <span class="ops-summary-pill ops-summary-pill-task"><i class="fa-solid fa-gears"></i> Tasks: <strong id="opsCountTasks">0</strong></span>
-    <span class="ops-summary-pill ops-summary-pill-backup"><i class="fa-solid fa-database"></i> Backups: <strong id="opsCountBackups">0</strong></span>
-    <span class="ops-summary-pill ops-summary-pill-log"><i class="fa-solid fa-clock-rotate-left"></i> Logs: <strong id="opsCountLogs">0</strong></span>
+    <span class="ops-summary-item"><i class="fa-solid fa-arrow-down-wide-short"></i> <span id="opsSortHint">Newest First</span></span>
+    <span class="ops-summary-item"><i class="fa-solid fa-clock"></i> <span id="opsLastUpdated">Not updated yet</span></span>
+    <span class="ops-summary-item"><i class="fa-solid fa-gears"></i> Tasks: <span class="ops-summary-value" id="opsCountTasks">0</span></span>
+    <span class="ops-summary-item"><i class="fa-solid fa-database"></i> Backups: <span class="ops-summary-value" id="opsCountBackups">0</span></span>
+    <span class="ops-summary-item"><i class="fa-solid fa-clock-rotate-left"></i> Logs: <span class="ops-summary-value" id="opsCountLogs">0</span></span>
   </div>
 
   <div class="notif-table-wrap">
