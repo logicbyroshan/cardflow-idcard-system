@@ -24,6 +24,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
 from client.models import Client
+from .models import Staff
 from core.services.activity_service import ActivityService
 
 from .services import (
@@ -203,6 +204,23 @@ def api_admin_staff_reset_password(request, staff_id):
     """Reset admin staff password and send email."""
     try:
         result = AdminStaffCreationService.reset_password(request.user, staff_id)
+        if result.get('success'):
+            target_name = ''
+            try:
+                staff_obj = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff_obj and staff_obj.user:
+                    target_name = (staff_obj.user.get_full_name() or staff_obj.user.username or '').strip()
+            except Exception:
+                target_name = ''
+
+            ActivityService.log(
+                'staff_password_reset',
+                f'Admin staff password reset for "{target_name or staff_id}"',
+                request=request,
+                target_model='Staff',
+                target_id=staff_id,
+                target_name=target_name,
+            )
         status = 200 if result.get('success') else 400
         return JsonResponse(result, status=status)
     except Exception as e:

@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from client.models import Client
-from core.models import BackupTask, EmailLog, Notification, NotificationRead
+from core.models import ActivityLog, BackgroundTask, BackupTask, EmailLog, Notification, NotificationRead
 from core.services.notification_service import NotificationService
 
 
@@ -573,3 +573,75 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertTrue(payload['success'])
         self.assertTrue(payload['cached'])
         self.assertEqual(payload['snapshot']['host'], 'cached-host')
+
+    def test_operations_feed_requires_super_admin(self):
+        self.client.login(username='panel-client@test.com', password='pass1234')
+        denied = self.client.get('/panel/api/operations-feed/')
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        allowed = self.client.get('/panel/api/operations-feed/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertTrue(allowed.json()['success'])
+
+    def test_operations_feed_filters_and_recent_first(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        older_task = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='completed',
+            progress=10,
+            total=10,
+        )
+        processing_task = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='bulk_upload',
+            status='processing',
+            progress=1,
+            total=10,
+        )
+        latest_log = ActivityLog.objects.create(
+            user=self.super_admin,
+            action='settings_update',
+            description='Updated export settings',
+            target_model='SystemSettings',
+            target_name='Export Settings',
+            ip_address='127.0.0.1',
+        )
+
+        now = timezone.now()
+        BackgroundTask.objects.filter(pk=older_task.pk).update(created_at=now - timedelta(hours=3))
+        BackgroundTask.objects.filter(pk=processing_task.pk).update(created_at=now - timedelta(hours=2))
+        ActivityLog.objects.filter(pk=latest_log.pk).update(created_at=now - timedelta(hours=1))
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {'limit': 20, 'source': 'all'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertGreaterEqual(payload['total'], 3)
+        self.assertEqual(payload['items'][0]['source_type'], 'activity_log')
+        self.assertIn('source_counts', payload)
+        self.assertGreaterEqual(payload['source_counts'].get('background_task', 0), 2)
+        self.assertGreaterEqual(payload['source_counts'].get('activity_log', 0), 1)
+
+        task_filtered = self.client.get('/panel/api/operations-feed/', {
+            'source': 'tasks',
+            'task_status': 'processing',
+            'limit': 20,
+        })
+        self.assertEqual(task_filtered.status_code, 200)
+        task_items = task_filtered.json()['items']
+        self.assertTrue(all(item['source_type'] in ('background_task', 'backup_task') for item in task_items))
+        self.assertTrue(all(item['status'] == 'processing' for item in task_items))
+
+        role_filtered = self.client.get('/panel/api/operations-feed/', {
+            'source': 'tasks',
+            'user_role': 'client',
+            'limit': 20,
+        })
+        self.assertEqual(role_filtered.status_code, 200)
+        role_items = role_filtered.json()['items']
+        self.assertTrue(any(item['user'] == self.client_user.username for item in role_items))

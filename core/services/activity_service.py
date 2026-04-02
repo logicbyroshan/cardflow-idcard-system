@@ -6,6 +6,7 @@ All methods are classmethods/staticmethods following the project convention.
 """
 
 import logging
+import ipaddress
 import re
 
 from django.conf import settings
@@ -48,22 +49,105 @@ class ActivityService:
     # ── helpers ──────────────────────────────────────────────
 
     @staticmethod
+    def _normalize_ip(raw_value):
+        """Normalize an IP value (strip ports/quotes) and validate it."""
+        if not raw_value:
+            return None
+
+        value = str(raw_value).strip().strip('"').strip("'")
+        if not value:
+            return None
+
+        # RFC 7239 may wrap IPv6 values in brackets, e.g. [2001:db8::1]:443
+        if value.startswith('[') and ']' in value:
+            value = value[1:value.index(']')]
+
+        # Strip :port from IPv4-style values.
+        if value.count(':') == 1 and '.' in value:
+            maybe_ip, _sep, _port = value.partition(':')
+            value = maybe_ip
+
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError:
+            return None
+
+    @classmethod
+    def _extract_first_forwarded_ip(cls, forwarded_header):
+        """Extract first valid client IP from RFC 7239 Forwarded header."""
+        if not forwarded_header:
+            return None
+
+        for entry in str(forwarded_header).split(','):
+            for part in entry.split(';'):
+                token = part.strip()
+                if not token.lower().startswith('for='):
+                    continue
+
+                ip_part = token.split('=', 1)[1].strip().strip('"').strip("'")
+                # RFC 7239 allows obfuscated identifiers; skip those.
+                if ip_part.startswith('_'):
+                    continue
+                normalized = cls._normalize_ip(ip_part)
+                if normalized:
+                    return normalized
+        return None
+
+    @staticmethod
+    def _is_internal_ip(ip_value):
+        """Return True for proxy/private/loopback style addresses."""
+        try:
+            parsed = ipaddress.ip_address(ip_value)
+        except ValueError:
+            return False
+
+        return bool(
+            parsed.is_private
+            or parsed.is_loopback
+            or parsed.is_link_local
+            or parsed.is_reserved
+        )
+
+    @staticmethod
     def _get_ip(request):
         """Extract client IP from request, handling proxies."""
         if request is None:
             return None
 
+        remote_addr = ActivityService._normalize_ip(request.META.get('REMOTE_ADDR'))
+        x_real_ip = ActivityService._normalize_ip(request.META.get('HTTP_X_REAL_IP'))
+        forwarded_ip = ActivityService._extract_first_forwarded_ip(request.META.get('HTTP_FORWARDED'))
+
+        xff_raw = request.META.get('HTTP_X_FORWARDED_FOR')
+        xff_ips = []
+        if xff_raw:
+            xff_ips = [
+                ip
+                for ip in (ActivityService._normalize_ip(part) for part in str(xff_raw).split(','))
+                if ip
+            ]
+
         trust_xff = bool(getattr(settings, 'RATE_LIMIT_TRUST_X_FORWARDED_FOR', False))
         if trust_xff:
-            xff = request.META.get('HTTP_X_FORWARDED_FOR')
-            if xff:
-                parts = [p.strip() for p in xff.split(',') if p.strip()]
-                if len(parts) >= 2:
-                    return parts[-2]
-                if parts:
-                    return parts[0]
+            if xff_ips:
+                return xff_ips[0]
+            if x_real_ip:
+                return x_real_ip
+            if forwarded_ip:
+                return forwarded_ip
+            return remote_addr
 
-        return request.META.get('REMOTE_ADDR')
+        # Safe fallback for reverse-proxy setups where REMOTE_ADDR is internal.
+        if remote_addr and not ActivityService._is_internal_ip(remote_addr):
+            return remote_addr
+        if x_real_ip:
+            return x_real_ip
+        if xff_ips:
+            return xff_ips[0]
+        if forwarded_ip:
+            return forwarded_ip
+
+        return remote_addr
 
     @classmethod
     def _should_log_single_card_status(cls, request, action_label, client_name=''):

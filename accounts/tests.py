@@ -318,6 +318,47 @@ class LoginViewTests(TestCase):
         self.assertIsNotNone(log_entry)
         self.assertEqual(log_entry.ip_address, '198.51.100.33')
 
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_login_api_uses_x_real_ip_when_remote_addr_is_internal_proxy(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='10.10.10.10',
+            HTTP_X_REAL_IP='198.51.100.77',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '198.51.100.77')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_login_api_prefers_public_remote_addr_when_not_trusting_proxy_headers(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='8.8.8.8',
+            HTTP_X_FORWARDED_FOR='1.1.1.1',
+            HTTP_X_REAL_IP='9.9.9.9',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '8.8.8.8')
+
     def test_login_api_wrong_password(self):
         response = self.client.post(
             '/panel/api/auth/login/',

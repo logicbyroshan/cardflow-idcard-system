@@ -464,6 +464,218 @@ def api_monitoring_data(request):
 
 @require_http_methods(["GET"])
 @login_required
+def api_operations_feed(request):
+    """
+    Unified operations feed for Manage Panel.
+    Combines background tasks, backup tasks and activity logs with filters.
+
+    GET /panel/api/operations-feed/
+    """
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+    from django.utils.timesince import timesince as django_timesince
+    from core.models import ActivityLog, BackgroundTask, BackupTask
+    from core.services.permission_service import PermissionService
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin only'}, status=403)
+
+    def _parse_int(value, default, min_value=None, max_value=None):
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = default
+        if min_value is not None:
+            parsed = max(min_value, parsed)
+        if max_value is not None:
+            parsed = min(max_value, parsed)
+        return parsed
+
+    now = timezone.now()
+    since_24h = now - timedelta(hours=24)
+
+    limit = _parse_int(request.GET.get('limit', 180), 180, min_value=20, max_value=300)
+    offset = _parse_int(request.GET.get('offset', 0), 0, min_value=0)
+    fetch_cap = min(max(offset + limit + 400, 300), 2000)
+
+    source = (request.GET.get('source', 'all') or 'all').strip().lower()
+    search = (request.GET.get('search', '') or '').strip()
+    user_role = (request.GET.get('user_role', '') or '').strip()
+    task_status = (request.GET.get('task_status', '') or '').strip()
+    action = (request.GET.get('action', '') or '').strip()
+
+    include_background = source in ('all', 'tasks', 'task', 'background', 'background_tasks')
+    include_backups = source in ('all', 'tasks', 'task', 'backups', 'backup')
+    include_logs = source in ('all', 'logs', 'log', 'activity')
+
+    active_tasks = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
+    pending_tasks = BackgroundTask.objects.filter(status='pending').count()
+    completed_24h = BackgroundTask.objects.filter(
+        status='completed', completed_at__gte=since_24h
+    ).count()
+    failed_24h = BackgroundTask.objects.filter(
+        status='failed', completed_at__gte=since_24h
+    ).count()
+
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    items = []
+
+    if include_background:
+        bg_qs = BackgroundTask.objects.select_related('user').order_by('-created_at')
+        if user_role:
+            bg_qs = bg_qs.filter(user__role=user_role)
+        if task_status:
+            bg_qs = bg_qs.filter(status=task_status)
+        if search:
+            bg_qs = bg_qs.filter(
+                Q(task_type__icontains=search)
+                | Q(error_message__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+            )
+
+        for task in bg_qs[:fetch_cap]:
+            user_name = task.user.get_full_name() or task.user.username if task.user else 'System'
+            progress_text = ''
+            if task.total and task.total > 0:
+                progress_text = f'Progress {task.progress}/{task.total} ({task.progress_percentage}%)'
+
+            items.append({
+                'source_type': 'background_task',
+                'source_label': 'Background Task',
+                'event_title': task.get_task_type_display(),
+                'event_subtitle': f'Task #{task.id}',
+                'status': task.status,
+                'status_display': task.get_status_display(),
+                'action': '',
+                'action_display': '',
+                'description': task.error_message or 'Background task event',
+                'target_name': '',
+                'user': user_name,
+                'ip_address': '',
+                'progress_text': progress_text,
+                'error': (task.error_message or '')[:180],
+                'icon_class': 'fa-gears',
+                'icon_color': 'edit',
+                'created_at': task.created_at.strftime('%d-%m-%Y %H:%M'),
+                'time_ago': django_timesince(task.created_at, now) + ' ago',
+                'created_at_dt': task.created_at,
+            })
+
+    if include_backups:
+        backup_qs = BackupTask.objects.select_related('created_by').order_by('-created_at')
+        if user_role:
+            backup_qs = backup_qs.filter(created_by__role=user_role)
+        if task_status:
+            backup_qs = backup_qs.filter(status=task_status)
+        if search:
+            backup_qs = backup_qs.filter(
+                Q(current_client__icontains=search)
+                | Q(error_message__icontains=search)
+                | Q(created_by__username__icontains=search)
+                | Q(created_by__first_name__icontains=search)
+                | Q(created_by__last_name__icontains=search)
+            )
+
+        for task in backup_qs[:fetch_cap]:
+            user_name = task.created_by.get_full_name() or task.created_by.username if task.created_by else 'System'
+            progress_text = ''
+            if task.total and task.total > 0:
+                progress_pct = round((task.progress / task.total) * 100)
+                progress_text = f'Progress {task.progress}/{task.total} ({progress_pct}%)'
+
+            items.append({
+                'source_type': 'backup_task',
+                'source_label': 'Backup Task',
+                'event_title': 'Client Backup',
+                'event_subtitle': f'Backup #{task.id}',
+                'status': task.status,
+                'status_display': task.get_status_display(),
+                'action': '',
+                'action_display': '',
+                'description': task.current_client or 'Backup pipeline event',
+                'target_name': '',
+                'user': user_name,
+                'ip_address': '',
+                'progress_text': progress_text,
+                'error': (task.error_message or '')[:180],
+                'icon_class': 'fa-database',
+                'icon_color': 'approve',
+                'created_at': task.created_at.strftime('%d-%m-%Y %H:%M'),
+                'time_ago': django_timesince(task.created_at, now) + ' ago',
+                'created_at_dt': task.created_at,
+            })
+
+    if include_logs:
+        log_qs = ActivityLog.objects.select_related('user').order_by('-created_at')
+        if user_role:
+            log_qs = log_qs.filter(user__role=user_role)
+        if action:
+            log_qs = log_qs.filter(action=action)
+        if search:
+            log_qs = log_qs.filter(
+                Q(description__icontains=search)
+                | Q(target_name__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+                | Q(action__icontains=search)
+            )
+
+        for log in log_qs[:fetch_cap]:
+            user_name = log.user.get_full_name() or log.user.username if log.user else 'System'
+            items.append({
+                'source_type': 'activity_log',
+                'source_label': 'Activity Log',
+                'event_title': action_display_map.get(log.action, log.action),
+                'event_subtitle': log.target_model or '',
+                'status': '',
+                'status_display': '',
+                'action': log.action,
+                'action_display': action_display_map.get(log.action, log.action),
+                'description': log.description or '',
+                'target_name': log.target_name or '',
+                'user': user_name,
+                'ip_address': log.ip_address or '',
+                'progress_text': '',
+                'error': '',
+                'icon_class': log.icon_class,
+                'icon_color': log.icon_color,
+                'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
+                'time_ago': django_timesince(log.created_at, now) + ' ago',
+                'created_at_dt': log.created_at,
+            })
+
+    items.sort(key=lambda row: row.get('created_at_dt') or now, reverse=True)
+    total = len(items)
+    source_counts = {
+        'background_task': sum(1 for row in items if row.get('source_type') == 'background_task'),
+        'backup_task': sum(1 for row in items if row.get('source_type') == 'backup_task'),
+        'activity_log': sum(1 for row in items if row.get('source_type') == 'activity_log'),
+    }
+    paged_items = items[offset:offset + limit]
+
+    for row in paged_items:
+        row.pop('created_at_dt', None)
+
+    return JsonResponse({
+        'success': True,
+        'total': total,
+        'items': paged_items,
+        'source_counts': source_counts,
+        'stats': {
+            'active_tasks': active_tasks,
+            'pending_tasks': pending_tasks,
+            'completed_24h': completed_24h,
+            'failed_24h': failed_24h,
+        },
+    })
+
+
+@require_http_methods(["GET"])
+@login_required
 def api_server_info_snapshot(request):
     """
     Return a server snapshot for Manage Panel -> Server Info tab.

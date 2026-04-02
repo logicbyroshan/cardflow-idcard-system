@@ -13,6 +13,7 @@ from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from core.services.activity_service import ActivityService
@@ -23,6 +24,7 @@ from .services import AuthService, OTPService, RoleService, DASHBOARD_URLS
 from .rate_limit import rate_limit, _get_client_ip
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 def _mask_login_identifier(identifier):
@@ -458,6 +460,24 @@ class ResetPasswordAPIView(View):
                 }, status=400)
             
             result = OTPService.reset_password(email, reset_token, new_password)
+
+            if result.get('success'):
+                user = User.objects.filter(email__iexact=email).first()
+                masked_email = _mask_login_identifier(email)
+                target_name = ''
+                target_id = None
+                if user:
+                    target_name = user.get_full_name() or user.username
+                    target_id = user.pk
+                ActivityService.log(
+                    'password_reset',
+                    f'Password reset completed for {masked_email}',
+                    user=user,
+                    request=request,
+                    target_model='User',
+                    target_id=target_id,
+                    target_name=target_name,
+                )
             
             return JsonResponse({
                 'success': result['success'],
@@ -502,15 +522,39 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
 
     def post(self, request):
         from .services_impersonate import ImpersonateService
+
         if getattr(request.user, 'role', None) != 'pro_user':
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        actor_user = request.user
         try:
             data = json.loads(request.body)
             target_user_id = data.get('user_id')
             if not target_user_id:
                 return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
 
+            target_user = None
+            try:
+                target_user = User.objects.filter(pk=int(target_user_id)).first()
+            except (TypeError, ValueError):
+                target_user = None
+
             result = ImpersonateService.start(request, int(target_user_id))
+            if result.get('success'):
+                target_name = ''
+                target_id = None
+                if target_user:
+                    target_name = target_user.get_full_name() or target_user.username
+                    target_id = target_user.pk
+                ActivityService.log(
+                    'impersonate_start',
+                    f'Impersonation started for {target_name or "selected user"}',
+                    user=actor_user,
+                    request=request,
+                    target_model='User',
+                    target_id=target_id,
+                    target_name=target_name,
+                )
             status = 200 if result['success'] else 403
             return JsonResponse(result, status=status)
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -530,7 +574,23 @@ class ImpersonateStopAPIView(LoginRequiredMixin, View):
     def post(self, request):
         from .services_impersonate import ImpersonateService
         try:
+            impersonated_user = request.user if getattr(request.user, 'is_authenticated', False) else None
             result = ImpersonateService.stop(request)
+            if result.get('success'):
+                target_name = ''
+                target_id = None
+                if impersonated_user:
+                    target_name = impersonated_user.get_full_name() or impersonated_user.username
+                    target_id = impersonated_user.pk
+                ActivityService.log(
+                    'impersonate_stop',
+                    f'Impersonation stopped (was acting as {target_name or "user"})',
+                    user=request.user if getattr(request.user, 'is_authenticated', False) else None,
+                    request=request,
+                    target_model='User',
+                    target_id=target_id,
+                    target_name=target_name,
+                )
             status = 200 if result['success'] else 400
             return JsonResponse(result, status=status)
         except Exception as e:

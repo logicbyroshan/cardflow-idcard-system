@@ -12,6 +12,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
+from core.models import Notification
+from core.services.activity_service import ActivityService
 from core.services.notification_service import NotificationService
 from core.services.permission_service import (
     api_require_super_admin,
@@ -108,6 +110,19 @@ def api_panel_notification_create(request):
         created_by=request.user,
         send_email=body.get('send_email', False),
     )
+    if result.success:
+        notif_data = (result.data or {}).get('notification') or {}
+        notif_id = notif_data.get('id')
+        title = notif_data.get('title') or (body.get('title') or '').strip()
+        target = (body.get('target') or 'all').strip()
+        ActivityService.log(
+            'notification_create',
+            f'Notification "{title or "untitled"}" created (target: {target})',
+            request=request,
+            target_model='Notification',
+            target_id=notif_id,
+            target_name=title,
+        )
     status = 200 if result.success else 400
     return JsonResponse(result.to_response_dict(), status=status)
 
@@ -117,7 +132,24 @@ def api_panel_notification_create(request):
 @require_http_methods(["DELETE"])
 def api_panel_notification_delete(request, notification_id):
     """Delete (deactivate) a notification."""
+    notif_title = ''
+    try:
+        notif = Notification.objects.filter(id=notification_id).only('title').first()
+        if notif:
+            notif_title = notif.title or ''
+    except Exception:
+        notif_title = ''
+
     result = NotificationService.delete_notification(notification_id)
+    if result.success:
+        ActivityService.log(
+            'notification_delete',
+            f'Notification "{notif_title or notification_id}" deleted',
+            request=request,
+            target_model='Notification',
+            target_id=notification_id,
+            target_name=notif_title,
+        )
     status = 200 if result.success else 404
     return JsonResponse(result.to_response_dict(), status=status)
 

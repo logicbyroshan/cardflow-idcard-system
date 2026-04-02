@@ -567,7 +567,7 @@ class ClientCardService(BaseService):
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def change_card_status(cls, user, card_id: int, new_status: str) -> ServiceResult:
+    def change_card_status(cls, user, card_id: int, new_status: str, request=None) -> ServiceResult:
         """
         Change a card's status — delegates to WorkflowService.transition().
 
@@ -599,13 +599,13 @@ class ClientCardService(BaseService):
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService
-            return WorkflowService.transition(card, new_status, user=user)
+            return WorkflowService.transition(card, new_status, user=user, request=request)
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str) -> ServiceResult:
+    def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str, request=None) -> ServiceResult:
         """
         Change status for multiple cards — delegates to WorkflowService.bulk_transition().
 
@@ -643,7 +643,7 @@ class ClientCardService(BaseService):
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService
-            return WorkflowService.bulk_transition(table, card_ids, new_status, user=user)
+            return WorkflowService.bulk_transition(table, card_ids, new_status, user=user, request=request)
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

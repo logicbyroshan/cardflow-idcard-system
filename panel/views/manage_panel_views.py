@@ -22,6 +22,7 @@ from django.views.decorators.http import require_http_methods
 from core.models import User, Notification, EmailLog
 from idcards.models import IDCard
 from client.models import Client
+from core.services.activity_service import ActivityService
 from core.services.permission_service import require_super_admin
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,7 @@ def manage_panel(request):
         'active_page': 'manage_panel',
         'django_version': django.get_version(),
         'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        'environment': 'Development' if django_settings.DEBUG else 'Production',
         'total_clients': Client.objects.count(),
         'total_cards': IDCard.objects.count(),
         'active_tasks': 0,
@@ -216,6 +218,14 @@ def api_email_resend(request, log_id):
             log.error_message = ''
             log.sent_at = timezone.now()
             log.save(update_fields=['recipient_name', 'recipient_email', 'subject', 'body_text', 'body_html', 'email_type', 'status', 'error_message', 'sent_at'])
+            ActivityService.log(
+                'email_resend',
+                f'Email resent to {recipient_email}',
+                request=request,
+                target_model='EmailLog',
+                target_id=log.id,
+                target_name=recipient_email,
+            )
             return JsonResponse({
                 'success': True,
                 'message': 'Email resent successfully.',
@@ -240,6 +250,14 @@ def api_email_resend(request, log_id):
             log.error_message = ''
             log.sent_at = None
             log.save(update_fields=['status', 'error_message', 'sent_at'])
+            ActivityService.log(
+                'email_resend',
+                f'OTP resend requested for {log.recipient_email}',
+                request=request,
+                target_model='EmailLog',
+                target_id=log.id,
+                target_name=log.recipient_email,
+            )
             return JsonResponse({
                 'success': True,
                 'message': 'OTP resend request queued successfully.',
@@ -294,6 +312,14 @@ def api_email_resend(request, log_id):
                 log.sent_at = timezone.now()
                 log.error_message = ''
                 log.save(update_fields=['status', 'sent_at', 'error_message'])
+                ActivityService.log(
+                    'email_resend',
+                    f'Welcome email resent to {log.recipient_email}',
+                    request=request,
+                    target_model='EmailLog',
+                    target_id=log.id,
+                    target_name=log.recipient_email,
+                )
         except Exception:
             logger.exception('api_email_resend post-send update failed for log %s', log_id)
             log.status = EmailLog.STATUS_FAILED
@@ -353,6 +379,14 @@ def api_email_send_new(request):
         log.sent_at = timezone.now()
         log.error_message = ''
         log.save(update_fields=['status', 'sent_at', 'error_message'])
+        ActivityService.log(
+            'email_send',
+            f'New email sent to {recipient_email}',
+            request=request,
+            target_model='EmailLog',
+            target_id=log.id,
+            target_name=recipient_email,
+        )
         return JsonResponse({'success': True, 'message': 'Email sent successfully.', 'log_id': log.id})
     except Exception as e:
         logger.exception('api_email_send_new failed for recipient=%s', recipient_email)

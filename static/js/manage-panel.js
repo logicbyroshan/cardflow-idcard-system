@@ -47,6 +47,7 @@ function _restoreManagePanelTabOnReload() {
     saved = '';
   }
   if (!saved) return '';
+  if (saved === 'monitoring') saved = 'log-history';
   if (!document.querySelector(`.panel-tab[data-tab="${saved}"]`)) return '';
   switchTab(saved);
   return saved;
@@ -60,11 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
   } else if (restoredTab === 'download-templates') {
     loadTemplates();
   } else if (restoredTab === 'log-history') {
-    loadLogs(false);
+    loadOperationsFeed(false);
   } else if (restoredTab === 'email-logs') {
     loadEmailLogs(1);
-  } else if (restoredTab === 'monitoring') {
-    loadMonitoring();
   } else if (restoredTab === 'server-info') {
     initServerInfoTab();
   } else if (restoredTab === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
@@ -169,9 +168,9 @@ function updateStats() {
   document.getElementById('statTotal').textContent = panelTotal;
   // Use server-side aggregates (returned by API) for accurate full-dataset counts
   const s = window._panelNotifStats || {};
-  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : '';
-  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : '';
-  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : '';
+  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : 0;
+  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : 0;
+  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : 0;
 }
 
 /* ============ Search ============ */
@@ -666,72 +665,215 @@ async function deleteTemplate(id) {
 
 
 /* ================================================================
-   LOG HISTORY TAB
+   OPERATIONS HUB TAB (Monitoring + Logs)
    ================================================================ */
-let panelLogs = [];
-let logOffset = 0;
-const LOG_LIMIT = 500;  // Load all logs at once  table scrolls natively
-let logTotal = 0;
-let logSearchTimer = null;
+let operationsFeed = [];
+const OPS_LIMIT = 180;
+let operationsTotal = 0;
+let opsSearchTimer = null;
+let opsAutoRefreshTimer = null;
 
-async function loadLogs(append) {
-  if (!append) logOffset = 0;
+function handleOpsSourceChange() {
+  const source = document.getElementById('opsSourceFilter')?.value || 'all';
+  const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
+  const actionFilter = document.getElementById('opsActionFilter');
+
+  if (taskStatusFilter) {
+    const taskOnly = source === 'tasks' || source === 'backups';
+    taskStatusFilter.disabled = source === 'logs';
+    taskStatusFilter.style.opacity = source === 'logs' ? '0.65' : '1';
+    if (!taskOnly) taskStatusFilter.value = '';
+  }
+
+  if (actionFilter) {
+    actionFilter.disabled = source === 'tasks' || source === 'backups';
+    actionFilter.style.opacity = source === 'tasks' || source === 'backups' ? '0.65' : '1';
+    if (source !== 'logs') actionFilter.value = '';
+  }
+
+  loadOperationsFeed();
+}
+
+function resetOperationsFilters() {
+  const ids = ['opsSearch', 'opsSourceFilter', 'opsUserTypeFilter', 'opsTaskStatusFilter', 'opsActionFilter'];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') {
+      el.selectedIndex = 0;
+    } else {
+      el.value = '';
+    }
+  });
+  handleOpsSourceChange();
+}
+
+function _syncOpsAutoRefresh(shouldRun) {
+  if (!shouldRun) {
+    if (opsAutoRefreshTimer) {
+      clearInterval(opsAutoRefreshTimer);
+      opsAutoRefreshTimer = null;
+    }
+    return;
+  }
+  if (opsAutoRefreshTimer) return;
+  opsAutoRefreshTimer = setInterval(() => {
+    const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
+    if (activeTab === 'log-history' && !document.hidden) {
+      loadOperationsFeed();
+    }
+  }, 45000);
+}
+
+function debounceOpsSearch() {
+  clearTimeout(opsSearchTimer);
+  opsSearchTimer = setTimeout(() => loadOperationsFeed(false), 300);
+}
+
+function _opsSourceBadge(sourceType, sourceLabel) {
+  const label = sourceLabel || 'Event';
+  const cls = sourceType === 'background_task'
+    ? 'ops-source-badge task'
+    : sourceType === 'backup_task'
+      ? 'ops-source-badge backup'
+      : 'ops-source-badge log';
+  const icon = sourceType === 'background_task'
+    ? 'fa-gears'
+    : sourceType === 'backup_task'
+      ? 'fa-database'
+      : 'fa-clock-rotate-left';
+  return `<span class="${cls}"><i class="fa-solid ${icon}"></i> ${escHtml(label)}</span>`;
+}
+
+function _opsStatusCell(item) {
+  if (item.source_type === 'activity_log') {
+    return `<span class="log-action-badge ${item.icon_color || 'edit'}"><i class="fa-solid ${item.icon_class || 'fa-circle-info'}"></i> ${escHtml(item.action_display || item.action || 'Event')}</span>`;
+  }
+  return _statusBadge(item.status, item.status_display || item.status || 'Unknown');
+}
+
+function renderOperationsTable() {
+  const tbody = document.getElementById('opsTableBody');
+  if (!tbody) return;
+  if (!operationsFeed.length) {
+    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
+      <div class="empty-state"><i class="fa-solid fa-wave-square"></i>
+      <p>No operations found</p><span>Adjust filters or wait for new activity.</span></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = operationsFeed.map((item, i) => {
+    const detailMain = item.description || item.current_client || item.target_name || '';
+    const detailMeta = [];
+    if (item.target_name) detailMeta.push(`Target: ${item.target_name}`);
+    if (item.progress_text) detailMeta.push(item.progress_text);
+    if (item.ip_address) detailMeta.push(`IP: ${item.ip_address}`);
+    if (item.error) detailMeta.push(`Error: ${item.error}`);
+
+    return `<tr>
+      <td class="text-center text-xs text-gray-400">${i + 1}</td>
+      <td>${_opsSourceBadge(item.source_type, item.source_label)}</td>
+      <td>
+        <div class="ops-event-title">${escHtml(item.event_title || '-')}</div>
+        <div class="ops-event-sub">${escHtml(item.event_subtitle || '')}</div>
+      </td>
+      <td>${_opsStatusCell(item)}</td>
+      <td><span class="text-xs font-medium">${escHtml(item.user || 'System')}</span></td>
+      <td>
+        <div class="ops-detail-main">${escHtml(detailMain || '-')}</div>
+        <div class="ops-detail-meta">${escHtml(detailMeta.join(' | '))}</div>
+      </td>
+      <td>
+        <span class="notif-time">${escHtml(item.created_at || '')}</span>
+        <div class="ops-time-sub">${escHtml(item.time_ago || '')}</div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadOperationsFeed() {
+  const refreshBtn = document.getElementById('opsRefreshBtn');
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading';
+  }
+
   try {
-    const search = document.getElementById('logSearch')?.value || '';
-    const userRole = document.getElementById('logUserTypeFilter')?.value || '';
-    let url = `/api/activity-logs/?limit=${LOG_LIMIT}&offset=${logOffset}`;
+    const search = document.getElementById('opsSearch')?.value || '';
+    const source = document.getElementById('opsSourceFilter')?.value || 'all';
+    const userRole = document.getElementById('opsUserTypeFilter')?.value || '';
+    const taskStatus = document.getElementById('opsTaskStatusFilter')?.value || '';
+    const action = document.getElementById('opsActionFilter')?.value || '';
+
+    const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
+    const actionFilter = document.getElementById('opsActionFilter');
+    if (taskStatusFilter) {
+      taskStatusFilter.disabled = source === 'logs';
+      taskStatusFilter.style.opacity = source === 'logs' ? '0.65' : '1';
+    }
+    if (actionFilter) {
+      actionFilter.disabled = source === 'tasks' || source === 'backups';
+      actionFilter.style.opacity = source === 'tasks' || source === 'backups' ? '0.65' : '1';
+    }
+
+    let url = `/api/operations-feed/?limit=${OPS_LIMIT}&offset=0&source=${encodeURIComponent(source)}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
+    if (taskStatus) url += `&task_status=${encodeURIComponent(taskStatus)}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
 
     const res = await fetch(url);
-    if (!res.ok) { console.error('loadLogs HTTP', res.status); return; }
+    if (!res.ok) {
+      console.error('loadOperationsFeed HTTP', res.status);
+      return;
+    }
     const data = await res.json();
     if (!data.success) return;
 
-    if (append) {
-      panelLogs = panelLogs.concat(data.logs);
-    } else {
-      panelLogs = data.logs;
+    operationsFeed = data.items || [];
+    operationsTotal = data.total || operationsFeed.length;
+
+    const stats = data.stats || {};
+    const sourceCounts = data.source_counts || {};
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value != null ? value : 0;
+    };
+    setText('opsStatActiveTasks', stats.active_tasks || 0);
+    setText('opsStatPendingTasks', stats.pending_tasks || 0);
+    setText('opsStatCompleted24h', stats.completed_24h || 0);
+    setText('opsStatFailed24h', stats.failed_24h || 0);
+    setText('opsCountTasks', sourceCounts.background_task || 0);
+    setText('opsCountBackups', sourceCounts.backup_task || 0);
+    setText('opsCountLogs', sourceCounts.activity_log || 0);
+
+    const label = document.getElementById('opsCountLabel');
+    if (label) label.textContent = `${operationsFeed.length} of ${operationsTotal} events`;
+
+    const updatedEl = document.getElementById('opsLastUpdated');
+    if (updatedEl) {
+      updatedEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
     }
-    logTotal = data.total;
-    renderLogTable();
-    const label = document.getElementById('logCountLabel');
-    if (label) label.textContent = `${panelLogs.length} of ${logTotal} logs`;
-  } catch (err) { console.error('loadLogs:', err); }
+    const sortHintEl = document.getElementById('opsSortHint');
+    if (sortHintEl) sortHintEl.textContent = 'Newest First';
+
+    renderOperationsTable();
+  } catch (err) {
+    console.error('loadOperationsFeed:', err);
+  } finally {
+    if (refreshBtn) {
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+    }
+  }
 }
 
-function loadMoreLogs() {
-  logOffset += LOG_LIMIT;
-  loadLogs(true);
+function loadLogs() {
+  return loadOperationsFeed();
 }
 
 function debounceLogSearch() {
-  clearTimeout(logSearchTimer);
-  logSearchTimer = setTimeout(() => loadLogs(false), 350);
-}
-
-function renderLogTable() {
-  const tbody = document.getElementById('logTableBody');
-  if (!tbody) return;
-  if (!panelLogs.length) {
-    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
-      <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i>
-      <p>No logs found</p><span>Activity logs will appear here</span></div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = panelLogs.map((l, i) => {
-    const actionLabel = l.action_display || l.action;
-    const colorClass = l.icon_color || 'edit';
-    return `<tr>
-      <td class="text-center text-xs text-gray-400">${i + 1}</td>
-      <td><span class="text-xs font-medium">${escHtml(l.user_name || 'System')}</span></td>
-      <td><span class="log-action-badge ${colorClass}"><i class="fa-solid ${l.icon_class || 'fa-circle-info'}"></i> ${escHtml(actionLabel)}</span></td>
-      <td><span class="text-xs text-gray-600">${escHtml(l.description || '')}</span></td>
-      <td><span class="text-xs text-gray-500">${escHtml(l.target_name || '')}</span></td>
-      <td><span class="text-xs text-gray-400">${escHtml(l.ip_address || '')}</span></td>
-      <td><span class="notif-time">${l.time_ago || ''}</span></td>
-    </tr>`;
-  }).join('');
+  debounceOpsSearch();
 }
 
 /* ================================================================
@@ -1220,10 +1362,11 @@ const _origSwitchTab = switchTab;
 switchTab = function(tabName) {
   _origSwitchTab(tabName);
   if (tabName === 'download-templates' && !panelTemplates.length) loadTemplates();
-  if (tabName === 'log-history' && !panelLogs.length) loadLogs();
+  if (tabName === 'log-history' && !operationsFeed.length) loadOperationsFeed();
+  _syncOpsAutoRefresh(tabName === 'log-history');
 };
 
-/* ============ Monitoring Tab ============ */
+/* ============ Monitoring (legacy alias -> Operations Hub) ============ */
 
 const STATUS_BADGE = {
   pending:    { color: '#92400e', bg: '#fef3c7', label: 'Pending' },
@@ -1240,94 +1383,27 @@ function _statusBadge(status, displayText) {
 }
 
 async function loadMonitoring() {
-  const refreshBtn = document.getElementById('monitoringRefreshBtn');
-  if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading'; }
-
-  try {
-    const res = await fetch('/api/monitoring/');
-    if (!res.ok) { window.showToast && showToast('Failed to load monitoring data', 'error'); return; }
-    const data = await res.json();
-    if (!data.success) return;
-
-    // Stats
-    const el = id => document.getElementById(id);
-    if (el('statActiveTasks')) el('statActiveTasks').textContent = data.stats.active_tasks;
-    if (el('statPendingTasks')) el('statPendingTasks').textContent = data.stats.pending_tasks;
-    if (el('statCompleted24h')) el('statCompleted24h').textContent = data.stats.completed_24h;
-    if (el('statFailed24h')) el('statFailed24h').textContent = data.stats.failed_24h;
-
-    // Timestamp
-    const ts = el('monitoringLastUpdated');
-    if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
-
-    // Backup tasks
-    const backupSection = el('monitoringBackups');
-    const backupBody = el('monitoringBackupBody');
-    if (backupSection && backupBody) {
-      if (data.backup_tasks.length > 0) {
-        backupSection.style.display = '';
-        backupBody.innerHTML = data.backup_tasks.map(b => `
-          <div class="system-row">
-            <span class="system-label">#${b.id}  ${escHtml(b.status_display)}</span>
-            <span class="system-value">
-              ${escHtml(b.current_client || 'Queued')}
-              <span style="color:#94a3b8;margin-left:6px;">(${b.progress}/${b.total})</span>
-              ${b.progress_pct > 0 ? `<div style="width:100px;height:4px;background:#e2e8f0;border-radius:999px;display:inline-block;vertical-align:middle;margin-left:8px;overflow:hidden;"><div style="width:${b.progress_pct}%;height:100%;background:#667eea;border-radius:999px;"></div></div>` : ''}
-            </span>
-          </div>
-        `).join('');
-      } else {
-        backupSection.style.display = 'none';
-      }
-    }
-
-    // Tasks table
-    const tbody = el('monitoringTasksBody');
-    const countBadge = el('monitoringTaskCount');
-    if (countBadge) countBadge.textContent = data.recent_tasks.length;
-
-    if (!tbody) return;
-    if (!data.recent_tasks.length) {
-      tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="8"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No background tasks yet</p><span>Tasks will appear here when processing starts</span></div></td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = data.recent_tasks.map((t, i) => {
-      const pct = t.progress_pct;
-      const progressCell = pct > 0
-        ? `<div style="display:flex;align-items:center;gap:6px;"><div style="width:50px;height:4px;background:#e2e8f0;border-radius:999px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:#667eea;"></div></div><span style="font-size:11px;color:#64748b;">${pct}%</span></div>`
-        : `<span style="font-size:11px;color:#94a3b8;"></span>`;
-
-      const errTip = t.error ? ` title="${escHtml(t.error)}"` : '';
-      const errIcon = t.error ? ` <i class="fa-solid fa-circle-info" style="color:#ef4444;cursor:help;" title="${escHtml(t.error)}"></i>` : '';
-
-      return `<tr${errTip}>
-        <td class="text-center text-xs text-gray-400">${i + 1}</td>
-        <td><span class="text-xs font-medium">${escHtml(t.task_type)}</span></td>
-        <td>${_statusBadge(t.status, t.status_display)}${errIcon}</td>
-        <td><span class="text-xs text-gray-600">${escHtml(t.user)}</span></td>
-        <td>${progressCell}</td>
-        <td><span class="notif-time">${escHtml(t.created_at)}</span></td>
-        <td><span class="notif-time">${t.completed_at ? escHtml(t.completed_at) : '<span style="color:#94a3b8;"></span>'}</span></td>
-        <td></td>
-      </tr>`;
-    }).join('');
-
-  } catch (err) {
-    console.error('Monitoring load error:', err);
-  } finally {
-    if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh'; }
-  }
+  return loadOperationsFeed();
 }
+
+document.addEventListener('visibilitychange', function () {
+  const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
+  if (activeTab === 'log-history' && !document.hidden) {
+    _syncOpsAutoRefresh(true);
+    return;
+  }
+  if (document.hidden) {
+    _syncOpsAutoRefresh(false);
+  }
+});
 
 
 /* ============ Server Info Tab ============ */
 
 function initServerInfoTab() {
   const rows = document.getElementById('serverInfoPathRows');
-  const breakdownRows = document.getElementById('serverInfoBreakdownRows');
   const otherRows = document.getElementById('serverOtherBreakdownRows');
-  if (!rows || !breakdownRows || !otherRows) return;
+  if (!rows || !otherRows) return;
 
   if (serverInfoSnapshot) {
     renderServerInfo(serverInfoSnapshot);
@@ -1336,7 +1412,6 @@ function initServerInfoTab() {
 
   if (!serverInfoHasFetched) {
     rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
-    breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown not loaded</p><span>Fetch snapshot to see detailed used-space accounting.</span></div>`;
     otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details not loaded</p><span>Fetch snapshot to see where "Other System" is likely used.</span></div>`;
   }
 }
@@ -1398,14 +1473,12 @@ async function loadServerInfo(forceRefresh) {
 function renderServerInfo(snapshot, fromCache) {
   const storage = snapshot.storage || {};
   const database = snapshot.database || {};
-  const usageBreakdown = Array.isArray(snapshot.usage_breakdown) ? snapshot.usage_breakdown : [];
   const otherUsageBreakdown = Array.isArray(snapshot.other_usage_breakdown) ? snapshot.other_usage_breakdown : [];
   const memory = snapshot.memory || {};
   const cpu = snapshot.cpu || {};
   const rows = document.getElementById('serverInfoPathRows');
-  const breakdownRows = document.getElementById('serverInfoBreakdownRows');
   const otherRows = document.getElementById('serverOtherBreakdownRows');
-  if (!rows || !breakdownRows || !otherRows) return;
+  if (!rows || !otherRows) return;
 
   const usedPct = Number(storage.used_pct || 0);
   const donut = document.getElementById('serverStorageDonut');
@@ -1444,21 +1517,6 @@ function renderServerInfo(snapshot, fromCache) {
   }
 
   const pathUsage = Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [];
-  if (!usageBreakdown.length) {
-    breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown unavailable</p><span>Server could not calculate used-space categories.</span></div>`;
-  } else {
-    breakdownRows.innerHTML = usageBreakdown.map(item => {
-      const pctUsed = Number(item.pct_of_used_disk || 0);
-      return `<div class="server-path-row">
-        <div class="server-path-main">
-          <div class="server-path-name">${escHtml(item.name || '')}</div>
-          <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
-        </div>
-        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctUsed))}%;"></div></div>
-        <div class="server-path-meta">${pctUsed.toFixed(1)}% of used disk</div>
-      </div>`;
-    }).join('');
-  }
   if (!otherUsageBreakdown.length) {
     otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details unavailable</p><span>No extra system-level detail could be estimated.</span></div>`;
   } else {

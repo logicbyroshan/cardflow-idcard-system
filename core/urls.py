@@ -239,6 +239,7 @@ urlpatterns = [
 
     # Monitoring dashboard data (super_admin only)
     path('api/monitoring/', views.api_monitoring_data, name='api_monitoring_data'),
+    path('api/operations-feed/', views.api_operations_feed, name='api_operations_feed'),
     path('api/server-info/', views.api_server_info_snapshot, name='api_server_info_snapshot'),
 ]
 

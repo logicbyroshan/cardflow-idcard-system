@@ -10,8 +10,10 @@ from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
+from staff.models import Staff
 
 from core.services.permission_service import PermissionService
+from core.services.activity_service import ActivityService
 
 from .views_decorators import require_client_user, require_client_admin
 from .services import (
@@ -181,6 +183,14 @@ def api_staff_list_create(request):
     result = ClientStaffService.create_staff(request.user, data)
     
     if result.success:
+        staff_id = (result.data or {}).get('staff_id')
+        if staff_id:
+            try:
+                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff:
+                    ActivityService.log_staff_create(request, staff)
+            except Exception:
+                pass
         return JsonResponse({
             'success': True,
             'message': result.message,
@@ -258,6 +268,12 @@ def api_staff_detail(request, staff_id):
         result = ClientStaffService.update_staff(request.user, staff_id, data)
         
         if result.success:
+            try:
+                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff:
+                    ActivityService.log_staff_update(request, staff)
+            except Exception:
+                pass
             return JsonResponse({
                 'success': True,
                 'message': result.message
@@ -270,9 +286,21 @@ def api_staff_detail(request, staff_id):
         }, status=status_code)
     
     # DELETE
+    staff_name = f'Staff #{staff_id}'
+    try:
+        existing_staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+        if existing_staff:
+            staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
+    except Exception:
+        pass
+
     result = ClientStaffService.delete_staff(request.user, staff_id)
     
     if result.success:
+        try:
+            ActivityService.log_staff_delete(request, staff_name, staff_id)
+        except Exception:
+            pass
         return JsonResponse({
             'success': True,
             'message': result.message
@@ -296,6 +324,21 @@ def api_staff_toggle_status(request, staff_id):
         
         if result.success:
             is_active = result.data.get('is_active', False)
+            try:
+                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff:
+                    ActivityService.log_staff_status(request, staff, is_active)
+                else:
+                    ActivityService.log(
+                        'staff_status',
+                        f'Staff "#{staff_id}" marked as {"active" if is_active else "inactive"}',
+                        request=request,
+                        target_model='Staff',
+                        target_id=staff_id,
+                        target_name=f'Staff #{staff_id}',
+                    )
+            except Exception:
+                pass
             return JsonResponse({
                 'success': True,
                 'message': result.message,
@@ -344,6 +387,21 @@ def api_staff_set_temp_password(request, staff_id):
     )
 
     if result.success:
+        try:
+            staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+            staff_name = f'Staff #{staff_id}'
+            if staff:
+                staff_name = staff.user.get_full_name() or staff.user.username
+            ActivityService.log(
+                'staff_password_reset',
+                f'Temporary password reset for client staff "{staff_name}"',
+                request=request,
+                target_model='Staff',
+                target_id=staff_id,
+                target_name=staff_name,
+            )
+        except Exception:
+            pass
         return JsonResponse(result.to_response_dict(), status=200)
 
     msg = (result.message or '').lower()
@@ -728,7 +786,7 @@ def api_card_change_status(request, card_id):
     
     new_status = data.get('status', '')
     
-    result = ClientCardService.change_card_status(request.user, card_id, new_status)
+    result = ClientCardService.change_card_status(request.user, card_id, new_status, request=request)
     
     if result.success:
         return JsonResponse({
@@ -771,7 +829,8 @@ def api_cards_bulk_status(request, table_id):
         request.user,
         table_id,
         card_ids,
-        new_status
+        new_status,
+        request=request,
     )
     
     if result.success:

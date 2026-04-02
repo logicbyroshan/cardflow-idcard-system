@@ -272,6 +272,9 @@ class ActivityLog(models.Model):
         # Auth
         ('login', 'Logged in'),
         ('logout', 'Logged out'),
+        ('password_reset', 'Password reset completed'),
+        ('impersonate_start', 'Impersonation started'),
+        ('impersonate_stop', 'Impersonation stopped'),
         # Client management
         ('client_create', 'Client created'),
         ('client_update', 'Client updated'),
@@ -282,6 +285,7 @@ class ActivityLog(models.Model):
         ('staff_update', 'Staff updated'),
         ('staff_delete', 'Staff deleted'),
         ('staff_status', 'Staff status changed'),
+        ('staff_password_reset', 'Staff password reset'),
         # ID Card operations
         ('card_create', 'ID cards added'),
         ('card_update', 'ID card updated'),
@@ -305,6 +309,13 @@ class ActivityLog(models.Model):
         ('bulk_upgrade', 'Bulk upgrade'),
         # Website content
         ('website_update', 'Website content updated'),
+        ('notification_create', 'Notification created'),
+        ('notification_delete', 'Notification deleted'),
+        ('email_send', 'Email sent'),
+        ('email_resend', 'Email resent'),
+        ('backup_initiate', 'Backup initiated'),
+        ('backup_start', 'Backup started'),
+        ('backup_delete', 'Backup deleted'),
         # Reprint
         ('reprint_request', 'Reprint requested'),
         ('reprint_status', 'Reprint status changed'),
@@ -318,6 +329,9 @@ class ActivityLog(models.Model):
     ACTION_ICONS = {
         'login': ('fa-right-to-bracket', 'verify'),
         'logout': ('fa-right-from-bracket', 'edit'),
+        'password_reset': ('fa-key', 'approve'),
+        'impersonate_start': ('fa-user-secret', 'edit'),
+        'impersonate_stop': ('fa-user-check', 'verify'),
         'client_create': ('fa-user-plus', 'add'),
         'client_update': ('fa-user-pen', 'edit'),
         'client_delete': ('fa-user-minus', 'delete'),
@@ -326,6 +340,7 @@ class ActivityLog(models.Model):
         'staff_update': ('fa-user-pen', 'edit'),
         'staff_delete': ('fa-user-minus', 'delete'),
         'staff_status': ('fa-user-check', 'verify'),
+        'staff_password_reset': ('fa-key', 'approve'),
         'card_create': ('fa-plus', 'add'),
         'card_update': ('fa-pen', 'edit'),
         'card_delete': ('fa-trash', 'delete'),
@@ -344,6 +359,13 @@ class ActivityLog(models.Model):
         'bulk_delete': ('fa-trash-can', 'delete'),
         'bulk_upgrade': ('fa-arrow-up', 'approve'),
         'website_update': ('fa-globe', 'edit'),
+        'notification_create': ('fa-bell', 'add'),
+        'notification_delete': ('fa-bell-slash', 'delete'),
+        'email_send': ('fa-envelope-circle-check', 'approve'),
+        'email_resend': ('fa-envelope-open-text', 'edit'),
+        'backup_initiate': ('fa-database', 'edit'),
+        'backup_start': ('fa-vault', 'approve'),
+        'backup_delete': ('fa-trash-can', 'delete'),
         'reprint_request': ('fa-print', 'add'),
         'reprint_status': ('fa-print', 'verify'),
         'settings_update': ('fa-gear', 'edit'),

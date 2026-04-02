@@ -1,47 +1,140 @@
-<!-- === LOG HISTORY TAB === -->
-<div class="panel-tab-content panel-tab-full-height" id="tab-log-history">
+<!-- === OPERATIONS HUB TAB (Logs + Monitoring) === -->
+<div class="panel-tab-content panel-tab-full-height log-panel-theme operations-panel-theme" id="tab-log-history">
 
-  <!-- Header bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
+      <span class="log-panel-kicker"><i class="fa-solid fa-wave-square"></i> Ops Timeline</span>
       <div class="notif-search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="logSearch" placeholder="Search logs..." oninput="debounceLogSearch()">
+        <input type="text" id="opsSearch" placeholder="Search users, tasks, logs, targets..." oninput="debounceOpsSearch()">
       </div>
-      <select id="logUserTypeFilter" class="form-select-sm" onchange="loadLogs()">
+      <select id="opsSourceFilter" class="form-select-sm" onchange="handleOpsSourceChange()">
+        <option value="all">All Sources</option>
+        <option value="tasks">Background Tasks</option>
+        <option value="backups">Backup Tasks</option>
+        <option value="logs">Activity Logs</option>
+      </select>
+      <select id="opsUserTypeFilter" class="form-select-sm" onchange="loadOperationsFeed()">
         <option value="">All User Types</option>
         <option value="super_admin">Super Admin</option>
         <option value="admin_staff">Admin Staff</option>
         <option value="client">Client</option>
         <option value="client_staff">Client Staff</option>
       </select>
+      <select id="opsTaskStatusFilter" class="form-select-sm" onchange="loadOperationsFeed()">
+        <option value="">All Task Status</option>
+        <option value="pending">Pending</option>
+        <option value="processing">Processing</option>
+        <option value="completed">Completed</option>
+        <option value="failed">Failed</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="deleted">Deleted</option>
+      </select>
+      <select id="opsActionFilter" class="form-select-sm" onchange="loadOperationsFeed()">
+        <option value="">All Log Actions</option>
+        <option value="login">Login</option>
+        <option value="logout">Logout</option>
+        <option value="password_reset">Password Reset</option>
+        <option value="impersonate_start">Impersonation Start</option>
+        <option value="impersonate_stop">Impersonation Stop</option>
+        <option value="client_create">Client Create</option>
+        <option value="client_update">Client Update</option>
+        <option value="client_delete">Client Delete</option>
+        <option value="staff_create">Staff Create</option>
+        <option value="staff_update">Staff Update</option>
+        <option value="staff_delete">Staff Delete</option>
+        <option value="staff_password_reset">Staff Password Reset</option>
+        <option value="card_create">Card Create</option>
+        <option value="card_update">Card Update</option>
+        <option value="card_delete">Card Delete</option>
+        <option value="bulk_delete">Bulk Delete</option>
+        <option value="bulk_upgrade">Bulk Upgrade</option>
+        <option value="notification_create">Notification Create</option>
+        <option value="notification_delete">Notification Delete</option>
+        <option value="email_send">Email Send</option>
+        <option value="email_resend">Email Resend</option>
+        <option value="backup_initiate">Backup Initiate</option>
+        <option value="backup_start">Backup Start</option>
+        <option value="backup_delete">Backup Delete</option>
+        <option value="settings_update">Settings Update</option>
+      </select>
     </div>
     <div class="notif-actions-right">
-      <span class="panel-muted-count" id="logCountLabel"> - </span>
+      <span class="panel-muted-count" id="opsCountLabel"> - </span>
+      <button class="btn btn-sm btn-neutral" type="button" onclick="resetOperationsFilters()" id="opsResetBtn">
+        <i class="fa-solid fa-filter-circle-xmark"></i> Reset Filters
+      </button>
+      <button class="btn btn-sm btn-outline-primary" onclick="loadOperationsFeed()" id="opsRefreshBtn">
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+      </button>
     </div>
   </div>
 
-  <!-- Logs Table -->
+  <div class="panel-section-strip panel-section-strip-log">
+    <span class="panel-section-strip-title"><i class="fa-solid fa-shield-halved"></i> Unified Operations Control Feed</span>
+    <span class="panel-section-strip-sub">Live monitoring + audit trail in one place, always newest first.</span>
+  </div>
+
+  <div class="system-grid mb-4" id="opsMonitoringStats">
+    <div class="system-card">
+      <div class="system-card-header"><i class="fa-solid fa-bolt"></i> Active Tasks</div>
+      <div class="system-card-body">
+        <span id="opsStatActiveTasks" class="monitor-stat-value monitor-stat-active"> - </span>
+      </div>
+    </div>
+    <div class="system-card">
+      <div class="system-card-header"><i class="fa-solid fa-clock"></i> Pending</div>
+      <div class="system-card-body">
+        <span id="opsStatPendingTasks" class="monitor-stat-value monitor-stat-pending"> - </span>
+      </div>
+    </div>
+    <div class="system-card">
+      <div class="system-card-header"><i class="fa-solid fa-circle-check"></i> Completed (24 h)</div>
+      <div class="system-card-body">
+        <span id="opsStatCompleted24h" class="monitor-stat-value monitor-stat-success"> - </span>
+      </div>
+    </div>
+    <div class="system-card">
+      <div class="system-card-header"><i class="fa-solid fa-circle-xmark"></i> Failed (24 h)</div>
+      <div class="system-card-body">
+        <span id="opsStatFailed24h" class="monitor-stat-value monitor-stat-danger"> - </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section-strip panel-section-strip-log panel-section-strip-monitor-compact">
+    <span class="panel-section-strip-title"><i class="fa-solid fa-list-check"></i> Recent Operations Timeline</span>
+    <span class="panel-section-strip-sub">All users, all sources, most recent events shown at the top.</span>
+  </div>
+
+  <div class="ops-summary-strip" id="opsSummaryStrip">
+    <span class="ops-summary-pill"><i class="fa-solid fa-arrow-down-wide-short"></i> <strong id="opsSortHint">Newest First</strong></span>
+    <span class="ops-summary-pill"><i class="fa-solid fa-clock"></i> <span id="opsLastUpdated">Not updated yet</span></span>
+    <span class="ops-summary-pill ops-summary-pill-task"><i class="fa-solid fa-gears"></i> Tasks: <strong id="opsCountTasks">0</strong></span>
+    <span class="ops-summary-pill ops-summary-pill-backup"><i class="fa-solid fa-database"></i> Backups: <strong id="opsCountBackups">0</strong></span>
+    <span class="ops-summary-pill ops-summary-pill-log"><i class="fa-solid fa-clock-rotate-left"></i> Logs: <strong id="opsCountLogs">0</strong></span>
+  </div>
+
   <div class="notif-table-wrap">
     <table class="notif-table">
       <thead>
         <tr>
           <th scope="col" style="width:5%">#</th>
+          <th scope="col" style="width:11%">Source</th>
+          <th scope="col" style="width:14%">Event</th>
+          <th scope="col" style="width:12%">Status / Action</th>
           <th scope="col" style="width:14%">User</th>
-          <th scope="col" style="width:12%">Action</th>
-          <th scope="col" style="width:35%">Description</th>
-          <th scope="col" style="width:12%">Target</th>
-          <th scope="col" style="width:10%">IP Address</th>
-          <th scope="col" style="width:12%">Time</th>
+          <th scope="col" style="width:30%">Details</th>
+          <th scope="col" style="width:14%">Time</th>
         </tr>
       </thead>
-      <tbody id="logTableBody">
+      <tbody id="opsTableBody">
         <tr class="notif-table-empty">
           <td colspan="7">
             <div class="empty-state">
-              <i class="fa-solid fa-clock-rotate-left"></i>
-              <p>No logs found</p>
-              <span>Activity logs will appear here</span>
+              <i class="fa-solid fa-wave-square"></i>
+              <p>No operations found</p>
+              <span>Background tasks and activity logs will appear here.</span>
             </div>
           </td>
         </tr>

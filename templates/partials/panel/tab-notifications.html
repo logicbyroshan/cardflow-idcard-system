@@ -1,9 +1,10 @@
 <!-- === NOTIFICATIONS TAB === -->
-<div class="panel-tab-content active" id="tab-notifications">
+<div class="panel-tab-content active notif-panel-theme" id="tab-notifications">
 
   <!-- Notification Actions Bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
+      <span class="notif-panel-kicker"><i class="fa-solid fa-bell"></i> Broadcast Center</span>
       <div class="notif-search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="notifSearch" placeholder="Search notifications..." oninput="debounceSearch()">
@@ -14,6 +15,11 @@
         <i class="fa-solid fa-plus"></i> New Notification
       </button>
     </div>
+  </div>
+
+  <div class="panel-section-strip">
+    <span class="panel-section-strip-title"><i class="fa-solid fa-wave-square"></i> Delivery Insights</span>
+    <span class="panel-section-strip-sub">Live send, target and urgency distribution for admin broadcasts.</span>
   </div>
 
   <!-- Notification Stats -->
