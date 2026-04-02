@@ -487,8 +487,8 @@ class AuthServiceRoleEdgeTests(TestCase):
             unblocked = services.AuthService.authenticate_user('locked@example.com', 'lockpass123')
             self.assertTrue(unblocked['success'])
 
-    @mock.patch('accounts.services.send_mail_async')
-    def test_authenticate_sends_failed_login_alert_after_threshold(self, mocked_send_mail):
+    @mock.patch('accounts.services.send_html_email_async')
+    def test_authenticate_sends_failed_login_alert_after_threshold(self, mocked_send_html_email):
         from accounts import services
 
         cache.clear()
@@ -504,7 +504,7 @@ class AuthServiceRoleEdgeTests(TestCase):
             services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
             services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
 
-        self.assertEqual(mocked_send_mail.call_count, 1)
+        self.assertEqual(mocked_send_html_email.call_count, 1)
 
 
 class OTPServiceEdgeTests(TestCase):

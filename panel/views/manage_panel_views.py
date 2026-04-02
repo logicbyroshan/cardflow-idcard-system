@@ -293,6 +293,7 @@ def api_email_resend(request, log_id):
             password=new_password,
             role=user.role,
             request=request,
+            email_variant='temp_password',
         )
     except Exception as e:
         logger.exception('api_email_resend error for log %s', log_id)

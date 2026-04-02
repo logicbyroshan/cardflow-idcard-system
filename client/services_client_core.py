@@ -795,6 +795,7 @@ class ClientService(BaseService):
                     role='client',
                     phone=user.phone or '',
                     request=request,
+                    email_variant='temp_password',
                 )
                 EmailLog.objects.create(
                     recipient_name=client.name or user.get_full_name(),

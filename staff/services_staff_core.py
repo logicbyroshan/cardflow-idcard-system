@@ -541,6 +541,7 @@ class StaffService(BaseService):
                     role=staff.staff_type,
                     phone=user.phone or '',
                     request=request,
+                    email_variant='temp_password',
                 )
                 EmailLog.objects.create(
                     recipient_name=user.get_full_name(),

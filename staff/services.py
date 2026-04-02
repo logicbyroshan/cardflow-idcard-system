@@ -585,8 +585,9 @@ class AdminStaffCreationService:
                 email=user.email,
                 name=user.get_full_name(),
                 password=new_password,
-                role='Admin Staff',
-                phone=getattr(user, 'phone', '')
+                role='admin_staff',
+                phone=getattr(user, 'phone', ''),
+                email_variant='temp_password',
             )
             
             return {
