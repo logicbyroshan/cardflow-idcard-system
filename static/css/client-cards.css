@@ -67,7 +67,6 @@
     color: var(--text-secondary, #a0aec0);
   }
   
-  .filter-group .form-select,
   .filter-group input {
     padding: 8px 12px;
     font-size: 13px;
@@ -75,7 +74,6 @@
     min-height: 36px;
   }
   
-  .filter-group .form-select:focus,
   .filter-group input:focus {
     outline: none;
     border-color: #48bb78;
