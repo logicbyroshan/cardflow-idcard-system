@@ -294,7 +294,7 @@ def api_print_reprint_overview(request):
         base_qs = Client.objects.all()
         accessible_clients = PermissionService.get_accessible_clients(user, base_qs)
 
-        # Keep print list alphabetical, but order reprint by latest update first.
+        # Keep print workflow clients alphabetical, but order reprint by latest update first.
         print_clients_qs = accessible_clients.order_by('name')[:limit]
         reprint_clients_qs = accessible_clients.annotate(
             latest_reprint_update=Max(
@@ -311,6 +311,7 @@ def api_print_reprint_overview(request):
         print_counts_qs = PrintRequest.objects.filter(
             table__group__client_id__in=client_ids
         ).values('table__group__client_id').annotate(
+            generate_list=Count('id', filter=Q(status='generate_list')),
             print_list=Count('id', filter=Q(status='print_list')),
             finalized=Count('id', filter=Q(status='finalized')),
             pool=Count('id', filter=Q(status='pool')),
@@ -321,6 +322,7 @@ def api_print_reprint_overview(request):
         print_table_qs = PrintRequest.objects.filter(
             table__group__client_id__in=client_ids
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+            generate_list=Count('id', filter=Q(status='generate_list')),
             print_list=Count('id', filter=Q(status='print_list')),
             finalized=Count('id', filter=Q(status='finalized')),
             pool=Count('id', filter=Q(status='pool')),
@@ -333,6 +335,7 @@ def api_print_reprint_overview(request):
             print_tables_map[cid].append({
                 'id': t['table__id'],
                 'name': t['table__name'],
+                'generate_list': t['generate_list'],
                 'print_list': t['print_list'],
                 'finalized': t['finalized'],
                 'pool': t['pool'],
@@ -426,6 +429,7 @@ def api_print_reprint_overview(request):
                 'id': c.id,
                 'name': c.name,
                 'status': c.status,
+                'generate_list': pc.get('generate_list', 0),
                 'print_list': pc.get('print_list', 0),
                 'finalized': pc.get('finalized', 0),
                 'pool': pc.get('pool', 0),

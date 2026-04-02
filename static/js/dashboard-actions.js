@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
 
-        setDashboardTableSkeleton(printBody, 3, 3);
+        setDashboardTableSkeleton(printBody, 4, 3);
         setDashboardTableSkeleton(reprintBody, 3, 3);
         const skeletonStart = Date.now();
 
@@ -580,6 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <td>
                                             <a href="/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                         </td>
+                                        <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.generate_list}</a></td>
                                         <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
                                         <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
                                     </tr>
@@ -589,6 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <td>
                                             <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                         </td>
+                                        <td class="text-center"><span class="count-badge pending">${client.generate_list}</span></td>
                                         <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
                                     </tr>
@@ -596,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 `;
                             }).join('');
                         } else {
-                            printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                            printBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
                         }
                     }
 
