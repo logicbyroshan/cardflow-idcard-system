@@ -4,14 +4,14 @@
   <!-- Actions / Filter bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <select id="emailStatusFilter" class="form-select-sm" onchange="loadEmailLogs()">
+      <select id="emailStatusFilter" class="form-select form-select-sm" onchange="loadEmailLogs()">
         <option value="">All Statuses</option>
         <option value="on_hold">On Hold</option>
         <option value="pending">Pending</option>
         <option value="sent">Sent</option>
         <option value="failed">Failed</option>
       </select>
-      <select id="emailTypeFilter" class="form-select-sm" onchange="loadEmailLogs()">
+      <select id="emailTypeFilter" class="form-select form-select-sm" onchange="loadEmailLogs()">
         <option value="">All Types</option>
         <option value="welcome">Welcome / Activation</option>
         <option value="temp_password">Temp Password</option>
@@ -119,7 +119,7 @@
             <div class="panel-form-row">
               <div>
                 <label class="panel-form-label">Email Type</label>
-                <select class="panel-form-select form-select-sm" id="emailComposeType">
+                <select class="form-select panel-form-select form-select-sm" id="emailComposeType">
                   <option value="system">System / Custom</option>
                   <option value="welcome">Welcome / Activation</option>
                   <option value="temp_password">Temp Password</option>

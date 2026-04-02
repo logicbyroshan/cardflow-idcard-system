@@ -7,24 +7,24 @@
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="opsSearch" placeholder="Search users, tasks, logs, targets..." oninput="debounceOpsSearch()">
       </div>
-      <select id="opsSourceFilter" class="form-select-sm" onchange="handleOpsSourceChange()">
+      <select id="opsSourceFilter" class="form-select form-select-sm" onchange="handleOpsSourceChange()">
         <option value="all">All Sources</option>
         <option value="tasks">Background Tasks</option>
         <option value="backups">Backup Tasks</option>
         <option value="logs">Activity Logs</option>
         <option value="client_logs">Client Login History</option>
       </select>
-      <select id="opsClientFilter" class="form-select-sm" onchange="loadOperationsFeed()" disabled>
+      <select id="opsClientFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()" disabled>
         <option value="">All Clients</option>
       </select>
-      <select id="opsUserTypeFilter" class="form-select-sm" onchange="loadOperationsFeed()">
+      <select id="opsUserTypeFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()">
         <option value="">All User Types</option>
         <option value="super_admin">Super Admin</option>
         <option value="admin_staff">Admin Staff</option>
         <option value="client">Client</option>
         <option value="client_staff">Client Staff</option>
       </select>
-      <select id="opsTaskStatusFilter" class="form-select-sm" onchange="loadOperationsFeed()">
+      <select id="opsTaskStatusFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()">
         <option value="">All Task Status</option>
         <option value="pending">Pending</option>
         <option value="processing">Processing</option>
@@ -33,7 +33,7 @@
         <option value="cancelled">Cancelled</option>
         <option value="deleted">Deleted</option>
       </select>
-      <select id="opsActionFilter" class="form-select-sm" onchange="loadOperationsFeed()">
+      <select id="opsActionFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()">
         <option value="">All Log Actions</option>
         <option value="login">Login</option>
         <option value="logout">Logout</option>

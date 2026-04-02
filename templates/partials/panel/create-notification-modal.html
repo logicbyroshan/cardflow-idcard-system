@@ -23,7 +23,7 @@
       <div class="panel-form-row">
         <div>
           <label class="panel-form-label">Category</label>
-          <select class="panel-form-select" id="notifCategory">
+          <select class="form-select panel-form-select" id="notifCategory">
             <option value="general">General</option>
             <option value="announcement">Announcement</option>
             <option value="update">System Update</option>
@@ -33,7 +33,7 @@
         </div>
         <div>
           <label class="panel-form-label">Priority</label>
-          <select class="panel-form-select" id="notifPriority">
+          <select class="form-select panel-form-select" id="notifPriority">
             <option value="low">Low</option>
             <option value="normal" selected>Normal</option>
             <option value="high">High</option>
@@ -44,7 +44,7 @@
 
       <!-- Target -->
       <label class="panel-form-label">Send To</label>
-      <select class="panel-form-select" id="notifTarget" onchange="handleTargetChange()">
+      <select class="form-select panel-form-select" id="notifTarget" onchange="handleTargetChange()">
         <option value="all">All Users</option>
         <option value="super_admin">Super Admins Only</option>
         <option value="admin_staff">Admin Staff Only</option>

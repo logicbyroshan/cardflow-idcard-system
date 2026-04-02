@@ -201,7 +201,7 @@
                 </div>
                 <div class="wa-form-group">
                     <label for="cat_bento_size">Bento Size</label>
-                    <select id="cat_bento_size" name="bento_size">
+                    <select id="cat_bento_size" name="bento_size" class="form-select">
                         <option value="normal">Normal</option>
                         <option value="wide">Wide (2 columns)</option>
                         <option value="large">Large (featured)</option>
@@ -229,7 +229,7 @@
             <div class="wa-form-row">
                 <div class="wa-form-group">
                     <label for="pf_category">Category</label>
-                    <select id="pf_category" name="category">
+                    <select id="pf_category" name="category" class="form-select">
                         <option value=""> -  None  - </option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}">{{ cat.name }}</option>
@@ -288,7 +288,7 @@
             <div class="wa-modal-body">
                 <div class="wa-form-group">
                     <label for="bulk_category">Category *</label>
-                    <select id="bulk_category" name="category" required>
+                    <select id="bulk_category" name="category" class="form-select" required>
                         <option value=""> -  Select Category  - </option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}">{{ cat.name }}</option>
