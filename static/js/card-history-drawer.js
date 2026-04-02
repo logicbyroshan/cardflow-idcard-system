@@ -32,23 +32,23 @@
 
     var overlay = document.createElement('div');
     overlay.id = 'cardHistoryOverlay';
-    overlay.className = 'card-history-overlay';
+    overlay.className = 'drawer-overlay card-history-overlay';
 
     var drawer = document.createElement('aside');
     drawer.id = 'cardHistoryDrawer';
-    drawer.className = 'card-history-drawer';
+    drawer.className = 'side-drawer card-history-drawer';
     drawer.setAttribute('aria-hidden', 'true');
     drawer.innerHTML = '' +
-      '<div class="card-history-header">' +
+      '<div class="drawer-header card-history-header">' +
         '<div>' +
           '<div class="card-history-title">Card History</div>' +
           '<div class="card-history-subtitle" id="cardHistorySubtitle">Who, what, when</div>' +
         '</div>' +
-        '<button type="button" class="card-history-close" id="cardHistoryClose" aria-label="Close history">' +
+        '<button type="button" class="drawer-close card-history-close" id="cardHistoryClose" aria-label="Close history">' +
           '<i class="fa-solid fa-xmark"></i>' +
         '</button>' +
       '</div>' +
-      '<div class="card-history-body" id="cardHistoryBody">' +
+      '<div class="drawer-body card-history-body" id="cardHistoryBody">' +
         '<div class="card-history-empty">Select a card to view history.</div>' +
       '</div>';
 
@@ -74,7 +74,7 @@
     var drawer = document.getElementById('cardHistoryDrawer');
     if (!overlay || !drawer) return;
 
-    overlay.classList.add('open');
+    overlay.classList.add('active');
     drawer.classList.add('open');
     drawer.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -85,7 +85,7 @@
     var drawer = document.getElementById('cardHistoryDrawer');
     if (!overlay || !drawer) return;
 
-    overlay.classList.remove('open');
+    overlay.classList.remove('active');
     drawer.classList.remove('open');
     drawer.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';

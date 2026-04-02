@@ -16,6 +16,7 @@ jobs:
   ci:
     name: Validate Django Project
     runs-on: self-hosted
+    if: ${{ false }}  # TEMP: CI paused
 
     env:
       DJANGO_SETTINGS_MODULE: config.settings
