@@ -226,6 +226,12 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <i class="fa-solid fa-print"></i>
                 <span class="btn-text">Print Selected</span>
             </button>
+            {% if perm_idcard_reprint_list %}
+            <button class="btn action-btn btn-blue" id="openReprintModalBtn" title="Request reprint from download list">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reprint</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
@@ -245,18 +251,20 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
                 <span class="btn-text">Download PDF</span>
             </button>
             {% endif %}
-            {% if perm_idcard_reprint_list %}
-            {% endif %}
             {% endif %}
             {% if is_client or is_client_staff %}
+            {% if perm_idcard_reprint_list %}
+            <button class="btn action-btn btn-blue" id="openReprintModalBtn" title="Request reprint from download list">
+                <i class="fa-solid fa-rotate"></i>
+                <span class="btn-text">Reprint</span>
+            </button>
+            {% endif %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
             <button class="btn action-btn btn-purple" id="downloadPdfBtnD" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
                 <span class="btn-text">Download PDF</span>
             </button>
-            {% endif %}
-            {% if perm_idcard_reprint_list %}
             {% endif %}
             {% endif %}
         {% elif current_status == 'pool' %}

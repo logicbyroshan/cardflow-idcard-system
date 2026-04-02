@@ -9,6 +9,14 @@
 
 var TABLE_ID = window.TABLE_ID;
 if (!TABLE_ID) return;
+var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+
+function panelUrl(path) {
+  if (!path) return path;
+  if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
+  var normalized = path.charAt(0) === '/' ? path : '/' + path;
+  return panelBase + normalized;
+}
 
 /* 
    SHARED HELPERS
@@ -31,7 +39,7 @@ function updateTabCount(sel, count) {
 }
 
 function refreshStepCounts() {
-  ApiClient.get('/print/api/table/' + TABLE_ID + '/step-counts/')
+  ApiClient.get(panelUrl('/print/api/table/' + TABLE_ID + '/step-counts/'))
     .then(function(data) {
       if (data.status === 'ok') {
         updateTabCount('.print-approved-tab .tab-count', data.approved || 0);
@@ -313,6 +321,9 @@ function createPaginator(opts) {
   var tableBody      = document.getElementById('generateListTableBody');
   var searchInput    = document.getElementById('generateListSearchInput');
   var searchClearBtn = document.getElementById('generateListSearchClearBtn');
+  var fromDateInput  = document.getElementById('generateFromDate');
+  var toDateInput    = document.getElementById('generateToDate');
+  var clearDateFilterBtn = document.getElementById('generateClearDateFilterBtn');
   var continueBtn    = document.getElementById('continueGenerateBtn');
   var viewBtn        = document.getElementById('generateListViewBtn');
   var retrieveBtn    = document.getElementById('generateRetrieveBtn');
@@ -322,6 +333,11 @@ function createPaginator(opts) {
   var dlPdfBtn       = document.getElementById('generateDownloadPdfBtn');
   var showingRange   = document.getElementById('generateListShowingRange');
   var totalCountEl   = document.getElementById('generateListTotalCount');
+  var currentQuery   = '';
+  var fetchSeq       = 0;
+  var suppressDateFetch = false;
+  var generateFromFlatpickr = null;
+  var generateToFlatpickr = null;
 
   if (!tableBody) return;
 
@@ -367,7 +383,7 @@ function createPaginator(opts) {
         window.gcEditorRefresh(window.FRONT_PDF_URL || undefined, window.BACK_PDF_URL || undefined);
       }
     } else {
-      window.location.href = '/print/generate-card/table/' + TABLE_ID + '/';
+      window.location.href = panelUrl('/print/generate-card/table/' + TABLE_ID + '/');
     }
   }
 
@@ -406,7 +422,7 @@ function createPaginator(opts) {
       }
       if (!ok) return;
 
-      ApiClient.post('/print/api/table/' + TABLE_ID + '/retrieve-generate/', { request_ids: prIds })
+      ApiClient.post(panelUrl('/print/api/table/' + TABLE_ID + '/retrieve-generate/'), { request_ids: prIds })
         .then(function(data) {
           if (!data || data.status !== 'ok') {
             showToast((data && data.message) || 'Retrieve failed', 'error');
@@ -431,22 +447,22 @@ function createPaginator(opts) {
 
     var payload = { card_ids: cardIds };
     if (kind === 'img') {
-      _downloadImageExport('/api/table/' + TABLE_ID + '/cards/download-images/', payload)
+      _downloadImageExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-images/'), payload)
         .catch(function(err) { showToast((err && err.message) || 'Image export failed', 'error'); });
       return;
     }
     if (kind === 'docx') {
-      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-docx/', payload, 'cards.docx', 'Word download complete')
+      _downloadBlobExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-docx/'), payload, 'cards.docx', 'Word download complete')
         .catch(function(err) { showToast((err && err.message) || 'Word export failed', 'error'); });
       return;
     }
     if (kind === 'xlsx') {
-      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-xlsx/', payload, 'cards.xlsx', 'Excel download complete')
+      _downloadBlobExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-xlsx/'), payload, 'cards.xlsx', 'Excel download complete')
         .catch(function(err) { showToast((err && err.message) || 'Excel export failed', 'error'); });
       return;
     }
     if (kind === 'pdf') {
-      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-pdf/', payload, 'cards.pdf', 'PDF download complete')
+      _downloadBlobExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-pdf/'), payload, 'cards.pdf', 'PDF download complete')
         .catch(function(err) { showToast((err && err.message) || 'PDF export failed', 'error'); });
     }
   }
@@ -475,12 +491,64 @@ function createPaginator(opts) {
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
+  function initGenerateDateFilter() {
+    if (!fromDateInput || !toDateInput || typeof flatpickr === 'undefined') return;
+    var fpConfig = {
+      enableTime: true,
+      dateFormat: 'Y-m-d H:i',
+      time_24hr: true,
+      minuteIncrement: 1,
+      allowInput: false,
+      onChange: function() {
+        if (suppressDateFetch) return;
+        setTimeout(function() { fetchGenerateItems(currentQuery); }, 40);
+      },
+      onClose: function(_selected, _dateStr, instance) {
+        if (!instance || !instance.calendarContainer) return;
+        var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
+        timeInputs.forEach(function(inp) {
+          inp.addEventListener('change', function() {
+            setTimeout(function() { fetchGenerateItems(currentQuery); }, 40);
+          }, { once: true });
+        });
+      }
+    };
+    generateFromFlatpickr = flatpickr(fromDateInput, fpConfig);
+    generateToFlatpickr = flatpickr(toDateInput, fpConfig);
+  }
+
+  initGenerateDateFilter();
+
+  if (clearDateFilterBtn) {
+    clearDateFilterBtn.addEventListener('click', function() {
+      suppressDateFetch = true;
+      if (generateFromFlatpickr) generateFromFlatpickr.clear();
+      if (generateToFlatpickr) generateToFlatpickr.clear();
+      if (fromDateInput) fromDateInput.value = '';
+      if (toDateInput) toDateInput.value = '';
+      fetchGenerateItems(currentQuery);
+      setTimeout(function() { suppressDateFetch = false; }, 0);
+    });
+  }
+
   function fetchGenerateItems(query) {
-    var url = '/print/api/table/' + TABLE_ID + '/generate-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    currentQuery = query || '';
+    var mySeq = ++fetchSeq;
+    var url = panelUrl('/print/api/table/' + TABLE_ID + '/generate-list/?q=' + encodeURIComponent(currentQuery) + '&limit=200');
+    if (fromDateInput && fromDateInput.value) {
+      url += '&from=' + encodeURIComponent(fromDateInput.value);
+    }
+    if (toDateInput && toDateInput.value) {
+      url += '&to=' + encodeURIComponent(toDateInput.value);
+    }
     ApiClient.get(url)
     .then(function(data) {
+      if (mySeq !== fetchSeq) return;
       if (data.status === 'ok') renderGenerateItems(data.items || [], data.total || 0);
-    }).catch(function(err) { console.error('[GenerateList] Search failed:', err); });
+    }).catch(function(err) {
+      if (mySeq !== fetchSeq) return;
+      console.error('[GenerateList] Search failed:', err);
+    });
   }
 
   function renderGenerateItems(items, total) {
@@ -519,6 +587,9 @@ function createPaginator(opts) {
   var selectAllCb   = document.getElementById('finalizedSelectAll');
   var searchInput   = document.getElementById('finalizedSearchInput');
   var searchClearBtn = document.getElementById('finalizedSearchClearBtn');
+  var fromDateInput = document.getElementById('finalizedFromDate');
+  var toDateInput = document.getElementById('finalizedToDate');
+  var clearDateFilterBtn = document.getElementById('finalizedClearDateFilterBtn');
   var poolBtn       = document.getElementById('finalizedMoveToPoolBtn');
   var viewBtn       = document.getElementById('finalizedViewBtn');
   var retrieveBtn   = document.getElementById('finalizedRetrieveBtn');
@@ -528,6 +599,11 @@ function createPaginator(opts) {
   var dlPdfBtn      = document.getElementById('finalizedDownloadPdfBtn');
   var showingRange  = document.getElementById('finalizedShowingRange');
   var totalCountEl  = document.getElementById('finalizedTotalCount');
+  var currentQuery  = '';
+  var fetchSeq      = 0;
+  var suppressDateFetch = false;
+  var finalizedFromFlatpickr = null;
+  var finalizedToFlatpickr = null;
 
   if (!tableBody) return;
 
@@ -647,7 +723,7 @@ function createPaginator(opts) {
       }
       if (!ok) return;
 
-      ApiClient.post('/print/api/table/' + TABLE_ID + '/retrieve-finalized/', { request_ids: ids })
+      ApiClient.post(panelUrl('/print/api/table/' + TABLE_ID + '/retrieve-finalized/'), { request_ids: ids })
         .then(function(data) {
           if (!data || data.status !== 'ok') {
             showToast((data && data.message) || 'Retrieve failed', 'error');
@@ -672,22 +748,22 @@ function createPaginator(opts) {
 
     var payload = { card_ids: cardIds };
     if (kind === 'img') {
-      _downloadImageExport('/api/table/' + TABLE_ID + '/cards/download-images/', payload)
+      _downloadImageExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-images/'), payload)
         .catch(function(err) { showToast((err && err.message) || 'Image export failed', 'error'); });
       return;
     }
     if (kind === 'docx') {
-      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-docx/', payload, 'cards.docx', 'Word download complete')
+      _downloadBlobExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-docx/'), payload, 'cards.docx', 'Word download complete')
         .catch(function(err) { showToast((err && err.message) || 'Word export failed', 'error'); });
       return;
     }
     if (kind === 'xlsx') {
-      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-xlsx/', payload, 'cards.xlsx', 'Excel download complete')
+      _downloadBlobExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-xlsx/'), payload, 'cards.xlsx', 'Excel download complete')
         .catch(function(err) { showToast((err && err.message) || 'Excel export failed', 'error'); });
       return;
     }
     if (kind === 'pdf') {
-      _downloadBlobExport('/api/table/' + TABLE_ID + '/cards/download-pdf/', payload, 'cards.pdf', 'PDF download complete')
+      _downloadBlobExport(panelUrl('/api/table/' + TABLE_ID + '/cards/download-pdf/'), payload, 'cards.pdf', 'PDF download complete')
         .catch(function(err) { showToast((err && err.message) || 'PDF export failed', 'error'); });
     }
   }
@@ -699,7 +775,7 @@ function createPaginator(opts) {
 
   // Move to Pool API (finalized  pool)
   function performMoveToPool(prIds) {
-    ApiClient.post('/print/api/table/' + TABLE_ID + '/mark-pool/', { request_ids: prIds })
+    ApiClient.post(panelUrl('/print/api/table/' + TABLE_ID + '/mark-pool/'), { request_ids: prIds })
     .then(function(data) {
       if (data.status === 'ok') {
         showToast(data.message || 'Moved to pool', 'success');
@@ -739,12 +815,64 @@ function createPaginator(opts) {
     searchClearBtn.style.display = searchInput && searchInput.value ? '' : 'none';
   }
 
+  function initFinalizedDateFilter() {
+    if (!fromDateInput || !toDateInput || typeof flatpickr === 'undefined') return;
+    var fpConfig = {
+      enableTime: true,
+      dateFormat: 'Y-m-d H:i',
+      time_24hr: true,
+      minuteIncrement: 1,
+      allowInput: false,
+      onChange: function() {
+        if (suppressDateFetch) return;
+        setTimeout(function() { fetchFinalizedItems(currentQuery); }, 40);
+      },
+      onClose: function(_selected, _dateStr, instance) {
+        if (!instance || !instance.calendarContainer) return;
+        var timeInputs = instance.calendarContainer.querySelectorAll('.flatpickr-time input');
+        timeInputs.forEach(function(inp) {
+          inp.addEventListener('change', function() {
+            setTimeout(function() { fetchFinalizedItems(currentQuery); }, 40);
+          }, { once: true });
+        });
+      }
+    };
+    finalizedFromFlatpickr = flatpickr(fromDateInput, fpConfig);
+    finalizedToFlatpickr = flatpickr(toDateInput, fpConfig);
+  }
+
+  initFinalizedDateFilter();
+
+  if (clearDateFilterBtn) {
+    clearDateFilterBtn.addEventListener('click', function() {
+      suppressDateFetch = true;
+      if (finalizedFromFlatpickr) finalizedFromFlatpickr.clear();
+      if (finalizedToFlatpickr) finalizedToFlatpickr.clear();
+      if (fromDateInput) fromDateInput.value = '';
+      if (toDateInput) toDateInput.value = '';
+      fetchFinalizedItems(currentQuery);
+      setTimeout(function() { suppressDateFetch = false; }, 0);
+    });
+  }
+
   function fetchFinalizedItems(query) {
-    var url = '/print/api/table/' + TABLE_ID + '/finalized-list/?q=' + encodeURIComponent(query || '') + '&limit=200';
+    currentQuery = query || '';
+    var mySeq = ++fetchSeq;
+    var url = panelUrl('/print/api/table/' + TABLE_ID + '/finalized-list/?q=' + encodeURIComponent(currentQuery) + '&limit=200');
+    if (fromDateInput && fromDateInput.value) {
+      url += '&from=' + encodeURIComponent(fromDateInput.value);
+    }
+    if (toDateInput && toDateInput.value) {
+      url += '&to=' + encodeURIComponent(toDateInput.value);
+    }
     ApiClient.get(url)
     .then(function(data) {
+      if (mySeq !== fetchSeq) return;
       if (data.status === 'ok') renderFinalizedItems(data.items || [], data.total || 0);
-    }).catch(function(err) { console.error('[Finalized] Search failed:', err); });
+    }).catch(function(err) {
+      if (mySeq !== fetchSeq) return;
+      console.error('[Finalized] Search failed:', err);
+    });
   }
 
   function renderFinalizedItems(items, total) {

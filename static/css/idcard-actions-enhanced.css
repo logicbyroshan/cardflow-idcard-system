@@ -644,8 +644,11 @@
 .wf-confirm-card {
     background: #fff;
     border-radius: 6px;
-    width: 440px;
-    max-width: 95vw;
+    width: 100%;
+    max-width: 650px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
     overflow: hidden;
     transform: scale(0.9) translateY(20px);
@@ -718,6 +721,8 @@
 /* Body */
 .wf-confirm-body {
     padding: 20px;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .wf-confirm-msg {
@@ -794,6 +799,53 @@
     color: #94a3b8;
     margin-top: 1px;
     flex-shrink: 0;
+}
+
+.wf-confirm-code-wrap {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+}
+
+.wf-confirm-code {
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    font-size: 16px;
+    padding: 8px 12px;
+    border: 1px dashed rgba(245, 158, 11, 0.4);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.wf-confirm-input-wrap {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.wf-confirm-input {
+    width: 100%;
+    max-width: 320px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    text-align: center;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+}
+
+.wf-confirm-input:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+}
+
+.wf-confirm-error {
+    display: none;
+    margin-top: 8px;
+    color: #ef4444;
+    font-size: 12px;
+    text-align: center;
 }
 
 /* Footer */

@@ -5,6 +5,13 @@ window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
+    const panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+    function panelUrl(path) {
+        if (!path) return path;
+        if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
+        const normalized = path.charAt(0) === '/' ? path : '/' + path;
+        return panelBase + normalized;
+    }
 
     function setDashboardTableSkeleton(tbody, columnCount, rowCount) {
         if (!tbody) return;
@@ -36,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
-        ApiClient.get('/api/recent-client-updates/')
+        ApiClient.get(panelUrl('/api/recent-client-updates/'))
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
@@ -49,19 +56,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             const tableSubRows = tables.map(t => `
                                 <tr class="client-sub-row expand-group-${i}" style="display:none">
                                     <td>
-                                        <a href="/table/${t.id}/cards/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/')}" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                     </td>
                                     <td class="text-center">
-                                        <a href="/table/${t.id}/cards/?status=pending" class="count-badge pending">${t.pending}</a>
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/?status=pending')}" class="count-badge pending">${t.pending}</a>
                                     </td>
                                     <td class="text-center">
-                                        <a href="/table/${t.id}/cards/?status=verified" class="count-badge verified">${t.verified}</a>
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/?status=verified')}" class="count-badge verified">${t.verified}</a>
                                     </td>
                                     <td class="text-center">
-                                        <a href="/table/${t.id}/cards/?status=approved" class="count-badge approved">${t.approved}</a>
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/?status=approved')}" class="count-badge approved">${t.approved}</a>
                                     </td>
                                     <td class="text-center">
-                                        <a href="/table/${t.id}/cards/?status=download" class="count-badge downloaded">${t.downloaded}</a>
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/?status=download')}" class="count-badge downloaded">${t.downloaded}</a>
                                     </td>
                                 </tr>
                             `).join('');
@@ -69,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             return `
                             <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
                                 <td>
-                                    <a href="/client/${client.client_id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
+                                    <a href="${panelUrl('/client/' + client.client_id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
                                 </td>
                                 <td class="text-center">
                                     <span class="count-badge pending">${client.pending}</span>
@@ -125,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadBulkClients() {
         if (!bulkClientSelect) return;
         try {
-            const data = await ApiClient.get('/api/clients/active/');
+            const data = await ApiClient.get(panelUrl('/api/clients/active/'));
             if (data.success && data.clients) {
                 data.clients.forEach(client => {
                     const opt = document.createElement('option');
@@ -152,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!clientId) return;
 
             try {
-                const data = await ApiClient.get(`/api/group/${clientId}/tables/`);
+                const data = await ApiClient.get(panelUrl('/api/group/' + clientId + '/tables/'));
                 if (data.success && data.tables) {
                     data.tables.forEach(table => {
                         const opt = document.createElement('option');
@@ -484,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (dashReuploadStatus) dashReuploadStatus.textContent = 'Processing images...';
                         // Poll for real task progress
                         _dashPollInterval = setInterval(function() {
-                            fetch('/api/task-status/' + data.task_id + '/')
+                            fetch(panelUrl('/api/task-status/' + data.task_id + '/'))
                                 .then(function(r) { return r.json(); })
                                 .then(function(t) {
                                     if (t.status === 'completed') {
@@ -556,13 +563,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
 
-        setDashboardTableSkeleton(printBody, 4, 3);
+        setDashboardTableSkeleton(printBody, 3, 3);
         setDashboardTableSkeleton(reprintBody, 3, 3);
         const skeletonStart = Date.now();
 
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-        ApiClient.get('/api/print-reprint-overview/?limit=500')
+        ApiClient.get(panelUrl('/api/print-reprint-overview/?limit=500'))
             .then(data => {
                 if (!data.success) throw new Error(data.error || 'Failed');
                 waitForMinDelay(skeletonStart).then(() => {
@@ -578,27 +585,25 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row print-expand-group-${i}" style="display:none">
                                         <td>
-                                            <a href="/print/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                            <a href="${panelUrl('/print/table/' + t.id + '/')}" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                         </td>
-                                        <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.generate_list}</a></td>
-                                        <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge pending">${t.print_list}</a></td>
-                                        <td class="text-center"><a href="/print/table/${t.id}/" class="count-badge verified">${t.finalized}</a></td>
+                                        <td class="text-center"><a href="${panelUrl('/print/table/' + t.id + '/')}" class="count-badge pending">${t.generate_list}</a></td>
+                                        <td class="text-center"><a href="${panelUrl('/print/table/' + t.id + '/')}" class="count-badge verified">${t.finalized}</a></td>
                                     </tr>
                                 `).join('');
                                 return `
                                     <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
                                         <td>
-                                            <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                         </td>
                                         <td class="text-center"><span class="count-badge pending">${client.generate_list}</span></td>
-                                        <td class="text-center"><span class="count-badge pending">${client.print_list}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
                                     </tr>
                                     ${subRows}
                                 `;
                             }).join('');
                         } else {
-                            printBody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                            printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
                         }
                     }
 
@@ -617,16 +622,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
                                         <td>
-                                            <a href="/reprint/table/${t.id}/" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
+                                            <a href="${panelUrl('/reprint/table/' + t.id + '/')}" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
                                         </td>
-                                        <td class="text-center"><a href="/reprint/table/${t.id}/?step=request_list" class="count-badge pending">${t.requested}</a></td>
-                                        <td class="text-center"><a href="/reprint/table/${t.id}/?step=confirmed" class="count-badge verified">${t.confirmed}</a></td>
+                                        <td class="text-center"><a href="${panelUrl('/reprint/table/' + t.id + '/?step=request_list')}" class="count-badge pending">${t.requested}</a></td>
+                                        <td class="text-center"><a href="${panelUrl('/reprint/table/' + t.id + '/?step=confirmed')}" class="count-badge verified">${t.confirmed}</a></td>
                                     </tr>
                                 `).join('');
                                 return `
                                     <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
                                         <td>
-                                            <a href="/client/${client.id}/groups/" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                         </td>
                                         <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>

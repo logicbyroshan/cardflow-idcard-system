@@ -35,6 +35,12 @@
             <span class="btn-text">Download PDF</span>
         </button>
     </div>
+    <div class="action-nav-group">
+        <a class="btn action-btn btn-blue print-approved-tab" id="generateGoToApprovedListBtn" href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" title="Open Approved List">
+            <i class="fa-solid fa-list-check"></i>
+            <span class="btn-text">Approved List (<span class="tab-count">{{ approved_count|default:0 }}</span>)</span>
+        </a>
+    </div>
 </div>
 
 <!-- Search Bar -->
@@ -49,11 +55,14 @@
         </div>
     </div>
     <div class="action-right">
-        <div class="filter-group">
-            <span class="text-xs text-gray-500 flex items-center gap-1.5">
-                <i class="fa-solid fa-building text-gray-400"></i>
-                <strong>{{ client.name }}</strong> &mdash; {{ table.name }}
-            </span>
+        <div class="filter-group datetime-filter-group" id="generateDateTimeFilterGroup">
+            <label class="datetime-label">From</label>
+            <input type="text" id="generateFromDate" class="datetime-input" title="Filter from date" placeholder="Select date & time" aria-label="From date" readonly>
+            <label class="datetime-label">To</label>
+            <input type="text" id="generateToDate" class="datetime-input" title="Filter to date" placeholder="Select date & time" aria-label="To date" readonly>
+            <button class="btn btn-danger btn-sm" id="generateClearDateFilterBtn" type="button" title="Clear date filter">
+                <i class="fa-solid fa-xmark"></i> Clear
+            </button>
         </div>
     </div>
 </div>

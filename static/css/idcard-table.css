@@ -98,24 +98,32 @@ body:has(.idcard-actions-page) {
     flex-wrap: nowrap;
 }
 
-/* Download date-time filter: remove extra vertical padding/min-height feel */
-.idcard-actions-page .search-filter-bar #dateTimeFilterGroup {
+/* Compact date-time filters: keep Download/Generate/Finalized density aligned */
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup,
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup,
+.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup {
     gap: 4px;
 }
 
-.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-label {
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-label,
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .datetime-label,
+.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup .datetime-label {
     margin: 0;
     line-height: 1;
 }
 
-.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-input {
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .datetime-input,
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .datetime-input,
+.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup .datetime-input {
     min-height: 0 !important;
     height: 26px !important;
     line-height: 26px;
     padding: 0 6px !important;
 }
 
-.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .btn.btn-sm {
+.idcard-actions-page .search-filter-bar #dateTimeFilterGroup .btn.btn-sm,
+.idcard-actions-page .search-filter-bar #generateDateTimeFilterGroup .btn.btn-sm,
+.idcard-actions-page .search-filter-bar #finalizedDateTimeFilterGroup .btn.btn-sm {
     min-height: 0 !important;
     height: 26px !important;
     padding: 0 8px !important;

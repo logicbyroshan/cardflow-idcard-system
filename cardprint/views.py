@@ -22,6 +22,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.timezone import localtime
+from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
@@ -59,6 +60,18 @@ def _parse_offset_limit(request, *, default_limit=100, max_limit=200):
     offset = max(offset, 0)
     limit = min(max(limit, 1), max_limit)
     return offset, limit
+
+
+def _parse_local_datetime_filter(value):
+    """Parse datetime-local input safely into an aware datetime."""
+    if not value:
+        return None
+    dt = parse_datetime(value)
+    if not dt:
+        return None
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
 
 
 def _check_print_table_scope(user, table_id):
@@ -360,6 +373,8 @@ def api_print_generate_list(request, table_id):
     _promote_legacy_print_list(table)
 
     query = request.GET.get('q', '').strip()
+    from_dt = _parse_local_datetime_filter(request.GET.get('from'))
+    to_dt = _parse_local_datetime_filter(request.GET.get('to'))
     offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
@@ -376,6 +391,11 @@ def api_print_generate_list(request, table_id):
             json_field='card__field_data',
             id_lookup='card__id',
         )
+
+    if from_dt:
+        pr_qs = pr_qs.filter(updated_at__gte=from_dt)
+    if to_dt:
+        pr_qs = pr_qs.filter(updated_at__lte=to_dt)
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])
@@ -468,6 +488,8 @@ def api_print_finalized_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
+    from_dt = _parse_local_datetime_filter(request.GET.get('from'))
+    to_dt = _parse_local_datetime_filter(request.GET.get('to'))
     offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
@@ -482,6 +504,11 @@ def api_print_finalized_list(request, table_id):
             json_field='card__field_data',
             id_lookup='card__id',
         )
+
+    if from_dt:
+        pr_qs = pr_qs.filter(updated_at__gte=from_dt)
+    if to_dt:
+        pr_qs = pr_qs.filter(updated_at__lte=to_dt)
 
     total = pr_qs.count()
     batch = list(pr_qs[offset:offset + limit + 1])

@@ -312,7 +312,6 @@ def api_print_reprint_overview(request):
             table__group__client_id__in=client_ids
         ).values('table__group__client_id').annotate(
             generate_list=Count('id', filter=Q(status='generate_list')),
-            print_list=Count('id', filter=Q(status='print_list')),
             finalized=Count('id', filter=Q(status='finalized')),
             pool=Count('id', filter=Q(status='pool')),
         )
@@ -323,7 +322,6 @@ def api_print_reprint_overview(request):
             table__group__client_id__in=client_ids
         ).values('table__id', 'table__name', 'table__group__client_id').annotate(
             generate_list=Count('id', filter=Q(status='generate_list')),
-            print_list=Count('id', filter=Q(status='print_list')),
             finalized=Count('id', filter=Q(status='finalized')),
             pool=Count('id', filter=Q(status='pool')),
         ).order_by('table__id')
@@ -336,7 +334,6 @@ def api_print_reprint_overview(request):
                 'id': t['table__id'],
                 'name': t['table__name'],
                 'generate_list': t['generate_list'],
-                'print_list': t['print_list'],
                 'finalized': t['finalized'],
                 'pool': t['pool'],
             })
@@ -430,7 +427,6 @@ def api_print_reprint_overview(request):
                 'name': c.name,
                 'status': c.status,
                 'generate_list': pc.get('generate_list', 0),
-                'print_list': pc.get('print_list', 0),
                 'finalized': pc.get('finalized', 0),
                 'pool': pc.get('pool', 0),
                 'tables': print_tables_map.get(c.id, []),

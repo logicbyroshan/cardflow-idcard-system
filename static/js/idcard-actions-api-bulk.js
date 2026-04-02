@@ -6,6 +6,14 @@
 'use strict';
 
 window.IDCardApp = window.IDCardApp || {};
+var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+
+function panelUrl(path) {
+    if (!path) return path;
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
+    var normalized = path.charAt(0) === '/' ? path : '/' + path;
+    return panelBase + normalized;
+}
 
 // ==========================================
 // BULK STATUS OPERATIONS
@@ -19,7 +27,7 @@ function bulkVerify(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' }, { timeout: 120000 })
+            apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'verified' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot verify cards', false);
@@ -49,7 +57,7 @@ function bulkApprove(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'approved' }, { timeout: 120000 })
+            apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'approved' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot approve cards', false);
@@ -79,7 +87,7 @@ function bulkUnverify(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
+            apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot unverify cards', false);
@@ -107,7 +115,7 @@ function bulkDisapprove(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'verified' }, { timeout: 120000 })
+            apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'verified' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot disapprove cards', false);
@@ -138,7 +146,7 @@ function bulkDelete(cardIds) {
                 return;
             }
             if (typeof apiCall === 'function') {
-                apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' }, { timeout: 120000 })
+                apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'pool' }, { timeout: 120000 })
                     .then(data => {
                         if (data.success === false) {
                             if (typeof showToast === 'function') showToast(data.message || 'Cannot delete cards', false);
@@ -173,7 +181,7 @@ function bulkRetrieve(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
+            apiCall(panelUrl(`/api/table/${tableId}/cards/bulk-status/`), 'POST', { card_ids: cardIds, status: 'pending' }, { timeout: 120000 })
                 .then(data => {
                     if (data.success === false) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot retrieve cards', false);
@@ -254,19 +262,19 @@ function showPrintCodeConfirm(cardCount, onConfirm) {
                 <div class="wf-count-badge" style="background:#f59e0b10;color:#f59e0b;border:1px solid #f59e0b25">
                     <i class="fa-solid fa-layer-group"></i> ${cardCount} record(s) selected
                 </div>
-                <div class="wf-confirm-note" style="display:block">
+                <div class="wf-confirm-note">
                     <i class="fa-solid fa-shield-halved"></i>
                     <span>Type this 10-digit verification code to confirm:</span>
                 </div>
-                <div style="margin-top:8px;display:flex;justify-content:center">
-                    <div style="font-weight:700;letter-spacing:0.28em;font-size:16px;padding:8px 12px;border:1px dashed #f59e0b66;border-radius:10px;background:#fff">${expectedCode}</div>
+                <div class="wf-confirm-code-wrap">
+                    <div class="wf-confirm-code">${expectedCode}</div>
                 </div>
-                <div style="margin-top:10px;display:flex;justify-content:center">
+                <div class="wf-confirm-input-wrap">
                     <input type="text" id="printCodeConfirmInput" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="Enter 10-digit code"
-                           style="width:100%;max-width:280px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;text-align:center;letter-spacing:0.08em;font-weight:600;"
+                           class="wf-confirm-input"
                            autocomplete="off">
                 </div>
-                <div id="printCodeConfirmError" style="display:none;margin-top:8px;color:#ef4444;font-size:12px;text-align:center;">
+                <div id="printCodeConfirmError" class="wf-confirm-error">
                     <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please enter the exact 10-digit code.
                 </div>
             </div>
@@ -350,7 +358,7 @@ function bulkPrintSend(cardIds) {
             return;
         }
         if (typeof apiCall === 'function') {
-            apiCall(`/print/api/table/${tableId}/send/`, 'POST', { card_ids: cardIds }, { timeout: 120000 })
+            apiCall(panelUrl(`/print/api/table/${tableId}/send/`), 'POST', { card_ids: cardIds }, { timeout: 120000 })
                 .then(data => {
                     if (data.status === 'error') {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot send to generate list', false);

@@ -23,10 +23,6 @@
   </div>
   <div class="nav-right">
     <div class="action-tabs">
-      <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" class="action-tab approved-tab print-approved-tab">
-        <span class="tab-label">Approved List</span>
-        <span class="tab-count">{{ approved_count|default:0 }}</span>
-      </a>
       <a href="{% if is_client or is_client_staff %}{% url 'client:print_cards' table.id %}{% else %}{% url 'cardprint:print_cards' table.id %}{% endif %}?step=generate_list" class="action-tab print-generate-tab {% if current_step == 'generate_list' %}active{% endif %}">
         <span class="tab-label">Generate List</span>
         <span class="tab-count">{{ step_counts.generate_list }}</span>

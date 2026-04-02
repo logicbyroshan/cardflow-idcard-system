@@ -8,6 +8,14 @@
 function initIdcardGroup(config) {
   var clientId = config.clientId;
   var isClientRole = config.isClientRole;
+  var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+
+  function panelUrl(path) {
+    if (!path) return path;
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
+    var normalized = path.charAt(0) === '/' ? path : '/' + path;
+    return panelBase + normalized;
+  }
 
   var switchToGroupSettingBtn = document.getElementById('switchToGroupSetting');
   var searchInput = document.getElementById('searchInput');
@@ -49,8 +57,8 @@ function initIdcardGroup(config) {
       printCardsBtn.disabled = !tableId;
       if (tableId) {
         var printUrl = isClientRole
-          ? '/client/table/' + tableId + '/print/'
-          : '/print/table/' + tableId + '/';
+          ? panelUrl('/client/table/' + tableId + '/print/')
+          : panelUrl('/print/table/' + tableId + '/');
         printCardsBtn.onclick = function() { window.location.href = printUrl; };
       }
     }
@@ -58,8 +66,8 @@ function initIdcardGroup(config) {
       reprintCardsBtn.disabled = !tableId;
       if (tableId) {
         var reprintUrl = isClientRole
-          ? '/client/table/' + tableId + '/reprint/'
-          : '/reprint/table/' + tableId + '/';
+          ? panelUrl('/client/table/' + tableId + '/reprint/')
+          : panelUrl('/reprint/table/' + tableId + '/');
         reprintCardsBtn.onclick = function() { window.location.href = reprintUrl; };
       }
     }
@@ -87,7 +95,7 @@ function initIdcardGroup(config) {
   if (switchToGroupSettingBtn) {
     switchToGroupSettingBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      window.location.href = '/client/' + clientId + '/settings/';
+      window.location.href = panelUrl('/client/' + clientId + '/settings/');
     });
   }
 
@@ -99,8 +107,8 @@ function initIdcardGroup(config) {
       var tableId = row.getAttribute('data-table-id');
       if (!tableId) return;
       var basePath = isClientRole
-        ? '/client/table/' + tableId + '/actions/'
-        : '/table/' + tableId + '/cards/';
+        ? panelUrl('/client/table/' + tableId + '/actions/')
+        : panelUrl('/table/' + tableId + '/cards/');
       window.location.href = basePath + '?status=pending';
     });
   }
@@ -161,7 +169,7 @@ function initIdcardGroup(config) {
     deleteAllCodeInput.value = '';
     deleteAllConfirmBtn.disabled = true;
 
-    fetch('/api/table/' + tableId + '/cards/generate-delete-code/', {
+    fetch(panelUrl('/api/table/' + tableId + '/cards/generate-delete-code/'), {
       method: 'POST',
       headers: { 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' }
     })
@@ -203,7 +211,7 @@ function initIdcardGroup(config) {
       deleteAllConfirmBtn.disabled = true;
       deleteAllConfirmBtn.textContent = 'Deleting...';
 
-      fetch('/api/table/' + deleteAllTableId + '/cards/bulk-delete/', {
+      fetch(panelUrl('/api/table/' + deleteAllTableId + '/cards/bulk-delete/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' },
         body: JSON.stringify({
@@ -290,7 +298,7 @@ function initIdcardGroup(config) {
     var _dlAbort = new AbortController();
     setTimeout(function() { _dlAbort.abort(); }, 600000); // 10 min timeout
 
-    fetch('/api/table/' + tableId + '/cards/download-all/', {
+    fetch(panelUrl('/api/table/' + tableId + '/cards/download-all/'), {
       method: 'POST',
       headers: {
         'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '',
@@ -498,7 +506,7 @@ function initIdcardGroup(config) {
       var formData = new FormData();
       formData.append('photos_zip', reuploadFileInput.files[0]);
 
-      var uploadUrl = '/api/table/' + reuploadTableId + '/reupload-task/';
+      var uploadUrl = panelUrl('/api/table/' + reuploadTableId + '/reupload-task/');
       var xhr = new XMLHttpRequest();
       xhr.open('POST', uploadUrl);
       if (window.getCSRFToken) xhr.setRequestHeader('X-CSRFToken', window.getCSRFToken());
@@ -543,7 +551,7 @@ function initIdcardGroup(config) {
             // Poll for real task progress
             var _pollErrors = 0;
             _grpPollInterval = setInterval(function() {
-              fetch('/api/task-status/' + data.task_id + '/')
+              fetch(panelUrl('/api/task-status/' + data.task_id + '/'))
                 .then(function(r) { return r.json(); })
                 .then(function(t) {
                   _pollErrors = 0; // reset on success
@@ -645,7 +653,7 @@ function initIdcardGroup(config) {
     upgradeAllConfirmBtn.disabled = true;
     upgradeAllConfirmBtn.textContent = 'Upgrade All Classes';
 
-    fetch('/api/table/' + tableId + '/cards/generate-upgrade-code/', {
+    fetch(panelUrl('/api/table/' + tableId + '/cards/generate-upgrade-code/'), {
       method: 'POST',
       headers: { 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' }
     })
@@ -687,7 +695,7 @@ function initIdcardGroup(config) {
       upgradeAllConfirmBtn.disabled = true;
       upgradeAllConfirmBtn.textContent = 'Upgrading...';
 
-      fetch('/api/table/' + upgradeAllTableId + '/cards/upgrade-classes/', {
+      fetch(panelUrl('/api/table/' + upgradeAllTableId + '/cards/upgrade-classes/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.getCSRFToken ? window.getCSRFToken() : '' },
         body: JSON.stringify({
@@ -734,9 +742,9 @@ function initIdcardGroup(config) {
       openReuploadModal(tableId);
     } else if (action === 'reprint') {
       if (isClientRole) {
-        window.location.href = '/client/table/' + tableId + '/reprint/';
+        window.location.href = panelUrl('/client/table/' + tableId + '/reprint/');
       } else {
-        window.location.href = '/reprint/table/' + tableId + '/';
+        window.location.href = panelUrl('/reprint/table/' + tableId + '/');
       }
     } else {
       window.showToast('This action is not available yet.', 'info');

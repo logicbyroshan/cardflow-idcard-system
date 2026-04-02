@@ -260,8 +260,8 @@ tr.reprint-requested:hover {
 
 /* Reprint confirm modal layout + accent (replaces inline styles) */
 .reprint-confirm-modal {
-  width: min(760px, 94vw);
-  max-height: 85vh;
+  width: min(650px, 95vw);
+  max-height: 90vh;
   overflow: auto;
 }
 
