@@ -208,6 +208,7 @@ def api_recent_client_updates(request):
             verified=Count('id', filter=Q(status='verified')),
             approved=Count('id', filter=Q(status='approved')),
             downloaded=Count('id', filter=Q(status='download')),
+            pool=Count('id', filter=Q(status='pool')),
         )
         counts_map = {item['table__group__client_id']: item for item in card_counts_qs}
         
@@ -225,6 +226,7 @@ def api_recent_client_updates(request):
             verified=Count('id_cards', filter=Q(id_cards__status='verified')),
             approved=Count('id_cards', filter=Q(id_cards__status='approved')),
             downloaded=Count('id_cards', filter=Q(id_cards__status='download')),
+            pool=Count('id_cards', filter=Q(id_cards__status='pool')),
         ).order_by('id')
         tables_map = {}
         for t in tables_qs:
@@ -238,6 +240,7 @@ def api_recent_client_updates(request):
                 'verified': t['verified'],
                 'approved': t['approved'],
                 'downloaded': t['downloaded'],
+                'pool': t['pool'],
             })
         
         for client in clients:
@@ -254,6 +257,7 @@ def api_recent_client_updates(request):
                 'verified': cc.get('verified', 0),
                 'approved': cc.get('approved', 0),
                 'downloaded': cc.get('downloaded', 0),
+                'pool': cc.get('pool', 0),
             })
 
         cache.set(cache_key, results, 20)
