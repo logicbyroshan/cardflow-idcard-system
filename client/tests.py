@@ -123,6 +123,13 @@ class ManageClientsPermissionGateTests(TestCase):
             role='client',
         )
         self.client_obj = Client.objects.create(user=owner, name='Gate Client')
+        owner2 = User.objects.create_user(
+            username='gate-client-owner-2@test.com',
+            email='gate-client-owner-2@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj_2 = Client.objects.create(user=owner2, name='Gate Client 2')
 
         self.admin_staff = User.objects.create_user(
             username='gate-admin-staff@test.com',
@@ -146,7 +153,8 @@ class ManageClientsPermissionGateTests(TestCase):
         response = self.client.get('/panel/manage-clients/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['clients']), 1)
+        self.assertEqual(len(response.context['clients']), 2)
+        self.assertEqual(response.context['page_obj'].paginator.count, 2)
         self.assertTrue(response.context['can_manage_clients'])
 
 

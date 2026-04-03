@@ -904,7 +904,7 @@ class SecurityApiRegressionTests(TestCase):
         self.card_a.refresh_from_db()
         self.assertNotIn('__HACK__', self.card_a.field_data)
 
-    def test_client_toggle_status_blocks_unassigned_admin_staff(self):
+    def test_client_toggle_status_allows_manage_client_admin_staff_for_unassigned_client(self):
         self.admin_staff_profile.perm_idcard_client_list = True
         self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
         self.client.login(username='sec-admin-staff@test.com', password='pass1234')
@@ -915,8 +915,8 @@ class SecurityApiRegressionTests(TestCase):
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 403)
-        self.assertIn('Access denied', response.json().get('message', ''))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
 
     def test_admin_staff_without_manage_client_permission_cannot_create_client(self):
         self.client.login(username='sec-admin-staff@test.com', password='pass1234')

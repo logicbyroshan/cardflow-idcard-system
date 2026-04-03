@@ -125,9 +125,9 @@ def manage_clients(request):
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
-    clients_qs = PermissionService.get_accessible_clients(
-        user, Client.objects.all().select_related('user')
-    ).order_by('-id')
+    # Manage Clients page is a full-capability surface for super_admin and
+    # admin_staff who have the Manage Client permission.
+    clients_qs = Client.objects.all().select_related('user').order_by('-id')
     
     if search_query:
         clients_qs = clients_qs.filter(

@@ -44,7 +44,13 @@ def _validate_optional_image_upload(uploaded):
 
 
 def _check_admin_staff_client_access(user, client_id):
-    """Check if user has access to a specific client. Delegates to PermissionService."""
+    """Check if user has access to a specific client.
+
+    Manage Client permission grants full Manage Clients surface access for
+    admin_staff (same capability level as super_admin on this page/API).
+    """
+    if PermissionService.is_admin_staff(user) and _has_manage_client_page_permission(user):
+        return True
     return PermissionService.can_access_client(user, client_id)
 
 
