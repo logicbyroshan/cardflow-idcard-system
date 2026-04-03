@@ -467,6 +467,7 @@ def _check_client_scope_by_card(user, card_id):
 # can only VIEW — no edit, delete, status change, or image reupload.
 
 _CLIENT_READONLY_STATUSES = frozenset({'approved', 'download', 'reprint'})
+_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool', 'approved', 'download', 'reprint'})
 
 def _client_readonly_response():
     """Fresh 403 response for each request."""
@@ -478,6 +479,19 @@ def _client_readonly_response():
 def _is_client_readonly(user, card_status):
     """Return True when client/client_staff tries to modify a card in a locked status."""
     return user.role in ('client', 'client_staff') and card_status in _CLIENT_READONLY_STATUSES
+
+
+def _client_edit_locked_response():
+    """Fresh 403 response for pool/readonly edit operations."""
+    return JsonResponse(
+        {'success': False, 'message': 'Cards in pool / approved / download status cannot be edited by client users.'},
+        status=403,
+    )
+
+
+def _is_client_edit_locked(user, card_status):
+    """Return True when client/client_staff tries to edit a card in an edit-locked status."""
+    return user.role in ('client', 'client_staff') and card_status in _CLIENT_EDIT_LOCK_STATUSES
 
 
 # ==================== FIELD HELPERS (canonical: core.utils.field_utils) ====================

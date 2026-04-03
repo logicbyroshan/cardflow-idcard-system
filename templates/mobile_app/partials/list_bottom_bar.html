@@ -59,7 +59,7 @@
                 {% endif %}
 
                 <!-- 3b. Other lists: Edit-only button -->
-                {% if list_type != 'pending' and perm_idcard_edit %}
+                {% if list_type != 'pending' and perm_idcard_edit and not pool_edit_locked %}
                 <div class="flex-1 flex flex-col items-center justify-end pb-2" style="position:relative;">
                     <button @click="editSelected()"
                             :disabled="selectedIds.length !== 1"

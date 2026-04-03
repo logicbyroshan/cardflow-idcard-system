@@ -108,7 +108,7 @@
                     </div>
 
                     <!-- Edit Link -->
-                    {% if not view_only_list and perm_idcard_edit %}
+                    {% if not view_only_list and perm_idcard_edit and not pool_edit_locked %}
                     <div class="mt-2.5 flex items-center gap-2">
                         <button type="button" @click.stop="openEditById({{ student.id }})"
                                 class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">

@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
 MAX_SEARCH_QUERY_LEN = 100
 MAX_REPRINT_ACTION_IDS = 200
+MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +139,19 @@ def _get_notification_count(user):
         return min(unread_count, 99)
     except Exception:
         return 0
+
+
+def _is_mobile_client_edit_locked(user, card_status):
+    """Client/client_staff cannot edit cards in specific locked statuses on mobile."""
+    return getattr(user, 'role', '') in ('client', 'client_staff') and card_status in MOBILE_CLIENT_EDIT_LOCK_STATUSES
+
+
+def _mobile_client_edit_locked_response():
+    """Standard 403 payload for mobile edit lock violations."""
+    return JsonResponse(
+        {'success': False, 'message': 'Cards in pool status cannot be edited by client users.'},
+        status=403,
+    )
 
 
 def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
@@ -1679,7 +1693,6 @@ def card_list(request, table_id, status):
         )
     elif status == 'pool':
         has_any_list_actions = has_any_list_actions or bool(
-            perms.get('perm_idcard_edit') or
             perms.get('perm_idcard_retrieve') or
             perms.get('perm_idcard_delete_from_pool')
         )
@@ -1703,6 +1716,7 @@ def card_list(request, table_id, status):
         'table_fields': json.dumps(table_fields, default=str),
         # View-only mode: clients on approved/download lists can only view, not act
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
+        'pool_edit_locked': status == 'pool' and not PermissionService.is_any_admin(user),
         'tab_counts': tab_counts,
         'reprint_counts': reprint_counts,
         'can_reprint_request_list': can_reprint_request_list,
@@ -2240,6 +2254,8 @@ def api_upload_photo(request, table_id):
         card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
         if not ClientAccessService.can_access_card(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        if _is_mobile_client_edit_locked(request.user, card.status):
+            return _mobile_client_edit_locked_response()
 
         # Keep mobile + desktop lists in sync by writing through the same
         # field_data/CardMedia image pipeline used by idcard-actions tables.
@@ -2425,6 +2441,8 @@ def api_card_update(request, table_id, card_id):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if not PermissionService.has(request.user, 'perm_idcard_edit'):
             return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
+        if _is_mobile_client_edit_locked(request.user, card.status):
+            return _mobile_client_edit_locked_response()
 
         field_data_raw = request.POST.get('field_data', '{}')
         try:

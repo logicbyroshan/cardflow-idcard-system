@@ -38,6 +38,8 @@ from .idcard_helpers import (
     invalidate_filter_options_cache,
     _is_client_readonly,
     _client_readonly_response,
+    _is_client_edit_locked,
+    _client_edit_locked_response,
     _apply_client_staff_row_scope,
 )
 
@@ -965,9 +967,9 @@ def api_idcard_update(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    # Client/client_staff cannot edit cards in approved/download/reprint
-    if _is_client_readonly(request.user, _card.status):
-        return _client_readonly_response()
+    # Client/client_staff cannot edit cards in pool/approved/download/reprint.
+    if _is_client_edit_locked(request.user, _card.status):
+        return _client_edit_locked_response()
     try:
         # Parse request into service-friendly args
         if request.content_type and 'multipart/form-data' in request.content_type:
@@ -1084,9 +1086,9 @@ def api_idcard_update_field(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    # Client/client_staff cannot edit cards in approved/download/reprint
-    if _is_client_readonly(request.user, _card.status):
-        return _client_readonly_response()
+    # Client/client_staff cannot edit cards in pool/approved/download/reprint.
+    if _is_client_edit_locked(request.user, _card.status):
+        return _client_edit_locked_response()
     try:
         data = json.loads(request.body)
         field = data.get('field')

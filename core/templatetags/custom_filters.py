@@ -419,23 +419,23 @@ def _split_all_caps(s):
                 matched = True
                 break
         if not matched:
-            # No known word matched — take one character and continue
-            words.append(remaining[0])
-            remaining = remaining[1:]
-    # Merge any single-character fragments with their neighbours
-    merged = []
-    buf = ''
-    for w in words:
-        if len(w) == 1:
-            buf += w
-        else:
-            if buf:
-                merged.append(buf)
-                buf = ''
-            merged.append(w)
-    if buf:
-        merged.append(buf)
-    return ' '.join(merged)
+            # No direct known-word match.
+            # Keep acronym prefixes intact by splitting only at a later known-word boundary.
+            boundary = -1
+            for idx in range(2, len(remaining)):
+                suffix = remaining[idx:]
+                if any(suffix.startswith(word) for word in _HEADER_KNOWN_WORDS):
+                    boundary = idx
+                    break
+
+            if boundary == -1:
+                words.append(remaining)
+                break
+
+            words.append(remaining[:boundary])
+            remaining = remaining[boundary:]
+
+    return ' '.join(words)
 
 
 def _humanize_field_name(value):

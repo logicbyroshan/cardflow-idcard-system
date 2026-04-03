@@ -200,6 +200,24 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		)
 		self.assertEqual(response.status_code, 403)
 
+	def test_card_update_blocks_client_edit_in_pool_status(self):
+		self.card.status = 'pool'
+		self.card.save(update_fields=['status'])
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.save(update_fields=['perm_idcard_edit'])
+
+		self._login_mobile_client()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{self.card.id}/update/',
+			data={'field_data': json.dumps({'NAME': 'Edited In Pool'})},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('pool status', response.json().get('message', '').lower())
+		self.card.refresh_from_db()
+		self.assertEqual(self.card.field_data.get('NAME'), 'Student One')
+
 	def test_card_delete_requires_delete_permission_for_client_role(self):
 		self._login_mobile_client()
 		response = self.client.post(
@@ -292,6 +310,24 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 			data={'card_id': str(other_card.id), 'photo': photo},
 		)
 		self.assertEqual(response.status_code, 404)
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_upload_photo_blocks_client_edit_in_pool_status(self, _mock_validate):
+		self.card.status = 'pool'
+		self.card.save(update_fields=['status'])
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.save(update_fields=['perm_idcard_edit'])
+
+		self._login_mobile_client()
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('pool status', response.json().get('message', '').lower())
 
 
 class MobileAppManagementApiTests(MobileAppBaseTestCase):

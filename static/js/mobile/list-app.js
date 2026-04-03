@@ -1610,7 +1610,8 @@ function listApp() {
             const cbHtml = !IS_VIEW_ONLY
                 ? `<label class="custom-checkbox custom-checkbox-lg dyn-cb" style="cursor:pointer;"><input type="checkbox"><span class="checkmark"></span></label>`
                 : '';
-            const editButtonHtml = (!IS_VIEW_ONLY && CAN_EDIT)
+            const canEditCurrentList = (!IS_VIEW_ONLY && CAN_EDIT && !(typeof POOL_EDIT_LOCKED !== 'undefined' && POOL_EDIT_LOCKED));
+            const editButtonHtml = canEditCurrentList
                 ? `<div class="mt-2.5"><button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-edit-card" data-edit-id="${card.id}">Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i></button></div>`
                 : '';
 
@@ -1888,7 +1889,8 @@ function listApp() {
             this.showAddForm = true;
         },
         async openEditById(cardId) {
-            if (IS_VIEW_ONLY || !CAN_EDIT) {
+            const isEditLockedForList = IS_VIEW_ONLY || !CAN_EDIT || (typeof POOL_EDIT_LOCKED !== 'undefined' && POOL_EDIT_LOCKED);
+            if (isEditLockedForList) {
                 this.showToast('Edit is not allowed in this list', 'error');
                 return;
             }
@@ -1912,7 +1914,8 @@ function listApp() {
             this.showAddForm = true;
         },
         async editSelected() {
-            if (IS_VIEW_ONLY || !CAN_EDIT) {
+            const isEditLockedForList = IS_VIEW_ONLY || !CAN_EDIT || (typeof POOL_EDIT_LOCKED !== 'undefined' && POOL_EDIT_LOCKED);
+            if (isEditLockedForList) {
                 this.showToast('Edit is not allowed in this list', 'error');
                 return;
             }
