@@ -15,6 +15,11 @@
   overflow: hidden; /* children scroll independently; tabs bar stays fixed */
 }
 
+.panel-content .btn,
+.panel-content .center-modal-btn {
+  font-weight: 400;
+}
+
 /* === Header === */
 .panel-header {
   display: flex;
@@ -343,7 +348,8 @@
 }
 
 .panel-inline-maintenance {
-  border-top: 1px solid #e5e7eb;
+  border-top: none;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 /* Actions Bar */
@@ -371,7 +377,7 @@
 .notif-actions-bar .btn {
   min-height: 32px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 400;
 }
 .notif-actions-bar .btn:focus-visible {
   outline: none;

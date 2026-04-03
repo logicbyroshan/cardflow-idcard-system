@@ -284,31 +284,14 @@
             '</a>';
     }
 
-    function buildTableExpandHtml(clientId, clientName, groupsUrl, settingsUrl, tables) {
+    function buildTableExpandHtml(clientId, tables) {
         const tableList = Array.isArray(tables) ? tables : [];
         const tableCount = tableList.length;
-
-        const topActions = [];
-        if (hasPerm('idcardSettingList')) {
-            topActions.push(
-                `<a class="client-expand-action-btn" href="${escapeHtml(settingsUrl)}"><i class="fa-solid fa-gear"></i> Group Setting</a>`
-            );
-            topActions.push(
-                `<a class="client-expand-action-btn" href="${escapeHtml(groupsUrl)}"><i class="fa-solid fa-layer-group"></i> ID Card Group</a>`
-            );
-        }
 
         if (!tableCount) {
             return '' +
                 '<div class="client-expand-panel">' +
-                    '<div class="client-expand-header">' +
-                        '<div>' +
-                            `<h4 class="client-expand-title">${escapeHtml(clientName)} workflow</h4>` +
-                            '<div class="client-expand-subtitle">No tables found for this client yet.</div>' +
-                        '</div>' +
-                        `<div class="client-expand-actions">${topActions.join('')}</div>` +
-                    '</div>' +
-                    renderExpandMessage('empty', 'Create tables in Group Settings to unlock list and bulk actions.') +
+                    renderExpandMessage('empty', 'No tables found for this client yet.') +
                 '</div>';
         }
 
@@ -335,26 +318,21 @@
                 buildBulkButton(clientId, table.id, 'upgrade', 'Upgrade All', 'fa-arrow-up', 'upgradeAll', downloaded > 0)
             ].join('');
 
+            const actionLinks = hasPerm('pendingList')
+                ? `<a class="client-expand-action-btn" href="${idcardActionsUrl(table.id, 'pending')}"><i class="fa-solid fa-arrow-right"></i> Open</a>`
+                : '';
+
             return '' +
                 '<div class="client-expand-table-item">' +
-                    '<div class="client-expand-table-head">' +
-                        `<div class="client-expand-table-name"><i class="fa-solid fa-table"></i> ${escapeHtml(table.name || 'Table')}</div>` +
-                        `<a class="client-expand-action-btn" href="${idcardActionsUrl(table.id, 'pending')}"><i class="fa-solid fa-arrow-right"></i> Open Table</a>` +
-                    '</div>' +
-                    `<div class="client-expand-table-links">${listLinks || renderExpandMessage('empty', 'No list permissions')}</div>` +
-                    `<div class="client-expand-table-bulk">${bulkButtons || ''}</div>` +
+                    `<div class="client-expand-list-name"><i class="fa-solid fa-table"></i> ${escapeHtml(table.name || 'Table')}</div>` +
+                    `<div class="client-expand-table-links">${listLinks || '<span class="client-expand-meta-text">No list access</span>'}</div>` +
+                    `<div class="client-expand-row-actions">${actionLinks || '<span class="client-expand-meta-text">-</span>'}</div>` +
+                    `<div class="client-expand-table-bulk">${bulkButtons || '<span class="client-expand-meta-text">No bulk access</span>'}</div>` +
                 '</div>';
         }).join('');
 
         return '' +
             '<div class="client-expand-panel">' +
-                '<div class="client-expand-header">' +
-                    '<div>' +
-                        `<h4 class="client-expand-title">${escapeHtml(clientName)} workflow</h4>` +
-                        `<div class="client-expand-subtitle">${tableCount} table${tableCount === 1 ? '' : 's'} with list, action, and bulk-action shortcuts</div>` +
-                    '</div>' +
-                    `<div class="client-expand-actions">${topActions.join('')}</div>` +
-                '</div>' +
                 `<div class="client-expand-table-list">${tableHtml}</div>` +
             '</div>';
     }
@@ -413,16 +391,13 @@
 
         const token = ++expandRequestToken;
         const clientId = String(row.dataset.clientId || '');
-        const clientName = row.dataset.clientName || 'Client';
-        const groupsUrl = row.dataset.groupsUrl || clientGroupsUrl(clientId);
-        const settingsUrl = row.dataset.settingsUrl || clientSettingsUrl(clientId);
 
         fetchClientDetailsMap()
             .then((map) => {
                 if (token !== expandRequestToken || expandedDetailRow !== detailRow) return;
                 const client = map.get(clientId);
                 const tables = client && Array.isArray(client.tables) ? client.tables : [];
-                detailRow.innerHTML = `<td colspan="6">${buildTableExpandHtml(clientId, clientName, groupsUrl, settingsUrl, tables)}</td>`;
+                detailRow.innerHTML = `<td colspan="6">${buildTableExpandHtml(clientId, tables)}</td>`;
             })
             .catch((error) => {
                 if (token !== expandRequestToken || expandedDetailRow !== detailRow) return;

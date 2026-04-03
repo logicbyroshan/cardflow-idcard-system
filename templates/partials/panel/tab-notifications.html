@@ -1,6 +1,10 @@
 <!-- === NOTIFICATIONS TAB === -->
 <div class="panel-tab-content active notif-panel-theme" id="tab-notifications">
 
+  {% if is_super_admin %}
+  {% include 'partials/panel/tab-maintenance.html' %}
+  {% endif %}
+
   <!-- Notification Actions Bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
@@ -63,8 +67,4 @@
       <i class="fa-solid fa-arrow-down"></i> Load More
     </button>
   </div>
-
-  {% if is_super_admin %}
-  {% include 'partials/panel/tab-maintenance.html' %}
-  {% endif %}
 </div>

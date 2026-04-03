@@ -20,13 +20,10 @@ Contains: Table displaying active clients with groups info
             {% for client in clients %}
             <tr class="client-main-row"
                 data-client-id="{{ client.id }}"
-                data-client-name="{{ client.name|escape }}"
-                data-groups-url="{% url 'idcard_group' client.id %}"
-                data-settings-url="{% url 'group_settings' client.id %}">
+                data-client-name="{{ client.name|escape }}">
                 <td class="name-col text-left">
                     <div class="client-name-cell">
                         <span>{{ client.name }}</span>
-                        <i class="fa-solid fa-chevron-down client-expand-caret" aria-hidden="true"></i>
                     </div>
                 </td>
                 <td class="email-col text-left">{{ client.user.email }}</td>

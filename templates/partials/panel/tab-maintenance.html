@@ -28,22 +28,31 @@
   <!-- Status + Controls Grid -->
   <div class="system-grid" id="mtGrid">
 
-    <!-- Left: Controls -->
+    <!-- Left: Message -->
+    <div class="system-card">
+      <div class="system-card-header">
+        <i class="fa-solid fa-message"></i> Maintenance Message
+      </div>
+      <div class="system-card-body" style="padding: 14px 16px;">
+        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
+          <span class="system-label">Maintenance Message</span>
+          <textarea id="mtMessage" rows="4" class="form-input" style="width: 100%; resize: vertical; font-size: 12px;"
+                    placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
+          <span class="system-value" style="font-size: 11px; color: #94a3b8; font-weight: 500;">
+            This message appears on the maintenance page and in automatic user notifications.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Controls -->
     <div class="system-card">
       <div class="system-card-header">
         <i class="fa-solid fa-sliders"></i> Maintenance Controls
       </div>
       <div class="system-card-body" style="padding: 14px 16px;">
-
-        <!-- Message -->
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
-          <span class="system-label">Maintenance Message</span>
-          <textarea id="mtMessage" rows="2" class="form-input" style="width: 100%; resize: vertical; font-size: 12px;"
-                    placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
-        </div>
-
         <!-- Duration -->
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px; margin-top: 12px;">
+        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
           <span class="system-label">Duration</span>
           <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
             <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="15" onclick="setMtDuration(15)">15 min</button>
@@ -71,42 +80,6 @@
           <button type="button" id="mtDisableBtn" class="btn btn-md btn-success" onclick="toggleMaintenance('disable')" style="display: none;">
             <i class="fa-solid fa-circle-check"></i> Disable Maintenance Mode
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: Info & Status -->
-    <div class="system-card">
-      <div class="system-card-header">
-        <i class="fa-solid fa-circle-info"></i> How It Works
-      </div>
-      <div class="system-card-body">
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 2px;">
-          <span class="system-label" style="margin-bottom: 4px;">When maintenance mode is enabled:</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-shield-halved" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Access Control</span>
-          <span class="system-value" style="font-weight: 500;">Non-admin users redirected to maintenance page</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-bell" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Notifications</span>
-          <span class="system-value" style="font-weight: 500;">Broadcast sent to all users automatically</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-user-shield" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Super Admin</span>
-          <span class="system-value" style="font-weight: 500;">Full panel access remains available</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-clock" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Auto-Expire</span>
-          <span class="system-value" style="font-weight: 500;">Ends automatically when timer runs out</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-hourglass-half" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Countdown</span>
-          <span class="system-value" style="font-weight: 500;">Users see a live countdown timer</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-rotate" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Auto-Redirect</span>
-          <span class="system-value" style="font-weight: 500;">Users redirected back when maintenance ends</span>
         </div>
       </div>
     </div>
