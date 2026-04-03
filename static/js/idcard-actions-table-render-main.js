@@ -85,7 +85,7 @@ function updatePaginationInfoEndless(totalLoaded) {
     if (paginationInfo) {
         const totalCount = _ts.lazyLoadState.totalCount || totalLoaded;
         const hasMore = _ts.lazyLoadState.hasMore;
-        const hasFilter = IDCardApp.currentClassFilter || IDCardApp.currentSectionFilter || _ts.searchQuery;
+        const hasFilter = IDCardApp.currentClassFilter || IDCardApp.currentSectionFilter || IDCardApp.currentCourseFilter || IDCardApp.currentBranchFilter || _ts.searchQuery;
         
         if (hasMore) {
             paginationInfo.innerHTML = `Showing <strong>1-${totalLoaded}</strong> of <strong>${totalLoaded}</strong> loaded (${totalCount} total)`;

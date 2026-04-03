@@ -9,6 +9,7 @@ Part of the IDCardService split. Handles:
   class filtering, and name-field detection.
 """
 import logging
+import re
 from typing import Dict, Any, List
 
 from django.core.cache import cache
@@ -97,17 +98,46 @@ class IDCardCardService(BaseService):
     @classmethod
     def _get_class_section_field_names(cls, table):
         """Extract class and section field names from table field definitions."""
+        class_field, section_field, _course_field, _branch_field = cls._get_class_section_course_branch_field_names(table)
+        return class_field, section_field
+
+    @classmethod
+    def _get_class_section_course_branch_field_names(cls, table):
+        """Extract class, section, course, and branch field names from table definitions."""
         class_field = None
         section_field = None
-        if table.fields:
-            for field in table.fields:
-                fname = field.get('name', '')
-                ftype = field.get('type', '')
-                if ftype == 'class' or (not class_field and fname.lower() == 'class'):
-                    class_field = fname
-                if ftype == 'section' or (not section_field and fname.lower() == 'section'):
-                    section_field = fname
-        return class_field, section_field
+        course_field = None
+        branch_field = None
+
+        class_tokens = {'class', 'std', 'standard', 'grade'}
+        section_tokens = {'section', 'sec', 'div', 'division'}
+        course_tokens = {'course', 'program', 'programme'}
+        branch_tokens = {'branch', 'stream', 'dept', 'department'}
+
+        for field in (table.fields or []):
+            fname = str(field.get('name', '') or '').strip()
+            ftype = str(field.get('type', '') or '').strip().lower()
+            tokens = {
+                tok for tok in re.split(r'[^a-z0-9]+', fname.lower())
+                if tok
+            }
+
+            if not class_field and (ftype == 'class' or bool(tokens & class_tokens)):
+                class_field = fname
+                continue
+
+            if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
+                section_field = fname
+                continue
+
+            if not course_field and (ftype == 'course' or bool(tokens & course_tokens)):
+                course_field = fname
+                continue
+
+            if not branch_field and (ftype == 'branch' or bool(tokens & branch_tokens)):
+                branch_field = fname
+
+        return class_field, section_field, course_field, branch_field
 
     @classmethod
     def _apply_class_filter(cls, qs, class_filter, class_field_name, table_id=None):
@@ -325,6 +355,8 @@ class IDCardCardService(BaseService):
         search: str = '',
         class_filter: str = '',
         section_filter: str = '',
+        course_filter: str = '',
+        branch_filter: str = '',
         sort_order: str = 'sr-asc',
         image_column: str = '',
         image_condition: str = '',
@@ -350,15 +382,25 @@ class IDCardCardService(BaseService):
             if search:
                 cards_query = cls._apply_search_filter(cards_query, search, table=table)
 
-            # --- Class / Section filters (with canonical normalization) ---
-            if class_filter or section_filter:
-                class_field_name, section_field_name = cls._get_class_section_field_names(table)
+            # --- Class / Section / Course / Branch filters ---
+            if class_filter or section_filter or course_filter or branch_filter:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    cls._get_class_section_course_branch_field_names(table)
+                )
                 if class_filter and class_field_name:
                     cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
                     ).filter(_sec__iexact=section_filter)
+                if course_filter and course_field_name:
+                    cards_query = cards_query.annotate(
+                        _course=KeyTextTransform(course_field_name, 'field_data')
+                    ).filter(_course__iexact=course_filter)
+                if branch_filter and branch_field_name:
+                    cards_query = cards_query.annotate(
+                        _branch=KeyTextTransform(branch_field_name, 'field_data')
+                    ).filter(_branch__iexact=branch_filter)
 
             # --- Image sort filter ---
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
@@ -482,6 +524,7 @@ class IDCardCardService(BaseService):
     @classmethod
     def get_all_card_ids(cls, table_id: int, status_filter: str = None,
                          search: str = '', class_filter: str = '', section_filter: str = '',
+                         course_filter: str = '', branch_filter: str = '',
                          from_date: str = '', to_date: str = '',
                          image_column: str = '', image_condition: str = '') -> ServiceResult:
         """Get all card IDs for a table (for Select All). Capped at 50,000."""
@@ -497,15 +540,25 @@ class IDCardCardService(BaseService):
             if search:
                 cards_query = cls._apply_search_filter(cards_query, search, table=table)
 
-            # Apply class/section with canonical normalization
-            if class_filter or section_filter:
-                class_field_name, section_field_name = cls._get_class_section_field_names(table)
+            # Apply class/section/course/branch filters
+            if class_filter or section_filter or course_filter or branch_filter:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    cls._get_class_section_course_branch_field_names(table)
+                )
                 if class_filter and class_field_name:
                     cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
                     ).filter(_sec__iexact=section_filter)
+                if course_filter and course_field_name:
+                    cards_query = cards_query.annotate(
+                        _course=KeyTextTransform(course_field_name, 'field_data')
+                    ).filter(_course__iexact=course_filter)
+                if branch_filter and branch_field_name:
+                    cards_query = cards_query.annotate(
+                        _branch=KeyTextTransform(branch_field_name, 'field_data')
+                    ).filter(_branch__iexact=branch_filter)
 
             # Apply image sort filter
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.

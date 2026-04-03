@@ -3,7 +3,7 @@ ID Card API — shared helpers, scoping, and field utilities.
 
 Contains:
 - Error helpers: _safe_error
-- Query helpers: _build_class_filter_q, _get_class_section_field_names
+- Query helpers: _build_class_filter_q, _get_class_section_field_names, _get_class_section_course_branch_field_names
 - Scoping helpers: _access_denied_response, _check_client_scope_by_group/table/card
 - Client readonly helpers: _CLIENT_READONLY_STATUSES, _client_readonly_response, _is_client_readonly
 - Field utility re-exports from core.utils.field_utils
@@ -286,10 +286,25 @@ def _get_class_section_field_names(table):
     Matches by type OR by name (mirrors IDCardTable.has_class_field / has_section_field).
     Returns (class_field_name, section_field_name) — either may be None.
     """
+    class_field, section_field, _course_field, _branch_field = _get_class_section_course_branch_field_names(table)
+    return class_field, section_field
+
+
+def _get_class_section_course_branch_field_names(table):
+    """Extract class, section, course, and branch field names from table fields.
+
+    Matching is based on explicit field types when present, otherwise tokenized
+    field-name variants commonly used in school/college datasets.
+    """
     class_field = None
     section_field = None
+    course_field = None
+    branch_field = None
+
     class_tokens = {'class', 'std', 'standard', 'grade'}
     section_tokens = {'section', 'sec', 'div', 'division'}
+    course_tokens = {'course', 'program', 'programme'}
+    branch_tokens = {'branch', 'stream', 'dept', 'department'}
 
     for field in (table.fields or []):
         ftype = str(field.get('type', '') or '').strip().lower()
@@ -302,7 +317,16 @@ def _get_class_section_field_names(table):
 
         if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
             section_field = fname
-    return class_field, section_field
+            continue
+
+        if not course_field and (ftype == 'course' or bool(tokens & course_tokens)):
+            course_field = fname
+            continue
+
+        if not branch_field and (ftype == 'branch' or bool(tokens & branch_tokens)):
+            branch_field = fname
+
+    return class_field, section_field, course_field, branch_field
 
 
 def _get_class_section_branch_field_names(table):
@@ -311,33 +335,11 @@ def _get_class_section_branch_field_names(table):
     Branch-like fields are matched by type='branch' OR common field-name
     variants used by college datasets (branch/stream/course).
     """
-    class_field = None
-    section_field = None
-    branch_field = None
+    class_field, section_field, course_field, branch_field = _get_class_section_course_branch_field_names(table)
 
-    class_tokens = {'class', 'std', 'standard', 'grade'}
-    section_tokens = {'section', 'sec', 'div', 'division'}
-    branch_tokens = {'branch', 'stream', 'course'}
-
-    for field in (table.fields or []):
-        ftype = str(field.get('type', '') or '').strip().lower()
-        fname = str(field.get('name', '') or '').strip()
-        tokens = _normalized_field_tokens(fname)
-
-        if not class_field and (ftype == 'class' or bool(tokens & class_tokens)):
-            class_field = fname
-            continue
-
-        if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
-            section_field = fname
-            continue
-
-        if branch_field:
-            continue
-
-        if ftype == 'branch' or bool(tokens & branch_tokens):
-            branch_field = fname
-            continue
+    # Backward compatibility: legacy branch scope may target course-like fields.
+    if not branch_field:
+        branch_field = course_field
 
     return class_field, section_field, branch_field
 

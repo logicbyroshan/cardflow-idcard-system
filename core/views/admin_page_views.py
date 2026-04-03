@@ -35,7 +35,11 @@ from .base_helpers import (
     _STATUS_LIST_PERM,
     _VALID_STATUSES,
 )
-from .idcard_helpers import _apply_client_staff_row_scope
+from .idcard_helpers import (
+    _apply_client_staff_row_scope,
+    _build_class_filter_q,
+    _get_class_section_course_branch_field_names,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -367,6 +371,8 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     search_query = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
 
     # ── Base queryset — newest action first in each status list ──
     # Pending/Verified/Approved/Reprint are sorted by last status movement,
@@ -393,19 +399,26 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     if search_query:
         id_cards_query = IDCardService._apply_search_filter(id_cards_query, search_query, table=table)
 
-    # ── Exact class/section filter ──
-    if class_filter or section_filter:
+    # ── Class/section/course/branch filters ──
+    if class_filter or section_filter or course_filter or branch_filter:
         from django.db.models.fields.json import KeyTextTransform
-        from core.views.idcard_api import _get_class_section_field_names
-        class_field_name, section_field_name = _get_class_section_field_names(table)
+        class_field_name, section_field_name, course_field_name, branch_field_name = (
+            _get_class_section_course_branch_field_names(table)
+        )
         if class_filter and class_field_name:
-            id_cards_query = id_cards_query.annotate(
-                _cls=KeyTextTransform(class_field_name, 'field_data')
-            ).filter(_cls__iexact=class_filter)
+            id_cards_query = _build_class_filter_q(id_cards_query, class_filter, class_field_name)
         if section_filter and section_field_name:
             id_cards_query = id_cards_query.annotate(
                 _sec=KeyTextTransform(section_field_name, 'field_data')
             ).filter(_sec__iexact=section_filter)
+        if course_filter and course_field_name:
+            id_cards_query = id_cards_query.annotate(
+                _course=KeyTextTransform(course_field_name, 'field_data')
+            ).filter(_course__iexact=course_filter)
+        if branch_filter and branch_field_name:
+            id_cards_query = id_cards_query.annotate(
+                _branch=KeyTextTransform(branch_field_name, 'field_data')
+            ).filter(_branch__iexact=branch_filter)
 
     # ── Date range (download only) ──
     from_date = request.GET.get('from', '').strip()
@@ -523,6 +536,8 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         'search_query': search_query,
         'class_filter': class_filter,
         'section_filter': section_filter,
+        'course_filter': course_filter,
+        'branch_filter': branch_filter,
         'from_date': from_date,
         'to_date': to_date,
     }
@@ -535,7 +550,7 @@ def idcard_actions(request, table_id):
     """View and manage ID cards in a table, optionally filtered by status.
     
     Supports HTMX partial responses for pagination, filtering, and status tabs.
-    Query params: status, page, per_page, search, class, section
+    Query params: status, page, per_page, search, class, section, course, branch
     """
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     

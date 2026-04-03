@@ -36,6 +36,8 @@ function _moveCardsToDownloadIfApproved(cardIds) {
         if (filters.search) params.push('search=' + encodeURIComponent(filters.search));
         if (filters['class']) params.push('class=' + encodeURIComponent(filters['class']));
         if (filters.section) params.push('section=' + encodeURIComponent(filters.section));
+        if (filters.course) params.push('course=' + encodeURIComponent(filters.course));
+        if (filters.branch) params.push('branch=' + encodeURIComponent(filters.branch));
         if (params.length) idsUrl += '&' + params.join('&');
 
         fetch(idsUrl, {
@@ -90,7 +92,7 @@ function _doBulkMoveToDownload(tableId, cardIds) {
 
 /**
  * Build filter params object for download request bodies.
- * Includes search, class, and section so backend fallback respects active filters.
+ * Includes search/class/section/course/branch so backend fallback respects active filters.
  */
 function _getActiveFilters() {
     const filters = {};
@@ -98,6 +100,8 @@ function _getActiveFilters() {
     if (searchInput && searchInput.value.trim()) filters.search = searchInput.value.trim();
     if (IDCardApp.currentClassFilter) filters['class'] = IDCardApp.currentClassFilter;
     if (IDCardApp.currentSectionFilter) filters.section = IDCardApp.currentSectionFilter;
+    if (IDCardApp.currentCourseFilter) filters.course = IDCardApp.currentCourseFilter;
+    if (IDCardApp.currentBranchFilter) filters.branch = IDCardApp.currentBranchFilter;
     // DateTime range (download list)
     const fromDate = document.getElementById('fromDateFilter');
     const toDate = document.getElementById('toDateFilter');

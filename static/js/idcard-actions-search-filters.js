@@ -8,19 +8,27 @@
 window.IDCardApp = window.IDCardApp || {};
 
 // ==========================================
-// CLASS AND SECTION FILTER HANDLERS
+// CLASS/SECTION/COURSE/BRANCH FILTER HANDLERS
 // ==========================================
 
 // Current filter values (on IDCardApp namespace for cross-module access)
 let currentClassFilter = '';
 let currentSectionFilter = '';
+let currentCourseFilter = '';
+let currentBranchFilter = '';
 IDCardApp.currentClassFilter = '';
 IDCardApp.currentSectionFilter = '';
+IDCardApp.currentCourseFilter = '';
+IDCardApp.currentBranchFilter = '';
 
 let _allClassOptions = [];
 let _allSectionOptions = [];
 let _classToSections = {};
 let _sectionToClasses = {};
+let _allCourseOptions = [];
+let _allBranchOptions = [];
+let _courseToBranches = {};
+let _branchToCourses = {};
 
 // HTML-escape helper to prevent XSS in filter dropdown values
 function _escFilterHtml(s) {
@@ -30,6 +38,8 @@ function _escFilterHtml(s) {
 function initFilterHandlers() {
     initClassFilterDropdown();
     initSectionFilterDropdown();
+    initCourseFilterDropdown();
+    initBranchFilterDropdown();
     initClearFiltersButton();
     // Populate options from table data after a short delay to let table render
     setTimeout(populateFilterOptions, 500);
@@ -50,13 +60,19 @@ function _classOptionLabel(opt) {
 function _renderDependentFilterOptions() {
     const classOptionsEl = document.getElementById('classFilterOptions');
     const sectionOptionsEl = document.getElementById('sectionFilterOptions');
+    const courseOptionsEl = document.getElementById('courseFilterOptions');
+    const branchOptionsEl = document.getElementById('branchFilterOptions');
     const classTextEl = document.getElementById('classFilterText');
     const sectionTextEl = document.getElementById('sectionFilterText');
+    const courseTextEl = document.getElementById('courseFilterText');
+    const branchTextEl = document.getElementById('branchFilterText');
 
-    if (!classOptionsEl && !sectionOptionsEl) return;
+    if (!classOptionsEl && !sectionOptionsEl && !courseOptionsEl && !branchOptionsEl) return;
 
     let allowedClassValues = _allClassOptions.map(_classOptionValue);
     let allowedSectionValues = _allSectionOptions.slice();
+    let allowedCourseValues = _allCourseOptions.slice();
+    let allowedBranchValues = _allBranchOptions.slice();
 
     if (currentSectionFilter) {
         const bySection = _sectionToClasses[currentSectionFilter] || [];
@@ -67,11 +83,24 @@ function _renderDependentFilterOptions() {
         if (byClass.length) allowedSectionValues = byClass.slice();
     }
 
+    if (currentBranchFilter) {
+        const byBranch = _branchToCourses[currentBranchFilter] || [];
+        if (byBranch.length) allowedCourseValues = byBranch.slice();
+    }
+    if (currentCourseFilter) {
+        const byCourse = _courseToBranches[currentCourseFilter] || [];
+        if (byCourse.length) allowedBranchValues = byCourse.slice();
+    }
+
     const allowedClassSet = new Set(allowedClassValues.map(v => String(v)));
     const allowedSectionSet = new Set(allowedSectionValues.map(v => String(v)));
+    const allowedCourseSet = new Set(allowedCourseValues.map(v => String(v)));
+    const allowedBranchSet = new Set(allowedBranchValues.map(v => String(v)));
 
     const filteredClassOptions = _allClassOptions.filter(opt => allowedClassSet.has(_classOptionValue(opt)));
     const filteredSectionOptions = _allSectionOptions.filter(v => allowedSectionSet.has(String(v)));
+    const filteredCourseOptions = _allCourseOptions.filter(v => allowedCourseSet.has(String(v)));
+    const filteredBranchOptions = _allBranchOptions.filter(v => allowedBranchSet.has(String(v)));
 
     if (classOptionsEl) {
         classOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Classes</div>' +
@@ -90,8 +119,26 @@ function _renderDependentFilterOptions() {
             }).join('');
     }
 
+    if (courseOptionsEl) {
+        courseOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Courses</div>' +
+            filteredCourseOptions.map(function(v) {
+                var s = String(v);
+                return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>';
+            }).join('');
+    }
+
+    if (branchOptionsEl) {
+        branchOptionsEl.innerHTML = '<div class="dropdown-option" data-value="">All Branches</div>' +
+            filteredBranchOptions.map(function(v) {
+                var s = String(v);
+                return '<div class="dropdown-option" data-value="' + _escFilterHtml(s) + '">' + _escFilterHtml(s) + '</div>';
+            }).join('');
+    }
+
     const classStillValid = !currentClassFilter || filteredClassOptions.some(opt => _classOptionValue(opt) === currentClassFilter);
     const sectionStillValid = !currentSectionFilter || filteredSectionOptions.some(v => String(v) === currentSectionFilter);
+    const courseStillValid = !currentCourseFilter || filteredCourseOptions.some(v => String(v) === currentCourseFilter);
+    const branchStillValid = !currentBranchFilter || filteredBranchOptions.some(v => String(v) === currentBranchFilter);
 
     if (!classStillValid) {
         currentClassFilter = '';
@@ -101,12 +148,26 @@ function _renderDependentFilterOptions() {
         currentSectionFilter = '';
         IDCardApp.currentSectionFilter = '';
     }
+    if (!courseStillValid) {
+        currentCourseFilter = '';
+        IDCardApp.currentCourseFilter = '';
+    }
+    if (!branchStillValid) {
+        currentBranchFilter = '';
+        IDCardApp.currentBranchFilter = '';
+    }
 
     if (classOptionsEl) {
         classOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
     }
     if (sectionOptionsEl) {
         sectionOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+    }
+    if (courseOptionsEl) {
+        courseOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+    }
+    if (branchOptionsEl) {
+        branchOptionsEl.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
     }
 
     var classSel = classOptionsEl
@@ -115,9 +176,17 @@ function _renderDependentFilterOptions() {
     var sectionSel = sectionOptionsEl
         ? (sectionOptionsEl.querySelector('[data-value="' + CSS.escape(currentSectionFilter) + '"]') || sectionOptionsEl.querySelector('[data-value=""]'))
         : null;
+    var courseSel = courseOptionsEl
+        ? (courseOptionsEl.querySelector('[data-value="' + CSS.escape(currentCourseFilter) + '"]') || courseOptionsEl.querySelector('[data-value=""]'))
+        : null;
+    var branchSel = branchOptionsEl
+        ? (branchOptionsEl.querySelector('[data-value="' + CSS.escape(currentBranchFilter) + '"]') || branchOptionsEl.querySelector('[data-value=""]'))
+        : null;
 
     if (classSel) classSel.classList.add('selected');
     if (sectionSel) sectionSel.classList.add('selected');
+    if (courseSel) courseSel.classList.add('selected');
+    if (branchSel) branchSel.classList.add('selected');
 
     if (classTextEl) {
         if (currentClassFilter && classSel) classTextEl.textContent = classSel.textContent.trim();
@@ -127,13 +196,21 @@ function _renderDependentFilterOptions() {
         if (currentSectionFilter && sectionSel) sectionTextEl.textContent = sectionSel.textContent.trim();
         else sectionTextEl.textContent = 'All Sections';
     }
+    if (courseTextEl) {
+        if (currentCourseFilter && courseSel) courseTextEl.textContent = courseSel.textContent.trim();
+        else courseTextEl.textContent = 'All Courses';
+    }
+    if (branchTextEl) {
+        if (currentBranchFilter && branchSel) branchTextEl.textContent = branchSel.textContent.trim();
+        else branchTextEl.textContent = 'All Branches';
+    }
 }
 
 /** Show/hide the clear-filters button based on whether any filter is active */
 function updateClearFiltersVisibility() {
     const btn = document.getElementById('clearFiltersBtn');
     if (!btn) return;
-    const hasFilter = currentClassFilter || currentSectionFilter || IDCardApp._activeImageSort;
+    const hasFilter = currentClassFilter || currentSectionFilter || currentCourseFilter || currentBranchFilter || IDCardApp._activeImageSort;
     if (hasFilter) {
         btn.classList.add('visible');
     } else {
@@ -141,7 +218,7 @@ function updateClearFiltersVisibility() {
     }
 }
 
-/** Clear all class/section filters and refresh */
+/** Clear all dropdown filters and refresh */
 function initClearFiltersButton() {
     const btn = document.getElementById('clearFiltersBtn');
     if (!btn) return;
@@ -168,6 +245,28 @@ function initClearFiltersButton() {
             var first = sectionOptions.querySelector('.dropdown-option[data-value=""]');
             if (first) first.classList.add('selected');
         }
+        // Reset course filter
+        currentCourseFilter = '';
+        IDCardApp.currentCourseFilter = '';
+        const courseText = document.getElementById('courseFilterText');
+        if (courseText) courseText.textContent = 'All Courses';
+        const courseOptions = document.getElementById('courseFilterOptions');
+        if (courseOptions) {
+            courseOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+            var firstCourse = courseOptions.querySelector('.dropdown-option[data-value=""]');
+            if (firstCourse) firstCourse.classList.add('selected');
+        }
+        // Reset branch filter
+        currentBranchFilter = '';
+        IDCardApp.currentBranchFilter = '';
+        const branchText = document.getElementById('branchFilterText');
+        if (branchText) branchText.textContent = 'All Branches';
+        const branchOptions = document.getElementById('branchFilterOptions');
+        if (branchOptions) {
+            branchOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
+            var firstBranch = branchOptions.querySelector('.dropdown-option[data-value=""]');
+            if (firstBranch) firstBranch.classList.add('selected');
+        }
         // Reset image sort filter
         clearImageSortFilter();
         // Hide clear button
@@ -175,6 +274,14 @@ function initClearFiltersButton() {
         updateClearFiltersVisibility();
         // Refresh table
         applyClassSectionFilters();
+    });
+}
+
+function _closeAllFilterDropdowns(exceptId) {
+    ['classFilterDropdown', 'sectionFilterDropdown', 'courseFilterDropdown', 'branchFilterDropdown'].forEach(function(id) {
+        if (id === exceptId) return;
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('open');
     });
 }
 
@@ -187,9 +294,7 @@ function initClassFilterDropdown() {
 
     toggle.addEventListener('click', function(e) {
         e.stopPropagation();
-        // Close other filter dropdown
-        const other = document.getElementById('sectionFilterDropdown');
-        if (other) other.classList.remove('open');
+        _closeAllFilterDropdowns('classFilterDropdown');
         dropdown.classList.toggle('open');
     });
 
@@ -226,9 +331,7 @@ function initSectionFilterDropdown() {
 
     toggle.addEventListener('click', function(e) {
         e.stopPropagation();
-        // Close other filter dropdown
-        const other = document.getElementById('classFilterDropdown');
-        if (other) other.classList.remove('open');
+        _closeAllFilterDropdowns('sectionFilterDropdown');
         dropdown.classList.toggle('open');
     });
 
@@ -256,8 +359,80 @@ function initSectionFilterDropdown() {
     }
 }
 
+function initCourseFilterDropdown() {
+    const dropdown = document.getElementById('courseFilterDropdown');
+    const toggle = document.getElementById('courseFilterToggle');
+    const options = document.getElementById('courseFilterOptions');
+    const text = document.getElementById('courseFilterText');
+    if (!dropdown || !toggle || !options) return;
+
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _closeAllFilterDropdowns('courseFilterDropdown');
+        dropdown.classList.toggle('open');
+    });
+
+    options.addEventListener('click', function(e) {
+        const opt = e.target.closest('.dropdown-option');
+        if (!opt) return;
+        options.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        const val = opt.dataset.value || '';
+        currentCourseFilter = val;
+        IDCardApp.currentCourseFilter = val;
+        text.textContent = opt.textContent.trim();
+        dropdown.classList.remove('open');
+        _renderDependentFilterOptions();
+        updateClearFiltersVisibility();
+        applyClassSectionFilters();
+    });
+
+    if (!dropdown._docClickInit) {
+        dropdown._docClickInit = true;
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+    }
+}
+
+function initBranchFilterDropdown() {
+    const dropdown = document.getElementById('branchFilterDropdown');
+    const toggle = document.getElementById('branchFilterToggle');
+    const options = document.getElementById('branchFilterOptions');
+    const text = document.getElementById('branchFilterText');
+    if (!dropdown || !toggle || !options) return;
+
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _closeAllFilterDropdowns('branchFilterDropdown');
+        dropdown.classList.toggle('open');
+    });
+
+    options.addEventListener('click', function(e) {
+        const opt = e.target.closest('.dropdown-option');
+        if (!opt) return;
+        options.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        const val = opt.dataset.value || '';
+        currentBranchFilter = val;
+        IDCardApp.currentBranchFilter = val;
+        text.textContent = opt.textContent.trim();
+        dropdown.classList.remove('open');
+        _renderDependentFilterOptions();
+        updateClearFiltersVisibility();
+        applyClassSectionFilters();
+    });
+
+    if (!dropdown._docClickInit) {
+        dropdown._docClickInit = true;
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+    }
+}
+
 /**
- * Populate class/section filter dropdowns from the server-side API.
+ * Populate class/section/course/branch filter dropdowns from the server-side API.
  * Calls /api/table/{id}/filter-options/ to get ALL distinct values from the database,
  * not just from loaded rows.
  * 
@@ -304,6 +479,10 @@ function _doPopulateFilterOptions() {
             _allSectionOptions = Array.isArray(data.section_values) ? data.section_values.slice() : [];
             _classToSections = data.class_to_sections || {};
             _sectionToClasses = data.section_to_classes || {};
+            _allCourseOptions = Array.isArray(data.course_values) ? data.course_values.slice() : [];
+            _allBranchOptions = Array.isArray(data.branch_values) ? data.branch_values.slice() : [];
+            _courseToBranches = data.course_to_branches || {};
+            _branchToCourses = data.branch_to_courses || {};
 
             _renderDependentFilterOptions();
         })
@@ -338,7 +517,7 @@ function getClassSectionColumnIndices() {
 }
 
 function applyClassSectionFilters() {
-    // Virtual table mode: server handles search/class/section filtering.
+    // Virtual table mode: server handles search/class/section/course/branch filtering.
     // Just trigger a single re-fetch  the JSON API includes filter params.
     // Image-sort is applied client-side inside the virtual table's _applyFilters().
     if (window.USE_VIRTUAL_TABLE && typeof IDCardApp.applyFiltersAndSort === 'function') {
@@ -347,7 +526,7 @@ function applyClassSectionFilters() {
     }
 
     // Server-side filter: reset table and reload with current filter params.
-    // The server handles search, class, section, image sort, and sort order.
+    // The server handles search, class, section, course, branch, image sort, and sort order.
     if (typeof IDCardApp.resetAndReload === 'function') {
         IDCardApp.resetAndReload();
     } else if (typeof IDCardApp.applyFiltersAndSort === 'function') {

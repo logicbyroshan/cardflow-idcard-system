@@ -278,6 +278,10 @@ function _buildFilterQS() {
     if (IDCardApp.currentClassFilter) params.set('class', IDCardApp.currentClassFilter);
     // Section
     if (IDCardApp.currentSectionFilter) params.set('section', IDCardApp.currentSectionFilter);
+    // Course
+    if (IDCardApp.currentCourseFilter) params.set('course', IDCardApp.currentCourseFilter);
+    // Branch
+    if (IDCardApp.currentBranchFilter) params.set('branch', IDCardApp.currentBranchFilter);
     // Image sort filter
     if (IDCardApp._activeImageSort) {
         if (IDCardApp._activeImageSort.column) params.set('image_column', IDCardApp._activeImageSort.column);

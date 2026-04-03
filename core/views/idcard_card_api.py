@@ -32,7 +32,7 @@ from .idcard_helpers import (
     _check_client_scope_by_table,
     _check_client_scope_by_card,
     _assigned_group_ids_for_access,
-    _get_class_section_field_names,
+    _get_class_section_course_branch_field_names,
     _build_class_filter_q,
     invalidate_class_variant_cache,
     invalidate_filter_options_cache,
@@ -198,6 +198,8 @@ def api_idcard_list(request, table_id):
         search  - full-text search on field_data
         class   - exact class filter on field_data
         section - exact section filter on field_data
+        course  - exact course filter on field_data
+        branch  - exact branch filter on field_data
         sort    - sort order: sr-asc, sr-desc, name-asc, name-desc, date-new, date-old
         image_column    - image field name for image sort filter
         image_condition - complete, pending, or incomplete
@@ -268,6 +270,8 @@ def api_idcard_list(request, table_id):
     search = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
     sort_order = request.GET.get('sort', 'sr-asc').strip()
     image_column = request.GET.get('image_column', '').strip()
     image_condition = request.GET.get('image_condition', '').strip()
@@ -276,7 +280,11 @@ def api_idcard_list(request, table_id):
 
     result = IDCardService.list_cards(
         table_id, status_filter, offset, limit,
-        search=search, class_filter=class_filter, section_filter=section_filter,
+        search=search,
+        class_filter=class_filter,
+        section_filter=section_filter,
+        course_filter=course_filter,
+        branch_filter=branch_filter,
         sort_order=sort_order, image_column=image_column, image_condition=image_condition,
         from_date=from_date, to_date=to_date,
     )
@@ -298,6 +306,8 @@ def api_idcard_cards_json(request, table_id):
         search   – full-text search on field_data
         class    – class filter on field_data
         section  – section filter on field_data
+        course   – course filter on field_data
+        branch   – branch filter on field_data
         from     – datetime lower bound (download status only)
         to       – datetime upper bound (download status only)
 
@@ -385,18 +395,28 @@ def api_idcard_cards_json(request, table_id):
     search = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
     if search:
         qs = IDCardService._apply_search_filter(qs, search, table=table)
 
-    # Class/section filter with canonical normalization
-    if class_filter or section_filter:
+    # Class/section/course/branch filters
+    if class_filter or section_filter or course_filter or branch_filter:
         from django.db.models.fields.json import KeyTextTransform
-        class_field_name, section_field_name = _get_class_section_field_names(table)
+        class_field_name, section_field_name, course_field_name, branch_field_name = (
+            _get_class_section_course_branch_field_names(table)
+        )
         if class_filter and class_field_name:
             qs = _build_class_filter_q(qs, class_filter, class_field_name)
         if section_filter and section_field_name:
             qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data'))
             qs = qs.filter(_sec__iexact=section_filter)
+        if course_filter and course_field_name:
+            qs = qs.annotate(_course=KeyTextTransform(course_field_name, 'field_data'))
+            qs = qs.filter(_course__iexact=course_filter)
+        if branch_filter and branch_field_name:
+            qs = qs.annotate(_branch=KeyTextTransform(branch_field_name, 'field_data'))
+            qs = qs.filter(_branch__iexact=branch_filter)
 
     # Server-side image filter (column + condition)
     image_column = request.GET.get('image_column', '').strip()
@@ -597,7 +617,7 @@ def api_idcard_cards_json(request, table_id):
 @api_require_any_authenticated
 def api_idcard_all_ids(request, table_id):
     """API endpoint to get all card IDs for a table (for Select All functionality).
-    Supports search, class, and section filter params so Select All respects active filters."""
+    Supports search/class/section/course/branch params so Select All respects active filters."""
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     status_filter = request.GET.get('status', None)
@@ -612,6 +632,8 @@ def api_idcard_all_ids(request, table_id):
     search = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
     from_date = request.GET.get('from', '').strip()
     to_date = request.GET.get('to', '').strip()
     image_column = request.GET.get('image_column', '').strip()
@@ -619,7 +641,11 @@ def api_idcard_all_ids(request, table_id):
     
     result = IDCardService.get_all_card_ids(
         table_id, status_filter,
-        search=search, class_filter=class_filter, section_filter=section_filter,
+        search=search,
+        class_filter=class_filter,
+        section_filter=section_filter,
+        course_filter=course_filter,
+        branch_filter=branch_filter,
         from_date=from_date, to_date=to_date,
         image_column=image_column, image_condition=image_condition,
     )
@@ -643,7 +669,7 @@ def api_idcard_all_ids(request, table_id):
 @require_http_methods(["GET"])
 @api_require_any_authenticated
 def api_idcard_filter_options(request, table_id):
-    """Return distinct class/section values for filter dropdowns.
+    """Return distinct class/section/course/branch values for filter dropdowns.
 
     Groups class variants by their canonical form (normalize_class_value).
     E.g. 'KG-I', 'KGI', 'KG1', 'kgI' all map to canonical 'KG1' and show
@@ -654,6 +680,8 @@ def api_idcard_filter_options(request, table_id):
     Response shape:
         class_values:   [{value: "KG1", display: "KG-I"}, ...]
         section_values: ["A", "B", ...]
+        course_values:  ["BSC", "BCA", ...]
+        branch_values:  ["CS", "ME", ...]
     """
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
@@ -683,12 +711,18 @@ def api_idcard_filter_options(request, table_id):
     # NOTE: Removed status filter — filter options should show ALL values
     # across the entire table, not just the current status view.
 
-    class_field_name, section_field_name = _get_class_section_field_names(table)
+    class_field_name, section_field_name, course_field_name, branch_field_name = (
+        _get_class_section_course_branch_field_names(table)
+    )
 
     class_values = []
     section_values = []
+    course_values = []
+    branch_values = []
     class_to_sections = {}
     section_to_classes = {}
+    course_to_branches = {}
+    branch_to_courses = {}
 
     if class_field_name:
         # Get distinct raw values WITH counts
@@ -733,6 +767,30 @@ def api_idcard_filter_options(request, table_id):
             ],
         )
 
+    if course_field_name:
+        course_values = sorted(
+            [
+                str(v) for v in
+                qs.annotate(_coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()))
+                .exclude(_coursev__isnull=True).exclude(_coursev='')
+                .order_by()
+                .values_list('_coursev', flat=True).distinct()
+                if v is not None
+            ],
+        )
+
+    if branch_field_name:
+        branch_values = sorted(
+            [
+                str(v) for v in
+                qs.annotate(_branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()))
+                .exclude(_branchv__isnull=True).exclude(_branchv='')
+                .order_by()
+                .values_list('_branchv', flat=True).distinct()
+                if v is not None
+            ],
+        )
+
     if class_field_name and section_field_name:
         pair_rows = (
             qs.annotate(
@@ -767,14 +825,50 @@ def api_idcard_filter_options(request, table_id):
             for sec, classes in section_class_sets.items()
         }
 
+    if course_field_name and branch_field_name:
+        pair_rows = (
+            qs.annotate(
+                _coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()),
+                _branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()),
+            )
+            .exclude(_coursev__isnull=True).exclude(_coursev='')
+            .exclude(_branchv__isnull=True).exclude(_branchv='')
+            .order_by()
+            .values_list('_coursev', '_branchv')
+            .distinct()
+        )
+
+        course_branch_sets = defaultdict(set)
+        branch_course_sets = defaultdict(set)
+        for raw_course, raw_branch in pair_rows:
+            course_text = str(raw_course).strip()
+            branch_text = str(raw_branch).strip()
+            if not course_text or not branch_text:
+                continue
+            course_branch_sets[course_text].add(branch_text)
+            branch_course_sets[branch_text].add(course_text)
+
+        course_to_branches = {
+            course: sorted(list(branches)) for course, branches in course_branch_sets.items()
+        }
+        branch_to_courses = {
+            branch: sorted(list(courses)) for branch, courses in branch_course_sets.items()
+        }
+
     result = {
         'success': True,
         'class_values': class_values,
         'section_values': list(section_values),
+        'course_values': list(course_values),
+        'branch_values': list(branch_values),
         'class_to_sections': class_to_sections,
         'section_to_classes': section_to_classes,
+        'course_to_branches': course_to_branches,
+        'branch_to_courses': branch_to_courses,
         'class_field': class_field_name,
         'section_field': section_field_name,
+        'course_field': course_field_name,
+        'branch_field': branch_field_name,
     }
     
     # Cache for 30 seconds
@@ -1101,12 +1195,18 @@ def api_idcard_update_field(request, card_id):
 
         if result.success and field:
             try:
-                class_field_name, section_field_name = _get_class_section_field_names(_card.table)
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    _get_class_section_course_branch_field_names(_card.table)
+                )
                 normalized_field = str(field).strip().lower()
                 if class_field_name and normalized_field == str(class_field_name).strip().lower():
                     invalidate_class_variant_cache(_card.table_id)
                     invalidate_filter_options_cache(_card.table_id)
                 elif section_field_name and normalized_field == str(section_field_name).strip().lower():
+                    invalidate_filter_options_cache(_card.table_id)
+                elif course_field_name and normalized_field == str(course_field_name).strip().lower():
+                    invalidate_filter_options_cache(_card.table_id)
+                elif branch_field_name and normalized_field == str(branch_field_name).strip().lower():
                     invalidate_filter_options_cache(_card.table_id)
             except Exception:
                 pass

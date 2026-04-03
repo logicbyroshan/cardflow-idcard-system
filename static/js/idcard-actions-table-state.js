@@ -230,6 +230,8 @@ function _buildFilterParams() {
     if (_ts.searchQuery) params.set('search', _ts.searchQuery);
     if (IDCardApp.currentClassFilter) params.set('class', IDCardApp.currentClassFilter);
     if (IDCardApp.currentSectionFilter) params.set('section', IDCardApp.currentSectionFilter);
+    if (IDCardApp.currentCourseFilter) params.set('course', IDCardApp.currentCourseFilter);
+    if (IDCardApp.currentBranchFilter) params.set('branch', IDCardApp.currentBranchFilter);
     if (_ts.currentSort) params.set('sort', _ts.currentSort);
     if (IDCardApp._activeImageSort) {
         params.set('image_column', IDCardApp._activeImageSort.column || '');
