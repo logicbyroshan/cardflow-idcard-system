@@ -22,10 +22,6 @@ function initIdcardGroup(config) {
   var tableBody = document.querySelector('.idcard-table tbody');
   var tableContainer = document.querySelector('.idcard-table');
 
-  var selectedTableId = null;
-  var printCardsBtn = document.getElementById('printCardsBtn');
-  var reprintCardsBtn = document.getElementById('reprintCardsBtn');
-
   function refreshGroupTableInPlace() {
     if (!tableBody || !tableContainer) return;
     fetch(window.location.href, {
@@ -40,7 +36,6 @@ function initIdcardGroup(config) {
         if (nextBody) {
           tableBody.innerHTML = nextBody.innerHTML;
           tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
-          updateGroupActionBtns(null);
         }
       })
       .catch(function(err) {
@@ -51,42 +46,17 @@ function initIdcardGroup(config) {
   window.IDCardGroup = window.IDCardGroup || {};
   window.IDCardGroup.refreshTable = refreshGroupTableInPlace;
 
-  function updateGroupActionBtns(tableId) {
-    selectedTableId = tableId;
-    if (printCardsBtn) {
-      printCardsBtn.disabled = !tableId;
-      if (tableId) {
-        var printUrl = isClientRole
-          ? panelUrl('/client/table/' + tableId + '/print/')
-          : panelUrl('/print/table/' + tableId + '/');
-        printCardsBtn.onclick = function() { window.location.href = printUrl; };
-      }
-    }
-    if (reprintCardsBtn) {
-      reprintCardsBtn.disabled = !tableId;
-      if (tableId) {
-        var reprintUrl = isClientRole
-          ? panelUrl('/client/table/' + tableId + '/reprint/')
-          : panelUrl('/reprint/table/' + tableId + '/');
-        reprintCardsBtn.onclick = function() { window.location.href = reprintUrl; };
-      }
-    }
-  }
-
   // ==================== SINGLE-CLICK ROW SELECTION ====================
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
       var row = e.target.closest('tr[data-table-id]');
       if (!row) return;
       // Toggle selection
-      var rowTableId = row.getAttribute('data-table-id');
       if (row.classList.contains('selected')) {
         row.classList.remove('selected');
-        updateGroupActionBtns(null);
       } else {
         tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
         row.classList.add('selected');
-        updateGroupActionBtns(rowTableId);
       }
     });
   }
@@ -750,4 +720,5 @@ function initIdcardGroup(config) {
       window.showToast('This action is not available yet.', 'info');
     }
   });
+
 }

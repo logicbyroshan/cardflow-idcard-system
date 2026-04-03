@@ -115,7 +115,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var rowsSelectedText = document.getElementById('rowsSelectedText');
 
     var currentPage = 1;
-    var rowsPerPage = 10;
+    var rowsPerPage = parseInt((rowsSelectedText && rowsSelectedText.textContent) || '25', 10);
+    if (!rowsPerPage || rowsPerPage < 1) rowsPerPage = 25;
     var allRows = [];
     var filteredRows = [];
     var tbody = document.getElementById('staff-table-body');

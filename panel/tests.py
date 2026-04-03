@@ -3,7 +3,6 @@ import os
 import tempfile
 from unittest import mock
 
-from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -642,45 +641,42 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         role_items = role_filtered.json()['items']
         self.assertTrue(any(item['user'] == self.client_user.username for item in role_items))
 
-    def test_operations_feed_client_logs_includes_clients_and_active_devices(self):
+    def test_operations_feed_logs_respects_user_and_action_filters(self):
         ActivityLog.objects.create(
             user=self.client_user,
             action='login',
-            description='Panel Client logged in',
+            description='Panel Client login',
             ip_address='127.0.0.1',
         )
         ActivityLog.objects.create(
             user=self.client_user,
-            action='logout',
-            description='Panel Client logged out',
+            action='settings_update',
+            description='Panel Client settings update',
+            ip_address='127.0.0.1',
+        )
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='login',
+            description='Super admin login',
             ip_address='127.0.0.1',
         )
 
-        for fp in ('client-device-a', 'client-device-b'):
-            session = SessionStore()
-            session['_auth_user_id'] = str(self.client_user.pk)
-            session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
-            session['_auth_user_hash'] = self.client_user.get_session_auth_hash()
-            session['_auth_browser_fp'] = fp
-            session.save()
-
         self.client.login(username='panel-super@test.com', password='pass1234')
         response = self.client.get('/panel/api/operations-feed/', {
-            'source': 'client_logs',
-            'client_id': self.client_profile.id,
+            'source': 'logs',
+            'user_role': 'client',
+            'action': 'login',
             'limit': 50,
         })
         self.assertEqual(response.status_code, 200)
 
         payload = response.json()
         self.assertTrue(payload['success'])
-        self.assertIn('clients', payload)
-        self.assertTrue(any(c['id'] == self.client_profile.id for c in payload['clients']))
-        self.assertGreaterEqual(payload['source_counts'].get('client_activity_log', 0), 2)
+        self.assertNotIn('clients', payload)
+        self.assertGreaterEqual(payload['source_counts'].get('activity_log', 0), 1)
 
         items = payload['items']
         self.assertTrue(items)
-        self.assertTrue(all(item['source_type'] == 'client_activity_log' for item in items))
-        self.assertTrue(all(item['action'] in ('login', 'logout') for item in items))
-        self.assertTrue(all(item['user'] == self.client_profile.name for item in items))
-        self.assertTrue(any(int(item.get('active_devices') or 0) >= 2 for item in items))
+        self.assertTrue(all(item['source_type'] == 'activity_log' for item in items))
+        self.assertTrue(all(item['action'] == 'login' for item in items))
+        self.assertTrue(all(item['user'] == self.client_user.username for item in items))

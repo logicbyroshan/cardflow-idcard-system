@@ -12,6 +12,14 @@ var _ts = window.IDCardApp._ts;
 // LAZY LOADING FUNCTIONS
 // ==========================================
 
+function _pinLazyLoadSentinelToBottom() {
+    var tableBody = document.getElementById('cardsTableBody');
+    var sentinel = document.getElementById('lazyLoadSentinel');
+    if (tableBody && sentinel) {
+        tableBody.appendChild(sentinel);
+    }
+}
+
 async function loadMoreData() {
     if (_ts.lazyLoadState.isLoading || !_ts.lazyLoadState.hasMore || !_ts.lazyLoadState.tableId) {
         return;
@@ -54,6 +62,10 @@ async function loadMoreData() {
                     }
                 }
             });
+
+            // Keep sentinel at the true end so observer-based infinite loading
+            // continues to work after direct page-jump preloading.
+            _pinLazyLoadSentinelToBottom();
             
             _ts.lazyLoadState.loadedCount += data.cards.length;
             
@@ -217,11 +229,7 @@ async function _sequencedLoadMore() {
     // If this was the latest request and there's still more, re-check sentinel
     if (seq === _ts._loadRequestSeq && _ts.lazyLoadState.hasMore) {
         // Move sentinel to end (new rows were appended above it)
-        var sentinel = document.getElementById('lazyLoadSentinel');
-        var tableBody = document.getElementById('cardsTableBody');
-        if (sentinel && tableBody) {
-            tableBody.appendChild(sentinel);
-        }
+        _pinLazyLoadSentinelToBottom();
     }
     
     // If no more data, disconnect observer

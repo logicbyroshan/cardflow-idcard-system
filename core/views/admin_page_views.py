@@ -9,16 +9,18 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.timesince import timesince as django_timesince
 
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
 from cardprint.models import PrintRequest
-from ..models import User, SystemSettings, Notification, EmailLog
+from ..models import User, SystemSettings, Notification, EmailLog, ActivityLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
@@ -42,7 +44,7 @@ logger = logging.getLogger(__name__)
 @super_admin_required
 def manage_staff(request):
     """View to manage admin staff — supports HTMX partial responses."""
-    DEFAULT_PER_PAGE = 10
+    DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
     
     try:
@@ -104,7 +106,7 @@ def manage_staff(request):
 def manage_clients(request):
     """View to manage all clients — supports HTMX partial responses."""
     user = request.user
-    DEFAULT_PER_PAGE = 10
+    DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
     
     try:
@@ -161,9 +163,8 @@ def manage_clients(request):
 def active_clients(request):
     """View clients for ID card management — supports HTMX partial responses.
 
-    Defaults to showing only ACTIVE clients so inactive clients do not appear
-    in the print/reprint navigation.  Admins can pass ?status=inactive (or any
-    other status value) to access and work with clients of that status.
+    Defaults to showing ALL clients. Admins can still filter by status via
+    ?status=active / ?status=inactive / ?status=suspended.
     """
     user = request.user
     search_query = request.GET.get('search', '').strip()
@@ -178,23 +179,17 @@ def active_clients(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
 
-    # Default to active clients so inactive ones don't appear in print/reprint
-    # navigation by default.  Admins can filter by any status:
-    #   ?status=inactive  → inactive clients
-    #   ?status=all       → all clients regardless of status
-    #   ?status=active or no param → active clients only
-    # Admin staff default to 'all' since they see only assigned clients and
-    # need visibility into inactive assigned clients as well.
-    if not status_filter and PermissionService.is_admin_staff(user):
+    # Default to all clients.
+    if not status_filter:
         status_filter = 'all'
 
     if status_filter == 'all':
         base_qs = Client.objects.all().select_related('user')
-    elif status_filter in ('inactive', 'suspended'):
+    elif status_filter in ('active', 'inactive', 'suspended'):
         base_qs = Client.objects.filter(status=status_filter).select_related('user')
     else:
-        status_filter = 'active'  # normalise for template awareness
-        base_qs = Client.objects.filter(status='active').select_related('user')
+        status_filter = 'all'  # normalise invalid statuses for template awareness
+        base_qs = Client.objects.all().select_related('user')
 
     clients_qs = PermissionService.get_accessible_clients(
         user, base_qs
@@ -229,6 +224,76 @@ def active_clients(request):
         return render(request, 'partials/active-client/table-container.html', context)
     
     return render(request, 'active-client.html', context)
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
+def api_client_login_history(request, client_id):
+    """Return login/logout timeline for a single client for Active Clients drawer."""
+    client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+
+    if not PermissionService.can_access_client(request.user, client.id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    def _active_device_fingerprints(user_id):
+        ids = {str(user_id)}
+        fingerprints = set()
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+
+            user_id_str = str(data.get('_auth_user_id') or '')
+            if user_id_str not in ids:
+                continue
+
+            fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
+            fingerprints.add(fingerprint)
+        return sorted(fingerprints)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(user=client.user, action__in=['login', 'logout'])
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    device_fingerprints = _active_device_fingerprints(client.user_id) if client.user_id else []
+
+    events = []
+    for entry in logs_qs:
+        events.append({
+            'id': entry.pk,
+            'action': entry.action,
+            'action_display': action_display_map.get(entry.action, entry.action),
+            'description': entry.description or '',
+            'ip_address': entry.ip_address or '',
+            'icon_class': entry.icon_class,
+            'icon_color': entry.icon_color,
+            'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
+            'time_ago': django_timesince(entry.created_at, now) + ' ago',
+        })
+
+    return JsonResponse({
+        'success': True,
+        'client': {
+            'id': client.id,
+            'name': client.name,
+            'status': client.status,
+        },
+        'active_devices': len(device_fingerprints),
+        'device_fingerprints': device_fingerprints,
+        'events': events,
+    })
 
 
 # ID Card Group

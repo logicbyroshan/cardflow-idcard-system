@@ -14,23 +14,23 @@ Required context:
     <table class="data-table" id="clientsTable">
         <thead>
             <tr>
-                <th>Name</th>
-                <th class="min-w-[130px]">Email</th>
-                <th class="min-w-[120px]">Mobile</th>
-                <th>Status</th>
-                <th>Created At</th>
-                <th>Updated At</th>
+                <th class="text-left">Name</th>
+                <th class="min-w-[130px] text-left">Email</th>
+                <th class="min-w-[120px] text-center">Mobile</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Created At</th>
+                <th class="text-center">Updated At</th>
             </tr>
         </thead>
         <tbody id="client-table-body">
             {% for client in clients %}
             <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
-                <td>{{ client.name }}</td>
-                <td class="email-cell">{{ client.user.email|email_break }}</td>
-                <td class="phone-cell">{{ client.user.phone|default:"-"|phone_break }}</td>
-                <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
-                <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
-                <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
+                <td class="text-left">{{ client.name }}</td>
+                <td class="email-cell text-left">{{ client.user.email|email_break }}</td>
+                <td class="phone-cell text-center">{{ client.user.phone|default:"-"|phone_break }}</td>
+                <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
+                <td class="text-center">{{ client.created_at|date:"d-m-Y H:i" }}</td>
+                <td class="text-center">{{ client.updated_at|date:"d-m-Y H:i" }}</td>
             </tr>
             {% empty %}
             <tr>
