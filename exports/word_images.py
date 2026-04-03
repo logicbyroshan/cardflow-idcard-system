@@ -48,40 +48,21 @@ class WordImagesMixin:
                         img_data = img_file.read()
                         
                         if img_data and len(img_data) >= 100:
-                            # Process image
+                            # Validate image and keep original bytes (no recompression).
                             with Image.open(BytesIO(img_data)) as verify_img:
                                 verify_img.verify()
-                            pil_img = Image.open(BytesIO(img_data))
-                            try:
-                                if pil_img.mode in ('RGBA', 'LA', 'P'):
-                                    converted = pil_img.convert('RGB')
-                                    pil_img.close()
-                                    pil_img = converted
-                                
-                                # Add 0.5pt border only for photo-like images.
-                                # Signature/QR/barcode must remain borderless.
-                                if image_subtype in self.BORDERED_IMAGE_SUBTYPES:
-                                    from PIL import ImageDraw
-                                    draw = ImageDraw.Draw(pil_img)
-                                    iw, ih = pil_img.size
-                                    draw.rectangle([0, 0, iw - 1, ih - 1], outline='black', width=1)
-                                
-                                img_stream = BytesIO()
-                                pil_img.save(img_stream, format='JPEG', quality=90)
-                            finally:
-                                pil_img.close()
-                            img_stream.seek(0)
+                            img_stream = BytesIO(img_data)
                             
                             para = cell.paragraphs[0]
                             run = para.add_run()
-                            # Fixed dimensions per subtype
-                            inline_shape = run.add_picture(
-                                img_stream,
-                                height=Cm(fixed_height_cm),
-                                width=Cm(fixed_width_cm)
-                            )
+                            # Keep original image dimensions in DOC export.
+                            inline_shape = run.add_picture(img_stream)
                             img_stream.close()
-                            self._convert_to_vml(run, inline_shape)
+                            self._convert_to_vml(
+                                run,
+                                inline_shape,
+                                add_border=(image_subtype in self.BORDERED_IMAGE_SUBTYPES),
+                            )
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             self._set_para_spacing(para, parse_xml, nsdecls)
                             return
@@ -137,14 +118,14 @@ class WordImagesMixin:
             'xmlns:v="urn:schemas-microsoft-com:vml" '
             'xmlns:o="urn:schemas-microsoft-com:office:office">'
             f'<v:rect style="width:{box_w_pt:.1f}pt;height:{box_h_pt:.1f}pt" '
-            f'filled="f" strokecolor="black" strokeweight="0.5pt">'
+            f'filled="f" strokecolor="#000000" strokeweight="0.5pt">'
             '</v:rect></w:pict>'
         )
         from lxml import etree
         pict_elem = etree.fromstring(pict_xml)
         run._r.append(pict_elem)
     
-    def _convert_to_vml(self, run, inline_shape):
+    def _convert_to_vml(self, run, inline_shape, add_border=False):
         """Convert an inline DrawingML image to VML for backward compatibility.
         
         VML images are visible in Word's Normal/Draft view and compatible
@@ -168,13 +149,14 @@ class WordImagesMixin:
         run._r.remove(drawing_elem)
         
         # Create VML <w:pict> element (universally compatible)
+        border_attrs = 'stroked="t" strokecolor="#000000" strokeweight="0.5pt"' if add_border else 'stroked="f"'
         vml_xml = (
             '<w:pict '
             'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
             'xmlns:v="urn:schemas-microsoft-com:vml" '
             'xmlns:o="urn:schemas-microsoft-com:office:office" '
             'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            '<v:shape type="#_x0000_t75" '
+            f'<v:shape type="#_x0000_t75" {border_attrs} '
             f'style="width:{width_pt:.1f}pt;height:{height_pt:.1f}pt">'
             f'<v:imagedata r:id="{rId}" o:title=""/>'
             '</v:shape></w:pict>'
