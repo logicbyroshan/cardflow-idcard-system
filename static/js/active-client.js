@@ -9,14 +9,8 @@
     // ==================== STATE VARIABLES ====================
     let selectedClientId = null;
     let selectedRow = null;
-    let expandedRow = null;
-    let expandedDetailRow = null;
-    let expandRequestToken = 0;
-    let clientDetailsPromise = null;
-    let clientDetailsMap = null;
     let currentFilter = 'all';
     let currentStatusFilter = new URLSearchParams(window.location.search).get('status') || '';
-    const activeClientPerms = window.ACTIVE_CLIENT_PERMS || {};
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -53,33 +47,12 @@
         return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     }
 
-    function panelUrl(path) {
-        if (!path) return path;
-        if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
-        const normalized = path.charAt(0) === '/' ? path : `/${path}`;
-        return `${panelBasePath()}${normalized}`;
-    }
-
     function clientGroupsUrl(clientId) {
         return `${panelBasePath()}/client/${encodeURIComponent(String(clientId))}/groups/`;
     }
 
     function clientSettingsUrl(clientId) {
         return `${panelBasePath()}/client/${encodeURIComponent(String(clientId))}/settings/`;
-    }
-
-    function idcardActionsUrl(tableId, status) {
-        const safeStatus = encodeURIComponent(String(status || 'pending'));
-        return `${panelBasePath()}/table/${encodeURIComponent(String(tableId))}/cards/?status=${safeStatus}`;
-    }
-
-    function idcardGroupBulkActionUrl(clientId, tableId, action) {
-        return clientGroupsUrl(clientId);
-    }
-
-    function hasPerm(key) {
-        if (activeClientPerms.isSuperAdmin) return true;
-        return !!activeClientPerms[key];
     }
 
     function getClientRows() {
@@ -240,168 +213,6 @@
                 if (typeof window.showToast === 'function') {
                     window.showToast('Unable to load client login history', 'error');
                 }
-            });
-    }
-
-    function removeExpandedDetailRow() {
-        if (expandedDetailRow && expandedDetailRow.parentNode) {
-            expandedDetailRow.parentNode.removeChild(expandedDetailRow);
-        }
-        if (expandedRow) {
-            expandedRow.classList.remove('expanded');
-        }
-        expandedRow = null;
-        expandedDetailRow = null;
-    }
-
-    function renderExpandMessage(type, message) {
-        const safeClass = type === 'error' ? 'client-expand-error' : (type === 'loading' ? 'client-expand-loading' : 'client-expand-empty');
-        return `<div class="${safeClass}">${escapeHtml(message || '')}</div>`;
-    }
-
-    function buildListLink(tableId, status, label, count, iconClass, permKey) {
-        if (!hasPerm(permKey)) return '';
-        return '' +
-            `<a class="client-expand-pill ${escapeHtml(status)}" href="${idcardActionsUrl(tableId, status)}" title="Open ${escapeHtml(label)} list">` +
-                `<i class="fa-solid ${escapeHtml(iconClass)}"></i>` +
-                `${escapeHtml(label)}` +
-                `<span class="count">${Number(count || 0)}</span>` +
-            '</a>';
-    }
-
-    function buildBulkButton(clientId, tableId, action, label, iconClass, permKey, enabled) {
-        if (!hasPerm(permKey)) return '';
-        const disabled = !enabled;
-        const className = `client-expand-bulk-btn${disabled ? ' disabled' : ''}`;
-        const href = disabled ? '#' : idcardGroupBulkActionUrl(clientId, tableId, action);
-        const title = disabled
-            ? 'Open ID Card Group and select a table with data to run this action'
-            : `Open ID Card Group to run ${label}`;
-        return '' +
-            `<a class="${className}" href="${href}" title="${escapeHtml(title)}">` +
-                `<i class="fa-solid ${escapeHtml(iconClass)}"></i>` +
-                `${escapeHtml(label)}` +
-            '</a>';
-    }
-
-    function buildTableExpandHtml(clientId, tables) {
-        const tableList = Array.isArray(tables) ? tables : [];
-        const tableCount = tableList.length;
-
-        if (!tableCount) {
-            return '' +
-                '<div class="client-expand-panel">' +
-                    renderExpandMessage('empty', 'No tables found for this client yet.') +
-                '</div>';
-        }
-
-        const tableHtml = tableList.map((table) => {
-            const pending = Number(table.pending || 0);
-            const verified = Number(table.verified || 0);
-            const approved = Number(table.approved || 0);
-            const downloaded = Number(table.downloaded || 0);
-            const pool = Number(table.pool || 0);
-            const total = pending + verified + approved + downloaded + pool;
-
-            const listLinks = [
-                buildListLink(table.id, 'pending', 'Pending', pending, 'fa-clock', 'pendingList'),
-                buildListLink(table.id, 'verified', 'Verified', verified, 'fa-circle-check', 'verifiedList'),
-                buildListLink(table.id, 'approved', 'Approved', approved, 'fa-thumbs-up', 'approvedList'),
-                buildListLink(table.id, 'download', 'Downloaded', downloaded, 'fa-download', 'downloadList'),
-                buildListLink(table.id, 'pool', 'Pool', pool, 'fa-layer-group', 'poolList')
-            ].join('');
-
-            const bulkButtons = [
-                buildBulkButton(clientId, table.id, 'reupload', 'Reupload', 'fa-upload', 'bulkReupload', total > 0),
-                buildBulkButton(clientId, table.id, 'download-all', 'Download All', 'fa-id-card', 'bulkDownload', total > 0),
-                buildBulkButton(clientId, table.id, 'delete-all', 'Delete All', 'fa-trash', 'deleteAll', total > 0),
-                buildBulkButton(clientId, table.id, 'upgrade', 'Upgrade All', 'fa-arrow-up', 'upgradeAll', downloaded > 0)
-            ].join('');
-
-            const actionLinks = hasPerm('pendingList')
-                ? `<a class="client-expand-action-btn" href="${idcardActionsUrl(table.id, 'pending')}"><i class="fa-solid fa-arrow-right"></i> Open</a>`
-                : '';
-
-            return '' +
-                '<div class="client-expand-table-item">' +
-                    `<div class="client-expand-list-name"><i class="fa-solid fa-table"></i> ${escapeHtml(table.name || 'Table')}</div>` +
-                    `<div class="client-expand-table-links">${listLinks || '<span class="client-expand-meta-text">No list access</span>'}</div>` +
-                    `<div class="client-expand-row-actions">${actionLinks || '<span class="client-expand-meta-text">-</span>'}</div>` +
-                    `<div class="client-expand-table-bulk">${bulkButtons || '<span class="client-expand-meta-text">No bulk access</span>'}</div>` +
-                '</div>';
-        }).join('');
-
-        return '' +
-            '<div class="client-expand-panel">' +
-                `<div class="client-expand-table-list">${tableHtml}</div>` +
-            '</div>';
-    }
-
-    function fetchClientDetailsMap() {
-        if (clientDetailsMap) {
-            return Promise.resolve(clientDetailsMap);
-        }
-        if (clientDetailsPromise) {
-            return clientDetailsPromise;
-        }
-
-        clientDetailsPromise = fetch(panelUrl('/api/recent-client-updates/?limit=500'), {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
-        })
-            .then((resp) => resp.json().then((data) => ({ ok: resp.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok || !data || !data.success || !Array.isArray(data.clients)) {
-                    throw new Error((data && data.error) || 'Failed to load client table details.');
-                }
-                const map = new Map();
-                data.clients.forEach((client) => {
-                    map.set(String(client.client_id || client.id), client);
-                });
-                clientDetailsMap = map;
-                return map;
-            })
-            .finally(() => {
-                clientDetailsPromise = null;
-            });
-
-        return clientDetailsPromise;
-    }
-
-    function toggleClientExpand(row) {
-        if (!row || !row.classList.contains('client-main-row')) return;
-
-        const isSameRowOpen = expandedRow === row && expandedDetailRow;
-        if (isSameRowOpen) {
-            removeExpandedDetailRow();
-            return;
-        }
-
-        removeExpandedDetailRow();
-
-        const detailRow = document.createElement('tr');
-        detailRow.className = 'client-expand-row';
-        detailRow.innerHTML = `<td colspan="6">${renderExpandMessage('loading', 'Loading client tables...')}</td>`;
-
-        row.insertAdjacentElement('afterend', detailRow);
-        row.classList.add('expanded');
-        expandedRow = row;
-        expandedDetailRow = detailRow;
-
-        const token = ++expandRequestToken;
-        const clientId = String(row.dataset.clientId || '');
-
-        fetchClientDetailsMap()
-            .then((map) => {
-                if (token !== expandRequestToken || expandedDetailRow !== detailRow) return;
-                const client = map.get(clientId);
-                const tables = client && Array.isArray(client.tables) ? client.tables : [];
-                detailRow.innerHTML = `<td colspan="6">${buildTableExpandHtml(clientId, tables)}</td>`;
-            })
-            .catch((error) => {
-                if (token !== expandRequestToken || expandedDetailRow !== detailRow) return;
-                detailRow.innerHTML = `<td colspan="6">${renderExpandMessage('error', error && error.message ? error.message : 'Could not load client workflow details.')}</td>`;
             });
     }
 
@@ -632,10 +443,6 @@
                     return;
                 }
 
-                if (e.target.closest('.client-expand-panel')) {
-                    return;
-                }
-
                 if (e.target.closest('a, button, input, textarea, select, label')) {
                     return;
                 }
@@ -643,7 +450,6 @@
                 const row = e.target.closest('tr');
                 if (row && row.classList.contains('client-main-row')) {
                     selectRow(row);
-                    toggleClientExpand(row);
                 }
             });
             
@@ -658,7 +464,6 @@
             document.body.addEventListener('htmx:afterSwap', function(evt) {
                 if (!evt || !evt.target) return;
                 if (evt.target.id === 'active-client-table-container' || evt.target.closest('#active-client-table-container')) {
-                    removeExpandedDetailRow();
                     selectedRow = null;
                     selectedClientId = null;
                     updateActionButtons();

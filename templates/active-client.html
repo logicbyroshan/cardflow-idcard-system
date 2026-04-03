@@ -53,32 +53,54 @@
     .client-history-chip-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 8px;
       margin-top: 8px;
     }
 
     .client-history-chip {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       border-radius: 999px;
-      padding: 2px 8px;
-      font-size: 11px;
-      font-weight: 600;
+      padding: 3px 9px;
+      font-size: 10.5px;
+      font-weight: 500;
       line-height: 1.2;
-      border: 1px solid transparent;
+      border: 1px solid #dbe2ea;
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .client-history-chip i {
+      width: 15px;
+      height: 15px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
     }
 
     .client-history-chip--action {
-      color: #1e3a8a;
-      background: #dbeafe;
-      border-color: #bfdbfe;
+      color: #1e40af;
+      background: #eaf1ff;
+      border-color: #bfd5ff;
+    }
+
+    .client-history-chip--action i {
+      background: #2563eb;
+      color: #ffffff;
     }
 
     .client-history-chip--meta {
-      color: #0f172a;
-      background: #f1f5f9;
-      border-color: #e2e8f0;
+      color: #334155;
+      background: #f8fafc;
+      border-color: #dbe2ea;
+    }
+
+    .client-history-chip--meta i {
+      background: #e2e8f0;
+      color: #475569;
     }
 
     #client-table-body .client-main-row {
@@ -90,186 +112,11 @@
       background: #f8fafc;
     }
 
-    #client-table-body .client-main-row.expanded {
-      background: #eef6ff;
-    }
-
     .client-name-cell {
       display: flex;
       align-items: center;
       justify-content: flex-start;
       gap: 8px;
-    }
-
-    .client-expand-row td {
-      background: #ffffff;
-      border-top: 1px solid #f1f5f9;
-      border-bottom: 1px solid #f1f5f9;
-      padding: 0;
-    }
-
-    .client-expand-panel {
-      border: none;
-      border-radius: 0;
-      background: #ffffff;
-      padding: 0;
-    }
-
-    .client-expand-action-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 6px;
-      border: 1px solid #dbeafe;
-      background: #eff6ff;
-      color: #1d4ed8;
-      text-decoration: none;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 400;
-      line-height: 1;
-      transition: all 0.16s ease;
-    }
-
-    .client-expand-action-btn:hover {
-      color: #1e3a8a;
-      border-color: #93c5fd;
-      background: #dbeafe;
-      text-decoration: none;
-      transform: translateY(-1px);
-    }
-
-    .client-expand-table-list {
-      display: grid;
-      gap: 0;
-    }
-
-    .client-expand-table-item {
-      display: grid;
-      grid-template-columns: minmax(140px, 1.1fr) minmax(260px, 2.3fr) minmax(80px, 0.7fr) minmax(220px, 1.9fr);
-      align-items: center;
-      gap: 8px;
-      border: none;
-      border-radius: 0;
-      background: #ffffff;
-      padding: 8px 12px;
-      border-top: 1px solid #f1f5f9;
-    }
-
-    .client-expand-table-item:first-child {
-      border-top: none;
-    }
-
-    .client-expand-list-name {
-      font-size: 12px;
-      font-weight: 500;
-      color: #0f172a;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .client-expand-table-links,
-    .client-expand-row-actions,
-    .client-expand-table-bulk {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .client-expand-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 3px 9px;
-      font-size: 11px;
-      font-weight: 400;
-      text-decoration: none;
-      border: 1px solid transparent;
-      line-height: 1;
-    }
-
-    .client-expand-pill .count {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 18px;
-      padding: 1px 6px;
-      border-radius: 999px;
-      font-size: 10px;
-      background: rgba(15, 23, 42, 0.08);
-      color: inherit;
-    }
-
-    .client-expand-pill.pending { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-    .client-expand-pill.verified { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .client-expand-pill.approved { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
-    .client-expand-pill.download { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
-    .client-expand-pill.pool { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
-
-    .client-expand-bulk-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 8px;
-      border: 1px solid #cbd5e1;
-      background: #f8fafc;
-      color: #334155;
-      text-decoration: none;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 400;
-      line-height: 1;
-      transition: all 0.16s ease;
-    }
-
-    .client-expand-meta-text {
-      color: #64748b;
-      font-size: 11px;
-      font-weight: 400;
-    }
-
-    .client-expand-bulk-btn:hover {
-      text-decoration: none;
-      color: #0f172a;
-      background: #f1f5f9;
-      border-color: #94a3b8;
-    }
-
-    .client-expand-bulk-btn.disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-
-    .client-expand-loading,
-    .client-expand-empty,
-    .client-expand-error {
-      padding: 10px 2px;
-      font-size: 13px;
-      color: #475569;
-    }
-
-    .client-expand-error {
-      color: #b91c1c;
-    }
-
-    @media (max-width: 768px) {
-      .client-expand-row td {
-        padding: 8px;
-      }
-
-      .client-expand-panel {
-        padding: 0;
-      }
-
-      .client-expand-table-item {
-        grid-template-columns: 1fr;
-        gap: 6px;
-        padding: 8px;
-      }
     }
   </style>
 {% endblock %}
@@ -299,21 +146,6 @@
 {% endblock %}
 
 {% block page_js %}
-  <script>
-    window.ACTIVE_CLIENT_PERMS = {
-      isSuperAdmin: {{ is_super_admin|yesno:'true,false' }},
-      pendingList: {{ perm_idcard_pending_list|yesno:'true,false' }},
-      verifiedList: {{ perm_idcard_verified_list|yesno:'true,false' }},
-      approvedList: {{ perm_idcard_approved_list|yesno:'true,false' }},
-      downloadList: {{ perm_idcard_download_list|yesno:'true,false' }},
-      poolList: {{ perm_idcard_pool_list|yesno:'true,false' }},
-      idcardSettingList: {{ perm_idcard_setting_list|yesno:'true,false' }},
-      bulkReupload: {{ perm_idcard_bulk_reupload|yesno:'true,false' }},
-      bulkDownload: {{ perm_idcard_bulk_download|yesno:'true,false' }},
-      deleteAll: {{ perm_delete_all_idcard|yesno:'true,false' }},
-      upgradeAll: {{ perm_idcard_upgrade_all|yesno:'true,false' }}
-    };
-  </script>
   <script defer src="{% static 'js/active-client.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
