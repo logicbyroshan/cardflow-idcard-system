@@ -111,6 +111,45 @@ class ManageClientsPaginationTests(TestCase):
         self.assertEqual(response.context['page_obj'].paginator.count, 12)
 
 
+class ManageClientsPermissionGateTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='gate-client-owner@test.com',
+            email='gate-client-owner@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=owner, name='Gate Client')
+
+        self.admin_staff = User.objects.create_user(
+            username='gate-admin-staff@test.com',
+            email='gate-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
+        self.staff_profile.assigned_clients.add(self.client_obj)
+
+    def test_manage_clients_redirects_admin_staff_without_manage_client_permission(self):
+        self.client.login(username='gate-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+        self.assertEqual(response.status_code, 302)
+
+    def test_manage_clients_allows_admin_staff_with_manage_client_permission(self):
+        self.staff_profile.perm_idcard_client_list = True
+        self.staff_profile.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='gate-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['clients']), 1)
+        self.assertTrue(response.context['can_manage_clients'])
+
+
 class ClientAccessServiceTests(TestCase):
     """Tests for ClientAccessService."""
 

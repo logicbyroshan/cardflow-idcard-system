@@ -48,11 +48,23 @@ def _check_admin_staff_client_access(user, client_id):
     return PermissionService.can_access_client(user, client_id)
 
 
+def _has_manage_client_page_permission(user):
+    """Return True when user can use full Manage Clients operations."""
+    return PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
+
+
+def _manage_client_permission_denied_response():
+    """Standard deny payload for missing Manage Client permission."""
+    return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+
+
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_any_admin
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='client_create')
 def api_client_create(request):
     """API endpoint to create a new client"""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
     try:
         # Check if it's a multipart form (file upload) or JSON
         if request.content_type and 'multipart/form-data' in request.content_type:
@@ -69,6 +81,18 @@ def api_client_create(request):
             return file_error
         
         result = ClientService.create(data, request=request, photo=photo)
+
+        if result.success and PermissionService.is_admin_staff(request.user):
+            try:
+                created_client_id = ((result.data or {}).get('client') or {}).get('id')
+                if created_client_id:
+                    from client.models import Client
+                    created_client = Client.objects.filter(id=created_client_id).first()
+                    staff = getattr(request.user, 'staff_profile', None)
+                    if created_client and staff:
+                        staff.assigned_clients.add(created_client)
+            except Exception:
+                logger.warning('Could not auto-assign newly created client to admin_staff user=%s', request.user.pk)
         
         if result.success:
             client_name = data.get('name', data.get('school_name', 'client'))
@@ -93,6 +117,8 @@ def api_client_create(request):
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='client_get')
 def api_client_get(request, client_id):
     """API endpoint to get a client's details"""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.get(client_id, include_permissions=True)
@@ -103,6 +129,8 @@ def api_client_get(request, client_id):
 @api_require_any_admin
 def api_client_update(request, client_id):
     """API endpoint to update a client"""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     try:
@@ -120,11 +148,6 @@ def api_client_update(request, client_id):
         if file_error:
             return file_error
         
-        # Non-super-admin users cannot modify client permissions
-        if not PermissionService.is_super_admin(request.user):
-            for perm in ClientService.PERMISSION_FIELDS:
-                data.pop(perm, None)
-        
         result = ClientService.update(client_id, data, photo=photo)
         if result.success:
             client_name = data.get('name', data.get('school_name', ''))
@@ -139,10 +162,14 @@ def api_client_update(request, client_id):
 
 
 @require_http_methods(["DELETE", "POST"])
-@api_require_super_admin
+@api_require_any_admin
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='client_delete')
 def api_client_delete(request, client_id):
-    """API endpoint to delete a client (Super Admin only)"""
+    """API endpoint to delete a client."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     # Get client name before deletion for the activity log
     from client.models import Client
     try:
@@ -160,6 +187,8 @@ def api_client_delete(request, client_id):
 @api_require_any_admin
 def api_client_toggle_status(request, client_id):
     """API endpoint to toggle client active/inactive status"""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.toggle_status(client_id)
@@ -179,6 +208,8 @@ def api_client_toggle_status(request, client_id):
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='client_staff_get')
 def api_client_staff(request, client_id):
     """API endpoint to get all staff members for a specific client"""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.get_staff(client_id)
@@ -186,12 +217,16 @@ def api_client_staff(request, client_id):
 
 
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_any_admin
 def api_client_staff_toggle_status(request, client_id, staff_id):
     """
-    API endpoint for Super Admin to toggle client staff active/inactive status.
+    API endpoint to toggle client staff active/inactive status.
     Validates that the staff belongs to the specified client.
     """
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.toggle_client_staff_status(client_id, staff_id)
     return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
@@ -213,10 +248,14 @@ def api_client_staff_permissions(request, client_id, staff_id):
 
 
 @require_http_methods(["POST"])
-@api_require_super_admin
+@api_require_any_admin
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='client_temp_pw')
 def api_client_set_temp_password(request, client_id):
-    """API endpoint to set a temporary password for a client (Super Admin only)"""
+    """API endpoint to set a temporary password for a client."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     try:
         data = json.loads(request.body)
         new_password = data.get('password', '').strip()

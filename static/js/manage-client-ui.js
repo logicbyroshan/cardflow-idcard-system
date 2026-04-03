@@ -13,8 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
       NS.selectedRow = null;
       NS.selectedProfileFile = null; // Kept for API compatibility
 
-      // Super Admin flag for client staff management
+      // Capability flags for manage-clients actions
       NS.isSuperAdmin = window.isSuperAdmin || false;
+      NS.canManageClients = window.canManageClients || NS.isSuperAdmin;
 
       // ==================== ELEMENTS ====================
       var clientDrawer = document.getElementById('client-drawer');
@@ -367,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm_idcard_updated_at': 'Last Updated & Updated By',
             'perm_idcard_retrieve': 'Retrieve from Pool',
             'perm_idcard_upgrade_all': 'Batch Class Upgrade',
-            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Staff'
+            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Client'
           };
           var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
           NS.permissionFields.forEach(function(field) {

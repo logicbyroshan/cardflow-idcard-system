@@ -884,8 +884,8 @@ class SecurityApiRegressionTests(TestCase):
             password='pass1234',
             role='admin_staff',
         )
-        staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
-        staff_profile.assigned_clients.add(self.client_a)
+        self.admin_staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
+        self.admin_staff_profile.assigned_clients.add(self.client_a)
 
     def test_inline_update_field_rejects_unknown_field_name(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
@@ -905,6 +905,8 @@ class SecurityApiRegressionTests(TestCase):
         self.assertNotIn('__HACK__', self.card_a.field_data)
 
     def test_client_toggle_status_blocks_unassigned_admin_staff(self):
+        self.admin_staff_profile.perm_idcard_client_list = True
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
         self.client.login(username='sec-admin-staff@test.com', password='pass1234')
 
         response = self.client.post(
@@ -915,6 +917,65 @@ class SecurityApiRegressionTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertIn('Access denied', response.json().get('message', ''))
+
+    def test_admin_staff_without_manage_client_permission_cannot_create_client(self):
+        self.client.login(username='sec-admin-staff@test.com', password='pass1234')
+        response = self.client.post(
+            '/panel/api/client/create/',
+            data=json.dumps({'name': 'Blocked Client', 'phone': '9999999999'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('manage client permission required', response.json().get('message', '').lower())
+
+    def test_admin_staff_with_manage_client_permission_can_manage_client_crud(self):
+        from client.models import Client
+
+        self.admin_staff_profile.perm_idcard_client_list = True
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
+        self.client.login(username='sec-admin-staff@test.com', password='pass1234')
+
+        create_resp = self.client.post(
+            '/panel/api/client/create/',
+            data=json.dumps({
+                'name': 'Staff Created Client',
+                'phone': '8888888888',
+                'perm_idcard_edit': True,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(create_resp.status_code, 200)
+        create_payload = create_resp.json()
+        self.assertTrue(create_payload.get('success'))
+        new_client_id = create_payload.get('client', {}).get('id')
+        self.assertTrue(new_client_id)
+
+        self.admin_staff_profile.refresh_from_db()
+        self.assertTrue(self.admin_staff_profile.assigned_clients.filter(id=new_client_id).exists())
+
+        update_resp = self.client.post(
+            f'/panel/api/client/{new_client_id}/update/',
+            data=json.dumps({
+                'name': 'Staff Updated Client',
+                'perm_idcard_delete': True,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(update_resp.status_code, 200)
+        self.assertTrue(update_resp.json().get('success'))
+
+        get_resp = self.client.get(f'/panel/api/client/{new_client_id}/')
+        self.assertEqual(get_resp.status_code, 200)
+        get_payload = get_resp.json()
+        self.assertTrue(get_payload.get('success'))
+        self.assertEqual(get_payload.get('client', {}).get('name'), 'Staff Updated Client')
+        self.assertTrue(get_payload.get('client', {}).get('perm_idcard_delete'))
+
+        delete_resp = self.client.post(f'/panel/api/client/{new_client_id}/delete/', data=json.dumps({}), content_type='application/json')
+        self.assertEqual(delete_resp.status_code, 200)
+        self.assertTrue(delete_resp.json().get('success'))
+        self.assertFalse(Client.objects.filter(id=new_client_id).exists())
 
     def test_delete_all_confirmation_locks_after_five_failed_attempts(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')

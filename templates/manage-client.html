@@ -70,7 +70,10 @@
 {% endblock %}
 
 {% block page_vars %}
-  <script>window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');</script>
+  <script>
+    window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');
+    window.canManageClients = JSON.parse('{{ can_manage_clients|yesno:"true,false" }}');
+  </script>
 {% endblock %}
 
 {% block page_js %}

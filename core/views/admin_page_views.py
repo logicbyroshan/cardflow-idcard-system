@@ -106,6 +106,12 @@ def manage_staff(request):
 def manage_clients(request):
     """View to manage all clients — supports HTMX partial responses."""
     user = request.user
+    can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
+    if PermissionService.is_admin_staff(user) and not can_manage_clients:
+        if is_htmx(request):
+            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+        return redirect(reverse('admin_staff_dashboard'))
+
     DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
     
@@ -149,6 +155,7 @@ def manage_clients(request):
         'per_page_options': PER_PAGE_OPTIONS,
         'search_query': search_query,
         'status_filter': status_filter,
+        'can_manage_clients': can_manage_clients,
     }
     
     if is_htmx(request):

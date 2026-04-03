@@ -110,8 +110,8 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         }
 
-        // Add all permissions (only if super admin)
-        if (NS.isSuperAdmin) {
+        // Add all permissions for users with full manage-clients capability.
+        if (NS.canManageClients) {
           NS.permissionFields.forEach(function(field) {
             var el = document.getElementById(field);
             if (el) formData[field] = el.checked;
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Permission label mapping
       var permissionLabels = {
-        'perm_idcard_client_list': 'Access Clients Page',
+        'perm_idcard_client_list': 'Manage Client',
         'perm_idcard_setting_list': 'View Template List',
         'perm_idcard_setting_add': 'Create New Template',
         'perm_idcard_setting_edit': 'Edit Template',
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         : '<span class="no-permissions">No permissions assigned</span>') +
                     '</div>' +
                   '</div>' +
-                  (NS.isSuperAdmin ? '<div class="staff-actions"><button class="btn btn-sm ' + toggleBtnClass + '" onclick="toggleClientStaffStatus(' + staff.id + ')" title="' + toggleBtnText + '"><i class="fa-solid ' + toggleBtnIcon + '"></i> ' + toggleBtnText + '</button></div>' : '') +
+                  (NS.canManageClients ? '<div class="staff-actions"><button class="btn btn-sm ' + toggleBtnClass + '" onclick="toggleClientStaffStatus(' + staff.id + ')" title="' + toggleBtnText + '"><i class="fa-solid ' + toggleBtnIcon + '"></i> ' + toggleBtnText + '</button></div>' : '') +
                 '</div>' +
               '</div>';
             }).join('');
@@ -419,9 +419,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // Toggle client staff status (Super Admin only)
+      // Toggle client staff status (requires full manage-clients capability)
       window.toggleClientStaffStatus = async function(staffId) {
-        if (!NS.selectedClientId || !NS.isSuperAdmin) return;
+        if (!NS.selectedClientId || !NS.canManageClients) return;
 
         try {
           var result = await ApiClient.post('/api/client/' + NS.selectedClientId + '/staff/' + staffId + '/toggle-status/', {});

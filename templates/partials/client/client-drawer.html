@@ -84,7 +84,7 @@
               </div>
             </div>
 
-            {% if is_super_admin %}
+            {% if can_manage_clients %}
             <!-- User Permission Section -->
             <div class="form-section">
               <div class="permission-header"><i class="fa-solid fa-shield-halved"></i> User Permission</div>
@@ -302,7 +302,7 @@
                       <input type="checkbox" id="perm_idcard_client_list" name="perm_idcard_client_list">
                       <span class="toggle-slider"></span>
                     </label>
-                    <span class="permission-label">Manage Staff</span>
+                    <span class="permission-label">Manage Client</span>
                   </div>
                   <div class="permission-row">
                     <label class="toggle-switch">
