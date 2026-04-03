@@ -63,13 +63,51 @@
         <!-- ============================================ -->
         <div class="gen-left-panel">
 
-          <!-- Section: Card Settings -->
-          <div class="gen-section">
+          <!-- Section: Template Setup -->
+          <div class="gen-section" id="genTemplateModeSection">
+            <div class="gen-section-header">
+              <i class="fa-solid fa-file-pdf text-sky-500"></i>
+              <h3>Template Setup</h3>
+            </div>
+            <p class="gen-setup-status" id="genSetupStatus"></p>
+          </div>
+
+          <div class="gen-section" id="genLayoutBuilderSection">
+            <div class="gen-section-header">
+              <i class="fa-solid fa-layer-group text-blue-500"></i>
+              <h3>Design Format Builder</h3>
+            </div>
+
+            <div class="gen-row">
+              <label>Field</label>
+              <select id="fieldToPlaceSelect">
+                <option value="">Select field to place</option>
+              </select>
+            </div>
+
+            <div class="gen-map-actions">
+              <button type="button" class="btn btn-sm btn-outline" id="convertWordBtn" title="Convert current side design PDF to editable document layer">
+                <i class="fa-solid fa-file-word"></i> Convert to Editable Doc
+              </button>
+            </div>
+
+            <div class="gen-active-side-info">Active side: <strong id="activeSideLabel">Front</strong></div>
+            <div id="genPlacedFields"></div>
+            <p class="gen-empty-msg" id="noFieldsMsg">No fields mapped yet. Choose a field, then click the converted text or image block.</p>
+
+            <div class="gen-row gen-row-end gen-word-builder-actions">
+              <button type="button" class="btn btn-sm btn-blue" id="saveFormatBtn">
+                <i class="fa-solid fa-floppy-disk"></i> Save Format
+              </button>
+            </div>
+          </div>
+
+          <!-- Section: Card Settings (kept in import-only mode) -->
+          <div class="gen-section" id="genCardSettingsSection">
             <div class="gen-section-header">
               <i class="fa-solid fa-sliders text-indigo-500"></i>
               <h3>Card Settings</h3>
             </div>
-            <!-- 1-sided / 2-sided -->
             <div class="gen-row">
               <label>Card Type</label>
               <div class="gen-toggle">
@@ -77,55 +115,22 @@
                 <button class="gen-toggle-btn" id="twoSidedBtn">2-Sided</button>
               </div>
             </div>
-            <!-- Font size -->
             <div class="gen-row">
-              <label>Font Size</label>
-              <input type="number" id="fontSizeInput" class="gen-mini-input" min="7" max="10" value="8"> <span class="gen-unit">pt</span>
-            </div>
-            <!-- Font family -->
-            <div class="gen-row">
-              <label>Font</label>
-              <select id="fontFamilySelect">
-                <option value="Helvetica-Bold">Arial Bold</option>
-                <option value="Helvetica">Arial Regular</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Section: Place Fields -->
-          <div class="gen-section">
-            <div class="gen-section-header">
-              <i class="fa-solid fa-crosshairs text-amber-500"></i>
-              <h3>Place Fields on Card</h3>
-            </div>
-            <p class="gen-active-side-info">Placing on: <strong id="activeSideLabel">Front</strong></p>
-            <div class="gen-row">
-              <label>Field</label>
-              <select id="fieldToPlaceSelect">
-                <option value="">- select -</option>
-              </select>
-              <button class="btn btn-xs btn-blue" id="startDrawBtn" disabled title="Click then drag on the card canvas to draw the field area">
-                <i class="fa-solid fa-vector-square"></i> Draw
-              </button>
-              <button class="btn btn-xs btn-green" id="autoDetectBtn" title="Auto-detect field positions from PDF text">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Detect
-              </button>
-            </div>
-            <p class="gen-hint" id="drawHintText">Select a field, then click Draw and drag a rectangle on the card canvas -></p>
-
-            <!-- Placed fields list -->
-            <div id="genPlacedFields">
-              <p class="gen-empty-msg" id="noFieldsMsg">No fields placed yet.</p>
+              <label>Orientation</label>
+              <div class="gen-toggle">
+                <button class="gen-toggle-btn active" id="landscapeBtn">Horizontal</button>
+                <button class="gen-toggle-btn" id="portraitBtn">Vertical</button>
+              </div>
             </div>
           </div>
 
           <!-- Bottom actions -->
           <div class="gen-actions">
-            <button class="btn btn-gray" id="saveTemplateBtn">
-              <i class="fa-solid fa-floppy-disk"></i> Save Template
+            <button class="btn btn-outline" id="generatePreviewBtn" disabled>
+              <i class="fa-regular fa-eye"></i> Generate Preview
             </button>
             <button class="btn btn-green" id="generatePdfBtn" disabled>
-              <i class="fa-solid fa-gears"></i> Generate PDF
+              <i class="fa-solid fa-gears"></i> Generate All
             </button>
           </div>
 
@@ -136,49 +141,125 @@
         <!-- ============================================ -->
         <div class="gen-right-panel">
 
-          <!-- Canvas toolbar -->
-          <div class="gen-canvas-toolbar">
-            <!-- Front / Back toggle -->
-            <div class="gen-side-toggle hidden" id="sideToggle">
-              <button class="gen-side-btn active" id="frontSideBtn"><i class="fa-solid fa-square"></i> Front</button>
-              <button class="gen-side-btn" id="backSideBtn"><i class="fa-regular fa-square"></i> Back</button>
+          <div class="gen-tools-sticky" id="genToolsSticky">
+            <!-- Canvas toolbar -->
+            <div class="gen-canvas-toolbar">
+              <!-- Front / Back toggle -->
+              <div class="gen-side-toggle hidden" id="sideToggle">
+                <button class="gen-side-btn active" id="frontSideBtn"><i class="fa-solid fa-square"></i> Front</button>
+                <button class="gen-side-btn" id="backSideBtn"><i class="fa-regular fa-square"></i> Back</button>
+              </div>
+
+              <!-- Upload controls -->
+              <div class="gen-upload-area ml-auto">
+                <label class="btn btn-sm btn-outline cursor-pointer" id="uploadFrontWrapper" title="Upload front-side design PDF">
+                  <i class="fa-solid fa-file-pdf"></i> <span id="uploadFrontLabel">Design Front PDF</span>
+                  <input type="file" id="uploadFrontInput" accept=".pdf" class="hidden">
+                </label>
+                <button type="button" class="btn btn-sm btn-outline hidden" id="removeFrontPdfBtn" title="Remove front-side design PDF">
+                  <i class="fa-solid fa-trash"></i> Remove Front
+                </button>
+
+                <label class="btn btn-sm btn-outline hidden cursor-pointer" id="uploadBackWrapper" title="Upload back-side design PDF">
+                  <i class="fa-solid fa-file-pdf"></i> <span id="uploadBackLabel">Design Back PDF</span>
+                  <input type="file" id="uploadBackInput" accept=".pdf" class="hidden">
+                </label>
+                <button type="button" class="btn btn-sm btn-outline hidden" id="removeBackPdfBtn" title="Remove back-side design PDF">
+                  <i class="fa-solid fa-trash"></i> Remove Back
+                </button>
+              </div>
             </div>
 
-            <!-- Draw mode indicator -->
-            <div class="gen-draw-mode-indicator hidden" id="drawModeIndicator">
-              <i class="fa-solid fa-crosshairs"></i>
-              Drawing: <strong id="drawFieldName">-</strong>
-              <button class="gen-cancel-draw" id="cancelDrawBtn">x Cancel</button>
-            </div>
+            <div class="gen-style-actionbar" id="genStyleActionbar">
+              <div class="gen-style-action-item gen-style-action-item-family">
+                <span class="gen-style-action-label">Font</span>
+                <select id="fontFamilySelect">
+                  <option value="Arial">Arial</option>
+                  <option value="Arial Narrow">Arial Narrow</option>
+                  <option value="Arial Black">Arial Black</option>
+                  <option value="Arial Rounded MT Bold">Arial Rounded MT Bold</option>
+                  <option value="Arial Unicode MS">Arial Unicode MS</option>
+                  <option value="Calibri">Calibri</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Nirmala UI">Nirmala UI</option>
+                  <option value="Noto Sans">Noto Sans</option>
+                  <option value="Noto Sans Condensed">Noto Sans Condensed</option>
+                </select>
+              </div>
 
-            <!-- Upload PDF buttons -->
-            <div class="gen-upload-area ml-auto">
-              <label class="btn btn-sm btn-outline cursor-pointer" id="uploadFrontWrapper" title="Upload front-side PDF template">
-                <i class="fa-solid fa-upload"></i> <span id="uploadFrontLabel">Upload Front PDF</span>
-                <input type="file" id="uploadFrontInput" accept=".pdf" class="hidden">
-              </label>
-              <label class="btn btn-sm btn-outline hidden cursor-pointer" id="uploadBackWrapper" title="Upload back-side PDF template">
-                <i class="fa-solid fa-upload"></i> Upload Back PDF
-                <input type="file" id="uploadBackInput" accept=".pdf" class="hidden">
-              </label>
+              <div class="gen-style-action-item">
+                <span class="gen-style-action-label">Weight</span>
+                <select id="fontWeightSelect">
+                  <option value="normal">Regular</option>
+                  <option value="semibold">Semi Bold</option>
+                  <option value="bold">Bold</option>
+                </select>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-size">
+                <span class="gen-style-action-label">Size</span>
+                <input id="fontSizeInput" type="number" min="6" max="72" class="gen-mini-input" value="11">
+                <span class="gen-unit">pt</span>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-size">
+                <span class="gen-style-action-label">Line</span>
+                <input id="lineHeightInput" type="number" min="0.8" max="3" step="0.05" class="gen-mini-input" value="1.15">
+                <span class="gen-unit">x</span>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-size">
+                <span class="gen-style-action-label">Spacing</span>
+                <input id="charSpacingInput" type="number" min="-5" max="20" step="0.1" class="gen-mini-input" value="0">
+                <span class="gen-unit">pt</span>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-color">
+                <span class="gen-style-action-label">Color</span>
+                <input id="fontColorInput" type="color" class="gen-color-input" value="#111111">
+                <input id="fontColorTextInput" type="text" class="gen-color-text" value="#111111" maxlength="7" placeholder="#111111">
+              </div>
             </div>
           </div>
 
           <!-- Card canvas -->
           <div class="gen-canvas-container">
-            <div class="gen-card-wrapper" id="genCardWrapper">
-              <canvas id="genCardCanvas"></canvas>
-              <div class="gen-pdf-loading hidden" id="pdfLoadingOverlay">
-                <div class="gen-pdf-skeleton" aria-hidden="true">
-                  <div class="gen-pdf-skeleton-block gen-pdf-skeleton-title"></div>
-                  <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line"></div>
-                  <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line gen-pdf-skeleton-line-short"></div>
+            <div class="gen-canvas-pair" id="genCanvasPair">
+              <div class="gen-card-wrapper" id="genCardWrapper">
+                <canvas id="genCardCanvas"></canvas>
+                <div class="gen-editable-layer hidden" id="genEditableLayerFront" aria-label="Editable front design layer"></div>
+                <div class="gen-pdf-loading hidden" id="pdfLoadingOverlay">
+                  <div class="gen-pdf-skeleton" aria-hidden="true">
+                    <div class="gen-pdf-skeleton-block gen-pdf-skeleton-title"></div>
+                    <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line"></div>
+                    <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line gen-pdf-skeleton-line-short"></div>
+                  </div>
+                  <span class="sr-only">Loading template...</span>
                 </div>
-                <span class="sr-only">Loading template...</span>
+                <div class="gen-no-template" id="noTemplateMsg" {% if template.front_pdf %}hidden{% endif %}>
+                  <i class="fa-solid fa-file-pdf"></i>
+                  <p>Upload a design PDF for the front side.</p>
+                </div>
               </div>
-              <div class="gen-no-template" id="noTemplateMsg" {% if template.front_pdf %}hidden{% endif %}>
-                <i class="fa-solid fa-file-pdf"></i>
-                <p>Upload a PDF template to see it here.<br>Then draw rectangles to position each field.</p>
+
+              <div class="gen-side-preview-panel hidden" id="genCardSecondaryPanel">
+                <div class="gen-side-preview-title"><span id="genSecondarySideLabel">Back Preview</span></div>
+                <div class="gen-card-wrapper gen-card-wrapper-secondary" id="genCardSecondaryWrapper">
+                  <canvas id="genCardSecondaryCanvas"></canvas>
+                  <div class="gen-editable-layer hidden" id="genEditableLayerBack" aria-label="Editable back design layer"></div>
+                  <div class="gen-pdf-loading hidden" id="pdfLoadingOverlaySecondary">
+                    <div class="gen-pdf-skeleton" aria-hidden="true">
+                      <div class="gen-pdf-skeleton-block gen-pdf-skeleton-title"></div>
+                      <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line"></div>
+                      <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line gen-pdf-skeleton-line-short"></div>
+                    </div>
+                    <span class="sr-only">Loading back template...</span>
+                  </div>
+                  <div class="gen-no-template" id="noTemplateMsgSecondary">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <p>Upload Back design PDF for 2-sided preview.</p>
+                  </div>
+                </div>
               </div>
             </div>
             <p class="gen-canvas-info">Card size: 87 mm x 57 mm &nbsp;|&nbsp; 1 pixel = 0.143 mm</p>

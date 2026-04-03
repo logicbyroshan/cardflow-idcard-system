@@ -9,11 +9,10 @@ ARCHITECTURE RULES (same as reprint):
 - Views are ULTRA-THIN: parse request → call service → return JsonResponse.
 - All mutations delegate to PrintWorkflowService / GenerateCardService.
 """
-import io
 import json
 import logging
+import re
 
-from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -28,9 +27,10 @@ from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
 from core.views.base import get_user_role, require_any_admin
 from core.services import IDCardService
+from accounts.rate_limit import rate_limit
 
 from .models import PrintRequest, CardTemplate, validate_field_mappings
-from .services import PrintWorkflowService, GenerateCardService
+from .services import PrintWorkflowService, GenerateCardService, PdfTemplateAnalyzerService
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,19 @@ def _parse_offset_limit(request, *, default_limit=100, max_limit=200):
     offset = max(offset, 0)
     limit = min(max(limit, 1), max_limit)
     return offset, limit
+
+
+def _normalize_hex_color(value, default='#111111'):
+    raw = str(value or '').strip()
+    if not raw:
+        return default
+
+    v = raw[1:] if raw.startswith('#') else raw
+    if re.fullmatch(r'[0-9a-fA-F]{3}', v):
+        v = ''.join(ch * 2 for ch in v)
+    if not re.fullmatch(r'[0-9a-fA-F]{6}', v):
+        return default
+    return f'#{v.upper()}'
 
 
 def _parse_local_datetime_filter(value):
@@ -137,6 +150,193 @@ def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
 def _promote_legacy_print_list(table):
     """One-way compatibility: move legacy print_list rows into generate_list."""
     PrintRequest.objects.filter(table=table, status='print_list').update(status='generate_list')
+
+
+def _safe_template_pdf_url(file_field):
+    """Return a usable template file URL only when the underlying file exists."""
+    if not file_field:
+        return ''
+
+    name = str(getattr(file_field, 'name', '') or '').strip()
+    if not name:
+        return ''
+
+    storage = getattr(file_field, 'storage', None)
+    try:
+        if storage and not storage.exists(name):
+            return ''
+        return file_field.url
+    except Exception:
+        logger.warning('Template file missing/unreadable: %s', name, exc_info=True)
+        return ''
+
+
+def _clamp_float(value, minimum, maximum, default):
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return default
+    if num < minimum:
+        return minimum
+    if num > maximum:
+        return maximum
+    return num
+
+
+def _sanitize_name_list(values):
+    if not isinstance(values, list):
+        return []
+    out = []
+    seen = set()
+    for raw in values:
+        name = str(raw or '').strip()
+        if not name or name in seen:
+            continue
+        if len(name) > 120:
+            name = name[:120]
+        out.append(name)
+        seen.add(name)
+        if len(out) >= 400:
+            break
+    return out
+
+
+def _sanitize_editable_design_model(raw):
+    if not isinstance(raw, dict):
+        return None
+
+    lines_out = []
+    for item in (raw.get('lines') or []):
+        if not isinstance(item, dict):
+            continue
+        align = str(item.get('text_align') or 'left').strip().lower()
+        if align not in ('left', 'center', 'right'):
+            align = 'left'
+        weight = str(item.get('font_weight') or '400').strip().lower()
+        if weight in ('bold', '700'):
+            weight = '700'
+        elif weight in ('semibold', '600'):
+            weight = '600'
+        else:
+            weight = '400'
+        lines_out.append({
+            'text': str(item.get('text') or '')[:1200],
+            'x_mm': round(_clamp_float(item.get('x_mm'), 0.0, 500.0, 0.0), 2),
+            'y_mm': round(_clamp_float(item.get('y_mm'), 0.0, 500.0, 0.0), 2),
+            'w_mm': round(_clamp_float(item.get('w_mm'), 0.5, 500.0, 20.0), 2),
+            'h_mm': round(_clamp_float(item.get('h_mm'), 0.5, 500.0, 8.0), 2),
+            'font_size_pt': round(_clamp_float(item.get('font_size_pt'), 6.0, 72.0, 11.0), 2),
+            'font_family': str(item.get('font_family') or 'Arial')[:80],
+            'font_weight': weight,
+            'line_height': round(_clamp_float(item.get('line_height'), 0.8, 3.0, 1.15), 2),
+            'char_spacing_pt': round(_clamp_float(item.get('char_spacing_pt'), -5.0, 20.0, 0.0), 2),
+            'font_color_hex': _normalize_hex_color(item.get('font_color_hex') or '#111111'),
+            'text_align': align,
+        })
+        if len(lines_out) >= 1200:
+            break
+
+    images_out = []
+    for item in (raw.get('images') or []):
+        if not isinstance(item, dict):
+            continue
+        data_url = str(item.get('data_url') or '').strip()
+        if not data_url.startswith('data:image/'):
+            continue
+        # Keep field_config bounded to avoid runaway payload growth.
+        if len(data_url) > 3_000_000:
+            continue
+        images_out.append({
+            'x_mm': round(_clamp_float(item.get('x_mm'), 0.0, 500.0, 0.0), 2),
+            'y_mm': round(_clamp_float(item.get('y_mm'), 0.0, 500.0, 0.0), 2),
+            'w_mm': round(_clamp_float(item.get('w_mm'), 0.5, 500.0, 20.0), 2),
+            'h_mm': round(_clamp_float(item.get('h_mm'), 0.5, 500.0, 20.0), 2),
+            'data_url': data_url,
+        })
+        if len(images_out) >= 30:
+            break
+
+    if not lines_out and not images_out:
+        return None
+
+    page_mm = raw.get('page_mm') if isinstance(raw.get('page_mm'), dict) else {}
+    return {
+        'engine': str(raw.get('engine') or 'pymupdf-editable')[:60],
+        'page_mm': {
+            'width': round(_clamp_float(page_mm.get('width'), 1.0, 500.0, 87.0), 2),
+            'height': round(_clamp_float(page_mm.get('height'), 1.0, 500.0, 57.0), 2),
+        },
+        'lines': lines_out,
+        'images': images_out,
+    }
+
+
+def _editor_field_config_payload(field_config):
+    cfg = field_config if isinstance(field_config, dict) else {}
+    orientation = str(cfg.get('card_orientation') or 'landscape').strip().lower()
+    if orientation not in ('landscape', 'portrait'):
+        orientation = 'landscape'
+    return {
+        'is_two_sided': bool(cfg.get('is_two_sided', False)),
+        'card_orientation': orientation,
+        'front_fields': _sanitize_name_list(cfg.get('front_fields') or []),
+        'back_fields': _sanitize_name_list(cfg.get('back_fields') or []),
+    }
+
+
+def _template_payload(tmpl):
+    field_config = tmpl.field_config or {}
+    card_orientation = field_config.get('card_orientation') or 'landscape'
+    if card_orientation not in ('landscape', 'portrait'):
+        card_orientation = 'landscape'
+    front_pdf_url = _safe_template_pdf_url(tmpl.front_pdf)
+    back_pdf_url = _safe_template_pdf_url(tmpl.back_pdf)
+    raw_docx_style = field_config.get('docx_text_style') if isinstance(field_config.get('docx_text_style'), dict) else {}
+    try:
+        style_font_size = float(raw_docx_style.get('font_size_pt') or tmpl.font_size or 11)
+    except (TypeError, ValueError):
+        style_font_size = float(tmpl.font_size or 11)
+    try:
+        style_line_height = float(raw_docx_style.get('line_height') or 1.15)
+    except (TypeError, ValueError):
+        style_line_height = 1.15
+    try:
+        style_char_spacing = float(raw_docx_style.get('char_spacing_pt') or 0.0)
+    except (TypeError, ValueError):
+        style_char_spacing = 0.0
+    style_weight = str(raw_docx_style.get('font_weight') or 'normal').strip().lower()
+    if style_weight not in ('normal', 'semibold', 'bold'):
+        style_weight = 'normal'
+    style_color = _normalize_hex_color(raw_docx_style.get('font_color_hex') or '#111111')
+    docx_style = {
+        'font_family': str(raw_docx_style.get('font_family') or tmpl.font_family or 'Arial').strip()[:80] or 'Arial',
+        'font_size_pt': max(6.0, min(72.0, style_font_size)),
+        'line_height': max(0.8, min(3.0, style_line_height)),
+        'char_spacing_pt': max(-5.0, min(20.0, style_char_spacing)),
+        'font_weight': style_weight,
+        'font_color_hex': style_color,
+    }
+    front_fields = field_config.get('front_fields') or []
+    back_fields = field_config.get('back_fields') or []
+    editable_design_front = _sanitize_editable_design_model(field_config.get('editable_design_front'))
+    editable_design_back = _sanitize_editable_design_model(field_config.get('editable_design_back'))
+
+    return {
+        'is_two_sided': tmpl.is_two_sided,
+        'field_mappings': tmpl.field_mappings or {'front': {}, 'back': {}},
+        'font_size': tmpl.font_size,
+        'font_family': tmpl.font_family,
+        'docx_style': docx_style,
+        'card_orientation': card_orientation,
+        'has_front_pdf': bool(front_pdf_url),
+        'has_back_pdf': bool(back_pdf_url),
+        'front_pdf_url': front_pdf_url,
+        'back_pdf_url': back_pdf_url,
+        'front_fields': front_fields,
+        'back_fields': back_fields,
+        'editable_design_front': editable_design_front,
+        'editable_design_back': editable_design_back,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -224,18 +424,33 @@ def print_cards(request, table_id):
                 'ordered_fields': ordered_fields,
             })
 
-    # Load existing field_config for the configure modal
-    field_config = template_obj.field_config if template_obj else {}
-
     # Generate-card editor data (for inline modal)
-    front_pdf_url = template_obj.front_pdf.url if template_obj and template_obj.front_pdf else ''
-    back_pdf_url  = template_obj.back_pdf.url  if template_obj and template_obj.back_pdf  else ''
-    template_data = {
-        'is_two_sided':   template_obj.is_two_sided   if template_obj else False,
-        'field_mappings': template_obj.field_mappings if template_obj else {'front': {}, 'back': {}},
-        'font_size':      template_obj.font_size      if template_obj else 8,
-        'font_family':    template_obj.font_family    if template_obj else 'Helvetica-Bold',
+    template_data = _template_payload(template_obj) if template_obj else {
+        'is_two_sided': False,
+        'field_mappings': {'front': {}, 'back': {}},
+        'font_size': 11,
+        'font_family': 'Arial',
+        'docx_style': {
+            'font_family': 'Arial',
+            'font_size_pt': 11,
+            'line_height': 1.15,
+            'char_spacing_pt': 0,
+            'font_weight': 'normal',
+            'font_color_hex': '#111111',
+        },
+        'card_orientation': 'landscape',
+        'has_front_pdf': False,
+        'has_back_pdf': False,
+        'front_pdf_url': '',
+        'back_pdf_url': '',
+        'front_fields': [],
+        'back_fields': [],
+        'editable_design_front': None,
+        'editable_design_back': None,
     }
+    front_pdf_url = template_data.get('front_pdf_url') or ''
+    back_pdf_url = template_data.get('back_pdf_url') or ''
+    field_config = _editor_field_config_payload(template_obj.field_config if template_obj else {})
 
     import json as _json
     context = {
@@ -259,8 +474,8 @@ def print_cards(request, table_id):
         'finalized_has_more': finalized_total > len(finalized_items),
         'table_fields_json': _json.dumps(table.fields if table.fields else []),
         'field_config_json': _json.dumps(field_config),
-        'has_template_front_pdf': bool(template_obj and template_obj.front_pdf),
-        'has_template_back_pdf': bool(template_obj and template_obj.back_pdf),
+        'has_template_front_pdf': bool(front_pdf_url),
+        'has_template_back_pdf': bool(back_pdf_url),
         'template_data_json': _json.dumps(template_data),
         'front_pdf_url': front_pdf_url,
         'back_pdf_url': back_pdf_url,
@@ -467,10 +682,15 @@ def api_field_config_save(request, table_id):
             return JsonResponse({'status': 'error', 'message': f'Invalid field: {fname}'}, status=400)
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    existing_cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
+    card_orientation = existing_cfg.get('card_orientation') or 'landscape'
+    if card_orientation not in ('landscape', 'portrait'):
+        card_orientation = 'landscape'
     tmpl.field_config = {
         'is_two_sided': is_two_sided,
         'front_fields': front_fields,
         'back_fields': back_fields,
+        'card_orientation': card_orientation,
     }
     tmpl.is_two_sided = is_two_sided
     tmpl.save()
@@ -773,22 +993,12 @@ def generate_card(request, table_id):
 
     template_obj, _ = CardTemplate.objects.get_or_create(table=table)
     generate_count = PrintRequest.objects.filter(table=table, status='generate_list').count()
+    field_config = _editor_field_config_payload(template_obj.field_config or {})
 
     import json as _json
-    template_data = {
-        'is_two_sided': template_obj.is_two_sided,
-        'field_mappings': template_obj.field_mappings or {'front': {}, 'back': {}},
-        'font_size': template_obj.font_size,
-        'font_family': template_obj.font_family,
-        'has_front_pdf': bool(template_obj.front_pdf),
-        'has_back_pdf': bool(template_obj.back_pdf),
-        'front_pdf_url': template_obj.front_pdf.url if template_obj.front_pdf else None,
-        'back_pdf_url': template_obj.back_pdf.url if template_obj.back_pdf else None,
-    }
+    template_data = _template_payload(template_obj)
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
-    field_config = template_obj.field_config or {}
-
     context = {
         'active_page': 'active_clients',
         'user_role': get_user_role(user),
@@ -799,8 +1009,8 @@ def generate_card(request, table_id):
         'template_data_json': _json.dumps(template_data),
         'table_fields_json': _json.dumps(table_fields),
         'field_config_json': _json.dumps(field_config),
-        'front_pdf_url': template_obj.front_pdf.url if template_obj.front_pdf else '',
-        'back_pdf_url': template_obj.back_pdf.url if template_obj.back_pdf else '',
+        'front_pdf_url': _safe_template_pdf_url(template_obj.front_pdf),
+        'back_pdf_url': _safe_template_pdf_url(template_obj.back_pdf),
         'generate_count': generate_count,
     }
     return render(request, 'cardprint/generate-card.html', context)
@@ -820,26 +1030,14 @@ def api_template_get(request, table_id):
         return err
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
-    return JsonResponse({
-        'status': 'ok',
-        'template': {
-            'is_two_sided': tmpl.is_two_sided,
-            'field_mappings': tmpl.field_mappings or {'front': {}, 'back': {}},
-            'font_size': tmpl.font_size,
-            'font_family': tmpl.font_family,
-            'has_front_pdf': bool(tmpl.front_pdf),
-            'has_back_pdf': bool(tmpl.back_pdf),
-            'front_pdf_url': tmpl.front_pdf.url if tmpl.front_pdf else None,
-            'back_pdf_url': tmpl.back_pdf.url if tmpl.back_pdf else None,
-        },
-    })
+    return JsonResponse({'status': 'ok', 'template': _template_payload(tmpl)})
 
 
 @require_http_methods(["POST"])
 @login_required
 @api_require_permission('perm_print_list')
 def api_template_save(request, table_id):
-    """Save field mappings and font settings for a table template."""
+    """Save table template settings for PDF generation."""
     table, err = _check_print_table_scope(request.user, table_id)
     if err:
         return err
@@ -851,25 +1049,98 @@ def api_template_save(request, table_id):
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
     tmpl.is_two_sided = bool(data.get('is_two_sided', False))
-    raw_mappings = data.get('field_mappings') or {'front': {}, 'back': {}}
-    mapping_err = validate_field_mappings(raw_mappings)
-    if mapping_err:
-        return JsonResponse({'status': 'error', 'message': mapping_err}, status=400)
-    tmpl.field_mappings = raw_mappings
-    tmpl.font_size = max(7, min(10, int(data.get('font_size', 8) or 8)))
-    font_family = data.get('font_family', 'Helvetica-Bold')
-    if font_family not in ('Helvetica-Bold', 'Helvetica'):
-        font_family = 'Helvetica-Bold'
-    tmpl.font_family = font_family
+
+    raw_mappings = data.get('field_mappings')
+    if raw_mappings is not None:
+        mapping_err = validate_field_mappings(raw_mappings)
+        if mapping_err:
+            return JsonResponse({'status': 'error', 'message': mapping_err}, status=400)
+        tmpl.field_mappings = raw_mappings
+
+    try:
+        font_size = int(data.get('font_size', tmpl.font_size or 11) or 11)
+    except (TypeError, ValueError):
+        font_size = int(tmpl.font_size or 11)
+    tmpl.font_size = max(6, min(72, font_size))
+
+    font_family = str(data.get('font_family', tmpl.font_family or 'Arial') or '').strip()
+    tmpl.font_family = (font_family[:50] if font_family else (tmpl.font_family or 'Arial'))
+
+    card_orientation = data.get('card_orientation', 'landscape')
+    if card_orientation not in ('landscape', 'portrait'):
+        card_orientation = 'landscape'
+
+    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
+    front_fields = _sanitize_name_list(data.get('front_fields', cfg.get('front_fields') or []))
+    back_fields = _sanitize_name_list(data.get('back_fields', cfg.get('back_fields') or [])) if tmpl.is_two_sided else []
+    cfg['front_fields'] = front_fields
+    cfg['back_fields'] = back_fields
+    cfg['card_orientation'] = card_orientation
+    cfg['is_two_sided'] = tmpl.is_two_sided
+
+    try:
+        style_font_size = float(data.get('docx_font_size_pt', tmpl.font_size or 11) or 11)
+    except (TypeError, ValueError):
+        style_font_size = float(tmpl.font_size or 11)
+    style_font_size = max(6.0, min(72.0, style_font_size))
+
+    try:
+        line_height = float(data.get('docx_line_height', 1.15) or 1.15)
+    except (TypeError, ValueError):
+        line_height = 1.15
+    line_height = max(0.8, min(3.0, line_height))
+
+    try:
+        char_spacing = float(data.get('docx_char_spacing_pt', 0.0) or 0.0)
+    except (TypeError, ValueError):
+        char_spacing = 0.0
+    char_spacing = max(-5.0, min(20.0, char_spacing))
+
+    style_family = str(data.get('docx_font_family', tmpl.font_family or 'Arial') or '').strip()[:80]
+    if not style_family:
+        style_family = 'Arial'
+    style_weight = str(data.get('docx_font_weight', 'normal') or 'normal').strip().lower()
+    if style_weight not in ('normal', 'semibold', 'bold'):
+        style_weight = 'normal'
+    style_color = _normalize_hex_color(data.get('docx_font_color_hex', '#111111'))
+
+    cfg['docx_text_style'] = {
+        'font_family': style_family,
+        'font_size_pt': style_font_size,
+        'line_height': line_height,
+        'char_spacing_pt': char_spacing,
+        'font_weight': style_weight,
+        'font_color_hex': style_color,
+    }
+
+    if 'editable_design_front' in data:
+        editable_front = _sanitize_editable_design_model(data.get('editable_design_front'))
+        if editable_front:
+            cfg['editable_design_front'] = editable_front
+        else:
+            cfg.pop('editable_design_front', None)
+
+    if 'editable_design_back' in data:
+        editable_back = _sanitize_editable_design_model(data.get('editable_design_back'))
+        if editable_back and tmpl.is_two_sided:
+            cfg['editable_design_back'] = editable_back
+        else:
+            cfg.pop('editable_design_back', None)
+
+    if not tmpl.is_two_sided:
+        cfg.pop('editable_design_back', None)
+
+    tmpl.field_config = cfg
+
     tmpl.save()
-    return JsonResponse({'status': 'ok', 'message': 'Template saved'})
+    return JsonResponse({'status': 'ok', 'message': 'Template settings saved', 'template': _template_payload(tmpl)})
 
 
 @require_http_methods(["POST"])
 @login_required
 @api_require_permission('perm_print_list')
 def api_template_upload_pdf(request, table_id, side):
-    """Upload front or back PDF template file."""
+    """Upload front or back design PDF file."""
     table, err = _check_print_table_scope(request.user, table_id)
     if err:
         return err
@@ -877,29 +1148,175 @@ def api_template_upload_pdf(request, table_id, side):
     if side not in ('front', 'back'):
         return JsonResponse({'status': 'error', 'message': 'Invalid side'}, status=400)
 
-    pdf_file = request.FILES.get('pdf')
-    if not pdf_file:
+    template_file = request.FILES.get('pdf') or request.FILES.get('template')
+    if not template_file:
         return JsonResponse({'status': 'error', 'message': 'No file uploaded'}, status=400)
 
-    if not pdf_file.name.lower().endswith('.pdf'):
-        return JsonResponse({'status': 'error', 'message': 'File must be a PDF (.pdf)'}, status=400)
+    if not template_file.name.lower().endswith('.pdf'):
+        return JsonResponse({'status': 'error', 'message': 'File must be a design PDF (.pdf)'}, status=400)
 
-    if pdf_file.size > 10 * 1024 * 1024:  # 10 MB limit
-        return JsonResponse({'status': 'error', 'message': 'File too large (max 10 MB)'}, status=400)
+    if template_file.size > 20 * 1024 * 1024:
+        return JsonResponse({'status': 'error', 'message': 'File too large (max 20 MB)'}, status=400)
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
     if side == 'front':
         if tmpl.front_pdf:
             tmpl.front_pdf.delete(save=False)
-        tmpl.front_pdf = pdf_file
+        tmpl.front_pdf = template_file
     else:
         if tmpl.back_pdf:
             tmpl.back_pdf.delete(save=False)
-        tmpl.back_pdf = pdf_file
+        tmpl.back_pdf = template_file
     tmpl.save()
 
-    pdf_url = (tmpl.front_pdf.url if side == 'front' else tmpl.back_pdf.url)
-    return JsonResponse({'status': 'ok', 'message': 'PDF uploaded', 'pdf_url': pdf_url})
+    template_url = (tmpl.front_pdf.url if side == 'front' else tmpl.back_pdf.url)
+    return JsonResponse({'status': 'ok', 'message': 'Design PDF uploaded', 'pdf_url': template_url})
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_clear_pdf(request, table_id, side):
+    """Clear saved front/back design PDF template."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    if side not in ('front', 'back'):
+        return JsonResponse({'status': 'error', 'message': 'Invalid side'}, status=400)
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+
+    if side == 'front':
+        if tmpl.front_pdf:
+            tmpl.front_pdf.delete(save=False)
+        tmpl.front_pdf = None
+    else:
+        if tmpl.back_pdf:
+            tmpl.back_pdf.delete(save=False)
+        tmpl.back_pdf = None
+
+    tmpl.save(update_fields=['front_pdf', 'back_pdf', 'updated_at'])
+    return JsonResponse({'status': 'ok', 'message': f'{side.capitalize()} design PDF cleared', 'template': _template_payload(tmpl)})
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_analyze_pdf(request, table_id, side):
+    """Analyze front/back design PDF and return detected mappings + style hints."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    if side not in ('front', 'back'):
+        return JsonResponse({'status': 'error', 'message': 'Invalid side'}, status=400)
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    source_pdf = tmpl.back_pdf if side == 'back' else tmpl.front_pdf
+    if not source_pdf:
+        return JsonResponse({'status': 'error', 'message': f'Upload {side} design PDF first'}, status=400)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except (json.JSONDecodeError, ValueError):
+        payload = {}
+
+    exclude_fields = payload.get('exclude_fields') or []
+    if not isinstance(exclude_fields, list):
+        exclude_fields = []
+    exclude_fields = [str(x).strip() for x in exclude_fields if str(x).strip()]
+
+    all_fields = table.fields if isinstance(table.fields, list) else []
+    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
+    selected_names = cfg.get('back_fields' if side == 'back' else 'front_fields') or []
+    if selected_names:
+        selected_set = set(str(x).strip() for x in selected_names if str(x).strip())
+        target_fields = [f for f in all_fields if str((f or {}).get('name', '')).strip() in selected_set]
+    else:
+        target_fields = all_fields
+
+    card_w_mm, card_h_mm = GenerateCardService._resolve_dimensions_mm(tmpl)
+    result, detect_err = PdfTemplateAnalyzerService.analyze_template(
+        tmpl,
+        side,
+        target_fields,
+        card_w_mm,
+        card_h_mm,
+        exclude_fields=exclude_fields,
+    )
+    if detect_err:
+        return JsonResponse({'status': 'error', 'message': detect_err}, status=500)
+
+    return JsonResponse({'status': 'ok', **(result or {})})
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_convert_inline(request, table_id, side):
+    side = (side or '').strip().lower()
+    if side not in {'front', 'back'}:
+        return JsonResponse({'status': 'error', 'message': 'Invalid side'}, status=400)
+
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    try:
+        payload = json.loads(request.body or '{}')
+    except (json.JSONDecodeError, ValueError, TypeError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    orientation = (payload.get('card_orientation') or '').strip().lower()
+    if orientation not in {'landscape', 'portrait'}:
+        orientation = (tmpl.field_config or {}).get('card_orientation') or 'landscape'
+    card_w_mm, card_h_mm = GenerateCardService.dimensions_for_orientation_mm(orientation)
+
+    model, model_err = PdfTemplateAnalyzerService.build_editable_design_model(
+        tmpl,
+        side,
+        card_w_mm,
+        card_h_mm,
+    )
+    if model_err:
+        return JsonResponse({'status': 'error', 'message': model_err}, status=400)
+
+    return JsonResponse({
+        'status': 'ok',
+        'side': side,
+        'orientation': orientation,
+        'design': model,
+    })
+
+
+@require_http_methods(["GET"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_convert_word(request, table_id, side):
+    """Convert uploaded design PDF (front/back) to editable DOCX and download it."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    if side not in ('front', 'back'):
+        return JsonResponse({'status': 'error', 'message': 'Invalid side'}, status=400)
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    file_bytes, conv_err = PdfTemplateAnalyzerService.convert_template_pdf_to_docx(tmpl, side)
+    if conv_err or not file_bytes:
+        return JsonResponse({'status': 'error', 'message': conv_err or 'Conversion failed'}, status=400)
+
+    safe_table_name = re.sub(r'[^a-zA-Z0-9_-]+', '_', str(table.name or 'table')).strip('_') or 'table'
+    filename = f'{safe_table_name}_{side}_design_editable.docx'
+    resp = HttpResponse(
+        file_bytes,
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    resp['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return resp
 
 
 @require_http_methods(["GET"])
@@ -958,10 +1375,12 @@ def api_generate_card_list(request, table_id):
 @require_http_methods(["POST"])
 @login_required
 @api_require_permission('perm_print_list')
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='print_generate')
 def api_generate_pdf(request, table_id):
-    """Generate a data-layer PDF for selected generate_list cards.
+    """Generate output PDF for selected generate_list cards.
 
-    On success: returns the PDF as a file download and moves cards to finalized.
+    Uses saved field mappings and design PDFs.
+    On success: returns PDF and moves cards to finalized.
     Body: { "request_ids": [1, 2, 3] }
     """
     table, err = _check_print_table_scope(request.user, table_id)
@@ -973,6 +1392,12 @@ def api_generate_pdf(request, table_id):
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
 
+    preview_raw = data.get('preview_only', False)
+    if isinstance(preview_raw, str):
+        preview_only = preview_raw.strip().lower() in {'1', 'true', 'yes', 'y'}
+    else:
+        preview_only = bool(preview_raw)
+
     request_ids = data.get('request_ids', [])
     if not request_ids:
         return JsonResponse({'status': 'error', 'message': 'No cards selected'}, status=400)
@@ -982,8 +1407,24 @@ def api_generate_pdf(request, table_id):
     except CardTemplate.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'No template configured for this table'}, status=400)
 
-    if not tmpl.field_mappings or not (tmpl.field_mappings.get('front') or tmpl.field_mappings.get('back')):
-        return JsonResponse({'status': 'error', 'message': 'No field placements configured yet'}, status=400)
+    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
+    editable_front = cfg.get('editable_design_front') if isinstance(cfg.get('editable_design_front'), dict) else None
+    editable_back = cfg.get('editable_design_back') if isinstance(cfg.get('editable_design_back'), dict) else None
+    has_editable_front = bool(editable_front and ((editable_front.get('lines') or []) or (editable_front.get('images') or [])))
+    has_editable_back = bool(editable_back and ((editable_back.get('lines') or []) or (editable_back.get('images') or [])))
+
+    if not tmpl.front_pdf and not has_editable_front:
+        return JsonResponse({'status': 'error', 'message': 'Upload front design PDF or convert/save editable front design before generating'}, status=400)
+    if tmpl.is_two_sided and not tmpl.back_pdf and not has_editable_back:
+        return JsonResponse({'status': 'error', 'message': 'Upload back design PDF or convert/save editable back design before generating'}, status=400)
+
+    mappings = tmpl.field_mappings if isinstance(tmpl.field_mappings, dict) else {}
+    front_map = mappings.get('front') if isinstance(mappings.get('front'), dict) else {}
+    back_map = mappings.get('back') if isinstance(mappings.get('back'), dict) else {}
+    if not front_map:
+        return JsonResponse({'status': 'error', 'message': 'Place at least one front field before generating'}, status=400)
+    if tmpl.is_two_sided and not back_map:
+        return JsonResponse({'status': 'error', 'message': 'Place at least one back field before generating'}, status=400)
 
     prs = list(
         PrintRequest.objects.filter(
@@ -993,19 +1434,23 @@ def api_generate_pdf(request, table_id):
     if not prs:
         return JsonResponse({'status': 'error', 'message': 'No valid generate-list cards found'}, status=400)
 
-    pdf_buffer, error = GenerateCardService.generate(table, tmpl, prs)
-    if error:
+    if preview_only:
+        prs = prs[:1]
+
+    file_buffer, error = GenerateCardService.generate(table, tmpl, prs)
+    file_bytes = file_buffer.getvalue() if file_buffer else None
+    if error or not file_bytes:
         logger.error('api_generate_pdf: %s', error)
-        return JsonResponse({'status': 'error', 'message': f'PDF generation failed: {error}'}, status=500)
+        return JsonResponse({'status': 'error', 'message': f'Generation failed: {error or "Unknown error"}'}, status=500)
 
-    # Move cards to finalized
-    valid_ids = [pr.id for pr in prs]
-    PrintWorkflowService.bulk_generate(valid_ids, request.user)
+    if not preview_only:
+        # Move cards to finalized
+        valid_ids = [pr.id for pr in prs]
+        PrintWorkflowService.bulk_generate(valid_ids, request.user)
 
-    stamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-    safe_name = table.name.replace(' ', '_')[:30]
-    filename = f'cards_{safe_name}_{stamp}.pdf'
-
-    response = HttpResponse(pdf_buffer.read(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    file_prefix = 'preview_card' if preview_only else 'cards'
+    safe_filename = f'{file_prefix}_{table.id}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+    response = HttpResponse(file_bytes, content_type='application/pdf')
+    disposition = 'inline' if preview_only else 'attachment'
+    response['Content-Disposition'] = f'{disposition}; filename="{safe_filename}"'
     return response

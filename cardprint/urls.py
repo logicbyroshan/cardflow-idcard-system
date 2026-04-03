@@ -30,7 +30,11 @@ urlpatterns = [
     # ── Generate Card API endpoints ──
     path('api/generate-card/table/<int:table_id>/template/', views.api_template_get, name='api_template_get'),
     path('api/generate-card/table/<int:table_id>/template/save/', views.api_template_save, name='api_template_save'),
+    path('api/generate-card/table/<int:table_id>/template/analyze-pdf/<str:side>/', views.api_template_analyze_pdf, name='api_template_analyze_pdf'),
+    path('api/generate-card/table/<int:table_id>/template/convert-word/<str:side>/', views.api_template_convert_word, name='api_template_convert_word'),
+    path('api/generate-card/table/<int:table_id>/template/convert-inline/<str:side>/', views.api_template_convert_inline, name='api_template_convert_inline'),
     path('api/generate-card/table/<int:table_id>/template/upload-pdf/<str:side>/', views.api_template_upload_pdf, name='api_template_upload_pdf'),
+    path('api/generate-card/table/<int:table_id>/template/clear-pdf/<str:side>/', views.api_template_clear_pdf, name='api_template_clear_pdf'),
     path('api/generate-card/table/<int:table_id>/cards/', views.api_generate_card_list, name='api_generate_card_list'),
     path('api/generate-card/table/<int:table_id>/generate/', views.api_generate_pdf, name='api_generate_pdf'),
 ]

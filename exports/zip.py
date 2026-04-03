@@ -680,26 +680,6 @@ class ZipExporter:
         used_names[target_base] = 0
         return target_base
 
-
-# =============================================================================
-# MODULE-LEVEL CONVENIENCE FUNCTION
-# =============================================================================
-
-def export_images_to_zip(table, cards: QuerySet) -> ZipExportResult:
-    """
-    Convenience function to export images as ZIP files.
-    
-    Args:
-        table: IDCardTable instance
-        cards: QuerySet of IDCard instances
-        
-    Returns:
-        ZipExportResult with base64-encoded ZIP files
-    """
-    exporter = ZipExporter()
-    return exporter.export_images(table, cards)
-
-
 def zip_result_to_dict(result: ZipExportResult) -> Dict[str, Any]:
     """
     Convert ZipExportResult to dictionary for JSON serialization.

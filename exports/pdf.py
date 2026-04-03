@@ -1009,12 +1009,3 @@ class PdfExporter:
 
         return pages
 
-
-# =============================================================================
-# CONVENIENCE FUNCTION (matches pattern of excel.py / word.py)
-# =============================================================================
-
-def export_cards_to_pdf(table, cards: QuerySet) -> PdfExportResult:
-    """Convenience wrapper for PDF export."""
-    exporter = PdfExporter()
-    return exporter.export_cards(table, cards)

@@ -49,6 +49,49 @@ function refreshStepCounts() {
     }).catch(function() {});
 }
 
+function openCardDrawer(mode, cardId) {
+  var globalFn = (typeof window.fetchCardAndOpenModal === 'function')
+    ? window.fetchCardAndOpenModal
+    : (window.IDCardApp && typeof window.IDCardApp.fetchCardAndOpenModal === 'function'
+      ? window.IDCardApp.fetchCardAndOpenModal
+      : null);
+
+  if (globalFn) {
+    globalFn(mode, cardId);
+    return true;
+  }
+
+  if (!ApiClient || typeof ApiClient.get !== 'function') {
+    showToast('View drawer is unavailable right now.', 'error');
+    return false;
+  }
+
+  ApiClient.get(panelUrl('/api/card/' + cardId + '/'))
+    .then(function(data) {
+      if (!data || !data.success || !data.card) {
+        showToast((data && data.message) || 'Error loading card data', 'error');
+        return;
+      }
+
+      if (window.IDCardApp && typeof window.IDCardApp.openSideModal === 'function') {
+        window.IDCardApp.openSideModal(mode, data.card);
+        return;
+      }
+      if (typeof window.openSideModal === 'function') {
+        window.openSideModal(mode, data.card);
+        return;
+      }
+
+      showToast('View drawer is unavailable right now.', 'error');
+    })
+    .catch(function(error) {
+      console.error('[PrintCards] view drawer error:', error);
+      showToast('Error loading card data', 'error');
+    });
+
+  return true;
+}
+
 function _filenameFromDisposition(disposition, fallbackName) {
   if (!disposition) return fallbackName;
   var m = disposition.match(/filename\*=UTF-8''([^;]+)/i) || disposition.match(/filename="?([^";]+)"?/i);
@@ -145,7 +188,7 @@ function _downloadImageExport(url, payload) {
 }
 
 /** Render a single image cell as HTML */
-function renderImageCell(f) {
+function renderImageCell(f, cardId) {
   var html = '<td class="w-[28px] px-[1px] py-1 text-center align-middle image-field image-cell" data-field="' + escapeHtml(f.name) + '" data-field-name="' + escapeHtml(f.name) + '" data-field-type="image" data-original-value="' + escapeHtml(f.value || '') + '">';
   html += '<div class="image-with-edit">';
   if (f.value && f.value !== '' && f.value !== 'NOT_FOUND' && !f.value.startsWith('PENDING:')) {
@@ -156,6 +199,9 @@ function renderImageCell(f) {
     html += '<div class="no-image pending-placeholder" title="Waiting for upload"><i class="fa-solid fa-clock"></i></div>';
   } else {
     html += '<div class="no-image colorful-placeholder" title="No image"><i class="fa-solid fa-user-astronaut"></i></div>';
+  }
+  if (Number.isFinite(cardId)) {
+    html += '<button type="button" class="edit-photo-btn view-photo-btn btn-view-single" data-card-id="' + cardId + '" title="View card">View</button>';
   }
   html += '</div></td>';
   return html;
@@ -168,11 +214,11 @@ function renderTextCell(f) {
 }
 
 /** Render ordered fields (text first, then images) */
-function renderOrderedFields(fields) {
+function renderOrderedFields(fields, cardId) {
   if (!fields) return '';
   var html = '';
   fields.forEach(function(f) { if (!isImageField(f.type, f.name)) html += renderTextCell(f); });
-  fields.forEach(function(f) { if (isImageField(f.type, f.name)) html += renderImageCell(f); });
+  fields.forEach(function(f) { if (isImageField(f.type, f.name)) html += renderImageCell(f, cardId); });
   return html;
 }
 
@@ -325,7 +371,6 @@ function createPaginator(opts) {
   var toDateInput    = document.getElementById('generateToDate');
   var clearDateFilterBtn = document.getElementById('generateClearDateFilterBtn');
   var continueBtn    = document.getElementById('continueGenerateBtn');
-  var viewBtn        = document.getElementById('generateListViewBtn');
   var retrieveBtn    = document.getElementById('generateRetrieveBtn');
   var dlImgBtn       = document.getElementById('generateDownloadImgBtn');
   var dlDocxBtn      = document.getElementById('generateDownloadDocxBtn');
@@ -363,7 +408,6 @@ function createPaginator(opts) {
   function updateSelectionUI() {
     var count = getAllPrIds().length;
     if (continueBtn) continueBtn.disabled = count === 0;
-    if (viewBtn) viewBtn.disabled = count === 0;
     if (retrieveBtn) retrieveBtn.disabled = count === 0;
     if (dlImgBtn) dlImgBtn.disabled = count === 0;
     if (dlDocxBtn) dlDocxBtn.disabled = count === 0;
@@ -379,9 +423,6 @@ function createPaginator(opts) {
     window.GEN_PRESELECT_PR_IDS = Array.isArray(prIds) ? prIds.slice() : [];
     if (typeof window.openGcEditorModal === 'function') {
       window.openGcEditorModal();
-      if (typeof window.gcEditorRefresh === 'function') {
-        window.gcEditorRefresh(window.FRONT_PDF_URL || undefined, window.BACK_PDF_URL || undefined);
-      }
     } else {
       window.location.href = panelUrl('/print/generate-card/table/' + TABLE_ID + '/');
     }
@@ -395,11 +436,14 @@ function createPaginator(opts) {
     });
   }
 
-  if (viewBtn) {
-    viewBtn.addEventListener('click', function() {
-      var cardIds = getAllCardIds();
-      if (cardIds.length === 0) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
+  if (tableBody) {
+    tableBody.addEventListener('click', function(e) {
+      var viewSingleBtn = e.target.closest('.btn-view-single');
+      if (!viewSingleBtn) return;
+      var row = viewSingleBtn.closest('tr[data-card-id]');
+      var cardId = parseInt(viewSingleBtn.dataset.cardId || (row ? row.dataset.cardId : ''), 10);
+      if (!Number.isFinite(cardId)) return;
+      openCardDrawer('view', cardId);
     });
   }
 
@@ -563,7 +607,7 @@ function createPaginator(opts) {
     items.forEach(function(item, idx) {
       html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
+      html += renderOrderedFields(item.ordered_fields, item.card_id);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.moved_at || '-') + '</td>';
       html += '</tr>';
@@ -591,7 +635,6 @@ function createPaginator(opts) {
   var toDateInput = document.getElementById('finalizedToDate');
   var clearDateFilterBtn = document.getElementById('finalizedClearDateFilterBtn');
   var poolBtn       = document.getElementById('finalizedMoveToPoolBtn');
-  var viewBtn       = document.getElementById('finalizedViewBtn');
   var retrieveBtn   = document.getElementById('finalizedRetrieveBtn');
   var dlImgBtn      = document.getElementById('finalizedDownloadImgBtn');
   var dlDocxBtn     = document.getElementById('finalizedDownloadDocxBtn');
@@ -644,7 +687,6 @@ function createPaginator(opts) {
     var ids = getSelectedPrIds();
     var count = ids.length;
     if (poolBtn) poolBtn.disabled = count === 0;
-    if (viewBtn) viewBtn.disabled = count !== 1;
     if (retrieveBtn) retrieveBtn.disabled = count === 0;
     if (dlImgBtn) dlImgBtn.disabled = count === 0;
     if (dlDocxBtn) dlDocxBtn.disabled = count === 0;
@@ -676,6 +718,16 @@ function createPaginator(opts) {
   // Single-row Move to Pool
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
+      var viewSingleBtn = e.target.closest('.btn-view-single');
+      if (viewSingleBtn) {
+        var viewRow = viewSingleBtn.closest('tr[data-card-id]');
+        var viewCardId = parseInt(viewSingleBtn.dataset.cardId || (viewRow ? viewRow.dataset.cardId : ''), 10);
+        if (Number.isFinite(viewCardId)) {
+          openCardDrawer('view', viewCardId);
+        }
+        return;
+      }
+
       var poolSingle = e.target.closest('.btn-pool-single');
       if (poolSingle) {
         var prId = parseInt(poolSingle.dataset.prId);
@@ -692,15 +744,6 @@ function createPaginator(opts) {
       var ok = await showConfirm({ title: 'Move to Pool?', text: 'Move ' + ids.length + ' item(s) to pool?', icon: 'fa-solid fa-arrow-right', confirmLabel: 'Move', btnClass: 'btn-primary', hideWarning: true });
       if (!ok) return;
       performMoveToPool(ids);
-    });
-  }
-
-  // View
-  if (viewBtn) {
-    viewBtn.addEventListener('click', function() {
-      var cardIds = getSelectedCardIds();
-      if (cardIds.length !== 1) return;
-      if (typeof fetchCardAndOpenModal === 'function') fetchCardAndOpenModal('view', cardIds[0]);
     });
   }
 
@@ -888,7 +931,7 @@ function createPaginator(opts) {
       html += '<tr data-pr-id="' + item.pr_id + '" data-card-id="' + item.card_id + '" data-sr-no="' + (idx + 1) + '">';
       html += '<td class="w-[24px] px-[1px] py-1 text-center align-middle checkbox-cell"><input type="checkbox" class="finalizedRowCheckbox"></td>';
       html += '<td class="w-[36px] px-[1px] py-1 text-center align-middle sr-no-cell">' + (idx + 1) + '</td>';
-      html += renderOrderedFields(item.ordered_fields);
+      html += renderOrderedFields(item.ordered_fields, item.card_id);
       html += '<td class="w-[65px] px-[1px] py-1 align-middle user-cell text-center">' + escapeHtml(item.requested_by_name || '-') + '</td>';
       html += '<td class="w-[90px] px-[1px] py-1 align-middle date-cell text-center">' + escapeHtml(item.finalized_at || '-') + '</td>';
       html += '<td class="w-[60px] px-[1px] py-1 text-center align-middle action-cell"><div class="confirm-action-btns">';

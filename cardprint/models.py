@@ -103,7 +103,7 @@ def validate_field_mappings(mappings):
 
 class CardTemplate(models.Model):
     """
-    Stores the PDF template and field coordinate mappings for Generate Card feature.
+    Stores design PDFs and coordinate mappings for Generate Card.
     One template per IDCardTable (one-to-one).
 
     field_mappings format:

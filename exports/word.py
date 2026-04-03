@@ -230,22 +230,3 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                 message='Word export failed. Please try again or contact support.'
             )
 
-
-# =============================================================================
-# MODULE-LEVEL CONVENIENCE FUNCTION
-# =============================================================================
-
-def export_cards_to_docx(table, cards: QuerySet, doc_format: str = 'docx') -> WordExportResult:
-    """
-    Convenience function to export cards to Word format.
-    
-    Args:
-        table: IDCardTable instance
-        cards: QuerySet of IDCard instances
-        doc_format: 'docx' or 'doc'
-        
-    Returns:
-        WordExportResult
-    """
-    exporter = WordExporter()
-    return exporter.export_cards(table, cards, doc_format=doc_format)
