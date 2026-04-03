@@ -438,15 +438,12 @@ class ActivityService:
             List of dicts ready for template rendering.
         """
         now = timezone.now()
-        cutoff = now - timezone.timedelta(hours=hours)
-        
-        # Base queryset
-        qs = (
-            ActivityLog.objects
-            .filter(created_at__gte=cutoff)
-            .select_related('user')
-            .order_by('-created_at')
-        )
+
+        # Base queryset (no time filter when hours is None)
+        qs = ActivityLog.objects.select_related('user').order_by('-created_at')
+        if hours is not None:
+            cutoff = now - timezone.timedelta(hours=hours)
+            qs = qs.filter(created_at__gte=cutoff)
         
         # Apply role-based filtering
         if user and user.is_authenticated:

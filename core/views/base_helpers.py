@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # DISPLAY LIMITS
 # ============================================================================
-ACTIVITY_FEED_MAX = 8
+ACTIVITY_FEED_MAX = 100
 GLOBAL_SEARCH_DB_LIMIT = 100
 GLOBAL_SEARCH_RESULT_LIMIT = 50
 
