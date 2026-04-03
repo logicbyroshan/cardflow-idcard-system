@@ -1098,8 +1098,12 @@ function listApp() {
             const source = sourceFieldData || {};
             const ordered = [];
             const used = new Set();
+            const sourceLookupValues = {};
+            Object.keys(source || {}).forEach((k) => {
+                sourceLookupValues[this._normalizeLookupKey(k)] = source[k];
+            });
             const sourceLookupKeys = new Set(
-                Object.keys(source || {}).map((k) => this._normalizeLookupKey(k))
+                Object.keys(sourceLookupValues || {})
             );
 
             (this.tableFields || []).forEach((f) => {
@@ -1107,7 +1111,12 @@ function listApp() {
                 const name = String(f.name || '').trim();
                 const lk = this._normalizeLookupKey(name);
                 if (!lk || used.has(lk)) return;
-                if (!includeAllTableFields && !sourceLookupKeys.has(lk)) return;
+                if (!includeAllTableFields) {
+                    if (!sourceLookupKeys.has(lk)) return;
+                    const srcVal = sourceLookupValues[lk];
+                    const hasValue = srcVal !== null && srcVal !== undefined && String(srcVal).trim() !== '';
+                    if (!hasValue && !f.mandatory) return;
+                }
                 ordered.push({
                     name,
                     type: this._normalizeFieldType(f.type),
@@ -1120,6 +1129,10 @@ function listApp() {
             Object.keys(source).forEach((rawKey) => {
                 const key = String(rawKey || '').trim();
                 if (!key || key.startsWith('__') || this._isImageLikeFieldName(key)) return;
+                if (!includeAllTableFields) {
+                    const rawVal = source[rawKey];
+                    if (rawVal === null || rawVal === undefined || String(rawVal).trim() === '') return;
+                }
                 const lk = this._normalizeLookupKey(key);
                 if (!lk || used.has(lk)) return;
                 ordered.push({

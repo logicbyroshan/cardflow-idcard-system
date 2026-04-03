@@ -91,37 +91,37 @@
                         {% if perm_idcard_pending_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
                            class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.pending_cards > 0 %}bg-amber-200/75 text-amber-700{% else %}bg-amber-50 text-amber-600 border border-amber-100{% endif %}">
-                            P {{ table.pending_cards|default:0 }}
+                            Pending {{ table.pending_cards|default:0 }}
                         </a>
                         {% else %}
-                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">P {{ table.pending_cards|default:0 }}</span>
+                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Pending {{ table.pending_cards|default:0 }}</span>
                         {% endif %}
 
                         {% if perm_idcard_verified_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
                            class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.verified_cards > 0 %}bg-emerald-200/75 text-emerald-700{% else %}bg-emerald-50 text-emerald-600 border border-emerald-100{% endif %}">
-                            V {{ table.verified_cards|default:0 }}
+                            Verified {{ table.verified_cards|default:0 }}
                         </a>
                         {% else %}
-                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">V {{ table.verified_cards|default:0 }}</span>
+                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Verified {{ table.verified_cards|default:0 }}</span>
                         {% endif %}
 
                         {% if perm_idcard_approved_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
                            class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.approved_cards > 0 %}bg-sky-200/75 text-sky-700{% else %}bg-sky-50 text-sky-600 border border-sky-100{% endif %}">
-                            A {{ table.approved_cards|default:0 }}
+                            Approved {{ table.approved_cards|default:0 }}
                         </a>
                         {% else %}
-                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">A {{ table.approved_cards|default:0 }}</span>
+                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Approved {{ table.approved_cards|default:0 }}</span>
                         {% endif %}
 
                         {% if perm_idcard_download_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
                            class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.download_cards > 0 %}bg-violet-200/75 text-violet-700{% else %}bg-violet-50 text-violet-600 border border-violet-100{% endif %}">
-                            D {{ table.download_cards|default:0 }}
+                            Download {{ table.download_cards|default:0 }}
                         </a>
                         {% else %}
-                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">D {{ table.download_cards|default:0 }}</span>
+                        <span class="text-[9px] font-bold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Download {{ table.download_cards|default:0 }}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -164,37 +164,37 @@
                     {% if perm_idcard_pending_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
                        class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.pending_cards > 0 %}bg-amber-200/75 text-amber-700{% else %}bg-amber-50 text-amber-600 border border-amber-100{% endif %}">
-                        P {{ table.pending_cards|default:0 }}
+                        Pending {{ table.pending_cards|default:0 }}
                     </a>
                     {% else %}
-                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">P {{ table.pending_cards|default:0 }}</span>
+                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Pending {{ table.pending_cards|default:0 }}</span>
                     {% endif %}
 
                     {% if perm_idcard_verified_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
                        class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.verified_cards > 0 %}bg-emerald-200/75 text-emerald-700{% else %}bg-emerald-50 text-emerald-600 border border-emerald-100{% endif %}">
-                        V {{ table.verified_cards|default:0 }}
+                        Verified {{ table.verified_cards|default:0 }}
                     </a>
                     {% else %}
-                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">V {{ table.verified_cards|default:0 }}</span>
+                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Verified {{ table.verified_cards|default:0 }}</span>
                     {% endif %}
 
                     {% if perm_idcard_approved_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
                        class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.approved_cards > 0 %}bg-sky-200/75 text-sky-700{% else %}bg-sky-50 text-sky-600 border border-sky-100{% endif %}">
-                        A {{ table.approved_cards|default:0 }}
+                        Approved {{ table.approved_cards|default:0 }}
                     </a>
                     {% else %}
-                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">A {{ table.approved_cards|default:0 }}</span>
+                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Approved {{ table.approved_cards|default:0 }}</span>
                     {% endif %}
 
                     {% if perm_idcard_download_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
                        class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap active:scale-95 transition {% if table.download_cards > 0 %}bg-violet-200/75 text-violet-700{% else %}bg-violet-50 text-violet-600 border border-violet-100{% endif %}">
-                        D {{ table.download_cards|default:0 }}
+                        Download {{ table.download_cards|default:0 }}
                     </a>
                     {% else %}
-                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">D {{ table.download_cards|default:0 }}</span>
+                    <span class="text-[9px] font-semibold px-2 py-1.5 rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100">Download {{ table.download_cards|default:0 }}</span>
                     {% endif %}
                 </div>
             </div>

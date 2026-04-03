@@ -80,7 +80,7 @@
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
                     class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
                     {% if list_type == 'download' %}bg-violet-600 border-violet-700 text-white font-bold shadow-sm{% else %}bg-violet-50 border-violet-200 text-violet-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide truncate">Down</span>
+                <span class="uppercase tracking-wide">Dwn</span>
                 <span class="font-black tabular-nums" x-text="tabCounts.download"></span>
             </a>
             {% endif %}
