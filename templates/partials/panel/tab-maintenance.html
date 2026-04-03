@@ -20,11 +20,6 @@
     </div>
   </div>
 
-  <div class="panel-section-strip panel-section-strip-maintenance">
-    <span class="panel-section-strip-title"><i class="fa-solid fa-shield-halved"></i> Controlled Downtime Orchestration</span>
-    <span class="panel-section-strip-sub">Schedule, announce, and safely manage maintenance windows.</span>
-  </div>
-
   <!-- Status + Controls Grid -->
   <div class="system-grid" id="mtGrid">
 
@@ -36,7 +31,7 @@
       <div class="system-card-body" style="padding: 14px 16px;">
         <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
           <span class="system-label">Maintenance Message</span>
-          <textarea id="mtMessage" rows="4" class="form-input" style="width: 100%; resize: vertical; font-size: 12px;"
+          <textarea id="mtMessage" rows="7" class="form-input" style="width: 100%; resize: vertical; font-size: 12px; min-height: 170px;"
                     placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
           <span class="system-value" style="font-size: 11px; color: #94a3b8; font-weight: 500;">
             This message appears on the maintenance page and in automatic user notifications.
@@ -55,21 +50,11 @@
         <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
           <span class="system-label">Duration</span>
           <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="15" onclick="setMtDuration(15)">15 min</button>
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="30" onclick="setMtDuration(30)">30 min</button>
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="60" onclick="setMtDuration(60)">1 hr</button>
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="120" onclick="setMtDuration(120)">2 hr</button>
+            <button type="button" class="btn btn-sm btn-primary mt-dur-btn" data-min="60" onclick="setMtDuration(60)">1 hr</button>
             <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="360" onclick="setMtDuration(360)">6 hr</button>
-            <input type="number" id="mtDuration" class="form-input" min="1" max="1440" value="30"
-                   style="width: 72px; font-size: 12px; text-align: center; padding: 4px 6px;" placeholder="min">
-            <span style="color: #94a3b8; font-size: 11px;">minutes</span>
+            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="1440" onclick="setMtDuration(1440)">1 day</button>
+            <input type="hidden" id="mtDuration" value="60">
           </div>
-        </div>
-
-        <!-- Specific end time -->
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px; margin-top: 12px;">
-          <span class="system-label">Or set specific end time</span>
-          <input type="datetime-local" id="mtEndTime" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 8px;">
         </div>
 
         <!-- Actions -->
@@ -131,12 +116,9 @@
   function toggleMaintenance(action) {
     var body = { action: action };
     if (action === 'enable') {
-      var endTimeInput = document.getElementById('mtEndTime').value;
       var durationInput = document.getElementById('mtDuration').value;
       body.message = document.getElementById('mtMessage').value;
-      if (endTimeInput) {
-        body.end_time = new Date(endTimeInput).toISOString();
-      } else if (durationInput) {
+      if (durationInput) {
         body.duration_minutes = parseInt(durationInput);
       }
     }
@@ -175,6 +157,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     var section = document.getElementById('notificationMaintenanceSection');
     if (section) {
+      setMtDuration(parseInt(document.getElementById('mtDuration').value || '60'));
       loadMaintenanceStatus();
     }
   });
