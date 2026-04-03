@@ -10,7 +10,7 @@
     {% if can_manage_clients %}
     <div class="btn-separator"></div>
     <div class="btn-group">
-        {% if can_manage_clients %}
+        {% if is_super_admin %}
         <button class="btn btn-md btn-danger" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
         {% endif %}
         <button class="btn btn-md btn-warning" id="activeClientBtn" disabled><i class="fa-solid fa-toggle-on"></i> Active</button>

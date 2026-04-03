@@ -110,6 +110,13 @@ class ManageClientsPaginationTests(TestCase):
         self.assertEqual(len(response.context['clients']), 12)
         self.assertEqual(response.context['page_obj'].paginator.count, 12)
 
+    def test_manage_clients_shows_delete_button_for_super_admin(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="deleteClientBtn"')
+
 
 class ManageClientsPermissionGateTests(TestCase):
     def setUp(self):
@@ -156,6 +163,7 @@ class ManageClientsPermissionGateTests(TestCase):
         self.assertEqual(len(response.context['clients']), 2)
         self.assertEqual(response.context['page_obj'].paginator.count, 2)
         self.assertTrue(response.context['can_manage_clients'])
+        self.assertNotContains(response, 'id="deleteClientBtn"')
 
 
 class ClientAccessServiceTests(TestCase):
