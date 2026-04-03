@@ -55,8 +55,13 @@ class WordImagesMixin:
                             
                             para = cell.paragraphs[0]
                             run = para.add_run()
-                            # Keep original image dimensions in DOC export.
-                            inline_shape = run.add_picture(img_stream)
+                            # Keep layout fixed while preserving source quality
+                            # (original bytes, no JPEG recompression step).
+                            inline_shape = run.add_picture(
+                                img_stream,
+                                height=Cm(fixed_height_cm),
+                                width=Cm(fixed_width_cm)
+                            )
                             img_stream.close()
                             self._convert_to_vml(
                                 run,
