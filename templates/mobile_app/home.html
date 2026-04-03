@@ -89,9 +89,8 @@
 
                 {% if is_client or is_client_staff %}
                 <div class="mt-2 rounded-2xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/35 to-sky-50/35 px-3 py-2.5 shadow-sm">
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
                         <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Quick Shortcuts</p>
-                        <span class="text-[9px] font-semibold text-indigo-500">Permission-aware</span>
                     </div>
                     <div class="mt-2 grid grid-cols-2 gap-2">
                         <a href="{% url 'mobile_app:search_page' %}"
@@ -134,7 +133,6 @@
                         </a>
                         {% endif %}
                     </div>
-                    <p class="mt-2 text-[10px] text-gray-400 leading-snug">Sections are tailored to your access level so the app stays focused and clean.</p>
                 </div>
                 {% endif %}
 
@@ -209,9 +207,9 @@
                         </div>
                         <div class="w-1/2 grid grid-cols-4">
                             <div class="text-center py-1.5 text-[8px] font-bold text-amber-500 uppercase tracking-wider">Pend.</div>
-                            <div class="text-center py-1.5 text-[8px] font-bold text-green-500 uppercase tracking-wider">Ver.</div>
-                            <div class="text-center py-1.5 text-[8px] font-bold text-blue-500 uppercase tracking-wider">Appr.</div>
-                            <div class="text-center py-1.5 text-[8px] font-bold text-purple-500 uppercase tracking-wider">Down.</div>
+                            <div class="text-center py-1.5 text-[8px] font-bold text-emerald-500 uppercase tracking-wider">Ver.</div>
+                            <div class="text-center py-1.5 text-[8px] font-bold text-sky-500 uppercase tracking-wider">Appr.</div>
+                            <div class="text-center py-1.5 text-[8px] font-bold text-violet-500 uppercase tracking-wider">Down.</div>
                         </div>
                     </div>
 
@@ -247,21 +245,21 @@
                                 </div>
                                 <div class="text-center py-2">
                                     {% if rc.verified > 0 %}
-                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-green-600 bg-green-50 border border-green-100">{{ rc.verified }}</span>
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100">{{ rc.verified }}</span>
                                     {% else %}
                                     <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.verified|default:0 }}</span>
                                     {% endif %}
                                 </div>
                                 <div class="text-center py-2">
                                     {% if rc.approved > 0 %}
-                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100">{{ rc.approved }}</span>
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-sky-600 bg-sky-50 border border-sky-100">{{ rc.approved }}</span>
                                     {% else %}
                                     <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.approved|default:0 }}</span>
                                     {% endif %}
                                 </div>
                                 <div class="text-center py-2">
                                     {% if rc.download > 0 %}
-                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-100">{{ rc.download }}</span>
+                                    <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-violet-600 bg-violet-50 border border-violet-100">{{ rc.download }}</span>
                                     {% else %}
                                     <span class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-black text-gray-500 bg-gray-100 border border-gray-200">{{ rc.download|default:0 }}</span>
                                     {% endif %}
@@ -292,19 +290,19 @@
                                 </div>
                                 <div class="text-center py-2">
                                     <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='verified' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.verified > 0 %}text-green-500 bg-green-50 border border-green-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.verified > 0 %}text-emerald-500 bg-emerald-50 border border-emerald-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
                                         {{ tbl.verified }}
                                     </a>
                                 </div>
                                 <div class="text-center py-2">
                                     <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='approved' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.approved > 0 %}text-blue-500 bg-blue-50 border border-blue-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.approved > 0 %}text-sky-500 bg-sky-50 border border-sky-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
                                         {{ tbl.approved|default:0 }}
                                     </a>
                                 </div>
                                 <div class="text-center py-2">
                                     <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='download' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.download > 0 %}text-purple-500 bg-purple-50 border border-purple-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-md text-[10px] font-bold {% if tbl.download > 0 %}text-violet-500 bg-violet-50 border border-violet-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
                                         {{ tbl.download|default:0 }}
                                     </a>
                                 </div>

@@ -20,10 +20,10 @@
         <!-- Status Badge -->
         <span class="text-[10px] font-bold px-3 py-1.5 rounded-full flex-shrink-0
             {% if card.status == 'pending' %}bg-amber-400/30 text-white border border-amber-300/50
-            {% elif card.status == 'verified' %}bg-green-400/30 text-white border border-green-300/50
-            {% elif card.status == 'approved' %}bg-blue-400/30 text-white border border-blue-300/50
-            {% elif card.status == 'download' %}bg-purple-400/30 text-white border border-purple-300/50
-            {% elif card.status == 'pool' %}bg-red-400/30 text-white border border-red-300/50
+            {% elif card.status == 'verified' %}bg-emerald-400/30 text-white border border-emerald-300/50
+            {% elif card.status == 'approved' %}bg-sky-400/30 text-white border border-sky-300/50
+            {% elif card.status == 'download' %}bg-violet-400/30 text-white border border-violet-300/50
+            {% elif card.status == 'pool' %}bg-rose-400/30 text-white border border-rose-300/50
             {% else %}bg-white/20 text-white border border-white/30{% endif %}">
             {{ card.status_display }}
         </span>
@@ -238,15 +238,15 @@
                         <i class="fa-solid fa-clock"></i>Pending
                     </button>
                     <button @click="setStatus('verified')"
-                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 flex items-center justify-center gap-1.5">
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-check-circle"></i>Verified
                     </button>
                     <button @click="setStatus('approved')"
-                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-1.5">
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-check-double"></i>Approved
                     </button>
                     <button @click="setStatus('download')"
-                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 flex items-center justify-center gap-1.5">
+                            class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-download"></i>Download
                     </button>
                 </div>

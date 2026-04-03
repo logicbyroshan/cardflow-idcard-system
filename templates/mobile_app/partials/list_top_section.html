@@ -54,41 +54,41 @@
         <div class="flex items-stretch gap-1">
             {% if perm_idcard_pending_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[10px] leading-none
                     {% if list_type == 'pending' %}bg-amber-600 border-amber-700 text-white font-bold shadow-sm{% else %}bg-amber-50 border-amber-200 text-amber-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide truncate">Pend</span>
+                <span class="truncate">Pending</span>
                 <span class="font-black tabular-nums" x-text="tabCounts.pending"></span>
             </a>
             {% endif %}
             {% if perm_idcard_verified_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[10px] leading-none
                     {% if list_type == 'verified' %}bg-emerald-600 border-emerald-700 text-white font-bold shadow-sm{% else %}bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide truncate">Ver</span>
+                <span class="truncate">Verified</span>
                 <span class="font-black tabular-nums" x-text="tabCounts.verified"></span>
             </a>
             {% endif %}
             {% if perm_idcard_approved_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
-                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[10px] leading-none
                     {% if list_type == 'approved' %}bg-sky-600 border-sky-700 text-white font-bold shadow-sm{% else %}bg-sky-50 border-sky-200 text-sky-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide truncate">Appr</span>
+                <span class="truncate">Approved</span>
                 <span class="font-black tabular-nums" x-text="tabCounts.approved"></span>
             </a>
             {% endif %}
             {% if perm_idcard_download_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
-                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[10px] leading-none
                     {% if list_type == 'download' %}bg-violet-600 border-violet-700 text-white font-bold shadow-sm{% else %}bg-violet-50 border-violet-200 text-violet-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide">Dwn</span>
+                <span class="truncate">Download</span>
                 <span class="font-black tabular-nums" x-text="tabCounts.download"></span>
             </a>
             {% endif %}
             {% if perm_idcard_pool_list %}
             <a href="{% url 'mobile_app:card_list' table_id=table.id status='pool' %}"
-                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[11px] leading-none
+                    class="inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-1.5 py-1.5 rounded-[7px] border transition-all active:scale-[0.98] text-[10px] leading-none
                     {% if list_type == 'pool' %}bg-rose-600 border-rose-700 text-white font-bold shadow-sm{% else %}bg-rose-50 border-rose-200 text-rose-700 font-semibold{% endif %}">
-                <span class="uppercase tracking-wide truncate">Pool</span>
+                <span class="truncate">Pool</span>
                 <span class="font-black tabular-nums" x-text="tabCounts.pool"></span>
             </a>
             {% endif %}
