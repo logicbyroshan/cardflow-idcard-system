@@ -35,7 +35,13 @@ function listApp() {
             cancelling: false,
             abortController: null,
         },
-        filters: { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
+        filters: {
+            photo: 'all',
+            selectedClass: '',
+            selectedSection: '',
+            dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
+            dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
+        },
         filtersActive: false,
         classOptions: [],
         sectionOptions: [],
@@ -284,20 +290,85 @@ function listApp() {
             }, 3500);
         },
 
-        toggleSelectAll() {
+        async toggleSelectAll() {
             if (this.selectAll) {
-                // Only select visible (non-hidden) rows
-                const visible = [];
-                document.querySelectorAll('[data-sid]').forEach(el => {
-                    if (el.style.display !== 'none') visible.push(parseInt(el.getAttribute('data-sid')));
-                });
-                this.selectedIds = visible;
+                const allMatchingIds = await this._fetchAllMatchingIds();
+                if (Array.isArray(allMatchingIds)) {
+                    this.selectedIds = allMatchingIds;
+                } else {
+                    // Fallback: if server-side select-all is unavailable, select visible rows.
+                    const visible = [];
+                    document.querySelectorAll('[data-sid]').forEach(el => {
+                        if (el.style.display !== 'none') visible.push(parseInt(el.getAttribute('data-sid')));
+                    });
+                    this.selectedIds = visible;
+                }
             } else { this.selectedIds = []; }
             if (!this.selectedIds.length) this.actionMenuOpen = false;
             // Sync classes for dynamically loaded rows
             document.querySelectorAll('[data-sid]').forEach(el => {
                 this._updateRowClass(parseInt(el.dataset.sid));
             });
+        },
+        _buildAllIdsQueryParams() {
+            const params = new URLSearchParams();
+            params.set('status', LIST_TYPE);
+
+            const q = String(this.searchQuery || '').trim();
+            if (q) params.set('search', q);
+
+            if (this.filters.selectedClass) params.set('class', this.filters.selectedClass);
+            if (this.filters.selectedSection) params.set('section', this.filters.selectedSection);
+
+            if (LIST_TYPE === 'download') {
+                if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
+                if (this.filters.dateTo) params.set('to', this.filters.dateTo);
+            }
+
+            if (this.filters.photo !== 'all') {
+                const photoFields = (this.tableFields || [])
+                    .filter((f) => this._isPhotoFieldDef(f))
+                    .map((f) => String(f.name || '').trim())
+                    .filter(Boolean);
+
+                if (photoFields.length === 1) {
+                    params.set('image_column', photoFields[0]);
+                    params.set('image_condition', this.filters.photo === 'with' ? 'complete' : 'incomplete');
+                } else {
+                    return null;
+                }
+            }
+
+            return params;
+        },
+        async _fetchAllMatchingIds() {
+            const params = this._buildAllIdsQueryParams();
+            if (!params) {
+                this.showToast('Photo filter uses multiple image fields. Selecting visible records only.', 'info');
+                return null;
+            }
+
+            try {
+                const url = buildEndpoint(MOBILE_ENDPOINTS.panelApi, `table/${TABLE_ID}/cards/all-ids/`) + `?${params.toString()}`;
+                const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.success) {
+                    this.showToast(data.message || 'Could not select all records', 'error');
+                    this.selectAll = false;
+                    return null;
+                }
+
+                const ids = Array.isArray(data.card_ids) ? data.card_ids.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id)) : [];
+                if (!ids.length) {
+                    this.showToast('No records match current filters', 'info');
+                }
+                return ids;
+            } catch (e) {
+                this.showToast('Could not select all records', 'error');
+                this.selectAll = false;
+                return null;
+            }
         },
         toggleSelect(id) {
             const idx = this.selectedIds.indexOf(id);
@@ -506,9 +577,16 @@ function listApp() {
                 if (this.filters.selectedClass && this._normalizeClassValue(s.class_name) !== this.filters.selectedClass) return false;
                 // Section filter
                 if (this.filters.selectedSection && s.section !== this.filters.selectedSection) return false;
-                // Date range (DOB)  only active for download list
-                if (this.filters.dateFrom && s.dob && s.dob < this.filters.dateFrom) return false;
-                if (this.filters.dateTo && s.dob && s.dob > this.filters.dateTo) return false;
+                // Date range (download list): filter by downloaded date, not DOB.
+                if (LIST_TYPE === 'download') {
+                    const downloadedDate = String(s.downloaded_date || '').slice(0, 10);
+                    if (this.filters.dateFrom) {
+                        if (!downloadedDate || downloadedDate < this.filters.dateFrom) return false;
+                    }
+                    if (this.filters.dateTo) {
+                        if (!downloadedDate || downloadedDate > this.filters.dateTo) return false;
+                    }
+                }
                 return true;
             });
             const visibleIds = new Set(filtered.map(s => s.id));
@@ -519,8 +597,10 @@ function listApp() {
                 const id = parseInt(el.getAttribute('data-sid'));
                 el.style.display = visibleIds.has(id) ? '' : 'none';
             });
-            // Deselect items that are no longer visible
-            this.selectedIds = this.selectedIds.filter(id => visibleIds.has(id));
+            // Deselect items that are no longer visible when not using Select All mode.
+            if (!this.selectAll) {
+                this.selectedIds = this.selectedIds.filter(id => visibleIds.has(id));
+            }
             // Update visible count
             this.visibleCount = filtered.length;
             // Show count
@@ -1741,7 +1821,18 @@ function listApp() {
             this.loading = true;
             try {
                 const page = this.loadMorePage + 1;
-                const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/cards/`) + `?status=${LIST_TYPE}&per_page=50&page=${page}`;
+                const params = new URLSearchParams();
+                params.set('status', LIST_TYPE);
+                params.set('per_page', '50');
+                params.set('page', String(page));
+                const q = String(this.searchQuery || '').trim();
+                if (q) params.set('search', q);
+                if (LIST_TYPE === 'download') {
+                    if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
+                    if (this.filters.dateTo) params.set('to', this.filters.dateTo);
+                }
+
+                const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/cards/`) + `?${params.toString()}`;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const json = await res.json();
                 if (!json.success) { this.showToast('Failed to load more', 'error'); this.loading = false; return; }
@@ -1775,6 +1866,7 @@ function listApp() {
                             photo_slots: photoMeta.slots || [],
                             has_photo: !!(photoMeta.urls && photoMeta.urls.length),
                             status: c.status,
+                            downloaded_date: c.downloaded_date || '',
                             field_data: f,
                             display_fields: this._buildDisplayFieldsFromData(f),
                         };
@@ -1814,25 +1906,52 @@ function listApp() {
             var _ac = new AbortController();
             setTimeout(function() { _ac.abort(); }, 120000);
             try {
-                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/bulk-status/'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-                    body: JSON.stringify({ card_ids: this.selectedIds, status: status }),
-                    signal: _ac.signal,
-                });
-                if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
-                    this.showToast('Server error (' + res.status + ')', 'error');
-                    this.loading = false;
-                    return;
+                const chunks = [];
+                for (let i = 0; i < actedIds.length; i += 500) {
+                    chunks.push(actedIds.slice(i, i + 500));
                 }
-                const data = await res.json();
-                if (data.success) {
-                    this.showToast(data.message || (actedIds.length + ' ' + label), 'success');
 
-                    const skippedSet = new Set((data.skipped_ids || []).map(Number));
-                    const movedIds = actedIds.filter(id => !skippedSet.has(Number(id)));
-                    keepSelected = actedIds.filter(id => skippedSet.has(Number(id)));
+                const processedSet = new Set();
+                const skippedSet = new Set();
+                let firstErrorMessage = '';
+
+                for (let i = 0; i < chunks.length; i += 1) {
+                    const batch = chunks[i];
+                    const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/bulk-status/'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                        body: JSON.stringify({ card_ids: batch, status: status }),
+                        signal: _ac.signal,
+                    });
+
+                    if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
+                        firstErrorMessage = 'Server error (' + res.status + ')';
+                        break;
+                    }
+
+                    const data = await res.json().catch(() => ({}));
+                    if (!data.success) {
+                        firstErrorMessage = data.message || 'Action failed';
+                        break;
+                    }
+
+                    batch.forEach((id) => processedSet.add(Number(id)));
+                    (data.skipped_ids || []).forEach((id) => skippedSet.add(Number(id)));
+                }
+
+                if (!processedSet.size) {
+                    this.showToast(firstErrorMessage || 'Action failed', 'error');
+                } else {
+                    const processedIds = actedIds.filter((id) => processedSet.has(Number(id)));
+                    const movedIds = processedIds.filter((id) => !skippedSet.has(Number(id)));
+                    keepSelected = actedIds.filter((id) => !processedSet.has(Number(id)) || skippedSet.has(Number(id)));
                     const movedCount = movedIds.length;
+
+                    if (firstErrorMessage) {
+                        this.showToast(`${movedCount} ${label}. Some records were not processed.`, 'info');
+                    } else {
+                        this.showToast(`${movedCount} ${label}`, 'success');
+                    }
 
                     // Update top badge counts immediately without waiting for reload.
                     if (status !== LIST_TYPE && movedCount > 0) {
@@ -1843,12 +1962,11 @@ function listApp() {
                     if (status !== LIST_TYPE && movedCount > 0) {
                         this._removeCardsFromCurrentList(movedIds);
                     }
-                } else {
-                    this.showToast(data.message || 'Action failed', 'error');
                 }
             } catch (e) { this.showToast(e.name === 'AbortError' ? 'Request timed out' : 'Network error', 'error'); }
             this.loading = false;
             this.selectedIds = keepSelected;
+            if (!this.selectedIds.length) this.selectAll = false;
             document.querySelectorAll('[data-sid]').forEach(el => {
                 this._updateRowClass(Number(el.getAttribute('data-sid')));
             });

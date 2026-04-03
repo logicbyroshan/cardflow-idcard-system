@@ -107,11 +107,13 @@
                                 :title="c.status === 'active' ? 'Deactivate client' : 'Activate client'">
                             <i class="text-[10px]" :class="c.status === 'active' ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
                         </button>
+                        {% if can_delete_clients %}
                         <button type="button" @click="deleteClient(c)"
                                 class="w-8 h-8 rounded-xl bg-red-100 text-red-700 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
                                 title="Delete client">
                             <i class="fa-solid fa-trash text-[10px]"></i>
                         </button>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -346,6 +348,7 @@ function getCookie(name) {
 
 const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 const CAN_MANAGE_CLIENTS = {{ can_manage_clients|yesno:"true,false" }};
+const CAN_DELETE_CLIENTS = {{ can_delete_clients|yesno:"true,false" }};
 const CLIENT_PERMISSION_KEYS = [
     'perm_idcard_client_list',
     'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
@@ -353,8 +356,8 @@ const CLIENT_PERMISSION_KEYS = [
     'perm_reprint_request_list', 'perm_confirmed_list',
     'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
     'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
-    'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all',
-    'perm_mobile_app',
+    'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_upgrade_all',
+    'perm_mobile_app', 'perm_set_temp_password',
 ];
 
 const CLIENTS_DATA = JSON.parse(document.getElementById('clients-json-data').textContent);
@@ -367,6 +370,7 @@ function clientsApp() {
         loadingTables: {},
         toast: { show: false, message: '', type: 'success' },
         canManageClients: CAN_MANAGE_CLIENTS,
+        canDeleteClients: CAN_DELETE_CLIENTS,
         showForm: false,
         formOverlayToken: null,
         editMode: false,
@@ -430,8 +434,7 @@ function clientsApp() {
                 items: [
                     { key: 'perm_idcard_bulk_upload', label: 'Bulk Upload (XLSX / ZIP)' },
                     { key: 'perm_idcard_bulk_download', label: 'Bulk Download (PDF)' },
-                    { key: 'perm_delete_all_idcard', label: 'Delete All ID Cards' },
-                    { key: 'perm_idcard_upgrade_all', label: 'Upgrade All' },
+                    { key: 'perm_idcard_upgrade_all', label: 'Upgrade All Classes' },
                 ],
             },
             {
@@ -439,6 +442,7 @@ function clientsApp() {
                 items: [
                     { key: 'perm_mobile_app', label: 'Mobile App Access' },
                     { key: 'perm_idcard_client_list', label: 'Manage Client' },
+                    { key: 'perm_set_temp_password', label: 'Set Temp Password (Staff)' },
                 ],
             },
         ],
@@ -675,7 +679,7 @@ function clientsApp() {
             }
         },
         async deleteClient(client) {
-            if (!this.canManageClients) return;
+            if (!this.canDeleteClients) return;
             if (!confirm(`Delete ${client.name}? This cannot be undone.`)) return;
             try {
                 const res = await fetch(`/app/api/client/${client.id}/delete/`, {

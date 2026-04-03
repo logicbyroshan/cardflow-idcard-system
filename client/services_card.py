@@ -4,11 +4,14 @@ Client Card Service — read and status-transition operations on ID cards.
 from typing import Optional, List, Any, Tuple
 
 from django.utils.timezone import localtime
+from django.utils.dateparse import parse_datetime, parse_date
+from django.utils.timezone import make_aware, is_naive
 from django.db.models import Count, Q
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
 from django.db.models import CharField
 
+from core.services import IDCardService
 from core.models import User
 from client.models import Client
 from staff.models import Staff
@@ -281,7 +284,9 @@ class ClientCardService(BaseService):
         offset: int = 0,
         limit: int = 100,
         search: Optional[str] = None,
-        cursor: int = None
+        cursor: int = None,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
@@ -348,22 +353,36 @@ class ClientCardService(BaseService):
 
             cards_query = cls._apply_client_staff_row_scope(user, table, cards_query)
             
-            # Search in field_data (JSONField)
+            # Search in field_data (JSONField) using table-aware matcher.
             if search:
-                search_lower = search.lower()
-                # Filter by searching in the JSON field data
-                # This looks for the search term in NAME, name, id_number, etc.
-                cards_query = cards_query.filter(
-                    Q(field_data__NAME__icontains=search_lower) |
-                    Q(field_data__name__icontains=search_lower) |
-                    Q(field_data__Name__icontains=search_lower) |
-                    Q(field_data__ID__icontains=search) |
-                    Q(field_data__id__icontains=search) |
-                    Q(field_data__ID_NUMBER__icontains=search) |
-                    Q(field_data__id_number__icontains=search) |
-                    Q(field_data__ROLL_NO__icontains=search) |
-                    Q(field_data__roll_no__icontains=search)
-                )
+                cards_query = IDCardService._apply_search_filter(cards_query, search, table=table)
+
+            # Download list supports date/date-time range filtering by downloaded_at.
+            if status_filter == 'download':
+                from_value = (from_date or '').strip()
+                to_value = (to_date or '').strip()
+
+                if from_value:
+                    parsed_from_dt = parse_datetime(from_value)
+                    if parsed_from_dt is not None:
+                        if is_naive(parsed_from_dt):
+                            parsed_from_dt = make_aware(parsed_from_dt)
+                        cards_query = cards_query.filter(downloaded_at__gte=parsed_from_dt)
+                    else:
+                        parsed_from_d = parse_date(from_value)
+                        if parsed_from_d is not None:
+                            cards_query = cards_query.filter(downloaded_at__date__gte=parsed_from_d)
+
+                if to_value:
+                    parsed_to_dt = parse_datetime(to_value)
+                    if parsed_to_dt is not None:
+                        if is_naive(parsed_to_dt):
+                            parsed_to_dt = make_aware(parsed_to_dt)
+                        cards_query = cards_query.filter(downloaded_at__lte=parsed_to_dt)
+                    else:
+                        parsed_to_d = parse_date(to_value)
+                        if parsed_to_d is not None:
+                            cards_query = cards_query.filter(downloaded_at__date__lte=parsed_to_d)
             
             total_count = cards_query.count()
 
@@ -415,6 +434,7 @@ class ClientCardService(BaseService):
                     'field_data': card.field_data,
                     'status': card.status,
                     'status_display': card.get_status_display(),
+                    'downloaded_date': localtime(card.downloaded_at).strftime('%Y-%m-%d') if card.downloaded_at else '',
                     'created_at': localtime(card.created_at).strftime('%d %b %Y, %H:%M'),
                     'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
                 }

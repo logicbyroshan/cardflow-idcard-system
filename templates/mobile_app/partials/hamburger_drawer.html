@@ -169,7 +169,7 @@
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
                 <div class="flex flex-col gap-2.5">
 
-                      {% if is_super_admin or is_admin_staff %}
+                      {% if is_super_admin or is_admin_staff and perm_idcard_client_list %}
                           <!-- Manage Client -->
                           <a href="{% url 'mobile_app:clients_list' %}"
                        @click="close()"
@@ -181,7 +181,7 @@
                     </a>
                     {% endif %}
 
-                          {% if is_client or is_super_admin %}
+                          {% if is_super_admin or is_client and perm_idcard_client_list %}
                     <a href="{% url 'mobile_app:staff_manage' %}"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"

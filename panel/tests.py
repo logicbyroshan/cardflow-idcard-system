@@ -680,3 +680,14 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertTrue(all(item['source_type'] == 'activity_log' for item in items))
         self.assertTrue(all(item['action'] == 'login' for item in items))
         self.assertTrue(all(item['user'] == self.client_user.username for item in items))
+
+    def test_operations_feed_rejects_removed_client_logs_source(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {
+            'source': 'client_logs',
+            'limit': 20,
+        })
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+        self.assertIn('Invalid source filter', payload.get('message', ''))

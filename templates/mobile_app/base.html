@@ -25,7 +25,10 @@
     <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 
     <!-- Font Awesome (self-hosted for offline reliability) -->
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">

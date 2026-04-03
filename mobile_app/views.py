@@ -28,6 +28,8 @@ from django.db import transaction
 from django.db.models import Count, Q, Max, CharField
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
+from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.timezone import make_aware, is_naive
 
 from client.services import (
     ClientAccessService,
@@ -52,6 +54,7 @@ from mediafiles.services.image_thumbnail import ThumbnailService
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
 MAX_SEARCH_QUERY_LEN = 100
+MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MAX_REPRINT_ACTION_IDS = 200
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
 
@@ -227,6 +230,16 @@ def _client_ctx(user):
     return client, perms
 
 
+def _can_manage_clients_surface(user):
+    """Return True when user can use Manage Client actions."""
+    return PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
+
+
+def _can_manage_client_staff_surface(user):
+    """Return True when client user can manage client staff."""
+    return PermissionService.is_client(user) and PermissionService.has(user, 'perm_idcard_client_list')
+
+
 _AACI_SENTINEL = object()  # sentinel for _admin_accessible_client_ids cache
 
 
@@ -252,47 +265,121 @@ def _admin_accessible_client_ids(user):
     return result
 
 
-def _search_cards_queryset(base_qs, query, limit=None):
-    """Apply performant card search over common JSON keys plus a few spaced-key annotations."""
+def _image_path_basename(value):
+    """Return a normalized basename from a stored media path-like value."""
+    raw = str(value or '').strip()
+    if not raw or raw == 'NOT_FOUND' or raw.startswith('PENDING:'):
+        return ''
+    cleaned = raw.replace('\\', '/').split('?', 1)[0].split('#', 1)[0]
+    return cleaned.rsplit('/', 1)[-1]
+
+
+def _search_cards_for_global_results(base_qs, query, limit=50, filter_type='all'):
+    """Desktop-parity card matching for mobile global search.
+
+    Uses a broad DB prefilter and then validates matches field-by-field so
+    mobile search behaves like desktop global search for dynamic table fields.
+    """
     if not query or len(query) < 2:
-        return base_qs.none()
+        return []
 
-    search_q = (
-        Q(field_data__NAME__icontains=query) |
-        Q(field_data__name__icontains=query) |
-        Q(field_data__Name__icontains=query) |
-        Q(field_data__ID__icontains=query) |
-        Q(field_data__id__icontains=query) |
-        Q(field_data__ID_NUMBER__icontains=query) |
-        Q(field_data__id_number__icontains=query) |
-        Q(field_data__ROLL_NO__icontains=query) |
-        Q(field_data__roll_no__icontains=query) |
-        Q(field_data__CLASS__icontains=query) |
-        Q(field_data__class__icontains=query) |
-        Q(field_data__SECTION__icontains=query) |
-        Q(field_data__section__icontains=query) |
-        Q(field_data__FATHER_NAME__icontains=query) |
-        Q(field_data__MOTHER_NAME__icontains=query) |
-        Q(field_data__CONTACT__icontains=query) |
-        Q(field_data__PHONE__icontains=query)
-    )
-    if query.isdigit():
-        search_q |= Q(id=int(query))
+    query_upper = query.upper()
+    active_filter = str(filter_type or 'all').strip().lower()
+    if active_filter not in ('all', 'name', 'address', 'mobile'):
+        active_filter = 'all'
+    image_field_types = {'photo', 'mother_photo', 'father_photo', 'image', 'signature'}
+    non_searchable_field_types = {'file', 'barcode', 'qr_code'}
+    non_searchable_name_tokens = ('BARCODE', 'QR', 'FILE')
 
-    qs = base_qs.annotate(
-        _roll_no_sp=Cast(KeyTextTransform('ROLL NO', 'field_data'), CharField()),
-        _father_name_sp=Cast(KeyTextTransform('FATHER NAME', 'field_data'), CharField()),
-        _mother_name_sp=Cast(KeyTextTransform('MOTHER NAME', 'field_data'), CharField()),
-    ).filter(
-        search_q |
-        Q(_roll_no_sp__icontains=query) |
-        Q(_father_name_sp__icontains=query) |
-        Q(_mother_name_sp__icontains=query)
-    )
+    cards = base_qs.filter(field_data__icontains=query)[:MAX_GLOBAL_SEARCH_DB_SCAN]
+    matched_cards = []
 
-    if limit is not None:
-        return qs[:limit]
-    return qs
+    for card in cards:
+        field_data = card.field_data or {}
+        if not isinstance(field_data, dict):
+            continue
+
+        field_type_by_name = {}
+        table_fields = getattr(card.table, 'fields', None)
+        if isinstance(table_fields, list):
+            for field in table_fields:
+                if not isinstance(field, dict):
+                    continue
+                field_name = str(field.get('name', '')).strip().upper()
+                if not field_name:
+                    continue
+                field_type_by_name[field_name] = str(field.get('type', 'text')).strip().lower()
+
+        matched = False
+        for field_name, field_value in field_data.items():
+            if field_value in (None, ''):
+                continue
+
+            field_name_upper = str(field_name).upper()
+            field_type = field_type_by_name.get(field_name_upper, '')
+
+            is_image_field = (
+                field_type in image_field_types
+                or ((not field_type) and ('PHOTO' in field_name_upper or 'IMAGE' in field_name_upper or 'SIGN' in field_name_upper))
+            )
+            if is_image_field:
+                if active_filter != 'all':
+                    continue
+                image_basename = _image_path_basename(field_value)
+                if image_basename and query_upper in image_basename.upper():
+                    matched = True
+                    break
+                continue
+
+            if field_type in non_searchable_field_types:
+                continue
+            if (not field_type) and any(token in field_name_upper for token in non_searchable_name_tokens):
+                continue
+
+            if active_filter != 'all':
+                if active_filter == 'name' and 'NAME' not in field_name_upper:
+                    continue
+                if active_filter == 'address' and 'ADDRESS' not in field_name_upper:
+                    continue
+                if active_filter == 'mobile' and ('MOBILE' not in field_name_upper and 'PHONE' not in field_name_upper and 'MOB' not in field_name_upper):
+                    continue
+
+            if query_upper in str(field_value).upper():
+                matched = True
+                break
+
+        if not matched:
+            continue
+
+        matched_cards.append(card)
+        if len(matched_cards) >= limit:
+            break
+
+    return matched_cards
+
+
+def _card_display_name(card, field_data):
+    """Return user-facing card name with table-aware fallback."""
+    for key in ('NAME', 'name', 'Name'):
+        value = (field_data or {}).get(key)
+        if value:
+            return str(value)
+
+    table_fields = getattr(card.table, 'fields', None)
+    if isinstance(table_fields, list):
+        for field in table_fields:
+            if not isinstance(field, dict):
+                continue
+            if str(field.get('type', 'text')).strip().lower() not in ('text', 'textarea'):
+                continue
+            fname = field.get('name')
+            if not fname:
+                continue
+            value = (field_data or {}).get(fname)
+            if value:
+                return str(value)
+
+    return f'Card #{card.id}'
 
 
 def _sanitize_search_query(value, max_len=MAX_SEARCH_QUERY_LEN):
@@ -696,18 +783,41 @@ def pwa_service_worker(request):
     from django.http import HttpResponse
     sw_content = """\
 /* Adarsh ID Cards — PWA Service Worker */
-const CACHE = 'adarsh-app-v2';
+const APP_CACHE = 'adarsh-app-v3';
+const STATIC_CACHE = 'adarsh-static-v3';
 const SHELL = ['/app/', '/app/login/', '/app/manifest.json'];
+const STATIC_ASSETS = [
+    '/static/css/tailwind.css',
+    '/static/css/vendor/fontawesome/all.min.css?v=2',
+    '/static/css/vendor/webfonts/fa-solid-900.woff2',
+    '/static/css/vendor/webfonts/fa-regular-400.woff2',
+    '/static/css/vendor/webfonts/fa-brands-400.woff2',
+    '/static/mobile/css/mobile.css?v=5',
+    '/static/mobile/js/app.js',
+];
+
+function shouldCache(response) {
+    return !!response && (response.status === 200 || response.type === 'opaque');
+}
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
-        caches.open(CACHE).then(async function(c) {
-            await Promise.allSettled(
-                SHELL.map(function(url) {
-                    return c.add(url);
-                })
-            );
-        })
+        Promise.all([
+            caches.open(APP_CACHE).then(async function(c) {
+                await Promise.allSettled(
+                    SHELL.map(function(url) {
+                        return c.add(url);
+                    })
+                );
+            }),
+            caches.open(STATIC_CACHE).then(async function(c) {
+                await Promise.allSettled(
+                    STATIC_ASSETS.map(function(url) {
+                        return c.add(url);
+                    })
+                );
+            }),
+        ])
     );
     self.skipWaiting();
 });
@@ -716,7 +826,10 @@ self.addEventListener('activate', function(e) {
     e.waitUntil(
         caches.keys().then(function(keys) {
             return Promise.all(
-                keys.filter(function(k) { return k !== CACHE; })
+                keys
+                    .filter(function(k) {
+                        return k !== APP_CACHE && k !== STATIC_CACHE;
+                    })
                     .map(function(k) { return caches.delete(k); })
             );
         })
@@ -725,9 +838,31 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-    /* Only intercept GET requests within /app/ */
     if (e.request.method !== 'GET') return;
+
     var url = new URL(e.request.url);
+    if (url.origin !== self.location.origin) return;
+
+    if (url.pathname.startsWith('/static/')) {
+        e.respondWith(
+            caches.open(STATIC_CACHE).then(function(c) {
+                return c.match(e.request).then(function(cached) {
+                    var networkFetch = fetch(e.request).then(function(resp) {
+                        if (shouldCache(resp)) {
+                            c.put(e.request, resp.clone());
+                        }
+                        return resp;
+                    }).catch(function() {
+                        return cached;
+                    });
+
+                    return cached || networkFetch;
+                });
+            })
+        );
+        return;
+    }
+
     if (!url.pathname.startsWith('/app/')) return;
 
     e.respondWith(
@@ -1260,7 +1395,8 @@ def clients_list(request):
         'clients': client_data,
         'clients_json': client_data,
         'client_count': len(client_data),
-        'can_manage_clients': PermissionService.is_super_admin(user),
+        'can_manage_clients': _can_manage_clients_surface(user),
+        'can_delete_clients': PermissionService.is_super_admin(user),
         **perms,
     })
 
@@ -1392,6 +1528,9 @@ def card_list(request, table_id, status):
     if status_perm and not PermissionService.has(user, status_perm):
         return redirect('mobile_app:home')
 
+    from_date = (request.GET.get('from') or '').strip()
+    to_date = (request.GET.get('to') or '').strip()
+
     # Keep initial server-rendered ordering aligned with api_cards()/ClientCardService.get_cards.
     if status == 'download':
         cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-downloaded_at', '-id')
@@ -1407,6 +1546,29 @@ def card_list(request, table_id, status):
         'id', 'field_data', 'status', 'photo',
         'created_at', 'status_changed_at', 'downloaded_at', 'deleted_at',
     )
+
+    if status == 'download':
+        if from_date:
+            parsed_from_dt = parse_datetime(from_date)
+            if parsed_from_dt is not None:
+                if is_naive(parsed_from_dt):
+                    parsed_from_dt = make_aware(parsed_from_dt)
+                cards_qs = cards_qs.filter(downloaded_at__gte=parsed_from_dt)
+            else:
+                parsed_from_d = parse_date(from_date)
+                if parsed_from_d is not None:
+                    cards_qs = cards_qs.filter(downloaded_at__date__gte=parsed_from_d)
+
+        if to_date:
+            parsed_to_dt = parse_datetime(to_date)
+            if parsed_to_dt is not None:
+                if is_naive(parsed_to_dt):
+                    parsed_to_dt = make_aware(parsed_to_dt)
+                cards_qs = cards_qs.filter(downloaded_at__lte=parsed_to_dt)
+            else:
+                parsed_to_d = parse_date(to_date)
+                if parsed_to_d is not None:
+                    cards_qs = cards_qs.filter(downloaded_at__date__lte=parsed_to_d)
 
     _card_batch_raw = list(cards_qs[:51])
     _has_more_raw = len(_card_batch_raw) > 50
@@ -1599,6 +1761,7 @@ def card_list(request, table_id, status):
             'photo_slots': photo_slots,
             'has_photo': bool(photo_urls),
             'status': card.status,
+            'downloaded_date': card.downloaded_at.strftime('%Y-%m-%d') if card.downloaded_at else '',
             'field_data': fd,
             'display_fields': _build_display_fields(fd, table_fields),
         })
@@ -1722,6 +1885,9 @@ def card_list(request, table_id, status):
         'can_reprint_request_list': can_reprint_request_list,
         'can_reprint_confirmed_list': can_reprint_confirmed_list,
         'has_any_list_actions': has_any_list_actions,
+        'from_date': from_date if status == 'download' else '',
+        'to_date': to_date if status == 'download' else '',
+        'search_scope_table_id': table.id,
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
@@ -2372,6 +2538,8 @@ def api_cards(request, table_id):
     """Get cards for a table (paginated)."""
     status_filter = request.GET.get('status', '')
     search = _sanitize_search_query(request.GET.get('search', ''))
+    from_date = (request.GET.get('from') or '').strip()
+    to_date = (request.GET.get('to') or '').strip()
     try:
         page = max(int(request.GET.get('page', 1)), 1)
         per_page = max(1, min(int(request.GET.get('per_page', 50)), 200))
@@ -2383,6 +2551,8 @@ def api_cards(request, table_id):
         request.user, table_id,
         status_filter or None, offset, per_page,
         search or None,
+        from_date=from_date,
+        to_date=to_date,
     )
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})
@@ -2568,8 +2738,9 @@ def staff_manage(request):
     if not client:
         return redirect('/app/login/')
 
-    # Only client and super_admin can manage staff from mobile.
-    if not PermissionService.is_client(user) and not PermissionService.is_super_admin(user):
+    # Super admin can always manage admin staff.
+    # Client role must also hold Manage Client permission (website parity).
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return redirect('mobile_app:home')
 
     # For client role, use the service; super_admin sees admin staff only.
@@ -2741,6 +2912,23 @@ def search_page(request):
         return redirect('/app/login/')
 
     query = _sanitize_search_query(request.GET.get('q', ''))
+    filter_type = str(request.GET.get('filter', 'all') or 'all').strip().lower()
+    if filter_type not in ('all', 'name', 'address', 'mobile'):
+        filter_type = 'all'
+    raw_table_id = (request.GET.get('table_id') or '').strip()
+    table_scope_id = None
+
+    if raw_table_id.isdigit():
+        parsed_table_id = int(raw_table_id)
+        if parsed_table_id > 0:
+            scoped_table = IDCardTable.objects.select_related('group').filter(id=parsed_table_id).first()
+            if scoped_table and PermissionService.can_access_client(user, scoped_table.group.client_id):
+                if user.role in ('client', 'client_staff'):
+                    if ClientAccessService.can_access_table(user, scoped_table):
+                        table_scope_id = parsed_table_id
+                else:
+                    table_scope_id = parsed_table_id
+
     results = []
 
     if query and len(query) >= 2:
@@ -2757,12 +2945,14 @@ def search_page(request):
                 table__group__client=client,
             ).select_related('table', 'table__group').order_by('-updated_at')
 
-        # Prefer key-based JSON search to avoid expensive full JSON text casts.
-        cards_qs = _search_cards_queryset(base_qs, query)[:50]
+        if table_scope_id:
+            base_qs = base_qs.filter(table_id=table_scope_id)
+
+        cards_qs = _search_cards_for_global_results(base_qs, query, limit=50, filter_type=filter_type)
 
         for card in cards_qs:
             fd = card.field_data or {}
-            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+            name = _card_display_name(card, fd)
             roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
             photo_url = card.photo.url if card.photo else None
             if not photo_url:
@@ -2787,6 +2977,8 @@ def search_page(request):
         'user_name': user.get_full_name() or user.username,
         'client': client,
         'query': query,
+        'filter_type': filter_type,
+        'table_scope_id': table_scope_id,
         'results': results,
         'result_count': len(results),
         **perms,
@@ -2830,6 +3022,8 @@ def api_staff_list(request):
     """List staff for the client."""
     user = request.user
     if PermissionService.is_client(user):
+        if not _can_manage_client_staff_surface(user):
+            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
         result = ClientStaffService.list_staff(user)
         if result.success:
             return JsonResponse({'success': True, 'data': result.data})
@@ -2862,7 +3056,7 @@ def api_staff_list(request):
 def api_staff_create(request):
     """Create a new staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
@@ -2892,7 +3086,7 @@ def api_staff_create(request):
 def api_staff_update(request, staff_id):
     """Update a staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
@@ -2918,7 +3112,7 @@ def api_staff_update(request, staff_id):
 def api_staff_toggle(request, staff_id):
     """Toggle staff active/inactive."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     if PermissionService.is_client(user):
@@ -2946,7 +3140,7 @@ def api_staff_toggle(request, staff_id):
 def api_staff_delete(request, staff_id):
     """Delete a staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     if PermissionService.is_client(user):
@@ -3013,6 +3207,10 @@ def api_search(request):
         return JsonResponse({'success': False, 'message': 'No client'}, status=400)
 
     query = _sanitize_search_query(request.GET.get('q', ''))
+    filter_type = str(request.GET.get('filter', 'all') or 'all').strip().lower()
+    if filter_type not in ('all', 'name', 'address', 'mobile'):
+        return JsonResponse({'success': False, 'message': 'Invalid search filter.'}, status=400)
+    raw_table_id = (request.GET.get('table_id') or '').strip()
     if not query or len(query) < 2:
         return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
 
@@ -3031,13 +3229,32 @@ def api_search(request):
             table__group__client=client,
         ).select_related('table', 'table__group').order_by('-updated_at')
 
-    # Prefer key-based JSON search to avoid expensive full JSON text casts.
-    cards_qs = _search_cards_queryset(base_qs, query)[:30]
+    if raw_table_id:
+        if not raw_table_id.isdigit():
+            return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
+
+        scoped_table_id = int(raw_table_id)
+        if scoped_table_id <= 0:
+            return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
+
+        scoped_table = IDCardTable.objects.select_related('group').filter(id=scoped_table_id).first()
+        if not scoped_table:
+            return JsonResponse({'success': False, 'message': 'Table not found.'}, status=404)
+
+        if not PermissionService.can_access_client(user, scoped_table.group.client_id):
+            return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+        if user.role in ('client', 'client_staff') and not ClientAccessService.can_access_table(user, scoped_table):
+            return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+        base_qs = base_qs.filter(table_id=scoped_table_id)
+
+    cards_qs = _search_cards_for_global_results(base_qs, query, limit=30, filter_type=filter_type)
 
     results = []
     for card in cards_qs:
         fd = card.field_data or {}
-        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        name = _card_display_name(card, fd)
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
         photo_url = get_card_photo_url(card, fd)
         results.append({
@@ -3102,8 +3319,12 @@ def api_server_info(request):
 def api_client_toggle(request, client_id):
     """Toggle a client between active / inactive."""
     from client.models import Client
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can change client status'}, status=403)
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+    if PermissionService.is_admin_staff(request.user) and not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         client = get_object_or_404(Client, id=client_id)
         if client.status == 'active':
@@ -3185,9 +3406,11 @@ def api_client_detail(request, client_id):
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_client_create(request):
-    """Create a client from mobile app (super_admin only)."""
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can create clients'}, status=403)
+    """Create a client from mobile app for users with Manage Client access."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:
@@ -3196,6 +3419,18 @@ def api_client_create(request):
     result = ClientService.create(data, request=request)
     if not result.success:
         return JsonResponse({'success': False, 'message': result.message or 'Failed to create client'}, status=400)
+
+    if PermissionService.is_admin_staff(request.user):
+        try:
+            created_client_id = ((result.data or {}).get('client') or {}).get('id')
+            if created_client_id:
+                from client.models import Client
+                created_client = Client.objects.filter(id=created_client_id).first()
+                staff = getattr(request.user, 'staff_profile', None)
+                if created_client and staff:
+                    staff.assigned_clients.add(created_client)
+        except Exception:
+            logger.warning('Could not auto-assign newly created client to admin_staff user=%s', request.user.pk)
 
     client_payload = result.data.get('client', {}) if result.data else {}
     return JsonResponse({
@@ -3208,9 +3443,13 @@ def api_client_create(request):
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_client_update(request, client_id):
-    """Update client from mobile app (super_admin only)."""
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can update clients'}, status=403)
+    """Update a client from mobile app for users with Manage Client access."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+    if PermissionService.is_admin_staff(request.user) and not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:

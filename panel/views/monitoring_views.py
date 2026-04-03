@@ -500,6 +500,9 @@ def api_operations_feed(request):
     fetch_cap = min(max(offset + limit + 400, 300), 2000)
 
     source = (request.GET.get('source', 'all') or 'all').strip().lower()
+    allowed_sources = {'all', 'tasks', 'task', 'background', 'background_tasks', 'backups', 'backup', 'logs', 'log', 'activity'}
+    if source not in allowed_sources:
+        return JsonResponse({'success': False, 'message': 'Invalid source filter'}, status=400)
     search = (request.GET.get('search', '') or '').strip()
     user_role = (request.GET.get('user_role', '') or '').strip()
     task_status = (request.GET.get('task_status', '') or '').strip()

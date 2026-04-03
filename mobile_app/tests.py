@@ -1,9 +1,11 @@
 import json
 from unittest import mock
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
@@ -73,6 +75,20 @@ class MobileAppBaseTestCase(TestCase):
 			perm_idcard_pending_list=True,
 		)
 
+		self.admin_staff_manage_user = User.objects.create_user(
+			username='mob-admin-manage@test.com',
+			email='mob-admin-manage@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		self.admin_staff_manage_profile = Staff.objects.create(
+			user=self.admin_staff_manage_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+			perm_idcard_pending_list=True,
+			perm_idcard_client_list=True,
+		)
+
 		self.group = IDCardGroup.objects.create(client=self.client_profile, name='Group A')
 		self.table = IDCardTable.objects.create(
 			group=self.group,
@@ -88,6 +104,7 @@ class MobileAppBaseTestCase(TestCase):
 			field_data={'NAME': 'Student One', 'ROLL NO': '101'},
 			status='pending',
 		)
+		self.admin_staff_manage_profile.assigned_clients.add(self.client_profile)
 
 	def _set_mobile_auth_checkpoint(self):
 		session = self.client.session
@@ -106,6 +123,14 @@ class MobileAppBaseTestCase(TestCase):
 		self.client.login(username='mob-admin-staff@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
 
+	def _login_mobile_admin_staff_manager(self):
+		self.client.login(username='mob-admin-manage@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_client_with_add_perm(self):
+		self.client.login(username='mob-client-add@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
 
 class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 	def test_manifest_endpoint_returns_pwa_payload(self):
@@ -121,6 +146,9 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response['Service-Worker-Allowed'], '/app/')
 		self.assertIn('application/javascript', response['Content-Type'])
+		content = response.content.decode('utf-8')
+		self.assertIn("const STATIC_CACHE = 'adarsh-static-v3';", content)
+		self.assertIn("/static/css/vendor/webfonts/fa-solid-900.woff2", content)
 
 	def test_mobile_page_redirects_without_mobile_auth_checkpoint(self):
 		self.client.login(username='mob-super@test.com', password='pass1234')
@@ -346,11 +374,26 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
 		self.assertEqual(response.status_code, 403)
 
+		self._login_mobile_admin_staff()
+		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
+		self.assertEqual(response.status_code, 403)
+
 	def test_client_toggle_allowed_for_super_admin(self):
 		self._login_mobile_super_admin()
 		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
 		self.assertEqual(response.status_code, 200)
 		self.assertTrue(response.json()['success'])
+
+	def test_client_toggle_allowed_for_admin_staff_with_manage_client_permission(self):
+		self._login_mobile_admin_staff_manager()
+		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+
+	def test_client_delete_stays_super_admin_only_for_admin_staff_with_manage_permission(self):
+		self._login_mobile_admin_staff_manager()
+		response = self.client.post(f'/app/api/client/{self.client_profile.id}/delete/')
+		self.assertEqual(response.status_code, 403)
 
 	def test_client_tables_requires_admin_role(self):
 		self._login_mobile_client()
@@ -369,6 +412,118 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		payload = response.json()
 		self.assertTrue(payload['success'])
 		self.assertEqual(payload['data']['count'], 0)
+
+	def test_search_matches_dynamic_field_like_desktop_global_search(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'ADMISSION CODE', 'type': 'text', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+		card = IDCard.objects.create(
+			table=self.table,
+			field_data={
+				'NAME': 'Student Two',
+				'ROLL NO': '202',
+				'ADMISSION CODE': 'MOB-GLOBAL-SEARCH-777',
+			},
+			status='verified',
+		)
+
+		response = self.client.get('/app/api/search/?q=MOB-GLOBAL-SEARCH-777')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['results']]
+		self.assertIn(card.id, ids)
+
+	def test_mobile_list_api_search_matches_dynamic_table_field(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'ADMISSION CODE', 'type': 'text', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		card = IDCard.objects.create(
+			table=self.table,
+			field_data={
+				'NAME': 'Student Three',
+				'ROLL NO': '303',
+				'ADMISSION CODE': 'MOB-LIST-SEARCH-919',
+			},
+			status='pending',
+		)
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&search=MOB-LIST-SEARCH-919')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(card.id, ids)
+
+	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
+		self._login_mobile_super_admin()
+
+		old_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Old Download', 'ROLL NO': '401', 'DOB': '2099-01-01'},
+			status='download',
+		)
+		new_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'New Download', 'ROLL NO': '402', 'DOB': '2000-01-01'},
+			status='download',
+		)
+
+		now = timezone.now()
+		old_card.downloaded_at = now - timedelta(days=3)
+		old_card.save(update_fields=['downloaded_at'])
+		new_card.downloaded_at = now
+		new_card.save(update_fields=['downloaded_at'])
+
+		from_date = now.date().isoformat()
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=download&from={from_date}')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(new_card.id, ids)
+		self.assertNotIn(old_card.id, ids)
+
+	def test_mobile_global_search_supports_filter_and_table_scope(self):
+		self._login_mobile_super_admin()
+
+		other_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Table Scope B',
+			fields=[
+				{'name': 'NAME', 'type': 'text', 'order': 0},
+				{'name': 'MOBILE', 'type': 'text', 'order': 1},
+			],
+			is_active=True,
+		)
+
+		in_scope = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Scoped Person', 'MOBILE': '9990011111'},
+			status='verified',
+		)
+		out_scope = IDCard.objects.create(
+			table=other_table,
+			field_data={'NAME': 'Scoped Person', 'MOBILE': '9990022222'},
+			status='verified',
+		)
+
+		response = self.client.get(f'/app/api/search/?q=Scoped Person&filter=name&table_id={self.table.id}')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['results']]
+		self.assertIn(in_scope.id, ids)
+		self.assertNotIn(out_scope.id, ids)
 
 	def test_table_picker_admin_staff_without_assigned_clients_sees_empty_list(self):
 		self._login_mobile_admin_staff()
@@ -402,6 +557,64 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertTrue(response.json()['success'])
 		self.assertEqual(response.json()['client']['id'], 999)
+
+	@mock.patch('mobile_app.views.ClientService.create')
+	def test_client_create_forbidden_for_admin_staff_without_manage_client_permission(self, mock_create):
+		self._login_mobile_admin_staff()
+		response = self.client.post(
+			'/app/api/client/create/',
+			data=json.dumps({'name': 'Denied Create', 'email': 'denied@test.com'}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 403)
+		mock_create.assert_not_called()
+
+	@mock.patch('mobile_app.views.ClientService.create')
+	def test_client_create_auto_assigns_new_client_for_admin_staff_with_manage_permission(self, mock_create):
+		from core.services.base import ServiceResult
+
+		target_client = self.client_profile_with_add_perm
+		self.assertFalse(self.admin_staff_manage_profile.assigned_clients.filter(id=target_client.id).exists())
+
+		mock_create.return_value = ServiceResult(
+			success=True,
+			message='Client created',
+			data={'client': {'id': target_client.id, 'name': target_client.name}},
+		)
+
+		self._login_mobile_admin_staff_manager()
+		response = self.client.post(
+			'/app/api/client/create/',
+			data=json.dumps({'name': target_client.name, 'email': 'new-client@test.com'}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		self.admin_staff_manage_profile.refresh_from_db()
+		self.assertTrue(self.admin_staff_manage_profile.assigned_clients.filter(id=target_client.id).exists())
+
+	def test_staff_manage_page_requires_manage_client_permission_for_client_role(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/staff/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self.client_profile.perm_idcard_client_list = True
+		self.client_profile.save(update_fields=['perm_idcard_client_list'])
+		allowed = self.client.get('/app/staff/')
+		self.assertEqual(allowed.status_code, 200)
+
+	def test_staff_api_list_requires_manage_client_permission_for_client_role(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/api/staff/')
+		self.assertEqual(denied.status_code, 403)
+		self.assertFalse(denied.json()['success'])
+
+		self.client_profile.perm_idcard_client_list = True
+		self.client_profile.save(update_fields=['perm_idcard_client_list'])
+		allowed = self.client.get('/app/api/staff/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertTrue(allowed.json()['success'])
 
 	def test_website_upload_requires_website_edit_permission(self):
 		self._login_mobile_client()

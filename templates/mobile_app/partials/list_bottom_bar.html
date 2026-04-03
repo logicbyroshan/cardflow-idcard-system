@@ -173,7 +173,7 @@
                         <p class="text-[11px] font-bold text-gray-700 leading-tight">View-only access for this list</p>
                         <p class="text-[9px] text-gray-400 leading-tight mt-0.5">Open cards to inspect details. Action buttons appear when permission is granted.</p>
                     </div>
-                    <a href="{% url 'mobile_app:search_page' %}"
+                    <a href="{% url 'mobile_app:search_page' %}?table_id={{ table_id }}"
                        class="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[10px] font-semibold text-sky-700 active:scale-95 transition-transform">
                         <i class="fa-solid fa-magnifying-glass text-[9px]"></i>
                         Search

@@ -14,7 +14,7 @@
             <h1 class="text-white font-bold text-sm">Staff Management</h1>
             <p class="text-white/70 text-[10px]" x-text="staffList.length + ' staff member(s)'"></p>
         </div>
-        {% if is_client or is_super_admin or is_admin_staff %}
+        {% if is_super_admin or is_client and perm_idcard_client_list %}
         <button @click="openAddForm()" class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white active:bg-white/30 transition-colors">
             <i class="fa-solid fa-plus text-sm"></i>
         </button>
@@ -51,7 +51,7 @@
                         <p class="text-[11px] text-gray-500 truncate" x-text="staff.email"></p>
                     </div>
                     <!-- Actions -->
-                    {% if is_client or is_super_admin or is_admin_staff %}
+                    {% if is_super_admin or is_client and perm_idcard_client_list %}
                     <div class="flex items-center gap-1 flex-shrink-0">
                         <button @click="toggleStaff(staff)" class="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95"
                                 :class="staff.is_active ? 'bg-yellow-50 text-yellow-500' : 'bg-green-50 text-green-500'">
@@ -75,7 +75,7 @@
                 <i class="fa-solid fa-users text-2xl text-gray-400"></i>
             </div>
             <p class="text-[13px] font-semibold text-gray-500" x-text="searchQuery ? 'No staff matching your search' : 'No staff members yet'"></p>
-            {% if is_client or is_super_admin or is_admin_staff %}
+            {% if is_super_admin or is_client and perm_idcard_client_list %}
             <button @click="openAddForm()" class="mt-4 px-4 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-xl shadow active:scale-95 transition-all">
                 <i class="fa-solid fa-plus mr-1"></i>Create Staff
             </button>
@@ -268,6 +268,17 @@ function staffApp() {
             permissions: {}
         },
         permissionGroups: [
+            {% if is_super_admin %}
+            {
+                title: 'Group Settings',
+                items: [
+                    { key: 'perm_idcard_setting_add', label: 'Create Template' },
+                    { key: 'perm_idcard_setting_edit', label: 'Edit Template' },
+                    { key: 'perm_idcard_setting_list', label: 'View Template' },
+                    { key: 'perm_idcard_setting_delete', label: 'Delete Template' },
+                    { key: 'perm_idcard_setting_status', label: 'Status Template' },
+                ],
+            },
             {
                 title: 'ID Card Action List',
                 items: [
@@ -279,6 +290,15 @@ function staffApp() {
                 ],
             },
             {
+                title: 'Print & Reprint Lists',
+                items: [
+                    { key: 'perm_reprint_request_list', label: 'Request List (Reprint)' },
+                    { key: 'perm_confirmed_list', label: 'Confirmed List (Reprint)' },
+                    { key: 'perm_print_list', label: 'Generate List (Print Cards)' },
+                    { key: 'perm_finalized_list', label: 'Finalized List (Print Cards)' },
+                ],
+            },
+            {
                 title: 'Card Actions',
                 items: [
                     { key: 'perm_idcard_add', label: 'Add Card' },
@@ -287,16 +307,71 @@ function staffApp() {
                     { key: 'perm_idcard_delete', label: 'Delete Card' },
                     { key: 'perm_idcard_approve', label: 'Approve Card' },
                     { key: 'perm_idcard_verify', label: 'Verify Card' },
+                    { key: 'perm_idcard_reprint_list', label: 'Reprint Cards' },
                     { key: 'perm_idcard_updated_at', label: 'Last Updated & Updated By' },
                     { key: 'perm_idcard_delete_from_pool', label: 'Retrieve from Pool' },
+                    { key: 'perm_idcard_retrieve', label: 'Retrieve from Download' },
                 ],
             },
             {
-                title: 'Other Actions',
+                title: 'Bulk Actions',
                 items: [
-                    { key: 'perm_mobile_app', label: 'Mobile App Access' },
+                    { key: 'perm_idcard_bulk_upload', label: 'Bulk Upload (XLSX + ZIP Images)' },
+                    { key: 'perm_idcard_bulk_download', label: 'Bulk Download (All Formats)' },
+                    { key: 'perm_idcard_bulk_reupload', label: 'Bulk Reupload Images (ZIP)' },
+                    { key: 'perm_idcard_upgrade_all', label: 'Upgrade All Classes' },
                 ],
             },
+            {
+                title: 'App & Access',
+                items: [
+                    { key: 'perm_mobile_app', label: 'Mobile App Login' },
+                    { key: 'perm_idcard_client_list', label: 'Manage Client' },
+                ],
+            },
+            {% else %}
+            {
+                title: 'ID Card List Tabs',
+                items: [
+                    { key: 'perm_idcard_pending_list', label: 'Pending List' },
+                    { key: 'perm_idcard_verified_list', label: 'Verified List' },
+                    { key: 'perm_idcard_pool_list', label: 'Pool List' },
+                    { key: 'perm_idcard_approved_list', label: 'Approved List' },
+                    { key: 'perm_idcard_download_list', label: 'Download List' },
+                ],
+            },
+            {
+                title: 'Print & Reprint Lists',
+                items: [
+                    { key: 'perm_reprint_request_list', label: 'Request List (Reprint)' },
+                    { key: 'perm_confirmed_list', label: 'Confirmed List (Reprint)' },
+                ],
+            },
+            {
+                title: 'Export & Download',
+                items: [
+                    { key: 'perm_idcard_bulk_download', label: 'Download PDF / Export' },
+                ],
+            },
+            {
+                title: 'Card Actions',
+                items: [
+                    { key: 'perm_idcard_add', label: 'Add Card' },
+                    { key: 'perm_idcard_edit', label: 'Edit Card' },
+                    { key: 'perm_idcard_info', label: 'View Card Info' },
+                    { key: 'perm_idcard_delete', label: 'Delete Card' },
+                    { key: 'perm_idcard_verify', label: 'Verify Card' },
+                    { key: 'perm_idcard_reprint_list', label: 'Reprint Cards' },
+                    { key: 'perm_idcard_updated_at', label: 'Last Updated & Updated By' },
+                ],
+            },
+            {
+                title: 'App & Access',
+                items: [
+                    { key: 'perm_mobile_app', label: 'Mobile App Login' },
+                ],
+            },
+            {% endif %}
         ],
 
         init() {
@@ -460,7 +535,7 @@ function staffApp() {
                 return;
             }
             try {
-                const res = await fetch(`/panel/api/staff/${this.editingId}/set-temp-password/`, {
+                const res = await fetch(`{% if is_super_admin %}/panel/api/staff/${this.editingId}/set-temp-password/{% else %}/panel/client/api/staff/${this.editingId}/set-temp-password/{% endif %}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ password: String(password).trim() }),
