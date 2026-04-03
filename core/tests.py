@@ -54,6 +54,20 @@ def _create_card(table, field_data=None, status='pending'):
     return IDCard.objects.create(table=table, field_data=field_data, status=status)
 
 
+class HeaderHumanizeFilterTests(TestCase):
+    def test_uid_stays_unsplit(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('UID'), 'UID')
+
+    def test_uid_prefix_with_known_suffix_splits_cleanly(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('UIDNO'), 'UID NO')
+
+    def test_existing_humanize_behavior_remains(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('STUDENTNAME'), 'STUDENT NAME')
+
+
 # ── User Model Tests ──
 class UserModelTests(TestCase):
     def test_create_user_default_role(self):
