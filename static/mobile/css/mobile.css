@@ -128,6 +128,42 @@ body {
     font-weight: 700;
 }
 
+/* Consistent tiny typography for status tabs/chips across mobile pages. */
+.mobile-tab-label {
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.mobile-chip-label {
+    font-size: 9px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.mobile-chip-count {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    min-width: 2ch;
+    text-align: center;
+}
+
+.mobile-status-chip {
+    min-height: 26px;
+    gap: 4px;
+}
+
+.mobile-status-tab {
+    min-height: 32px;
+}
+
 #mobile-app {
     background: transparent;
 }
@@ -236,7 +272,7 @@ textarea:focus-visible {
    ================================================================ */
 
 .font-condensed {
-    font-family: "Roboto Condensed", "Segoe UI", system-ui, sans-serif;
+    font-family: "Arial Narrow", "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
     letter-spacing: -0.01em;
 }
 

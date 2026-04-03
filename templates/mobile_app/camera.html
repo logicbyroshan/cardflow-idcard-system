@@ -5,8 +5,8 @@
 
 {% block extra_head %}
 <!-- Cropper.js for photo cropping -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+<script src="{% static 'js/vendor/cropper.min.js' %}"></script>
 <style>
 .crop-modal { position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.95);display:flex;flex-direction:column; }
 .crop-modal img { max-height:70vh;width:100%; }

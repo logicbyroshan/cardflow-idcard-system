@@ -783,9 +783,9 @@ def pwa_service_worker(request):
     from django.http import HttpResponse
     sw_content = """\
 /* Adarsh ID Cards — PWA Service Worker */
-const APP_CACHE = 'adarsh-app-v3';
-const STATIC_CACHE = 'adarsh-static-v3';
-const SHELL = ['/app/', '/app/login/', '/app/manifest.json'];
+const APP_CACHE = 'adarsh-app-v4';
+const STATIC_CACHE = 'adarsh-static-v4';
+const SHELL = ['/app/login/', '/app/manifest.json'];
 const STATIC_ASSETS = [
     '/static/css/tailwind.css',
     '/static/css/vendor/fontawesome/all.min.css?v=2',
@@ -868,7 +868,7 @@ self.addEventListener('fetch', function(e) {
     e.respondWith(
         fetch(e.request).catch(function() {
             return caches.match(e.request).then(function(cached) {
-                return cached || caches.match('/app/');
+                return cached || caches.match('/app/login/');
             });
         })
     );
@@ -932,17 +932,22 @@ def home(request):
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
+        scoped_staff = Staff.objects.all()
         if accessible_ids is not None:
             scoped_clients = scoped_clients.filter(id__in=accessible_ids)
             scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+            scoped_staff = scoped_staff.filter(
+                Q(client_id__in=accessible_ids) |
+                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+            ).distinct()
 
         cache_key = 'mob_admin_home_counts' if accessible_ids is None else f'mob_admin_home_counts:{user.id}'
         _admin_counts = cache.get(cache_key)
         if _admin_counts is None:
             _admin_counts = {
                 'admin_client_count': scoped_clients.count(),
-                'admin_staff_count': Staff.objects.filter(staff_type='admin_staff').count(),
+                'admin_staff_count': scoped_staff.count(),
                 'admin_table_count': scoped_tables.count(),
                 'admin_total_cards': scoped_cards.count(),
             }
@@ -1869,7 +1874,6 @@ def card_list(request, table_id, status):
         'first_table_id': table.id,
         'group': table.group,
         'students': cards,
-        'students_json': json.dumps(cards, default=str),
         'total_count': total_count,
         'has_more': has_more,
         'list_type': status,
@@ -2654,9 +2658,9 @@ def api_table_update_fields(request, table_id):
         table = get_object_or_404(IDCardTable, id=table_id)
         if not ClientAccessService.can_access_table(request.user, table):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-        # Require edit permission to modify table fields
-        if not PermissionService.has(request.user, 'perm_idcard_edit'):
-            return JsonResponse({'success': False, 'message': 'Edit permission required'}, status=403)
+        # Table schema changes must follow settings permission, not card-value edit permission.
+        if not PermissionService.has(request.user, 'perm_idcard_setting_edit'):
+            return JsonResponse({'success': False, 'message': 'Settings edit permission required'}, status=403)
 
         body = json.loads(request.body or '{}')
         raw_fields = body.get('fields', [])
@@ -2845,12 +2849,17 @@ def settings_page(request):
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
+        scoped_staff = Staff.objects.all()
         if accessible_ids is not None:
             scoped_clients = scoped_clients.filter(id__in=accessible_ids)
             scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+            scoped_staff = scoped_staff.filter(
+                Q(client_id__in=accessible_ids) |
+                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+            ).distinct()
         ctx['admin_client_count'] = scoped_clients.count()
-        ctx['admin_staff_count'] = Staff.objects.filter(staff_type='admin_staff').count()
+        ctx['admin_staff_count'] = scoped_staff.count()
         ctx['admin_table_count'] = scoped_tables.count()
         ctx['admin_total_cards'] = scoped_cards.count()
 
@@ -2998,16 +3007,25 @@ def api_card_delete(request, card_id):
         user = request.user
         if not ClientAccessService.can_access_card(user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-        if not PermissionService.has(user, 'perm_idcard_delete'):
-            return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
-
         data = json.loads(request.body) if request.body else {}
         permanent = data.get('permanent', False)
 
         if permanent:
+            if not PermissionService.has(user, 'perm_idcard_delete_from_pool'):
+                return JsonResponse({'success': False, 'message': 'No permanent delete permission'}, status=403)
+
+            if card.status != 'pool':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only cards in pool can be permanently deleted',
+                }, status=400)
+
             card.delete()
             return JsonResponse({'success': True, 'message': 'Card permanently deleted'})
         else:
+            if not PermissionService.has(user, 'perm_idcard_delete'):
+                return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
+
             card.status = 'pool'
             card.save(update_fields=['status'])
             return JsonResponse({'success': True, 'message': 'Card moved to pool'})

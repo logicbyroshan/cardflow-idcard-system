@@ -54,6 +54,8 @@ function listApp() {
         overlayWatchersBound: false,
         actionMenuOpen: false,
         reprintSearchTimer: null,
+        searchFilterTimer: null,
+        searchScopeHintShown: false,
 
         permanentDeleteModal: {
             show: false,
@@ -382,8 +384,14 @@ function listApp() {
 
         // --- Filtering & Sorting ---
         filterStudents() {
-            // Debounced text search  also applies active filters
-            this._applyAllFilters();
+            // Debounced text search to avoid filtering/reflow on every keystroke.
+            if (this.searchFilterTimer) {
+                clearTimeout(this.searchFilterTimer);
+                this.searchFilterTimer = null;
+            }
+            this.searchFilterTimer = setTimeout(() => {
+                this._applyAllFilters({ showCountToast: false });
+            }, 180);
         },
         setClassFilter(classValue) {
             this.filters.selectedClass = classValue || '';
@@ -527,24 +535,35 @@ function listApp() {
                 this.filters.dateTo !== ''
             );
 
-            if ((this.filtersActive || (this.searchQuery || '').trim()) && this.hasMore) {
+            const searchActive = !!String(this.searchQuery || '').trim();
+
+            // Only force full-data loading for strict filter modes. Text search stays incremental.
+            if (this.filtersActive && this.hasMore) {
                 this.loadingAllForFilters = true;
                 this.showToast('Loading all records for accurate filtering...', 'info');
-                await this.loadAllDataForFiltering();
+                await this.loadAllDataForFiltering(20);
                 this.loadingAllForFilters = false;
+            } else if (searchActive && this.hasMore && !this.searchScopeHintShown) {
+                this.showToast('Search currently applies to loaded records. Scroll to load more for wider matches.', 'info');
+                this.searchScopeHintShown = true;
+            } else if (!searchActive) {
+                this.searchScopeHintShown = false;
             }
 
-            this._applyAllFilters();
+            this._applyAllFilters({ showCountToast: true });
             this.showFilters = false;
         },
-        async loadAllDataForFiltering() {
+        async loadAllDataForFiltering(maxPages = 20) {
             let safety = 0;
-            while (this.hasMore && safety < 80) {
+            while (this.hasMore && safety < maxPages) {
                 await this.loadMore(true);
                 safety += 1;
             }
+            if (this.hasMore) {
+                this.showToast('Loaded a large chunk for filters. Refine filters for faster results.', 'info');
+            }
         },
-        _applyAllFilters() {
+        _applyAllFilters(options = {}) {
             const q = (this.searchQuery || '').toLowerCase().trim();
             let filtered = this.studentsData.filter(s => {
                 // Text search
@@ -604,7 +623,7 @@ function listApp() {
             // Update visible count
             this.visibleCount = filtered.length;
             // Show count
-            if (q || this.filtersActive) {
+            if ((q || this.filtersActive) && options.showCountToast) {
                 this.showToast(filtered.length + ' of ' + this.studentsData.length + ' shown', 'info');
             }
         },

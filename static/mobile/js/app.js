@@ -11,15 +11,19 @@
 let lastTouchEnd = 0;
 document.addEventListener('touchend', function(event) {
     const target = event.target;
-    if (target && target.closest('input, textarea, select, [contenteditable="true"]')) {
+    if (!target) return;
+    if (target && target.closest('input, textarea, select, [contenteditable="true"], a, button, label, [role="button"], [data-allow-double-tap]')) {
         return;
     }
+    const enforceScope = target.closest('[data-no-doubletap-zoom], .no-doubletap-zoom');
+    if (!enforceScope) return;
+
     const now = (new Date()).getTime();
     if (now - lastTouchEnd <= 300) {
         event.preventDefault();
     }
     lastTouchEnd = now;
-}, false);
+}, { passive: false });
 
 // Smooth scroll polyfill for older mobile browsers
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
