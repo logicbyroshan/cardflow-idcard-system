@@ -130,24 +130,67 @@ def require_mobile_client(view_func):
 def _get_notification_count(user):
     """Return unread notification count for the mobile bell badge (capped at 99)."""
     try:
-        from core.models import Notification, NotificationRead
-        from django.db.models import Q as _Q
-        role = getattr(user, 'role', 'all')
-        active_ids = list(
-            Notification.objects
-            .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user), is_active=True)
-            .values_list('id', flat=True)
+        _, unread_count = _get_system_notifications(
+            user,
+            limit=100,
+            mark_visible_as_read=False,
         )
-        if not active_ids:
-            return 0
-        read_ids = set(
-            NotificationRead.objects
-            .filter(user=user, notification_id__in=active_ids)
-            .values_list('notification_id', flat=True)
-        )
-        return min(len(set(active_ids) - read_ids), 99)
+        return min(unread_count, 99)
     except Exception:
         return 0
+
+
+def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
+    """Return system notifications for a user with consistent unread tracking."""
+    from core.models import Notification, NotificationRead
+    from django.db.models import Q as _Q
+
+    role = getattr(user, 'role', 'all')
+    safe_limit = max(1, min(int(limit or 20), 100))
+
+    notifications = list(
+        Notification.objects
+        .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user), is_active=True)
+        .order_by('-created_at')[:safe_limit]
+    )
+
+    if not notifications:
+        return [], 0
+
+    notif_ids = [n.id for n in notifications]
+    read_ids = set(
+        NotificationRead.objects
+        .filter(user=user, notification_id__in=notif_ids)
+        .values_list('notification_id', flat=True)
+    )
+
+    if mark_visible_as_read:
+        unread_ids = [nid for nid in notif_ids if nid not in read_ids]
+        if unread_ids:
+            NotificationRead.objects.bulk_create(
+                [NotificationRead(user=user, notification_id=nid) for nid in unread_ids],
+                ignore_conflicts=True,
+            )
+            read_ids.update(unread_ids)
+            cache.delete(f'mobile:notif_count:{user.pk}')
+
+    items = [
+        {
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'priority': n.priority,
+            'priority_color': n.priority_color,
+            'category': n.get_category_display(),
+            'icon_class': n.icon_class,
+            'created_at': n.created_at.strftime('%d %b %Y'),
+            'is_read': n.id in read_ids,
+        }
+        for n in notifications
+    ]
+
+    unread_count = sum(1 for n in items if not n['is_read'])
+    return items, unread_count
 
 
 def _client_ctx(user):
@@ -912,33 +955,80 @@ def home(request):
                     'tables': _tables_data,
                 })
         else:
-            # Single client — show per-group breakdown
-            # 2 queries total (groups list + one aggregate) instead of 1+N
-            from idcards.models import IDCardGroup
-            groups_list = list(IDCardGroup.objects.filter(client=client).order_by('name')[:6])
-            group_ids = [g.id for g in groups_list]
-            _gc_raw = (
-                IDCard.objects.filter(table__group_id__in=group_ids)
-                .values('table__group_id', 'status')
-                .annotate(n=Count('id'))
-            )
-            _gc_map = {}
-            for _row in _gc_raw:
-                _gc_map.setdefault(_row['table__group_id'], {})[_row['status']] = _row['n']
+            # Client/client_staff: group-first rows with expandable tables.
+            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True).select_related('group')
+            if PermissionService.is_client_staff(user):
+                _staff = getattr(user, 'staff_profile', None)
+                if _staff:
+                    _assigned_table_ids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
+                    _assigned_group_ids = _staff_assigned_group_ids_for_access(_staff)
+                    if _assigned_table_ids and _assigned_group_ids:
+                        _tables_qs = _tables_qs.filter(Q(id__in=_assigned_table_ids) | Q(group_id__in=_assigned_group_ids))
+                    elif _assigned_table_ids:
+                        _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
+                    elif _assigned_group_ids:
+                        _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
 
-            for grp in groups_list:
-                status_map = _gc_map.get(grp.id, {})
-                if not sum(status_map.values(), 0):
-                    continue
+            _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
+            _table_ids = [t.id for t in _tables]
+            _group_ids = list({t.group_id for t in _tables})
+
+            _group_map = {
+                g.id: g
+                for g in IDCardGroup.objects.filter(id__in=_group_ids).only('id', 'name')
+            }
+
+            _gc_map = {}
+            _tc_map = {}
+            if _table_ids:
+                _gc_raw = (
+                    IDCard.objects.filter(table_id__in=_table_ids)
+                    .values('table__group_id', 'status')
+                    .annotate(n=Count('id'))
+                )
+                for _row in _gc_raw:
+                    _gc_map.setdefault(_row['table__group_id'], {})[_row['status']] = _row['n']
+
+                _tc_raw = (
+                    IDCard.objects.filter(table_id__in=_table_ids)
+                    .values('table_id', 'status')
+                    .annotate(n=Count('id'))
+                )
+                for _row in _tc_raw:
+                    _tc_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
+
+            _tables_by_group = {}
+            for _tbl in _tables:
+                _tables_by_group.setdefault(_tbl.group_id, [])
+                if len(_tables_by_group[_tbl.group_id]) < 8:
+                    _tm = _tc_map.get(_tbl.id, {})
+                    _tables_by_group[_tbl.group_id].append({
+                        'id': _tbl.id,
+                        'name': _tbl.name,
+                        'group_name': _tbl.group.name,
+                        'pending': _tm.get('pending', 0),
+                        'verified': _tm.get('verified', 0),
+                        'approved': _tm.get('approved', 0),
+                        'download': _tm.get('download', 0),
+                    })
+
+            _ordered_group_ids = sorted(
+                _group_ids,
+                key=lambda gid: (_group_map.get(gid).name.lower() if _group_map.get(gid) else ''),
+            )
+
+            for gid in _ordered_group_ids:
+                _grp = _group_map.get(gid)
+                _sm = _gc_map.get(gid, {})
                 recent_client_updates.append({
-                    'client_id': client.id,
-                    'client_name': grp.name,
-                    'group_id': grp.id,
-                    'pending': status_map.get('pending', 0),
-                    'verified': status_map.get('verified', 0),
-                    'approved': status_map.get('approved', 0),
-                    'download': status_map.get('download', 0),
-                    'tables': [],
+                    'client_id': gid,
+                    'client_name': _grp.name if _grp else f'Group #{gid}',
+                    'group_id': gid,
+                    'pending': _sm.get('pending', 0),
+                    'verified': _sm.get('verified', 0),
+                    'approved': _sm.get('approved', 0),
+                    'download': _sm.get('download', 0),
+                    'tables': _tables_by_group.get(gid, []),
                 })
     except Exception:
         logger.exception('Failed to build recent_client_updates for home view')
@@ -1025,9 +1115,10 @@ def home(request):
                     'requested': _requested,
                     'confirmed': _confirmed,
                     'tables': _tables_data,
+                    'allow_client_jump': True,
                 })
         else:
-            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True)
+            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True).select_related('group')
             if PermissionService.is_client_staff(user):
                 _staff = getattr(user, 'staff_profile', None)
                 if _staff:
@@ -1040,7 +1131,7 @@ def home(request):
                     elif _assigned_group_ids:
                         _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
 
-            _tables = list(_tables_qs.order_by('group__name', 'name')[:12])
+            _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
             _table_ids = [t.id for t in _tables]
 
             _tr_raw = (
@@ -1053,27 +1144,47 @@ def home(request):
             for _row in _tr_raw:
                 _tr_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
 
-            _tables_data = []
+            _tables_by_group = {}
+            _group_totals = {}
             for _tbl in _tables:
                 _tm = _tr_map.get(_tbl.id, {})
                 _requested = _tm.get('requested', 0)
                 _confirmed = _tm.get('confirmed', 0)
                 reprint_request_total += _requested
                 reprint_confirmed_total += _confirmed
-                _tables_data.append({
+                _tables_by_group.setdefault(_tbl.group_id, [])
+                _group_totals.setdefault(_tbl.group_id, {'requested': 0, 'confirmed': 0})
+                _group_totals[_tbl.group_id]['requested'] += _requested
+                _group_totals[_tbl.group_id]['confirmed'] += _confirmed
+                if len(_tables_by_group[_tbl.group_id]) >= 8:
+                    continue
+                _tables_by_group[_tbl.group_id].append({
                     'id': _tbl.id,
                     'name': _tbl.name,
                     'requested': _requested,
                     'confirmed': _confirmed,
                 })
 
-            if _tables_data:
+            _group_map = {
+                g.id: g
+                for g in IDCardGroup.objects.filter(id__in=list(_tables_by_group.keys())).only('id', 'name')
+            }
+            _ordered_group_ids = sorted(
+                list(_tables_by_group.keys()),
+                key=lambda gid: (_group_map.get(gid).name.lower() if _group_map.get(gid) else ''),
+            )
+
+            for gid in _ordered_group_ids:
+                _grp = _group_map.get(gid)
+                _gt = _group_totals.get(gid, {'requested': 0, 'confirmed': 0})
                 recent_reprint_updates.append({
                     'client_id': client.id,
-                    'client_name': client.name,
-                    'requested': reprint_request_total,
-                    'confirmed': reprint_confirmed_total,
-                    'tables': _tables_data,
+                    'client_name': _grp.name if _grp else f'Group #{gid}',
+                    'group_id': gid,
+                    'requested': _gt.get('requested', 0),
+                    'confirmed': _gt.get('confirmed', 0),
+                    'tables': _tables_by_group.get(gid, []),
+                    'allow_client_jump': False,
                 })
     except Exception:
         logger.exception('Failed to build recent_reprint_updates for home view')
@@ -1540,6 +1651,39 @@ def card_list(request, table_id, status):
             if _row['status'] in reprint_counts:
                 reprint_counts[_row['status']] = _row['n']
 
+    has_any_list_actions = bool(perms.get('perm_idcard_info') or perms.get('perm_idcard_bulk_download'))
+    if status == 'pending':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_add') or
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_verify') or
+            perms.get('perm_idcard_delete')
+        )
+    elif status == 'verified':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_approve') or
+            perms.get('perm_idcard_verify')
+        )
+    elif status == 'approved':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_bulk_download') or
+            perms.get('perm_idcard_approve')
+        )
+    elif status == 'download':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_retrieve') or
+            perms.get('perm_idcard_reprint_list')
+        )
+    elif status == 'pool':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_retrieve') or
+            perms.get('perm_idcard_delete_from_pool')
+        )
+
     response = render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
         # Always show the table owner in list subtitle to avoid stale fallback client labels.
@@ -1563,6 +1707,7 @@ def card_list(request, table_id, status):
         'reprint_counts': reprint_counts,
         'can_reprint_request_list': can_reprint_request_list,
         'can_reprint_confirmed_list': can_reprint_confirmed_list,
+        'has_any_list_actions': has_any_list_actions,
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
@@ -1965,40 +2110,39 @@ def camera_capture(request, table_id, card_id=None):
 
 @require_mobile_client
 def notifications(request):
-    """Notifications — shows real recent activity."""
+    """Notifications page backed by the same source used in Settings."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
         return redirect('/app/login/')
 
-    result = ClientDashboardService.get_dashboard_data(user, client=client)
-    activities = []
-    if result.success:
-        for act in result.data.get('recent_activity', []):
-            status = act.get('status', '')
-            icon_map = {
-                'pending': 'fa-clock', 'verified': 'fa-check-circle',
-                'approved': 'fa-check-double', 'download': 'fa-download',
-                'pool': 'fa-layer-group', 'reprint': 'fa-redo',
-            }
-            color_map = {
-                'pending': 'yellow', 'verified': 'green',
-                'approved': 'blue', 'download': 'purple',
-                'pool': 'red', 'reprint': 'orange',
-            }
-            activities.append({
-                'title': f"{act.get('name', 'Card')} — {act.get('status_display', status)}",
-                'message': f"Table: {act.get('table_name', '')}",
-                'time': act.get('updated_at', ''),
-                'read': True,
-                'icon': icon_map.get(status, 'fa-info-circle'),
-                'color': color_map.get(status, 'gray'),
-            })
+    system_notifications, _ = _get_system_notifications(
+        user,
+        limit=40,
+        mark_visible_as_read=True,
+    )
+    priority_to_color = {
+        'critical': 'red',
+        'high': 'orange',
+        'normal': 'blue',
+        'low': 'gray',
+    }
+    notifications_payload = [
+        {
+            'title': n['title'],
+            'message': n['message'],
+            'time': n['created_at'],
+            'read': n['is_read'],
+            'icon': n['icon_class'],
+            'color': priority_to_color.get(n['priority'], 'gray'),
+        }
+        for n in system_notifications
+    ]
 
     return render(request, 'mobile_app/notifications.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
-        'notifications': activities,
+        'notifications': notifications_payload,
         **perms,
     })
 
@@ -2522,32 +2666,11 @@ def settings_page(request):
         ctx['admin_total_cards'] = scoped_cards.count()
 
     # ── TAB: Notifications ───────────────────────────────────────────────
-    from core.models import Notification, NotificationRead
-    user_role = getattr(user, 'role', '')
-    _notif_qs = (
-        Notification.objects
-        .filter(is_active=True)
-        .filter(Q(target='all') | Q(target=user_role) | Q(target='selected', target_users=user))
-        .order_by('-created_at')[:20]
+    ctx['system_notifications'], ctx['unread_system_count'] = _get_system_notifications(
+        user,
+        limit=20,
+        mark_visible_as_read=False,
     )
-    _read_ids = set(
-        NotificationRead.objects.filter(user=user).values_list('notification_id', flat=True)
-    )
-    ctx['system_notifications'] = [
-        {
-            'id': n.id,
-            'title': n.title,
-            'message': n.message,
-            'priority': n.priority,
-            'priority_color': n.priority_color,
-            'category': n.get_category_display(),
-            'icon_class': n.icon_class,
-            'created_at': n.created_at.strftime('%d %b %Y'),
-            'is_read': n.id in _read_ids,
-        }
-        for n in _notif_qs
-    ]
-    ctx['unread_system_count'] = sum(1 for n in ctx['system_notifications'] if not n['is_read'])
 
     # ── TAB: Logs ────────────────────────────────────────────────────────
     from django.utils.timesince import timesince as _timesince

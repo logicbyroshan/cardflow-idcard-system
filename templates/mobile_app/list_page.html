@@ -59,6 +59,7 @@ const ALL_CLASSES = JSON.parse(document.getElementById('mobile-classes-data')?.t
 const ALL_SECTIONS = JSON.parse(document.getElementById('mobile-sections-data')?.textContent || '[]');
 const ALL_CLASS_TO_SECTIONS = JSON.parse(document.getElementById('mobile-class-sections-data')?.textContent || '{}');
 const IS_VIEW_ONLY = {{ view_only_list|yesno:"true,false" }};
+const CAN_EDIT = {{ perm_idcard_edit|yesno:"true,false" }};
 const TABLE_FIELDS = JSON.parse('{{ table_fields|escapejs }}');
 const TAB_COUNTS = {
     pending: {{ tab_counts.pending|default:0 }},

@@ -22,6 +22,7 @@
         <!-- Nav-style action bar -->
         <div class="bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.07)] relative">
             <div class="flex items-end px-1" style="height:58px;">
+                {% if has_any_list_actions %}
 
                 <!-- 1. View (1 selected) -->
                 {% if perm_idcard_info %}
@@ -164,6 +165,20 @@
                     <i class="fa-solid fa-triangle-exclamation text-[18px]"></i>
                     <span class="mab-nav-label">Perm Del</span>
                 </button>
+                {% endif %}
+
+                {% else %}
+                <div class="w-full h-full flex items-center justify-between gap-2 px-3">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-bold text-gray-700 leading-tight">View-only access for this list</p>
+                        <p class="text-[9px] text-gray-400 leading-tight mt-0.5">Open cards to inspect details. Action buttons appear when permission is granted.</p>
+                    </div>
+                    <a href="{% url 'mobile_app:search_page' %}"
+                       class="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[10px] font-semibold text-sky-700 active:scale-95 transition-transform">
+                        <i class="fa-solid fa-magnifying-glass text-[9px]"></i>
+                        Search
+                    </a>
+                </div>
                 {% endif %}
 
             </div>

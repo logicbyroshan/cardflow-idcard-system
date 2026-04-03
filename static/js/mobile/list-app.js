@@ -2,6 +2,18 @@
  * list-app.js  Alpine.js component for mobile list page
  * Globals expected: CSRF, TABLE_ID, LIST_TYPE, STUDENTS_DATA
  */
+const MOBILE_ENDPOINTS = Object.freeze({
+    appApi: '/app/api',
+    panelApi: '/panel/api',
+    panelReprintApi: '/panel/reprint/api',
+});
+
+function buildEndpoint(base, path) {
+    const normalizedBase = String(base || '').replace(/\/+$/, '');
+    const normalizedPath = String(path || '').replace(/^\/+/, '');
+    return normalizedBase + '/' + normalizedPath;
+}
+
 function listApp() {
     return {
         searchQuery: '',
@@ -611,7 +623,7 @@ function listApp() {
                     throw new Error('AbortError');
                 }
 
-                const statusRes = await fetch('/panel/api/task-status/' + taskId + '/', {
+                const statusRes = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'task-status/' + taskId + '/'), {
                     headers: { 'X-CSRFToken': CSRF },
                     signal: this.downloadModal.abortController?.signal,
                 });
@@ -656,7 +668,7 @@ function listApp() {
                 status: LIST_TYPE,
             }, extraPayload);
 
-            const res = await fetch('/panel/api/table/' + TABLE_ID + '/export-task/', {
+            const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/export-task/'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                 body: JSON.stringify(body),
@@ -691,7 +703,7 @@ function listApp() {
 
             let code = this._generateNumericCode(10);
             try {
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/generate-delete-code/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/generate-delete-code/'), {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF },
                 });
@@ -839,7 +851,7 @@ function listApp() {
             const fd = new FormData();
             fd.append('field_data', JSON.stringify(payload));
 
-            const res = await fetch('/app/api/table/' + TABLE_ID + '/card/' + cardId + '/update/', {
+            const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/' + cardId + '/update/'), {
                 method: 'POST',
                 headers: { 'X-CSRFToken': CSRF },
                 body: fd,
@@ -855,7 +867,7 @@ function listApp() {
             this.reprintPicker.loading = true;
             try {
                 const q = encodeURIComponent(String(this.reprintPicker.query || '').trim());
-                const url = '/panel/reprint/api/table/' + TABLE_ID + '/reprint-list/?available_only=1&limit=500&q=' + q;
+                const url = buildEndpoint(MOBILE_ENDPOINTS.panelReprintApi, 'table/' + TABLE_ID + '/reprint-list/') + '?available_only=1&limit=500&q=' + q;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || data.status !== 'ok') {
@@ -942,7 +954,7 @@ function listApp() {
                 return false;
             }
             try {
-                const res = await fetch('/panel/reprint/api/table/' + TABLE_ID + '/request/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelReprintApi, 'table/' + TABLE_ID + '/request/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: ids }),
@@ -1448,7 +1460,7 @@ function listApp() {
         },
 
         async _fetchCardSnapshot(cardId) {
-            const res = await fetch('/app/api/card/' + cardId + '/detail/', {
+            const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'card/' + cardId + '/detail/'), {
                 method: 'GET',
                 headers: { 'X-CSRFToken': CSRF },
             });
@@ -1585,11 +1597,14 @@ function listApp() {
             const cbHtml = !IS_VIEW_ONLY
                 ? `<label class="custom-checkbox custom-checkbox-lg dyn-cb" style="cursor:pointer;"><input type="checkbox"><span class="checkmark"></span></label>`
                 : '';
+            const editButtonHtml = (!IS_VIEW_ONLY && CAN_EDIT)
+                ? `<div class="mt-2.5"><button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-edit-card" data-edit-id="${card.id}">Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i></button></div>`
+                : '';
 
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
             div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md';
-            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-edit-card" data-edit-id="${card.id}">Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i></button></div></div></div>`;
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div>${editButtonHtml}</div></div>`;
 
             const editButton = div.querySelector('.js-edit-card');
             if (editButton) {
@@ -1712,7 +1727,7 @@ function listApp() {
             this.loading = true;
             try {
                 const page = this.loadMorePage + 1;
-                const url = `/app/api/table/${TABLE_ID}/cards/?status=${LIST_TYPE}&per_page=50&page=${page}`;
+                const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/cards/`) + `?status=${LIST_TYPE}&per_page=50&page=${page}`;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const json = await res.json();
                 if (!json.success) { this.showToast('Failed to load more', 'error'); this.loading = false; return; }
@@ -1785,7 +1800,7 @@ function listApp() {
             var _ac = new AbortController();
             setTimeout(function() { _ac.abort(); }, 120000);
             try {
-                const res = await fetch('/app/api/table/' + TABLE_ID + '/bulk-status/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/bulk-status/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: this.selectedIds, status: status }),
@@ -1860,6 +1875,10 @@ function listApp() {
             this.showAddForm = true;
         },
         async openEditById(cardId) {
+            if (IS_VIEW_ONLY || !CAN_EDIT) {
+                this.showToast('Edit is not allowed in this list', 'error');
+                return;
+            }
             const editId = Number(cardId);
             let student = this.studentsData.find(s => Number(s.id) === editId);
             if (!student) { this.showToast('Card not found', 'error'); return; }
@@ -1880,6 +1899,10 @@ function listApp() {
             this.showAddForm = true;
         },
         async editSelected() {
+            if (IS_VIEW_ONLY || !CAN_EDIT) {
+                this.showToast('Edit is not allowed in this list', 'error');
+                return;
+            }
             if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
             return this.openEditById(this.selectedIds[0]);
         },
@@ -1989,8 +2012,8 @@ function listApp() {
             }
             this.loading = true;
             const url = this.editMode
-                ? '/app/api/table/' + TABLE_ID + '/card/' + this.editingId + '/update/'
-                : '/app/api/table/' + TABLE_ID + '/card/add/';
+                ? buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/' + this.editingId + '/update/')
+                : buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/add/');
             const fd = new FormData();
             const fieldData = {};
             Object.entries(this.form.dynamicValues || {}).forEach(([key, value]) => {
@@ -2174,7 +2197,7 @@ function listApp() {
                         if (this.downloadModal.abortController?.signal?.aborted) {
                             throw new Error('AbortError');
                         }
-                        const statusRes = await fetch('/panel/api/export/status/' + taskId + '/', {
+                        const statusRes = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'export/status/' + taskId + '/'), {
                             headers: { 'X-CSRFToken': CSRF },
                             signal: this.downloadModal.abortController?.signal,
                         });
@@ -2205,7 +2228,7 @@ function listApp() {
                 };
 
                 this.updateDownloadProgress(10, 'Sending request...');
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-pdf-async/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/download-pdf-async/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -2265,7 +2288,7 @@ function listApp() {
 
             try {
                 this.updateDownloadProgress(10, 'Preparing images...');
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-images/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/download-images/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -2329,7 +2352,7 @@ function listApp() {
             if (LIST_TYPE !== 'approved' || !ids.length) return;
 
             try {
-                const res = await fetch('/app/api/table/' + TABLE_ID + '/bulk-status/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/bulk-status/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: ids, status: 'download' }),
@@ -2399,7 +2422,7 @@ function listApp() {
             }
 
             try {
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-xlsx/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/download-xlsx/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -2445,7 +2468,7 @@ function listApp() {
             let success = 0, failed = 0;
             for (const id of requestedIds) {
                 try {
-                    const res = await fetch('/app/api/card/' + id + '/delete/', {
+                    const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'card/' + id + '/delete/'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                         body: JSON.stringify({ permanent: true }),

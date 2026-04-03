@@ -130,11 +130,11 @@
             resultUrl(card) {
                 if (!card) return '#';
                 const status = (card.status || '').toLowerCase();
-                if (status === 'approved' || status === 'download') {
-                    return `/app/desktop-required/?status=${encodeURIComponent(status)}`;
-                }
+                const safeStatus = ['pending', 'verified', 'approved', 'download', 'pool'].includes(status)
+                    ? status
+                    : 'pending';
                 if (!card.table_id) return this.cardUrl(card.id);
-                return `/app/table/${card.table_id}/${status}/?focus_card=${card.id}`;
+                return `/app/table/${card.table_id}/${safeStatus}/?focus_card=${card.id}`;
             },
 
             openResult(card) {

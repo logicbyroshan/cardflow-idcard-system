@@ -306,6 +306,32 @@
                     </div>
                 </div>
 
+                {% if is_client or is_client_staff %}
+                <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-indigo-100 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
+                            <i class="fa-solid fa-shield-halved text-indigo-500 text-[11px]"></i>
+                        </div>
+                        <p class="text-[12px] font-bold text-gray-700">Feature Access</p>
+                    </div>
+                    <div class="px-4 py-3">
+                        <p class="text-[11px] text-gray-500 leading-relaxed">Some actions are hidden based on your role permissions. You can still search, view groups, and track notifications from mobile.</p>
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                            <a href="{% url 'mobile_app:search_page' %}"
+                               class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-2 text-[10px] font-semibold text-sky-700 active:scale-95 transition-transform">
+                                <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
+                                Search
+                            </a>
+                            <a href="{% url 'mobile_app:groups_overview' %}"
+                               class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 py-2 text-[10px] font-semibold text-indigo-700 active:scale-95 transition-transform">
+                                <i class="fa-solid fa-layer-group text-[10px]"></i>
+                                Groups
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         </div>
 

@@ -32,13 +32,21 @@
                 <!-- Search (center) spacer so floating button sits above -->
                 <div class="flex-1" aria-hidden="true"></div>
 
-                <!-- Website (admin) / Staff (client) / Profile (client_staff) -->
+                <!-- Website (admin with permission) / Staff (client) / Profile (client_staff) -->
                 {% if is_super_admin or is_admin_staff %}
+                {% if perm_website_view %}
                 <a href="{% url 'mobile_app:website_manage' %}"
                    class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'website_manage' %}pwa-nav-active{% endif %}">
                     <i class="fa-solid fa-globe pwa-nav-icon"></i>
                     <span class="pwa-nav-label">Website</span>
                 </a>
+                {% else %}
+                <a href="{% url 'mobile_app:profile' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'profile' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-user pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Profile</span>
+                </a>
+                {% endif %}
                 {% elif is_client %}
                 <a href="{% url 'mobile_app:staff_manage' %}"
                    class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'staff_manage' %}pwa-nav-active{% endif %}">
@@ -46,10 +54,10 @@
                     <span class="pwa-nav-label">Staff</span>
                 </a>
                 {% else %}
-                <a href="{% url 'mobile_app:groups_overview' %}"
-                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'groups_overview' %}pwa-nav-active{% endif %}">
-                    <i class="fa-solid fa-layer-group pwa-nav-icon"></i>
-                    <span class="pwa-nav-label">Groups</span>
+                <a href="{% url 'mobile_app:profile' %}"
+                   class="pwa-nav-item flex-1 {% if request.resolver_match.url_name == 'profile' %}pwa-nav-active{% endif %}">
+                    <i class="fa-solid fa-user pwa-nav-icon"></i>
+                    <span class="pwa-nav-label">Profile</span>
                 </a>
                 {% endif %}
 

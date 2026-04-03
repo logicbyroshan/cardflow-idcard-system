@@ -60,7 +60,7 @@
     </div>
 
     <!-- Client List -->
-    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3"
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2.5"
          style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px)">
 
         <template x-for="c in filteredClients" :key="c.id">
@@ -68,7 +68,7 @@
                       :class="expandedId === c.id ? 'shadow-lg ring-2 ring-indigo-200/70' : 'shadow-sm'">
 
                 <!-- Client Row (tap to expand) -->
-                 <div class="flex items-center gap-3 px-4 py-4 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
+                 <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
                      @click="toggleExpand(c.id)">
                     <!-- Avatar with gradient -->
                     <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm"
@@ -126,10 +126,10 @@
                     <!-- Header row -->
                     <div class="flex items-center px-4 py-2 border-b border-indigo-100/60">
                         <p class="flex-1 text-[9px] font-bold text-indigo-700 uppercase tracking-widest">Table</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-amber-700 uppercase tracking-widest">Pen</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-green-700 uppercase tracking-widest">Ver</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-blue-700 uppercase tracking-widest">App</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-violet-700 uppercase tracking-widest">Dwn</p>
+                        <p class="w-11 text-center text-[8px] font-bold text-amber-700 uppercase tracking-widest">P</p>
+                        <p class="w-11 text-center text-[8px] font-bold text-green-700 uppercase tracking-widest">V</p>
+                        <p class="w-11 text-center text-[8px] font-bold text-blue-700 uppercase tracking-widest">A</p>
+                        <p class="w-11 text-center text-[8px] font-bold text-violet-700 uppercase tracking-widest">D</p>
                     </div>
 
                     <!-- Loading state -->
@@ -142,10 +142,10 @@
                                         <div class="h-2.5 w-2/3 rounded-lg skeleton-line"></div>
                                         <div class="h-2 w-1/2 rounded-lg skeleton-line"></div>
                                     </div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
                                 </div>
                             </template>
                         </div>
@@ -154,7 +154,7 @@
                     <template x-if="!loadingTables[c.id] && c.tables && c.tables.length > 0">
                         <div>
                             <template x-for="t in c.tables" :key="t.id">
-                                <div class="flex items-center gap-2 px-4 py-2.5 border-b border-indigo-50 last:border-b-0">
+                                <div class="flex items-center gap-2 px-4 py-2 border-b border-indigo-50 last:border-b-0">
                                     <!-- Table icon -->
                                     <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-indigo-100">
                                         <i class="fa-solid fa-table-list text-indigo-700" style="font-size:9px;"></i>
@@ -166,27 +166,23 @@
                                     </div>
                                     <!-- Pending badge -->
                                     <a :href="'/app/table/' + t.id + '/pending/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-200 text-amber-900 border border-amber-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-clock text-amber-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-amber-800" x-text="t.pending_count"></span>
+                                       class="w-11 h-7 inline-flex items-center justify-center rounded-lg bg-amber-200/75 text-amber-700 border border-amber-300/80 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="text-[10px] font-black" x-text="t.pending_count"></span>
                                     </a>
                                     <!-- Verified badge -->
                                     <a :href="'/app/table/' + t.id + '/verified/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-200 text-emerald-900 border border-emerald-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-check-circle text-green-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-green-800" x-text="t.verified_count"></span>
+                                       class="w-11 h-7 inline-flex items-center justify-center rounded-lg bg-emerald-200/75 text-emerald-700 border border-emerald-300/80 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="text-[10px] font-black" x-text="t.verified_count"></span>
                                     </a>
                                     <!-- Approved badge -->
                                     <a :href="'/app/table/' + t.id + '/approved/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-200 text-sky-900 border border-sky-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-check-double text-blue-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-blue-800" x-text="t.approved_count || 0"></span>
+                                       class="w-11 h-7 inline-flex items-center justify-center rounded-lg bg-sky-200/75 text-sky-700 border border-sky-300/80 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="text-[10px] font-black" x-text="t.approved_count || 0"></span>
                                     </a>
                                     <!-- Download badge -->
                                     <a :href="'/app/table/' + t.id + '/download/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-200 text-violet-900 border border-violet-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-download text-violet-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-violet-800" x-text="t.download_count || 0"></span>
+                                       class="w-11 h-7 inline-flex items-center justify-center rounded-lg bg-violet-200/75 text-violet-700 border border-violet-300/80 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="text-[10px] font-black" x-text="t.download_count || 0"></span>
                                     </a>
                                 </div>
                             </template>
@@ -194,9 +190,9 @@
                     </template>
 
                     <template x-if="!loadingTables[c.id] && (!c.tables || c.tables.length === 0)">
-                        <div class="px-4 py-5 flex flex-col items-center gap-1.5">
-                            <i class="fa-solid fa-table-list text-indigo-500 text-2xl"></i>
-                            <p class="text-xs font-medium text-gray-600">No active tables for this client</p>
+                        <div class="px-4 py-5 flex flex-col items-center gap-1.5 text-center">
+                            <i class="fa-solid fa-table-list text-indigo-300 text-2xl"></i>
+                            <p class="text-[11px] font-semibold text-gray-500">No active tables for this client</p>
                         </div>
                     </template>
                 </div>
@@ -206,12 +202,12 @@
 
         <!-- Empty state -->
         <div x-show="filteredClients.length === 0"
-             class="flex flex-col items-center justify-center py-16 text-gray-600 gap-3">
+             class="flex flex-col items-center justify-center py-14 text-gray-600 gap-3 text-center">
             <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <i class="fa-solid fa-building text-3xl text-gray-500 opacity-70"></i>
+                <i class="fa-solid fa-building text-3xl text-gray-300"></i>
             </div>
-            <p class="text-sm font-semibold text-gray-700">No clients found</p>
-            <p class="text-xs text-gray-500">Try adjusting your search</p>
+            <p class="text-[13px] font-semibold text-gray-400">No clients found</p>
+            <p class="text-[11px] text-gray-300">Try adjusting your search</p>
         </div>
     </div>
 

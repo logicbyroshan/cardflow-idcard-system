@@ -108,12 +108,14 @@
                     </div>
 
                     <!-- Edit Link -->
+                    {% if not view_only_list and perm_idcard_edit %}
                     <div class="mt-2.5 flex items-center gap-2">
                         <button type="button" @click.stop="openEditById({{ student.id }})"
                                 class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all">
                             Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i>
                         </button>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
