@@ -31,6 +31,10 @@ function _normalizeFilterText(value) {
     return String(value || '').trim().toUpperCase();
 }
 
+function _normalizeCompactFilterText(value) {
+    return _normalizeFilterText(value).replace(/[^A-Z0-9]+/g, '');
+}
+
 function _getRowFieldValueByKind(row, kind) {
     if (!row) return '';
     var cells = row.querySelectorAll('td[data-field]');
@@ -69,8 +73,8 @@ function _rowMatchesActiveClassSectionFilters(row, editedField, editedValue) {
     var branchFilter = _normalizeFilterText(IDCardApp.currentBranchFilter);
     var classMatches = !classFilter || _normalizeFilterText(classValue) === classFilter;
     var sectionMatches = !sectionFilter || _normalizeFilterText(sectionValue) === sectionFilter;
-    var courseMatches = !courseFilter || _normalizeFilterText(courseValue) === courseFilter;
-    var branchMatches = !branchFilter || _normalizeFilterText(branchValue) === branchFilter;
+    var courseMatches = !courseFilter || _normalizeCompactFilterText(courseValue) === _normalizeCompactFilterText(courseFilter);
+    var branchMatches = !branchFilter || _normalizeCompactFilterText(branchValue) === _normalizeCompactFilterText(branchFilter);
     return classMatches && sectionMatches && courseMatches && branchMatches;
 }
 

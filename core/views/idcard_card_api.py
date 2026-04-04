@@ -412,11 +412,21 @@ def api_idcard_cards_json(request, table_id):
             qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data'))
             qs = qs.filter(_sec__iexact=section_filter)
         if course_filter and course_field_name:
-            qs = qs.annotate(_course=KeyTextTransform(course_field_name, 'field_data'))
-            qs = qs.filter(_course__iexact=course_filter)
+            qs = IDCardService._apply_compact_text_filter(
+                qs,
+                course_filter,
+                course_field_name,
+                table_id=table_id,
+                alias='_course_cmp',
+            )
         if branch_filter and branch_field_name:
-            qs = qs.annotate(_branch=KeyTextTransform(branch_field_name, 'field_data'))
-            qs = qs.filter(_branch__iexact=branch_filter)
+            qs = IDCardService._apply_compact_text_filter(
+                qs,
+                branch_filter,
+                branch_field_name,
+                table_id=table_id,
+                alias='_branch_cmp',
+            )
 
     # Server-side image filter (column + condition)
     image_column = request.GET.get('image_column', '').strip()
@@ -688,7 +698,7 @@ def api_idcard_filter_options(request, table_id):
     from django.db.models import CharField, Count
     from django.core.cache import cache as django_cache
     from core.utils.field_utils import (
-        CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value,
+        CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value, normalize_compact_text_value,
     )
     from collections import defaultdict
 
@@ -719,6 +729,8 @@ def api_idcard_filter_options(request, table_id):
     section_values = []
     course_values = []
     branch_values = []
+    course_display_map = {}
+    branch_display_map = {}
     class_to_sections = {}
     section_to_classes = {}
     course_to_branches = {}
@@ -768,28 +780,48 @@ def api_idcard_filter_options(request, table_id):
         )
 
     if course_field_name:
-        course_values = sorted(
-            [
-                str(v) for v in
-                qs.annotate(_coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()))
-                .exclude(_coursev__isnull=True).exclude(_coursev='')
-                .order_by()
-                .values_list('_coursev', flat=True).distinct()
-                if v is not None
-            ],
+        raw_with_counts = (
+            qs.annotate(_coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()))
+            .exclude(_coursev__isnull=True).exclude(_coursev='')
+            .order_by()
+            .values('_coursev')
+            .annotate(cnt=Count('id'))
         )
 
+        grouped = {}
+        for entry in raw_with_counts:
+            raw = str(entry['_coursev']).strip()
+            normalized = normalize_compact_text_value(raw)
+            if not normalized:
+                continue
+            prev = grouped.get(normalized)
+            if prev is None or entry['cnt'] > prev[1]:
+                grouped[normalized] = (raw, entry['cnt'])
+
+        course_display_map = {normalized: data[0] for normalized, data in grouped.items()}
+        course_values = sorted(course_display_map.values(), key=lambda x: x.lower())
+
     if branch_field_name:
-        branch_values = sorted(
-            [
-                str(v) for v in
-                qs.annotate(_branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()))
-                .exclude(_branchv__isnull=True).exclude(_branchv='')
-                .order_by()
-                .values_list('_branchv', flat=True).distinct()
-                if v is not None
-            ],
+        raw_with_counts = (
+            qs.annotate(_branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()))
+            .exclude(_branchv__isnull=True).exclude(_branchv='')
+            .order_by()
+            .values('_branchv')
+            .annotate(cnt=Count('id'))
         )
+
+        grouped = {}
+        for entry in raw_with_counts:
+            raw = str(entry['_branchv']).strip()
+            normalized = normalize_compact_text_value(raw)
+            if not normalized:
+                continue
+            prev = grouped.get(normalized)
+            if prev is None or entry['cnt'] > prev[1]:
+                grouped[normalized] = (raw, entry['cnt'])
+
+        branch_display_map = {normalized: data[0] for normalized, data in grouped.items()}
+        branch_values = sorted(branch_display_map.values(), key=lambda x: x.lower())
 
     if class_field_name and section_field_name:
         pair_rows = (
@@ -843,16 +875,31 @@ def api_idcard_filter_options(request, table_id):
         for raw_course, raw_branch in pair_rows:
             course_text = str(raw_course).strip()
             branch_text = str(raw_branch).strip()
-            if not course_text or not branch_text:
+            course_norm = normalize_compact_text_value(course_text)
+            branch_norm = normalize_compact_text_value(branch_text)
+            if not course_norm or not branch_norm:
                 continue
-            course_branch_sets[course_text].add(branch_text)
-            branch_course_sets[branch_text].add(course_text)
+            if course_norm not in course_display_map:
+                course_display_map[course_norm] = course_text
+            if branch_norm not in branch_display_map:
+                branch_display_map[branch_norm] = branch_text
+
+            course_branch_sets[course_norm].add(branch_norm)
+            branch_course_sets[branch_norm].add(course_norm)
 
         course_to_branches = {
-            course: sorted(list(branches)) for course, branches in course_branch_sets.items()
+            course_display_map.get(course, course): sorted(
+                [branch_display_map.get(branch, branch) for branch in branches],
+                key=lambda x: x.lower(),
+            )
+            for course, branches in course_branch_sets.items()
         }
         branch_to_courses = {
-            branch: sorted(list(courses)) for branch, courses in branch_course_sets.items()
+            branch_display_map.get(branch, branch): sorted(
+                [course_display_map.get(course, course) for course in courses],
+                key=lambda x: x.lower(),
+            )
+            for branch, courses in branch_course_sets.items()
         }
 
     result = {

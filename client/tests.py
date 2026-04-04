@@ -1168,6 +1168,185 @@ class ClientApiIntegrationTests(TestCase):
         payload = response.json()
         self.assertTrue(payload.get('success'))
 
+    def test_filter_options_dedupes_course_branch_variants(self):
+        from idcards.models import IDCardTable, IDCard
+        from core.utils.field_utils import normalize_compact_text_value
+
+        table = IDCardTable.objects.create(
+            group=self.group,
+            name='Course Branch Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'COURSE', 'type': 'course'},
+                {'name': 'BRANCH', 'type': 'branch'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BTECH', 'BRANCH': 'CSE', 'NAME': 'One'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'B.Tech', 'BRANCH': 'C.S.E', 'NAME': 'Two'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'B TECH', 'BRANCH': 'c s e', 'NAME': 'Three'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BCA', 'BRANCH': 'IT', 'NAME': 'Four'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/api/table/{table.id}/filter-options/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        course_values = payload.get('course_values', [])
+        branch_values = payload.get('branch_values', [])
+
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in course_values},
+            {'BTECH', 'BCA'},
+        )
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in branch_values},
+            {'CSE', 'IT'},
+        )
+
+        btech_display = next(v for v in course_values if normalize_compact_text_value(v) == 'BTECH')
+        cse_display = next(v for v in branch_values if normalize_compact_text_value(v) == 'CSE')
+
+        mapped_branches = payload.get('course_to_branches', {}).get(btech_display, [])
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in mapped_branches},
+            {'CSE'},
+        )
+
+        mapped_courses = payload.get('branch_to_courses', {}).get(cse_display, [])
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in mapped_courses},
+            {'BTECH'},
+        )
+
+    def test_cards_api_course_branch_filters_match_variants(self):
+        from idcards.models import IDCardTable, IDCard
+
+        table = IDCardTable.objects.create(
+            group=self.group,
+            name='Course Branch Cards',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'COURSE', 'type': 'course'},
+                {'name': 'BRANCH', 'type': 'branch'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BTECH', 'BRANCH': 'CSE', 'NAME': 'One'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'B.Tech', 'BRANCH': 'C.S.E', 'NAME': 'Two'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BCA', 'BRANCH': 'IT', 'NAME': 'Three'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+
+        course_resp = self.client.get(
+            f'/panel/api/table/{table.id}/cards/',
+            {'status': 'pending', 'course': 'B TECH'},
+        )
+        self.assertEqual(course_resp.status_code, 200)
+        course_payload = course_resp.json()
+        self.assertTrue(course_payload.get('success'))
+        self.assertEqual(len(course_payload.get('cards', [])), 2)
+
+        branch_resp = self.client.get(
+            f'/panel/api/table/{table.id}/cards/',
+            {'status': 'pending', 'branch': 'c.s.e'},
+        )
+        self.assertEqual(branch_resp.status_code, 200)
+        branch_payload = branch_resp.json()
+        self.assertTrue(branch_payload.get('success'))
+        self.assertEqual(len(branch_payload.get('cards', [])), 2)
+
+    def test_update_field_refreshes_course_branch_filter_options(self):
+        from idcards.models import IDCardTable, IDCard
+        from core.utils.field_utils import normalize_compact_text_value
+
+        table = IDCardTable.objects.create(
+            group=self.group,
+            name='Inline Update Filters',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'COURSE', 'type': 'course'},
+                {'name': 'BRANCH', 'type': 'branch'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+        card = IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BTECH', 'BRANCH': 'CSE', 'NAME': 'Inline User'},
+        )
+
+        self.client_obj.perm_idcard_edit = True
+        self.client_obj.save(update_fields=['perm_idcard_edit'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+
+        warm_resp = self.client.get(f'/panel/api/table/{table.id}/filter-options/')
+        self.assertEqual(warm_resp.status_code, 200)
+
+        update_course = self.client.post(
+            f'/panel/api/card/{card.id}/update-field/',
+            data=json.dumps({'field': 'COURSE', 'value': 'BCA'}),
+            content_type='application/json',
+        )
+        self.assertEqual(update_course.status_code, 200)
+
+        update_branch = self.client.post(
+            f'/panel/api/card/{card.id}/update-field/',
+            data=json.dumps({'field': 'BRANCH', 'value': 'I.T'}),
+            content_type='application/json',
+        )
+        self.assertEqual(update_branch.status_code, 200)
+
+        refreshed = self.client.get(f'/panel/api/table/{table.id}/filter-options/')
+        self.assertEqual(refreshed.status_code, 200)
+        payload = refreshed.json()
+        self.assertTrue(payload.get('success'))
+
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in payload.get('course_values', [])},
+            {'BCA'},
+        )
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in payload.get('branch_values', [])},
+            {'IT'},
+        )
+
     def test_client_staff_temp_password_api_requires_client_permission(self):
         self.client_obj.perm_set_temp_password = False
         self.client_obj.save(update_fields=['perm_set_temp_password'])

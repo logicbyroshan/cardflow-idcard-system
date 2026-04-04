@@ -240,7 +240,31 @@ class ClientCardService(BaseService):
         if allowed_branches:
             if not branch_field:
                 return qs.none()
-            qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField())).filter(_scope_branch__in=allowed_branches)
+            from core.utils.field_utils import normalize_compact_text_value
+
+            qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField()))
+            normalized_allowed = {
+                normalize_compact_text_value(value)
+                for value in allowed_branches
+                if normalize_compact_text_value(value)
+            }
+            if not normalized_allowed:
+                return qs.none()
+
+            raw_values = list(
+                qs.exclude(_scope_branch__isnull=True)
+                .exclude(_scope_branch='')
+                .values_list('_scope_branch', flat=True)
+                .distinct()
+            )
+            matching_raw = [
+                raw for raw in raw_values
+                if normalize_compact_text_value(raw) in normalized_allowed
+            ]
+            if not matching_raw:
+                return qs.none()
+
+            qs = qs.filter(_scope_branch__in=matching_raw)
 
         return qs
     

@@ -184,6 +184,46 @@ class IDCardCardService(BaseService):
         return qs.filter(q)
 
     @classmethod
+    def _apply_compact_text_filter(
+        cls,
+        qs,
+        text_filter,
+        field_name,
+        *,
+        table_id=None,
+        alias='_flt_txt',
+        cache_prefix='compact_raw_vals',
+    ):
+        """Apply punctuation/space-insensitive filtering for course/branch text."""
+        from core.utils.field_utils import normalize_compact_text_value
+
+        normalized_filter = normalize_compact_text_value(text_filter)
+        if not normalized_filter:
+            return qs.none()
+
+        cache_key = f'{cache_prefix}:{table_id}:{field_name}' if table_id else None
+        all_raw = cache.get(cache_key) if cache_key else None
+
+        if all_raw is None:
+            base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
+            all_raw = list(
+                base_qs
+                .annotate(_fv_raw=Cast(KeyTextTransform(field_name, 'field_data'), CharField()))
+                .exclude(_fv_raw__isnull=True).exclude(_fv_raw='')
+                .order_by()
+                .values_list('_fv_raw', flat=True).distinct()
+            )
+            if cache_key:
+                cache.set(cache_key, all_raw, 60)
+
+        matching_raw = [raw for raw in all_raw if normalize_compact_text_value(raw) == normalized_filter]
+        if not matching_raw:
+            return qs.none()
+
+        qs = qs.annotate(**{alias: Cast(KeyTextTransform(field_name, 'field_data'), CharField())})
+        return qs.filter(**{f'{alias}__in': matching_raw})
+
+    @classmethod
     def _get_name_field(cls, table):
         """Get the name/text field from table definitions for sorting."""
         if not table.fields:
@@ -394,13 +434,21 @@ class IDCardCardService(BaseService):
                         _sec=KeyTextTransform(section_field_name, 'field_data')
                     ).filter(_sec__iexact=section_filter)
                 if course_filter and course_field_name:
-                    cards_query = cards_query.annotate(
-                        _course=KeyTextTransform(course_field_name, 'field_data')
-                    ).filter(_course__iexact=course_filter)
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        course_filter,
+                        course_field_name,
+                        table_id=table_id,
+                        alias='_course_cmp',
+                    )
                 if branch_filter and branch_field_name:
-                    cards_query = cards_query.annotate(
-                        _branch=KeyTextTransform(branch_field_name, 'field_data')
-                    ).filter(_branch__iexact=branch_filter)
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        branch_filter,
+                        branch_field_name,
+                        table_id=table_id,
+                        alias='_branch_cmp',
+                    )
 
             # --- Image sort filter ---
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
@@ -552,13 +600,21 @@ class IDCardCardService(BaseService):
                         _sec=KeyTextTransform(section_field_name, 'field_data')
                     ).filter(_sec__iexact=section_filter)
                 if course_filter and course_field_name:
-                    cards_query = cards_query.annotate(
-                        _course=KeyTextTransform(course_field_name, 'field_data')
-                    ).filter(_course__iexact=course_filter)
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        course_filter,
+                        course_field_name,
+                        table_id=table_id,
+                        alias='_course_cmp',
+                    )
                 if branch_filter and branch_field_name:
-                    cards_query = cards_query.annotate(
-                        _branch=KeyTextTransform(branch_field_name, 'field_data')
-                    ).filter(_branch__iexact=branch_filter)
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        branch_filter,
+                        branch_field_name,
+                        table_id=table_id,
+                        alias='_branch_cmp',
+                    )
 
             # Apply image sort filter
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.

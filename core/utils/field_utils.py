@@ -268,6 +268,20 @@ def convert_section_value(value):
     return str(value).strip().upper()
 
 
+def normalize_compact_text_value(value):
+    """Normalize free-form course/branch text to a compact comparison key.
+
+    This is intentionally punctuation/whitespace/case-insensitive so values like
+    "BTECH", "B.TECH", and "B TECH" are treated as the same logical value.
+    """
+    if value is None:
+        return ''
+    raw = str(value).strip()
+    if not raw:
+        return ''
+    return re.sub(r'[^A-Z0-9]+', '', raw.upper())
+
+
 # ==================== UPGRADE OUTPUT FORMAT HELPERS ====================
 
 # KG naming conventions used by different schools
