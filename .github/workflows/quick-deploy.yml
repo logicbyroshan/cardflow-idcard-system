@@ -32,8 +32,7 @@ jobs:
   quick-deploy:
     name: ⚡ Quick Deploy to Production
     runs-on: self-hosted
-    
-    if: github.event.inputs.confirm == 'DEPLOY'
+    if: ${{ false }}  # TEMP: Quick deploy paused
 
     steps:
       - name: Checkout code

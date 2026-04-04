@@ -36,6 +36,7 @@ jobs:
   build:
     name: Build & Release
     runs-on: windows-latest
+    if: ${{ false }}  # TEMP: Engine release paused
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────
