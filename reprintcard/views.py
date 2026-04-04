@@ -282,6 +282,41 @@ def _parse_local_datetime_filter(value):
     return dt
 
 
+def _parse_json_body_dict(request):
+    """Parse JSON body and ensure object payloads for mutation endpoints."""
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None, JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    if not isinstance(body, dict):
+        return None, JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    return body, None
+
+
+def _get_reprint_step_counts(table):
+    """Return download/request/confirmed counts for the reprint workflow."""
+    source_cards_count = IDCard.objects.filter(table=table, status='download').count()
+    status_counts = ReprintRequest.objects.filter(
+        table=table,
+        card__status='download',
+    ).aggregate(
+        request_count=Count('id', filter=Q(status='requested')),
+        confirmed_count=Count('id', filter=Q(status='confirmed')),
+    )
+
+    request_count = int(status_counts.get('request_count') or 0)
+    confirmed_count = int(status_counts.get('confirmed_count') or 0)
+
+    return {
+        'download_list': source_cards_count,
+        'reprint_list': source_cards_count,
+        'request_list': request_count,
+        'confirmed': confirmed_count,
+    }
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
@@ -313,23 +348,7 @@ def reprint_cards(request, table_id):
 
     # Step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')
-    source_cards_count = source_cards_qs.count()
-    request_count = ReprintRequest.objects.filter(
-        table=table,
-        status='requested',
-        card__status='download',
-    ).count()
-    confirmed_count = ReprintRequest.objects.filter(
-        table=table,
-        status='confirmed',
-        card__status='download',
-    ).count()
-    step_counts = {
-        'download_list': source_cards_count,
-        'reprint_list': source_cards_count,
-        'request_list': request_count,
-        'confirmed': confirmed_count,
-    }
+    step_counts = _get_reprint_step_counts(table)
 
     INITIAL_LOAD_LIMIT = 100
 
@@ -437,24 +456,8 @@ def api_reprint_step_counts(request, table_id):
     if err:
         return err
 
-    source_cards_count = IDCard.objects.filter(table=table, status='download').count()
-    request_count = ReprintRequest.objects.filter(
-        table=table,
-        status='requested',
-        card__status='download',
-    ).count()
-    confirmed_count = ReprintRequest.objects.filter(
-        table=table,
-        status='confirmed',
-        card__status='download',
-    ).count()
-    return JsonResponse({
-        'status': 'ok',
-        'download_list': source_cards_count,
-        'reprint_list': source_cards_count,
-        'request_list': request_count,
-        'confirmed': confirmed_count,
-    })
+    step_counts = _get_reprint_step_counts(table)
+    return JsonResponse({'status': 'ok', **step_counts})
 
 
 @require_http_methods(["GET"])
@@ -524,10 +527,9 @@ def api_reprint_request_create(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     card_ids = body.get('card_ids', [])
     reason = body.get('reason', '')
@@ -566,10 +568,9 @@ def api_reprint_confirm(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = body.get('rr_ids', [])
     if not rr_ids:
@@ -683,10 +684,9 @@ def api_reprint_reject(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = body.get('rr_ids', [])
 
@@ -799,10 +799,9 @@ def api_reprint_mark_downloaded(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = body.get('rr_ids', [])
     if not rr_ids:
@@ -899,10 +898,9 @@ def api_reprint_send_to_print(request, table_id):
     if err:
         return err
 
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    data, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = data.get('rr_ids', [])
     if not rr_ids:
@@ -916,10 +914,9 @@ def api_reprint_send_to_print(request, table_id):
         card__status='download',
     )
 
-    eligible_rr_ids = list(requested_qs.values_list('id', flat=True))
-    requested_rrs = requested_qs.values_list('card_id', flat=True)
-
-    card_ids = list(requested_rrs)
+    requested_rows = list(requested_qs.values_list('id', 'card_id'))
+    eligible_rr_ids = [rr_id for rr_id, _ in requested_rows]
+    card_ids = [card_id for _, card_id in requested_rows]
     if not card_ids:
         return JsonResponse(
             {'status': 'error', 'message': 'No requested reprint items found'},

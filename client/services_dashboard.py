@@ -206,8 +206,9 @@ class ClientDashboardService(BaseService):
                         table,
                         IDCard.objects.filter(table=table),
                     )
-                    table_card_counts[table.id] = scoped_qs.count()
-                    for row in scoped_qs.values('status').annotate(count=Count('id')):
+                    status_rows = list(scoped_qs.values('status').annotate(count=Count('id')))
+                    table_card_counts[table.id] = sum(int(row.get('count', 0) or 0) for row in status_rows)
+                    for row in status_rows:
                         gid = table.group_id
                         if gid not in group_counts_map:
                             group_counts_map[gid] = {}

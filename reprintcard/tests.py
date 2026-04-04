@@ -345,6 +345,15 @@ class ReprintApiIntegrationTests(TestCase):
 		)
 		self.assertEqual(response.status_code, 400)
 
+	def test_reprint_request_create_rejects_non_object_json_payload(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data='[]',
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+
 	def test_reprint_request_create_and_request_list(self):
 		self.client.force_login(self.super_admin)
 
@@ -378,6 +387,15 @@ class ReprintApiIntegrationTests(TestCase):
 		response = self.client.post(
 			self._url('api_reprint_confirm'),
 			data=json.dumps({'rr_ids': ['bad', None, {}]}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+
+	def test_confirm_rejects_non_object_json_payload(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.post(
+			self._url('api_reprint_confirm'),
+			data='[]',
 			content_type='application/json',
 		)
 		self.assertEqual(response.status_code, 400)

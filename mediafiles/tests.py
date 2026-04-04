@@ -437,6 +437,21 @@ class MediafilesUtilsTests(TestCase):
         url = get_card_photo_url(FakeCard())
         self.assertEqual(url, '/media/adarshimg/CODE/new.jpg')
 
+    def test_get_card_photo_url_handles_legacy_photo_url_errors(self):
+        from mediafiles.utils import get_card_photo_url
+
+        class BrokenPhoto:
+            @property
+            def url(self):
+                raise ValueError('broken legacy url')
+
+        class FakeCard:
+            def __init__(self):
+                self.field_data = {}
+                self.photo = BrokenPhoto()
+
+        self.assertIsNone(get_card_photo_url(FakeCard()))
+
 
 class ThumbnailServiceTests(TestCase):
     def test_thumbnail_path_helpers(self):
@@ -463,3 +478,17 @@ class ThumbnailServiceTests(TestCase):
         thumb = ThumbnailService.generate_thumbnail(image_bytes, original_size_bytes=len(image_bytes))
         self.assertIsNotNone(thumb)
         self.assertGreater(len(thumb), 50)
+
+
+class MediafilesPathFallbackTests(TestCase):
+    def test_get_image_path_for_card_returns_path_when_storage_check_errors(self):
+        from mediafiles.services import ImageService
+
+        _client, _group, _table, card = _create_test_card()
+        card.field_data['PHOTO'] = 'adarshimg/CODE/original.jpg'
+        card.save(update_fields=['field_data'])
+
+        with mock.patch('mediafiles.services.image_fields.default_storage.exists', side_effect=RuntimeError('storage down')):
+            got = ImageService.get_image_path_for_card(card, 'PHOTO')
+
+        self.assertEqual(got, 'adarshimg/CODE/original.jpg')

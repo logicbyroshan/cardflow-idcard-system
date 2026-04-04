@@ -23,6 +23,19 @@ ALLOWED_IMAGE_UPLOAD_MIMES = {
 ALLOWED_IMAGE_UPLOAD_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei'}
 
 
+def _parse_json_object(request):
+    """Parse request JSON and require an object payload."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None, JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    if not isinstance(data, dict):
+        return None, JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    return data, None
+
+
 def _validate_optional_image_upload(uploaded):
     """Validate optional profile image upload."""
     if not uploaded:
@@ -52,7 +65,9 @@ def api_staff_create(request):
             data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in data.items()}
             profile_image = request.FILES.get('profile_image')
         else:
-            data = json.loads(request.body)
+            data, json_err = _parse_json_object(request)
+            if json_err:
+                return json_err
             profile_image = None
 
         profile_image, file_error = _validate_optional_image_upload(profile_image)
@@ -100,7 +115,9 @@ def api_staff_update(request, staff_id):
             data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in data.items()}
             profile_image = request.FILES.get('profile_image')
         else:
-            data = json.loads(request.body)
+            data, json_err = _parse_json_object(request)
+            if json_err:
+                return json_err
             profile_image = None
 
         profile_image, file_error = _validate_optional_image_upload(profile_image)
@@ -162,7 +179,9 @@ def api_all_clients_for_assignment(request):
 def api_staff_set_temp_password(request, staff_id):
     """API endpoint to set a temporary password for a staff member (Super Admin only)"""
     try:
-        data = json.loads(request.body)
+        data, json_err = _parse_json_object(request)
+        if json_err:
+            return json_err
         new_password = data.get('password', '').strip()
         if not new_password:
             return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)

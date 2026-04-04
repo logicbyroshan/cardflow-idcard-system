@@ -56,6 +56,24 @@ def _extract_response_bytes(response):
     return None
 
 
+def _safe_file_size(path: str) -> int:
+    """Return file size or 0 when file is missing/inaccessible."""
+    try:
+        return int(os.path.getsize(path))
+    except (OSError, TypeError, ValueError):
+        return 0
+
+
+def _safe_remove(path: str, label: str) -> None:
+    """Best-effort removal with logging but no hard failure."""
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        logger.warning('Failed to cleanup %s %s: %s', label, path, exc)
+
+
 def process_export_zip(task):
     """
     Export images from cards to a ZIP file on disk.
@@ -197,8 +215,8 @@ def process_export_zip(task):
         if total_images == 0:
             try:
                 os.remove(zip_path)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed to remove empty ZIP %s: %s', zip_path, exc)
             task.mark_failed("No images found to export")
             return
         
@@ -224,8 +242,7 @@ def process_export_zip(task):
         total_bytes = 0
         for zi in zip_files_created:
             full = os.path.join(settings.MEDIA_ROOT, zi['path'])
-            if os.path.exists(full):
-                total_bytes += os.path.getsize(full)
+            total_bytes += _safe_file_size(full)
 
         logger.info(
             "EXPORT_DONE type=zip task_id=%d cards=%d images=%d zips=%d size_mb=%.2f",
@@ -236,20 +253,12 @@ def process_export_zip(task):
     except Exception as e:
         # Cleanup current partial ZIP being written
         if 'zip_path' in locals():
-            try:
-                full_zip = os.path.join(settings.MEDIA_ROOT, zip_path)
-                if os.path.exists(full_zip):
-                    os.remove(full_zip)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial ZIP %s: %s', zip_path, cleanup_err)
+            full_zip = os.path.join(settings.MEDIA_ROOT, zip_path)
+            _safe_remove(full_zip, 'partial ZIP')
         # Cleanup any fully created ZIPs
         for zip_info in zip_files_created:
-            try:
-                full_path = os.path.join(settings.MEDIA_ROOT, zip_info['path'])
-                if os.path.exists(full_path):
-                    os.remove(full_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup ZIP %s: %s', zip_info.get('path', '?'), cleanup_err)
+            full_path = os.path.join(settings.MEDIA_ROOT, zip_info['path'])
+            _safe_remove(full_path, 'ZIP')
         
         logger.exception("ZIP export failed: %s", e)
         task.mark_failed(str(e))
@@ -358,11 +367,8 @@ def process_export_pdf(task):
         
     except Exception as e:
         # Cleanup partial PDF file on failure (e.g. disk-full)
-        if 'pdf_path' in locals() and os.path.exists(pdf_path):
-            try:
-                os.remove(pdf_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial PDF %s: %s', pdf_path, cleanup_err)
+        if 'pdf_path' in locals():
+            _safe_remove(pdf_path, 'partial PDF')
         logger.exception("PDF export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -466,7 +472,7 @@ def process_export_docx(task):
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
 
-        size_bytes = os.path.getsize(docx_path) if os.path.exists(docx_path) else 0
+        size_bytes = _safe_file_size(docx_path)
         logger.info(
             "EXPORT_DONE type=docx task_id=%d cards=%d size_mb=%.2f",
             task.id, result.card_count, size_bytes / (1024 * 1024),
@@ -474,11 +480,8 @@ def process_export_docx(task):
         
     except Exception as e:
         # Cleanup partial DOCX file on failure (e.g. disk-full)
-        if 'docx_path' in locals() and os.path.exists(docx_path):
-            try:
-                os.remove(docx_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial DOCX %s: %s', docx_path, cleanup_err)
+        if 'docx_path' in locals():
+            _safe_remove(docx_path, 'partial DOCX')
         logger.exception("DOCX export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -564,7 +567,7 @@ def process_export_excel(task):
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
 
-        size_bytes = os.path.getsize(excel_path) if os.path.exists(excel_path) else 0
+        size_bytes = _safe_file_size(excel_path)
         logger.info(
             "EXPORT_DONE type=xlsx task_id=%d rows=%d size_mb=%.2f",
             task.id, result.row_count, size_bytes / (1024 * 1024),
@@ -572,10 +575,7 @@ def process_export_excel(task):
         
     except Exception as e:
         # Cleanup partial Excel file on failure (e.g. disk-full)
-        if 'excel_path' in locals() and os.path.exists(excel_path):
-            try:
-                os.remove(excel_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial Excel %s: %s', excel_path, cleanup_err)
+        if 'excel_path' in locals():
+            _safe_remove(excel_path, 'partial Excel')
         logger.exception("Excel export failed: %s", e)
         task.mark_failed(str(e))

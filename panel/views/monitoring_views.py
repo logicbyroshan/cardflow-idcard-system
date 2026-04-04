@@ -151,8 +151,8 @@ def _dir_size_fast(path_obj):
             if proc.returncode == 0 and proc.stdout:
                 first_token = proc.stdout.split()[0]
                 return int(first_token)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('Native du scan failed for %s: %s', path_str, exc)
     return _dir_size_bytes(path_str)
 
 

@@ -412,6 +412,25 @@ class RateLimitTests(TestCase):
         # After exceeding limit, should get 429
         self.assertIn(response.status_code, [200, 429])
 
+    def test_rate_limit_isolated_per_endpoint(self):
+        # Exhaust check-email endpoint bucket first.
+        for _ in range(12):
+            self.client.post(
+                '/panel/api/auth/check-email/',
+                data=json.dumps({'email': 'test@x.com'}),
+                content_type='application/json',
+                REMOTE_ADDR='8.8.8.8',
+            )
+
+        # Login endpoint should still have its own bucket and not be hard-blocked by 429.
+        login_response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({'email': 'test@x.com', 'password': 'x'}),
+            content_type='application/json',
+            REMOTE_ADDR='8.8.8.8',
+        )
+        self.assertNotEqual(login_response.status_code, 429)
+
 
 class LoginLoggingMaskTests(TestCase):
     def test_mask_login_identifier_email(self):
@@ -442,6 +461,16 @@ class RateLimitClientIPTests(TestCase):
             HTTP_X_FORWARDED_FOR='198.51.100.1, 203.0.113.10'
         )
         self.assertEqual(_get_client_ip(request), '198.51.100.1')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_get_client_ip_uses_x_real_ip_when_remote_addr_invalid(self):
+        from accounts.rate_limit import _get_client_ip
+        request = self.factory.get(
+            '/panel/api/auth/login/',
+            REMOTE_ADDR='invalid-ip',
+            HTTP_X_REAL_IP='198.51.100.77',
+        )
+        self.assertEqual(_get_client_ip(request), '198.51.100.77')
 
 
 class AuthServiceRoleEdgeTests(TestCase):

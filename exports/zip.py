@@ -203,8 +203,10 @@ class ZipExporter:
                                         
                                         del img_data
                             except FileNotFoundError:
+                                logger.debug('Image file missing during ZIP export: %s', img_path)
                                 continue
-                            except Exception:
+                            except Exception as exc:
+                                logger.warning('Failed to include image in ZIP export for card=%s path=%s: %s', getattr(card, 'id', None), img_path, exc)
                                 continue
                 
                 if total_images == 0:
@@ -434,16 +436,18 @@ class ZipExporter:
                     pdf_canvas.showPage()
                     page_count += 1
                 except FileNotFoundError:
+                    logger.debug('Image file missing during PDF-ZIP export: %s', img_path)
                     continue
-                except Exception:
+                except Exception as exc:
+                    logger.warning('Failed PDF page generation for card=%s field=%s path=%s: %s', getattr(card, 'id', None), field_name, img_path, exc)
                     continue
 
             pdf_canvas.save()
         except Exception:
             try:
                 pdf_canvas.save()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed to finalize PDF canvas after error for field=%s: %s', field_name, exc)
             return 0
 
         return page_count
@@ -522,9 +526,11 @@ class ZipExporter:
                                 del img_data
                     except FileNotFoundError:
                         # Image file doesn't exist on disk — skip silently
+                        logger.debug('Image file missing while building field ZIP: %s', img_path)
                         continue
-                    except Exception:
+                    except Exception as exc:
                         # Skip problematic images silently
+                        logger.warning('Failed to add image to field ZIP for card=%s field=%s path=%s: %s', getattr(card, 'id', None), field_name, img_path, exc)
                         continue
         
             if images_count == 0:
@@ -927,8 +933,8 @@ def export_images_to_disk(
         else:
             try:
                 os.remove(current_zip_path)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed removing empty ZIP part %s: %s', current_zip_path, exc)
 
         # If we split, rename the first part
         if len(all_parts) > 1:
@@ -938,8 +944,8 @@ def export_images_to_disk(
             try:
                 os.rename(old_path, new_path)
                 all_parts[0] = (new_path, new_fn, cnt)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed renaming first ZIP part %s -> %s: %s', old_path, new_path, exc)
 
         for p_path, p_fn, p_cnt in all_parts:
             zip_files.append(DiskZipInfo(

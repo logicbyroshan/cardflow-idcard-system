@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from unittest import mock
 
 User = get_user_model()
 
@@ -203,6 +204,57 @@ class WorkflowServiceTests(TestCase):
 		self.assertTrue(second.success)
 		card.refresh_from_db()
 		self.assertIsNone(card.downloaded_at)
+
+	def test_bulk_transition_download_to_pending_clears_downloaded_timestamp(self):
+		from django.utils import timezone
+		from idcards.models import IDCard
+		from idcards.services_workflow import WorkflowService
+
+		card = IDCard.objects.create(
+			table=self.table,
+			field_data={'Name': 'Bulk Downloaded', 'Photo': 'adarshimg/bulk-dl.jpg'},
+			status='download',
+			downloaded_at=timezone.now(),
+		)
+
+		result = WorkflowService.bulk_transition(
+			table=self.table,
+			card_ids=[card.id],
+			target_status='pending',
+			user=self.super_admin,
+		)
+		self.assertTrue(result.success)
+		card.refresh_from_db()
+		self.assertEqual(card.status, 'pending')
+		self.assertIsNone(card.downloaded_at)
+
+	def test_bulk_transition_pending_from_download_requires_retrieve_not_verify(self):
+		from idcards.models import IDCard
+		from idcards.services_workflow import WorkflowService
+
+		staff_like_user = User.objects.create_user(
+			username='workflow-adminstaff@test.com',
+			email='workflow-adminstaff@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		card = IDCard.objects.create(
+			table=self.table,
+			field_data={'Name': 'Retrieve Only', 'Photo': 'adarshimg/retrieve.jpg'},
+			status='download',
+		)
+
+		with mock.patch('idcards.services_workflow.PermissionService.has', side_effect=lambda _u, perm: perm == 'perm_idcard_retrieve'):
+			result = WorkflowService.bulk_transition(
+				table=self.table,
+				card_ids=[card.id],
+				target_status='pending',
+				user=staff_like_user,
+			)
+
+		self.assertTrue(result.success)
+		card.refresh_from_db()
+		self.assertEqual(card.status, 'pending')
 
 	def test_bulk_transition_updates_eligible_and_skips_invalid(self):
 		from idcards.services_workflow import WorkflowService

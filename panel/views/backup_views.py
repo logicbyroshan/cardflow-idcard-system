@@ -184,14 +184,15 @@ def api_backup_start(request):
     if BackupTask.objects.filter(status__in=('pending', 'processing')).exclude(pk=task.pk).exists():
         return _json_error('Another backup is already running. Please wait for it to finish.', status=429)
 
-    valid_clients = Client.objects.filter(pk__in=client_ids, status='active')
-    if not valid_clients.exists():
+    valid_clients = list(Client.objects.filter(pk__in=client_ids, status='active').only('pk', 'name'))
+    if not valid_clients:
         return _json_error('No valid active clients selected.')
+    valid_client_count = len(valid_clients)
 
     names = {str(c.pk): c.name for c in valid_clients}
     task.client_ids = [c.pk for c in valid_clients]
     task.client_names = names
-    task.total = valid_clients.count()
+    task.total = valid_client_count
     task.save(update_fields=['client_ids', 'client_names', 'total'])
 
     from panel.services.backup_service import start_backup
@@ -199,7 +200,7 @@ def api_backup_start(request):
 
     ActivityService.log(
         'backup_start',
-        f'Backup started for {valid_clients.count()} client(s) (task #{task.pk})',
+        f'Backup started for {valid_client_count} client(s) (task #{task.pk})',
         request=request,
         target_model='BackupTask',
         target_id=task.pk,
@@ -208,7 +209,7 @@ def api_backup_start(request):
 
     return JsonResponse({
         'success': True,
-        'message': f'Backup started for {valid_clients.count()} school(s). You can track progress in the Manage Panel.',
+        'message': f'Backup started for {valid_client_count} school(s). You can track progress in the Manage Panel.',
     })
 
 

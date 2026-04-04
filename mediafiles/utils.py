@@ -336,8 +336,8 @@ def get_card_photo_url(card, field_data: Optional[dict] = None) -> Optional[str]
     if card.photo:
         try:
             return card.photo.url
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('Failed resolving legacy card.photo URL: %s', exc)
 
     return None
 

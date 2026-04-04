@@ -40,6 +40,22 @@ from .services import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
+def _parse_json_object(request):
+    """Parse request JSON and require a dict payload for mutation endpoints."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None, JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    if not isinstance(data, dict):
+        return None, JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    return data, None
+
+
 # =============================================================================
 # PAGE VIEWS
 # =============================================================================
@@ -73,10 +89,9 @@ def api_admin_staff_list_create(request):
         return JsonResponse(result)
     
     # POST - Create new staff
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    data, json_err = _parse_json_object(request)
+    if json_err:
+        return json_err
     
     result = AdminStaffCreationService.create_admin_staff(
         created_by=request.user,
@@ -121,10 +136,9 @@ def api_admin_staff_detail(request, staff_id):
         return JsonResponse(result, status=status)
     
     if request.method == 'PUT':
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        data, json_err = _parse_json_object(request)
+        if json_err:
+            return json_err
         
         result = AdminStaffCreationService.update_admin_staff(
             updated_by=request.user,
@@ -193,7 +207,7 @@ def api_admin_staff_toggle_status(request, staff_id):
         status = 200 if result.get('success') else 400
         return JsonResponse(result, status=status)
     except Exception as e:
-        logging.getLogger(__name__).exception("Staff toggle status error: %s", e)
+        logger.exception("Staff toggle status error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -224,7 +238,7 @@ def api_admin_staff_reset_password(request, staff_id):
         status = 200 if result.get('success') else 400
         return JsonResponse(result, status=status)
     except Exception as e:
-        logging.getLogger(__name__).exception("Staff reset password error: %s", e)
+        logger.exception("Staff reset password error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 

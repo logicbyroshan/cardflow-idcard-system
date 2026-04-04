@@ -130,6 +130,18 @@ class ExportViewHelperTests(TestCase):
         ids = _get_card_ids_from_request(request)
         self.assertEqual(ids, [1, 2, 3])
 
+    def test_get_status_from_request_supports_json_charset_content_type(self):
+        from exports.views import _get_status_from_request
+
+        request = self.factory.post(
+            '/panel/exports/pdf/1/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json; charset=utf-8',
+        )
+
+        status = _get_status_from_request(request)
+        self.assertEqual(status, 'pending')
+
     def test_get_card_ids_normalizes_and_deduplicates(self):
         from exports.views import _get_card_ids_from_request
 
@@ -141,6 +153,20 @@ class ExportViewHelperTests(TestCase):
 
         ids = _get_card_ids_from_request(request)
         self.assertEqual(ids, [1, 2])
+
+    def test_get_card_ids_rejects_oversized_json_body(self):
+        from exports import views as export_views
+
+        request = self.factory.post(
+            '/panel/exports/xlsx/1/',
+            data=json.dumps({'card_ids': [1, 2, 3]}),
+            content_type='application/json',
+        )
+
+        with mock.patch.object(export_views, 'MAX_EXPORT_JSON_BODY_BYTES', 8):
+            ids = export_views._get_card_ids_from_request(request)
+
+        self.assertIsNone(ids)
 
     def test_get_card_ids_fallback_by_status_when_not_supplied(self):
         from exports.views import _get_card_ids_from_request

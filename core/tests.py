@@ -273,6 +273,51 @@ class PermissionValidationMiddlewareTests(TestCase):
         self.assertIn('/panel/inactive/', response['Location'])
 
 
+class LegacyStaffApiJsonShapeTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('legacy-staff-admin@test.com', 'adminpass1')
+        self.staff_user = User.objects.create_user(
+            username='legacy-staff-user@test.com',
+            email='legacy-staff-user@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.staff_profile = Staff.objects.create(user=self.staff_user, staff_type='admin_staff')
+        self.client.login(username='legacy-staff-admin@test.com', password='adminpass1')
+
+    def test_staff_create_rejects_non_object_json_payload(self):
+        response = self.client.post(
+            '/panel/api/staff/create/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
+
+    def test_staff_update_rejects_non_object_json_payload(self):
+        response = self.client.put(
+            f'/panel/api/staff/{self.staff_profile.id}/update/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
+
+    def test_staff_temp_password_rejects_non_object_json_payload(self):
+        response = self.client.post(
+            f'/panel/api/staff/{self.staff_profile.id}/set-temp-password/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
+
+
 class ThreadedEmailCallbackRetryTests(TestCase):
     def test_retries_transient_db_lock_then_succeeds(self):
         from core.utils.threaded_email import _run_callback_with_retry

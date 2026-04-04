@@ -884,6 +884,66 @@ class ClientApiIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    @mock.patch('client.views_api.ClientStaffService.create_staff')
+    def test_api_staff_create_caps_assignment_payload_sizes(self, mock_create_staff):
+        from core.services.base import ServiceResult
+
+        mock_create_staff.return_value = ServiceResult(
+            success=True,
+            message='Created',
+            data={'staff_id': 9999},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        payload = {
+            'name': 'Scoped Staff',
+            'phone': '7777777777',
+            'assigned_groups': list(range(1, 1201)),
+            'assignment_scopes': [
+                {'scope_type': 'group', 'scope_id': i, 'classes': [], 'sections': [], 'branches': []}
+                for i in range(1, 1201)
+            ],
+        }
+        response = self.client.post(
+            '/panel/client/api/staff/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+
+        called_data = mock_create_staff.call_args.args[1]
+        self.assertEqual(len(called_data.get('assigned_groups', [])), 500)
+        self.assertEqual(len(called_data.get('assignment_scopes', [])), 500)
+
+    @mock.patch('client.views_api.ClientStaffService.update_staff')
+    def test_api_staff_update_normalizes_invalid_assignment_scope_shape(self, mock_update_staff):
+        from core.services.base import ServiceResult
+
+        mock_update_staff.return_value = ServiceResult(
+            success=True,
+            message='Updated',
+            data={},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.put(
+            f'/panel/client/api/staff/{self.staff_profile.id}/',
+            data=json.dumps({
+                'assignment_scopes': {'scope_type': 'group', 'scope_id': self.group.id},
+            }),
+            content_type='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+
+        called_data = mock_update_staff.call_args.args[2]
+        self.assertEqual(called_data.get('assignment_scopes'), [])
+
     def test_api_card_detail_success_for_client(self):
         self.client.login(username='api-owner@test.com', password='pass1234')
         response = self.client.get(f'/panel/client/api/cards/{self.card.id}/')

@@ -195,7 +195,8 @@ def api_panel_notification_delete(request, notification_id):
         notif = Notification.objects.filter(id=notification_id).only('title').first()
         if notif:
             notif_title = notif.title or ''
-    except Exception:
+    except Exception as exc:
+        logger.debug('Notification title lookup failed before delete for id=%s: %s', notification_id, exc)
         notif_title = ''
 
     result = NotificationService.delete_notification(notification_id)

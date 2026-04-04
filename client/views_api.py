@@ -5,6 +5,7 @@ JSON API views for the client panel: dashboard data, staff CRUD,
 card listing/status changes, image uploads, and group/class helpers.
 """
 import json
+import logging
 
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -23,6 +24,9 @@ from .services import (
     ClientCardService,
     ClientImageService,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_positive_int_ids(values, max_items: int = 500):
@@ -46,6 +50,35 @@ def _normalize_positive_int_ids(values, max_items: int = 500):
         if len(out) >= max_items:
             break
     return out
+
+
+def _normalize_assignment_scopes(values, max_items: int = 500):
+    """Keep assignment scopes as a bounded list of dicts."""
+    if not isinstance(values, list):
+        return []
+
+    out = []
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        out.append(item)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _normalize_staff_assignment_payload(data):
+    """Normalize and cap assignment-related payload fields for stability."""
+    if not isinstance(data, dict):
+        return data
+
+    if 'assigned_groups' in data:
+        data['assigned_groups'] = _normalize_positive_int_ids(data.get('assigned_groups'), max_items=500)
+
+    if 'assignment_scopes' in data:
+        data['assignment_scopes'] = _normalize_assignment_scopes(data.get('assignment_scopes'), max_items=500)
+
+    return data
 
 
 def _result_error_status(message: str, fallback: int = 400) -> int:
@@ -188,6 +221,7 @@ def api_staff_list_create(request):
                 'error': 'Invalid JSON data'
             }, status=400)
     
+    data = _normalize_staff_assignment_payload(data)
     result = ClientStaffService.create_staff(request.user, data)
     
     if result.success:
@@ -198,7 +232,7 @@ def api_staff_list_create(request):
                 if staff:
                     ActivityService.log_staff_create(request, staff)
             except Exception:
-                pass
+                logger.exception('Failed to log staff create activity for staff_id=%s', staff_id)
         return JsonResponse({
             'success': True,
             'message': result.message,
@@ -272,6 +306,7 @@ def api_staff_detail(request, staff_id):
                     'success': False,
                     'error': 'Invalid JSON data'
                 }, status=400)
+        data = _normalize_staff_assignment_payload(data)
         
         result = ClientStaffService.update_staff(request.user, staff_id, data)
         
@@ -281,7 +316,7 @@ def api_staff_detail(request, staff_id):
                 if staff:
                     ActivityService.log_staff_update(request, staff)
             except Exception:
-                pass
+                logger.exception('Failed to log staff update activity for staff_id=%s', staff_id)
             return JsonResponse({
                 'success': True,
                 'message': result.message
@@ -300,7 +335,7 @@ def api_staff_detail(request, staff_id):
         if existing_staff:
             staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
     except Exception:
-        pass
+        logger.exception('Failed to resolve staff name before delete for staff_id=%s', staff_id)
 
     result = ClientStaffService.delete_staff(request.user, staff_id)
     
@@ -308,7 +343,7 @@ def api_staff_detail(request, staff_id):
         try:
             ActivityService.log_staff_delete(request, staff_name, staff_id)
         except Exception:
-            pass
+            logger.exception('Failed to log staff delete activity for staff_id=%s', staff_id)
         return JsonResponse({
             'success': True,
             'message': result.message
@@ -346,7 +381,7 @@ def api_staff_toggle_status(request, staff_id):
                         target_name=f'Staff #{staff_id}',
                     )
             except Exception:
-                pass
+                logger.exception('Failed to log staff status activity for staff_id=%s', staff_id)
             return JsonResponse({
                 'success': True,
                 'message': result.message,
@@ -360,8 +395,7 @@ def api_staff_toggle_status(request, staff_id):
             'message': result.message
         }, status=status_code)
     except Exception:
-        import logging as _logging
-        _logging.getLogger(__name__).exception("Staff toggle status error")
+        logger.exception('Staff toggle status error')
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -409,7 +443,7 @@ def api_staff_set_temp_password(request, staff_id):
                 target_name=staff_name,
             )
         except Exception:
-            pass
+            logger.exception('Failed to log staff temp-password activity for staff_id=%s', staff_id)
         return JsonResponse(result.to_response_dict(), status=200)
 
     msg = (result.message or '').lower()
@@ -592,8 +626,9 @@ def api_class_section_options(request):
         if class_field or section_field or branch_field:
             table_field_map[table['id']] = (class_field, section_field, branch_field)
 
-    if table_field_map:
-        cards = IDCard.objects.filter(table_id__in=table_field_map.keys()).values_list('table_id', 'field_data')
+    table_ids = list(table_field_map.keys())
+    if table_ids:
+        cards = IDCard.objects.filter(table_id__in=table_ids).values_list('table_id', 'field_data').iterator(chunk_size=1000)
     else:
         cards = []
 

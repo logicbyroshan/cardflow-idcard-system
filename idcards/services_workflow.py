@@ -348,27 +348,30 @@ class WorkflowService:
         if user and not skip_permission:
             # Client-readonly: reject if any card is in locked status
             if user.role in ('client', 'client_staff'):
-                locked = IDCard.objects.filter(
+                locked_exists = IDCard.objects.filter(
                     table=table,
                     id__in=card_ids,
                     status__in=cls.CLIENT_READONLY_STATUSES,
-                ).count()
-                if locked:
+                ).exists()
+                if locked_exists:
                     return ServiceResult(
                         success=False,
                         message='Cards in approved / download status cannot be modified by client users.'
                     )
 
-            # For pool→pending, check perm_idcard_retrieve
-            # The main perm is target-based; pool→pending is special
-            has_pool_cards = IDCard.objects.filter(table=table, id__in=card_ids, status='pool').exists()
-            if target_status == 'pending' and has_pool_cards:
-                if not PermissionService.has(user, 'perm_idcard_retrieve'):
+            # Keep bulk permission checks consistent with single-card transition rules.
+            selected_statuses = set(
+                IDCard.objects.filter(table=table, id__in=card_ids)
+                .values_list('status', flat=True)
+            )
+            required_perms = {
+                cls._get_required_perm(current_status, target_status)
+                for current_status in selected_statuses
+                if target_status in cls.ALLOWED_TRANSITIONS.get(current_status, [])
+            }
+            for required_perm in required_perms:
+                if required_perm and not PermissionService.has(user, required_perm):
                     return ServiceResult(success=False, message='Permission denied')
-
-            required_perm = cls.TRANSITION_PERM_MAP.get(target_status)
-            if required_perm and not PermissionService.has(user, required_perm):
-                return ServiceResult(success=False, message='Permission denied')
 
         # Super admin can bypass required-field/image forward gates.
         enforce_required_validations = not (user and PermissionService.is_super_admin(user))
@@ -454,12 +457,12 @@ class WorkflowService:
         # Set/clear timestamps for download and pool transitions
         if target_status == 'download':
             update_kwargs['downloaded_at'] = timezone.now()
-        elif target_status in ('approved',):  # back from download
+        else:
             update_kwargs['downloaded_at'] = None
 
         if target_status == 'pool':
             update_kwargs['deleted_at'] = timezone.now()
-        elif target_status == 'pending':  # back from pool
+        else:
             update_kwargs['deleted_at'] = None
 
         # Track when status changed — used for default sort so that

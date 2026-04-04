@@ -284,16 +284,15 @@ def client_reprint_cards(request, table_id):
     # Real step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')
     source_cards_count = source_cards_qs.count()
-    request_count = ReprintRequest.objects.filter(
+    reprint_status_counts = ReprintRequest.objects.filter(
         table=table,
-        status='requested',
         card__status='download',
-    ).count()
-    confirmed_count = ReprintRequest.objects.filter(
-        table=table,
-        status='confirmed',
-        card__status='download',
-    ).count()
+    ).aggregate(
+        request_count=Count('id', filter=Q(status='requested')),
+        confirmed_count=Count('id', filter=Q(status='confirmed')),
+    )
+    request_count = int(reprint_status_counts.get('request_count') or 0)
+    confirmed_count = int(reprint_status_counts.get('confirmed_count') or 0)
     step_counts = {
         'download_list': source_cards_count,
         'reprint_list': source_cards_count,

@@ -520,6 +520,15 @@ class StaffApiIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_super_admin_create_api_non_object_json_returns_400(self):
+        self.client.force_login(self.super_admin)
+        response = self.client.post(
+            '/panel/staff/api/admin-staff/',
+            data='[]',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
     def test_super_admin_create_api_success(self):
         from staff.models import Staff
 
@@ -543,6 +552,26 @@ class StaffApiIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertTrue(Staff.objects.filter(user__email='api.created@test.com').exists())
+
+    def test_super_admin_update_api_non_object_json_returns_400(self):
+        from staff.models import Staff
+
+        self.client.force_login(self.super_admin)
+        update_user = User.objects.create_user(
+            username='apiupdate@test.com',
+            email='apiupdate@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        update_staff = Staff.objects.create(user=update_user, staff_type='admin_staff')
+
+        response = self.client.put(
+            f'/panel/staff/api/admin-staff/{update_staff.id}/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
 
     def test_my_permissions_returns_scope_for_admin_staff(self):
         self.admin_staff_user.user_permissions.add(self.view_clients_perm)

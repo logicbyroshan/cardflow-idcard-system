@@ -35,19 +35,59 @@ logger = logging.getLogger(__name__)
 
 # None means no ID-count cap at request parsing stage.
 MAX_EXPORT_CARD_IDS: Optional[int] = None
+MAX_EXPORT_JSON_BODY_BYTES = int(os.getenv('MAX_EXPORT_JSON_BODY_BYTES', '5242880'))  # 5 MB
 
 _VALID_STATUSES = {'pending', 'verified', 'approved', 'download', 'pool'}
+
+
+def _is_json_request(request) -> bool:
+    return 'application/json' in str(getattr(request, 'content_type', '') or '').lower()
+
+
+def _get_json_body(request) -> Optional[Dict[str, Any]]:
+    """Parse and cache JSON request body once with a defensive size limit."""
+    if not _is_json_request(request):
+        return None
+
+    if getattr(request, '_exports_json_body_cache_set', False):
+        return getattr(request, '_exports_json_body_cache', None)
+
+    body_bytes = request.body or b''
+    if MAX_EXPORT_JSON_BODY_BYTES > 0 and len(body_bytes) > MAX_EXPORT_JSON_BODY_BYTES:
+        logger.warning(
+            'Export JSON body too large: size=%s limit=%s user=%s path=%s',
+            len(body_bytes),
+            MAX_EXPORT_JSON_BODY_BYTES,
+            getattr(getattr(request, 'user', None), 'id', None),
+            getattr(request, 'path', ''),
+        )
+        request._exports_json_body_cache = None
+        request._exports_json_body_cache_set = True
+        return None
+
+    try:
+        parsed = json.loads(body_bytes)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        request._exports_json_body_cache = None
+        request._exports_json_body_cache_set = True
+        return None
+
+    if isinstance(parsed, dict):
+        request._exports_json_body_cache = parsed
+        request._exports_json_body_cache_set = True
+        return parsed
+
+    request._exports_json_body_cache = None
+    request._exports_json_body_cache_set = True
+    return None
 
 
 def _get_status_from_request(request) -> str:
     """Extract status label from POST body (JSON or form data)."""
     status = ''
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            status = data.get('status', '')
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        status = data.get('status', '')
     if not status:
         status = request.POST.get('status', '')
     return status if status in _VALID_STATUSES else ''
@@ -96,12 +136,9 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     is_super_admin = bool(user and getattr(user, 'is_authenticated', False) and PermissionService.is_super_admin(user))
     
     # Try JSON body first
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            card_ids = data.get('card_ids', [])
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        card_ids = data.get('card_ids', [])
     
     # Fall back to POST data
     if not card_ids:
@@ -135,20 +172,17 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
         image_condition = ''
         from_date = ''
         to_date = ''
-        if request.content_type == 'application/json':
-            try:
-                body = json.loads(request.body)
-                search_q = (body.get('search') or '').strip()
-                class_f = (body.get('class') or body.get('class_filter') or '').strip()
-                section_f = (body.get('section') or body.get('section_filter') or '').strip()
-                course_f = (body.get('course') or body.get('course_filter') or '').strip()
-                branch_f = (body.get('branch') or body.get('branch_filter') or '').strip()
-                image_column = (body.get('image_column') or '').strip()
-                image_condition = (body.get('image_condition') or '').strip()
-                from_date = (body.get('from') or '').strip()
-                to_date = (body.get('to') or '').strip()
-            except (json.JSONDecodeError, ValueError):
-                pass
+        if _is_json_request(request):
+            body = _get_json_body(request) or {}
+            search_q = (body.get('search') or '').strip()
+            class_f = (body.get('class') or body.get('class_filter') or '').strip()
+            section_f = (body.get('section') or body.get('section_filter') or '').strip()
+            course_f = (body.get('course') or body.get('course_filter') or '').strip()
+            branch_f = (body.get('branch') or body.get('branch_filter') or '').strip()
+            image_column = (body.get('image_column') or '').strip()
+            image_condition = (body.get('image_condition') or '').strip()
+            from_date = (body.get('from') or '').strip()
+            to_date = (body.get('to') or '').strip()
         try:
             from django.db.models import Q, CharField
             from django.db.models.fields.json import KeyTextTransform
@@ -245,12 +279,11 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
             }
         }
     """
-    if request.content_type != 'application/json':
+    if not _is_json_request(request):
         return None
 
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
+    data = _get_json_body(request)
+    if not data:
         return None
 
     rename_options = data.get('rename_options')
@@ -582,18 +615,15 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     # Get format preference and template_id
     doc_format = 'docx'
     template_id = None
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            doc_format = data.get('format', 'docx')
-            tpl_val = data.get('template_id', '')
-            if tpl_val:
-                try:
-                    template_id = int(tpl_val)
-                except (ValueError, TypeError):
-                    pass
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        doc_format = data.get('format', 'docx')
+        tpl_val = data.get('template_id', '')
+        if tpl_val:
+            try:
+                template_id = int(tpl_val)
+            except (ValueError, TypeError):
+                pass
     else:
         doc_format = request.POST.get('format', 'docx')
     
@@ -675,18 +705,15 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            tpl_val = data.get('template_id', '')
-            if tpl_val:
-                try:
-                    template_id = int(tpl_val)
-                except (ValueError, TypeError):
-                    pass
-            shorten_titles = bool(data.get('shorten_titles', False))
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        tpl_val = data.get('template_id', '')
+        if tpl_val:
+            try:
+                template_id = int(tpl_val)
+            except (ValueError, TypeError):
+                pass
+        shorten_titles = bool(data.get('shorten_titles', False))
     
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf')
@@ -758,18 +785,15 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            tpl_val = data.get('template_id', '')
-            if tpl_val:
-                try:
-                    template_id = int(tpl_val)
-                except (ValueError, TypeError):
-                    pass
-            shorten_titles = bool(data.get('shorten_titles', False))
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        tpl_val = data.get('template_id', '')
+        if tpl_val:
+            try:
+                template_id = int(tpl_val)
+            except (ValueError, TypeError):
+                pass
+        shorten_titles = bool(data.get('shorten_titles', False))
     
     from .tasks import BackgroundExportManager
     
