@@ -11,7 +11,8 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
 
 from core.models import Notification, NotificationRead, ClientMessage
 from core.services.activity_service import ActivityService
@@ -82,6 +83,7 @@ def api_client_message_strip(request):
     except (TypeError, ValueError):
         limit = 5
 
+    now = timezone.now()
     unread_qs = (
         ClientMessage.objects
         .filter(
@@ -90,6 +92,7 @@ def api_client_message_strip(request):
             notification__target_users=request.user,
             notification__title__startswith='Client Message - ',
         )
+        .filter(Q(visibility='permanent') | Q(expires_at__gt=now))
         .annotate(
             is_read=Exists(
                 NotificationRead.objects.filter(
@@ -116,6 +119,8 @@ def api_client_message_strip(request):
             'message': item.message,
             'scope': item.scope,
             'scope_display': item.get_scope_display(),
+            'visibility': item.visibility,
+            'expires_at': item.expires_at.isoformat() if item.expires_at else None,
             'sent_by_name': sender_name,
             'created_at': item.created_at.isoformat(),
         })

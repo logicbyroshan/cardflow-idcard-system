@@ -157,6 +157,9 @@ urlpatterns = [
     path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
     path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
     path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
+    path('api/client/messages/targets/', views.api_client_message_targets, name='api_client_message_targets'),
+    path('api/client/messages/group-send/', views.api_client_messages_group_send, name='api_client_messages_group_send'),
+    path('api/client/<int:client_id>/messages/<int:message_id>/delete/', views.api_client_message_delete, name='api_client_message_delete'),
     path('api/client/<int:client_id>/login-history/', views.api_client_login_history, name='api_client_login_history'),
     
     # Staff APIs

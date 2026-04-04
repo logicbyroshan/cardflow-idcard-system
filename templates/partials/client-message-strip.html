@@ -1,16 +1,148 @@
-<div id="clientMessageStrip" style="display:none;margin:12px 0 0 0;">
-  <div style="border:1px solid #bfdbfe;background:linear-gradient(135deg,#eff6ff,#f8fafc);border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-    <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;">
-      <div style="width:34px;height:34px;border-radius:999px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+<style>
+  #clientMessageStrip {
+    display: none;
+    margin-top: 12px;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .client-message-card {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(128deg, #eef5ff 0%, #f8fafc 58%, #ffffff 100%);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(30, 64, 175, 0.08);
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .client-message-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .client-message-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: linear-gradient(160deg, #2563eb, #1d4ed8);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
+    flex-shrink: 0;
+  }
+
+  .client-message-body {
+    min-width: 0;
+  }
+
+  .client-message-topline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .client-message-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1d4ed8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .client-message-counter {
+    font-size: 11px;
+    color: #334155;
+    border-radius: 999px;
+    background: #e2e8f0;
+    padding: 2px 8px;
+    font-weight: 700;
+  }
+
+  .client-message-meta {
+    margin-top: 2px;
+    font-size: 12px;
+    color: #334155;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .client-message-text {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #0f172a;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .client-message-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  .client-message-actions .btn {
+    border-radius: 10px;
+  }
+
+  .client-message-expiry {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #7c2d12;
+    font-weight: 700;
+  }
+
+  @media (max-width: 900px) {
+    .client-message-card {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 12px;
+    }
+
+    .client-message-actions {
+      justify-content: flex-start;
+    }
+
+    #clientMessageStrip {
+      margin-left: 8px;
+      margin-right: 8px;
+    }
+  }
+</style>
+
+<div id="clientMessageStrip" aria-live="polite">
+  <div class="client-message-card">
+    <div class="client-message-main">
+      <div class="client-message-icon" aria-hidden="true">
         <i class="fa-solid fa-bullhorn"></i>
       </div>
-      <div style="min-width:0;">
-        <div id="clientMessageStripMeta" style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.04em;">Client Message</div>
-        <div id="clientMessageStripText" style="margin-top:4px;font-size:14px;color:#0f172a;line-height:1.45;white-space:pre-wrap;word-break:break-word;"></div>
+      <div class="client-message-body">
+        <div class="client-message-topline">
+          <div class="client-message-label">Admin Message</div>
+          <div class="client-message-counter" id="clientMessageStripCounter">1 of 1</div>
+        </div>
+        <div class="client-message-meta" id="clientMessageStripMeta">Message from Admin</div>
+        <div class="client-message-text" id="clientMessageStripText"></div>
+        <div class="client-message-expiry" id="clientMessageStripExpiry" style="display:none;"></div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-      <a href="{% url 'client:messages' %}" class="btn btn-sm btn-neutral" title="Open all messages">All Messages</a>
+    <div class="client-message-actions">
+      <a href="{% url 'client:messages' %}" class="btn btn-sm btn-neutral" title="Open messages page">Go to Messages</a>
+      <button type="button" class="btn btn-sm btn-neutral" id="clientMessageNextBtn" title="Next message">
+        Next
+      </button>
       <button type="button" class="btn btn-sm btn-neutral" id="clientMessageReadBtn" title="Mark read">Read</button>
       <button type="button" class="btn btn-sm btn-neutral" id="clientMessageDismissBtn" aria-label="Dismiss message" title="Dismiss">
         <i class="fa-solid fa-xmark"></i>
@@ -26,12 +158,29 @@
 
   var metaEl = document.getElementById('clientMessageStripMeta');
   var textEl = document.getElementById('clientMessageStripText');
+  var expiryEl = document.getElementById('clientMessageStripExpiry');
+  var counterEl = document.getElementById('clientMessageStripCounter');
+  var nextBtn = document.getElementById('clientMessageNextBtn');
   var readBtn = document.getElementById('clientMessageReadBtn');
   var dismissBtn = document.getElementById('clientMessageDismissBtn');
 
   var queue = [];
   var currentIndex = 0;
   var pollTimer = null;
+  var anchorNode = document.createComment('clientMessageStripAnchor');
+  var originalParent = root.parentNode;
+  var isDockedInWelcome = false;
+
+  if (originalParent) {
+    originalParent.insertBefore(anchorNode, root);
+  }
+
+  function formatLocalDate(value) {
+    if (!value) return '';
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString();
+  }
 
   function escapeHtml(s) {
     var text = String(s == null ? '' : s);
@@ -53,8 +202,18 @@
   }
 
   function renderCurrent() {
+    var welcomeBanner = document.getElementById('clientWelcomeBanner');
+    var welcomeSlot = document.getElementById('clientMessageWelcomeSlot');
+
     if (!queue.length) {
       root.style.display = 'none';
+      if (welcomeBanner) {
+        welcomeBanner.style.display = '';
+      }
+      if (isDockedInWelcome && anchorNode.parentNode) {
+        anchorNode.parentNode.insertBefore(root, anchorNode.nextSibling);
+        isDockedInWelcome = false;
+      }
       return;
     }
 
@@ -73,7 +232,43 @@
 
     metaEl.textContent = metaParts.join(' | ');
     textEl.innerHTML = escapeHtml(item.message || '');
+    if (counterEl) {
+      counterEl.textContent = (currentIndex + 1) + ' of ' + queue.length;
+      counterEl.style.display = queue.length > 1 ? '' : 'none';
+    }
+    if (expiryEl) {
+      var isTemporary = item.visibility === 'temporary';
+      var expiryText = formatLocalDate(item.expires_at);
+      if (isTemporary && expiryText) {
+        expiryEl.textContent = 'Temporary message. Expires: ' + expiryText;
+        expiryEl.style.display = '';
+      } else {
+        expiryEl.textContent = '';
+        expiryEl.style.display = 'none';
+      }
+    }
+    if (nextBtn) {
+      nextBtn.style.display = queue.length > 1 ? '' : 'none';
+    }
+
+    if (welcomeBanner && welcomeSlot) {
+      welcomeBanner.style.display = 'none';
+      if (!isDockedInWelcome || root.parentNode !== welcomeSlot) {
+        welcomeSlot.appendChild(root);
+        isDockedInWelcome = true;
+      }
+    } else if (isDockedInWelcome && anchorNode.parentNode) {
+      anchorNode.parentNode.insertBefore(root, anchorNode.nextSibling);
+      isDockedInWelcome = false;
+    }
+
     root.style.display = '';
+  }
+
+  function showNext() {
+    if (!queue.length) return;
+    currentIndex = (currentIndex + 1) % queue.length;
+    renderCurrent();
   }
 
   function markCurrentAsRead() {
@@ -120,6 +315,7 @@
 
   if (readBtn) readBtn.addEventListener('click', dismissCurrent);
   if (dismissBtn) dismissBtn.addEventListener('click', dismissCurrent);
+  if (nextBtn) nextBtn.addEventListener('click', showNext);
 
   fetchUnread();
   pollTimer = setInterval(fetchUnread, 45000);

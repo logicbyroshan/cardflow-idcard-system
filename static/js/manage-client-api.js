@@ -100,6 +100,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       };
 
+      NS.deleteClientMessage = async function(clientId, messageId) {
+        try {
+          return await ApiClient.post('/api/client/' + clientId + '/messages/' + messageId + '/delete/', {});
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.fetchClientMessageTargets = async function(queryText) {
+        var query = encodeURIComponent((queryText || '').trim());
+        var url = '/api/client/messages/targets/?limit=800';
+        if (query) url += '&q=' + query;
+        try {
+          return await ApiClient.get(url);
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.sendClientGroupMessage = async function(payload) {
+        try {
+          return await ApiClient.post('/api/client/messages/group-send/', payload);
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
       // ==================== TEMP PASSWORD FUNCTIONS ====================
       var tempPwVerificationCode = '';
       var tempPwTargetType = ''; // 'client' or 'staff'

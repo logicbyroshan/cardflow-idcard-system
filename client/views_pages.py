@@ -7,7 +7,8 @@ and staff management.
 from django.urls import reverse
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
 
 from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
@@ -192,6 +193,7 @@ def messages(request):
     if not client:
         return redirect('/panel/auth/login/')
 
+    now = timezone.now()
     base_qs = (
         ClientMessage.objects
         .filter(
@@ -200,6 +202,7 @@ def messages(request):
             notification__target='selected',
             notification__target_users=user,
         )
+        .filter(Q(visibility='permanent') | Q(expires_at__gt=now))
         .annotate(
             is_read=Exists(
                 NotificationRead.objects.filter(

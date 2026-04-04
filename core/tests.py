@@ -8,7 +8,9 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
+from django.utils import timezone
 from unittest.mock import patch
+from datetime import timedelta
 import json
 import os
 import tempfile
@@ -1610,3 +1612,165 @@ class ClientMessageApiTests(TestCase):
         strip_after = self.client.get('/panel/api/notifications/client-messages/unread/')
         self.assertEqual(strip_after.status_code, 200)
         self.assertEqual(len(strip_after.json().get('items', [])), 0)
+
+    def test_send_temporary_client_message_sets_expiry(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({
+                'message': 'Temporary client alert',
+                'scope': 'client_only',
+                'visibility': 'temporary',
+                'temporary_duration': '6h',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        self.assertEqual(row.visibility, 'temporary')
+        self.assertIsNotNone(row.expires_at)
+        self.assertGreater(row.expires_at, timezone.now())
+
+    def test_expired_temporary_message_hidden_for_client_but_visible_in_admin_history(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({
+                'message': 'Temporary message that expires',
+                'scope': 'client_only',
+                'visibility': 'temporary',
+                'temporary_duration': '6h',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        row.expires_at = timezone.now() - timedelta(minutes=1)
+        row.save(update_fields=['expires_at'])
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertEqual(len(history_payload.get('messages', [])), 1)
+
+        self.client.login(username='msg-client@test.com', password='clientpass1')
+        strip_response = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_response.status_code, 200)
+        strip_payload = strip_response.json()
+        self.assertEqual(len(strip_payload.get('items', [])), 0)
+
+    def test_group_send_to_selected_clients(self):
+        from core.models import ClientMessage
+        from staff.models import Staff
+
+        user2, client2 = _create_client_user('msg-client-2@test.com', 'clientpass2')
+        staff2_user = User.objects.create_user(
+            username='msg-client-2-staff@test.com',
+            email='msg-client-2-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(user=staff2_user, staff_type='client_staff', client=client2)
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client/messages/group-send/',
+            data=json.dumps({
+                'message': 'Selected group message',
+                'scope': 'client_and_staff',
+                'target_mode': 'selected',
+                'client_ids': [self.client_obj.id],
+                'visibility': 'permanent',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('sent_count'), 1)
+
+        self.assertEqual(ClientMessage.objects.filter(client=self.client_obj).count(), 1)
+        self.assertEqual(ClientMessage.objects.filter(client=client2).count(), 0)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        target_ids = set(row.notification.target_users.values_list('id', flat=True))
+        self.assertEqual(target_ids, {self.client_user.id, self.client_staff_user.id})
+        self.assertNotIn(user2.id, target_ids)
+
+    def test_group_send_to_all_clients(self):
+        from core.models import ClientMessage
+
+        _user2, client2 = _create_client_user('msg-client-all@test.com', 'clientpass2')
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client/messages/group-send/',
+            data=json.dumps({
+                'message': 'Send to all clients',
+                'scope': 'client_only',
+                'target_mode': 'all',
+                'visibility': 'temporary',
+                'temporary_duration': '12h',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('sent_count'), 2)
+
+        self.assertEqual(ClientMessage.objects.filter(client=self.client_obj).count(), 1)
+        self.assertEqual(ClientMessage.objects.filter(client=client2).count(), 1)
+
+    def test_targets_endpoint_returns_clients(self):
+        _user2, _client2 = _create_client_user('msg-targets@test.com', 'clientpass2')
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/client/messages/targets/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertGreaterEqual(len(payload.get('clients', [])), 2)
+
+    def test_manual_delete_hides_from_client_strip_but_keeps_admin_history(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Manual remove me', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+
+        delete_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/{row.id}/delete/',
+            data=json.dumps({}),
+            content_type='application/json',
+        )
+        self.assertEqual(delete_response.status_code, 200)
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertEqual(len(history_payload.get('messages', [])), 1)
+        self.assertFalse(history_payload['messages'][0].get('notification_active'))
+
+        self.client.login(username='msg-client@test.com', password='clientpass1')
+        strip_response = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_response.status_code, 200)
+        strip_payload = strip_response.json()
+        self.assertEqual(len(strip_payload.get('items', [])), 0)

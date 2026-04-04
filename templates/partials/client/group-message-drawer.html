@@ -1,0 +1,205 @@
+<style>
+  .group-msg-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .group-msg-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .group-msg-panel-head {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #f8fafc;
+  }
+
+  .group-msg-panel-body {
+    padding: 10px;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .group-msg-client-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px;
+    background: #fff;
+  }
+
+  .group-msg-client-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .group-msg-client-name {
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .group-msg-client-sub {
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  .group-msg-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .group-msg-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: #fff;
+  }
+
+  .group-msg-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 980px) {
+    .group-msg-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div id="group-message-drawer" class="drawer-modal">
+  <div class="drawer-content drawer-wide">
+    <div class="drawer-header">
+      <h3>
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>Group Client Message</span>
+      </h3>
+      <button class="drawer-close" id="closeGroupMessageDrawer" aria-label="Close group message drawer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="drawer-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="group-msg-layout">
+        <section class="group-msg-panel">
+          <div class="group-msg-panel-head">
+            <div style="font-size:12px;font-weight:700;color:#334155;">Target Clients</div>
+            <div id="groupMessageSelectedCount" style="font-size:11px;color:#64748b;">0 selected</div>
+          </div>
+          <div class="group-msg-panel-body">
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="groupMessageClientSearch" class="form-input" placeholder="Search clients..." style="flex:1;">
+              <button type="button" class="btn btn-sm btn-neutral" id="refreshGroupMessageClientsBtn" title="Refresh clients">
+                <i class="fa-solid fa-rotate"></i>
+              </button>
+            </div>
+
+            <div class="group-msg-controls">
+              <button type="button" class="btn btn-sm btn-neutral" id="groupMessageSelectAllVisibleBtn">Select Visible</button>
+              <button type="button" class="btn btn-sm btn-neutral" id="groupMessageClearSelectionBtn">Clear</button>
+              <label class="group-msg-radio">
+                <input type="checkbox" id="groupMessageAllClientsToggle">
+                <span>Send to all clients</span>
+              </label>
+            </div>
+
+            <div id="groupMessageClientsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+        </section>
+
+        <section class="group-msg-panel">
+          <div class="group-msg-panel-head">
+            <div style="font-size:12px;font-weight:700;color:#334155;">Compose</div>
+          </div>
+          <div class="group-msg-panel-body">
+            <div style="font-size:12px;color:#64748b;font-weight:600;">Send To</div>
+            <div class="group-msg-controls">
+              <label class="group-msg-radio">
+                <input type="radio" name="groupMessageScope" value="client_only" checked>
+                <span>Client Only</span>
+              </label>
+              <label class="group-msg-radio">
+                <input type="radio" name="groupMessageScope" value="client_and_staff">
+                <span>Client + Staff</span>
+              </label>
+            </div>
+
+            <div style="font-size:12px;color:#64748b;font-weight:600;">Message Type</div>
+            <div class="group-msg-controls">
+              <label class="group-msg-radio">
+                <input type="radio" name="groupMessageVisibility" value="permanent" checked>
+                <span>Permanent</span>
+              </label>
+              <label class="group-msg-radio">
+                <input type="radio" name="groupMessageVisibility" value="temporary">
+                <span>Temporary</span>
+              </label>
+            </div>
+
+            <div class="form-group" id="groupMessageDurationWrap" style="display:none;margin:0;">
+              <label class="form-label" for="groupMessageTemporaryDuration">Temporary Duration</label>
+              <select id="groupMessageTemporaryDuration" class="form-select">
+                <option value="6h">6 hours</option>
+                <option value="12h">12 hours</option>
+                <option value="24h">24 hours</option>
+                <option value="2d">2 days</option>
+                <option value="3d">3 days</option>
+                <option value="7d">7 days</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" for="groupMessageText">Message</label>
+              <textarea class="form-textarea" id="groupMessageText" rows="6" maxlength="2000" placeholder="Type message to selected clients..."></textarea>
+              <div id="groupMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
+            </div>
+
+            <div style="font-size:11px;color:#64748b;">Manual delete option: you can remove any sent message later from each client's message history.</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="drawer-footer group-msg-footer">
+      <button type="button" class="btn btn-md btn-neutral" id="cancelGroupMessageBtn">
+        <i class="fa-solid fa-xmark"></i> Close
+      </button>
+      <button type="button" class="btn btn-md btn-warning" id="sendGroupMessageAllBtn">
+        <i class="fa-solid fa-globe"></i> Send To All
+      </button>
+      <button type="button" class="btn btn-md btn-primary" id="sendGroupMessageSelectedBtn">
+        <i class="fa-solid fa-paper-plane"></i> Send Selected
+      </button>
+    </div>
+  </div>
+</div>

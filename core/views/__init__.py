@@ -76,6 +76,9 @@ from .client_api import (
     api_client_set_temp_password,
     api_client_messages,
     api_client_message_send,
+    api_client_message_targets,
+    api_client_messages_group_send,
+    api_client_message_delete,
 )
 
 from .staff_api import (

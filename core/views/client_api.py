@@ -4,6 +4,7 @@ Contains: All client-related API endpoints (CRUD, toggle status, get staff)
 """
 import json
 import logging
+from datetime import timedelta
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
@@ -15,11 +16,21 @@ from ..services.permission_service import (
     api_require_any_admin,
     api_require_super_admin,
 )
-from ..models import ClientMessage, User
+from ..models import ClientMessage, Notification, User
 from accounts.rate_limit import rate_limit
 from mediafiles.utils import normalize_uploaded_image
 
 logger = logging.getLogger(__name__)
+
+
+TEMP_MESSAGE_DURATIONS = {
+    '6h': timedelta(hours=6),
+    '12h': timedelta(hours=12),
+    '24h': timedelta(hours=24),
+    '2d': timedelta(days=2),
+    '3d': timedelta(days=3),
+    '7d': timedelta(days=7),
+}
 
 
 MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -79,11 +90,51 @@ def _serialize_client_message(item):
         'message': item.message,
         'scope': item.scope,
         'scope_display': item.get_scope_display(),
+        'visibility': item.visibility,
+        'visibility_display': item.get_visibility_display(),
+        'expires_at': item.expires_at.isoformat() if item.expires_at else None,
+        'expires_at_display': timezone.localtime(item.expires_at).strftime('%d-%m-%Y %H:%M') if item.expires_at else None,
+        'is_expired': item.is_expired,
+        'notification_active': bool(getattr(item, 'notification', None) and item.notification.is_active),
         'recipient_count': item.recipient_count,
         'sent_by_name': sender_name,
         'created_at': item.created_at.isoformat(),
         'created_at_display': timezone.localtime(item.created_at).strftime('%d-%m-%Y %H:%M'),
     }
+
+
+def _parse_message_visibility(payload):
+    visibility = (payload.get('visibility') or 'permanent').strip().lower()
+    if visibility not in ('permanent', 'temporary'):
+        return None, None, 'Invalid message type'
+
+    if visibility == 'permanent':
+        return visibility, None, None
+
+    duration_code = (payload.get('temporary_duration') or '').strip().lower()
+    duration = TEMP_MESSAGE_DURATIONS.get(duration_code)
+    if not duration:
+        return None, None, 'Please select a valid temporary duration'
+
+    return visibility, timezone.now() + duration, None
+
+
+def _resolve_client_message_recipients(client_obj, scope):
+    recipient_users = []
+    if client_obj.user_id and client_obj.user.is_active:
+        recipient_users.append(client_obj.user)
+
+    if scope == 'client_and_staff':
+        staff_users = list(
+            User.objects.filter(
+                staff_profile__staff_type='client_staff',
+                staff_profile__client_id=client_obj.id,
+                is_active=True,
+            ).only('id')
+        )
+        recipient_users.extend(staff_users)
+
+    return sorted({u.id for u in recipient_users if u and u.id})
 
 
 @require_http_methods(["POST"])
@@ -327,7 +378,7 @@ def api_client_messages(request, client_id):
     rows = (
         ClientMessage.objects
         .filter(client_id=client_id)
-        .select_related('sent_by')
+        .select_related('sent_by', 'notification')
         .order_by('-created_at')[:80]
     )
 
@@ -366,27 +417,17 @@ def api_client_message_send(request, client_id):
     if scope not in ('client_only', 'client_and_staff'):
         return JsonResponse({'success': False, 'message': 'Invalid recipient scope'}, status=400)
 
+    visibility, expires_at, visibility_error = _parse_message_visibility(payload)
+    if visibility_error:
+        return JsonResponse({'success': False, 'message': visibility_error}, status=400)
+
     from client.models import Client
 
     client = Client.objects.filter(id=client_id).select_related('user').first()
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
 
-    recipient_users = []
-    if client.user_id and client.user.is_active:
-        recipient_users.append(client.user)
-
-    if scope == 'client_and_staff':
-        staff_users = list(
-            User.objects.filter(
-                staff_profile__staff_type='client_staff',
-                staff_profile__client_id=client_id,
-                is_active=True,
-            ).only('id')
-        )
-        recipient_users.extend(staff_users)
-
-    recipient_ids = sorted({u.id for u in recipient_users if u and u.id})
+    recipient_ids = _resolve_client_message_recipients(client, scope)
     if not recipient_ids:
         return JsonResponse({'success': False, 'message': 'No active recipients found for this client'}, status=400)
 
@@ -410,6 +451,8 @@ def api_client_message_send(request, client_id):
         sent_by=request.user,
         message=message_text,
         scope=scope,
+        visibility=visibility,
+        expires_at=expires_at,
         notification_id=notif_id,
         recipient_count=len(recipient_ids),
     )
@@ -429,3 +472,192 @@ def api_client_message_send(request, client_id):
         'client_message': _serialize_client_message(message_row),
         'sender_name': sender_name,
     })
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='client_msg_targets')
+def api_client_message_targets(request):
+    """Return client options for group message targeting."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    from client.models import Client
+
+    query = (request.GET.get('q') or '').strip()
+    try:
+        limit = max(20, min(int(request.GET.get('limit', 400)), 1000))
+    except (TypeError, ValueError):
+        limit = 400
+
+    qs = Client.objects.select_related('user').order_by('name')
+    if query:
+        qs = qs.filter(name__icontains=query)
+
+    rows = list(qs[:limit])
+    return JsonResponse({
+        'success': True,
+        'clients': [
+            {
+                'id': item.id,
+                'name': item.name,
+                'status': item.status,
+                'is_user_active': bool(item.user and item.user.is_active),
+            }
+            for item in rows
+        ],
+    })
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='client_msg_group_send')
+def api_client_messages_group_send(request):
+    """Send one-way client messages to selected clients or all clients."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    message_text = (payload.get('message') or '').strip()
+    scope = (payload.get('scope') or 'client_only').strip()
+    target_mode = (payload.get('target_mode') or 'selected').strip()
+
+    if not message_text:
+        return JsonResponse({'success': False, 'message': 'Message is required'}, status=400)
+    if len(message_text) > 2000:
+        return JsonResponse({'success': False, 'message': 'Message is too long (max 2000 characters)'}, status=400)
+    if scope not in ('client_only', 'client_and_staff'):
+        return JsonResponse({'success': False, 'message': 'Invalid recipient scope'}, status=400)
+    if target_mode not in ('selected', 'all'):
+        return JsonResponse({'success': False, 'message': 'Invalid target mode'}, status=400)
+
+    visibility, expires_at, visibility_error = _parse_message_visibility(payload)
+    if visibility_error:
+        return JsonResponse({'success': False, 'message': visibility_error}, status=400)
+
+    selected_ids = []
+    raw_client_ids = payload.get('client_ids') or []
+    if target_mode == 'selected':
+        if not isinstance(raw_client_ids, list):
+            return JsonResponse({'success': False, 'message': 'client_ids must be a list'}, status=400)
+        for raw_id in raw_client_ids:
+            try:
+                selected_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        selected_ids = sorted(set(selected_ids))
+        if not selected_ids:
+            return JsonResponse({'success': False, 'message': 'Select at least one client'}, status=400)
+
+    from client.models import Client
+
+    clients_qs = Client.objects.select_related('user').order_by('name')
+    if target_mode == 'selected':
+        clients_qs = clients_qs.filter(id__in=selected_ids)
+
+    clients = list(clients_qs)
+    if not clients:
+        return JsonResponse({'success': False, 'message': 'No clients found for this request'}, status=400)
+
+    sent_items = []
+    skipped_clients = []
+    failed_clients = []
+    total_recipients = 0
+
+    for client in clients:
+        recipient_ids = _resolve_client_message_recipients(client, scope)
+        if not recipient_ids:
+            skipped_clients.append({'id': client.id, 'name': client.name})
+            continue
+
+        notif_result = NotificationService.create_notification(
+            title=f'Client Message - {client.name}',
+            message=message_text,
+            priority='normal',
+            category='announcement',
+            target='selected',
+            target_user_ids=recipient_ids,
+            created_by=request.user,
+            send_email=False,
+        )
+        if not notif_result.success:
+            failed_clients.append({'id': client.id, 'name': client.name})
+            continue
+
+        notif_id = ((notif_result.data or {}).get('notification') or {}).get('id')
+        row = ClientMessage.objects.create(
+            client=client,
+            sent_by=request.user,
+            message=message_text,
+            scope=scope,
+            visibility=visibility,
+            expires_at=expires_at,
+            notification_id=notif_id,
+            recipient_count=len(recipient_ids),
+        )
+        sent_items.append({'id': row.id, 'client_id': client.id, 'client_name': client.name})
+        total_recipients += len(recipient_ids)
+
+    if not sent_items:
+        return JsonResponse({
+            'success': False,
+            'message': 'No messages were sent. Check selected clients and recipients.',
+            'skipped_clients': skipped_clients,
+            'failed_clients': failed_clients,
+        }, status=400)
+
+    ActivityService.log(
+        'notification_create',
+        f'Group client message sent ({len(sent_items)} clients, {scope})',
+        request=request,
+        target_model='ClientMessage',
+        target_id=sent_items[0]['id'],
+        target_name='Group Client Message',
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Message sent to {len(sent_items)} client(s)',
+        'sent_count': len(sent_items),
+        'recipient_count': total_recipients,
+        'skipped_count': len(skipped_clients),
+        'failed_count': len(failed_clients),
+    })
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+@rate_limit(max_requests=20, window_seconds=60, key_prefix='client_msg_delete')
+def api_client_message_delete(request, client_id, message_id):
+    """Hide a sent message from client-side surfaces while preserving sender history."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    row = (
+        ClientMessage.objects
+        .filter(id=message_id, client_id=client_id)
+        .select_related('notification', 'client')
+        .first()
+    )
+    if not row:
+        return JsonResponse({'success': False, 'message': 'Message not found'}, status=404)
+
+    if row.notification_id:
+        Notification.objects.filter(id=row.notification_id).update(is_active=False)
+
+    ActivityService.log(
+        'notification_update',
+        f'Client message manually removed from recipients for {row.client.name}',
+        request=request,
+        target_model='ClientMessage',
+        target_id=row.id,
+        target_name=row.client.name,
+    )
+
+    return JsonResponse({'success': True, 'message': 'Message removed from client inbox'})

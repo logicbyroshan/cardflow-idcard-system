@@ -1,3 +1,79 @@
+<style>
+  .client-msg-drawer-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 0;
+  }
+
+  .client-msg-drawer-scroll {
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+
+  .client-msg-history {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 10px;
+    min-height: 180px;
+    max-height: 320px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .client-msg-composer {
+    margin-top: auto;
+    position: sticky;
+    bottom: 0;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding-top: 12px;
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .client-msg-radio-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .client-msg-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: #fff;
+  }
+
+  .client-msg-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  @media (max-width: 780px) {
+    .client-msg-actions {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+  }
+</style>
+
 <div id="client-message-drawer" class="drawer-modal">
   <div class="drawer-content">
     <div class="drawer-header">
@@ -10,46 +86,74 @@
       </button>
     </div>
 
-    <div class="drawer-body" style="display:flex;flex-direction:column;gap:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div>
-          <div style="font-size:12px;color:#64748b;font-weight:600;">Client</div>
-          <div id="clientMessageDrawerClientName" style="font-size:15px;font-weight:700;color:#1e293b;">-</div>
+    <div class="drawer-body client-msg-drawer-body">
+      <div class="client-msg-drawer-scroll">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div>
+            <div style="font-size:12px;color:#64748b;font-weight:600;">Client</div>
+            <div id="clientMessageDrawerClientName" style="font-size:15px;font-weight:700;color:#1e293b;">-</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-neutral" id="refreshClientMessagesBtn" title="Refresh history">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
         </div>
-        <button type="button" class="btn btn-sm btn-neutral" id="refreshClientMessagesBtn" title="Refresh history">
-          <i class="fa-solid fa-rotate"></i>
-        </button>
+
+        <div style="font-size:12px;color:#64748b;font-weight:600;">Message History</div>
+        <div id="clientMessageHistory" class="client-msg-history"></div>
       </div>
 
-      <div style="font-size:12px;color:#64748b;font-weight:600;">Message History</div>
-      <div id="clientMessageHistory" style="border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;padding:10px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:10px;"></div>
+      <div class="client-msg-composer">
+        <div style="font-size:12px;color:#64748b;font-weight:600;">Send To</div>
+        <div class="client-msg-radio-row">
+          <label class="client-msg-radio">
+            <input type="radio" name="clientMessageScope" value="client_only" checked>
+            <span>Client Only</span>
+          </label>
+          <label class="client-msg-radio">
+            <input type="radio" name="clientMessageScope" value="client_and_staff">
+            <span>Client + Staff</span>
+          </label>
+        </div>
 
-      <div style="font-size:12px;color:#64748b;font-weight:600;">Send To</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;">
-          <input type="radio" name="clientMessageScope" value="client_only" checked>
-          <span>Client Only</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;">
-          <input type="radio" name="clientMessageScope" value="client_and_staff">
-          <span>Client + Staff</span>
-        </label>
+        <div style="font-size:12px;color:#64748b;font-weight:600;">Message Type</div>
+        <div class="client-msg-radio-row">
+          <label class="client-msg-radio">
+            <input type="radio" name="clientMessageVisibility" id="clientMessageVisibilityPermanent" value="permanent" checked>
+            <span>Permanent</span>
+          </label>
+          <label class="client-msg-radio">
+            <input type="radio" name="clientMessageVisibility" id="clientMessageVisibilityTemporary" value="temporary">
+            <span>Temporary</span>
+          </label>
+        </div>
+
+        <div class="form-group" id="clientMessageDurationWrap" style="display:none;margin:0;">
+          <label class="form-label" for="clientMessageTemporaryDuration">Temporary Duration</label>
+          <select id="clientMessageTemporaryDuration" class="form-select">
+            <option value="6h">6 hours</option>
+            <option value="12h">12 hours</option>
+            <option value="24h">24 hours</option>
+            <option value="2d">2 days</option>
+            <option value="3d">3 days</option>
+            <option value="7d">7 days</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" for="clientMessageText">Message</label>
+          <textarea class="form-textarea" id="clientMessageText" rows="4" maxlength="2000" placeholder="Type message to client..."></textarea>
+          <div id="clientMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
+        </div>
+
+        <div class="client-msg-actions">
+          <button type="button" class="btn btn-md btn-neutral" id="cancelClientMessageBtn">
+            <i class="fa-solid fa-xmark"></i> Close
+          </button>
+          <button type="button" class="btn btn-md btn-primary" id="sendClientMessageBtn">
+            <i class="fa-solid fa-paper-plane"></i> Send Message
+          </button>
+        </div>
       </div>
-
-      <div class="form-group" style="margin:0;">
-        <label class="form-label" for="clientMessageText">Message</label>
-        <textarea class="form-textarea" id="clientMessageText" rows="4" maxlength="2000" placeholder="Type message to client..."></textarea>
-        <div id="clientMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
-      </div>
-    </div>
-
-    <div class="drawer-footer">
-      <button type="button" class="btn btn-md btn-neutral" id="cancelClientMessageBtn">
-        <i class="fa-solid fa-xmark"></i> Close
-      </button>
-      <button type="button" class="btn btn-md btn-primary" id="sendClientMessageBtn">
-        <i class="fa-solid fa-paper-plane"></i> Send Message
-      </button>
     </div>
   </div>
 </div>

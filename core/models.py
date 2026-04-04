@@ -526,11 +526,22 @@ class ClientMessage(models.Model):
         ('client_only', 'Client Only'),
         ('client_and_staff', 'Client + Staff'),
     ]
+    VISIBILITY_CHOICES = [
+        ('permanent', 'Permanent'),
+        ('temporary', 'Temporary'),
+    ]
 
     client = models.ForeignKey('core.Client', on_delete=models.CASCADE, related_name='client_messages')
     sent_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_client_messages')
     message = models.TextField()
     scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default='client_only', db_index=True)
+    visibility = models.CharField(
+        max_length=12,
+        choices=VISIBILITY_CHOICES,
+        default='permanent',
+        db_index=True,
+    )
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
     notification = models.OneToOneField(
         Notification,
         on_delete=models.SET_NULL,
@@ -546,10 +557,22 @@ class ClientMessage(models.Model):
         indexes = [
             models.Index(fields=['client', '-created_at'], name='climsg_client_time_idx'),
             models.Index(fields=['scope', '-created_at'], name='climsg_scope_time_idx'),
+            models.Index(fields=['visibility', 'expires_at'], name='climsg_visibility_exp_idx'),
         ]
 
     def __str__(self):
         return f"ClientMessage(client={self.client_id}, scope={self.scope})"
+
+    @property
+    def is_temporary(self):
+        return self.visibility == 'temporary'
+
+    @property
+    def is_expired(self):
+        if not self.is_temporary or not self.expires_at:
+            return False
+        from django.utils import timezone
+        return self.expires_at <= timezone.now()
 
 
 class BackgroundTask(models.Model):
