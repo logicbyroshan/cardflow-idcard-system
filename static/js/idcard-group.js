@@ -46,6 +46,16 @@ function initIdcardGroup(config) {
   window.IDCardGroup = window.IDCardGroup || {};
   window.IDCardGroup.refreshTable = refreshGroupTableInPlace;
 
+  function broadcastClassesUpgraded(tableId) {
+    var payload = { tableId: Number(tableId) || null, ts: Date.now() };
+    try {
+      window.dispatchEvent(new CustomEvent('idcard-classes-upgraded', { detail: payload }));
+    } catch (_err) {}
+    try {
+      localStorage.setItem('idcard:classes-upgraded', JSON.stringify(payload));
+    } catch (_err2) {}
+  }
+
   // ==================== SINGLE-CLICK ROW SELECTION ====================
   if (tableBody) {
     tableBody.addEventListener('click', function(e) {
@@ -676,6 +686,7 @@ function initIdcardGroup(config) {
       .then(function(data) {
         closeUpgradeAllModal();
         if (data.success) {
+          broadcastClassesUpgraded(upgradeAllTableId);
           window.showToast(data.message || 'Classes upgraded!', 'success');
           setTimeout(function() { refreshGroupTableInPlace(); }, 300);
         } else {

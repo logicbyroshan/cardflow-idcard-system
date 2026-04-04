@@ -14,6 +14,7 @@ let searchTimer = null;
 let serverInfoSnapshot = null;
 let serverInfoHasFetched = false;
 let serverInfoLoading = false;
+let _maintenanceEnabled = false;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
 
 function _isPageReloadNavigation() {
@@ -58,10 +59,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const restoredTab = _restoreManagePanelTabOnReload();
   if (!restoredTab || restoredTab === 'notifications') {
     loadNotifications();
+    if (typeof loadMaintenanceStatus === 'function') loadMaintenanceStatus();
   } else if (restoredTab === 'download-templates') {
     loadTemplates();
   } else if (restoredTab === 'log-history') {
-    loadOperationsFeed(false);
+    loadOperationsFeed(1);
   } else if (restoredTab === 'email-logs') {
     loadEmailLogs(1);
   } else if (restoredTab === 'server-info') {
@@ -132,7 +134,7 @@ function loadMoreNotifications() {
 function renderTable() {
   const tbody = document.getElementById('notifTableBody');
   if (!panelNotifications.length) {
-    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
+    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="8">
       <div class="empty-state">
         <i class="fa-solid fa-bell-slash"></i>
         <p>No notifications yet</p>
@@ -142,9 +144,10 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = panelNotifications.map(n => {
+  tbody.innerHTML = panelNotifications.map((n, i) => {
     const msgPreview = n.message.length > 60 ? n.message.substring(0, 60) + '...' : n.message;
     return `<tr>
+      <td class="text-center text-xs text-gray-400">${i + 1}</td>
       <td>
         <div class="notif-title-cell">
           <strong>${escHtml(n.title)}</strong>
@@ -158,8 +161,8 @@ function renderTable() {
       <td><span class="notif-time">${n.time_ago} ago</span></td>
       <td>
         <div class="notif-actions-cell">
-          <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteNotification(${n.id})">
-            <i class="fa-solid fa-trash"></i>
+          <button class="btn btn-icon btn-neutral" title="Hide" onclick="hideNotification(${n.id})">
+            <i class="fa-solid fa-eye-slash"></i>
           </button>
         </div>
       </td>
@@ -168,13 +171,146 @@ function renderTable() {
 }
 
 function updateStats() {
-  document.getElementById('statTotal').textContent = panelTotal;
+  const totalEl = document.getElementById('statTotal');
+  if (totalEl) totalEl.textContent = panelTotal;
   // Use server-side aggregates (returned by API) for accurate full-dataset counts
   const s = window._panelNotifStats || {};
-  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : 0;
-  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : 0;
-  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : 0;
+  const broadcastEl = document.getElementById('statBroadcast');
+  const targetedEl = document.getElementById('statTargeted');
+  const urgentEl = document.getElementById('statUrgent');
+  if (broadcastEl) broadcastEl.textContent = s.broadcast != null ? s.broadcast : 0;
+  if (targetedEl) targetedEl.textContent = s.targeted != null ? s.targeted : 0;
+  if (urgentEl) urgentEl.textContent = s.urgent != null ? s.urgent : 0;
 }
+
+/* ============ Notifications Top Bar Actions ============ */
+window.refreshNotificationsPanel = function () {
+  loadNotifications(false);
+  if (typeof loadMaintenanceStatus === 'function') loadMaintenanceStatus();
+};
+
+/* ============ Maintenance Quick Controls ============ */
+function _updateMaintenanceQuickUi(status) {
+  const badge = document.getElementById('mtQuickStatusBadge');
+  const toggleBtn = document.getElementById('mtQuickToggleBtn');
+  if (!badge || !toggleBtn) return;
+
+  const enabled = !!(status && status.enabled);
+  _maintenanceEnabled = enabled;
+
+  badge.textContent = enabled ? 'Maintenance: Active' : 'Maintenance: Inactive';
+  badge.classList.toggle('is-active', enabled);
+
+  if (enabled) {
+    toggleBtn.classList.remove('btn-danger');
+    toggleBtn.classList.add('btn-success');
+    toggleBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Disable Maintenance';
+    toggleBtn.setAttribute('onclick', "toggleMaintenance('disable')");
+  } else {
+    toggleBtn.classList.remove('btn-success');
+    toggleBtn.classList.add('btn-danger');
+    toggleBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> Enable Maintenance';
+    toggleBtn.setAttribute('onclick', 'openMaintenanceModeModal()');
+  }
+}
+
+window.setMtDuration = function (min) {
+  const hidden = document.getElementById('mtDuration');
+  if (hidden) hidden.value = String(min);
+  document.querySelectorAll('.mt-dur-btn').forEach(function (btn) {
+    const isActive = parseInt(btn.dataset.min || '0', 10) === parseInt(min, 10);
+    btn.classList.toggle('btn-primary', isActive);
+    btn.classList.toggle('btn-neutral', !isActive);
+  });
+};
+
+window.openMaintenanceModeModal = function () {
+  const modal = document.getElementById('maintenanceModeModal');
+  if (!modal) return;
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('maintenanceModeModal', { overlayClass: 'show', focusSelector: '#mtModalMessage' });
+  } else {
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+  }
+};
+
+window.closeMaintenanceModeModal = function () {
+  const modal = document.getElementById('maintenanceModeModal');
+  if (!modal) return;
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('maintenanceModeModal', { overlayClass: 'show' });
+  } else {
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+};
+
+window.submitMaintenanceModeModal = function () {
+  window.toggleMaintenance('enable');
+};
+
+window.toggleMaintenance = async function (action) {
+  const apiUrl = window.MAINTENANCE_TOGGLE_API_URL || '';
+  if (!apiUrl) return;
+
+  const submitBtn = document.getElementById('mtModalSubmitBtn');
+  if (action === 'enable' && submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enabling...';
+  }
+
+  try {
+    const body = { action: action };
+    if (action === 'enable') {
+      const duration = parseInt(document.getElementById('mtDuration')?.value || '60', 10);
+      const message = (document.getElementById('mtModalMessage')?.value || '').trim();
+      body.duration_minutes = Number.isFinite(duration) && duration > 0 ? duration : 60;
+      body.message = message;
+    }
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      _updateMaintenanceQuickUi(data.status || { enabled: action === 'enable' });
+      if (action === 'enable') closeMaintenanceModeModal();
+      if (typeof showToast === 'function') showToast(data.message || 'Maintenance status updated.', 'success');
+    } else if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to update maintenance mode.', 'error');
+    }
+  } catch (err) {
+    console.error('toggleMaintenance failed:', err);
+    if (typeof showToast === 'function') showToast('Network error while updating maintenance mode.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> Enable Maintenance';
+    }
+  }
+};
+
+window.loadMaintenanceStatus = async function () {
+  const statusUrl = window.MAINTENANCE_STATUS_API_URL || '';
+  const badge = document.getElementById('mtQuickStatusBadge');
+  if (!statusUrl || !badge) return;
+
+  try {
+    const res = await fetch(statusUrl, { method: 'GET', credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    _updateMaintenanceQuickUi(data || { enabled: false });
+  } catch (err) {
+    console.error('loadMaintenanceStatus failed:', err);
+  }
+};
 
 /* ============ Search ============ */
 function debounceSearch() {
@@ -185,12 +321,27 @@ function debounceSearch() {
 /* ============ Delete ============ */
 let _panelConfirmCallback = null;
 
-function _panelConfirm(title, message, onConfirm) {
+function _panelConfirm(title, message, onConfirm, options) {
   const modal = document.getElementById('panelDeleteConfirmModal');
   const titleEl = document.getElementById('panelConfirmTitleText');
   const msgEl = document.getElementById('panelConfirmMessage');
   const okBtn = document.getElementById('panelConfirmOkBtn');
   if (!modal) { if (onConfirm) onConfirm(); return; }
+  const warningItems = modal.querySelectorAll('.alert-box-list li');
+  const defaultWarnings = [
+    'This action cannot be undone',
+    'The item will be permanently removed',
+  ];
+  const lines = (options && Array.isArray(options.warningLines) && options.warningLines.length)
+    ? options.warningLines
+    : defaultWarnings;
+
+  warningItems.forEach(function (item, idx) {
+    const text = lines[idx] || defaultWarnings[idx] || '';
+    item.textContent = text;
+    item.style.display = text ? '' : 'none';
+  });
+
   titleEl.textContent = title;
   msgEl.textContent = message;
   _panelConfirmCallback = onConfirm;
@@ -237,31 +388,50 @@ document.addEventListener('DOMContentLoaded', function () {
       if (m && (m.classList.contains('show') || m.style.display !== 'none')) closePanelConfirmModal();
     }
   });
+
+  const maintenanceModal = document.getElementById('maintenanceModeModal');
+  if (maintenanceModal) {
+    maintenanceModal.addEventListener('click', function (e) {
+      if (e.target === maintenanceModal) closeMaintenanceModeModal();
+    });
+    window.setMtDuration(parseInt(document.getElementById('mtDuration')?.value || '60', 10));
+  }
 });
 
-async function deleteNotification(id) {
+async function hideNotification(id) {
   _panelConfirm(
-    'Delete Notification',
-    'Delete this notification? It will no longer be visible to users.',
+    'Hide Notification',
+    'Hide this notification? It will no longer be visible to users.',
     async function () {
       try {
         const res = await fetch(`/api/notifications/admin/${id}/delete/`, {
           method: 'DELETE',
           headers: { 'X-CSRFToken': getCSRFToken() },
         });
-        if (!res.ok) { if (window.showToast) showToast('Delete failed (HTTP ' + res.status + ')', 'error'); return; }
+        if (!res.ok) { if (window.showToast) showToast('Hide failed (HTTP ' + res.status + ')', 'error'); return; }
         const data = await res.json();
         if (data.success) {
-          if (window.showToast) showToast('Notification deleted', 'success');
+          if (window.showToast) showToast(data.message || 'Notification hidden', 'success');
           loadNotifications(false);
         } else {
           if (window.showToast) showToast(data.message || 'Failed', 'error');
         }
       } catch (err) {
-        console.error('Delete failed:', err);
+        console.error('Hide failed:', err);
       }
+    },
+    {
+      warningLines: [
+        'Users will no longer see this notification',
+        'Read history will be kept for audit',
+      ],
     }
   );
+}
+
+async function deleteNotification(id) {
+  // Backward-compatible alias for older inline handlers.
+  return hideNotification(id);
 }
 
 /* ============ Create Modal ============ */
@@ -274,6 +444,8 @@ function openCreateModal() {
   }
   document.getElementById('createNotifForm').reset();
   document.getElementById('userPickerWrap').style.display = 'none';
+  const visibilityInput = document.getElementById('notifVisibilityHours');
+  if (visibilityInput) visibilityInput.value = '24';
   selectedUserIds.clear();
   renderSelectedChips();
 }
@@ -289,7 +461,9 @@ function closeCreateModal() {
 
 /* Escape key */
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeCreateModal();
+  if (e.key !== 'Escape') return;
+  closeCreateModal();
+  if (typeof closeMaintenanceModeModal === 'function') closeMaintenanceModeModal();
 });
 
 /* ============ Target Change ============ */
@@ -446,6 +620,11 @@ async function handleCreateNotif(e) {
     target: document.getElementById('notifTarget').value,
     send_email: document.getElementById('notifSendEmail').checked,
   };
+
+  const visibilityHoursRaw = Number(document.getElementById('notifVisibilityHours')?.value || 24);
+  payload.visibility_hours = Number.isFinite(visibilityHoursRaw)
+    ? Math.max(24, Math.min(Math.trunc(visibilityHoursRaw), 8760))
+    : 24;
 
   if (payload.target === 'selected') {
     payload.target_user_ids = Array.from(selectedUserIds);
@@ -701,7 +880,9 @@ async function deleteTemplate(id) {
    OPERATIONS HUB TAB (Monitoring + Logs)
    ================================================================ */
 let operationsFeed = [];
-const OPS_LIMIT = 180;
+let _opsPerPage = 25;
+let _opsPage = 1;
+let _opsTotalPages = 1;
 let operationsTotal = 0;
 let opsSearchTimer = null;
 let opsAutoRefreshTimer = null;
@@ -731,7 +912,7 @@ function handleOpsSourceChange() {
     userRoleFilter.style.opacity = '1';
   }
 
-  loadOperationsFeed();
+  loadOperationsFeed(1);
 }
 
 function resetOperationsFilters() {
@@ -767,7 +948,7 @@ function _syncOpsAutoRefresh(shouldRun) {
 
 function debounceOpsSearch() {
   clearTimeout(opsSearchTimer);
-  opsSearchTimer = setTimeout(() => loadOperationsFeed(false), 300);
+  opsSearchTimer = setTimeout(() => loadOperationsFeed(1), 300);
 }
 
 function _opsSourceBadge(sourceType, sourceLabel) {
@@ -809,9 +990,10 @@ function renderOperationsTable() {
     if (item.progress_text) detailMeta.push(item.progress_text);
     if (item.ip_address) detailMeta.push(`IP: ${item.ip_address}`);
     if (item.error) detailMeta.push(`Error: ${item.error}`);
+    const rowNumber = ((_opsPage - 1) * _opsPerPage) + i + 1;
 
     return `<tr>
-      <td class="text-center text-xs text-gray-400">${i + 1}</td>
+      <td class="text-center text-xs text-gray-400">${rowNumber}</td>
       <td>${_opsSourceBadge(item.source_type, item.source_label)}</td>
       <td>
         <div class="ops-event-title">${escHtml(item.event_title || '-')}</div>
@@ -831,7 +1013,71 @@ function renderOperationsTable() {
   }).join('');
 }
 
-async function loadOperationsFeed() {
+function _buildOpsPageNumbers(currentPage, totalPages) {
+  if (!totalPages || totalPages < 1) return '';
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if ((end - start + 1) < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  let html = '';
+  for (let p = start; p <= end; p++) {
+    html += `<button class="page-num${p === currentPage ? ' active' : ''}" onclick="opsSetPage(${p})">${p}</button>`;
+  }
+  return html;
+}
+
+function _updateOpsPagination(rowsOnPage) {
+  const total = Math.max(0, Number(operationsTotal || 0));
+  const start = total ? ((_opsPage - 1) * _opsPerPage) + 1 : 0;
+  const end = total ? (start + Math.max(0, Number(rowsOnPage || 0)) - 1) : 0;
+
+  const info = document.getElementById('opsPaginationInfo');
+  const pageNumbers = document.getElementById('opsPageNumbers');
+  const firstBtn = document.getElementById('opsFirstBtn');
+  const prevBtn = document.getElementById('opsPrevBtn');
+  const nextBtn = document.getElementById('opsNextBtn');
+  const lastBtn = document.getElementById('opsLastBtn');
+  const rowsSelect = document.getElementById('opsRowsPerPage');
+
+  if (info) {
+    info.innerHTML = `Showing <strong>${start}-${end}</strong> of <strong>${total}</strong> results`;
+  }
+  if (pageNumbers) {
+    pageNumbers.innerHTML = _buildOpsPageNumbers(_opsPage, _opsTotalPages);
+  }
+
+  if (firstBtn) firstBtn.disabled = _opsPage <= 1;
+  if (prevBtn) prevBtn.disabled = _opsPage <= 1;
+  if (nextBtn) nextBtn.disabled = _opsPage >= _opsTotalPages;
+  if (lastBtn) lastBtn.disabled = _opsPage >= _opsTotalPages;
+  if (rowsSelect && String(rowsSelect.value) !== String(_opsPerPage)) {
+    rowsSelect.value = String(_opsPerPage);
+  }
+}
+
+window.opsSetPage = function (page) {
+  const requested = page === -1 ? _opsTotalPages : Number(page || 1);
+  const nextPage = Math.max(1, Math.min(requested, _opsTotalPages));
+  if (nextPage === _opsPage) return;
+  loadOperationsFeed(nextPage);
+};
+
+window.opsPage = function (delta) {
+  opsSetPage(_opsPage + Number(delta || 0));
+};
+
+window.onOpsRowsPerPageChange = function (value) {
+  const next = Number(value || 25);
+  _opsPerPage = [10, 25, 50, 100].includes(next) ? next : 25;
+  _opsPage = 1;
+  loadOperationsFeed(1);
+};
+
+async function loadOperationsFeed(page) {
+  if (page !== undefined) _opsPage = Math.max(1, Number(page || 1));
   const refreshBtn = document.getElementById('opsRefreshBtn');
   if (refreshBtn) {
     refreshBtn.disabled = true;
@@ -862,7 +1108,8 @@ async function loadOperationsFeed() {
       userRoleFilter.style.opacity = '1';
     }
 
-    let url = `/api/operations-feed/?limit=${OPS_LIMIT}&offset=0&source=${encodeURIComponent(source)}`;
+    const offset = (_opsPage - 1) * _opsPerPage;
+    let url = `/api/operations-feed/?limit=${_opsPerPage}&offset=${offset}&source=${encodeURIComponent(source)}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
     if (taskStatus) url += `&task_status=${encodeURIComponent(taskStatus)}`;
@@ -877,33 +1124,16 @@ async function loadOperationsFeed() {
     if (!data.success) return;
 
     operationsFeed = data.items || [];
-    operationsTotal = data.total || operationsFeed.length;
+    operationsTotal = Number(data.total || operationsFeed.length || 0);
+    _opsTotalPages = Math.max(1, Math.ceil(operationsTotal / _opsPerPage));
 
-    const stats = data.stats || {};
-    const sourceCounts = data.source_counts || {};
-    const setText = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value != null ? value : 0;
-    };
-    setText('opsStatActiveTasks', stats.active_tasks || 0);
-    setText('opsStatPendingTasks', stats.pending_tasks || 0);
-    setText('opsStatCompleted24h', stats.completed_24h || 0);
-    setText('opsStatFailed24h', stats.failed_24h || 0);
-    setText('opsCountTasks', sourceCounts.background_task || 0);
-    setText('opsCountBackups', sourceCounts.backup_task || 0);
-    setText('opsCountLogs', sourceCounts.activity_log || 0);
-
-    const label = document.getElementById('opsCountLabel');
-    if (label) label.textContent = `${operationsFeed.length} of ${operationsTotal} events`;
-
-    const updatedEl = document.getElementById('opsLastUpdated');
-    if (updatedEl) {
-      updatedEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    if (_opsPage > _opsTotalPages) {
+      _opsPage = _opsTotalPages;
+      return loadOperationsFeed(_opsPage);
     }
-    const sortHintEl = document.getElementById('opsSortHint');
-    if (sortHintEl) sortHintEl.textContent = 'Newest First';
 
     renderOperationsTable();
+    _updateOpsPagination(operationsFeed.length);
   } catch (err) {
     console.error('loadOperationsFeed:', err);
   } finally {
@@ -928,6 +1158,9 @@ function debounceLogSearch() {
     proper file-based caching, linting and CSP compliance)
    ================================================================ */
 let _emailPage = 1;
+let _emailPerPage = 50;
+let _emailTotalPages = 1;
+let _emailTotal = 0;
 let _emailLogsById = {};
 let _emailComposePreviewBound = false;
 
@@ -1019,19 +1252,19 @@ function _buildEmailTemplateHtml(payload, asDocument) {
     '*{box-sizing:border-box}' +
     'body{margin:0;padding:0;background:#eef2f7;font-family:Segoe UI,Arial,sans-serif;color:#0f172a}' +
     '.mail-shell{width:100%;padding:24px 12px;background:#eef2f7}' +
-    '.mail-card{width:100%;max-width:1200px;min-width:300px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ef;border-radius:18px;overflow:hidden}' +
+    '.mail-card{width:100%;max-width:1200px;min-width:300px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ef;border-radius:8px;overflow:hidden}' +
     '.mail-header{padding:26px 26px 22px;background:' + cfg.gradient + ';color:#fff}' +
-    '.mail-badge{display:inline-block;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.2);margin-bottom:14px}' +
+    '.mail-badge{display:inline-block;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.2);margin-bottom:14px}' +
     '.mail-title{margin:0;font-size:26px;line-height:1.2;font-weight:700}' +
     '.mail-sub{margin:8px 0 0;font-size:14px;opacity:.95}' +
     '.mail-body{padding:28px 26px 24px}' +
-    '.mail-meta{border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;padding:14px 16px;margin:0 0 18px}' +
+    '.mail-meta{border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:14px 16px;margin:0 0 18px}' +
     '.mail-meta-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin:0 0 5px;font-weight:700}' +
     '.mail-meta-value{font-size:14px;color:#0f172a;font-weight:600;word-break:break-word;margin:0}' +
-    '.mail-message{border:1px solid #e2e8f0;border-left:4px solid ' + cfg.accent + ';background:#ffffff;border-radius:12px;padding:16px 16px 2px;font-size:15px;color:#334155}' +
+    '.mail-message{border:1px solid #e2e8f0;border-left:4px solid ' + cfg.accent + ';background:#ffffff;border-radius:6px;padding:16px 16px 2px;font-size:15px;color:#334155}' +
     '.mail-footer{padding:16px 26px 22px;border-top:1px solid #e5e7eb;background:#f8fafc;font-size:12px;color:#64748b}' +
     '.mail-footer p{margin:0 0 4px}' +
-    '@media (max-width:760px){.mail-shell{padding:12px 8px}.mail-card{min-width:300px;border-radius:14px}.mail-header{padding:18px 16px}.mail-title{font-size:21px}.mail-body{padding:18px 16px}.mail-footer{padding:14px 16px}}' +
+    '@media (max-width:760px){.mail-shell{padding:12px 8px}.mail-card{min-width:300px;border-radius:8px}.mail-header{padding:18px 16px}.mail-title{font-size:21px}.mail-body{padding:18px 16px}.mail-footer{padding:14px 16px}}' +
     '</style>';
 
   const body = '<div class="mail-shell">' +
@@ -1119,12 +1352,73 @@ function _buildEmailActionButtons(log) {
   '</div>';
 }
 
+function _buildEmailPageNumbers(currentPage, totalPages) {
+  if (!totalPages || totalPages < 1) return '';
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if ((end - start + 1) < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  let html = '';
+  for (let p = start; p <= end; p++) {
+    html += '<button class="page-num' + (p === currentPage ? ' active' : '') + '" onclick="emailSetPage(' + p + ')">' + p + '</button>';
+  }
+  return html;
+}
+
+function _updateEmailPagination(total, totalPages, rowsOnPage) {
+  const safeTotal = Math.max(0, Number(total || 0));
+  const safePages = Math.max(1, Number(totalPages || 1));
+  const safeRows = Math.max(0, Number(rowsOnPage || 0));
+  const start = safeTotal ? ((_emailPage - 1) * _emailPerPage) + 1 : 0;
+  const end = safeTotal ? (start + safeRows - 1) : 0;
+
+  const label = document.getElementById('emailLogCountLabel');
+  const pageNumbers = document.getElementById('emailPageNumbers');
+  const firstBtn = document.getElementById('emailFirstBtn');
+  const prevBtn = document.getElementById('emailPrevBtn');
+  const nextBtn = document.getElementById('emailNextBtn');
+  const lastBtn = document.getElementById('emailLastBtn');
+  const rowsSelect = document.getElementById('emailRowsPerPage');
+
+  if (label) {
+    label.innerHTML = 'Showing <strong>' + start + '-' + end + '</strong> of <strong>' + safeTotal + '</strong> results';
+  }
+  if (pageNumbers) {
+    pageNumbers.innerHTML = _buildEmailPageNumbers(_emailPage, safePages);
+  }
+
+  if (firstBtn) firstBtn.disabled = _emailPage <= 1;
+  if (prevBtn) prevBtn.disabled = _emailPage <= 1;
+  if (nextBtn) nextBtn.disabled = _emailPage >= safePages;
+  if (lastBtn) lastBtn.disabled = _emailPage >= safePages;
+  if (rowsSelect && String(rowsSelect.value) !== String(_emailPerPage)) {
+    rowsSelect.value = String(_emailPerPage);
+  }
+}
+
+window.emailSetPage = function (page) {
+  const requested = page === -1 ? _emailTotalPages : Number(page || 1);
+  const nextPage = Math.max(1, Math.min(requested, _emailTotalPages));
+  if (nextPage === _emailPage) return;
+  loadEmailLogs(nextPage);
+};
+
+window.onEmailRowsPerPageChange = function (value) {
+  const next = Number(value || 50);
+  _emailPerPage = [10, 25, 50, 100].includes(next) ? next : 50;
+  _emailPage = 1;
+  loadEmailLogs(1);
+};
+
 window.loadEmailLogs = function (page) {
-  if (page !== undefined) _emailPage = page;
+  if (page !== undefined) _emailPage = Math.max(1, Number(page || 1));
 
   const status = document.getElementById('emailStatusFilter')?.value || '';
   const type   = document.getElementById('emailTypeFilter')?.value   || '';
-  let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=50';
+  let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=' + _emailPerPage;
   if (status) url += '&status='     + encodeURIComponent(status);
   if (type)   url += '&email_type=' + encodeURIComponent(type);
 
@@ -1167,10 +1461,14 @@ window.loadEmailLogs = function (page) {
       const tBody = document.getElementById('emailLogsBody');
       if (!tBody) return;
 
-      const total      = data.total;
-      const totalPages = data.total_pages;
+      const logs = Array.isArray(data.logs) ? data.logs : [];
+      const total = Number(data.total || 0);
+      const totalPages = Math.max(1, Number(data.total_pages || 1));
+      _emailTotal = total;
+      _emailTotalPages = totalPages;
+      if (_emailPage > _emailTotalPages) _emailPage = _emailTotalPages;
 
-      if (!data.logs.length) {
+      if (!logs.length) {
         tBody.innerHTML =
           '<tr class="notif-table-empty"><td colspan="7">' +
           '<div class="empty-state"><i class="fa-solid fa-envelope-open"></i>' +
@@ -1178,14 +1476,14 @@ window.loadEmailLogs = function (page) {
           '<span>Logs appear here after emails are sent</span></div></td></tr>';
       } else {
         const statusClassMap = { on_hold: 'on-hold', pending: 'pending', sent: 'sent', failed: 'failed' };
-        tBody.innerHTML = data.logs.map(function (log, i) {
+        tBody.innerHTML = logs.map(function (log, i) {
           const statusCls = statusClassMap[log.status] || '';
           const errorMeta = log.error_message
             ? '<div class="email-error-meta" title="' + escAttr(log.error_message) + '"><i class="fa-solid fa-circle-info"></i> Failed details</div>'
             : '';
           const actionHtml = _buildEmailActionButtons(log);
           return '<tr id="email-log-row-' + log.id + '">' +
-            '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
+            '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * _emailPerPage) + i + 1) + '</td>' +
             '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '') + '</strong></td>' +
             '<td class="notif-time">' + escHtml(log.recipient_email) + '</td>' +
             '<td><span class="notif-badge-cat">' + escHtml(log.email_type_display) + '</span></td>' +
@@ -1196,22 +1494,13 @@ window.loadEmailLogs = function (page) {
         }).join('');
       }
 
-      // Pagination controls
-      const label     = document.getElementById('emailLogCountLabel');
-      const pageLabel = document.getElementById('emailPageLabel');
-      const prevBtn   = document.getElementById('emailPrevBtn');
-      const nextBtn   = document.getElementById('emailNextBtn');
-      if (label)     label.textContent     = 'Page ' + _emailPage + ' of ' + totalPages + ' (' + total + ' total)';
-      if (pageLabel) pageLabel.textContent = _emailPage + ' / ' + totalPages;
-      if (prevBtn)   prevBtn.disabled      = _emailPage <= 1;
-      if (nextBtn)   nextBtn.disabled      = _emailPage >= totalPages;
+      _updateEmailPagination(total, totalPages, logs.length);
     })
     .catch(function (err) { console.error('Email logs load error:', err); });
 };
 
 window.emailLogPage = function (delta) {
-  _emailPage = Math.max(1, _emailPage + delta);
-  loadEmailLogs();
+  emailSetPage(_emailPage + Number(delta || 0));
 };
 
 window.resendEmail = async function (logId, emailType) {
@@ -1439,7 +1728,7 @@ const STATUS_BADGE = {
 function _statusBadge(status, displayText) {
   const s = STATUS_BADGE[status] || { color: '#374151', bg: '#f3f4f6', label: displayText };
   const label = displayText || s.label;
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:${s.color};background:${s.bg};">${escHtml(label)}</span>`;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;color:${s.color};background:${s.bg};">${escHtml(label)}</span>`;
 }
 
 async function loadMonitoring() {

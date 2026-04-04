@@ -13,14 +13,14 @@
         <option value="backups">Backup Tasks</option>
         <option value="logs">Activity Logs</option>
       </select>
-      <select id="opsUserTypeFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()">
+      <select id="opsUserTypeFilter" class="form-select form-select-sm" onchange="loadOperationsFeed(1)">
         <option value="">All User Types</option>
         <option value="super_admin">Super Admin</option>
         <option value="admin_staff">Admin Staff</option>
         <option value="client">Client</option>
         <option value="client_staff">Client Staff</option>
       </select>
-      <select id="opsTaskStatusFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()">
+      <select id="opsTaskStatusFilter" class="form-select form-select-sm" onchange="loadOperationsFeed(1)">
         <option value="">All Task Status</option>
         <option value="pending">Pending</option>
         <option value="processing">Processing</option>
@@ -29,7 +29,7 @@
         <option value="cancelled">Cancelled</option>
         <option value="deleted">Deleted</option>
       </select>
-      <select id="opsActionFilter" class="form-select form-select-sm" onchange="loadOperationsFeed()">
+      <select id="opsActionFilter" class="form-select form-select-sm" onchange="loadOperationsFeed(1)">
         <option value="">All Log Actions</option>
         <option value="login">Login</option>
         <option value="logout">Logout</option>
@@ -59,7 +59,6 @@
       </select>
     </div>
     <div class="notif-actions-right">
-      <span class="panel-muted-count" id="opsCountLabel"> - </span>
       <button class="btn btn-sm btn-neutral" type="button" onclick="resetOperationsFilters()" id="opsResetBtn">
         <i class="fa-solid fa-filter-circle-xmark"></i> Reset Filters
       </button>
@@ -69,52 +68,26 @@
     </div>
   </div>
 
-  <div class="system-grid mb-4" id="opsMonitoringStats">
-    <div class="system-card">
-      <div class="system-card-header"><i class="fa-solid fa-bolt"></i> Active Tasks</div>
-      <div class="system-card-body">
-        <span id="opsStatActiveTasks" class="monitor-stat-value monitor-stat-active"> - </span>
-      </div>
-    </div>
-    <div class="system-card">
-      <div class="system-card-header"><i class="fa-solid fa-clock"></i> Pending</div>
-      <div class="system-card-body">
-        <span id="opsStatPendingTasks" class="monitor-stat-value monitor-stat-pending"> - </span>
-      </div>
-    </div>
-    <div class="system-card">
-      <div class="system-card-header"><i class="fa-solid fa-circle-check"></i> Completed (24 h)</div>
-      <div class="system-card-body">
-        <span id="opsStatCompleted24h" class="monitor-stat-value monitor-stat-success"> - </span>
-      </div>
-    </div>
-    <div class="system-card">
-      <div class="system-card-header"><i class="fa-solid fa-circle-xmark"></i> Failed (24 h)</div>
-      <div class="system-card-body">
-        <span id="opsStatFailed24h" class="monitor-stat-value monitor-stat-danger"> - </span>
-      </div>
-    </div>
-  </div>
-
-  <div class="ops-summary-strip" id="opsSummaryStrip">
-    <span class="ops-summary-item"><i class="fa-solid fa-arrow-down-wide-short"></i> <span id="opsSortHint">Newest First</span></span>
-    <span class="ops-summary-item"><i class="fa-solid fa-clock"></i> <span id="opsLastUpdated">Not updated yet</span></span>
-    <span class="ops-summary-item"><i class="fa-solid fa-gears"></i> Tasks: <span class="ops-summary-value" id="opsCountTasks">0</span></span>
-    <span class="ops-summary-item"><i class="fa-solid fa-database"></i> Backups: <span class="ops-summary-value" id="opsCountBackups">0</span></span>
-    <span class="ops-summary-item"><i class="fa-solid fa-clock-rotate-left"></i> Logs: <span class="ops-summary-value" id="opsCountLogs">0</span></span>
-  </div>
-
   <div class="notif-table-wrap">
-    <table class="notif-table">
+    <table class="notif-table" id="opsTable">
+      <colgroup>
+        <col style="width: 5%;">
+        <col style="width: 11%;">
+        <col style="width: 14%;">
+        <col style="width: 12%;">
+        <col style="width: 14%;">
+        <col style="width: 30%;">
+        <col style="width: 14%;">
+      </colgroup>
       <thead>
         <tr>
-          <th scope="col" style="width:5%">#</th>
-          <th scope="col" style="width:11%">Source</th>
-          <th scope="col" style="width:14%">Event</th>
-          <th scope="col" style="width:12%">Status / Action</th>
-          <th scope="col" style="width:14%">User</th>
-          <th scope="col" style="width:30%">Details</th>
-          <th scope="col" style="width:14%">Time</th>
+          <th scope="col">#</th>
+          <th scope="col">Source</th>
+          <th scope="col">Event</th>
+          <th scope="col">Status / Action</th>
+          <th scope="col">User</th>
+          <th scope="col">Details</th>
+          <th scope="col">Time</th>
         </tr>
       </thead>
       <tbody id="opsTableBody">
@@ -129,6 +102,38 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="pagination-bar notif-pagination-bar">
+    <div class="pagination-left">
+      <span class="pagination-info" id="opsPaginationInfo">Showing <strong>0-0</strong> of <strong>0</strong> results</span>
+    </div>
+    <div class="pagination-center">
+      <button class="pagination-btn" id="opsFirstBtn" onclick="opsSetPage(1)" disabled title="First Page" aria-label="First page">
+        <i class="fa-solid fa-angles-left"></i>
+      </button>
+      <button class="pagination-btn" id="opsPrevBtn" onclick="opsPage(-1)" disabled title="Previous Page" aria-label="Previous page">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <span class="page-numbers" id="opsPageNumbers">
+        <button class="page-num active">1</button>
+      </span>
+      <button class="pagination-btn" id="opsNextBtn" onclick="opsPage(1)" disabled title="Next Page" aria-label="Next page">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+      <button class="pagination-btn" id="opsLastBtn" onclick="opsSetPage(-1)" disabled title="Last Page" aria-label="Last page">
+        <i class="fa-solid fa-angles-right"></i>
+      </button>
+    </div>
+    <div class="pagination-right">
+      <label for="opsRowsPerPage">Rows per page:</label>
+      <select id="opsRowsPerPage" class="form-select form-select-sm" onchange="onOpsRowsPerPageChange(this.value)">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
   </div>
 
 </div>

@@ -167,6 +167,7 @@ def api_panel_notification_create(request):
         target_user_ids=body.get('target_user_ids'),
         created_by=request.user,
         send_email=body.get('send_email', False),
+        visibility_hours=body.get('visibility_hours', 24),
     )
     if result.success:
         notif_data = (result.data or {}).get('notification') or {}
@@ -189,7 +190,7 @@ def api_panel_notification_create(request):
 @api_require_super_admin
 @require_http_methods(["DELETE"])
 def api_panel_notification_delete(request, notification_id):
-    """Delete (deactivate) a notification."""
+    """Hide (deactivate) a notification."""
     notif_title = ''
     try:
         notif = Notification.objects.filter(id=notification_id).only('title').first()
@@ -203,7 +204,7 @@ def api_panel_notification_delete(request, notification_id):
     if result.success:
         ActivityService.log(
             'notification_delete',
-            f'Notification "{notif_title or notification_id}" deleted',
+            f'Notification "{notif_title or notification_id}" hidden',
             request=request,
             target_model='Notification',
             target_id=notification_id,

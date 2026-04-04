@@ -474,14 +474,16 @@ class Notification(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_notifications')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    # Optional: schedule or expiry
+    # Visibility controls
     is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at', 'target'], name='notif_time_target_idx'),
             models.Index(fields=['is_active', '-created_at'], name='notif_active_time_idx'),
+            models.Index(fields=['is_active', 'expires_at'], name='notif_active_exp_idx'),
         ]
 
     def __str__(self):

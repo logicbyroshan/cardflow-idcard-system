@@ -815,10 +815,15 @@
      * Fetch all distinct class/section values from a lightweight API
      * instead of scanning the partially-loaded _allCards array.
      */
-    async function _fetchFilterOptions() {
+    async function _fetchFilterOptions(options) {
+        options = options || {};
+        var force = !!options.force;
         if (!_tableId) return;
         try {
             var url = '/api/table/' + _tableId + '/filter-options/';
+            if (force) {
+                url += '?_=' + Date.now();
+            }
             var response;
             if (typeof ApiClient !== 'undefined' && typeof ApiClient.get === 'function') {
                 response = await ApiClient.get(url);
@@ -1068,7 +1073,8 @@
         IDCardApp.getSelectedCardIds = function () { return Array.from(_selectedIds); };
 
         //  populateFilterOptions 
-        IDCardApp.populateFilterOptions = function () { _fetchFilterOptions(); };
+        IDCardApp.populateFilterOptions = function (options) { _fetchFilterOptions(options || {}); };
+        IDCardApp.forceRefreshFilterOptions = function () { _fetchFilterOptions({ force: true }); };
 
         //  initTableModule override 
         if (window.IDCardApp) {

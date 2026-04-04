@@ -440,26 +440,45 @@ function initBranchFilterDropdown() {
  */
 var _populateFilterOptionsTimer = null;
 var _populateFilterOptionsInFlight = false;
+var _populateFilterOptionsPending = false;
 
-function populateFilterOptions() {
+function populateFilterOptions(options) {
+    options = options || {};
+    var immediate = !!options.immediate;
+    var force = !!options.force;
+
     // Virtual table mode: table-render.js calls _populateFilterOptions()
     // after every fetch  no DOM scanning needed here.
     if (window.USE_VIRTUAL_TABLE && window.IDCardApp && window.IDCardApp.virtualTable) {
         return;
     }
 
-    // Debounce: wait 500ms before making request  coalesces rapid inline edits
+    // Debounce normal updates, but allow immediate forced refreshes.
     if (_populateFilterOptionsTimer) {
         clearTimeout(_populateFilterOptionsTimer);
     }
-    _populateFilterOptionsTimer = setTimeout(_doPopulateFilterOptions, 500);
+
+    if (immediate) {
+        _doPopulateFilterOptions({ force: force });
+        return;
+    }
+
+    _populateFilterOptionsTimer = setTimeout(function() {
+        _doPopulateFilterOptions({ force: force });
+    }, 500);
 }
 
-function _doPopulateFilterOptions() {
+function _doPopulateFilterOptions(options) {
+    options = options || {};
+    var force = !!options.force;
     _populateFilterOptionsTimer = null;
     
-    // Skip if already in flight
-    if (_populateFilterOptionsInFlight) return;
+    // Avoid overlapping calls. If a forced refresh arrives while one is running,
+    // queue one extra run so UI still gets the freshest options.
+    if (_populateFilterOptionsInFlight) {
+        if (force) _populateFilterOptionsPending = true;
+        return;
+    }
 
     var tableId = (IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.tableId) ||
                   (typeof TABLE_ID !== 'undefined' ? TABLE_ID : null);
@@ -470,7 +489,12 @@ function _doPopulateFilterOptions() {
     // Fetch filter options for ALL statuses (no status param) so users can
     // see every class/section value across the entire table, not just the
     // current list.
-    ApiClient.get('/api/table/' + tableId + '/filter-options/')
+    var url = '/api/table/' + tableId + '/filter-options/';
+    if (force) {
+        url += '?_=' + Date.now();
+    }
+
+    ApiClient.get(url)
         .then(function(data) {
             _populateFilterOptionsInFlight = false;
             if (!data || !data.success) return;
@@ -485,12 +509,65 @@ function _doPopulateFilterOptions() {
             _branchToCourses = data.branch_to_courses || {};
 
             _renderDependentFilterOptions();
+            if (_populateFilterOptionsPending) {
+                _populateFilterOptionsPending = false;
+                _doPopulateFilterOptions({ force: true });
+            }
         })
         .catch(function(err) {
             _populateFilterOptionsInFlight = false;
             console.error('Failed to load filter options:', err);
+            if (_populateFilterOptionsPending) {
+                _populateFilterOptionsPending = false;
+                _doPopulateFilterOptions({ force: true });
+            }
         });
 }
+
+function forceRefreshFilterOptions() {
+    populateFilterOptions({ immediate: true, force: true });
+}
+
+function _getCurrentTableIdForFilters() {
+    var fromLazy = IDCardApp.lazyLoadState && IDCardApp.lazyLoadState.tableId;
+    if (fromLazy) return Number(fromLazy);
+    if (typeof TABLE_ID !== 'undefined' && TABLE_ID) return Number(TABLE_ID);
+    return null;
+}
+
+function _handleClassesUpgradedEvent(tableId) {
+    var currentTableId = _getCurrentTableIdForFilters();
+    if (!currentTableId) return;
+    if (tableId && Number(tableId) !== currentTableId) return;
+
+    // Keep visible rows and dropdown options in sync immediately.
+    if (typeof IDCardApp.resetAndReload === 'function') {
+        IDCardApp.resetAndReload();
+    } else if (typeof IDCardApp.refreshCardTable === 'function') {
+        IDCardApp.refreshCardTable();
+    }
+    forceRefreshFilterOptions();
+}
+
+function initUpgradeAutoRefreshBridge() {
+    if (window.__idcardUpgradeAutoRefreshBridgeInit) return;
+    window.__idcardUpgradeAutoRefreshBridgeInit = true;
+
+    window.addEventListener('idcard-classes-upgraded', function(e) {
+        var detail = (e && e.detail) || {};
+        _handleClassesUpgradedEvent(detail.tableId);
+    });
+
+    window.addEventListener('storage', function(e) {
+        if (!e || e.key !== 'idcard:classes-upgraded' || !e.newValue) return;
+        try {
+            var payload = JSON.parse(e.newValue);
+            _handleClassesUpgradedEvent(payload && payload.tableId);
+        } catch (_err) {}
+    });
+}
+
+initUpgradeAutoRefreshBridge();
 
 function getClassSectionColumnIndices() {
     const headerRow = document.querySelector('#data-table thead tr');
@@ -717,6 +794,7 @@ IDCardApp.initSortHandlers = initSortHandlers;
 IDCardApp.initRowsPerPageHandlers = initRowsPerPageHandlers;
 IDCardApp.initImageSortModal = initImageSortModal;
 IDCardApp.populateFilterOptions = populateFilterOptions;
+IDCardApp.forceRefreshFilterOptions = forceRefreshFilterOptions;
 IDCardApp.applyClassSectionFilters = applyClassSectionFilters;
 IDCardApp.clearImageSortFilter = clearImageSortFilter;
 IDCardApp.updateClearFiltersVisibility = updateClearFiltersVisibility;

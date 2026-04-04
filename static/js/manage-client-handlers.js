@@ -32,8 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
       var groupMessageDrawer = document.getElementById('group-message-drawer');
       var closeGroupMessageDrawer = document.getElementById('closeGroupMessageDrawer');
       var cancelGroupMessageBtn = document.getElementById('cancelGroupMessageBtn');
-      var refreshGroupMessageClientsBtn = document.getElementById('refreshGroupMessageClientsBtn');
-      var refreshGroupMessageHistoryBtn = document.getElementById('refreshGroupMessageHistoryBtn');
       var groupMessageClientSearch = document.getElementById('groupMessageClientSearch');
       var groupMessageClientsList = document.getElementById('groupMessageClientsList');
       var groupMessageSelectedCount = document.getElementById('groupMessageSelectedCount');
@@ -111,10 +109,6 @@ document.addEventListener('DOMContentLoaded', function() {
       function renderGroupMessageSelectedCount() {
         if (!groupMessageSelectedCount) return;
         var selectedCount = NS.groupMessageSelectedClientIds ? NS.groupMessageSelectedClientIds.size : 0;
-        if (selectedCount === 0) {
-          groupMessageSelectedCount.textContent = 'All clients (default)';
-          return;
-        }
         groupMessageSelectedCount.textContent = String(selectedCount) + ' selected';
       }
 
@@ -190,14 +184,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         groupMessageClientsList.innerHTML = NS.groupMessageClients.map(function(clientItem) {
           var clientId = String(clientItem.id);
-          var checked = NS.groupMessageSelectedClientIds.has(clientId) ? ' checked' : '';
+          var isSelected = NS.groupMessageSelectedClientIds.has(clientId);
           var isFocused = String(NS.groupMessageFocusedClientId || '') === clientId;
-          var activeClass = isFocused ? ' active' : '';
+          var rowClass = 'group-msg-client-row';
+          if (isSelected) rowClass += ' selected';
+          if (isFocused) rowClass += ' active';
           var statusText = clientItem.status === 'active' ? 'Active' : 'Inactive';
           var userText = clientItem.is_user_active ? 'Login active' : 'Login inactive';
           return (
-            '<div class="group-msg-client-row' + activeClass + '" data-client-id="' + escapeHtmlLocal(clientId) + '">' +
-              '<input type="checkbox" class="group-msg-client-check" data-client-id="' + escapeHtmlLocal(clientId) + '"' + checked + '>' +
+            '<div class="' + rowClass + '" data-client-id="' + escapeHtmlLocal(clientId) + '">' +
               '<div class="group-msg-client-meta">' +
                 '<span class="group-msg-client-name">' + escapeHtmlLocal(clientItem.name || '-') + '</span>' +
                 '<span class="group-msg-client-sub">' + escapeHtmlLocal(statusText) + ' | ' + escapeHtmlLocal(userText) + '</span>' +
@@ -509,37 +504,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-      if (refreshGroupMessageClientsBtn) {
-        refreshGroupMessageClientsBtn.addEventListener('click', function() {
-          loadGroupMessageClients(groupMessageClientSearch ? groupMessageClientSearch.value : '');
-        });
-      }
-
-      if (refreshGroupMessageHistoryBtn) {
-        refreshGroupMessageHistoryBtn.addEventListener('click', function() {
-          loadFocusedClientMessages();
-        });
-      }
-
       if (groupMessageClientsList) {
-        groupMessageClientsList.addEventListener('change', function(e) {
-          var check = e.target.closest('.group-msg-client-check');
-          if (!check) return;
-          var clientId = check.getAttribute('data-client-id');
-          if (!clientId) return;
-          if (check.checked) NS.groupMessageSelectedClientIds.add(String(clientId));
-          else NS.groupMessageSelectedClientIds.delete(String(clientId));
-          renderGroupMessageSelectedCount();
-          renderGroupMessageTargetSummary();
-        });
-
         groupMessageClientsList.addEventListener('click', function(e) {
           var row = e.target.closest('.group-msg-client-row');
           if (!row) return;
-          if (e.target.closest('.group-msg-client-check')) return;
           var clientId = row.getAttribute('data-client-id');
           if (!clientId) return;
-          setGroupMessageFocusedClient(clientId);
+
+          clientId = String(clientId);
+          if (NS.groupMessageSelectedClientIds.has(clientId)) {
+            NS.groupMessageSelectedClientIds.delete(clientId);
+          } else {
+            NS.groupMessageSelectedClientIds.add(clientId);
+          }
+
+          NS.groupMessageFocusedClientId = clientId;
+          renderGroupMessageClientsList();
+          loadFocusedClientMessages();
         });
       }
 
@@ -577,6 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (groupMessageClearSelectionBtn) {
         groupMessageClearSelectionBtn.addEventListener('click', function() {
           NS.groupMessageSelectedClientIds = new Set();
+          NS.groupMessageFocusedClientId = null;
           renderGroupMessageClientsList();
           renderGroupMessageHistoryPlaceholder('Select a client from the left list to view message history.');
         });

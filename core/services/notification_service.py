@@ -36,7 +36,7 @@ class NotificationService:
     def create_notification(cls, *, title, message, priority='normal',
                             category='general', target='all',
                             target_user_ids=None, created_by=None,
-                            send_email=False):
+                            send_email=False, visibility_hours=None):
         """
         Create a notification and optionally send email alerts.
 
@@ -49,6 +49,8 @@ class NotificationService:
             target_user_ids: list of user IDs when target='selected'
             created_by: User who created the notification
             send_email: Whether to also send email to targeted users
+            visibility_hours: Number of hours notification should remain visible.
+                Use None for no auto-expiry.
 
         Returns:
             ServiceResult with notification data on success
@@ -61,6 +63,15 @@ class NotificationService:
         if target == 'selected' and not target_user_ids:
             return ServiceResult(success=False, message='Select at least one user.')
 
+        expires_at = None
+        if visibility_hours is not None:
+            try:
+                visibility_hours = int(visibility_hours)
+            except (TypeError, ValueError):
+                return ServiceResult(success=False, message='Visibility duration must be a number of hours.')
+            visibility_hours = max(24, min(visibility_hours, 24 * 365))
+            expires_at = timezone.now() + timedelta(hours=visibility_hours)
+
         try:
             with transaction.atomic():
                 notif = Notification.objects.create(
@@ -70,6 +81,7 @@ class NotificationService:
                     category=category,
                     target=target,
                     created_by=created_by,
+                    expires_at=expires_at,
                 )
 
                 # If selected users, add M2M
@@ -115,7 +127,10 @@ class NotificationService:
 
         Returns list of dicts with 'is_read' flag and 'time_ago' string.
         """
-        qs = Notification.objects.filter(is_active=True).select_related('created_by')
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        ).select_related('created_by')
 
         # Filter by target scope
         role_filter = Q(target='all') | Q(target=user.role)
@@ -160,7 +175,10 @@ class NotificationService:
         if cached is not None:
             return cached
 
-        qs = Notification.objects.filter(is_active=True)
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
 
         role_filter = Q(target='all') | Q(target=user.role)
         selected_filter = Q(target='selected', target_users=user)
@@ -191,7 +209,10 @@ class NotificationService:
     @classmethod
     def mark_all_as_read(cls, user):
         """Mark all visible notifications as read for a user."""
-        qs = Notification.objects.filter(is_active=True)
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
         role_filter = Q(target='all') | Q(target=user.role)
         selected_filter = Q(target='selected', target_users=user)
         qs = qs.filter(role_filter | selected_filter).distinct()
@@ -221,7 +242,10 @@ class NotificationService:
     @classmethod
     def list_all_notifications(cls, limit=50, offset=0, search=''):
         """List all notifications (admin panel view)."""
-        qs = Notification.objects.filter(is_active=True).select_related('created_by').order_by('-created_at')
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        ).select_related('created_by').order_by('-created_at')
         if search:
             qs = qs.filter(
                 Q(title__icontains=search) | Q(message__icontains=search)
@@ -229,7 +253,9 @@ class NotificationService:
         total = qs.count()
         notifications = list(qs[offset:offset + limit])
         # Aggregate counts across ALL notifications (not just this page)
-        all_active = Notification.objects.filter(is_active=True)
+        all_active = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
         stats = {
             'broadcast': all_active.filter(target='all').count(),
             'targeted':  all_active.filter(target='selected').count(),
@@ -243,12 +269,12 @@ class NotificationService:
 
     @classmethod
     def delete_notification(cls, notification_id):
-        """Soft-delete a notification (deactivate)."""
+        """Hide a notification from all users (deactivate)."""
         try:
             notif = Notification.objects.get(id=notification_id)
             notif.is_active = False
             notif.save(update_fields=['is_active'])
-            return ServiceResult(success=True, message='Notification deleted.')
+            return ServiceResult(success=True, message='Notification hidden from users.')
         except Notification.DoesNotExist:
             return ServiceResult(success=False, message='Notification not found.')
 
@@ -306,6 +332,7 @@ class NotificationService:
             'icon_class': notif.icon_class,
             'created_at': notif.created_at.isoformat(),
             'time_ago': timesince(notif.created_at, timezone.now()),
+            'expires_at': notif.expires_at.isoformat() if notif.expires_at else None,
         }
         if user and hasattr(notif, 'is_read'):
             data['is_read'] = notif.is_read

@@ -1,66 +1,134 @@
 <style>
+  #group-message-drawer .drawer-content {
+    height: 100%;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #group-message-drawer .drawer-body {
+    flex: 1;
+    min-height: 0;
+    padding: 10px 14px;
+    overflow: hidden;
+  }
+
   .group-msg-layout {
     display: grid;
     grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-    gap: 12px;
+    gap: 0;
+    flex: 1;
     min-height: 0;
-    height: 100%;
+    height: auto;
   }
 
   .group-msg-panel {
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    background: #fff;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
+  .group-msg-panel:first-child {
+    border-right: 1px solid #e2e8f0;
+    padding-right: 10px;
+  }
+
+  .group-msg-panel:last-child {
+    padding-left: 10px;
+  }
+
   .group-msg-panel-head {
-    padding: 10px 12px;
+    padding: 6px 0 8px 0;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 6px;
+    background: transparent;
+  }
+
+  .group-msg-panel-head-right {
+    display: flex;
+    align-items: flex-start;
     gap: 8px;
-    background: #f8fafc;
+  }
+
+  .group-msg-top-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+  }
+
+  .group-msg-top-control-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .group-msg-inline-title {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+    margin-right: 2px;
   }
 
   .group-msg-panel-body {
-    padding: 10px;
+    padding: 8px 0 0 0;
+    flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
 
   .group-msg-clients-list {
+    border: 1px solid #e2e8f0;
+    border-radius: 0;
+    overflow: auto;
+    min-height: 0;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0;
   }
 
   .group-msg-client-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 8px;
-    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+    border: 0;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 0;
+    padding: 8px 10px;
+    background: transparent;
     cursor: pointer;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
+    transition: background-color 0.15s ease;
+  }
+
+  .group-msg-client-row.selected {
+    background: #f8fafc;
+  }
+
+  .group-msg-client-row:last-child {
+    border-bottom: 0;
   }
 
   .group-msg-client-row:hover {
-    border-color: #bfdbfe;
     background: #f8fbff;
   }
 
   .group-msg-client-row.active {
-    border-color: #60a5fa;
+    box-shadow: inset 3px 0 0 #2563eb;
     background: #eff6ff;
   }
 
@@ -88,53 +156,53 @@
 
   .group-msg-controls {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
+  }
+
+  .group-msg-search-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .group-msg-search-row .form-input {
+    flex: 1;
+    min-width: 0;
   }
 
   .group-msg-radio {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: 12px;
     color: #334155;
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 5px 10px;
-    background: #fff;
+    border-radius: 3px;
+    padding: 3px 8px;
+    background: transparent;
   }
 
   .group-msg-composer {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #fff;
-    padding: 10px;
+    border: 0;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0;
+    background: transparent;
+    padding: 8px 0 0 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-  }
-
-  .group-msg-options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .group-msg-option-title {
-    font-size: 12px;
-    color: #64748b;
-    font-weight: 600;
-    margin-bottom: 6px;
+    gap: 6px;
+    margin-top: auto;
   }
 
   .group-msg-action-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    justify-content: flex-end;
+    gap: 8px;
     flex-wrap: wrap;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 10px;
+    border-top: 0;
+    padding-top: 0;
   }
 
   .group-msg-action-buttons {
@@ -143,21 +211,27 @@
   }
 
   .group-msg-btn {
-    border-radius: 9px !important;
+    border-radius: 4px !important;
+  }
+
+  #groupMessageSelectAllVisibleBtn,
+  #groupMessageClearSelectionBtn {
+    border-radius: 4px !important;
   }
 
   .group-msg-chat-body {
     flex: 1;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #f8fafc;
-    min-height: 140px;
-    max-height: 280px;
+    border: 0;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 0;
+    background: transparent;
+    min-height: 0;
+    max-height: none;
     overflow: auto;
-    padding: 10px;
+    padding: 8px 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
 
   .group-msg-footer {
@@ -173,13 +247,41 @@
       height: auto;
     }
 
+    .group-msg-panel:first-child {
+      border-right: 0;
+      border-bottom: 1px solid #e2e8f0;
+      padding-right: 0;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+
+    .group-msg-panel:last-child {
+      padding-left: 0;
+    }
+
+    .group-msg-panel-head-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .group-msg-top-controls {
+      align-items: flex-start;
+    }
+
+    .group-msg-top-control-row {
+      justify-content: flex-start;
+    }
+
+    #group-message-drawer .drawer-body {
+      overflow: auto;
+    }
+
     .group-msg-chat-body {
+      flex: initial;
+      min-height: 140px;
       max-height: 220px;
     }
 
-    .group-msg-options-grid {
-      grid-template-columns: 1fr;
-    }
   }
 </style>
 
@@ -195,23 +297,17 @@
       </button>
     </div>
 
-    <div class="drawer-body" style="display:flex;flex-direction:column;gap:12px;min-height:0;">
+    <div class="drawer-body" style="display:flex;flex-direction:column;gap:8px;min-height:0;">
       <div class="group-msg-layout">
         <section class="group-msg-panel">
           <div class="group-msg-panel-head">
             <div style="font-size:12px;font-weight:700;color:#334155;">Clients</div>
-            <div id="groupMessageSelectedCount" style="font-size:11px;color:#64748b;">All clients (default)</div>
+            <div id="groupMessageSelectedCount" style="font-size:11px;color:#64748b;">0 selected</div>
           </div>
           <div class="group-msg-panel-body">
-            <div style="display:flex;gap:8px;">
-              <input type="text" id="groupMessageClientSearch" class="form-input" placeholder="Search clients..." style="flex:1;">
-              <button type="button" class="btn btn-sm btn-neutral" id="refreshGroupMessageClientsBtn" title="Refresh clients">
-                <i class="fa-solid fa-rotate"></i>
-              </button>
-            </div>
-
-            <div class="group-msg-controls">
-              <button type="button" class="btn btn-sm btn-neutral" id="groupMessageSelectAllVisibleBtn">Select Visible</button>
+            <div class="group-msg-search-row">
+              <input type="text" id="groupMessageClientSearch" class="form-input" placeholder="Search clients...">
+              <button type="button" class="btn btn-sm btn-neutral" id="groupMessageSelectAllVisibleBtn">Select All</button>
               <button type="button" class="btn btn-sm btn-neutral" id="groupMessageClearSelectionBtn">Clear</button>
             </div>
 
@@ -225,9 +321,48 @@
               <div style="font-size:12px;color:#64748b;font-weight:600;">Message Panel</div>
               <div id="groupMessageTargetSummary" style="font-size:13px;color:#0f172a;font-weight:700;">Sending to all clients</div>
             </div>
-            <button type="button" class="btn btn-sm btn-neutral" id="refreshGroupMessageHistoryBtn" title="Refresh selected client history">
-              <i class="fa-solid fa-clock-rotate-left"></i>
-            </button>
+            <div class="group-msg-panel-head-right">
+              <div class="group-msg-top-controls">
+                <div class="group-msg-top-control-row">
+                  <span class="group-msg-inline-title">Send To</span>
+                  <div class="group-msg-controls">
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageScope" value="client_only" checked>
+                      <span>Client Only</span>
+                    </label>
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageScope" value="client_and_staff">
+                      <span>Client + Staff</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="group-msg-top-control-row">
+                  <span class="group-msg-inline-title">Message Type</span>
+                  <div class="group-msg-controls">
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageVisibility" value="permanent" checked>
+                      <span>Permanent</span>
+                    </label>
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageVisibility" value="temporary">
+                      <span>Temporary</span>
+                    </label>
+                  </div>
+
+                  <div class="form-group" id="groupMessageDurationWrap" style="display:none;margin:0;min-width:160px;">
+                    <select id="groupMessageTemporaryDuration" class="form-select" aria-label="Temporary duration">
+                      <option value="6h">6 hours</option>
+                      <option value="12h">12 hours</option>
+                      <option value="24h">24 hours</option>
+                      <option value="2d">2 days</option>
+                      <option value="3d">3 days</option>
+                      <option value="7d">7 days</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="group-msg-panel-body" style="gap:10px;">
             <div id="groupMessageHistory" class="group-msg-chat-body">
@@ -241,49 +376,7 @@
                 <div id="groupMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
               </div>
 
-              <div class="group-msg-options-grid">
-                <div>
-                  <div class="group-msg-option-title">Send To</div>
-                  <div class="group-msg-controls">
-                    <label class="group-msg-radio">
-                      <input type="radio" name="groupMessageScope" value="client_only" checked>
-                      <span>Client Only</span>
-                    </label>
-                    <label class="group-msg-radio">
-                      <input type="radio" name="groupMessageScope" value="client_and_staff">
-                      <span>Client + Staff</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <div class="group-msg-option-title">Message Type</div>
-                  <div class="group-msg-controls">
-                    <label class="group-msg-radio">
-                      <input type="radio" name="groupMessageVisibility" value="permanent" checked>
-                      <span>Permanent</span>
-                    </label>
-                    <label class="group-msg-radio">
-                      <input type="radio" name="groupMessageVisibility" value="temporary">
-                      <span>Temporary</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
               <div class="group-msg-action-row">
-                <div class="form-group" id="groupMessageDurationWrap" style="display:none;margin:0;min-width:220px;">
-                  <label class="form-label" for="groupMessageTemporaryDuration">Temporary Duration</label>
-                  <select id="groupMessageTemporaryDuration" class="form-select">
-                    <option value="6h">6 hours</option>
-                    <option value="12h">12 hours</option>
-                    <option value="24h">24 hours</option>
-                    <option value="2d">2 days</option>
-                    <option value="3d">3 days</option>
-                    <option value="7d">7 days</option>
-                  </select>
-                </div>
-
                 <div class="group-msg-action-buttons">
                   <button type="button" class="btn btn-md btn-neutral group-msg-btn" id="cancelGroupMessageBtn">
                     <i class="fa-solid fa-xmark"></i> Close

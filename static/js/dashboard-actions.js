@@ -335,6 +335,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashUpgradeTableNameEl = document.getElementById('dashUpgradeTableName');
     const dashUpgradeCountEl = document.getElementById('dashUpgradeCount');
 
+    function broadcastClassesUpgraded(tableId) {
+        const payload = { tableId: Number(tableId) || null, ts: Date.now() };
+        try {
+            window.dispatchEvent(new CustomEvent('idcard-classes-upgraded', { detail: payload }));
+        } catch (_err) {}
+        try {
+            localStorage.setItem('idcard:classes-upgraded', JSON.stringify(payload));
+        } catch (_err2) {}
+    }
+
     function dashOpenUpgradeAllModal(tableId) {
         dashUpgradeTableId = tableId;
         dashUpgradeExpectedCode = '';
@@ -382,6 +392,9 @@ document.addEventListener('DOMContentLoaded', function() {
             ApiClient.post(`/api/table/${dashUpgradeTableId}/cards/upgrade-classes/`, { confirmation_code: dashUpgradeCodeInput.value.trim() })
             .then(data => {
                 dashCloseUpgradeAllModal();
+                if (data && data.success) {
+                    broadcastClassesUpgraded(dashUpgradeTableId);
+                }
                 if (typeof showToast === 'function') showToast(data.message || (data.success ? 'Upgraded!' : 'Failed'), data.success ? 'success' : 'error');
             })
             .catch(() => {

@@ -124,7 +124,16 @@ def _forbidden_card_ids_for_client_staff(user, table, card_ids):
 
 def _filter_options_cache_key(user, table_id):
     """Build a cache key for filter-options that is safe for scoped users."""
-    base = f'filter_options:{table_id}'
+    from django.core.cache import cache as django_cache
+
+    version_key = f'filter_options_version:{table_id}'
+    version = django_cache.get(version_key, 1)
+    try:
+        version = int(version)
+    except Exception:
+        version = 1
+
+    base = f'filter_options:{table_id}:v{version}'
     if not PermissionService.is_client_staff(user):
         return base
 
@@ -1506,6 +1515,12 @@ def api_upgrade_all_classes(request, table_id):
         result = IDCardService.upgrade_all_classes(table_id)
         if not result.success:
             return JsonResponse({'success': False, 'message': result.message}, status=400)
+
+        try:
+            invalidate_class_variant_cache(table_id)
+            invalidate_filter_options_cache(table_id)
+        except Exception:
+            pass
 
         if result.data.get('upgraded', 0) > 0:
             ActivityService.log_bulk_upgrade(

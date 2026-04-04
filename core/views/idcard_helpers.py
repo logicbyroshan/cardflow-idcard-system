@@ -224,6 +224,18 @@ def invalidate_class_variant_cache(table_id):
 def invalidate_filter_options_cache(table_id):
     """Invalidate class/section filter-options cache for a table."""
     try:
+        version_key = f'filter_options_version:{table_id}'
+        try:
+            django_cache.incr(version_key)
+        except Exception:
+            current = django_cache.get(version_key, 1)
+            try:
+                current = int(current)
+            except Exception:
+                current = 1
+            django_cache.set(version_key, current + 1, None)
+
+        # Best-effort cleanup for any non-versioned key readers.
         django_cache.delete(f'filter_options:{table_id}')
     except Exception:
         pass  # Best effort

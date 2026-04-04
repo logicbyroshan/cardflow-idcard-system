@@ -145,7 +145,8 @@
   border-radius: 0;
   margin: 0;
 }
-.panel-tab-full-height .notif-pagination-bar {
+.panel-tab-full-height .notif-pagination-bar,
+.panel-tab-full-height .pagination-bar {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -368,11 +369,20 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+.notif-actions-left-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .notif-actions-right {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .notif-actions-bar .btn {
   min-height: 32px;
@@ -392,6 +402,72 @@
   font-size: 11.5px;
   color: #94a3b8;
   font-weight: 600;
+}
+
+.notif-inline-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #dbe2ff;
+  background: #f6f8ff;
+  border-radius: 6px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.notif-inline-stat-badge i {
+  color: #5b6fd6;
+  font-size: 11px;
+}
+
+.notif-maintenance-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.notif-maintenance-status.is-active {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.maintenance-mode-modal-card {
+  width: min(620px, calc(100vw - 30px));
+}
+
+.maintenance-mode-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.maintenance-mode-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.maintenance-duration-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.maintenance-mode-modal-body .panel-form-input {
+  min-height: 180px;
+  resize: vertical;
 }
 .notif-search-box {
   display: flex;
@@ -483,7 +559,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 760px;
+  min-width: 840px;
 }
 .notif-table thead {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -509,6 +585,11 @@
 }
 .notif-table tr:last-child td { border-bottom: none; }
 .notif-table tr:hover td { background: rgba(102,126,234,0.035); }
+
+.notif-table th:first-child,
+.notif-table td:first-child {
+  text-align: center;
+}
 
 .notif-panel-theme .notif-badge-cat {
   background: #e8edff;
@@ -1083,11 +1164,53 @@ textarea.panel-form-input {
   align-items: center;
   gap: 5px;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: 6px;
   font-size: 10.5px;
   font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
+}
+
+#opsTable {
+  table-layout: fixed;
+  min-width: 1000px;
+}
+
+#opsTable th:nth-child(1),
+#opsTable td:nth-child(1) {
+  text-align: center;
+}
+
+#opsTable td:nth-child(2),
+#opsTable td:nth-child(3),
+#opsTable td:nth-child(5),
+#opsTable td:nth-child(7) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#opsTable td:nth-child(4) {
+  white-space: nowrap;
+}
+
+#opsTable td:nth-child(6) {
+  white-space: normal;
+}
+
+.operations-panel-theme .log-action-badge {
+  border-radius: 6px;
+}
+
+.operations-panel-theme .pagination-right {
+  gap: 8px;
+}
+
+.operations-panel-theme #opsRowsPerPage {
+  min-width: 74px;
+  height: 26px;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 .ops-source-badge.task {
@@ -1191,7 +1314,7 @@ textarea.panel-form-input {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
@@ -1206,25 +1329,66 @@ textarea.panel-form-input {
 
 .email-actions-stack {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
-  min-width: 0;
-  width: 100%;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  white-space: nowrap;
 }
 
 .email-action-btn {
-  width: 100%;
+  width: auto;
+  min-width: 74px;
   display: inline-flex;
   justify-content: center;
-  font-size: 12px;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
   font-weight: 600;
-  border-radius: 8px;
-  padding: 7px 10px;
+  border-radius: 6px;
+  padding: 4px 10px;
   box-sizing: border-box;
 }
 
+#emailLogsTable {
+  table-layout: fixed;
+  min-width: 980px;
+}
+
+#emailLogsTable th:nth-child(1),
+#emailLogsTable td:nth-child(1) {
+  text-align: center;
+}
+
+#emailLogsTable th:last-child,
 #emailLogsTable td:last-child {
-  min-width: 180px;
+  min-width: 170px;
+  text-align: center;
+}
+
+#emailLogsTable td:nth-child(2),
+#emailLogsTable td:nth-child(3),
+#emailLogsTable td:nth-child(4),
+#emailLogsTable td:nth-child(6) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-panel-theme .notif-badge-cat {
+  border-radius: 5px;
+}
+
+.email-panel-theme .pagination-right {
+  gap: 8px;
+}
+
+.email-panel-theme #emailRowsPerPage {
+  min-width: 74px;
+  height: 26px;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 #emailLogsTable .btn-outline-primary {
@@ -1286,7 +1450,7 @@ textarea.panel-form-input {
   height: 90vh;
   min-width: 320px;
   max-height: 90vh;
-  border-radius: 14px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -1334,7 +1498,7 @@ textarea.panel-form-input {
 
 .email-template-preview-wrap {
   border: 1px solid var(--email-brand-border);
-  border-radius: 10px;
+  border-radius: 6px;
   background: #ffffff;
   margin-bottom: 0;
   overflow: hidden;
@@ -1791,6 +1955,10 @@ textarea.panel-form-input {
    ================================ */
 @media (max-width: 900px) {
   .notif-stats { grid-template-columns: repeat(2, 1fr); }
+  .notif-panel-theme .notif-actions-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
   .system-grid { grid-template-columns: 1fr; }
   #opsMonitoringStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #opsMonitoringStats .system-card {
@@ -1956,6 +2124,16 @@ textarea.panel-form-input {
   }
   .notif-stats { grid-template-columns: 1fr 1fr; }
   .notif-actions-bar { flex-direction: column; align-items: stretch; }
+  .notif-inline-stat-badge,
+  .notif-maintenance-status {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 10.5px;
+  }
+  .notif-actions-left-buttons .btn {
+    width: 100%;
+    justify-content: center;
+  }
   .server-panel-subtitle { margin-top: 4px; }
   .server-section-label h4 { font-size: 13px; }
   .server-section-label p { font-size: 11px; }
@@ -1964,8 +2142,8 @@ textarea.panel-form-input {
   .server-donut-inner span { font-size: 24px; }
   .notif-search-box { min-width: auto; }
   .quick-actions-grid { grid-template-columns: 1fr; }
-  .notif-table th:nth-child(5),
-  .notif-table td:nth-child(5),
   .notif-table th:nth-child(6),
-  .notif-table td:nth-child(6) { display: none; }
+  .notif-table td:nth-child(6),
+  .notif-table th:nth-child(7),
+  .notif-table td:nth-child(7) { display: none; }
 }
