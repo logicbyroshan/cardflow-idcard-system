@@ -1496,3 +1496,117 @@ class ReuploadDirectTaskFlowTests(TestCase):
             self.card.field_data.get('PHOTO'),
             'adarshimg/22_121314.jpg',
         )
+
+
+class ClientMessageApiTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('msg-super@test.com', 'adminpass1')
+        self.client_user, self.client_obj = _create_client_user('msg-client@test.com', 'clientpass1')
+
+        self.client_staff_user = User.objects.create_user(
+            username='msg-client-staff@test.com',
+            email='msg-client-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        self.admin_staff = User.objects.create_user(
+            username='msg-admin-staff@test.com',
+            email='msg-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff,
+            staff_type='admin_staff',
+            perm_idcard_client_list=True,
+        )
+
+    def test_send_client_message_client_only_creates_history_and_notification(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Hello client', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        self.assertEqual(row.scope, 'client_only')
+        self.assertEqual(row.recipient_count, 1)
+        self.assertIsNotNone(row.notification_id)
+        self.assertEqual(row.notification.target, 'selected')
+        self.assertEqual(list(row.notification.target_users.values_list('id', flat=True)), [self.client_user.id])
+
+    def test_send_client_message_client_and_staff_includes_staff_recipients(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Hello all', 'scope': 'client_and_staff'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        target_ids = set(row.notification.target_users.values_list('id', flat=True))
+        self.assertEqual(target_ids, {self.client_user.id, self.client_staff_user.id})
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertTrue(history_payload.get('success'))
+        self.assertEqual(len(history_payload.get('messages', [])), 1)
+        self.assertEqual(history_payload['messages'][0]['scope'], 'client_and_staff')
+
+    def test_admin_staff_without_manage_client_permission_is_denied(self):
+        self.admin_staff_profile.perm_idcard_client_list = False
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
+        self.client.login(username='msg-admin-staff@test.com', password='pass1234')
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 403)
+
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Blocked', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 403)
+
+    def test_client_strip_endpoint_returns_unread_then_hides_after_mark_read(self):
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Please read this', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        self.client.login(username='msg-client@test.com', password='clientpass1')
+        strip_response = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_response.status_code, 200)
+        strip_payload = strip_response.json()
+        self.assertTrue(strip_payload.get('success'))
+        self.assertEqual(len(strip_payload.get('items', [])), 1)
+
+        notification_id = strip_payload['items'][0]['notification_id']
+        mark_response = self.client.post(f'/panel/api/notifications/{notification_id}/read/')
+        self.assertEqual(mark_response.status_code, 200)
+
+        strip_after = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_after.status_code, 200)
+        self.assertEqual(len(strip_after.json().get('items', [])), 0)

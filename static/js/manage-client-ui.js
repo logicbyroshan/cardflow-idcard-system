@@ -228,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // ==================== ROW DOUBLE-CLICK NAVIGATION ====================
         clientTableContainer.addEventListener('dblclick', function(e) {
+          if (e.target.closest('.client-message-btn')) return;
           var row = e.target.closest('tr');
           if (row && row.dataset.clientId) {
             window.location.href = '/client/' + row.dataset.clientId + '/settings/';

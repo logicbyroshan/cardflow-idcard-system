@@ -515,6 +515,43 @@ class NotificationRead(models.Model):
         return f"{self.user} read {self.notification}"
 
 
+class ClientMessage(models.Model):
+    """
+    One-way admin/admin-staff message stream per client.
+
+    Messages are delivered through Notification records so recipients can
+    dismiss/read them globally while preserving sender history in Manage Clients.
+    """
+    SCOPE_CHOICES = [
+        ('client_only', 'Client Only'),
+        ('client_and_staff', 'Client + Staff'),
+    ]
+
+    client = models.ForeignKey('core.Client', on_delete=models.CASCADE, related_name='client_messages')
+    sent_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_client_messages')
+    message = models.TextField()
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default='client_only', db_index=True)
+    notification = models.OneToOneField(
+        Notification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='client_message',
+    )
+    recipient_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['client', '-created_at'], name='climsg_client_time_idx'),
+            models.Index(fields=['scope', '-created_at'], name='climsg_scope_time_idx'),
+        ]
+
+    def __str__(self):
+        return f"ClientMessage(client={self.client_id}, scope={self.scope})"
+
+
 class BackgroundTask(models.Model):
     """
     Tracks background tasks for async processing.

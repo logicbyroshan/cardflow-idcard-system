@@ -12,6 +12,7 @@ from panel.views.notification_views import (  # noqa: F401
     api_notifications_unread_count,
     api_notification_mark_read,
     api_notifications_mark_all_read,
+    api_client_message_strip,
     api_panel_notifications_list,
     api_panel_notification_create,
     api_panel_notification_delete,

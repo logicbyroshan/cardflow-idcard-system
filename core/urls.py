@@ -131,6 +131,7 @@ urlpatterns = [
     path('api/notifications/unread-count/', views.api_notifications_unread_count, name='api_notifications_unread_count'),
     path('api/notifications/<int:notification_id>/read/', views.api_notification_mark_read, name='api_notification_mark_read'),
     path('api/notifications/mark-all-read/', views.api_notifications_mark_all_read, name='api_notifications_mark_all_read'),
+    path('api/notifications/client-messages/unread/', views.api_client_message_strip, name='api_client_message_strip'),
     # Admin notification management
     path('api/notifications/admin/list/', views.api_panel_notifications_list, name='api_panel_notifications_list'),
     path('api/notifications/admin/create/', views.api_panel_notification_create, name='api_panel_notification_create'),
@@ -154,6 +155,8 @@ urlpatterns = [
     path('api/client/<int:client_id>/staff/<int:staff_id>/toggle-status/', views.api_client_staff_toggle_status, name='api_client_staff_toggle_status'),
     path('api/client/<int:client_id>/staff/<int:staff_id>/permissions/', views.api_client_staff_permissions, name='api_client_staff_permissions'),
     path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
+    path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
+    path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
     path('api/client/<int:client_id>/login-history/', views.api_client_login_history, name='api_client_login_history'),
     
     # Staff APIs

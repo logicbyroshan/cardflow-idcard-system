@@ -26,6 +26,94 @@ document.addEventListener('DOMContentLoaded', function() {
       var editFromViewBtn = document.getElementById('editFromViewBtn');
       var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
       var confirmStatusBtn = document.getElementById('confirmStatusBtn');
+      var clientTableContainer = document.getElementById('client-table-container');
+
+      var clientMessageDrawer = document.getElementById('client-message-drawer');
+      var closeClientMessageDrawer = document.getElementById('closeClientMessageDrawer');
+      var cancelClientMessageBtn = document.getElementById('cancelClientMessageBtn');
+      var sendClientMessageBtn = document.getElementById('sendClientMessageBtn');
+      var refreshClientMessagesBtn = document.getElementById('refreshClientMessagesBtn');
+      var clientMessageDrawerClientName = document.getElementById('clientMessageDrawerClientName');
+      var clientMessageHistory = document.getElementById('clientMessageHistory');
+      var clientMessageText = document.getElementById('clientMessageText');
+      var clientMessageCounter = document.getElementById('clientMessageCounter');
+
+      NS.messageDrawerClientId = null;
+
+      function escapeHtmlLocal(value) {
+        var text = String(value == null ? '' : value);
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function renderClientMessageHistory(messages) {
+        if (!clientMessageHistory) return;
+        if (!messages || messages.length === 0) {
+          clientMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">No messages sent yet.</div>';
+          return;
+        }
+
+        clientMessageHistory.innerHTML = messages.map(function(item) {
+          return (
+            '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">' +
+                '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:2px 8px;">' + escapeHtmlLocal(item.scope_display || item.scope || '-') + '</span>' +
+                '<span style="font-size:11px;color:#64748b;">' + escapeHtmlLocal(item.created_at_display || '-') + '</span>' +
+              '</div>' +
+              '<div style="font-size:13px;line-height:1.5;color:#1e293b;white-space:pre-wrap;">' + escapeHtmlLocal(item.message || '') + '</div>' +
+              '<div style="margin-top:8px;font-size:11px;color:#64748b;display:flex;justify-content:space-between;gap:8px;">' +
+                '<span>By: ' + escapeHtmlLocal(item.sent_by_name || 'System') + '</span>' +
+                '<span>Recipients: ' + escapeHtmlLocal(item.recipient_count || 0) + '</span>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+      }
+
+      async function loadClientMessages() {
+        if (!NS.messageDrawerClientId) return;
+        if (clientMessageHistory) {
+          clientMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</div>';
+        }
+        var response = await NS.fetchClientMessages(NS.messageDrawerClientId);
+        if (!response || !response.success) {
+          if (clientMessageHistory) {
+            clientMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#ef4444;font-size:13px;">Failed to load history.</div>';
+          }
+          showToast((response && response.message) || 'Failed to load message history', 'error');
+          return;
+        }
+        renderClientMessageHistory(response.messages || []);
+      }
+
+      function openClientMessageDrawer(clientId, clientName) {
+        if (!clientMessageDrawer) return;
+        NS.messageDrawerClientId = clientId;
+        if (clientMessageDrawerClientName) clientMessageDrawerClientName.textContent = clientName || '-';
+        if (clientMessageText) {
+          clientMessageText.value = '';
+          clientMessageText.focus();
+        }
+        if (clientMessageCounter) clientMessageCounter.textContent = '0 / 2000';
+
+        var selectedScope = document.querySelector('input[name="clientMessageScope"][value="client_only"]');
+        if (selectedScope) selectedScope.checked = true;
+
+        clientMessageDrawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        loadClientMessages();
+      }
+
+      function closeClientMessageDrawerFn() {
+        if (!clientMessageDrawer) return;
+        clientMessageDrawer.classList.remove('open');
+        NS.messageDrawerClientId = null;
+        document.body.style.overflow = '';
+      }
 
       // ==================== EVENT HANDLERS ====================
       if (addClientBtn) addClientBtn.addEventListener('click', function() { NS.openDrawer('add'); });
@@ -41,6 +129,26 @@ document.addEventListener('DOMContentLoaded', function() {
         var clientData = await NS.fetchClientDetails(NS.selectedClientId);
         if (clientData) NS.openViewModal(clientData);
       });
+
+      if (clientTableContainer) {
+        clientTableContainer.addEventListener('click', function(e) {
+          var messageBtn = e.target.closest('.client-message-btn');
+          if (!messageBtn) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          var row = messageBtn.closest('tr');
+          if (row) NS.selectRow(row);
+
+          var targetClientId = messageBtn.dataset.clientId || (row && row.dataset.clientId);
+          var targetClientName = messageBtn.dataset.clientName || (row ? row.querySelector('td:first-child').textContent.trim() : '');
+          if (!targetClientId) {
+            showToast('Client not found', 'error');
+            return;
+          }
+          openClientMessageDrawer(targetClientId, targetClientName);
+        });
+      }
 
       if (deleteClientBtn) deleteClientBtn.addEventListener('click', function() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
@@ -225,6 +333,59 @@ document.addEventListener('DOMContentLoaded', function() {
       closeViewModal.addEventListener('click', function() { NS.closeViewModalFn(); });
       closeViewModalBtn.addEventListener('click', function() { NS.closeViewModalFn(); });
       // Close handlers for delete/status modals now managed by Alpine @click in template
+
+      if (closeClientMessageDrawer) closeClientMessageDrawer.addEventListener('click', closeClientMessageDrawerFn);
+      if (cancelClientMessageBtn) cancelClientMessageBtn.addEventListener('click', closeClientMessageDrawerFn);
+
+      if (refreshClientMessagesBtn) {
+        refreshClientMessagesBtn.addEventListener('click', function() {
+          loadClientMessages();
+        });
+      }
+
+      if (clientMessageText && clientMessageCounter) {
+        clientMessageText.addEventListener('input', function() {
+          clientMessageCounter.textContent = String(clientMessageText.value.length) + ' / 2000';
+        });
+      }
+
+      if (sendClientMessageBtn) {
+        sendClientMessageBtn.addEventListener('click', async function() {
+          if (!NS.messageDrawerClientId) return;
+          var textValue = (clientMessageText && clientMessageText.value ? clientMessageText.value : '').trim();
+          if (!textValue) {
+            showToast('Message is required', 'error');
+            return;
+          }
+
+          var selectedScopeInput = document.querySelector('input[name="clientMessageScope"]:checked');
+          var payload = {
+            message: textValue,
+            scope: selectedScopeInput ? selectedScopeInput.value : 'client_only'
+          };
+
+          var originalHtml = sendClientMessageBtn.innerHTML;
+          sendClientMessageBtn.disabled = true;
+          sendClientMessageBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+
+          var result = await NS.sendClientMessage(NS.messageDrawerClientId, payload);
+          sendClientMessageBtn.disabled = false;
+          sendClientMessageBtn.innerHTML = originalHtml;
+
+          if (!result || !result.success) {
+            showToast((result && result.message) || 'Failed to send message', 'error');
+            return;
+          }
+
+          showToast(result.message || 'Message sent', 'success');
+          if (clientMessageText) {
+            clientMessageText.value = '';
+            clientMessageText.focus();
+          }
+          if (clientMessageCounter) clientMessageCounter.textContent = '0 / 2000';
+          loadClientMessages();
+        });
+      }
 
       // Outside click close disabled  prevent accidental closure
 
@@ -450,6 +611,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Close on Escape key
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
+          if (clientMessageDrawer && clientMessageDrawer.classList.contains('open')) { closeClientMessageDrawerFn(); return; }
           if (staffDrawer && staffDrawer.classList.contains('open')) { closeStaffDrawerFn(); return; }
           if (viewModal && viewModal.classList.contains('open')) { NS.closeViewModalFn(); return; }
           if (clientDrawer && clientDrawer.classList.contains('open')) { NS.closeDrawerFn(); return; }

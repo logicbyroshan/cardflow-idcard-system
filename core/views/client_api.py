@@ -6,13 +6,16 @@ import json
 import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 from ..services import ClientService
 from ..services.activity_service import ActivityService
+from ..services.notification_service import NotificationService
 from ..services.permission_service import (
     PermissionService,
     api_require_any_admin,
     api_require_super_admin,
 )
+from ..models import ClientMessage, User
 from accounts.rate_limit import rate_limit
 from mediafiles.utils import normalize_uploaded_image
 
@@ -62,6 +65,25 @@ def _has_manage_client_page_permission(user):
 def _manage_client_permission_denied_response():
     """Standard deny payload for missing Manage Client permission."""
     return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+
+
+def _serialize_client_message(item):
+    sent_by_user = item.sent_by
+    if sent_by_user:
+        sender_name = sent_by_user.get_full_name() or sent_by_user.username
+    else:
+        sender_name = 'System'
+
+    return {
+        'id': item.id,
+        'message': item.message,
+        'scope': item.scope,
+        'scope_display': item.get_scope_display(),
+        'recipient_count': item.recipient_count,
+        'sent_by_name': sender_name,
+        'created_at': item.created_at.isoformat(),
+        'created_at_display': timezone.localtime(item.created_at).strftime('%d-%m-%Y %H:%M'),
+    }
 
 
 @require_http_methods(["POST"])
@@ -284,3 +306,126 @@ def api_client_set_temp_password(request, client_id):
     except Exception as e:
         logger.exception("Client temp password error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='client_msg_list')
+def api_client_messages(request, client_id):
+    """API endpoint to fetch admin-sent message history for a client."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    from client.models import Client
+
+    client = Client.objects.filter(id=client_id).select_related('user').first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    rows = (
+        ClientMessage.objects
+        .filter(client_id=client_id)
+        .select_related('sent_by')
+        .order_by('-created_at')[:80]
+    )
+
+    return JsonResponse({
+        'success': True,
+        'client': {
+            'id': client.id,
+            'name': client.name,
+        },
+        'messages': [_serialize_client_message(item) for item in rows],
+    })
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+@rate_limit(max_requests=20, window_seconds=60, key_prefix='client_msg_send')
+def api_client_message_send(request, client_id):
+    """API endpoint to send one-way messages to client/client staff users."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    message_text = (payload.get('message') or '').strip()
+    scope = (payload.get('scope') or 'client_only').strip()
+
+    if not message_text:
+        return JsonResponse({'success': False, 'message': 'Message is required'}, status=400)
+    if len(message_text) > 2000:
+        return JsonResponse({'success': False, 'message': 'Message is too long (max 2000 characters)'}, status=400)
+    if scope not in ('client_only', 'client_and_staff'):
+        return JsonResponse({'success': False, 'message': 'Invalid recipient scope'}, status=400)
+
+    from client.models import Client
+
+    client = Client.objects.filter(id=client_id).select_related('user').first()
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    recipient_users = []
+    if client.user_id and client.user.is_active:
+        recipient_users.append(client.user)
+
+    if scope == 'client_and_staff':
+        staff_users = list(
+            User.objects.filter(
+                staff_profile__staff_type='client_staff',
+                staff_profile__client_id=client_id,
+                is_active=True,
+            ).only('id')
+        )
+        recipient_users.extend(staff_users)
+
+    recipient_ids = sorted({u.id for u in recipient_users if u and u.id})
+    if not recipient_ids:
+        return JsonResponse({'success': False, 'message': 'No active recipients found for this client'}, status=400)
+
+    sender_name = request.user.get_full_name() or request.user.username
+    notif_result = NotificationService.create_notification(
+        title=f'Client Message - {client.name}',
+        message=message_text,
+        priority='normal',
+        category='announcement',
+        target='selected',
+        target_user_ids=recipient_ids,
+        created_by=request.user,
+        send_email=False,
+    )
+    if not notif_result.success:
+        return JsonResponse(notif_result.to_response_dict(), status=400)
+
+    notif_id = ((notif_result.data or {}).get('notification') or {}).get('id')
+    message_row = ClientMessage.objects.create(
+        client=client,
+        sent_by=request.user,
+        message=message_text,
+        scope=scope,
+        notification_id=notif_id,
+        recipient_count=len(recipient_ids),
+    )
+
+    ActivityService.log(
+        'notification_create',
+        f'Client message sent to {client.name} ({message_row.get_scope_display()})',
+        request=request,
+        target_model='ClientMessage',
+        target_id=message_row.id,
+        target_name=client.name,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Message sent to {len(recipient_ids)} user(s)',
+        'client_message': _serialize_client_message(message_row),
+        'sender_name': sender_name,
+    })

@@ -82,6 +82,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       };
 
+      NS.fetchClientMessages = async function(clientId) {
+        try {
+          return await ApiClient.get('/api/client/' + clientId + '/messages/');
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.sendClientMessage = async function(clientId, payload) {
+        try {
+          return await ApiClient.post('/api/client/' + clientId + '/messages/send/', payload);
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
       // ==================== TEMP PASSWORD FUNCTIONS ====================
       var tempPwVerificationCode = '';
       var tempPwTargetType = ''; // 'client' or 'staff'

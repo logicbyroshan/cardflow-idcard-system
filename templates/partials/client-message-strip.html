@@ -1,0 +1,130 @@
+<div id="clientMessageStrip" style="display:none;margin:12px 0 0 0;">
+  <div style="border:1px solid #bfdbfe;background:linear-gradient(135deg,#eff6ff,#f8fafc);border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+    <div style="display:flex;align-items:flex-start;gap:10px;min-width:0;">
+      <div style="width:34px;height:34px;border-radius:999px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="fa-solid fa-bullhorn"></i>
+      </div>
+      <div style="min-width:0;">
+        <div id="clientMessageStripMeta" style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.04em;">Client Message</div>
+        <div id="clientMessageStripText" style="margin-top:4px;font-size:14px;color:#0f172a;line-height:1.45;white-space:pre-wrap;word-break:break-word;"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <button type="button" class="btn btn-sm btn-neutral" id="clientMessageReadBtn" title="Mark read">Read</button>
+      <button type="button" class="btn btn-sm btn-neutral" id="clientMessageDismissBtn" aria-label="Dismiss message" title="Dismiss">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var root = document.getElementById('clientMessageStrip');
+  if (!root) return;
+
+  var metaEl = document.getElementById('clientMessageStripMeta');
+  var textEl = document.getElementById('clientMessageStripText');
+  var readBtn = document.getElementById('clientMessageReadBtn');
+  var dismissBtn = document.getElementById('clientMessageDismissBtn');
+
+  var queue = [];
+  var currentIndex = 0;
+  var pollTimer = null;
+
+  function escapeHtml(s) {
+    var text = String(s == null ? '' : s);
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function getCsrf() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+    var cookie = document.cookie.split(';').find(function(item) {
+      return item.trim().indexOf('csrftoken=') === 0;
+    });
+    return cookie ? cookie.split('=')[1] : '';
+  }
+
+  function renderCurrent() {
+    if (!queue.length) {
+      root.style.display = 'none';
+      return;
+    }
+
+    if (currentIndex >= queue.length) currentIndex = 0;
+    var item = queue[currentIndex];
+    if (!item) {
+      root.style.display = 'none';
+      return;
+    }
+
+    var metaParts = [
+      'Message from ' + (item.sent_by_name || 'Admin'),
+      item.client_name || '',
+      item.scope_display || item.scope || ''
+    ].filter(Boolean);
+
+    metaEl.textContent = metaParts.join(' | ');
+    textEl.innerHTML = escapeHtml(item.message || '');
+    root.style.display = '';
+  }
+
+  function markCurrentAsRead() {
+    if (!queue.length) return Promise.resolve();
+    var item = queue[currentIndex];
+    if (!item || !item.notification_id) return Promise.resolve();
+
+    return fetch('/api/notifications/' + item.notification_id + '/read/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrf(),
+      },
+      credentials: 'same-origin',
+    }).catch(function() {});
+  }
+
+  function dismissCurrent() {
+    if (!queue.length) {
+      root.style.display = 'none';
+      return;
+    }
+
+    markCurrentAsRead().finally(function() {
+      queue.splice(currentIndex, 1);
+      if (currentIndex >= queue.length) currentIndex = 0;
+      renderCurrent();
+      if (!queue.length) {
+        fetchUnread();
+      }
+    });
+  }
+
+  function fetchUnread() {
+    fetch('/api/notifications/client-messages/unread/?limit=5', { credentials: 'same-origin' })
+      .then(function(resp) { return resp.ok ? resp.json() : null; })
+      .then(function(data) {
+        if (!data || !data.success) return;
+        queue = Array.isArray(data.items) ? data.items : [];
+        currentIndex = 0;
+        renderCurrent();
+      })
+      .catch(function() {});
+  }
+
+  if (readBtn) readBtn.addEventListener('click', dismissCurrent);
+  if (dismissBtn) dismissBtn.addEventListener('click', dismissCurrent);
+
+  fetchUnread();
+  pollTimer = setInterval(fetchUnread, 45000);
+
+  window.addEventListener('beforeunload', function() {
+    if (pollTimer) clearInterval(pollTimer);
+  });
+})();
+</script>

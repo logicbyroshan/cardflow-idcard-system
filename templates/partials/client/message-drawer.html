@@ -1,0 +1,55 @@
+<div id="client-message-drawer" class="drawer-modal">
+  <div class="drawer-content">
+    <div class="drawer-header">
+      <h3>
+        <i class="fa-solid fa-message"></i>
+        <span>Client Message</span>
+      </h3>
+      <button class="drawer-close" id="closeClientMessageDrawer" aria-label="Close message drawer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="drawer-body" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <div style="font-size:12px;color:#64748b;font-weight:600;">Client</div>
+          <div id="clientMessageDrawerClientName" style="font-size:15px;font-weight:700;color:#1e293b;">-</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-neutral" id="refreshClientMessagesBtn" title="Refresh history">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+
+      <div style="font-size:12px;color:#64748b;font-weight:600;">Message History</div>
+      <div id="clientMessageHistory" style="border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;padding:10px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:10px;"></div>
+
+      <div style="font-size:12px;color:#64748b;font-weight:600;">Send To</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;">
+          <input type="radio" name="clientMessageScope" value="client_only" checked>
+          <span>Client Only</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#334155;">
+          <input type="radio" name="clientMessageScope" value="client_and_staff">
+          <span>Client + Staff</span>
+        </label>
+      </div>
+
+      <div class="form-group" style="margin:0;">
+        <label class="form-label" for="clientMessageText">Message</label>
+        <textarea class="form-textarea" id="clientMessageText" rows="4" maxlength="2000" placeholder="Type message to client..."></textarea>
+        <div id="clientMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
+      </div>
+    </div>
+
+    <div class="drawer-footer">
+      <button type="button" class="btn btn-md btn-neutral" id="cancelClientMessageBtn">
+        <i class="fa-solid fa-xmark"></i> Close
+      </button>
+      <button type="button" class="btn btn-md btn-primary" id="sendClientMessageBtn">
+        <i class="fa-solid fa-paper-plane"></i> Send Message
+      </button>
+    </div>
+  </div>
+</div>

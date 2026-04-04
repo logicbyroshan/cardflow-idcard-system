@@ -11,8 +11,9 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.db.models import Exists, OuterRef
 
-from core.models import Notification
+from core.models import Notification, NotificationRead, ClientMessage
 from core.services.activity_service import ActivityService
 from core.services.notification_service import NotificationService
 from core.services.permission_service import (
@@ -68,6 +69,58 @@ def api_notifications_mark_all_read(request):
     """Mark all notifications as read for the current user."""
     result = NotificationService.mark_all_as_read(request.user)
     return JsonResponse(result.to_response_dict())
+
+
+@login_required
+@api_require_any_authenticated
+@require_http_methods(["GET"])
+def api_client_message_strip(request):
+    """Return unread client-message notifications for cross-page strip rendering."""
+    limit_raw = request.GET.get('limit', '5')
+    try:
+        limit = max(1, min(int(limit_raw), 10))
+    except (TypeError, ValueError):
+        limit = 5
+
+    unread_qs = (
+        ClientMessage.objects
+        .filter(
+            notification__is_active=True,
+            notification__target='selected',
+            notification__target_users=request.user,
+            notification__title__startswith='Client Message - ',
+        )
+        .annotate(
+            is_read=Exists(
+                NotificationRead.objects.filter(
+                    notification_id=OuterRef('notification_id'),
+                    user=request.user,
+                )
+            )
+        )
+        .filter(is_read=False)
+        .select_related('client', 'sent_by', 'notification')
+        .order_by('-created_at')[:limit]
+    )
+
+    items = []
+    for item in unread_qs:
+        sender_name = 'System'
+        if item.sent_by:
+            sender_name = item.sent_by.get_full_name() or item.sent_by.username
+        items.append({
+            'id': item.id,
+            'notification_id': item.notification_id,
+            'client_id': item.client_id,
+            'client_name': item.client.name,
+            'message': item.message,
+            'scope': item.scope,
+            'scope_display': item.get_scope_display(),
+            'sent_by_name': sender_name,
+            'created_at': item.created_at.isoformat(),
+        })
+
+    return JsonResponse({'success': True, 'items': items})
 
 
 # ── Admin endpoints (super admin only) ──────────────────────────────────

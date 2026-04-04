@@ -74,6 +74,8 @@ from .client_api import (
     api_client_staff_toggle_status,
     api_client_staff_permissions,
     api_client_set_temp_password,
+    api_client_messages,
+    api_client_message_send,
 )
 
 from .staff_api import (
@@ -194,6 +196,7 @@ from .notification_api import (
     api_notifications_unread_count,
     api_notification_mark_read,
     api_notifications_mark_all_read,
+    api_client_message_strip,
     api_panel_notifications_list,
     api_panel_notification_create,
     api_panel_notification_delete,
