@@ -21,11 +21,19 @@
                     document.getElementById('cl_active').checked = c.is_active;
                 });
         }
-        document.getElementById('clientModal').classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('clientModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('clientModal').classList.add('show');
+        }
     };
 
     window.closeClientModal = function () {
-        document.getElementById('clientModal').classList.remove('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('clientModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('clientModal').classList.remove('show');
+        }
     };
 
     window.editClient = function (id) { openClientModal(id); };

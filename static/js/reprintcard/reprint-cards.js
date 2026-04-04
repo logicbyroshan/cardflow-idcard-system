@@ -722,11 +722,23 @@ function reprintListStep() {
       submitBtn.disabled = false;
       submitBtn.title = 'Continue without edit and send to request list';
     }
-    if (modal) modal.classList.add('show');
+    if (modal) {
+      if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+        window.AdarshModalBridge.open('reprintConfirmModal', { overlayClass: 'show' });
+      } else {
+        modal.classList.add('show');
+      }
+    }
   }
 
   function closeModal() {
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+      if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+        window.AdarshModalBridge.close('reprintConfirmModal', { overlayClass: 'show' });
+      } else {
+        modal.classList.remove('show');
+      }
+    }
     pendingCardIds = [];
     wantEditInFlight = false;
     if (wantEditBtn) wantEditBtn.disabled = false;

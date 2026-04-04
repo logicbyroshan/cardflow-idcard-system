@@ -110,3 +110,8 @@ urlpatterns = [
 urlpatterns += [
     path('media/<path:path>', _protected_media_serve, {'document_root': settings.MEDIA_ROOT}),
 ]
+
+handler400 = 'core.views.errors.error_400'
+handler403 = 'core.views.errors.error_403'
+handler404 = 'core.views.errors.error_404'
+handler500 = 'core.views.errors.error_500'

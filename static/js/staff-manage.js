@@ -161,7 +161,11 @@ function openCreateModal() {
   document.getElementById('email').removeAttribute('disabled');
   document.querySelectorAll('input[name="permissions"]').forEach(cb => cb.checked = false);
   document.querySelectorAll('input[name="clients"]').forEach(cb => cb.checked = false);
-  document.getElementById('staffModal').classList.add('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('staffModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('staffModal').classList.add('show');
+  }
 }
 
 // Edit staff
@@ -193,7 +197,11 @@ async function editStaff(id) {
         cb.checked = clientIds.includes(parseInt(cb.value));
       });
       
-      document.getElementById('staffModal').classList.add('show');
+      if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+        window.AdarshModalBridge.open('staffModal', { overlayClass: 'show' });
+      } else {
+        document.getElementById('staffModal').classList.add('show');
+      }
     }
   } catch (error) {
     console.error('Error loading staff details:', error);
@@ -203,7 +211,11 @@ async function editStaff(id) {
 
 // Close modal
 function closeModal() {
-  document.getElementById('staffModal').classList.remove('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('staffModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('staffModal').classList.remove('show');
+  }
 }
 
 // Handle form submit
@@ -273,11 +285,19 @@ function openConfirmModal(title, message, action) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMessage').textContent = message;
   confirmAction = action;
-  document.getElementById('confirmModal').classList.add('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('confirmModal', { overlayClass: 'show', focusSelector: '#confirmActionBtn' });
+  } else {
+    document.getElementById('confirmModal').classList.add('show');
+  }
 }
 
 function closeConfirmModal() {
-  document.getElementById('confirmModal').classList.remove('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('confirmModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('confirmModal').classList.remove('show');
+  }
   confirmAction = null;
 }
 

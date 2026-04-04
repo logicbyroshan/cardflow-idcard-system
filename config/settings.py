@@ -229,6 +229,9 @@ for _domain in (PANEL_DOMAIN, WEBSITE_DOMAIN):
             if _origin not in CSRF_TRUSTED_ORIGINS:
                 CSRF_TRUSTED_ORIGINS.append(_origin)
 
+# Use the same branded error page for CSRF failures (403).
+CSRF_FAILURE_VIEW = 'core.views.errors.csrf_failure'
+
 # ── Reverse-proxy SSL detection ──
 # MUST be set whenever Django is behind Nginx/Apache that terminates SSL,
 # REGARDLESS of DEBUG. Without this, Django thinks requests arrive over HTTP

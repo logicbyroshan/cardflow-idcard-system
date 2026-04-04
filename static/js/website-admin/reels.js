@@ -16,12 +16,20 @@
         document.getElementById('rl_active').checked = data ? !!data.is_active : true;
         document.getElementById('rl_video').value = '';
         document.getElementById('rl_thumbnail').value = '';
-        modal.classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('reelModal', { overlayClass: 'show' });
+        } else if (modal) {
+            modal.classList.add('show');
+        }
     }
     window.openReelModal = function (data) { openReelModal(data); };
 
     function closeReelModal() {
-        document.getElementById('reelModal').classList.remove('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('reelModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('reelModal').classList.remove('show');
+        }
         document.getElementById('reelForm').reset();
     }
     window.closeReelModal = closeReelModal;

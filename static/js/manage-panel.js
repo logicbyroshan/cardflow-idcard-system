@@ -194,13 +194,23 @@ function _panelConfirm(title, message, onConfirm) {
   titleEl.textContent = title;
   msgEl.textContent = message;
   _panelConfirmCallback = onConfirm;
-  modal.style.display = 'flex';
-  okBtn.focus();
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('panelDeleteConfirmModal', { overlayClass: 'show', focusSelector: '#panelConfirmOkBtn' });
+  } else {
+    modal.style.display = 'flex';
+    okBtn.focus();
+  }
 }
 
 window.closePanelConfirmModal = function () {
   const modal = document.getElementById('panelDeleteConfirmModal');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+      window.AdarshModalBridge.close('panelDeleteConfirmModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'none';
+    }
+  }
   _panelConfirmCallback = null;
 };
 
@@ -224,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       const m = document.getElementById('panelDeleteConfirmModal');
-      if (m && m.style.display !== 'none') closePanelConfirmModal();
+      if (m && (m.classList.contains('show') || m.style.display !== 'none')) closePanelConfirmModal();
     }
   });
 });
@@ -256,17 +266,25 @@ async function deleteNotification(id) {
 
 /* ============ Create Modal ============ */
 function openCreateModal() {
-  document.getElementById('createNotifModal').classList.add('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('createNotifModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('createNotifModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
   document.getElementById('createNotifForm').reset();
   document.getElementById('userPickerWrap').style.display = 'none';
   selectedUserIds.clear();
   renderSelectedChips();
-  document.body.style.overflow = 'hidden';
 }
 
 function closeCreateModal() {
-  document.getElementById('createNotifModal').classList.remove('show');
-  document.body.style.overflow = '';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('createNotifModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('createNotifModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
 }
 
 /* Escape key */
@@ -584,8 +602,12 @@ function openCreateTemplateModal() {
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> New Template';
-  document.getElementById('templateModal').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('templateModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('templateModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function editTemplate(id) {
@@ -600,13 +622,21 @@ function editTemplate(id) {
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> Edit Template';
-  document.getElementById('templateModal').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('templateModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('templateModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function closeTemplateModal() {
-  document.getElementById('templateModal').classList.remove('show');
-  document.body.style.overflow = '';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('templateModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('templateModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
 }
 
 async function saveTemplate() {
@@ -1254,8 +1284,12 @@ window.openNewEmailModal = async function () {
 
   const modal = document.getElementById('emailComposeModal');
   if (modal) {
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+      window.AdarshModalBridge.open('emailComposeModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
   }
 };
 
@@ -1293,15 +1327,25 @@ window.openEditEmailModal = function (logId) {
 
   const modal = document.getElementById('emailComposeModal');
   if (modal) {
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+      window.AdarshModalBridge.open('emailComposeModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
   }
 };
 
 window.closeEmailComposeModal = function () {
   const modal = document.getElementById('emailComposeModal');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
+  if (modal) {
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+      window.AdarshModalBridge.close('emailComposeModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
 };
 
 window.submitEmailCompose = async function (event) {

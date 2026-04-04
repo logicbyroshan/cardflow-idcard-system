@@ -1,0 +1,97 @@
+"""Custom error pages for user-friendly navigation and support messaging."""
+
+from django.shortcuts import render
+
+
+def _panel_prefix(request) -> str:
+    """Return '/panel' for single-domain mode and '' for panel subdomain mode."""
+    urlconf = str(getattr(request, 'urlconf', '') or '')
+    if urlconf.endswith('config.urls_panel') or urlconf.endswith('urls_panel'):
+        return ''
+    return '/panel'
+
+
+def _resolve_home_url(request) -> str:
+    """Choose a sensible home URL based on auth role and active URL routing mode."""
+    path = str(getattr(request, 'path', '') or '')
+    if path.startswith('/app/'):
+        return '/app/'
+
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False):
+        return '/'
+
+    role = str(getattr(user, 'role', '') or '').strip().lower()
+    panel_prefix = _panel_prefix(request)
+
+    if role in ('client', 'client_staff'):
+        return f'{panel_prefix}/client/dashboard/' if panel_prefix else '/client/dashboard/'
+    if role in ('super_admin', 'pro_user', 'admin_staff'):
+        return f'{panel_prefix}/' if panel_prefix else '/'
+
+    return '/'
+
+
+def _render_error(request, *, status_code: int, title: str, heading: str, message: str):
+    return render(
+        request,
+        'errors/error.html',
+        {
+            'status_code': status_code,
+            'title': title,
+            'heading': heading,
+            'message': message,
+            'home_url': _resolve_home_url(request),
+        },
+        status=status_code,
+    )
+
+
+def error_400(request, exception=None):
+    return _render_error(
+        request,
+        status_code=400,
+        title='Bad Request',
+        heading='Bad Request',
+        message='The request could not be processed. Please try again.',
+    )
+
+
+def error_403(request, exception=None):
+    return _render_error(
+        request,
+        status_code=403,
+        title='Access Denied',
+        heading='Access Denied',
+        message='You do not have permission to view this page.',
+    )
+
+
+def error_404(request, exception=None):
+    return _render_error(
+        request,
+        status_code=404,
+        title='Page Not Found',
+        heading='Page Not Found',
+        message='This page does not exist or may have been moved.',
+    )
+
+
+def error_500(request):
+    return _render_error(
+        request,
+        status_code=500,
+        title='Server Error',
+        heading='Something Went Wrong',
+        message='We are facing a temporary issue. Please try again in a moment.',
+    )
+
+
+def csrf_failure(request, reason=''):
+    return _render_error(
+        request,
+        status_code=403,
+        title='Security Check Failed',
+        heading='Request Expired',
+        message='Your session may have expired. Please refresh and try again.',
+    )

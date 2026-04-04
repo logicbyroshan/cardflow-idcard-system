@@ -149,21 +149,37 @@
             }
 
             overlay.classList.add('show');
+            okBtn.focus();
 
             function cleanup(result) {
                 overlay.classList.remove('show');
                 okBtn.removeEventListener('click', onOk);
                 cancelBtn.removeEventListener('click', onCancel);
                 overlay.removeEventListener('click', onBackdrop);
+                document.removeEventListener('keydown', onKeydown);
                 resolve(result);
             }
             function onOk()     { cleanup(true);  }
             function onCancel() { cleanup(false); }
             function onBackdrop(e) { if (e.target === overlay) cleanup(false); }
+            function onKeydown(e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cleanup(false);
+                    return;
+                }
+                if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                    const target = e.target;
+                    if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+                    e.preventDefault();
+                    cleanup(true);
+                }
+            }
 
             okBtn.addEventListener('click', onOk);
             cancelBtn.addEventListener('click', onCancel);
             overlay.addEventListener('click', onBackdrop);
+            document.addEventListener('keydown', onKeydown);
         });
     };
 

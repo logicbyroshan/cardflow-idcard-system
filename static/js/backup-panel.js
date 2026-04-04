@@ -169,12 +169,20 @@
     document.getElementById('deleteNowCode').value = '';
     document.getElementById('deleteNowCodeDisplay').textContent = freshCode;
     document.getElementById('deleteNowError').style.display = 'none';
-    document.getElementById('deleteNowModal').style.display = 'flex';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+      window.AdarshModalBridge.open('deleteNowModal', { overlayClass: 'show', focusSelector: '#deleteNowCode' });
+    } else {
+      document.getElementById('deleteNowModal').style.display = 'flex';
+    }
     setTimeout(() => document.getElementById('deleteNowCode').focus(), 100);
   };
 
   window.closeDeleteNowModal = function () {
-    document.getElementById('deleteNowModal').style.display = 'none';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+      window.AdarshModalBridge.close('deleteNowModal', { overlayClass: 'show' });
+    } else {
+      document.getElementById('deleteNowModal').style.display = 'none';
+    }
     _activeModalTaskId = null;
   };
 

@@ -96,11 +96,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('tempPwError').style.display = 'none';
         document.getElementById('tempPwUserName').textContent = tempPwTargetName;
 
-        modal.style.display = 'flex';
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('temp-password-modal', { overlayClass: 'show' });
+        } else {
+            modal.style.display = 'flex';
+        }
     };
 
     window.closeTempPasswordModal = function() {
-        document.getElementById('temp-password-modal').style.display = 'none';
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('temp-password-modal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('temp-password-modal').style.display = 'none';
+        }
         tempPwVerificationCode = '';
         tempPwTargetId = null;
     };
