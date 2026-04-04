@@ -1,7 +1,6 @@
 """
 Client Card Service — read and status-transition operations on ID cards.
 """
-import logging
 from typing import Optional, List, Any, Tuple
 
 from django.utils.timezone import localtime
@@ -22,8 +21,6 @@ from core.services.permission_service import PermissionService
 from mediafiles.utils import get_card_photo_url
 
 from .services_access import ClientAccessService
-
-logger = logging.getLogger(__name__)
 
 
 class ClientCardService(BaseService):
@@ -54,11 +51,6 @@ class ClientCardService(BaseService):
             seen.add(parsed)
             normalized.append(parsed)
         return normalized
-
-    @staticmethod
-    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
-        logger.exception('ClientCardService.%s failed: %s', action, exc)
-        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
 
     @staticmethod
     def _get_class_section_branch_fields(table):
@@ -325,7 +317,7 @@ class ClientCardService(BaseService):
             return ServiceResult(success=True, data={'tables': tables_data})
             
         except Exception as e:
-            return cls._unexpected_error_result('get_tables_for_client', e)
+            return ServiceResult(success=False, message=str(e))
     
     @classmethod
     def get_cards(
@@ -510,7 +502,7 @@ class ClientCardService(BaseService):
             )
             
         except Exception as e:
-            return cls._unexpected_error_result('get_cards', e)
+            return ServiceResult(success=False, message=str(e))
     
     @classmethod
     def get_card_detail(cls, user, card_id: int) -> ServiceResult:
@@ -636,7 +628,7 @@ class ClientCardService(BaseService):
             )
             
         except Exception as e:
-            return cls._unexpected_error_result('get_card_detail', e)
+            return ServiceResult(success=False, message=str(e))
     
     @classmethod
     def change_card_status(cls, user, card_id: int, new_status: str, request=None) -> ServiceResult:
@@ -674,7 +666,7 @@ class ClientCardService(BaseService):
             return WorkflowService.transition(card, new_status, user=user, request=request)
             
         except Exception as e:
-            return cls._unexpected_error_result('change_card_status', e)
+            return ServiceResult(success=False, message=str(e))
     
     @classmethod
     def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str, request=None) -> ServiceResult:
@@ -718,4 +710,4 @@ class ClientCardService(BaseService):
             return WorkflowService.bulk_transition(table, card_ids, new_status, user=user, request=request)
             
         except Exception as e:
-            return cls._unexpected_error_result('bulk_change_status', e)
+            return ServiceResult(success=False, message=str(e))

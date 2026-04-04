@@ -330,7 +330,7 @@ class ActivityLog(models.Model):
         'login': ('fa-right-to-bracket', 'verify'),
         'logout': ('fa-right-from-bracket', 'edit'),
         'password_reset': ('fa-key', 'approve'),
-        'impersonate_start': ('fa-user-secret', 'edit'),
+        'impersonate_start': ('fa-user-secret', 'approve'),
         'impersonate_stop': ('fa-user-check', 'verify'),
         'client_create': ('fa-user-plus', 'add'),
         'client_update': ('fa-user-pen', 'edit'),

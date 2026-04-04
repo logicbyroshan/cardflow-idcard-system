@@ -721,7 +721,7 @@ class ProfileApiIntegrationTests(TestCase):
         self.assertIn('no longer available', payload['message'].lower())
 
 
-class ImpersonationApiTests(TestCase):
+class ProUserAuditApiTests(TestCase):
     def setUp(self):
         self.pro_user = User.objects.create_user(
             username='pro-user@example.com',
@@ -741,14 +741,105 @@ class ImpersonationApiTests(TestCase):
             password='testpass123',
             role='client',
         )
+        self.other_admin = User.objects.create_user(
+            username='admin-staff@example.com',
+            email='admin-staff@example.com',
+            password='testpass123',
+            role='admin_staff',
+        )
+
+    def test_user_audit_user_list_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/users/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_user_audit_history_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.get(f'/panel/api/auth/user-audit/history/?user_id={self.target_user.id}')
+        self.assertEqual(response.status_code, 403)
+
+    def test_pro_user_can_list_audit_targets(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/users/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertTrue(any(u['id'] == self.target_user.id for u in payload['users']))
+
+    def test_pro_user_can_get_deep_history_for_user(self):
+        from core.services.activity_service import ActivityService
+
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        ActivityService.log(
+            'login',
+            'Target User logged in via Windows Chrome browser',
+            user=self.target_user,
+        )
+        ActivityService.log(
+            'card_bulk_download',
+            'Downloaded 15 cards for Demo Client',
+            user=self.target_user,
+        )
+        ActivityService.log(
+            'staff_update',
+            'Staff profile changed for target user',
+            user=self.other_admin,
+            target_model='User',
+            target_id=self.target_user.id,
+            target_name=self.target_user.get_full_name() or self.target_user.username,
+        )
+
+        response = self.client.get(f'/panel/api/auth/user-audit/history/?user_id={self.target_user.id}&limit=20')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['user']['id'], self.target_user.id)
+        self.assertGreaterEqual(payload['summary']['total_events'], 3)
+        self.assertTrue(any(item['action'] == 'login' for item in payload['logs']))
+        self.assertTrue(any(item['action'] == 'card_bulk_download' for item in payload['logs']))
+
+    def test_user_audit_history_requires_user_id(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/history/')
+        self.assertEqual(response.status_code, 400)
+
+    def test_user_audit_actions_endpoint(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/actions/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertTrue(any(entry['value'] == 'login' for entry in payload['actions']))
+
+
+class ImpersonationApiTests(TestCase):
+    def setUp(self):
+        self.pro_user = User.objects.create_user(
+            username='pro-user-imp@example.com',
+            email='pro-user-imp@example.com',
+            password='testpass123',
+            role='pro_user',
+        )
+        self.target_user = User.objects.create_user(
+            username='target-user-imp@example.com',
+            email='target-user-imp@example.com',
+            password='testpass123',
+            role='client',
+        )
+        self.normal_user = User.objects.create_user(
+            username='normal-user-imp@example.com',
+            email='normal-user-imp@example.com',
+            password='testpass123',
+            role='client',
+        )
 
     def test_impersonation_list_requires_pro_user(self):
-        self.client.login(username='normal-user@example.com', password='testpass123')
+        self.client.login(username='normal-user-imp@example.com', password='testpass123')
         response = self.client.get('/panel/api/auth/impersonate/users/')
         self.assertEqual(response.status_code, 403)
 
     def test_impersonation_start_requires_pro_user(self):
-        self.client.login(username='normal-user@example.com', password='testpass123')
+        self.client.login(username='normal-user-imp@example.com', password='testpass123')
         response = self.client.post(
             '/panel/api/auth/impersonate/start/',
             data=json.dumps({'user_id': self.target_user.id}),
@@ -757,7 +848,7 @@ class ImpersonationApiTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_pro_user_can_start_and_stop_impersonation(self):
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
 
         start = self.client.post(
             '/panel/api/auth/impersonate/start/',
@@ -776,7 +867,7 @@ class ImpersonationApiTests(TestCase):
         self.assertNotIn('_pro_original_user_id', self.client.session)
 
     def test_impersonation_start_requires_user_id(self):
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
         response = self.client.post(
             '/panel/api/auth/impersonate/start/',
             data=json.dumps({}),
@@ -785,14 +876,14 @@ class ImpersonationApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_impersonation_stop_without_active_session(self):
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
         response = self.client.post('/panel/api/auth/impersonate/stop/', data='{}', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
     def test_impersonation_rejects_inactive_target(self):
         self.target_user.is_active = False
         self.target_user.save(update_fields=['is_active'])
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
 
         response = self.client.post(
             '/panel/api/auth/impersonate/start/',

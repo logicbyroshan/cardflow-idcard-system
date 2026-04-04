@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Deep History - Adarsh ID Cards{% endblock %}
+
+{% block extra_css %}
+<style>
+  @keyframes audit-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .audit-page { padding: 16px 20px; }
+  .audit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .audit-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: transparent;
+    color: var(--text-secondary, #666);
+    transition: all 0.15s;
+  }
+  .audit-pill:hover, .audit-pill.active {
+    color: #fff;
+    border-color: var(--primary, #667eea);
+    background: var(--primary, #667eea);
+  }
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .audit-user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .audit-user-card:hover,
+  .audit-user-card.active {
+    background: var(--bg-selected, rgba(102,126,234,0.06));
+    border-color: var(--primary, #667eea);
+    box-shadow: 0 2px 8px rgba(102,126,234,0.12);
+  }
+  .audit-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .audit-user-main { flex: 1; min-width: 0; }
+  .audit-user-name {
+    color: var(--text-primary, #2c3e50);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .audit-user-email {
+    color: var(--text-secondary, #666);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .audit-role {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .audit-role.r-super_admin  { background: #ede9fe; color: #6d28d9; }
+  .audit-role.r-admin_staff  { background: #fef3c7; color: #d97706; }
+  .audit-role.r-client       { background: #d1fae5; color: #065f46; }
+  .audit-role.r-client_staff { background: #dbeafe; color: #1e40af; }
+  .audit-role.r-pro_user     { background: #fee2e2; color: #be123c; }
+  .audit-open-btn {
+    display: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+  }
+  .audit-user-card:hover .audit-open-btn,
+  .audit-user-card.active .audit-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .audit-user-card:hover .audit-role,
+  .audit-user-card.active .audit-role {
+    display: none;
+  }
+  .audit-history {
+    margin-top: 16px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .audit-history-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #edf2f7;
+    background: #fbfdff;
+  }
+  .audit-user-meta { font-size: 12px; color: #64748b; }
+  .audit-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #edf2f7;
+    background: #fcfcff;
+  }
+  .audit-stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .audit-stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+  .audit-stat-value { font-size: 18px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+  .audit-log-list { max-height: 520px; overflow-y: auto; }
+  .audit-log-item {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .audit-log-item:last-child { border-bottom: 0; }
+  .audit-log-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #6366f1;
+  }
+  .audit-log-main { min-width: 0; }
+  .audit-log-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 3px;
+    line-height: 1.35;
+  }
+  .audit-log-sub {
+    font-size: 11px;
+    color: #64748b;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .audit-log-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #dbeafe;
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+  .audit-empty {
+    text-align: center;
+    padding: 48px 18px;
+    color: #94a3b8;
+  }
+  .audit-load-more-wrap {
+    padding: 10px 14px 14px;
+    border-top: 1px solid #f1f5f9;
+    text-align: center;
+  }
+  .audit-skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background-size: 200% 100%;
+    animation: audit-skeleton-shimmer 1.35s linear infinite;
+  }
+  .audit-loader-row {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .audit-loader-icon { width: 36px; height: 36px; border-radius: 999px; }
+  .audit-loader-line { height: 12px; margin-bottom: 6px; }
+  .audit-loader-line.short { width: 46%; margin-bottom: 0; }
+  @media (max-width: 768px) {
+    .audit-page { padding: 12px; }
+    .audit-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">User Deep History</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right">
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="audit-page">
+
+  <div class="action-bar">
+    <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
+      <div class="search-box" style="max-width:320px;">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="auditSearch" class="search-input" placeholder="Search by name, email, username, role..." oninput="__auditFilter()" autocomplete="off">
+      </div>
+      <div class="audit-pills" id="auditPills">
+        <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All</button>
+        <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User</button>
+        <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin</button>
+        <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Admin Staff</button>
+        <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client</button>
+        <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Client Staff</button>
+      </div>
+    </div>
+    <div class="action-right">
+      <span style="font-size:12px;color:var(--text-muted,#888);" id="auditCount">-</span>
+    </div>
+  </div>
+
+  <div id="auditUserGrid" class="audit-grid">
+    <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
+  </div>
+
+  <div id="auditHistory" class="audit-history" style="display:none;">
+    <div class="audit-history-head">
+      <div>
+        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:#1f2937;">User History</div>
+        <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="auditActionFilter" class="form-select form-select-sm" onchange="__auditReloadHistory()">
+          <option value="">All Actions</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="__auditReloadHistory()">
+          <i class="fa-solid fa-rotate-right"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="audit-stat-grid">
+      <div class="audit-stat"><div class="audit-stat-label">Total Events</div><div class="audit-stat-value" id="auditTotalEvents">0</div></div>
+      <div class="audit-stat"><div class="audit-stat-label">Logins</div><div class="audit-stat-value" id="auditLogins">0</div></div>
+      <div class="audit-stat"><div class="audit-stat-label">Downloads</div><div class="audit-stat-value" id="auditDownloads">0</div></div>
+      <div class="audit-stat"><div class="audit-stat-label">Approvals</div><div class="audit-stat-value" id="auditApprovals">0</div></div>
+    </div>
+
+    <div id="auditLogList" class="audit-log-list"></div>
+    <div id="auditLoadMoreWrap" class="audit-load-more-wrap" style="display:none;">
+      <button id="auditLoadMoreBtn" type="button" class="btn btn-sm btn-neutral" onclick="__auditLoadMore()">
+        <i class="fa-solid fa-angle-down"></i> Load More
+      </button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var _users = [];
+  var _role = 'all';
+  var _text = '';
+  var _selectedUser = null;
+  var _historyOffset = 0;
+  var _historyLimit = 50;
+  var _hasMore = false;
+  var COLORS = { pro_user:'#e11d48', super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+
+  __auditLoadUsers();
+  __auditLoadActions();
+
+  function _csrf() {
+    return document.querySelector('meta[name="csrf-token"]')?.content
+      || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+      || '';
+  }
+
+  function _esc(s) {
+    var d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  function _roleClass(role) {
+    return 'r-' + String(role || '').toLowerCase();
+  }
+
+  window.__auditLoadUsers = function() {
+    fetch('/panel/api/auth/user-audit/users/', { headers: { 'X-CSRFToken': _csrf() } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>' + _esc(data.message || 'Failed to load users') + '</div></div>';
+          return;
+        }
+        _users = data.users || [];
+        __auditRenderUsers();
+      })
+      .catch(function() {
+        document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>Network error while loading users.</div></div>';
+      });
+  };
+
+  window.__auditLoadActions = function() {
+    fetch('/panel/api/auth/user-audit/actions/', { headers: { 'X-CSRFToken': _csrf() } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) return;
+        var select = document.getElementById('auditActionFilter');
+        var actions = data.actions || [];
+        actions.forEach(function(a) {
+          var opt = document.createElement('option');
+          opt.value = a.value;
+          opt.textContent = a.label;
+          select.appendChild(opt);
+        });
+      })
+      .catch(function() {});
+  };
+
+  window.__auditFilter = function() {
+    _text = document.getElementById('auditSearch').value || '';
+    __auditRenderUsers();
+  };
+
+  window.__auditSetRole = function(role, btn) {
+    _role = role;
+    document.querySelectorAll('.audit-pill').forEach(function(p) { p.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    __auditRenderUsers();
+  };
+
+  window.__auditRenderUsers = function() {
+    var list = _users.filter(function(u) {
+      if (_role !== 'all' && u.role !== _role) return false;
+      if (_text) {
+        var q = _text.toLowerCase();
+        return (String(u.name || '').toLowerCase().indexOf(q) !== -1)
+          || (String(u.email || '').toLowerCase().indexOf(q) !== -1)
+          || (String(u.username || '').toLowerCase().indexOf(q) !== -1)
+          || (String(u.role_display || '').toLowerCase().indexOf(q) !== -1);
+      }
+      return true;
+    });
+    document.getElementById('auditCount').textContent = list.length + ' user' + (list.length === 1 ? '' : 's');
+
+    if (!list.length) {
+      document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-users-slash"></i><div>No users found</div></div>';
+      return;
+    }
+
+    var html = '';
+    list.forEach(function(u) {
+      var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
+      var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
+      var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:#fecaca;color:#b91c1c;background:#fef2f2;">Inactive</span>';
+      html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
+        + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || '#64748b') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
+        + '<div class="audit-user-main">'
+        + '<div class="audit-user-name">' + _esc(u.name) + inactive + '</div>'
+        + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
+        + '</div>'
+        + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(u.role_display) + '</span>'
+        + '<button class="audit-open-btn"><i class="fa-solid fa-timeline"></i> Open</button>'
+        + '</div>';
+    });
+    document.getElementById('auditUserGrid').innerHTML = html;
+  };
+
+  function _renderHistoryLoading() {
+    var h = '';
+    for (var i = 0; i < 4; i += 1) {
+      h += '<div class="audit-loader-row">'
+        + '<div class="audit-skeleton audit-loader-icon"></div>'
+        + '<div>'
+        + '<div class="audit-skeleton audit-loader-line"></div>'
+        + '<div class="audit-skeleton audit-loader-line short"></div>'
+        + '</div>'
+        + '</div>';
+    }
+    document.getElementById('auditLogList').innerHTML = h;
+  }
+
+  window.__auditSelectUser = function(userId) {
+    var found = _users.find(function(u) { return u.id === userId; });
+    if (!found) return;
+    _selectedUser = found;
+    _historyOffset = 0;
+    _hasMore = false;
+    __auditRenderUsers();
+    document.getElementById('auditHistory').style.display = '';
+    document.getElementById('auditSelectedName').textContent = found.name + ' - Deep History';
+    document.getElementById('auditSelectedMeta').textContent = (found.role_display || found.role) + ' | ' + (found.email || found.username);
+    _renderHistoryLoading();
+    __auditFetchHistory(true);
+  };
+
+  window.__auditReloadHistory = function() {
+    if (!_selectedUser) return;
+    _historyOffset = 0;
+    _hasMore = false;
+    _renderHistoryLoading();
+    __auditFetchHistory(true);
+  };
+
+  window.__auditLoadMore = function() {
+    if (!_selectedUser || !_hasMore) return;
+    __auditFetchHistory(false);
+  };
+
+  window.__auditFetchHistory = function(reset) {
+    if (!_selectedUser) return;
+    var action = document.getElementById('auditActionFilter').value || '';
+    var url = '/panel/api/auth/user-audit/history/?user_id=' + encodeURIComponent(_selectedUser.id)
+      + '&limit=' + encodeURIComponent(_historyLimit)
+      + '&offset=' + encodeURIComponent(_historyOffset)
+      + '&action=' + encodeURIComponent(action);
+    fetch(url, { headers: { 'X-CSRFToken': _csrf() } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          document.getElementById('auditLogList').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>' + _esc(data.message || 'Failed to load history') + '</div></div>';
+          document.getElementById('auditLoadMoreWrap').style.display = 'none';
+          return;
+        }
+
+        var summary = data.summary || {};
+        document.getElementById('auditTotalEvents').textContent = summary.total_events || 0;
+        document.getElementById('auditLogins').textContent = summary.login_count || 0;
+        document.getElementById('auditDownloads').textContent = summary.download_count || 0;
+        document.getElementById('auditApprovals').textContent = summary.approve_count || 0;
+
+        var logs = data.logs || [];
+        var html = reset ? '' : document.getElementById('auditLogList').innerHTML;
+        if (reset && !logs.length) {
+          html = '<div class="audit-empty"><i class="fa-solid fa-inbox"></i><div>No activity logs found for this user.</div></div>';
+        } else {
+          logs.forEach(function(l) {
+            var actor = l.actor_name ? ('By ' + _esc(l.actor_name)) : 'System';
+            var role = l.actor_role ? ('Role: ' + _esc(l.actor_role.replace('_', ' '))) : '';
+            var scope = l.scope === 'related'
+              ? '<span class="audit-log-tag">Related</span>'
+              : '<span class="audit-log-tag" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534;">Performed</span>';
+            var ip = l.ip_address ? ('IP: ' + _esc(l.ip_address)) : 'IP: -';
+            var target = l.target_name ? ('Target: ' + _esc(l.target_name)) : '';
+            html += '<div class="audit-log-item">'
+              + '<div class="audit-log-icon"><i class="fa-solid ' + _esc(l.icon_class || 'fa-circle-info') + '"></i></div>'
+              + '<div class="audit-log-main">'
+              + '<div class="audit-log-title">' + _esc(l.action_display || l.action) + ': ' + _esc(l.description || '') + '</div>'
+              + '<div class="audit-log-sub">'
+              + '<span>' + actor + '</span>'
+              + '<span>' + role + '</span>'
+              + '<span>' + _esc(l.created_date || '') + ' ' + _esc(l.created_time || '') + '</span>'
+              + '<span>' + _esc(l.time_ago || '') + ' ago</span>'
+              + '<span>' + ip + '</span>'
+              + '<span>Device: ' + _esc(l.device_hint || 'Activity Record') + '</span>'
+              + (target ? ('<span>' + target + '</span>') : '')
+              + scope
+              + '</div>'
+              + '</div>'
+              + '</div>';
+          });
+        }
+
+        document.getElementById('auditLogList').innerHTML = html;
+        _historyOffset = Number(data.offset || 0) + Number(data.logs ? data.logs.length : 0);
+        _hasMore = Boolean(data.has_more);
+        document.getElementById('auditLoadMoreWrap').style.display = _hasMore ? '' : 'none';
+      })
+      .catch(function() {
+        document.getElementById('auditLogList').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>Network error while loading history.</div></div>';
+        document.getElementById('auditLoadMoreWrap').style.display = 'none';
+      });
+  };
+})();
+</script>
+{% endblock %}

@@ -107,7 +107,10 @@
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function _isPhoneCol(name) {
-        if (window.FieldClassifier) return window.FieldClassifier.classify(name) === 'phone';
+        if (window.FieldClassifier) {
+            var cat = window.FieldClassifier.classify(name);
+            return cat === 'phone' || cat === 'emergency_phone';
+        }
         var n = (name || '').toLowerCase();
         return /(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n) ||
                /\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n);

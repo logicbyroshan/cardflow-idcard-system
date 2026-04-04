@@ -128,10 +128,10 @@
                     <!-- Header row -->
                     <div class="flex items-center px-4 py-2 border-b border-indigo-100/60">
                         <p class="flex-1 text-[9px] font-bold text-indigo-700 uppercase tracking-widest">Table</p>
-                        <p class="w-[52px] text-center mobile-chip-label text-amber-700 uppercase tracking-widest">P</p>
-                        <p class="w-[52px] text-center mobile-chip-label text-green-700 uppercase tracking-widest">V</p>
-                        <p class="w-[52px] text-center mobile-chip-label text-blue-700 uppercase tracking-widest">A</p>
-                        <p class="w-[52px] text-center mobile-chip-label text-violet-700 uppercase tracking-widest">D</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-amber-700 uppercase tracking-wide">Pending</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-green-700 uppercase tracking-wide">Verified</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-blue-700 uppercase tracking-wide">Approved</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-violet-700 uppercase tracking-wide">Download</p>
                     </div>
 
                     <!-- Loading state -->
@@ -169,25 +169,21 @@
                                     <!-- Pending badge -->
                                     <a :href="'/app/table/' + t.id + '/pending/'"
                                                     class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-amber-100 text-amber-700 border border-amber-200 active:scale-95 transition-all flex-shrink-0">
-                                        <span class="mobile-chip-label">P</span>
                                         <span class="mobile-chip-count" x-text="t.pending_count"></span>
                                     </a>
                                     <!-- Verified badge -->
                                     <a :href="'/app/table/' + t.id + '/verified/'"
                                                     class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200 active:scale-95 transition-all flex-shrink-0">
-                                        <span class="mobile-chip-label">V</span>
                                         <span class="mobile-chip-count" x-text="t.verified_count"></span>
                                     </a>
                                     <!-- Approved badge -->
                                     <a :href="'/app/table/' + t.id + '/approved/'"
                                                     class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-sky-100 text-sky-700 border border-sky-200 active:scale-95 transition-all flex-shrink-0">
-                                        <span class="mobile-chip-label">A</span>
                                         <span class="mobile-chip-count" x-text="t.approved_count || 0"></span>
                                     </a>
                                     <!-- Download badge -->
                                     <a :href="'/app/table/' + t.id + '/download/'"
                                        class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-violet-100 text-violet-700 border border-violet-200 active:scale-95 transition-all flex-shrink-0">
-                                        <span class="mobile-chip-label">D</span>
                                         <span class="mobile-chip-count" x-text="t.download_count || 0"></span>
                                     </a>
                                 </div>

@@ -47,6 +47,7 @@ from staff.models import Staff
 from accounts.rate_limit import rate_limit
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
+from core.services import StaffService
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
 from mediafiles.services.image_thumbnail import ThumbnailService
@@ -639,6 +640,37 @@ def _unpack_validate_image_result(result, original_photo):
             ok, err = result
             return ok, err, original_photo if ok else None
     return False, 'Invalid image validation response', None
+
+
+def _serialize_mobile_admin_staff(staff):
+    """Serialize admin_staff rows with full permission flags for mobile edit forms."""
+    row = {
+        'id': staff.id,
+        'name': staff.user.get_full_name() or staff.user.username,
+        'email': staff.user.email,
+        'phone': getattr(staff.user, 'phone', '') or '',
+        'department': staff.department or '',
+        'designation': staff.designation or '',
+        'is_active': staff.user.is_active,
+        'staff_type': staff.get_staff_type_display(),
+        'created_at': staff.created_at.strftime('%d %b %Y'),
+        'assigned_client_ids': [client.id for client in staff.assigned_clients.all()],
+    }
+    for perm in StaffService.PERMISSION_FIELDS:
+        row[perm] = bool(getattr(staff, perm, False))
+    return row
+
+
+def _list_mobile_admin_staff(limit=200):
+    """Return admin_staff records for mobile list/details, including permission booleans."""
+    queryset = (
+        Staff.objects
+        .filter(staff_type='admin_staff')
+        .select_related('user')
+        .prefetch_related('assigned_clients')
+        .order_by('-created_at')[:limit]
+    )
+    return [_serialize_mobile_admin_staff(staff) for staff in queryset]
 
 
 # ---------------------------------------------------------------------------
@@ -2754,24 +2786,7 @@ def staff_manage(request):
             staff_list = result.data.get('staff', [])
     elif PermissionService.is_super_admin(user):
         # Admin management view should only include admin_staff.
-        all_staff = (
-            Staff.objects
-            .filter(staff_type='admin_staff')
-            .select_related('user')
-            .order_by('-created_at')[:200]
-        )
-        for s in all_staff:
-            staff_list.append({
-                'id': s.id,
-                'name': s.user.get_full_name() or s.user.username,
-                'email': s.user.email,
-                'phone': getattr(s.user, 'phone', '') or '',
-                'department': s.department or '',
-                'designation': s.designation or '',
-                'is_active': s.user.is_active,
-                'staff_type': s.get_staff_type_display(),
-                'created_at': s.created_at.strftime('%d %b %Y'),
-            })
+        staff_list = _list_mobile_admin_staff(limit=200)
 
     # Get groups for assignment dropdown
     groups = IDCardGroup.objects.filter(client=client).values('id', 'name')
@@ -3046,24 +3061,7 @@ def api_staff_list(request):
             return JsonResponse({'success': True, 'data': result.data})
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     elif PermissionService.is_super_admin(user):
-        all_staff = (
-            Staff.objects
-            .filter(staff_type='admin_staff')
-            .select_related('user')
-            .order_by('-created_at')[:200]
-        )
-        staff_data = []
-        for s in all_staff:
-            staff_data.append({
-                'id': s.id,
-                'name': s.user.get_full_name() or s.user.username,
-                'email': s.user.email,
-                'phone': getattr(s.user, 'phone', '') or '',
-                'department': s.department or '',
-                'designation': s.designation or '',
-                'is_active': s.user.is_active,
-                'staff_type': s.get_staff_type_display(),
-            })
+        staff_data = _list_mobile_admin_staff(limit=200)
         return JsonResponse({'success': True, 'data': {'staff': staff_data}})
     return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
@@ -3080,16 +3078,15 @@ def api_staff_create(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    # For admin users, delegate via the client attached to their current context
     if PermissionService.is_super_admin(user):
-        client, _ = _client_ctx(user)
-        if not client:
-            return JsonResponse({'success': False, 'message': 'No client context found for admin'}, status=400)
-        # Use the client's user to drive the service
-        acting_user = getattr(client, 'user', None)
-        if acting_user is None:
-            return JsonResponse({'success': False, 'message': 'Client has no associated user — please create staff from the desktop panel'}, status=400)
-        result = ClientStaffService.create_staff(acting_user, data)
+        payload = dict(data)
+        first_name = str(payload.pop('first_name', '') or '').strip()
+        last_name = str(payload.pop('last_name', '') or '').strip()
+        full_name = f'{first_name} {last_name}'.strip() or str(payload.get('name', '') or '').strip()
+        if not full_name:
+            return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
+        payload['name'] = full_name
+        result = StaffService.create(payload, staff_type='admin_staff', request=request)
     else:
         result = ClientStaffService.create_staff(user, data)
 
@@ -3111,11 +3108,21 @@ def api_staff_update(request, staff_id):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
     if PermissionService.is_super_admin(user):
-        client, _ = _client_ctx(user)
-        acting_user = getattr(client, 'user', None) if client else None
-        if acting_user is None:
-            return JsonResponse({'success': False, 'message': 'Cannot update staff without client context'}, status=400)
-        result = ClientStaffService.update_staff(acting_user, staff_id, data)
+        if not Staff.objects.filter(id=staff_id, staff_type='admin_staff').exists():
+            return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
+
+        payload = dict(data)
+        has_name_parts = ('first_name' in payload) or ('last_name' in payload)
+        first_name = str(payload.pop('first_name', '') or '').strip()
+        last_name = str(payload.pop('last_name', '') or '').strip()
+        if has_name_parts:
+            full_name = f'{first_name} {last_name}'.strip()
+            if full_name:
+                payload['name'] = full_name
+            elif not str(payload.get('name', '') or '').strip():
+                return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
+
+        result = StaffService.update(staff_id, payload)
     else:
         result = ClientStaffService.update_staff(user, staff_id, data)
 
@@ -3140,7 +3147,7 @@ def api_staff_toggle(request, staff_id):
     else:
         # Admin toggle — directly update the Staff user's is_active
         try:
-            staff = Staff.objects.select_related('user').get(id=staff_id)
+            staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
             staff.user.is_active = not staff.user.is_active
             staff.user.save(update_fields=['is_active'])
             new_state = 'activated' if staff.user.is_active else 'deactivated'
@@ -3167,7 +3174,7 @@ def api_staff_delete(request, staff_id):
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     else:
         try:
-            staff = Staff.objects.select_related('user').get(id=staff_id)
+            staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
             name = staff.user.get_full_name() or staff.user.username
             staff.user.delete()  # cascade deletes staff profile
             return JsonResponse({'success': True, 'message': f'{name} deleted'})

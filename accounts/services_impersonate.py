@@ -82,8 +82,8 @@ class ImpersonateService:
         try:
             from core.middleware import PermissionValidationMiddleware
             PermissionValidationMiddleware.seed_session_fingerprint(request)
-        except Exception as exc:
-            logger.debug('Impersonation fingerprint seed failed on start: %s', exc)
+        except Exception:
+            pass
 
         from .services import DASHBOARD_URLS
         redirect_url = DASHBOARD_URLS.get(target_user.role, '/panel/')
@@ -125,8 +125,8 @@ class ImpersonateService:
         try:
             from core.middleware import PermissionValidationMiddleware
             PermissionValidationMiddleware.seed_session_fingerprint(request)
-        except Exception as exc:
-            logger.debug('Impersonation fingerprint seed failed on stop: %s', exc)
+        except Exception:
+            pass
 
         logger.info(
             "Impersonation stopped: pro_user=%s (ID:%d) was impersonating %s",

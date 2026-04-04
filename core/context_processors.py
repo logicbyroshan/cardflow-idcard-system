@@ -43,6 +43,7 @@ def permissions(request):
             'is_client_staff': False,
             'is_client_admin': False,  # For backward compatibility
             'is_impersonating': False,
+            'impersonation_original_name': '',
             'user_role': None,
         })
         return base_context
@@ -72,11 +73,11 @@ def permissions(request):
     
     # Add is_client_admin for backward compatibility with client-sidebar.html
     context['is_client_admin'] = context.get('is_client', False)
-    
-    # Add impersonation state
+
+    # Add impersonation session state for template/UI controls.
     context['is_impersonating'] = bool(request.session.get('_pro_original_user_id'))
     context['impersonation_original_name'] = request.session.get('_pro_original_user_name', '')
-
+    
     # Add app version
     context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.1.0')
 

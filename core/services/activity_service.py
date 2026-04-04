@@ -32,6 +32,10 @@ class ActivityService:
         r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
         re.IGNORECASE,
     )
+    CARD_ACTIVITY_MOVE_RE = re.compile(
+        r'^(?:(?P<count>\d+)\s+)?cards?\s+moved\s+from\s+(?P<from>[^\n]+?)\s+to\s+(?P<to>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
+        re.IGNORECASE,
+    )
     EXPORT_LABELS = {
         'export_zip': 'IMAGES',
         'export_pdf': 'PDF',
@@ -494,17 +498,40 @@ class ActivityService:
         if not description:
             return None
 
-        match = cls.CARD_ACTIVITY_DESCRIPTION_RE.match(str(description).strip())
-        if not match:
+        desc_text = str(description).strip()
+
+        match = cls.CARD_ACTIVITY_DESCRIPTION_RE.match(desc_text)
+        if match:
+            try:
+                count = int(match.group('count'))
+            except (TypeError, ValueError):
+                return None
+
+            status = str(match.group('status') or '').strip().lower()
+            client = str(match.group('client') or '').strip()
+            if not status:
+                return None
+            return count, status, client
+
+        # Backward-compat for older activity text format:
+        # "Card moved from Pending to In Pool for <client>"
+        move_match = cls.CARD_ACTIVITY_MOVE_RE.match(desc_text)
+        if not move_match:
             return None
 
         try:
-            count = int(match.group('count'))
+            count = int(move_match.group('count') or 1)
         except (TypeError, ValueError):
             return None
 
-        status = str(match.group('status') or '').strip().lower()
-        client = str(match.group('client') or '').strip()
+        from_label = str(move_match.group('from') or '').strip()
+        to_label = str(move_match.group('to') or '').strip()
+        client = str(move_match.group('client') or '').strip()
+
+        if not from_label or not to_label:
+            return None
+
+        status = f'moved from {from_label} to {to_label}'.lower()
         if not status:
             return None
         return count, status, client

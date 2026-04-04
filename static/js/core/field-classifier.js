@@ -32,7 +32,7 @@ function _norm(name) {
  *
  * Categories returned:
  *   sr_no, blood_group, age, gender, relationship, class_section,
- *   date, phone, email, id_number, name, address, address_sub,
+ *   date, phone, emergency_phone, email, id_number, name, address, address_sub,
  *   pincode, short_text, org_text, image, text (default)
  */
 FC.classify = function (fieldName, fieldType) {
@@ -58,7 +58,7 @@ FC.classify = function (fieldName, fieldType) {
     if (/^age$|^umar$/.test(n)) return 'age';
 
     //  Gender 
-    if (/^gender$|^sex$|^gndr$|^gendr$/.test(n)) return 'gender';
+    if (/^gender$|^gen\s*der$|^sex$|^gndr$|^gendr$/.test(n)) return 'gender';
 
     //  Relationship 
     if (/^rel\s*\d*$|^relati?v|^relati?o?n/.test(n)) return 'relationship';
@@ -77,6 +77,9 @@ FC.classify = function (fieldName, fieldType) {
 
     //  Driver phone 
     if (/driver\s*(?:no\b|numb?\w*|mob|pho?ne?|cell|contact|tel)/.test(n)) return 'phone';
+
+    //  Emergency Contact (abbrev + full forms)
+    if (/emerg(?:ency)?\s*cont(?:act)?\s*(?:no\.?|num(?:ber)?|mob(?:ile)?|pho?ne?|tel|cell)?/.test(n)) return 'emergency_phone';
 
     //  Phone / Mobile 
     if (/mobi?le?|pho?ne?|cell\b|tel\b|whatsapp|^mob\b|^ph\b|fone|contact\s*no|contact\s*num|emergency\s*contact\s*num|office\s*contact|alternate\s*mob|alt\s*mob/.test(n)) return 'phone';
@@ -132,7 +135,7 @@ FC.classify = function (fieldName, fieldType) {
     if (/college|^school$|institu|^university$|^branch$|branch\s*name|^depart|^dept$|designa|^course$|^batch$|^semester$|^stream$/.test(n)) return 'org_text';
 
     //  Transport 
-    if (/bus|stop\s*name|route\s*no|route\s*name|driver/.test(n)) return 'short_text';
+    if (/bus|stop\s*name|route\s*no|route\s*name|driver|^transport$|^transpor$|trans\s*port|tran\s*sport|transport\s*(mode|type|detail)?/.test(n)) return 'short_text';
 
     //  Misc 
     if (/hostel|room\s*no/.test(n))          return 'short_text';
@@ -152,6 +155,7 @@ FC.align = function (category) {
         case 'class_section':
         case 'date':
         case 'phone':
+        case 'emergency_phone':
         case 'id_number':
         case 'relationship':
         case 'pincode':
@@ -169,11 +173,12 @@ FC.tdClass = function (fieldName, fieldType) {
     switch (cat) {
         case 'sr_no':        return 'w-[36px] text-center whitespace-nowrap';
         case 'age':          return 'w-[38px] text-center whitespace-nowrap';
-        case 'gender':       return 'w-[45px] text-center whitespace-nowrap';
+        case 'gender':       return 'w-[52px] text-center whitespace-nowrap';
         case 'blood_group':  return 'w-[45px] text-center whitespace-nowrap';
         case 'class_section':return 'w-[52px] text-center whitespace-nowrap';
         case 'date':         return 'w-[80px] text-center whitespace-nowrap';
         case 'relationship': return 'min-w-[62px] max-w-[120px] text-center whitespace-normal break-words';
+        case 'emergency_phone': return 'min-w-[110px] max-w-[150px] text-center whitespace-nowrap';
         case 'phone':        return 'min-w-[130px] text-center whitespace-nowrap phone-col';
         case 'email':        return 'min-w-[130px] max-w-[200px] text-left whitespace-normal break-words email-col';
         case 'id_number':    return 'min-w-[100px] text-center whitespace-nowrap id-number-col';

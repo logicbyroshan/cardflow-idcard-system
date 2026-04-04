@@ -56,10 +56,10 @@ def adarsh_cropper(request):
     return render(request, 'services/adarsh-cropper.html', context)
 
 
-# ── Login As User (Pro User only) ──────────────────────────────────────
+# ── Login As User (Pro User only) ─────────────────────────────────────
 @login_required
 def login_as_user_page(request):
-    """Dedicated page for Pro User impersonation — pick a user to login as."""
+    """Dedicated page for Pro User impersonation."""
     if request.user.role != 'pro_user':
         return redirect('dashboard')
     context = {
@@ -67,6 +67,19 @@ def login_as_user_page(request):
         'user_role': get_user_role(request.user),
     }
     return render(request, 'impersonate/login-as-user.html', context)
+
+
+# ── Pro User Deep History (Pro User only) ─────────────────────────────
+@login_required
+def pro_user_activity_logs_page(request):
+    """Dedicated page for Pro User deep user-history audit."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+    context = {
+        'active_page': 'pro_user_activity_logs',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'pro_user/user-deep-history.html', context)
 
 
 # Dashboard

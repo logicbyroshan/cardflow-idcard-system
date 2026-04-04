@@ -929,6 +929,27 @@ class ExportDeepLimitAndRoleTests(TestCase):
         self.assertTrue(allowed_super.success)
 
 
+class ColumnSpecAliasCoverageTests(SimpleTestCase):
+    def test_emergency_contact_abbrev_maps_to_non_wrapping_spec(self):
+        from exports.column_spec import classify_column, get_column_spec
+
+        self.assertEqual(classify_column('EMERG CONT NO'), 'emergency_mobile')
+        self.assertEqual(classify_column('EMERGENCY CONTACT NUMBER'), 'emergency_mobile')
+        self.assertFalse(get_column_spec('EMERG CONT NO').wrap)
+
+    def test_transport_aliases_map_to_bus_route(self):
+        from exports.column_spec import classify_column
+
+        self.assertEqual(classify_column('TRANSPORT'), 'bus_route')
+        self.assertEqual(classify_column('TRANSPOR'), 'bus_route')
+        self.assertEqual(classify_column('TRAN SPORT'), 'bus_route')
+
+    def test_gender_alias_accepts_spaced_variant(self):
+        from exports.column_spec import classify_column
+
+        self.assertEqual(classify_column('GEN DER'), 'gender')
+
+
 class WordLayoutTuningTests(SimpleTestCase):
     def test_dense_width_allocator_keeps_table_inside_page(self):
         from exports.word import WordExporter

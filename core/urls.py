@@ -20,6 +20,9 @@ urlpatterns = [
     path('api/auth/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
     path('api/auth/impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
     path('api/auth/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
+    path('api/auth/user-audit/users/', views.api_user_audit_users, name='api_user_audit_users'),
+    path('api/auth/user-audit/history/', views.api_user_audit_history, name='api_user_audit_history'),
+    path('api/auth/user-audit/actions/', views.api_user_audit_actions, name='api_user_audit_actions'),
     
     # Role-specific Dashboards
     path('admin-staff-dashboard/', views.admin_staff_dashboard, name='admin_staff_dashboard'),
@@ -66,6 +69,9 @@ urlpatterns = [
 
     # Login As User (Pro User only)
     path('login-as-user/', views.login_as_user_page, name='login_as_user'),
+
+    # Deep User History (Pro User only)
+    path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
 
     # Engine installer download (served via Django so headers are correct)
     path('engine/download/', views.engine_download, name='engine_download'),

@@ -16,6 +16,11 @@ from django.contrib.auth import login, logout
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import timezone
+from django.utils.timezone import localtime
+from django.utils.timesince import timesince
+from django.db.models import Q, Count, Max
+from core.models import ActivityLog
 from core.services.activity_service import ActivityService
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -56,9 +61,9 @@ class LoginPageView(View):
     def get(self, request):
         # If user is already authenticated, redirect to dashboard
         if request.user.is_authenticated:
-            # Respect ?next= param (e.g. from PWA → login redirect)
+            # Respect ?next= param (e.g. from PWA ÔåÆ login redirect)
             next_url = request.GET.get('next', '')
-            # S7: use Django's safe-redirect helper — blocks //evil.com, /\evil.com, etc.
+            # S7: use Django's safe-redirect helper ÔÇö blocks //evil.com, /\evil.com, etc.
             if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
                 return redirect(next_url)
             redirect_url = AuthService.get_dashboard_url(request.user)
@@ -76,7 +81,7 @@ class LogoutView(View):
     """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
     
     def get(self, request):
-        # GET requests redirect to login — do NOT perform logout on GET
+        # GET requests redirect to login ÔÇö do NOT perform logout on GET
         # (prevents CSRF logout via <img src="/logout/"> attacks)
         return redirect('accounts:login')
     
@@ -105,7 +110,7 @@ class LogoutView(View):
         logout(request)
         # Respect ?next= or POST body next (e.g. from PWA logout)
         next_url = request.POST.get('next', '') or request.GET.get('next', '')
-        # S7: use Django's safe-redirect helper — blocks //evil.com, /\evil.com, etc.
+        # S7: use Django's safe-redirect helper ÔÇö blocks //evil.com, /\evil.com, etc.
         if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             login_url = reverse('accounts:login') + '?next=' + next_url
             return redirect(login_url)
@@ -151,28 +156,28 @@ class BaseDashboardView(LoginRequiredMixin, View):
 
 
 class OwnerDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/."""
+    """DEPRECATED ÔÇö redirects to /panel/."""
     allowed_roles = ['super_admin', 'pro_user']
     def get(self, request):
         return redirect('/panel/')
 
 
 class StaffDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/."""
+    """DEPRECATED ÔÇö redirects to /panel/."""
     allowed_roles = ['admin_staff']
     def get(self, request):
         return redirect('/panel/')
 
 
 class ClientAdminDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/client/dashboard/."""
+    """DEPRECATED ÔÇö redirects to /panel/client/dashboard/."""
     allowed_roles = ['client']
     def get(self, request):
         return redirect('/panel/client/dashboard/')
 
 
 class ClientStaffDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/client/dashboard/."""
+    """DEPRECATED ÔÇö redirects to /panel/client/dashboard/."""
     allowed_roles = ['client_staff']
     def get(self, request):
         return redirect('/panel/client/dashboard/')
@@ -515,44 +520,29 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
     """
     POST /api/auth/impersonate/start/
     Body: { "user_id": <int> }
-    Pro User only — starts impersonating the target user.
     """
     login_url = '/panel/auth/login/'
 
     def post(self, request):
         from .services_impersonate import ImpersonateService
-
         if getattr(request.user, 'role', None) != 'pro_user':
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
-
-        actor_user = request.user
         try:
+            actor_user = request.user
             data = json.loads(request.body)
             target_user_id = data.get('user_id')
             if not target_user_id:
                 return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
 
-            target_user = None
-            try:
-                target_user = User.objects.filter(pk=int(target_user_id)).first()
-            except (TypeError, ValueError):
-                target_user = None
-
             result = ImpersonateService.start(request, int(target_user_id))
             if result.get('success'):
-                target_name = ''
-                target_id = None
-                if target_user:
-                    target_name = target_user.get_full_name() or target_user.username
-                    target_id = target_user.pk
                 ActivityService.log(
                     'impersonate_start',
-                    f'Impersonation started for {target_name or "selected user"}',
+                    f"Impersonation started for user_id={int(target_user_id)}",
                     user=actor_user,
                     request=request,
                     target_model='User',
-                    target_id=target_id,
-                    target_name=target_name,
+                    target_id=int(target_user_id),
                 )
             status = 200 if result['success'] else 403
             return JsonResponse(result, status=status)
@@ -573,22 +563,13 @@ class ImpersonateStopAPIView(LoginRequiredMixin, View):
     def post(self, request):
         from .services_impersonate import ImpersonateService
         try:
-            impersonated_user = request.user if getattr(request.user, 'is_authenticated', False) else None
             result = ImpersonateService.stop(request)
             if result.get('success'):
-                target_name = ''
-                target_id = None
-                if impersonated_user:
-                    target_name = impersonated_user.get_full_name() or impersonated_user.username
-                    target_id = impersonated_user.pk
                 ActivityService.log(
                     'impersonate_stop',
-                    f'Impersonation stopped (was acting as {target_name or "user"})',
-                    user=request.user if getattr(request.user, 'is_authenticated', False) else None,
+                    'Impersonation stopped',
+                    user=request.user,
                     request=request,
-                    target_model='User',
-                    target_id=target_id,
-                    target_name=target_name,
                 )
             status = 200 if result['success'] else 400
             return JsonResponse(result, status=status)
@@ -611,3 +592,215 @@ class ImpersonateListAPIView(LoginRequiredMixin, View):
 
         users = ImpersonateService.get_impersonation_targets(request)
         return JsonResponse({'success': True, 'users': users})
+
+
+# =============================================================================
+# PRO USER AUDIT VIEWS (Pro User only)
+# =============================================================================
+
+class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
+    """GET /api/auth/user-audit/users/ - list users available for deep history audit."""
+    login_url = '/panel/auth/login/'
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        search = str(request.GET.get('search', '') or '').strip()
+        role_filter = str(request.GET.get('role', '') or '').strip()
+        users_qs = User.objects.all().order_by('role', 'first_name', 'username')
+
+        if role_filter and role_filter in {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}:
+            users_qs = users_qs.filter(role=role_filter)
+        if search:
+            users_qs = users_qs.filter(
+                Q(username__icontains=search)
+                | Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        users = []
+        for entry in users_qs[:300]:
+            users.append({
+                'id': entry.pk,
+                'name': entry.get_full_name() or entry.username,
+                'username': entry.username,
+                'email': entry.email or '',
+                'role': entry.role,
+                'role_display': dict(User.ROLE_CHOICES).get(entry.role, entry.role),
+                'is_active': bool(entry.is_active),
+                'last_login': entry.last_login.isoformat() if entry.last_login else None,
+            })
+
+        return JsonResponse({'success': True, 'users': users})
+
+
+class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
+    """GET /api/auth/user-audit/history/ - deep history for a selected user."""
+    login_url = '/panel/auth/login/'
+
+    ACTION_DEVICE_HINTS = {
+        'login': 'Login Session',
+        'logout': 'Logout Session',
+        'password_reset': 'Credential Update',
+        'card_bulk_download': 'Bulk Download',
+        'card_bulk_status': 'Bulk Workflow',
+        'card_status': 'Card Workflow',
+        'reprint_status': 'Reprint Workflow',
+    }
+
+    @staticmethod
+    def _infer_device_hint(action, description, ip_address):
+        desc = str(description or '').lower()
+        if 'android' in desc:
+            return 'Android Device'
+        if 'iphone' in desc or 'ios' in desc:
+            return 'iOS Device'
+        if 'windows' in desc:
+            return 'Windows Desktop'
+        if 'mac' in desc:
+            return 'Mac Desktop'
+        if 'linux' in desc:
+            return 'Linux Desktop'
+        if 'browser' in desc:
+            return 'Web Browser'
+        if action in ProUserAuditHistoryAPIView.ACTION_DEVICE_HINTS:
+            return ProUserAuditHistoryAPIView.ACTION_DEVICE_HINTS[action]
+        if ip_address:
+            return f'IP {ip_address}'
+        return 'Activity Record'
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        try:
+            target_user_id = int(request.GET.get('user_id', '0'))
+        except (TypeError, ValueError):
+            target_user_id = 0
+        if target_user_id <= 0:
+            return JsonResponse({'success': False, 'message': 'user_id is required.'}, status=400)
+
+        try:
+            limit = int(request.GET.get('limit', '80'))
+        except (TypeError, ValueError):
+            limit = 80
+        limit = min(max(limit, 1), 200)
+
+        try:
+            offset = int(request.GET.get('offset', '0'))
+        except (TypeError, ValueError):
+            offset = 0
+        offset = max(offset, 0)
+
+        action_filter = str(request.GET.get('action', '') or '').strip()
+        search = str(request.GET.get('search', '') or '').strip()
+
+        target_user = User.objects.filter(pk=target_user_id).first()
+        if not target_user:
+            return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
+
+        activity_qs = ActivityLog.objects.select_related('user').filter(
+            Q(user_id=target_user.pk)
+            | Q(target_model='User', target_id=target_user.pk)
+        )
+
+        if action_filter:
+            activity_qs = activity_qs.filter(action=action_filter)
+        if search:
+            activity_qs = activity_qs.filter(
+                Q(description__icontains=search)
+                | Q(target_name__icontains=search)
+                | Q(action__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+            )
+
+        total = activity_qs.count()
+        entries = activity_qs.order_by('-created_at')[offset:offset + limit]
+
+        summary = activity_qs.aggregate(
+            total_events=Count('id'),
+            login_count=Count('id', filter=Q(action='login')),
+            download_count=Count('id', filter=Q(action='card_bulk_download')),
+            approve_count=Count(
+                'id',
+                filter=Q(action__in=['card_status', 'card_bulk_status'], description__icontains='approved')
+            ),
+            latest_event_at=Max('created_at'),
+        )
+
+        action_dict = dict(ActivityLog.ACTION_CHOICES)
+        now = timezone.now()
+        logs = []
+        for entry in entries:
+            actor_name = ''
+            actor_role = ''
+            if entry.user:
+                actor_name = entry.user.get_full_name() or entry.user.username
+                actor_role = getattr(entry.user, 'role', '')
+
+            event_dt = localtime(entry.created_at)
+            logs.append({
+                'id': entry.pk,
+                'action': entry.action,
+                'action_display': action_dict.get(entry.action, entry.action.replace('_', ' ').title()),
+                'description': entry.description,
+                'target_name': entry.target_name or '',
+                'target_model': entry.target_model or '',
+                'target_id': entry.target_id,
+                'actor_name': actor_name,
+                'actor_role': actor_role,
+                'ip_address': entry.ip_address or '',
+                'device_hint': self._infer_device_hint(entry.action, entry.description, entry.ip_address),
+                'icon_class': entry.icon_class,
+                'icon_color': entry.icon_color,
+                'time_ago': timesince(entry.created_at, now),
+                'created_at': entry.created_at.isoformat(),
+                'created_date': event_dt.strftime('%d %b %Y'),
+                'created_time': event_dt.strftime('%I:%M:%S %p'),
+                'scope': 'performed' if entry.user_id == target_user.pk else 'related',
+            })
+
+        return JsonResponse({
+            'success': True,
+            'user': {
+                'id': target_user.pk,
+                'name': target_user.get_full_name() or target_user.username,
+                'username': target_user.username,
+                'email': target_user.email or '',
+                'role': target_user.role,
+                'role_display': dict(User.ROLE_CHOICES).get(target_user.role, target_user.role),
+                'is_active': bool(target_user.is_active),
+                'last_login': target_user.last_login.isoformat() if target_user.last_login else None,
+            },
+            'summary': {
+                'total_events': int(summary.get('total_events') or 0),
+                'login_count': int(summary.get('login_count') or 0),
+                'download_count': int(summary.get('download_count') or 0),
+                'approve_count': int(summary.get('approve_count') or 0),
+                'latest_event_at': summary.get('latest_event_at').isoformat() if summary.get('latest_event_at') else None,
+            },
+            'logs': logs,
+            'total': total,
+            'offset': offset,
+            'limit': limit,
+            'has_more': (offset + limit) < total,
+        })
+
+
+class ProUserAuditActionsAPIView(LoginRequiredMixin, View):
+    """GET /api/auth/user-audit/actions/ - supported action filters."""
+    login_url = '/panel/auth/login/'
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        actions = [
+            {'value': key, 'label': label}
+            for key, label in ActivityLog.ACTION_CHOICES
+        ]
+        return JsonResponse({'success': True, 'actions': actions})

@@ -6,6 +6,7 @@ from .base import (
     super_admin_required,
     adarsh_cropper,
     login_as_user_page,
+    pro_user_activity_logs_page,
     dashboard,
     api_global_search,
     api_recent_client_updates,
@@ -58,6 +59,9 @@ from .auth import (
     api_impersonate_start,
     api_impersonate_stop,
     api_impersonate_users,
+    api_user_audit_users,
+    api_user_audit_history,
+    api_user_audit_actions,
 )
 
 from .client_api import (

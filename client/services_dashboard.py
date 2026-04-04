@@ -6,7 +6,7 @@ import logging
 from django.utils.timezone import localtime
 from django.db.models import Count, Q, Prefetch
 
-from core.models import ActivityLog
+from core.services.activity_service import ActivityService
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -150,37 +150,8 @@ class ClientDashboardService(BaseService):
                 staff_type='client_staff'
             ).count()
             
-            # Recent activity — only show actions performed by client/client_staff of this org.
-            # Never expose admin or admin_staff actions to client-side users.
-            from django.contrib.auth import get_user_model
-            UserModel = get_user_model()
-            # Collect all user PKs belonging to this client org
-            org_user_ids = list(
-                UserModel.objects.filter(
-                    Q(role='client', client_profile=client) |
-                    Q(role='client_staff', staff_profile__client=client)
-                ).values_list('pk', flat=True)
-            )
-            from django.utils.timesince import timesince
-            from django.utils import timezone as tz
-            now = tz.now()
-            logs = (
-                ActivityLog.objects
-                .filter(user_id__in=org_user_ids)
-                .select_related('user')
-                .order_by('-created_at')[:6]
-            )
-            recent_activity = []
-            for log in logs:
-                icon_class, icon_color = ActivityLog.ACTION_ICONS.get(
-                    log.action, ('fa-circle-info', 'edit')
-                )
-                recent_activity.append({
-                    'description': log.description,
-                    'time_ago': timesince(log.created_at, now),
-                    'icon_class': icon_class,
-                    'icon_color': icon_color,
-                })
+            # Use centralized role-aware activity feed so legacy per-card logs are merged.
+            recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
             
             return ServiceResult(
                 success=True,

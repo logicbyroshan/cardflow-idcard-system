@@ -12,10 +12,8 @@ Features:
 """
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
-import logging
 
 from django.db.models import QuerySet
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 from idcards.models import IDCardTable, IDCard
@@ -26,8 +24,6 @@ from .word import WordExporter, WordExportResult
 from .pdf import PdfExporter, PdfExportResult
 from .zip import ZipExporter, ZipExportResult
 from .utils import get_text_fields, get_image_fields, sort_cards_for_export
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -192,22 +188,13 @@ class ExportService:
         
         try:
             table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
-        except Http404:
+        except Exception:
             return ExportContext(
                 user=self.user,
                 table=None,
                 cards=IDCard.objects.none(),
                 has_permission=False,
                 error_message=f'Table not found: {table_id}'
-            )
-        except Exception as exc:
-            logger.exception('ExportService._prepare_context table lookup failed for table_id=%s: %s', table_id, exc)
-            return ExportContext(
-                user=self.user,
-                table=None,
-                cards=IDCard.objects.none(),
-                has_permission=False,
-                error_message='Unable to load table for export. Please try again.'
             )
         
         # Get scoped cards
