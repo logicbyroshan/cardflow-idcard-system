@@ -5,13 +5,13 @@
   <div class="sidebar-header">
     <div class="sidebar-logo">
       <div class="profile">
-        {% if (is_client or is_client_staff) and current_client_logo_url %}
+        {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
         <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" width="26" height="26" style="object-fit: contain; background:#fff; border-radius:4px;">
         {% else %}
         <img src="{% static 'assets/logo.png' %}" alt="Adarsh ID Cards home" width="26" height="26">
         {% endif %}
       </div>
-      {% if (is_client or is_client_staff) and current_client %}
+      {% if current_client and is_client or current_client and is_client_staff %}
       <h3>{{ current_client.name }}</h3>
       {% else %}
       <h3>Adarsh ID Cards</h3>
