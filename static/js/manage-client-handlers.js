@@ -28,41 +28,28 @@ document.addEventListener('DOMContentLoaded', function() {
       var confirmStatusBtn = document.getElementById('confirmStatusBtn');
       var clientTableContainer = document.getElementById('client-table-container');
 
-      var clientMessageDrawer = document.getElementById('client-message-drawer');
-      var closeClientMessageDrawer = document.getElementById('closeClientMessageDrawer');
-      var cancelClientMessageBtn = document.getElementById('cancelClientMessageBtn');
-      var sendClientMessageBtn = document.getElementById('sendClientMessageBtn');
-      var refreshClientMessagesBtn = document.getElementById('refreshClientMessagesBtn');
-      var clientMessageDrawerClientName = document.getElementById('clientMessageDrawerClientName');
-      var clientMessageHistory = document.getElementById('clientMessageHistory');
-      var clientMessageText = document.getElementById('clientMessageText');
-      var clientMessageCounter = document.getElementById('clientMessageCounter');
-      var clientMessageDurationWrap = document.getElementById('clientMessageDurationWrap');
-      var clientMessageTemporaryDuration = document.getElementById('clientMessageTemporaryDuration');
-      var clientMessageVisibilityPermanent = document.getElementById('clientMessageVisibilityPermanent');
-      var clientMessageVisibilityTemporary = document.getElementById('clientMessageVisibilityTemporary');
-
       var openGroupMessageBtn = document.getElementById('openGroupMessageBtn');
       var groupMessageDrawer = document.getElementById('group-message-drawer');
       var closeGroupMessageDrawer = document.getElementById('closeGroupMessageDrawer');
       var cancelGroupMessageBtn = document.getElementById('cancelGroupMessageBtn');
       var refreshGroupMessageClientsBtn = document.getElementById('refreshGroupMessageClientsBtn');
+      var refreshGroupMessageHistoryBtn = document.getElementById('refreshGroupMessageHistoryBtn');
       var groupMessageClientSearch = document.getElementById('groupMessageClientSearch');
       var groupMessageClientsList = document.getElementById('groupMessageClientsList');
       var groupMessageSelectedCount = document.getElementById('groupMessageSelectedCount');
-      var groupMessageAllClientsToggle = document.getElementById('groupMessageAllClientsToggle');
+      var groupMessageTargetSummary = document.getElementById('groupMessageTargetSummary');
+      var groupMessageHistory = document.getElementById('groupMessageHistory');
       var groupMessageSelectAllVisibleBtn = document.getElementById('groupMessageSelectAllVisibleBtn');
       var groupMessageClearSelectionBtn = document.getElementById('groupMessageClearSelectionBtn');
       var groupMessageText = document.getElementById('groupMessageText');
       var groupMessageCounter = document.getElementById('groupMessageCounter');
       var groupMessageDurationWrap = document.getElementById('groupMessageDurationWrap');
       var groupMessageTemporaryDuration = document.getElementById('groupMessageTemporaryDuration');
-      var sendGroupMessageSelectedBtn = document.getElementById('sendGroupMessageSelectedBtn');
-      var sendGroupMessageAllBtn = document.getElementById('sendGroupMessageAllBtn');
+      var sendGroupMessageBtn = document.getElementById('sendGroupMessageBtn');
 
-      NS.messageDrawerClientId = null;
       NS.groupMessageSelectedClientIds = new Set();
       NS.groupMessageClients = [];
+      NS.groupMessageFocusedClientId = null;
 
       function escapeHtmlLocal(value) {
         var text = String(value == null ? '' : value);
@@ -74,14 +61,14 @@ document.addEventListener('DOMContentLoaded', function() {
           .replace(/'/g, '&#39;');
       }
 
-      function renderClientMessageHistory(messages) {
-        if (!clientMessageHistory) return;
+      function renderClientMessageHistory(messages, historyNode) {
+        if (!historyNode) return;
         if (!messages || messages.length === 0) {
-          clientMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">No messages sent yet.</div>';
+          historyNode.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">No messages sent yet.</div>';
           return;
         }
 
-        clientMessageHistory.innerHTML = messages.map(function(item) {
+        historyNode.innerHTML = messages.map(function(item) {
           var visibilityClass = item.visibility === 'temporary'
             ? 'color:#9a3412;background:#ffedd5;border:1px solid #fed7aa;'
             : 'color:#166534;background:#dcfce7;border:1px solid #bbf7d0;';
@@ -121,62 +108,75 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
       }
 
-      function syncMessageDurationVisibility() {
-        var selectedVisibilityInput = document.querySelector('input[name="clientMessageVisibility"]:checked');
-        var isTemporary = !!(selectedVisibilityInput && selectedVisibilityInput.value === 'temporary');
-        if (clientMessageDurationWrap) {
-          clientMessageDurationWrap.style.display = isTemporary ? '' : 'none';
-        }
-      }
-
-      async function loadClientMessages() {
-        if (!NS.messageDrawerClientId) return;
-        if (clientMessageHistory) {
-          clientMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</div>';
-        }
-        var response = await NS.fetchClientMessages(NS.messageDrawerClientId);
-        if (!response || !response.success) {
-          if (clientMessageHistory) {
-            clientMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#ef4444;font-size:13px;">Failed to load history.</div>';
-          }
-          showToast((response && response.message) || 'Failed to load message history', 'error');
-          return;
-        }
-        renderClientMessageHistory(response.messages || []);
-      }
-
-      function openClientMessageDrawer(clientId, clientName) {
-        if (!clientMessageDrawer) return;
-        NS.messageDrawerClientId = clientId;
-        if (clientMessageDrawerClientName) clientMessageDrawerClientName.textContent = clientName || '-';
-        if (clientMessageText) {
-          clientMessageText.value = '';
-          clientMessageText.focus();
-        }
-        if (clientMessageCounter) clientMessageCounter.textContent = '0 / 2000';
-
-        var selectedScope = document.querySelector('input[name="clientMessageScope"][value="client_only"]');
-        if (selectedScope) selectedScope.checked = true;
-        if (clientMessageVisibilityPermanent) clientMessageVisibilityPermanent.checked = true;
-        if (clientMessageTemporaryDuration) clientMessageTemporaryDuration.value = '6h';
-        syncMessageDurationVisibility();
-
-        clientMessageDrawer.classList.add('open');
-        document.body.style.overflow = 'hidden';
-        loadClientMessages();
-      }
-
-      function closeClientMessageDrawerFn() {
-        if (!clientMessageDrawer) return;
-        clientMessageDrawer.classList.remove('open');
-        NS.messageDrawerClientId = null;
-        document.body.style.overflow = '';
-      }
-
       function renderGroupMessageSelectedCount() {
         if (!groupMessageSelectedCount) return;
         var selectedCount = NS.groupMessageSelectedClientIds ? NS.groupMessageSelectedClientIds.size : 0;
+        if (selectedCount === 0) {
+          groupMessageSelectedCount.textContent = 'All clients (default)';
+          return;
+        }
         groupMessageSelectedCount.textContent = String(selectedCount) + ' selected';
+      }
+
+      function renderGroupMessageTargetSummary() {
+        var selectedCount = NS.groupMessageSelectedClientIds ? NS.groupMessageSelectedClientIds.size : 0;
+        if (groupMessageTargetSummary) {
+          if (selectedCount === 0) {
+            groupMessageTargetSummary.textContent = 'Sending to all clients';
+          } else if (selectedCount === 1) {
+            groupMessageTargetSummary.textContent = 'Sending to 1 selected client';
+          } else {
+            groupMessageTargetSummary.textContent = 'Sending to ' + String(selectedCount) + ' selected clients';
+          }
+        }
+
+        if (!sendGroupMessageBtn) return;
+        if (selectedCount === 0) {
+          sendGroupMessageBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send To All';
+        } else if (selectedCount === 1) {
+          sendGroupMessageBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send To 1 Client';
+        } else {
+          sendGroupMessageBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send To ' + String(selectedCount) + ' Clients';
+        }
+      }
+
+      function renderGroupMessageHistoryPlaceholder(messageText) {
+        if (!groupMessageHistory) return;
+        groupMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">' + escapeHtmlLocal(messageText || 'Select a client to view history.') + '</div>';
+      }
+
+      function getVisibleClientById(clientId) {
+        if (!NS.groupMessageClients || !NS.groupMessageClients.length) return null;
+        var targetId = String(clientId);
+        for (var i = 0; i < NS.groupMessageClients.length; i++) {
+          if (String(NS.groupMessageClients[i].id) === targetId) return NS.groupMessageClients[i];
+        }
+        return null;
+      }
+
+      async function loadFocusedClientMessages() {
+        if (!groupMessageHistory) return;
+        if (!NS.groupMessageFocusedClientId) {
+          renderGroupMessageHistoryPlaceholder('Select a client from the left list to view message history.');
+          return;
+        }
+
+        groupMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</div>';
+
+        var response = await NS.fetchClientMessages(NS.groupMessageFocusedClientId);
+        if (!response || !response.success) {
+          groupMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#ef4444;font-size:13px;">Failed to load history.</div>';
+          showToast((response && response.message) || 'Failed to load message history', 'error');
+          return;
+        }
+
+        renderClientMessageHistory(response.messages || [], groupMessageHistory);
+      }
+
+      function setGroupMessageFocusedClient(clientId) {
+        NS.groupMessageFocusedClientId = clientId ? String(clientId) : null;
+        renderGroupMessageClientsList();
+        loadFocusedClientMessages();
       }
 
       function renderGroupMessageClientsList() {
@@ -184,26 +184,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!NS.groupMessageClients || NS.groupMessageClients.length === 0) {
           groupMessageClientsList.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">No clients found.</div>';
           renderGroupMessageSelectedCount();
+          renderGroupMessageTargetSummary();
           return;
         }
 
-        var sendAllChecked = !!(groupMessageAllClientsToggle && groupMessageAllClientsToggle.checked);
         groupMessageClientsList.innerHTML = NS.groupMessageClients.map(function(clientItem) {
-          var checked = NS.groupMessageSelectedClientIds.has(String(clientItem.id)) ? ' checked' : '';
-          var disabled = sendAllChecked ? ' disabled' : '';
+          var clientId = String(clientItem.id);
+          var checked = NS.groupMessageSelectedClientIds.has(clientId) ? ' checked' : '';
+          var isFocused = String(NS.groupMessageFocusedClientId || '') === clientId;
+          var activeClass = isFocused ? ' active' : '';
           var statusText = clientItem.status === 'active' ? 'Active' : 'Inactive';
           var userText = clientItem.is_user_active ? 'Login active' : 'Login inactive';
           return (
-            '<label class="group-msg-client-row">' +
-              '<input type="checkbox" class="group-msg-client-check" data-client-id="' + escapeHtmlLocal(clientItem.id) + '"' + checked + disabled + '>' +
+            '<div class="group-msg-client-row' + activeClass + '" data-client-id="' + escapeHtmlLocal(clientId) + '">' +
+              '<input type="checkbox" class="group-msg-client-check" data-client-id="' + escapeHtmlLocal(clientId) + '"' + checked + '>' +
               '<div class="group-msg-client-meta">' +
                 '<span class="group-msg-client-name">' + escapeHtmlLocal(clientItem.name || '-') + '</span>' +
                 '<span class="group-msg-client-sub">' + escapeHtmlLocal(statusText) + ' | ' + escapeHtmlLocal(userText) + '</span>' +
               '</div>' +
-            '</label>'
+            '</div>'
           );
         }).join('');
+
         renderGroupMessageSelectedCount();
+        renderGroupMessageTargetSummary();
       }
 
       function syncGroupMessageDurationVisibility() {
@@ -224,14 +228,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         NS.groupMessageClients = Array.isArray(response.clients) ? response.clients : [];
+        if (NS.groupMessageFocusedClientId && !getVisibleClientById(NS.groupMessageFocusedClientId)) {
+          NS.groupMessageFocusedClientId = null;
+        }
         renderGroupMessageClientsList();
+
+        if (!NS.groupMessageFocusedClientId && NS.groupMessageSelectedClientIds.size === 1) {
+          NS.groupMessageFocusedClientId = Array.from(NS.groupMessageSelectedClientIds)[0];
+          renderGroupMessageClientsList();
+        }
+
+        if (NS.groupMessageFocusedClientId) {
+          loadFocusedClientMessages();
+        } else {
+          renderGroupMessageHistoryPlaceholder('Select a client from the left list to view message history.');
+        }
       }
 
-      function openGroupMessageDrawerFn() {
+      function openGroupMessageDrawerFn(preselectedClientIds, focusedClientId) {
         if (!groupMessageDrawer) return;
-        NS.groupMessageSelectedClientIds = new Set();
+
+        var selectedIds = [];
+        if (Array.isArray(preselectedClientIds) && preselectedClientIds.length) {
+          selectedIds = preselectedClientIds;
+        } else if (NS.selectedClientId) {
+          selectedIds = [NS.selectedClientId];
+        }
+
+        NS.groupMessageSelectedClientIds = new Set(selectedIds.map(function(item) { return String(item); }));
         NS.groupMessageClients = [];
-        if (groupMessageAllClientsToggle) groupMessageAllClientsToggle.checked = false;
+        NS.groupMessageFocusedClientId = focusedClientId
+          ? String(focusedClientId)
+          : (NS.groupMessageSelectedClientIds.size === 1 ? Array.from(NS.groupMessageSelectedClientIds)[0] : null);
+
         if (groupMessageText) groupMessageText.value = '';
         if (groupMessageCounter) groupMessageCounter.textContent = '0 / 2000';
         if (groupMessageClientSearch) groupMessageClientSearch.value = '';
@@ -242,6 +271,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var selectedVisibility = document.querySelector('input[name="groupMessageVisibility"][value="permanent"]');
         if (selectedVisibility) selectedVisibility.checked = true;
         syncGroupMessageDurationVisibility();
+        renderGroupMessageSelectedCount();
+        renderGroupMessageTargetSummary();
+        renderGroupMessageHistoryPlaceholder('Select a client from the left list to view message history.');
 
         groupMessageDrawer.classList.add('open');
         document.body.style.overflow = 'hidden';
@@ -256,7 +288,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // ==================== EVENT HANDLERS ====================
       if (addClientBtn) addClientBtn.addEventListener('click', function() { NS.openDrawer('add'); });
-      if (openGroupMessageBtn) openGroupMessageBtn.addEventListener('click', openGroupMessageDrawerFn);
+      if (openGroupMessageBtn) {
+        openGroupMessageBtn.addEventListener('click', function() {
+          openGroupMessageDrawerFn();
+        });
+      }
 
       if (editClientBtn) editClientBtn.addEventListener('click', async function() {
         if (!NS.selectedClientId) return;
@@ -269,26 +305,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var clientData = await NS.fetchClientDetails(NS.selectedClientId);
         if (clientData) NS.openViewModal(clientData);
       });
-
-      if (clientTableContainer) {
-        clientTableContainer.addEventListener('click', function(e) {
-          var messageBtn = e.target.closest('.client-message-btn');
-          if (!messageBtn) return;
-          e.preventDefault();
-          e.stopPropagation();
-
-          var row = messageBtn.closest('tr');
-          if (row) NS.selectRow(row);
-
-          var targetClientId = messageBtn.dataset.clientId || (row && row.dataset.clientId);
-          var targetClientName = messageBtn.dataset.clientName || (row ? row.querySelector('td:first-child').textContent.trim() : '');
-          if (!targetClientId) {
-            showToast('Client not found', 'error');
-            return;
-          }
-          openClientMessageDrawer(targetClientId, targetClientName);
-        });
-      }
 
       if (deleteClientBtn) deleteClientBtn.addEventListener('click', function() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
@@ -474,51 +490,8 @@ document.addEventListener('DOMContentLoaded', function() {
       closeViewModalBtn.addEventListener('click', function() { NS.closeViewModalFn(); });
       // Close handlers for delete/status modals now managed by Alpine @click in template
 
-      if (closeClientMessageDrawer) closeClientMessageDrawer.addEventListener('click', closeClientMessageDrawerFn);
-      if (cancelClientMessageBtn) cancelClientMessageBtn.addEventListener('click', closeClientMessageDrawerFn);
       if (closeGroupMessageDrawer) closeGroupMessageDrawer.addEventListener('click', closeGroupMessageDrawerFn);
       if (cancelGroupMessageBtn) cancelGroupMessageBtn.addEventListener('click', closeGroupMessageDrawerFn);
-
-      if (refreshClientMessagesBtn) {
-        refreshClientMessagesBtn.addEventListener('click', function() {
-          loadClientMessages();
-        });
-      }
-
-      if (clientMessageHistory) {
-        clientMessageHistory.addEventListener('click', async function(e) {
-          var deleteBtn = e.target.closest('[data-delete-client-message]');
-          if (!deleteBtn) return;
-          if (!NS.messageDrawerClientId) return;
-
-          var messageId = deleteBtn.getAttribute('data-delete-client-message');
-          if (!messageId) return;
-
-          deleteBtn.disabled = true;
-          deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Removing...';
-          var result = await NS.deleteClientMessage(NS.messageDrawerClientId, messageId);
-          if (!result || !result.success) {
-            showToast((result && result.message) || 'Failed to remove message', 'error');
-          } else {
-            showToast(result.message || 'Message removed from client inbox', 'success');
-          }
-          loadClientMessages();
-        });
-      }
-
-      if (clientMessageText && clientMessageCounter) {
-        clientMessageText.addEventListener('input', function() {
-          clientMessageCounter.textContent = String(clientMessageText.value.length) + ' / 2000';
-        });
-      }
-
-      var messageVisibilityInputs = document.querySelectorAll('input[name="clientMessageVisibility"]');
-      if (messageVisibilityInputs && messageVisibilityInputs.length) {
-        messageVisibilityInputs.forEach(function(el) {
-          el.addEventListener('change', syncMessageDurationVisibility);
-        });
-        syncMessageDurationVisibility();
-      }
 
       if (groupMessageText && groupMessageCounter) {
         groupMessageText.addEventListener('input', function() {
@@ -542,9 +515,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-      if (groupMessageAllClientsToggle) {
-        groupMessageAllClientsToggle.addEventListener('change', function() {
-          renderGroupMessageClientsList();
+      if (refreshGroupMessageHistoryBtn) {
+        refreshGroupMessageHistoryBtn.addEventListener('click', function() {
+          loadFocusedClientMessages();
         });
       }
 
@@ -557,6 +530,37 @@ document.addEventListener('DOMContentLoaded', function() {
           if (check.checked) NS.groupMessageSelectedClientIds.add(String(clientId));
           else NS.groupMessageSelectedClientIds.delete(String(clientId));
           renderGroupMessageSelectedCount();
+          renderGroupMessageTargetSummary();
+        });
+
+        groupMessageClientsList.addEventListener('click', function(e) {
+          var row = e.target.closest('.group-msg-client-row');
+          if (!row) return;
+          if (e.target.closest('.group-msg-client-check')) return;
+          var clientId = row.getAttribute('data-client-id');
+          if (!clientId) return;
+          setGroupMessageFocusedClient(clientId);
+        });
+      }
+
+      if (groupMessageHistory) {
+        groupMessageHistory.addEventListener('click', async function(e) {
+          var deleteBtn = e.target.closest('[data-delete-client-message]');
+          if (!deleteBtn) return;
+          if (!NS.groupMessageFocusedClientId) return;
+
+          var messageId = deleteBtn.getAttribute('data-delete-client-message');
+          if (!messageId) return;
+
+          deleteBtn.disabled = true;
+          deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Removing...';
+          var result = await NS.deleteClientMessage(NS.groupMessageFocusedClientId, messageId);
+          if (!result || !result.success) {
+            showToast((result && result.message) || 'Failed to remove message', 'error');
+          } else {
+            showToast(result.message || 'Message removed from client inbox', 'success');
+          }
+          loadFocusedClientMessages();
         });
       }
 
@@ -574,6 +578,7 @@ document.addEventListener('DOMContentLoaded', function() {
         groupMessageClearSelectionBtn.addEventListener('click', function() {
           NS.groupMessageSelectedClientIds = new Set();
           renderGroupMessageClientsList();
+          renderGroupMessageHistoryPlaceholder('Select a client from the left list to view message history.');
         });
       }
 
@@ -585,56 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
         syncGroupMessageDurationVisibility();
       }
 
-      if (sendClientMessageBtn) {
-        sendClientMessageBtn.addEventListener('click', async function() {
-          if (!NS.messageDrawerClientId) return;
-          var textValue = (clientMessageText && clientMessageText.value ? clientMessageText.value : '').trim();
-          if (!textValue) {
-            showToast('Message is required', 'error');
-            return;
-          }
-
-          var selectedScopeInput = document.querySelector('input[name="clientMessageScope"]:checked');
-          var selectedVisibilityInput = document.querySelector('input[name="clientMessageVisibility"]:checked');
-          var visibilityValue = selectedVisibilityInput ? selectedVisibilityInput.value : 'permanent';
-          var payload = {
-            message: textValue,
-            scope: selectedScopeInput ? selectedScopeInput.value : 'client_only',
-            visibility: visibilityValue
-          };
-
-          if (visibilityValue === 'temporary') {
-            payload.temporary_duration = clientMessageTemporaryDuration ? clientMessageTemporaryDuration.value : '';
-            if (!payload.temporary_duration) {
-              showToast('Please select temporary duration', 'error');
-              return;
-            }
-          }
-
-          var originalHtml = sendClientMessageBtn.innerHTML;
-          sendClientMessageBtn.disabled = true;
-          sendClientMessageBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
-
-          var result = await NS.sendClientMessage(NS.messageDrawerClientId, payload);
-          sendClientMessageBtn.disabled = false;
-          sendClientMessageBtn.innerHTML = originalHtml;
-
-          if (!result || !result.success) {
-            showToast((result && result.message) || 'Failed to send message', 'error');
-            return;
-          }
-
-          showToast(result.message || 'Message sent', 'success');
-          if (clientMessageText) {
-            clientMessageText.value = '';
-            clientMessageText.focus();
-          }
-          if (clientMessageCounter) clientMessageCounter.textContent = '0 / 2000';
-          loadClientMessages();
-        });
-      }
-
-      async function sendGroupMessage(targetMode, triggerBtn) {
+      async function sendGroupMessage(triggerBtn) {
         var textValue = (groupMessageText && groupMessageText.value ? groupMessageText.value : '').trim();
         if (!textValue) {
           showToast('Message is required', 'error');
@@ -644,6 +600,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var selectedScopeInput = document.querySelector('input[name="groupMessageScope"]:checked');
         var selectedVisibilityInput = document.querySelector('input[name="groupMessageVisibility"]:checked');
         var visibilityValue = selectedVisibilityInput ? selectedVisibilityInput.value : 'permanent';
+        var selectedClientIds = Array.from(NS.groupMessageSelectedClientIds || []);
+        var targetMode = selectedClientIds.length ? 'selected' : 'all';
 
         var payload = {
           message: textValue,
@@ -661,11 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (targetMode === 'selected') {
-          payload.client_ids = Array.from(NS.groupMessageSelectedClientIds || []);
-          if (!payload.client_ids.length) {
-            showToast('Select at least one client or use Send To All', 'error');
-            return;
-          }
+          payload.client_ids = selectedClientIds;
         }
 
         if (triggerBtn) {
@@ -689,19 +643,13 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast(result.message || 'Group message sent', 'success');
         if (groupMessageText) groupMessageText.value = '';
         if (groupMessageCounter) groupMessageCounter.textContent = '0 / 2000';
-        NS.groupMessageSelectedClientIds = new Set();
-        renderGroupMessageClientsList();
+        if (NS.groupMessageFocusedClientId) loadFocusedClientMessages();
+        renderGroupMessageTargetSummary();
       }
 
-      if (sendGroupMessageSelectedBtn) {
-        sendGroupMessageSelectedBtn.addEventListener('click', function() {
-          sendGroupMessage('selected', sendGroupMessageSelectedBtn);
-        });
-      }
-
-      if (sendGroupMessageAllBtn) {
-        sendGroupMessageAllBtn.addEventListener('click', function() {
-          sendGroupMessage('all', sendGroupMessageAllBtn);
+      if (sendGroupMessageBtn) {
+        sendGroupMessageBtn.addEventListener('click', function() {
+          sendGroupMessage(sendGroupMessageBtn);
         });
       }
 
@@ -929,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Close on Escape key
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-          if (clientMessageDrawer && clientMessageDrawer.classList.contains('open')) { closeClientMessageDrawerFn(); return; }
+          if (groupMessageDrawer && groupMessageDrawer.classList.contains('open')) { closeGroupMessageDrawerFn(); return; }
           if (staffDrawer && staffDrawer.classList.contains('open')) { closeStaffDrawerFn(); return; }
           if (viewModal && viewModal.classList.contains('open')) { NS.closeViewModalFn(); return; }
           if (clientDrawer && clientDrawer.classList.contains('open')) { NS.closeDrawerFn(); return; }

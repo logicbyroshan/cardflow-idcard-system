@@ -20,7 +20,6 @@ Required context:
                 <th class="text-center">Status</th>
                 <th class="text-center">Created At</th>
                 <th class="text-center">Updated At</th>
-                <th class="text-center">Message</th>
             </tr>
         </thead>
         <tbody id="client-table-body">
@@ -32,15 +31,10 @@ Required context:
                 <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
                 <td class="text-center">{{ client.created_at|date:"d-m-Y H:i" }}</td>
                 <td class="text-center">{{ client.updated_at|date:"d-m-Y H:i" }}</td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-neutral client-message-btn" data-client-id="{{ client.id }}" data-client-name="{{ client.name }}" title="Open message drawer">
-                        <i class="fa-solid fa-message"></i>
-                    </button>
-                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7">
+                <td colspan="6">
                     {% include 'components/empty-state.html' with id='client-table-empty-inline' icon='fa-building-slash' title='No Clients Found' message='No clients match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>

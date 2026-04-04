@@ -1,18 +1,20 @@
 <style>
   .group-msg-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
     gap: 12px;
     min-height: 0;
+    height: 100%;
   }
 
   .group-msg-panel {
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #fff;
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .group-msg-panel-head {
@@ -34,14 +36,32 @@
     gap: 8px;
   }
 
+  .group-msg-clients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .group-msg-client-row {
     display: flex;
     align-items: center;
     gap: 8px;
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 8px;
     background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .group-msg-client-row:hover {
+    border-color: #bfdbfe;
+    background: #f8fbff;
+  }
+
+  .group-msg-client-row.active {
+    border-color: #60a5fa;
+    background: #eff6ff;
   }
 
   .group-msg-client-meta {
@@ -49,6 +69,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    flex: 1;
   }
 
   .group-msg-client-name {
@@ -83,6 +104,20 @@
     background: #fff;
   }
 
+  .group-msg-chat-body {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    min-height: 140px;
+    max-height: 280px;
+    overflow: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .group-msg-footer {
     display: flex;
     justify-content: flex-end;
@@ -93,28 +128,33 @@
   @media (max-width: 980px) {
     .group-msg-layout {
       grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    .group-msg-chat-body {
+      max-height: 220px;
     }
   }
 </style>
 
 <div id="group-message-drawer" class="drawer-modal">
-  <div class="drawer-content drawer-wide">
+  <div class="drawer-content drawer-wide" style="width:min(1100px,100vw);">
     <div class="drawer-header">
       <h3>
         <i class="fa-solid fa-paper-plane"></i>
-        <span>Group Client Message</span>
+        <span>Client Message</span>
       </h3>
-      <button class="drawer-close" id="closeGroupMessageDrawer" aria-label="Close group message drawer">
+      <button class="drawer-close" id="closeGroupMessageDrawer" aria-label="Close message drawer">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
 
-    <div class="drawer-body" style="display:flex;flex-direction:column;gap:12px;">
+    <div class="drawer-body" style="display:flex;flex-direction:column;gap:12px;min-height:0;">
       <div class="group-msg-layout">
         <section class="group-msg-panel">
           <div class="group-msg-panel-head">
-            <div style="font-size:12px;font-weight:700;color:#334155;">Target Clients</div>
-            <div id="groupMessageSelectedCount" style="font-size:11px;color:#64748b;">0 selected</div>
+            <div style="font-size:12px;font-weight:700;color:#334155;">Clients</div>
+            <div id="groupMessageSelectedCount" style="font-size:11px;color:#64748b;">All clients (default)</div>
           </div>
           <div class="group-msg-panel-body">
             <div style="display:flex;gap:8px;">
@@ -127,21 +167,27 @@
             <div class="group-msg-controls">
               <button type="button" class="btn btn-sm btn-neutral" id="groupMessageSelectAllVisibleBtn">Select Visible</button>
               <button type="button" class="btn btn-sm btn-neutral" id="groupMessageClearSelectionBtn">Clear</button>
-              <label class="group-msg-radio">
-                <input type="checkbox" id="groupMessageAllClientsToggle">
-                <span>Send to all clients</span>
-              </label>
             </div>
 
-            <div id="groupMessageClientsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div id="groupMessageClientsList" class="group-msg-clients-list"></div>
           </div>
         </section>
 
         <section class="group-msg-panel">
           <div class="group-msg-panel-head">
-            <div style="font-size:12px;font-weight:700;color:#334155;">Compose</div>
+            <div style="display:flex;flex-direction:column;min-width:0;">
+              <div style="font-size:12px;color:#64748b;font-weight:600;">Message Panel</div>
+              <div id="groupMessageTargetSummary" style="font-size:13px;color:#0f172a;font-weight:700;">Sending to all clients</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-neutral" id="refreshGroupMessageHistoryBtn" title="Refresh selected client history">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
           </div>
-          <div class="group-msg-panel-body">
+          <div class="group-msg-panel-body" style="gap:10px;">
+            <div id="groupMessageHistory" class="group-msg-chat-body">
+              <div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">Select a client from the left list to view message history.</div>
+            </div>
+
             <div style="font-size:12px;color:#64748b;font-weight:600;">Send To</div>
             <div class="group-msg-controls">
               <label class="group-msg-radio">
@@ -180,11 +226,9 @@
 
             <div class="form-group" style="margin:0;">
               <label class="form-label" for="groupMessageText">Message</label>
-              <textarea class="form-textarea" id="groupMessageText" rows="6" maxlength="2000" placeholder="Type message to selected clients..."></textarea>
+              <textarea class="form-textarea" id="groupMessageText" rows="6" maxlength="2000" placeholder="Type your message..."></textarea>
               <div id="groupMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
             </div>
-
-            <div style="font-size:11px;color:#64748b;">Manual delete option: you can remove any sent message later from each client's message history.</div>
           </div>
         </section>
       </div>
@@ -194,11 +238,8 @@
       <button type="button" class="btn btn-md btn-neutral" id="cancelGroupMessageBtn">
         <i class="fa-solid fa-xmark"></i> Close
       </button>
-      <button type="button" class="btn btn-md btn-warning" id="sendGroupMessageAllBtn">
-        <i class="fa-solid fa-globe"></i> Send To All
-      </button>
-      <button type="button" class="btn btn-md btn-primary" id="sendGroupMessageSelectedBtn">
-        <i class="fa-solid fa-paper-plane"></i> Send Selected
+      <button type="button" class="btn btn-md btn-primary" id="sendGroupMessageBtn">
+        <i class="fa-solid fa-paper-plane"></i> Send Message
       </button>
     </div>
   </div>
