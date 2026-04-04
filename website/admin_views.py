@@ -14,6 +14,7 @@ import json
 import logging
 
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404
 from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_POST, require_GET
@@ -29,6 +30,7 @@ from core.utils.email_utils import (
     send_emergency_panel_access_email,
     send_not_found_mode_enabled_broadcast,
 )
+from client.models import Client as PanelClient
 
 from .models import (
     BusinessDetails,
@@ -36,7 +38,6 @@ from .models import (
     HeroImage,
     PortfolioCategory,
     PortfolioItem,
-    TrustedClient,
     Testimonial,
     Reel,
     FAQ,
@@ -46,7 +47,7 @@ from .models import (
 from .services import (
     WebsiteStatusService,
     BusinessDetailsService,
-    TrustedClientService,
+    WebsiteClientLogoService,
     TestimonialService,
     PortfolioItemService,
     PortfolioCategoryService,
@@ -183,9 +184,10 @@ def website_dashboard(request):
     context['total_reviews'] = review_agg['total']
     context['active_reviews'] = review_agg['active']
 
-    client_agg = TrustedClient.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
+    logo_filter = Q(website_logo__isnull=False) & ~Q(website_logo='')
+    client_agg = PanelClient.objects.aggregate(
+        total=Count('id', filter=logo_filter),
+        active=Count('id', filter=logo_filter & Q(status='active')),
     )
     context['total_clients'] = client_agg['total']
     context['active_clients'] = client_agg['active']
@@ -232,9 +234,45 @@ def business_details_page(request):
 
 @website_admin_required
 def clients_page(request):
-    """Trusted Clients / Partners management page."""
+    """Website client logo management page (uses main Client records)."""
     context = _get_base_context(request, 'clients')
-    context['clients_list'] = TrustedClient.objects.all().order_by('order')
+
+    status_filter = (request.GET.get('status', '') or '').strip().lower()
+    if status_filter not in ('active', 'inactive', 'suspended'):
+        status_filter = ''
+
+    clients_qs = PanelClient.objects.select_related('user').all().order_by('name', 'id')
+    if status_filter:
+        clients_qs = clients_qs.filter(status=status_filter)
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(clients_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['clients_list'] = page_obj.object_list
+    context['current_status'] = status_filter
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_clients_count'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/clients.html', context)
 
 
@@ -391,20 +429,21 @@ def api_business_toggle_status(request):
 
 
 # =============================================================================
-# API — TRUSTED CLIENTS
+# API — CLIENT LOGOS (MAIN CLIENT MODEL)
 # =============================================================================
 
 @require_GET
 @website_admin_required
 def api_client_list(request):
-    """List trusted clients."""
-    qs = TrustedClientService.list_all()
+    """List panel clients for website logo management."""
+    qs = WebsiteClientLogoService.list_all()
     data = [{
         'id': c.id,
         'name': c.name,
-        'logo': c.logo.url if c.logo else None,
-        'order': c.order,
-        'is_active': c.is_active,
+        'logo': c.website_logo.url if c.website_logo else None,
+        'status': c.status,
+        'status_display': c.get_status_display(),
+        'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else '',
     } for c in qs]
     return JsonResponse({'success': True, 'clients': data})
 
@@ -412,25 +451,19 @@ def api_client_list(request):
 @require_POST
 @website_add_required
 def api_client_create(request):
-    """Create a trusted client."""
-    try:
-        client = TrustedClientService.create(
-            name=request.POST.get('name', ''),
-            order=int(request.POST.get('order', 0)),
-            is_active=_parse_bool(request.POST.get('is_active', 'true')),
-            logo=request.FILES.get('logo'),
-        )
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': e.message}, status=400)
-    return JsonResponse({'success': True, 'message': 'Client created', 'id': client.id})
+    """Clients are created from Manage Clients panel, not Website tab."""
+    return JsonResponse(
+        {'success': False, 'message': 'Create client from Manage Clients page.'},
+        status=400,
+    )
 
 
 @require_GET
 @website_admin_required
 def api_client_get(request, pk):
-    """Get a single trusted client."""
+    """Get a single panel client for logo edit modal."""
     try:
-        c = TrustedClientService.get(pk)
+        c = WebsiteClientLogoService.get(pk)
     except Http404:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
     return JsonResponse({
@@ -438,9 +471,9 @@ def api_client_get(request, pk):
         'client': {
             'id': c.id,
             'name': c.name,
-            'logo': c.logo.url if c.logo else None,
-            'order': c.order,
-            'is_active': c.is_active,
+            'logo': c.website_logo.url if c.website_logo else None,
+            'status': c.status,
+            'status_display': c.get_status_display(),
         }
     })
 
@@ -448,42 +481,40 @@ def api_client_get(request, pk):
 @require_POST
 @website_edit_required
 def api_client_update(request, pk):
-    """Update a trusted client."""
+    """Update website logo for a panel client."""
     try:
-        TrustedClientService.update(
-            pk,
-            name=request.POST.get('name'),
-            order=request.POST.get('order'),
-            is_active=request.POST.get('is_active'),
-            logo=request.FILES.get('logo'),
-        )
+        logo = request.FILES.get('logo')
+        remove_logo = _parse_bool(request.POST.get('remove_logo', 'false'))
+
+        if logo is None and not remove_logo:
+            return JsonResponse({'success': False, 'message': 'Please select a logo to upload.'}, status=400)
+
+        WebsiteClientLogoService.update_logo(pk, logo=logo, remove_logo=remove_logo)
     except ValidationError as e:
         return JsonResponse({'success': False, 'message': e.message}, status=400)
-    return JsonResponse({'success': True, 'message': 'Client updated'})
+    except Http404:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+    return JsonResponse({'success': True, 'message': 'Client logo updated'})
 
 
 @require_POST
 @website_delete_required
 def api_client_delete(request, pk):
-    """Delete a trusted client."""
-    try:
-        TrustedClientService.delete(pk)
-        return JsonResponse({'success': True, 'message': 'Client deleted'})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Client delete error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+    """Clients are deleted from Manage Clients panel, not Website tab."""
+    return JsonResponse(
+        {'success': False, 'message': 'Delete client from Manage Clients page.'},
+        status=400,
+    )
 
 
 @require_POST
 @website_edit_required
 def api_client_toggle(request, pk):
-    """Toggle trusted client active/inactive."""
-    try:
-        is_active = TrustedClientService.toggle(pk)
-        return JsonResponse({'success': True, 'is_active': is_active})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Client toggle error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+    """Client status is managed from Manage Clients panel."""
+    return JsonResponse(
+        {'success': False, 'message': 'Client status can be changed from Manage Clients page.'},
+        status=400,
+    )
 
 
 # =============================================================================
@@ -1090,16 +1121,46 @@ def api_reel_toggle(request, pk):
 def contacts_page(request):
     """Contact Messages management page."""
     context = _get_base_context(request, 'contacts')
-    
-    status_filter = request.GET.get('status', '')
-    if status_filter and status_filter in ['new', 'read', 'replied', 'closed']:
-        contacts = ContactSubmissionService.list_by_status(status_filter)
+
+    allowed_statuses = ['new', 'read', 'replied', 'closed']
+    status_filter = (request.GET.get('status', '') or '').strip().lower()
+    if status_filter not in allowed_statuses:
+        status_filter = ''
+
+    if status_filter:
+        contacts_qs = ContactSubmissionService.list_by_status(status_filter)
     else:
-        contacts = ContactSubmissionService.list_all()
-    
-    context['contacts'] = contacts
+        contacts_qs = ContactSubmissionService.list_all()
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(contacts_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['contacts'] = page_obj.object_list
     context['stats'] = ContactSubmissionService.get_stats()
     context['current_status'] = status_filter
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_contacts'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/contacts.html', context)
 
 

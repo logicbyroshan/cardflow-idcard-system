@@ -34,6 +34,9 @@ urlpatterns = [
     
     # Global Search API
     path('api/global-search/', views.api_global_search, name='api_global_search'),
+
+    # Dashboard live card stats API
+    path('api/dashboard-card-stats/', views.api_dashboard_card_stats, name='api_dashboard_card_stats'),
     
     # Recent Client Updates API
     path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),

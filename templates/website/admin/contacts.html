@@ -4,95 +4,257 @@
 
 {% block title %}Contact Messages{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
+<style>
+    .wa-contacts-panel {
+        border: 1px solid #e5e7eb;
+        border-top: none;
+        background: #fff;
+        min-height: calc(100vh - 230px);
+    }
+
+    .wa-contacts-panel .notif-actions-left {
+        gap: 8px;
+    }
+
+    .wa-contacts-panel .notif-table {
+        min-width: 980px;
+        table-layout: fixed;
+    }
+
+    .wa-contacts-panel .notif-table td:first-child,
+    .wa-contacts-panel .notif-table th:first-child {
+        text-align: left;
+    }
+
+    .contact-row-new td {
+        background: rgba(254, 226, 226, 0.3);
+    }
+
+    .contact-row-new:hover td {
+        background: rgba(254, 226, 226, 0.45);
+    }
+
+    .contact-sender {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .contact-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        flex-shrink: 0;
+    }
+
+    .contact-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .contact-main strong {
+        font-size: 12px;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .contact-main a,
+    .contact-main span {
+        font-size: 11px;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-decoration: none;
+    }
+
+    .contact-subject {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .contact-preview {
+        font-size: 11.5px;
+        color: #64748b;
+        font-style: italic;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .contact-date {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .contact-date strong {
+        font-size: 12px;
+        color: #1e293b;
+    }
+
+    .contact-date span {
+        font-size: 11px;
+        color: #64748b;
+    }
+
+    .contact-status-select {
+        min-width: 110px;
+        height: 30px;
+        padding: 4px 8px;
+        font-size: 11.5px;
+        border-radius: 4px;
+    }
+
+    .contact-status-select.status-new {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+    .contact-status-select.status-read {
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+    }
+
+    .contact-status-select.status-replied {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+    .contact-status-select.status-closed {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+    }
+
+    .wa-contacts-panel .btn-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+    }
+
+    .wa-contacts-panel .pagination-center .page-num {
+        cursor: default;
+    }
+
+    .wa-contacts-panel .pagination-right {
+        gap: 8px;
+    }
+
+    .wa-contacts-panel .pagination-right label {
+        font-size: 11px;
+        color: #64748b;
+    }
+
+    .wa-contacts-panel #contactRowsPerPage {
+        min-width: 74px;
+        height: 26px;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .wa-contacts-panel .pagination-btn[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
 {% block breadcrumb_extra %}
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
 <span class="breadcrumb-item active">Messages</span>
 {% endblock %}
 
 {% block content %}
-<div class="wa-page-container">
-    <div class="wa-dashboard-section">
-        <div class="wa-action-bar">
-            <div class="wa-action-left">
-                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-envelope"></i> Contact Messages</h3>
-                <span class="wa-count-badge">{{ contacts|length }} messages</span>
-            </div>
-            <div class="wa-action-right">
-                <!-- Status Filter Tabs -->
-                <div class="wa-filter-tabs">
-                    <a href="{% url 'website_admin:contacts' %}" class="wa-filter-tab {% if not current_status %}active{% endif %}">
-                        All <span class="badge">{{ stats.total }}</span>
-                    </a>
-                    <a href="{% url 'website_admin:contacts' %}?status=new" class="wa-filter-tab {% if current_status == 'new' %}active{% endif %}">
-                        New <span class="badge new">{{ stats.new }}</span>
-                    </a>
-                    <a href="{% url 'website_admin:contacts' %}?status=read" class="wa-filter-tab {% if current_status == 'read' %}active{% endif %}">
-                        Read <span class="badge">{{ stats.read }}</span>
-                    </a>
-                    <a href="{% url 'website_admin:contacts' %}?status=replied" class="wa-filter-tab {% if current_status == 'replied' %}active{% endif %}">
-                        Replied <span class="badge">{{ stats.replied }}</span>
-                    </a>
-                    <a href="{% url 'website_admin:contacts' %}?status=closed" class="wa-filter-tab {% if current_status == 'closed' %}active{% endif %}">
-                        Closed <span class="badge">{{ stats.closed }}</span>
-                    </a>
-                </div>
-            </div>
+<div class="panel-tab-content panel-tab-full-height email-panel-theme active wa-contacts-panel">
+    <div class="notif-actions-bar">
+        <div class="notif-actions-left">
+            <select id="contactStatusFilter" class="form-select form-select-sm" onchange="onContactStatusFilterChange(this.value)">
+                <option value="" {% if not current_status %}selected{% endif %}>All Statuses</option>
+                <option value="new" {% if current_status == 'new' %}selected{% endif %}>New</option>
+                <option value="read" {% if current_status == 'read' %}selected{% endif %}>Read</option>
+                <option value="replied" {% if current_status == 'replied' %}selected{% endif %}>Replied</option>
+                <option value="closed" {% if current_status == 'closed' %}selected{% endif %}>Closed</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.location.reload()">
+                <i class="fa-solid fa-rotate-right"></i> Refresh
+            </button>
         </div>
+    </div>
 
-        <div class="wa-table-wrap">
-            <table class="wa-table" id="contactsTable">
-                <thead>
-                    <tr>
-                        <th>Sender</th>
-                        <th>Subject</th>
-                        <th>Preview</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="contactsBody">
-                    {% for c in contacts %}
-                    <tr data-id="{{ c.id }}" class="{% if c.status == 'new' %}wa-row-highlight{% endif %}">
-                        <td>
-                            <div class="wa-cell-media">
-                                <div class="wa-avatar">{{ c.name|first|upper }}</div>
-                                <div class="wa-cell-info">
-                                    <span class="wa-cell-title">{{ c.name }}</span>
-                                    <span class="wa-cell-sub">
-                                        <a href="mailto:{{ c.email }}" class="wa-email-link">{{ c.email }}</a>
-                                        {% if c.phone %}<br>{{ c.phone }}{% endif %}
-                                    </span>
-                                </div>
+    <div class="notif-table-wrap">
+        <table class="notif-table" id="contactsTable">
+            <colgroup>
+                <col style="width: 24%;">
+                <col style="width: 18%;">
+                <col style="width: 24%;">
+                <col style="width: 12%;">
+                <col style="width: 10%;">
+                <col style="width: 12%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Sender</th>
+                    <th>Subject</th>
+                    <th>Preview</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="contactsBody">
+                {% for c in contacts %}
+                <tr data-id="{{ c.id }}" class="{% if c.status == 'new' %}contact-row-new{% endif %}">
+                    <td>
+                        <div class="contact-sender">
+                            <span class="contact-avatar">{{ c.name|first|upper }}</span>
+                            <div class="contact-main">
+                                <strong>{{ c.name }}</strong>
+                                <a href="mailto:{{ c.email }}">{{ c.email }}</a>
+                                {% if c.phone %}<span>{{ c.phone }}</span>{% endif %}
                             </div>
-                        </td>
-                        <td>
-                            <div class="wa-cell-info">
-                                <span class="wa-cell-title">{{ c.subject|truncatewords:6 }}</span>
-                            </div>
-                        </td>
-                        <td><p class="wa-review-snippet">{{ c.message }}</p></td>
-                        <td>
-                            <div class="wa-cell-info">
-                                <span class="wa-cell-title" style="font-size:12px;">{{ c.created_at|date:"d M Y" }}</span>
-                                <span class="wa-cell-sub">{{ c.created_at|time:"H:i" }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="custom-dropdown wa-status-dropdown" data-id="{{ c.id }}">
-                                <button type="button" class="dropdown-toggle wa-status-toggle status-{{ c.status }}" onclick="this.closest('.wa-status-dropdown').classList.toggle('open');event.stopPropagation();">
-                                    <span>{% if c.status == 'new' %} New{% elif c.status == 'read' %} Read{% elif c.status == 'replied' %} Replied{% elif c.status == 'closed' %}x Closed{% endif %}</span>
-                                    <i class="fa-solid fa-chevron-down"></i>
-                                </button>
-                                <div class="dropdown-options">
-                                    <div class="dropdown-option{% if c.status == 'new' %} selected{% endif %}" onclick="pickContactStatus(this,'new')"> New</div>
-                                    <div class="dropdown-option{% if c.status == 'read' %} selected{% endif %}" onclick="pickContactStatus(this,'read')"> Read</div>
-                                    <div class="dropdown-option{% if c.status == 'replied' %} selected{% endif %}" onclick="pickContactStatus(this,'replied')"> Replied</div>
-                                    <div class="dropdown-option{% if c.status == 'closed' %} selected{% endif %}" onclick="pickContactStatus(this,'closed')">x Closed</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="wa-actions">
+                        </div>
+                    </td>
+                    <td><span class="contact-subject">{{ c.subject|truncatewords:6 }}</span></td>
+                    <td><span class="contact-preview">{{ c.message }}</span></td>
+                    <td>
+                        <div class="contact-date">
+                            <strong>{{ c.created_at|date:"d M Y" }}</strong>
+                            <span>{{ c.created_at|time:"H:i" }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm contact-status-select status-{{ c.status }}" onchange="updateContactStatus({{ c.id }}, this.value, this)">
+                            <option value="new" {% if c.status == 'new' %}selected{% endif %}>New</option>
+                            <option value="read" {% if c.status == 'read' %}selected{% endif %}>Read</option>
+                            <option value="replied" {% if c.status == 'replied' %}selected{% endif %}>Replied</option>
+                            <option value="closed" {% if c.status == 'closed' %}selected{% endif %}>Closed</option>
+                        </select>
+                    </td>
+                    <td>
+                        <div class="notif-actions-cell">
                             <button class="btn btn-icon" title="View Full Message" onclick="viewContact({{ c.id }})">
                                 <i class="fa-solid fa-eye"></i>
                             </button>
@@ -104,21 +266,52 @@
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <i class="fa-solid fa-envelope-open"></i>
-                                <h3>No Messages Yet</h3>
-                                <p>Contact form submissions will appear here.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="notif-table-empty">
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-envelope-open"></i>
+                            <p>No Messages Yet</p>
+                            <span>Contact form submissions will appear here.</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination-bar notif-pagination-bar">
+        <div class="pagination-left">
+            <span class="pagination-info">Showing {{ page_start }} to {{ page_end }} of {{ total_contacts }} messages</span>
+        </div>
+        <div class="pagination-center">
+            <button class="pagination-btn" type="button" title="First Page" aria-label="First page" onclick="goContactPage(1)" {% if not page_obj.has_previous %}disabled{% endif %}>
+                <i class="fa-solid fa-angles-left"></i>
+            </button>
+            <button class="pagination-btn" type="button" title="Previous Page" aria-label="Previous page" onclick="goContactPage({{ page_obj.number|add:'-1' }})" {% if not page_obj.has_previous %}disabled{% endif %}>
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="page-numbers">
+                <span class="page-num active">{{ page_obj.number }}</span>
+            </span>
+            <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goContactPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <button class="pagination-btn" type="button" title="Last Page" aria-label="Last page" onclick="goContactPage({{ page_obj.paginator.num_pages }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                <i class="fa-solid fa-angles-right"></i>
+            </button>
+        </div>
+        <div class="pagination-right">
+            <label for="contactRowsPerPage">Rows per page:</label>
+            <select id="contactRowsPerPage" class="form-select form-select-sm" onchange="onContactRowsPerPageChange(this.value)">
+                {% for size in per_page_options %}
+                <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+                {% endfor %}
+            </select>
         </div>
     </div>
 </div>
@@ -166,6 +359,39 @@
 </div>
 
 <script>
+function onContactStatusFilterChange(status) {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    if (status) {
+        params.set('status', status);
+    } else {
+        params.delete('status');
+    }
+    params.set('page', '1');
+    window.location.search = params.toString();
+}
+
+function onContactRowsPerPageChange(value) {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    params.set('per_page', String(value || 25));
+    params.set('page', '1');
+    window.location.search = params.toString();
+}
+
+function goContactPage(page) {
+    const targetPage = Math.max(1, parseInt(page || 1, 10));
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', String(targetPage));
+    window.location.search = url.searchParams.toString();
+}
+
+function applyStatusSelectClass(selectEl, status) {
+    if (!selectEl) return;
+    selectEl.classList.remove('status-new', 'status-read', 'status-replied', 'status-closed');
+    selectEl.classList.add('status-' + status);
+}
+
 function viewContact(id) {
     fetch('/panel/website/api/contacts/' + id + '/')
         .then(r => r.json())
@@ -184,11 +410,11 @@ function viewContact(id) {
                 // Update row to remove highlight if it was new
                 const row = document.querySelector('tr[data-id="' + id + '"]');
                 if (row) {
-                    row.classList.remove('wa-row-highlight');
-                    const select = row.querySelector('.wa-status-select');
+                    row.classList.remove('contact-row-new');
+                    const select = row.querySelector('.contact-status-select');
                     if (select && select.value === 'new') {
                         select.value = 'read';
-                        select.className = 'wa-status-select status-read';
+                        applyStatusSelectClass(select, 'read');
                     }
                 }
             } else {
@@ -205,26 +431,7 @@ function closeContactModal() {
     document.getElementById('contactModal').classList.remove('show');
 }
 
-function pickContactStatus(optEl, status) {
-    const drop = optEl.closest('.wa-status-dropdown');
-    drop.classList.remove('open');
-    const id = drop.dataset.id;
-    const labels = { new: ' New', read: ' Read', replied: ' Replied', closed: 'x Closed' };
-    const toggle = drop.querySelector('.dropdown-toggle');
-    toggle.querySelector('span').textContent = labels[status] || status;
-    toggle.className = 'dropdown-toggle wa-status-toggle status-' + status;
-    drop.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
-    optEl.classList.add('selected');
-    updateContactStatus(id, status);
-}
-
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.wa-status-dropdown')) {
-        document.querySelectorAll('.wa-status-dropdown.open').forEach(d => d.classList.remove('open'));
-    }
-});
-
-function updateContactStatus(id, status) {
+function updateContactStatus(id, status, selectEl) {
     fetch('/panel/website/api/contacts/' + id + '/status/', {
         method: 'POST',
         headers: {
@@ -238,8 +445,13 @@ function updateContactStatus(id, status) {
         if (data.success) {
             const row = document.querySelector('tr[data-id="' + id + '"]');
             if (row) {
-                row.classList.remove('wa-row-highlight');
+                if (status === 'new') {
+                    row.classList.add('contact-row-new');
+                } else {
+                    row.classList.remove('contact-row-new');
+                }
             }
+            applyStatusSelectClass(selectEl, status);
             if (typeof showToast === 'function') showToast('Status updated', true);
         } else {
             if (typeof showToast === 'function') showToast(data.message, false);

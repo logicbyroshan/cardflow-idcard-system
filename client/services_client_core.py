@@ -73,6 +73,7 @@ class ClientService(BaseService):
     @classmethod
     def serialize(cls, client: Client, include_permissions: bool = True) -> Dict[str, Any]:
         """Serialize Client instance to dict"""
+        logo_url = client.website_logo.url if client.website_logo else None
         data = {
             'id': client.id,
             'name': client.name,
@@ -83,7 +84,9 @@ class ClientService(BaseService):
             'state': client.state or '',
             'pincode': client.pincode or '',
             'status': client.status,
-            'photo_url': None,  # Phase 1: Photo field removed - using avatar placeholder
+            # Keep photo_url key for existing UI compatibility.
+            'photo_url': logo_url,
+            'website_logo_url': logo_url,
             'created_at': localtime(client.created_at).strftime('%d-%m-%Y %H:%M'),
             'updated_at': localtime(client.updated_at).strftime('%d-%m-%Y %H:%M'),
         }

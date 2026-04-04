@@ -34,6 +34,7 @@ from .dashboard_views import (                       # noqa: F401
     login_as_user_page,
     pro_user_activity_logs_page,
     dashboard,
+    api_dashboard_card_stats,
     api_recent_client_updates,
     api_print_reprint_overview,
     api_recent_activity,

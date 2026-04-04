@@ -32,7 +32,7 @@ urlpatterns = [
     path('api/business/toggle-status/', admin_views.api_business_toggle_status, name='api_business_toggle'),
 
     # ==========================================================================
-    # API — Trusted Clients
+    # API — Client Logos (main Client model)
     # ==========================================================================
     path('api/clients/', admin_views.api_client_list, name='api_client_list'),
     path('api/clients/create/', admin_views.api_client_create, name='api_client_create'),

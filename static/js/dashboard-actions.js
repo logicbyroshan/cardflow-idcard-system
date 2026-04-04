@@ -5,6 +5,7 @@ window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
+    const DASHBOARD_LIVE_REFRESH_MS = 30000;
     const panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     function panelUrl(path) {
         if (!path) return path;
@@ -120,6 +121,127 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load recent client updates on page load
     loadRecentClientUpdates();
+
+    // ====================
+    // Live Dashboard Stats (Auto Refresh)
+    // ====================
+    function setDashboardStatValue(el, value) {
+        if (!el) return;
+        const n = Number(value);
+        el.textContent = Number.isFinite(n) ? n.toLocaleString() : '0';
+    }
+
+    function loadDashboardCardStats() {
+        const pendingEl = document.getElementById('pendingCards');
+        const verifiedEl = document.getElementById('verifiedCards');
+        const approvedEl = document.getElementById('approvedCards');
+        const downloadedEl = document.getElementById('downloadedCards');
+        const totalEl = document.getElementById('totalCards');
+
+        if (!pendingEl && !verifiedEl && !approvedEl && !downloadedEl && !totalEl) return;
+
+        ApiClient.get(panelUrl('/api/dashboard-card-stats/'))
+            .then(data => {
+                if (!data || !data.success || !data.stats) return;
+                const stats = data.stats;
+                setDashboardStatValue(pendingEl, stats.pending);
+                setDashboardStatValue(verifiedEl, stats.verified);
+                setDashboardStatValue(approvedEl, stats.approved);
+                setDashboardStatValue(downloadedEl, stats.downloaded);
+                setDashboardStatValue(totalEl, stats.total);
+            })
+            .catch(error => {
+                console.error('Error loading dashboard card stats:', error);
+            });
+    }
+
+    // ====================
+    // Recent Activity (Auto Refresh)
+    // ====================
+    function loadRecentActivity() {
+        const activityList = document.getElementById('recentActivityList');
+        if (!activityList) return;
+
+        const esc = typeof escapeHtml === 'function'
+            ? escapeHtml
+            : (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
+
+        ApiClient.get(panelUrl('/api/recent-activity/?limit=12'))
+            .then(data => {
+                if (!data || !data.success) return;
+
+                const activities = Array.isArray(data.activities) ? data.activities : [];
+                if (!activities.length) {
+                    activityList.innerHTML = `
+                        <div class="activity-item" id="noActivityMessage">
+                            <div class="activity-icon edit">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">No recent activity to show</div>
+                                <div class="activity-time">Activity will appear here as actions are performed</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                activityList.innerHTML = activities.map(activity => {
+                    const iconColor = esc(activity.icon_color || 'edit');
+                    const iconClass = esc(activity.icon_class || 'fa-circle-info');
+                    const description = esc(activity.description || 'Activity update');
+                    const rawTimeAgo = String(activity.time_ago || '').trim();
+                    const timeAgo = rawTimeAgo
+                        ? (/ago$/i.test(rawTimeAgo) ? rawTimeAgo : `${rawTimeAgo} ago`)
+                        : 'just now';
+
+                    return `
+                        <div class="activity-item">
+                            <div class="activity-icon ${iconColor}">
+                                <i class="fa-solid ${iconClass}"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">${description}</div>
+                                <div class="activity-time">${esc(timeAgo)}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            })
+            .catch(error => {
+                console.error('Error loading recent activity:', error);
+            });
+    }
+
+    function refreshLiveDashboardSections() {
+        loadDashboardCardStats();
+        loadRecentActivity();
+    }
+
+    let liveRefreshTimer = null;
+    function startLiveDashboardRefresh() {
+        if (liveRefreshTimer || document.hidden) return;
+        liveRefreshTimer = setInterval(refreshLiveDashboardSections, DASHBOARD_LIVE_REFRESH_MS);
+    }
+
+    function stopLiveDashboardRefresh() {
+        if (!liveRefreshTimer) return;
+        clearInterval(liveRefreshTimer);
+        liveRefreshTimer = null;
+    }
+
+    if (document.getElementById('recentActivityList') || document.getElementById('pendingCards')) {
+        startLiveDashboardRefresh();
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopLiveDashboardRefresh();
+            } else {
+                refreshLiveDashboardSections();
+                startLiveDashboardRefresh();
+            }
+        });
+        window.addEventListener('beforeunload', stopLiveDashboardRefresh);
+    }
     
     // ====================
     // Bulk Actions Panel - Cascading Dropdowns

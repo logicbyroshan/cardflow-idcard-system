@@ -78,6 +78,12 @@ class Client(models.Model):
     
     # Basic Information
     name = models.CharField(max_length=200, db_index=True)
+    website_logo = models.ImageField(
+        upload_to='images/Clients/Logos/',
+        blank=True,
+        null=True,
+        help_text='Logo used on website trusted clients section and client portal UI.',
+    )
     # DEPRECATED: photo field removed - use frontend placeholder avatars instead
     # photo field removed in Phase 1 refactor
     

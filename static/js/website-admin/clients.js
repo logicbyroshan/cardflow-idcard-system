@@ -1,26 +1,51 @@
 /**
  * Website Admin  Clients Module
- * CRUD operations for Trusted Clients / Partners
+ * Logo updates for panel clients (names/details managed from Manage Clients)
  */
 (function () {
     const BASE = '/website/api';
 
     /* ===== MODAL ===== */
 
-    window.openClientModal = function (id) {
-        document.getElementById('clientModalTitle').textContent = id ? 'Edit Client' : 'Add Client';
-        document.getElementById('clientForm').reset();
-        document.getElementById('clientId').value = id || '';
-        if (id) {
-            ApiClient.get(`${BASE}/clients/${id}/`)
-                .then(d => {
-                    if (!d.success) return;
-                    const c = d.client;
-                    document.getElementById('cl_name').value = c.name || '';
-                    document.getElementById('cl_order').value = c.order || 0;
-                    document.getElementById('cl_active').checked = c.is_active;
-                });
+    function setLogoPreview(logoUrl) {
+        const preview = document.getElementById('cl_logo_preview');
+        if (!preview) return;
+        if (logoUrl) {
+            preview.innerHTML = `<img src="${logoUrl}" alt="Current client logo">`;
+        } else {
+            preview.innerHTML = '<span>No logo uploaded</span>';
         }
+    }
+
+    window.openClientModal = function (id) {
+        if (!id) {
+            showToast('Client not found.', 'error');
+            return;
+        }
+
+        document.getElementById('clientModalTitle').textContent = 'Update Client Logo';
+        document.getElementById('clientForm').reset();
+        document.getElementById('clientId').value = String(id);
+        document.getElementById('cl_name').value = '';
+        document.getElementById('cl_status').value = '';
+        document.getElementById('cl_remove_logo').checked = false;
+        setLogoPreview('');
+
+        ApiClient.get(`${BASE}/clients/${id}/`)
+            .then(d => {
+                if (!d.success || !d.client) {
+                    showToast(d.message || 'Failed to load client.', 'error');
+                    return;
+                }
+                const c = d.client;
+                document.getElementById('cl_name').value = c.name || '';
+                document.getElementById('cl_status').value = c.status_display || c.status || '';
+                setLogoPreview(c.logo || '');
+            })
+            .catch(() => {
+                showToast('Network error', 'error');
+            });
+
         if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
             window.AdarshModalBridge.open('clientModal', { overlayClass: 'show' });
         } else {
@@ -42,10 +67,26 @@
     document.getElementById('clientForm').addEventListener('submit', function (e) {
         e.preventDefault();
         const id = document.getElementById('clientId').value;
+        if (!id) {
+            showToast('Client ID missing.', 'error');
+            return;
+        }
+
         const fd = new FormData(this);
-        const url = id ? `${BASE}/clients/${id}/update/` : `${BASE}/clients/create/`;
-        if (!fd.has('is_active')) fd.append('is_active', 'false');
-        else fd.set('is_active', 'true');
+        const removeLogo = document.getElementById('cl_remove_logo').checked;
+        if (removeLogo) {
+            fd.set('remove_logo', 'true');
+        } else {
+            fd.delete('remove_logo');
+        }
+
+        const selectedLogo = document.getElementById('cl_logo').files;
+        if (!removeLogo && (!selectedLogo || selectedLogo.length === 0)) {
+            showToast('Select a logo file or choose remove logo.', 'error');
+            return;
+        }
+
+        const url = `${BASE}/clients/${id}/update/`;
         ApiClient.upload(url, fd)
             .then(d => {
                 if (d.success) { showToast(d.message, 'success'); location.reload(); }
@@ -53,24 +94,4 @@
             })
             .catch(() => showToast('Network error', 'error'));
     });
-
-    /* ===== DELETE / TOGGLE ===== */
-
-    window.deleteClient = async function (id) {
-        const ok = await waConfirm({ title: 'Delete Client?', text: 'This client will be permanently removed.', icon: 'fa-solid fa-trash' });
-        if (!ok) return;
-        ApiClient.post(`${BASE}/clients/${id}/delete/`)
-            .then(d => { if (d.success) { showToast(d.message, 'success'); location.reload(); } else showToast(d.message, 'error'); })
-            .catch(() => showToast('Network error', 'error'));
-    };
-
-    window.toggleClient = function (id, badge) {
-        ApiClient.post(`${BASE}/clients/${id}/toggle/`)
-            .then(d => {
-                if (d.success) {
-                    badge.textContent = d.is_active ? 'Active' : 'Inactive';
-                    badge.className = 'wa-status-badge ' + (d.is_active ? 'active' : 'inactive');
-                }
-            });
-    };
 })();

@@ -63,7 +63,11 @@
           <div class="profile-avatar-section">
             <div class="profile-avatar-wrapper">
               <div class="profile-avatar" id="profileAvatar">
+                {% if (is_client or is_client_staff) and current_client_logo_url %}
+                <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" style="width:100%;height:100%;object-fit:contain;background:#fff;">
+                {% else %}
                 {% include 'partials/components/user-avatar.html' with role=user.role size='large' %}
+                {% endif %}
               </div>
               <!-- Avatar upload removed - using role-based placeholders -->
             </div>

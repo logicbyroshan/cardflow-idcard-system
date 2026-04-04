@@ -397,30 +397,8 @@ class PortfolioItem(models.Model):
 
 
 # ==========================================
-# 4. SOCIAL PROOF (Testimonials & Clients)
+# 4. SOCIAL PROOF (Testimonials)
 # ==========================================
-
-class TrustedClient(models.Model):
-    """Logos of schools/corporates served - displayed on website"""
-    name = models.CharField(max_length=255, help_text='School/Company name')
-    logo = models.ImageField(upload_to='images/Schools/Logos/', help_text='School/Company logo (small, transparent preferred)')
-    
-    order = models.IntegerField(default=0)
-    is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Trusted Client'
-        verbose_name_plural = 'Trusted Clients'
-        ordering = ['order', 'name']
-        indexes = [
-            models.Index(fields=['is_active', 'order']),
-        ]
-
-    def __str__(self):
-        return self.name
-
 
 class Testimonial(models.Model):
     """Customer text reviews"""

@@ -184,6 +184,46 @@ def dashboard(request):
 
 @require_http_methods(["GET"])
 @api_require_any_admin
+def api_dashboard_card_stats(request):
+    """API endpoint for live dashboard card stats refresh."""
+    try:
+        user = request.user
+        is_scoped = PermissionService.is_admin_staff(user)
+        cache_suffix = f':{user.pk}' if is_scoped else ':sa'
+        cache_key = f'dash_card_stats_api{cache_suffix}'
+
+        stats = cache.get(cache_key)
+        if stats is None:
+            accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
+
+            card_qs = IDCard.objects.all()
+            if is_scoped:
+                card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+
+            agg = card_qs.aggregate(
+                total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+                pending=Count('id', filter=Q(status='pending')),
+                verified=Count('id', filter=Q(status='verified')),
+                approved=Count('id', filter=Q(status='approved')),
+                downloaded=Count('id', filter=Q(status='download')),
+            )
+            stats = {
+                'total': agg.get('total', 0),
+                'pending': agg.get('pending', 0),
+                'verified': agg.get('verified', 0),
+                'approved': agg.get('approved', 0),
+                'downloaded': agg.get('downloaded', 0),
+            }
+            cache.set(cache_key, stats, 20)
+
+        return JsonResponse({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.exception('api_dashboard_card_stats error: %s', e)
+        return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
 def api_recent_client_updates(request):
     """API endpoint to get recent clients with their ID card status counts"""
     try:
@@ -201,7 +241,7 @@ def api_recent_client_updates(request):
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
-        # Order by most-recently-approved card data (latest approved update first)
+        # Order by most-recently-approved card data, then newest-created client.
         base_qs = Client.objects.all()
         clients = PermissionService.get_accessible_clients(
             user, base_qs
@@ -210,7 +250,11 @@ def api_recent_client_updates(request):
                 'id_card_groups__tables__id_cards__updated_at',
                 filter=Q(id_card_groups__tables__id_cards__status='approved')
             )
-        ).order_by(F('latest_approved').desc(nulls_last=True))[:limit]
+        ).order_by(
+            F('latest_approved').desc(nulls_last=True),
+            F('created_at').desc(nulls_last=True),
+            F('id').desc(),
+        )[:limit]
         
         results = []
         

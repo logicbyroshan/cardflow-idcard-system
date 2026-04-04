@@ -13,6 +13,7 @@ import logging
 
 from accounts.rate_limit import rate_limit
 from .services import TestimonialService, ContactSubmissionService
+from client.models import Client as PanelClient
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,6 @@ from .models import (
     HeroImage,
     PortfolioCategory,
     PortfolioItem, 
-    TrustedClient, 
     Testimonial, 
     ContactSubmission,
     FAQ,
@@ -79,7 +79,12 @@ def home(request):
     if home_sections is None:
         home_sections = {
             'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
-            'trusted_clients': list(TrustedClient.objects.filter(is_active=True).order_by('order')),
+            'trusted_clients': list(
+                PanelClient.objects.filter(status='active')
+                .exclude(website_logo__isnull=True)
+                .exclude(website_logo='')
+                .order_by('name', 'id')
+            ),
             'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
             'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]),
             'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),

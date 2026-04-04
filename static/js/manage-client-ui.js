@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var drawerTitle = document.getElementById('drawerTitleText');
       var drawerIcon = document.getElementById('drawerIcon');
       var submitBtn = document.getElementById('submitClientBtn');
+      var clientDrawerAvatar = document.getElementById('clientDrawerAvatar');
       
       var viewModal = document.getElementById('view-modal');
       var deleteModal = document.getElementById('delete-modal');
@@ -41,6 +42,16 @@ document.addEventListener('DOMContentLoaded', function() {
       var tbody = table.querySelector('tbody');
 
       // Phase 1: Profile photo upload removed - using avatar placeholder
+
+      function renderClientDrawerAvatar(name, logoUrl) {
+        if (!clientDrawerAvatar) return;
+        if (logoUrl) {
+          var safeName = String(name || 'Client').replace(/"/g, '&quot;');
+          clientDrawerAvatar.innerHTML = '<img src="' + logoUrl + '" alt="' + safeName + '" style="width:56px;height:56px;object-fit:contain;border-radius:10px;border:1px solid #e2e8f0;background:#fff;padding:4px;">';
+          return;
+        }
+        clientDrawerAvatar.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client user-avatar-placeholder--lg"><i class="fa-solid fa-building"></i></div>';
+      }
 
       // ==================== FORM STATUS DROPDOWN ====================
       var clientStatusDropdown = document.getElementById('clientStatusDropdown');
@@ -259,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.setClientStatusDropdown('false'); // Default Inactive for new clients
         NS.setClientPasswordOption('phone'); // Reset password option to phone
         setClientPasswordHidden();
+        renderClientDrawerAvatar('', '');
         
         // Phase 1: Photo upload removed - using avatar placeholder
         
@@ -302,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('clientPhone').value = clientData.phone || '';
             document.getElementById('clientAddress').value = clientData.address || '';
             NS.setClientStatusDropdown(clientData.status === 'active' ? 'true' : 'false');
+            renderClientDrawerAvatar(clientData.name || '', clientData.photo_url || '');
             
             // Phase 1: Photo upload removed - using avatar placeholder
             

@@ -12,7 +12,9 @@
             
             <!-- Profile Avatar Placeholder -->
             <div class="profile-upload-section flex flex-row items-center gap-4">
-              {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
+              <div id="clientDrawerAvatar">
+                {% include 'partials/components/user-avatar.html' with role='client' size='large' %}
+              </div>
               <p class="text-gray-500 m-0 text-xs">Client avatar</p>
             </div>
 

@@ -15,11 +15,12 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from client.models import Client as PanelClient
 
 from .models import (
     BusinessDetails, ContactSubmission, Feature, HeroImage,
     PortfolioCategory, PortfolioItem, Reel, Testimonial,
-    TrustedClient, WebsiteStatus, FAQ,
+    WebsiteStatus, FAQ,
 )
 
 logger = logging.getLogger(__name__)
@@ -172,75 +173,43 @@ class BusinessDetailsService:
 
 
 # =============================================================================
-# TRUSTED CLIENTS
+# WEBSITE CLIENT LOGOS (MAIN CLIENT MODEL)
 # =============================================================================
 
-class TrustedClientService:
-    """CRUD for TrustedClient (website partner logos)."""
+class WebsiteClientLogoService:
+    """Manage website logos stored on the main Client model."""
 
     @staticmethod
     def list_all():
-        """Return queryset of all trusted clients ordered by position."""
-        return TrustedClient.objects.all().order_by('order')
+        return PanelClient.objects.select_related('user').all().order_by('name', 'id')
 
     @staticmethod
     def get(pk):
-        """Return a single TrustedClient or raise 404."""
-        return get_object_or_404(TrustedClient, pk=pk)
+        return get_object_or_404(PanelClient.objects.select_related('user'), pk=pk)
 
     @staticmethod
-    def create(*, name, order=0, is_active=True, logo=None):
-        """Create a new TrustedClient. Returns the created instance."""
+    def update_logo(pk, *, logo=None, remove_logo=False):
         _validate_image_upload(logo, 'logo')
         with transaction.atomic():
-            client = TrustedClient(
-                name=name,
-                order=order,
-                is_active=is_active,
-            )
-            if logo:
-                client.logo = logo
-            client.save()
-        return client
+            client = get_object_or_404(PanelClient, pk=pk)
 
-    @staticmethod
-    def update(pk, *, name=None, order=None, is_active=None, logo=None):
-        """Update a TrustedClient. Only non-None fields are changed."""
-        _validate_image_upload(logo, 'logo')
-        with transaction.atomic():
-            client = get_object_or_404(TrustedClient, pk=pk)
-            if name is not None:
-                client.name = name
-            if order is not None:
-                client.order = int(order)
-            if is_active is not None:
-                client.is_active = _parse_bool(is_active)
-            if logo:
-                client.logo = logo
-            client.save()
-        return client
-
-    @staticmethod
-    def delete(pk):
-        """Delete a TrustedClient by pk."""
-        with transaction.atomic():
-            client = get_object_or_404(TrustedClient, pk=pk)
-            # Clean up logo file from disk
-            if client.logo:
+            if remove_logo and client.website_logo:
                 try:
-                    client.logo.delete(save=False)
+                    client.website_logo.delete(save=False)
                 except Exception:
-                    logger.warning("Failed to delete logo file for TrustedClient %d", pk)
-            client.delete()
+                    logger.warning("Failed deleting previous client logo for client %d", pk)
+                client.website_logo = None
 
-    @staticmethod
-    def toggle(pk):
-        """Toggle active/inactive. Returns new is_active value."""
-        with transaction.atomic():
-            client = get_object_or_404(TrustedClient, pk=pk)
-            client.is_active = not client.is_active
+            if logo is not None:
+                if client.website_logo:
+                    try:
+                        client.website_logo.delete(save=False)
+                    except Exception:
+                        logger.warning("Failed deleting previous client logo for client %d", pk)
+                client.website_logo = logo
+
             client.save()
-        return client.is_active
+        return client
 
 
 # =============================================================================
