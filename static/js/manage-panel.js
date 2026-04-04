@@ -1562,9 +1562,6 @@ function renderServerInfo(snapshot, fromCache) {
   setText('serverMemoryUsed', memory.used_human || '-');
   setText('serverMemoryTotal', memory.total_human || '-');
   setText('serverMemoryPct', (memory.used_pct != null ? `${memory.used_pct}%` : '-'));
-  setText('serverHostName', snapshot.host || '-');
-  setText('serverPythonVersion', snapshot.python_version || '-');
-  setText('serverPlatformText', snapshot.platform || '-');
   setText('serverDbBackend', database.backend || '-');
   setText('serverDbName', database.name || '-');
   setText('serverDbSize', database.size_human || '-');
