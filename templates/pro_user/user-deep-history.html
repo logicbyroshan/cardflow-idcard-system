@@ -305,9 +305,6 @@
   var _hasMore = false;
   var COLORS = { pro_user:'#e11d48', super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
 
-  __auditLoadUsers();
-  __auditLoadActions();
-
   function _csrf() {
     return document.querySelector('meta[name="csrf-token"]')?.content
       || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
@@ -511,6 +508,10 @@
         document.getElementById('auditLoadMoreWrap').style.display = 'none';
       });
   };
+
+  // Bootstrap only after global handlers are assigned.
+  window.__auditLoadUsers();
+  window.__auditLoadActions();
 })();
 </script>
 {% endblock %}
