@@ -17,7 +17,7 @@ urlpatterns = [
     # PAGE VIEWS (Template-based)
     # ==========================================================================
     
-    # Login page (multi-step: role selection → email → password)
+    # Login page (multi-step: email → password)
     path('login/', views.LoginPageView.as_view(), name='login'),
     
     # Logout

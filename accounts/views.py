@@ -193,7 +193,6 @@ class CheckEmailAPIView(View):
         try:
             data = json.loads(request.body)
             identifier = data.get('email', '').strip()
-            role = data.get('role')
             
             if not identifier:
                 return JsonResponse({
@@ -201,7 +200,7 @@ class CheckEmailAPIView(View):
                     'message': 'Email or username is required'
                 }, status=400)
             
-            result = AuthService.check_user_exists(identifier, role)
+            result = AuthService.check_user_exists(identifier)
             
             return JsonResponse({
                 'success': result.get('exists', True),
@@ -239,7 +238,6 @@ class LoginAPIView(View):
             data = json.loads(request.body)
             identifier = data.get('email', '').strip()
             password = data.get('password', '')
-            role = data.get('role')
             
             if not identifier or not password:
                 return JsonResponse({
@@ -247,10 +245,11 @@ class LoginAPIView(View):
                     'message': 'Email/username and password are required'
                 }, status=400)
             
-            result = AuthService.authenticate_user(identifier, password, role)
+            result = AuthService.authenticate_user(identifier, password)
             
             if result['success']:
                 user = result['user']
+                resolved_role = getattr(user, 'role', '')
                 browser_fingerprint = AuthService.browser_fingerprint_from_request(request)
                 current_session_key = ''
                 if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
@@ -269,7 +268,7 @@ class LoginAPIView(View):
                     logger.warning(
                         "Login blocked by session limit: user=%s role=%s ip=%s active_sessions=%s limit=%s",
                         _mask_login_identifier(identifier),
-                        role,
+                        resolved_role,
                         client_ip,
                         active_sessions,
                         max_sessions,
@@ -282,8 +281,8 @@ class LoginAPIView(View):
                 # Log the user in
                 login(request, user)
                 
-                # Store selected role in session for reference
-                request.session['selected_role'] = role
+                # Store actual role resolved from user identity (email/username)
+                request.session['selected_role'] = resolved_role
                 request.session['_auth_browser_fp'] = browser_fingerprint
                 
                 # Log activity
@@ -298,13 +297,13 @@ class LoginAPIView(View):
                     logger.warning(
                         "Concurrent cross-browser login detected: user=%s role=%s ip=%s active_sessions=%s",
                         _mask_login_identifier(identifier),
-                        role,
+                        resolved_role,
                         client_ip,
                         active_sessions,
                     )
                 else:
                     ActivityService.log_login(request, user)
-                logger.info("Login success: user=%s role=%s ip=%s", _mask_login_identifier(identifier), role, client_ip)
+                logger.info("Login success: user=%s role=%s ip=%s", _mask_login_identifier(identifier), resolved_role, client_ip)
                 
                 return JsonResponse({
                     'success': True,
@@ -315,7 +314,7 @@ class LoginAPIView(View):
                 logger.warning(
                     "Login failed: identifier=%s role=%s ip=%s reason=%s",
                     _mask_login_identifier(identifier),
-                    role,
+                    'inferred',
                     client_ip,
                     result['message'],
                 )

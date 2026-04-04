@@ -690,12 +690,11 @@ def api_mobile_login(request):
         data = json.loads(request.body or '{}')
         identifier = (data.get('email') or '').strip()
         password = data.get('password', '')
-        role = data.get('role')
 
         if not identifier or not password:
             return JsonResponse({'success': False, 'message': 'Email and password are required.'}, status=400)
 
-        result = AuthService.authenticate_user(identifier, password, role)
+        result = AuthService.authenticate_user(identifier, password)
         if not result.get('success'):
             return JsonResponse({'success': False, 'message': result.get('message', 'Invalid credentials.')}, status=400)
 
@@ -712,7 +711,7 @@ def api_mobile_login(request):
             }, status=403)
 
         auth_login(request, user)
-        request.session['selected_role'] = role
+        request.session['selected_role'] = getattr(user, 'role', '')
         request.session['mobile_auth_ok'] = True
         ActivityService.log_login(request, user)
         return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
