@@ -99,9 +99,51 @@
     font-size: 13px;
     color: #334155;
     border: 1px solid #e2e8f0;
-    border-radius: 999px;
+    border-radius: 8px;
     padding: 5px 10px;
     background: #fff;
+  }
+
+  .group-msg-composer {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .group-msg-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .group-msg-option-title {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .group-msg-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 10px;
+  }
+
+  .group-msg-action-buttons {
+    display: inline-flex;
+    gap: 8px;
+  }
+
+  .group-msg-btn {
+    border-radius: 9px !important;
   }
 
   .group-msg-chat-body {
@@ -133,6 +175,10 @@
 
     .group-msg-chat-body {
       max-height: 220px;
+    }
+
+    .group-msg-options-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -188,59 +234,69 @@
               <div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">Select a client from the left list to view message history.</div>
             </div>
 
-            <div style="font-size:12px;color:#64748b;font-weight:600;">Send To</div>
-            <div class="group-msg-controls">
-              <label class="group-msg-radio">
-                <input type="radio" name="groupMessageScope" value="client_only" checked>
-                <span>Client Only</span>
-              </label>
-              <label class="group-msg-radio">
-                <input type="radio" name="groupMessageScope" value="client_and_staff">
-                <span>Client + Staff</span>
-              </label>
-            </div>
+            <div class="group-msg-composer">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label" for="groupMessageText">Message</label>
+                <textarea class="form-textarea" id="groupMessageText" rows="5" maxlength="2000" placeholder="Type your message..."></textarea>
+                <div id="groupMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
+              </div>
 
-            <div style="font-size:12px;color:#64748b;font-weight:600;">Message Type</div>
-            <div class="group-msg-controls">
-              <label class="group-msg-radio">
-                <input type="radio" name="groupMessageVisibility" value="permanent" checked>
-                <span>Permanent</span>
-              </label>
-              <label class="group-msg-radio">
-                <input type="radio" name="groupMessageVisibility" value="temporary">
-                <span>Temporary</span>
-              </label>
-            </div>
+              <div class="group-msg-options-grid">
+                <div>
+                  <div class="group-msg-option-title">Send To</div>
+                  <div class="group-msg-controls">
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageScope" value="client_only" checked>
+                      <span>Client Only</span>
+                    </label>
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageScope" value="client_and_staff">
+                      <span>Client + Staff</span>
+                    </label>
+                  </div>
+                </div>
 
-            <div class="form-group" id="groupMessageDurationWrap" style="display:none;margin:0;">
-              <label class="form-label" for="groupMessageTemporaryDuration">Temporary Duration</label>
-              <select id="groupMessageTemporaryDuration" class="form-select">
-                <option value="6h">6 hours</option>
-                <option value="12h">12 hours</option>
-                <option value="24h">24 hours</option>
-                <option value="2d">2 days</option>
-                <option value="3d">3 days</option>
-                <option value="7d">7 days</option>
-              </select>
-            </div>
+                <div>
+                  <div class="group-msg-option-title">Message Type</div>
+                  <div class="group-msg-controls">
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageVisibility" value="permanent" checked>
+                      <span>Permanent</span>
+                    </label>
+                    <label class="group-msg-radio">
+                      <input type="radio" name="groupMessageVisibility" value="temporary">
+                      <span>Temporary</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
 
-            <div class="form-group" style="margin:0;">
-              <label class="form-label" for="groupMessageText">Message</label>
-              <textarea class="form-textarea" id="groupMessageText" rows="6" maxlength="2000" placeholder="Type your message..."></textarea>
-              <div id="groupMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
+              <div class="group-msg-action-row">
+                <div class="form-group" id="groupMessageDurationWrap" style="display:none;margin:0;min-width:220px;">
+                  <label class="form-label" for="groupMessageTemporaryDuration">Temporary Duration</label>
+                  <select id="groupMessageTemporaryDuration" class="form-select">
+                    <option value="6h">6 hours</option>
+                    <option value="12h">12 hours</option>
+                    <option value="24h">24 hours</option>
+                    <option value="2d">2 days</option>
+                    <option value="3d">3 days</option>
+                    <option value="7d">7 days</option>
+                  </select>
+                </div>
+
+                <div class="group-msg-action-buttons">
+                  <button type="button" class="btn btn-md btn-neutral group-msg-btn" id="cancelGroupMessageBtn">
+                    <i class="fa-solid fa-xmark"></i> Close
+                  </button>
+                  <button type="button" class="btn btn-md btn-primary group-msg-btn" id="sendGroupMessageBtn">
+                    <i class="fa-solid fa-paper-plane"></i> Send Message
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
       </div>
-    </div>
-
-    <div class="drawer-footer group-msg-footer">
-      <button type="button" class="btn btn-md btn-neutral" id="cancelGroupMessageBtn">
-        <i class="fa-solid fa-xmark"></i> Close
-      </button>
-      <button type="button" class="btn btn-md btn-primary" id="sendGroupMessageBtn">
-        <i class="fa-solid fa-paper-plane"></i> Send Message
-      </button>
     </div>
   </div>
 </div>

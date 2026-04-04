@@ -8,6 +8,7 @@ from datetime import timedelta
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django.db import OperationalError, ProgrammingError
 from ..services import ClientService
 from ..services.activity_service import ActivityService
 from ..services.notification_service import NotificationService
@@ -135,6 +136,24 @@ def _resolve_client_message_recipients(client_obj, scope):
         recipient_users.extend(staff_users)
 
     return sorted({u.id for u in recipient_users if u and u.id})
+
+
+def _is_missing_client_message_table_error(exc):
+    error_text = str(exc or '').lower()
+    return (
+        'core_clientmessage' in error_text
+        and ('no such table' in error_text or 'does not exist' in error_text or 'undefined table' in error_text)
+    )
+
+
+def _client_message_table_unavailable_response():
+    return JsonResponse(
+        {
+            'success': False,
+            'message': 'Client message storage is not initialized yet. Please run migrations.',
+        },
+        status=503,
+    )
 
 
 @require_http_methods(["POST"])
@@ -375,12 +394,18 @@ def api_client_messages(request, client_id):
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
 
-    rows = (
-        ClientMessage.objects
-        .filter(client_id=client_id)
-        .select_related('sent_by', 'notification')
-        .order_by('-created_at')[:80]
-    )
+    try:
+        rows = (
+            ClientMessage.objects
+            .filter(client_id=client_id)
+            .select_related('sent_by', 'notification')
+            .order_by('-created_at')[:80]
+        )
+    except (OperationalError, ProgrammingError) as exc:
+        if _is_missing_client_message_table_error(exc):
+            logger.warning('ClientMessage table unavailable while listing history: %s', exc)
+            return _client_message_table_unavailable_response()
+        raise
 
     return JsonResponse({
         'success': True,
@@ -427,6 +452,14 @@ def api_client_message_send(request, client_id):
     if not client:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
 
+    try:
+        ClientMessage.objects.only('id').first()
+    except (OperationalError, ProgrammingError) as exc:
+        if _is_missing_client_message_table_error(exc):
+            logger.warning('ClientMessage table unavailable while sending message: %s', exc)
+            return _client_message_table_unavailable_response()
+        raise
+
     recipient_ids = _resolve_client_message_recipients(client, scope)
     if not recipient_ids:
         return JsonResponse({'success': False, 'message': 'No active recipients found for this client'}, status=400)
@@ -446,16 +479,24 @@ def api_client_message_send(request, client_id):
         return JsonResponse(notif_result.to_response_dict(), status=400)
 
     notif_id = ((notif_result.data or {}).get('notification') or {}).get('id')
-    message_row = ClientMessage.objects.create(
-        client=client,
-        sent_by=request.user,
-        message=message_text,
-        scope=scope,
-        visibility=visibility,
-        expires_at=expires_at,
-        notification_id=notif_id,
-        recipient_count=len(recipient_ids),
-    )
+    try:
+        message_row = ClientMessage.objects.create(
+            client=client,
+            sent_by=request.user,
+            message=message_text,
+            scope=scope,
+            visibility=visibility,
+            expires_at=expires_at,
+            notification_id=notif_id,
+            recipient_count=len(recipient_ids),
+        )
+    except (OperationalError, ProgrammingError) as exc:
+        if _is_missing_client_message_table_error(exc):
+            logger.warning('ClientMessage table unavailable while creating message row: %s', exc)
+            if notif_id:
+                Notification.objects.filter(id=notif_id).update(is_active=False)
+            return _client_message_table_unavailable_response()
+        raise
 
     ActivityService.log(
         'notification_create',
@@ -563,6 +604,14 @@ def api_client_messages_group_send(request):
     if not clients:
         return JsonResponse({'success': False, 'message': 'No clients found for this request'}, status=400)
 
+    try:
+        ClientMessage.objects.only('id').first()
+    except (OperationalError, ProgrammingError) as exc:
+        if _is_missing_client_message_table_error(exc):
+            logger.warning('ClientMessage table unavailable while group sending message: %s', exc)
+            return _client_message_table_unavailable_response()
+        raise
+
     sent_items = []
     skipped_clients = []
     failed_clients = []
@@ -589,16 +638,24 @@ def api_client_messages_group_send(request):
             continue
 
         notif_id = ((notif_result.data or {}).get('notification') or {}).get('id')
-        row = ClientMessage.objects.create(
-            client=client,
-            sent_by=request.user,
-            message=message_text,
-            scope=scope,
-            visibility=visibility,
-            expires_at=expires_at,
-            notification_id=notif_id,
-            recipient_count=len(recipient_ids),
-        )
+        try:
+            row = ClientMessage.objects.create(
+                client=client,
+                sent_by=request.user,
+                message=message_text,
+                scope=scope,
+                visibility=visibility,
+                expires_at=expires_at,
+                notification_id=notif_id,
+                recipient_count=len(recipient_ids),
+            )
+        except (OperationalError, ProgrammingError) as exc:
+            if _is_missing_client_message_table_error(exc):
+                logger.warning('ClientMessage table unavailable while creating group message row: %s', exc)
+                if notif_id:
+                    Notification.objects.filter(id=notif_id).update(is_active=False)
+                return _client_message_table_unavailable_response()
+            raise
         sent_items.append({'id': row.id, 'client_id': client.id, 'client_name': client.name})
         total_recipients += len(recipient_ids)
 
@@ -639,12 +696,18 @@ def api_client_message_delete(request, client_id, message_id):
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
 
-    row = (
-        ClientMessage.objects
-        .filter(id=message_id, client_id=client_id)
-        .select_related('notification', 'client')
-        .first()
-    )
+    try:
+        row = (
+            ClientMessage.objects
+            .filter(id=message_id, client_id=client_id)
+            .select_related('notification', 'client')
+            .first()
+        )
+    except (OperationalError, ProgrammingError) as exc:
+        if _is_missing_client_message_table_error(exc):
+            logger.warning('ClientMessage table unavailable while deleting message: %s', exc)
+            return _client_message_table_unavailable_response()
+        raise
     if not row:
         return JsonResponse({'success': False, 'message': 'Message not found'}, status=404)
 
