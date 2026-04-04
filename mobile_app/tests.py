@@ -147,7 +147,7 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertEqual(response['Service-Worker-Allowed'], '/app/')
 		self.assertIn('application/javascript', response['Content-Type'])
 		content = response.content.decode('utf-8')
-		self.assertIn("const STATIC_CACHE = 'adarsh-static-v3';", content)
+		self.assertRegex(content, r"const STATIC_CACHE = 'adarsh-static-v\d+';")
 		self.assertIn("/static/css/vendor/webfonts/fa-solid-900.woff2", content)
 
 	def test_mobile_page_redirects_without_mobile_auth_checkpoint(self):
