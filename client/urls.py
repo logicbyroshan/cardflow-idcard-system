@@ -29,6 +29,9 @@ urlpatterns = [
     
     # Staff Management (Client Admin only)
     path('staff/', views.manage_staff, name='staff'),
+
+    # One-way admin messages (read-only for client/client staff)
+    path('messages/', views.messages, name='messages'),
     
     # --- Shared admin-template pages (client context) ---
     # ID Card Group (shows all tables with status counts)

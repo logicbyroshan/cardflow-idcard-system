@@ -83,6 +83,119 @@ class ClientAccessControlTests(TestCase):
         self.assertIn(response.status_code, [302, 403])
 
 
+class ClientMessagesPageTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        self.sender = User.objects.create_user(
+            username='sender-msg@test.com',
+            email='sender-msg@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        self.client_owner = User.objects.create_user(
+            username='client-owner-msg@test.com',
+            email='client-owner-msg@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_owner, name='Msg Client')
+
+        self.client_staff_user = User.objects.create_user(
+            username='client-staff-msg@test.com',
+            email='client-staff-msg@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        self.client_staff = Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        self.super_admin = User.objects.create_user(
+            username='superadmin-msg@test.com',
+            email='superadmin-msg@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+    def _create_message(self, text, recipients, scope='client_and_staff'):
+        from core.models import Notification, ClientMessage
+
+        notification = Notification.objects.create(
+            title='Client Message',
+            message=text,
+            target='selected',
+            category='announcement',
+            priority='normal',
+            created_by=self.sender,
+        )
+        notification.target_users.set(recipients)
+
+        return ClientMessage.objects.create(
+            client=self.client_obj,
+            sent_by=self.sender,
+            message=text,
+            scope=scope,
+            notification=notification,
+            recipient_count=len(recipients),
+        )
+
+    def test_client_can_view_full_history_read_and_unread(self):
+        from core.models import NotificationRead
+
+        unread_msg = self._create_message('Unread message body', [self.client_owner])
+        read_msg = self._create_message('Read message body', [self.client_owner])
+        NotificationRead.objects.create(user=self.client_owner, notification=read_msg.notification)
+
+        self.client.login(username='client-owner-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, unread_msg.message)
+        self.assertContains(response, read_msg.message)
+        self.assertContains(response, 'Unread')
+        self.assertContains(response, 'Read')
+
+    def test_client_staff_can_access_messages_page(self):
+        self._create_message('Staff visible message', [self.client_staff_user])
+
+        self.client.login(username='client-staff-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Staff visible message')
+
+    def test_message_page_filters_to_current_recipient(self):
+        self._create_message('Owner only message', [self.client_owner], scope='client_only')
+        self._create_message('Staff only message', [self.client_staff_user], scope='client_and_staff')
+
+        self.client.login(username='client-owner-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Owner only message')
+        self.assertNotContains(response, 'Staff only message')
+
+    def test_non_client_role_cannot_access_messages_page(self):
+        self.client.login(username='superadmin-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+        self.assertIn(response.status_code, [302, 403])
+
+    def test_messages_page_is_read_only_no_reply_form(self):
+        self._create_message('Read-only test message', [self.client_owner])
+
+        self.client.login(username='client-owner-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '<textarea')
+        self.assertNotContains(response, 'data-send-message-btn')
+
+
 class ManageClientsPaginationTests(TestCase):
     def setUp(self):
         from client.models import Client

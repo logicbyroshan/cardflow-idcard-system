@@ -14,6 +14,7 @@ from .views_pages import (
     card_groups,
     card_table,
     manage_staff,
+    messages,
 )
 
 from .views_api import (
