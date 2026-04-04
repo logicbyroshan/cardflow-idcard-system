@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
 from ..models import SystemSettings
-from ..services.permission_service import require_any_admin
+from ..services.permission_service import PermissionService, require_any_admin
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,24 @@ def api_export_settings_update(request):
 # =========================================================================
 
 @login_required
-@require_any_admin
 @require_http_methods(['GET'])
 def api_export_templates_list(request):
-    """GET /api/export-templates/ — list all export templates for download modals."""
+    """
+    GET /api/export-templates/ — list export templates for download modals.
+
+    Access policy:
+    - Any admin (super_admin/admin_staff) can always read.
+    - Client/client_staff can read only if they have bulk-download permission.
+    """
+    if not (
+        PermissionService.is_any_admin(request.user)
+        or PermissionService.can_bulk_download(request.user)
+    ):
+        return JsonResponse(
+            {'success': False, 'message': 'Permission denied: You do not have bulk download access'},
+            status=403,
+        )
+
     from core.models import ExportTemplate
     templates = ExportTemplate.get_all_as_choices()
     return JsonResponse({'success': True, 'templates': templates})
