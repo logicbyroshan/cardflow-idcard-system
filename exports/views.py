@@ -129,6 +129,8 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
         search_q = ''
         class_f = ''
         section_f = ''
+        course_f = ''
+        branch_f = ''
         from_date = ''
         to_date = ''
         if request.content_type == 'application/json':
@@ -137,13 +139,18 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
                 search_q = (body.get('search') or '').strip()
                 class_f = (body.get('class') or body.get('class_filter') or '').strip()
                 section_f = (body.get('section') or body.get('section_filter') or '').strip()
+                course_f = (body.get('course') or body.get('course_filter') or '').strip()
+                branch_f = (body.get('branch') or body.get('branch_filter') or '').strip()
                 from_date = (body.get('from') or '').strip()
                 to_date = (body.get('to') or '').strip()
             except (json.JSONDecodeError, ValueError):
                 pass
         try:
             from django.db.models.fields.json import KeyTextTransform
-            from core.views.idcard_api import _get_class_section_field_names
+            from core.views.idcard_helpers import (
+                _build_class_filter_q,
+                _get_class_section_course_branch_field_names,
+            )
 
             table = IDCardTable.objects.select_related('group').filter(id=table_id).first()
             if not table:
@@ -162,14 +169,19 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
                 qs = qs.filter(status=status)
             if search_q:
                 qs = IDCardService._apply_search_filter(qs, search_q, table=table)
-            # Use proper JSON field extraction for exact class/section matching
-            if class_f or section_f:
-                if table:
-                    class_field_name, section_field_name = _get_class_section_field_names(table)
-                    if class_f and class_field_name:
-                        qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data')).filter(_cls__iexact=class_f)
-                    if section_f and section_field_name:
-                        qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data')).filter(_sec__iexact=section_f)
+            # Keep export fallback filtering consistent with the listing API.
+            if class_f or section_f or course_f or branch_f:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    _get_class_section_course_branch_field_names(table)
+                )
+                if class_f and class_field_name:
+                    qs = _build_class_filter_q(qs, class_f, class_field_name)
+                if section_f and section_field_name:
+                    qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data')).filter(_sec__iexact=section_f)
+                if course_f and course_field_name:
+                    qs = qs.annotate(_course=KeyTextTransform(course_field_name, 'field_data')).filter(_course__iexact=course_f)
+                if branch_f and branch_field_name:
+                    qs = qs.annotate(_branch=KeyTextTransform(branch_field_name, 'field_data')).filter(_branch__iexact=branch_f)
             # DateTime range filter (download list)
             if from_date:
                 try:

@@ -177,6 +177,39 @@ class ExportViewHelperTests(TestCase):
         ids = _get_card_ids_from_request(request, table_id=self.table.id)
         self.assertIsNone(ids)
 
+    def test_get_card_ids_fallback_class_section_uses_canonical_class_matching(self):
+        from idcards.models import IDCard
+        from exports.views import _get_card_ids_from_request
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+            {'name': 'SECTION', 'type': 'section', 'order': 3},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table).delete()
+        matched = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'A', 'CLASS': 'KG-I', 'SECTION': 'A'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'B', 'CLASS': 'KG-II', 'SECTION': 'A'},
+            status='pending',
+        )
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'status': 'pending', 'class': 'KG1', 'section': 'A'}),
+            content_type='application/json',
+        )
+        request.user = self.admin
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(ids, [matched.id])
+
     def test_get_image_rename_options_filters_invalid_pairs(self):
         from exports.views import _get_image_rename_options_from_request
 
