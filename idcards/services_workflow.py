@@ -528,8 +528,8 @@ class WorkflowService:
             client_name = ''
             try:
                 client_name = card.table.group.client.name
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('WorkflowService transition client-name resolution failed: %s', exc)
             status_labels = dict(IDCard.STATUS_CHOICES)
             old_label = status_labels.get(_old_status, str(_old_status).replace('_', ' ').title())
             new_label = status_labels.get(new_status, str(new_status).replace('_', ' ').title())
@@ -554,8 +554,8 @@ class WorkflowService:
             client_name = ''
             try:
                 client_name = table.group.client.name
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('WorkflowService bulk transition client-name resolution failed: %s', exc)
             if not card_status_pairs:
                 return
 

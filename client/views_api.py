@@ -48,6 +48,14 @@ def _normalize_positive_int_ids(values, max_items: int = 500):
     return out
 
 
+def _result_error_status(message: str, fallback: int = 400) -> int:
+    """Map service error messages to HTTP status without case-sensitive checks."""
+    text = str(message or '').strip().lower()
+    if 'permission' in text or 'access denied' in text or 'access' in text:
+        return 403
+    return fallback
+
+
 # =============================================================================
 # API VIEWS - Dashboard
 # =============================================================================
@@ -197,7 +205,7 @@ def api_staff_list_create(request):
             'data': {'staff_id': result.data.get('staff_id')}
         })
 
-    status_code = 403 if 'Permission' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -279,7 +287,7 @@ def api_staff_detail(request, staff_id):
                 'message': result.message
             })
         
-        status_code = 403 if 'Permission' in result.message else 400
+        status_code = _result_error_status(result.message, fallback=400)
         return JsonResponse({
             'success': False,
             'error': result.message
@@ -306,7 +314,7 @@ def api_staff_detail(request, staff_id):
             'message': result.message
         })
     
-    status_code = 403 if 'Permission' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -346,7 +354,7 @@ def api_staff_toggle_status(request, staff_id):
                 'status_display': 'Active' if is_active else 'Inactive',
             })
         
-        status_code = 403 if 'Permission' in result.message else 400
+        status_code = _result_error_status(result.message, fallback=400)
         return JsonResponse({
             'success': False,
             'message': result.message
@@ -741,7 +749,7 @@ def api_cards_list(request, table_id):
             }
         })
     
-    status_code = 403 if 'Access' in result.message or 'permission' in result.message.lower() else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -763,7 +771,7 @@ def api_card_detail(request, card_id):
             'data': result.data
         })
     
-    status_code = 403 if 'Access' in result.message or 'permission' in result.message.lower() else 404
+    status_code = _result_error_status(result.message, fallback=404)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -795,7 +803,7 @@ def api_card_change_status(request, card_id):
             **result.data
         })
     
-    status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'message': result.message
@@ -840,7 +848,7 @@ def api_cards_bulk_status(request, table_id):
             **result.data
         })
     
-    status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'message': result.message
@@ -875,7 +883,7 @@ def api_upload_images(request, table_id):
                 **result.data
             })
         
-        status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
+        status_code = _result_error_status(result.message, fallback=400)
         return JsonResponse({
             'success': False,
             'message': result.message

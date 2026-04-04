@@ -1,6 +1,8 @@
 """
 Client Dashboard Service — aggregated statistics for the client dashboard.
 """
+import logging
+
 from django.utils.timezone import localtime
 from django.db.models import Count, Q, Prefetch
 
@@ -13,6 +15,8 @@ from core.services.permission_service import PermissionService
 
 from .services_access import ClientAccessService
 from .services_card import ClientCardService
+
+logger = logging.getLogger(__name__)
 
 
 class ClientDashboardService(BaseService):
@@ -56,6 +60,11 @@ class ClientDashboardService(BaseService):
                 return group_ids
 
         return list(staff.assigned_groups.values_list('id', flat=True))
+
+    @staticmethod
+    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
+        logger.exception('ClientDashboardService.%s failed: %s', action, exc)
+        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
 
     @classmethod
     def _get_accessible_tables_qs(cls, user, client):
@@ -192,7 +201,7 @@ class ClientDashboardService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_dashboard_data', e)
     
     @classmethod
     def get_groups_with_counts(cls, user) -> ServiceResult:
@@ -281,7 +290,7 @@ class ClientDashboardService(BaseService):
             return ServiceResult(success=True, data={'groups': groups_data})
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_groups_with_counts', e)
 
     @classmethod
     def get_reprint_stats(cls, user, client=None) -> ServiceResult:
@@ -363,7 +372,7 @@ class ClientDashboardService(BaseService):
                 },
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_reprint_stats', e)
 
     @classmethod
     def get_reprint_history(cls, user, client=None, limit=50) -> ServiceResult:
@@ -448,4 +457,4 @@ class ClientDashboardService(BaseService):
                 },
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_reprint_history', e)

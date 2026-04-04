@@ -2,6 +2,7 @@
 Client Staff Service — CRUD operations for client-managed staff members.
 """
 from typing import Dict, Any, Optional, List, Tuple
+import logging
 import os
 import secrets
 
@@ -15,6 +16,8 @@ from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
 
 from .services_access import ClientAccessService
+
+logger = logging.getLogger(__name__)
 
 
 class ClientStaffService(BaseService):
@@ -54,6 +57,11 @@ class ClientStaffService(BaseService):
         """Hide internal placeholder emails from API payloads."""
         value = (email or '').strip()
         return '' if value.endswith('@noemail.local') else value
+
+    @staticmethod
+    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
+        logger.exception('ClientStaffService.%s failed: %s', action, exc)
+        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
 
     @staticmethod
     def _resolve_assignment_scope_ids(
@@ -312,7 +320,7 @@ class ClientStaffService(BaseService):
             })
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('list_staff', e)
     
     @classmethod
     def get_staff_detail(cls, user, staff_id: int) -> ServiceResult:
@@ -372,7 +380,7 @@ class ClientStaffService(BaseService):
             return ServiceResult(success=True, data=detail)
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_staff_detail', e)
     
     @classmethod
     def create_staff(cls, user, data: Dict[str, Any]) -> ServiceResult:
@@ -572,7 +580,7 @@ class ClientStaffService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('create_staff', e)
     
     @classmethod
     def update_staff(cls, user, staff_id: int, data: Dict[str, Any]) -> ServiceResult:
@@ -737,7 +745,7 @@ class ClientStaffService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('update_staff', e)
     
     @classmethod
     def toggle_staff_status(cls, user, staff_id: int) -> ServiceResult:
@@ -768,7 +776,7 @@ class ClientStaffService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('toggle_staff_status', e)
     
     @classmethod
     def delete_staff(cls, user, staff_id: int) -> ServiceResult:
@@ -804,7 +812,7 @@ class ClientStaffService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('delete_staff', e)
 
     @classmethod
     def set_temp_password(cls, user, staff_id: int, new_password: str, request=None) -> ServiceResult:
@@ -830,4 +838,4 @@ class ClientStaffService(BaseService):
             return StaffService.set_temp_password(staff.id, new_password, request=request)
 
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('set_temp_password', e)

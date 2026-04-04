@@ -24,6 +24,12 @@ from typing import Dict, Any, Optional, List
 
 logger = logging.getLogger(__name__)
 
+
+def _unexpected_error_response(action: str, exc: Exception) -> Dict[str, Any]:
+    """Return safe error payload while logging full details server-side."""
+    logger.exception('%s failed: %s', action, exc)
+    return {'success': False, 'error': 'An unexpected error occurred. Please try again.'}
+
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -190,7 +196,7 @@ class AdminStaffPermissionService:
             }
             
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return _unexpected_error_response('AdminStaffPermissionService.assign_permissions_to_staff', e)
     
     @classmethod
     def get_user_permissions(cls, user: User) -> List[str]:
@@ -347,8 +353,10 @@ class AdminStaffCreationService:
                     'email_sent': False,
                 }
                 
-        except Exception as e:
+        except ValueError as e:
             return {'success': False, 'error': str(e)}
+        except Exception as e:
+            return _unexpected_error_response('AdminStaffCreationService.create_admin_staff', e)
     
     @classmethod
     def update_admin_staff(
@@ -418,8 +426,10 @@ class AdminStaffCreationService:
                     'message': f'Admin staff "{user.get_full_name()}" updated successfully',
                 }
                 
-        except Exception as e:
+        except ValueError as e:
             return {'success': False, 'error': str(e)}
+        except Exception as e:
+            return _unexpected_error_response('AdminStaffCreationService.update_admin_staff', e)
     
     @classmethod
     def delete_admin_staff(cls, deleted_by: User, staff_id: int) -> Dict[str, Any]:
@@ -456,7 +466,7 @@ class AdminStaffCreationService:
             }
             
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return _unexpected_error_response('AdminStaffCreationService.delete_admin_staff', e)
     
     @classmethod
     def toggle_status(cls, toggled_by: User, staff_id: int) -> Dict[str, Any]:
@@ -553,7 +563,7 @@ class AdminStaffCreationService:
             }
 
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return _unexpected_error_response('AdminStaffCreationService.toggle_status', e)
     
     @classmethod
     def reset_password(cls, reset_by: User, staff_id: int) -> Dict[str, Any]:
@@ -597,7 +607,7 @@ class AdminStaffCreationService:
             }
             
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return _unexpected_error_response('AdminStaffCreationService.reset_password', e)
     
     @classmethod
     def list_admin_staff(cls, user: User) -> Dict[str, Any]:
@@ -664,7 +674,7 @@ class AdminStaffCreationService:
             }
             
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return _unexpected_error_response('AdminStaffCreationService.list_admin_staff', e)
     
     @classmethod
     def get_admin_staff_detail(cls, user: User, staff_id: int) -> Dict[str, Any]:
@@ -711,7 +721,7 @@ class AdminStaffCreationService:
             }
             
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            return _unexpected_error_response('AdminStaffCreationService.get_admin_staff_detail', e)
 
 
 # =============================================================================

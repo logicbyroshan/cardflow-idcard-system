@@ -330,8 +330,8 @@ class AuthService:
             return
         try:
             cache.delete(_auth_fail_cache_key(identifier))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('Failed to clear login-failure cache for identifier=%s: %s', identifier, exc)
 
     @staticmethod
     def authenticate_user(identifier, password, role=None):
@@ -576,7 +576,7 @@ class OTPService:
                     error_message=str(e),
                 )
             except Exception:
-                pass
+                logger.debug('Failed to persist OTP failure EmailLog for %s', email)
             return {
                 'success': False,
                 'message': 'An error occurred. Please try again.'

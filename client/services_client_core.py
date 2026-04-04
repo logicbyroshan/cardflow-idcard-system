@@ -99,6 +99,12 @@ class ClientService(BaseService):
         """Hide internal placeholder emails from API payloads."""
         value = (email or '').strip()
         return '' if value.endswith('@noemail.local') else value
+
+    @staticmethod
+    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
+        """Return a safe error response while retaining full server-side diagnostics."""
+        logger.exception('ClientService.%s failed: %s', action, exc)
+        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
     
     @classmethod
     def create(cls, data: Dict[str, Any], request=None, photo=None) -> ServiceResult:
@@ -276,7 +282,7 @@ class ClientService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('create', e)
     
     @classmethod
     def get(cls, client_id: int, include_permissions: bool = True) -> ServiceResult:
@@ -288,7 +294,7 @@ class ClientService(BaseService):
                 data={'client': cls.serialize(client, include_permissions)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get', e)
     
     @classmethod
     def update(cls, client_id: int, data: Dict[str, Any], photo=None) -> ServiceResult:
@@ -367,7 +373,7 @@ class ClientService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('update', e)
     
     @classmethod
     def _cascade_revoked_permissions(cls, client: Client, revoked_permissions: List[str]) -> None:
@@ -441,7 +447,7 @@ class ClientService(BaseService):
                 message=f'Client "{client_name}" deleted successfully!'
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('delete', e)
     
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
@@ -561,7 +567,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('toggle_status', e)
     
     @classmethod
     def _cascade_deactivate_staff(cls, client: Client) -> int:
@@ -598,7 +604,7 @@ class ClientService(BaseService):
                 data={'clients': clients, 'total': len(clients)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('list_all', e)
     
     @classmethod
     def get_staff(cls, client_id: int) -> ServiceResult:
@@ -654,7 +660,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_staff', e)
 
     @classmethod
     def toggle_client_staff_status(cls, client_id: int, staff_id: int) -> ServiceResult:
@@ -690,7 +696,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('toggle_client_staff_status', e)
     
     @classmethod
     def update_client_staff_permissions(cls, client_id: int, staff_id: int, permissions: dict) -> ServiceResult:
@@ -765,7 +771,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('update_client_staff_permissions', e)
 
     @classmethod
     def set_temp_password(cls, client_id: int, new_password: str, request=None) -> ServiceResult:
@@ -813,4 +819,4 @@ class ClientService(BaseService):
                 data={'email_sent': email_sent}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('set_temp_password', e)
