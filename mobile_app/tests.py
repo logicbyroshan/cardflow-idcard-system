@@ -4,6 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.backends.db import SessionStore
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
@@ -107,6 +108,20 @@ class MobileAppBaseTestCase(TestCase):
 		)
 		self.admin_staff_manage_profile.assigned_clients.add(self.client_profile)
 
+		self.client_staff_user = User.objects.create_user(
+			username='mob-client-staff@test.com',
+			email='mob-client-staff@test.com',
+			password='pass1234',
+			role='client_staff',
+		)
+		self.client_staff_profile = Staff.objects.create(
+			user=self.client_staff_user,
+			staff_type='client_staff',
+			client=self.client_profile,
+			perm_mobile_app=True,
+			perm_idcard_pending_list=True,
+		)
+
 	def _set_mobile_auth_checkpoint(self):
 		session = self.client.session
 		session['mobile_auth_ok'] = True
@@ -131,6 +146,23 @@ class MobileAppBaseTestCase(TestCase):
 	def _login_mobile_client_with_add_perm(self):
 		self.client.login(username='mob-client-add@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_client_staff(self):
+		self.client.login(username='mob-client-staff@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _create_authenticated_session_for_user(self, user, *, surface='desktop', mobile_auth_ok=False, browser_fp=''):
+		session = SessionStore()
+		session['_auth_user_id'] = str(user.pk)
+		session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+		session['_auth_user_hash'] = user.get_session_auth_hash()
+		session['_auth_login_surface'] = surface
+		if browser_fp:
+			session['_auth_browser_fp'] = browser_fp
+		if mobile_auth_ok or surface == 'mobile':
+			session['mobile_auth_ok'] = True
+		session.save()
+		return session.session_key
 
 
 class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
@@ -192,6 +224,60 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertTrue(response.json()['success'])
 		self.assertEqual(self.client.session.get('mobile_auth_ok'), True)
 		mock_log_login.assert_called_once()
+
+	@mock.patch('mobile_app.views.ActivityService.log_login')
+	@mock.patch('mobile_app.views.AuthService.authenticate_user')
+	def test_mobile_login_allows_client_when_desktop_session_exists(self, mock_authenticate, mock_log_login):
+		self._create_authenticated_session_for_user(self.client_user, surface='desktop')
+		mock_authenticate.return_value = {
+			'success': True,
+			'user': self.client_user,
+			'message': 'ok',
+		}
+
+		response = self.client.post(
+			'/app/api/auth/login/',
+			data=json.dumps({'email': 'mob-client@test.com', 'password': 'pass1234'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		mock_log_login.assert_called_once()
+
+	@mock.patch('mobile_app.views.ActivityService.log_login')
+	@mock.patch('mobile_app.views.AuthService.authenticate_user')
+	def test_mobile_login_blocks_client_when_mobile_session_limit_reached(self, mock_authenticate, mock_log_login):
+		self._create_authenticated_session_for_user(self.client_user, surface='mobile', mobile_auth_ok=True)
+		mock_authenticate.return_value = {
+			'success': True,
+			'user': self.client_user,
+			'message': 'ok',
+		}
+
+		response = self.client.post(
+			'/app/api/auth/login/',
+			data=json.dumps({'email': 'mob-client@test.com', 'password': 'pass1234'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('Maximum 1 active mobile login', response.json().get('message', ''))
+		mock_log_login.assert_not_called()
+
+	def test_mobile_login_redirects_to_no_access_when_no_active_client_exists(self):
+		self._login_mobile_super_admin()
+		Client.objects.update(status='inactive')
+
+		home_response = self.client.get('/app/')
+		self.assertEqual(home_response.status_code, 302)
+		self.assertIn('/app/no-access/?reason=no-client-context', home_response.url)
+
+		login_response = self.client.get('/app/login/', follow=True)
+		self.assertGreaterEqual(len(login_response.redirect_chain), 1)
+		self.assertEqual(login_response.redirect_chain[0][0], '/app/no-access/?reason=no-client-context')
+		self.assertEqual(login_response.status_code, 403)
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):
@@ -357,6 +443,20 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 403)
 		self.assertFalse(response.json()['success'])
 		self.assertIn('pool status', response.json().get('message', '').lower())
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_upload_photo_requires_edit_permission_for_client_role(self, mock_validate):
+		self._login_mobile_client()
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('permission', response.json().get('message', '').lower())
+		mock_validate.assert_not_called()
 
 
 class MobileAppManagementApiTests(MobileAppBaseTestCase):
@@ -604,6 +704,27 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.client_profile.save(update_fields=['perm_idcard_client_list'])
 		allowed = self.client.get('/app/staff/')
 		self.assertEqual(allowed.status_code, 200)
+
+	def test_groups_overview_limits_client_staff_to_assigned_groups(self):
+		other_group = IDCardGroup.objects.create(client=self.client_profile, name='Group B')
+		other_table = IDCardTable.objects.create(
+			group=other_group,
+			name='Table B',
+			fields=[{'name': 'NAME', 'type': 'text', 'order': 0}],
+			is_active=True,
+		)
+		IDCard.objects.create(table=other_table, field_data={'NAME': 'Hidden'}, status='pending')
+
+		self.client_staff_profile.assigned_groups.set([self.group])
+		self._login_mobile_client_staff()
+
+		response = self.client.get('/app/groups/')
+		self.assertEqual(response.status_code, 200)
+
+		group_ids = {group.id for group in response.context['groups']}
+		table_ids = {table.id for table in response.context['tables']}
+		self.assertEqual(group_ids, {self.group.id})
+		self.assertEqual(table_ids, {self.table.id})
 
 	def test_staff_api_list_requires_manage_client_permission_for_client_role(self):
 		self._login_mobile_client()

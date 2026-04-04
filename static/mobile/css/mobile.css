@@ -1391,14 +1391,6 @@ body.pwa-v2 .bg-gradient-to-r.from-brand-light.to-brand-dark i[class*='fa-chevro
     color: #1d4ed8 !important;
 }
 
-body.pwa-v2 .pwa-page-topbar a[class*='bg-white/20'],
-body.pwa-v2 .pwa-page-topbar button[class*='bg-white/20'] {
-    background: rgba(255, 255, 255, 0.23) !important;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-}
-
 body.pwa-v2 .pwa-bottom-nav .bg-white {
     background: rgba(255, 255, 255, 0.88) !important;
     border-top: 1px solid rgba(219, 231, 247, 0.8) !important;

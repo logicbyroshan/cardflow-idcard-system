@@ -69,6 +69,16 @@ AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS = int(
 MAX_CONCURRENT_SESSIONS = int(os.getenv('MAX_CONCURRENT_SESSIONS', '5'))
 DEV_LOG_OTP = os.getenv('DEV_LOG_OTP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
+_ROLE_SURFACE_LIMITS = {
+    # One desktop + one mobile for standard staff/client roles.
+    'client': {'desktop': 1, 'mobile': 1},
+    'client_staff': {'desktop': 1, 'mobile': 1},
+    'admin_staff': {'desktop': 1, 'mobile': 1},
+    # Elevated allowance for privileged roles.
+    'super_admin': {'desktop': 3, 'mobile': 3},
+    'pro_user': {'desktop': 10, 'mobile': 10},
+}
+
 
 def _normalize_identifier(value: str) -> str:
     """Normalize user-provided identifiers used for lookups/cache keys."""
@@ -113,6 +123,40 @@ class AuthService:
     @staticmethod
     def max_concurrent_sessions() -> int:
         return max(1, MAX_CONCURRENT_SESSIONS)
+
+    @staticmethod
+    def normalize_login_surface(surface: str) -> str:
+        s = str(surface or '').strip().lower()
+        return 'mobile' if s == 'mobile' else 'desktop'
+
+    @staticmethod
+    def session_surface_from_payload(session_data: dict) -> str:
+        data = session_data or {}
+        explicit = AuthService.normalize_login_surface(data.get('_auth_login_surface'))
+        if explicit == 'mobile':
+            return 'mobile'
+        # Backward compatibility for sessions created before _auth_login_surface.
+        if bool(data.get('mobile_auth_ok')):
+            return 'mobile'
+        return 'desktop'
+
+    @staticmethod
+    def role_surface_limits(user_or_role) -> dict:
+        role = ''
+        if isinstance(user_or_role, str):
+            role = user_or_role.strip().lower()
+        else:
+            role = str(getattr(user_or_role, 'role', '') or '').strip().lower()
+
+        limits = _ROLE_SURFACE_LIMITS.get(role)
+        if limits:
+            return {
+                'desktop': max(1, int(limits.get('desktop', 1))),
+                'mobile': max(1, int(limits.get('mobile', 1))),
+            }
+
+        fallback = max(1, MAX_CONCURRENT_SESSIONS)
+        return {'desktop': fallback, 'mobile': fallback}
 
     @staticmethod
     def count_active_sessions_for_user(user_id, *, exclude_session_key: str = '', stop_after=None) -> int:
@@ -176,6 +220,7 @@ class AuthService:
         active = 0
         has_different_browser = False
         known_browser_fingerprints = set()
+        surface_counts = {'desktop': 0, 'mobile': 0}
         current_fp = str(browser_fingerprint or '').strip()
 
         for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
@@ -191,6 +236,8 @@ class AuthService:
                 continue
 
             active += 1
+            surface = AuthService.session_surface_from_payload(data)
+            surface_counts[surface] = surface_counts.get(surface, 0) + 1
             fp = str(data.get('_auth_browser_fp') or '').strip()
             if fp:
                 known_browser_fingerprints.add(fp)
@@ -204,6 +251,10 @@ class AuthService:
             'count': active,
             'has_different_browser': has_different_browser,
             'known_browser_fingerprints': sorted(known_browser_fingerprints),
+            'surface_counts': {
+                'desktop': int(surface_counts.get('desktop', 0) or 0),
+                'mobile': int(surface_counts.get('mobile', 0) or 0),
+            },
         }
 
     @staticmethod

@@ -260,27 +260,29 @@ class LoginAPIView(View):
                 if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
                     current_session_key = request.session.session_key or ''
 
-                max_sessions = AuthService.max_concurrent_sessions()
+                surface_limits = AuthService.role_surface_limits(user)
+                max_desktop_sessions = int(surface_limits.get('desktop', 1) or 1)
                 session_inspection = AuthService.inspect_active_sessions_for_user(
                     user.id,
                     browser_fingerprint=browser_fingerprint,
                     exclude_session_key=current_session_key,
-                    stop_after=max_sessions + 1,
+                    stop_after=max_desktop_sessions + 1,
                 )
-                active_sessions = int(session_inspection.get('count', 0) or 0)
+                surface_counts = session_inspection.get('surface_counts') or {}
+                active_sessions = int(surface_counts.get('desktop', 0) or 0)
                 has_different_browser_session = bool(session_inspection.get('has_different_browser'))
-                if active_sessions >= max_sessions:
+                if active_sessions >= max_desktop_sessions:
                     logger.warning(
-                        "Login blocked by session limit: user=%s role=%s ip=%s active_sessions=%s limit=%s",
+                        "Login blocked by desktop session limit: user=%s role=%s ip=%s active_desktop_sessions=%s desktop_limit=%s",
                         _mask_login_identifier(identifier),
                         resolved_role,
                         client_ip,
                         active_sessions,
-                        max_sessions,
+                        max_desktop_sessions,
                     )
                     return JsonResponse({
                         'success': False,
-                        'message': f'Maximum {max_sessions} active logins are allowed for this account. Please logout from another browser and try again.'
+                        'message': f'Maximum {max_desktop_sessions} active desktop login(s) are allowed for this account. Please logout from another desktop/browser and try again.'
                     })
 
                 # Log the user in
@@ -289,6 +291,7 @@ class LoginAPIView(View):
                 # Store actual role resolved from user identity (email/username)
                 request.session['selected_role'] = resolved_role
                 request.session['_auth_browser_fp'] = browser_fingerprint
+                request.session['_auth_login_surface'] = 'desktop'
                 
                 # Log activity
                 if user.role in ('client', 'client_staff') and has_different_browser_session:

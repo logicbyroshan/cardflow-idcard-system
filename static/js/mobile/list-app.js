@@ -1382,11 +1382,11 @@ function listApp() {
         },
 
         _statusPhotoBorderClasses(status) {
-            if (status === 'pending') return 'border border-gray-100 border-t-2 border-b-2 border-t-amber-300 border-b-amber-300';
-            if (status === 'verified') return 'border border-gray-100 border-t-2 border-b-2 border-t-green-300 border-b-green-300';
-            if (status === 'approved') return 'border border-gray-100 border-t-2 border-b-2 border-t-blue-300 border-b-blue-300';
-            if (status === 'download') return 'border border-gray-100 border-t-2 border-b-2 border-t-purple-300 border-b-purple-300';
-            return 'border border-gray-200';
+            if (status === 'pending') return 'ring-1 ring-amber-200';
+            if (status === 'verified') return 'ring-1 ring-emerald-200';
+            if (status === 'approved') return 'ring-1 ring-sky-200';
+            if (status === 'download') return 'ring-1 ring-violet-200';
+            return '';
         },
 
         _isPhotoFieldDef(fieldDef) {
@@ -1495,10 +1495,9 @@ function listApp() {
             const el = document.querySelector(`[data-sid="${id}"]`);
             if (!el || el.hasAttribute(':class') || el.hasAttribute('x-bind:class')) return;
             const sel = this.selectedIds.includes(id);
-            el.classList.toggle('bg-indigo-50', sel);
-            el.classList.toggle('border-l-2', sel);
-            el.classList.toggle('border-l-brand-light', sel);
-            el.classList.toggle('hover:bg-gray-50', !sel);
+            el.classList.toggle('ring-2', sel);
+            el.classList.toggle('ring-indigo-300', sel);
+            el.classList.toggle('bg-indigo-100/55', sel);
             const cb = el.querySelector('input[type=checkbox]');
             if (cb) cb.checked = sel;
         },
@@ -1669,13 +1668,7 @@ function listApp() {
         _buildCardDiv(card) {
             const fd = card.field_data || {};
             const photoBorderClass = this._statusPhotoBorderClasses(card.status);
-            const noPhotoToneByStatus = {
-                pending: 'bg-amber-50 text-amber-400',
-                verified: 'bg-green-50 text-green-400',
-                approved: 'bg-blue-50 text-blue-400',
-                download: 'bg-purple-50 text-purple-400',
-            };
-            const noPhotoToneClass = noPhotoToneByStatus[card.status] || 'bg-gray-100 text-gray-300';
+            const noPhotoToneClass = 'bg-gray-100 text-gray-300';
 
             const photoMeta = this._buildPhotoSlotsFromCard(card);
             const photoSlots = photoMeta.slots || [];
@@ -1699,12 +1692,12 @@ function listApp() {
                 .join('');
 
             const classPill = (card.class_name || card.section)
-                ? `<span class="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5 w-fit"><i class="fa-solid fa-graduation-cap text-[8px]"></i>${this._escHtml(card.class_name || '')}${card.class_name && card.section ? ' &bull; ' : ''}${this._escHtml(card.section || '')}</span>`
+                ? `<span class="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-700 bg-indigo-200/70 rounded-lg px-2 py-0.5 w-fit"><i class="fa-solid fa-graduation-cap text-[8px]"></i>${this._escHtml(card.class_name || '')}${card.class_name && card.section ? ' &bull; ' : ''}${this._escHtml(card.section || '')}</span>`
                 : '';
 
             const nameHtml = card.name
                 ? `<p class="font-bold text-gray-800 leading-tight" style="font-size:14px;">${this._escHtml(card.name)}</p>`
-                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;"></p>`;
+                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;"> - </p>`;
 
             const cbHtml = !IS_VIEW_ONLY
                 ? `<label class="custom-checkbox custom-checkbox-lg dyn-cb" style="cursor:pointer;"><input type="checkbox"><span class="checkmark"></span></label>`
@@ -1716,8 +1709,12 @@ function listApp() {
 
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
-            div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md';
-            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div>${editButtonHtml}</div></div>`;
+            div.className = 'm-pop-card rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md';
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:minmax(0, 42%) minmax(0, 58%);">${fieldRows}</div></div>${editButtonHtml}</div></div>`;
+
+            if (!IS_VIEW_ONLY && this.selectedIds.includes(Number(card.id))) {
+                div.classList.add('ring-2', 'ring-indigo-300', 'bg-indigo-100/55');
+            }
 
             const editButton = div.querySelector('.js-edit-card');
             if (editButton) {
@@ -1731,6 +1728,7 @@ function listApp() {
             if (!IS_VIEW_ONLY) {
                 const cb = div.querySelector('input[type=checkbox]');
                 if (cb) {
+                    cb.checked = this.selectedIds.includes(Number(card.id));
                     cb.addEventListener('change', (e) => { e.stopPropagation(); this.toggleSelect(card.id); });
                     cb.closest('label').addEventListener('click', e => e.stopPropagation());
                 }

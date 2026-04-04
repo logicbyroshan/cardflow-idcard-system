@@ -231,6 +231,11 @@ def _client_ctx(user):
     return client, perms
 
 
+def _mobile_no_client_redirect():
+    """Single redirect target when mobile session has no client context."""
+    return redirect('/app/no-access/?reason=no-client-context')
+
+
 def _can_manage_clients_surface(user):
     """Return True when user can use Manage Client actions."""
     return PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
@@ -690,6 +695,9 @@ def mobile_login(request):
             return redirect('/panel/auth/logout/?next=/app/login/')
         # Separate mobile auth flow: do not auto-enter app unless mobile auth checkpoint passed.
         if request.session.get('mobile_auth_ok') and PermissionService.has(user, 'perm_mobile_app'):
+            client, _ = _client_ctx(user)
+            if client is None:
+                return _mobile_no_client_redirect()
             return redirect('/app/')
     return render(request, 'mobile_app/login.html')
 
@@ -698,8 +706,20 @@ def mobile_login(request):
 def mobile_no_access(request):
     """Show explicit mobile permission-required page."""
     user = request.user if request.user.is_authenticated else None
+    reason = str(request.GET.get('reason') or '').strip().lower()
+
+    title = 'Access Not Enabled'
+    message = 'Mobile app access has not been enabled for your account. Please contact your administrator.'
+
+    if reason == 'no-client-context':
+        title = 'No Active Client Context'
+        message = 'Your account is signed in, but no active client is assigned. Please contact your administrator to assign an active client.'
+
     return render(request, 'mobile_app/no_access.html', {
         'user_name': (user.get_full_name() or user.username) if user else '',
+        'reason': reason,
+        'no_access_title': title,
+        'no_access_message': message,
     }, status=403)
 
 
@@ -742,8 +762,31 @@ def api_mobile_login(request):
                 'message': 'Mobile app access is disabled for your account. Please contact admin/owner.',
             }, status=403)
 
+        browser_fingerprint = AuthService.browser_fingerprint_from_request(request)
+        current_session_key = ''
+        if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
+            current_session_key = request.session.session_key or ''
+
+        surface_limits = AuthService.role_surface_limits(user)
+        max_mobile_sessions = int(surface_limits.get('mobile', 1) or 1)
+        session_inspection = AuthService.inspect_active_sessions_for_user(
+            user.id,
+            browser_fingerprint=browser_fingerprint,
+            exclude_session_key=current_session_key,
+            stop_after=max_mobile_sessions + 1,
+        )
+        surface_counts = session_inspection.get('surface_counts') or {}
+        active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
+        if active_mobile_sessions >= max_mobile_sessions:
+            return JsonResponse({
+                'success': False,
+                'message': f'Maximum {max_mobile_sessions} active mobile login(s) are allowed for this account. Please logout from another mobile device and try again.',
+            }, status=200)
+
         auth_login(request, user)
         request.session['selected_role'] = getattr(user, 'role', '')
+        request.session['_auth_browser_fp'] = browser_fingerprint
+        request.session['_auth_login_surface'] = 'mobile'
         request.session['mobile_auth_ok'] = True
         ActivityService.log_login(request, user)
         return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
@@ -917,7 +960,7 @@ def home(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/app/login/')
+        return _mobile_no_client_redirect()
 
     # ── Compute accessible_ids ONCE for the entire view ──────────────────
     # Avoids 4+ redundant M2M queries for admin_staff users.
@@ -2448,6 +2491,9 @@ def api_upload_photo(request, table_id):
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
 
+    if not PermissionService.has(request.user, 'perm_idcard_edit'):
+        return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
+
     _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
     if not _ok:
         return JsonResponse({'success': False, 'message': _err}, status=400)
@@ -2808,18 +2854,35 @@ def groups_overview(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/app/login/')
+        return _mobile_no_client_redirect()
 
-    groups = IDCardGroup.objects.filter(client=client).annotate(
-        table_count=Count('tables'),
-        total_cards=Count('tables__id_cards'),
-        pending_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='pending')),
-        verified_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='verified')),
-        approved_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='approved')),
-        download_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='download')),
+    tables = IDCardTable.objects.filter(group__client=client).select_related('group')
+
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+            if assigned_table_ids and assigned_group_ids:
+                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+            elif assigned_table_ids:
+                tables = tables.filter(id__in=assigned_table_ids)
+            elif assigned_group_ids:
+                tables = tables.filter(group_id__in=assigned_group_ids)
+
+    scoped_table_ids = tables.values('id')
+    scoped_group_ids = tables.values('group_id')
+
+    groups = IDCardGroup.objects.filter(id__in=scoped_group_ids).annotate(
+        table_count=Count('tables', filter=Q(tables__id__in=scoped_table_ids), distinct=True),
+        total_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids)),
+        pending_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='pending')),
+        verified_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='verified')),
+        approved_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='approved')),
+        download_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='download')),
     ).order_by('name')
 
-    tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
+    tables = tables.annotate(
         total_cards=Count('id_cards'),
         pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
         verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),

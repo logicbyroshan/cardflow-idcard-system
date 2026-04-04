@@ -1,6 +1,7 @@
 <!-- Card List Area - Takes ALL remaining space -->
 <div class="flex-1 overflow-hidden">
-    <div id="students-scroll" class="h-full overflow-y-auto px-3 pt-0 pb-3 space-y-2.5" style="padding-bottom:90px;">
+    <div id="students-scroll" class="h-full overflow-y-auto px-3 pt-0 pb-3 space-y-2.5"
+         x-bind:style="selectedIds.length > 0 ? 'padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 132px);' : 'padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 96px);'">
 
         {% if not view_only_list %}
         <!-- Select All bar -->

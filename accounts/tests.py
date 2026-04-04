@@ -193,13 +193,16 @@ class LoginViewTests(TestCase):
     def tearDown(self):
         cache.clear()
 
-    def _create_authenticated_session(self, browser_fp=''):
+    def _create_authenticated_session(self, browser_fp='', surface='desktop', mobile_auth_ok=False):
         session = SessionStore()
         session['_auth_user_id'] = str(self.user.pk)
         session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
         session['_auth_user_hash'] = self.user.get_session_auth_hash()
         if browser_fp:
             session['_auth_browser_fp'] = browser_fp
+        session['_auth_login_surface'] = surface
+        if mobile_auth_ok or surface == 'mobile':
+            session['mobile_auth_ok'] = True
         session.save()
 
     def test_login_page_loads(self):
@@ -235,8 +238,7 @@ class LoginViewTests(TestCase):
         self.assertTrue(data['success'])
 
     def test_login_api_blocks_when_concurrent_sessions_reach_limit(self):
-        for _ in range(5):
-            self._create_authenticated_session()
+        self._create_authenticated_session(surface='desktop')
 
         response = self.client.post(
             '/panel/api/auth/login/',
@@ -250,7 +252,69 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload['success'])
-        self.assertIn('Maximum 5 active logins', payload['message'])
+        self.assertIn('Maximum 1 active desktop login', payload['message'])
+
+    def test_login_api_allows_super_admin_up_to_three_desktop_sessions(self):
+        super_admin = User.objects.create_user(
+            username='sa-limit@example.com',
+            email='sa-limit@example.com',
+            password='testpass123',
+            role='super_admin',
+        )
+
+        for _ in range(3):
+            session = SessionStore()
+            session['_auth_user_id'] = str(super_admin.pk)
+            session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+            session['_auth_user_hash'] = super_admin.get_session_auth_hash()
+            session['_auth_login_surface'] = 'desktop'
+            session.save()
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'sa-limit@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.25',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('Maximum 3 active desktop login', payload['message'])
+
+    def test_login_api_allows_pro_user_up_to_ten_desktop_sessions(self):
+        pro_user = User.objects.create_user(
+            username='pro-limit@example.com',
+            email='pro-limit@example.com',
+            password='testpass123',
+            role='pro_user',
+        )
+
+        for _ in range(10):
+            session = SessionStore()
+            session['_auth_user_id'] = str(pro_user.pk)
+            session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+            session['_auth_user_hash'] = pro_user.get_session_auth_hash()
+            session['_auth_login_surface'] = 'desktop'
+            session.save()
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'pro-limit@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.26',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('Maximum 10 active desktop login', payload['message'])
 
     def test_login_api_logs_cross_browser_activity_for_client(self):
         from accounts.services import AuthService
@@ -259,7 +323,11 @@ class LoginViewTests(TestCase):
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0',
             'en-US',
         )
-        self._create_authenticated_session(browser_fp=existing_fp)
+        self._create_authenticated_session(
+            browser_fp=existing_fp,
+            surface='mobile',
+            mobile_auth_ok=True,
+        )
 
         response = self.client.post(
             '/panel/api/auth/login/',

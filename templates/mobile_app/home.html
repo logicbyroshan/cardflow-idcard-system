@@ -115,7 +115,7 @@
                             </span>
                             <span class="text-[11px] font-semibold text-gray-700">Notifications</span>
                         </button>
-                        {% if is_client %}
+                        {% if is_client and perm_idcard_client_list %}
                         <a href="{% url 'mobile_app:staff_manage' %}"
                            class="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-2.5 py-2 active:scale-[0.98] transition-transform">
                             <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]">
