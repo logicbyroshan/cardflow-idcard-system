@@ -149,6 +149,8 @@ class ExportService:
             staff = getattr(self.user, 'staff_profile', None)
             if staff and staff.client:
                 cards = cards.filter(table__group__client=staff.client)
+                from core.views.idcard_helpers import _apply_client_staff_row_scope
+                cards = _apply_client_staff_row_scope(cards, self.user, table)
             else:
                 cards = cards.none()
         

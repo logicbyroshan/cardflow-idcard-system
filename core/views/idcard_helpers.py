@@ -376,8 +376,27 @@ def _apply_client_staff_row_scope(qs, user, table):
     if allowed_classes:
         if not class_field:
             return qs.none()
+        from core.utils.field_utils import normalize_class_value
+
         qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField()))
-        qs = qs.filter(_scope_cls__in=allowed_classes)
+        normalized_allowed = {
+            normalize_class_value(value)
+            for value in allowed_classes
+            if normalize_class_value(value)
+        }
+        if not normalized_allowed:
+            return qs.none()
+
+        raw_values = list(
+            qs.exclude(_scope_cls__isnull=True)
+            .exclude(_scope_cls='')
+            .values_list('_scope_cls', flat=True)
+            .distinct()
+        )
+        matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
+        if not matching_raw:
+            return qs.none()
+        qs = qs.filter(_scope_cls__in=matching_raw)
 
     if allowed_sections:
         if not section_field:

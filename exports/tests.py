@@ -210,6 +210,129 @@ class ExportViewHelperTests(TestCase):
         ids = _get_card_ids_from_request(request, table_id=self.table.id)
         self.assertEqual(ids, [matched.id])
 
+    def test_get_card_ids_fallback_respects_client_staff_row_scope(self):
+        from client.models import Client
+        from idcards.models import IDCard
+        from staff.models import Staff
+        from exports.views import _get_card_ids_from_request
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table).delete()
+        allowed = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'Allowed', 'CLASS': 'KG-I'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'Blocked', 'CLASS': 'KG-II'},
+            status='pending',
+        )
+
+        staff_user = User.objects.create_user(
+            username='export-cs-scope@test.com',
+            email='export-cs-scope@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        # Keep parent client profile present and active.
+        Client.objects.filter(pk=self.client_obj.pk).update(status='active')
+        Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            assigned_table_ids=[self.table.id],
+            allowed_classes=['KG1'],
+            perm_idcard_bulk_download=True,
+            perm_idcard_pending_list=True,
+        )
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+        )
+        request.user = staff_user
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(ids, [allowed.id])
+
+    def test_get_card_ids_fallback_ignores_date_range_for_non_download_status(self):
+        from exports.views import _get_card_ids_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({
+                'status': 'pending',
+                'from': '2099-01-01T00:00:00',
+                'to': '2099-12-31T23:59:59',
+            }),
+            content_type='application/json',
+        )
+        request.user = self.admin
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(len(ids), 5)
+
+    def test_get_all_card_ids_ignores_date_range_for_non_download_status(self):
+        from core.services import IDCardService
+
+        result = IDCardService.get_all_card_ids(
+            self.table.id,
+            status_filter='pending',
+            from_date='2099-01-01T00:00:00',
+            to_date='2099-12-31T23:59:59',
+        )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data.get('total_count'), 5)
+
+    def test_get_card_ids_fallback_respects_image_filter(self):
+        from idcards.models import IDCard
+        from exports.views import _get_card_ids_from_request
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'image', 'order': 2},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table).delete()
+        complete = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'A', 'PHOTO': 'clients_imgs/a.jpg'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'B', 'PHOTO': 'PENDING:upload'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'C', 'PHOTO': 'NOT_FOUND'},
+            status='pending',
+        )
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({
+                'status': 'pending',
+                'image_column': 'PHOTO',
+                'image_condition': 'complete',
+            }),
+            content_type='application/json',
+        )
+        request.user = self.admin
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(ids, [complete.id])
+
     def test_get_image_rename_options_filters_invalid_pairs(self):
         from exports.views import _get_image_rename_options_from_request
 
@@ -298,6 +421,41 @@ class ExportServiceAdvancedTests(TestCase):
 
         self.assertEqual(cards_for_table1.count(), 2)
         self.assertEqual(cards_for_table2.count(), 0)
+
+    def test_get_scoped_cards_client_staff_respects_table_row_scope(self):
+        from exports.services import ExportService
+        from staff.models import Staff
+        from idcards.models import IDCard
+
+        self.table1.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+        ]
+        self.table1.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table1).delete()
+        keep = IDCard.objects.create(table=self.table1, field_data={'NAME': 'A', 'CLASS': 'KG-I'}, status='pending')
+        IDCard.objects.create(table=self.table1, field_data={'NAME': 'B', 'CLASS': 'KG-II'}, status='pending')
+
+        cs_user = User.objects.create_user(
+            username='svc-clientstaff@test.com',
+            email='svc-clientstaff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=cs_user,
+            staff_type='client_staff',
+            client=self.client1,
+            assigned_table_ids=[self.table1.id],
+            allowed_classes=['KG1'],
+            perm_idcard_bulk_download=True,
+            perm_idcard_pending_list=True,
+        )
+
+        service = ExportService(cs_user)
+        cards = list(service.get_scoped_cards(self.table1).values_list('id', flat=True))
+        self.assertEqual(cards, [keep.id])
 
     def test_prepare_context_permission_denied_when_no_bulk_download(self):
         from exports.services import ExportService
@@ -541,7 +699,13 @@ class ExportDeepLimitAndRoleTests(TestCase):
         )
         self.client_obj = Client.objects.create(user=self.client_user, name='Deep Client')
         self.client_obj.perm_idcard_bulk_download = True
-        self.client_obj.save(update_fields=['perm_idcard_bulk_download'])
+        self.client_obj.perm_idcard_approved_list = True
+        self.client_obj.perm_idcard_download_list = True
+        self.client_obj.save(update_fields=[
+            'perm_idcard_bulk_download',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+        ])
 
         self.admin_staff_user = User.objects.create_user(
             username='deep-adminstaff@test.com',
@@ -567,6 +731,8 @@ class ExportDeepLimitAndRoleTests(TestCase):
             staff_type='client_staff',
             client=self.client_obj,
             perm_idcard_bulk_download=True,
+            perm_idcard_approved_list=True,
+            perm_idcard_download_list=True,
         )
 
         group = IDCardGroup.objects.create(client=self.client_obj, name='Deep Group')
@@ -583,6 +749,56 @@ class ExportDeepLimitAndRoleTests(TestCase):
             field_data={'NAME': 'Student A', 'PHOTO': 'clients_imgs/deep/photo_a.jpg'},
             status='pending',
         )
+
+    def test_export_pdf_requires_status_list_permission(self):
+        from idcards.models import IDCard
+
+        self.client.login(username='deep-adminstaff@test.com', password='pass1234')
+        card_id = IDCard.objects.filter(table=self.table).values_list('id', flat=True).first()
+
+        response = self.client.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'card_ids': [card_id], 'status': 'pending'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_export_pdf_client_staff_blocked_for_unassigned_table(self):
+        from idcards.models import IDCard, IDCardGroup, IDCardTable
+        from staff.models import Staff
+
+        other_group = IDCardGroup.objects.create(client=self.client_obj, name='Other Group')
+        other_table = IDCardTable.objects.create(
+            group=other_group,
+            name='Other Table',
+            fields=[{'name': 'NAME', 'type': 'text', 'order': 1}],
+        )
+        IDCard.objects.create(table=other_table, field_data={'NAME': 'X'}, status='pending')
+
+        restricted_user = User.objects.create_user(
+            username='deep-restricted-staff@test.com',
+            email='deep-restricted-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=restricted_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            assigned_table_ids=[other_table.id],
+            perm_idcard_bulk_download=True,
+            perm_idcard_pending_list=True,
+        )
+
+        self.client.logout()
+        self.client.login(username='deep-restricted-staff@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def _mock_file_response(self):
         return type('Res', (), {'success': True, 'response': HttpResponse(b'ok')})

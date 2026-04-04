@@ -574,23 +574,24 @@ class IDCardCardService(BaseService):
                 elif image_condition == 'incomplete':
                     cards_query = cards_query.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
 
-            # DateTime range filter (download list)
-            if from_date:
-                try:
-                    from django.utils.dateparse import parse_datetime
-                    dt = parse_datetime(from_date)
-                    if dt:
-                        cards_query = cards_query.filter(downloaded_at__gte=dt)
-                except (ValueError, TypeError):
-                    pass
-            if to_date:
-                try:
-                    from django.utils.dateparse import parse_datetime
-                    dt = parse_datetime(to_date)
-                    if dt:
-                        cards_query = cards_query.filter(downloaded_at__lte=dt)
-                except (ValueError, TypeError):
-                    pass
+            # DateTime range filter applies only to download status.
+            if status_filter == 'download' and (from_date or to_date):
+                if from_date:
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        dt = parse_datetime(from_date)
+                        if dt:
+                            cards_query = cards_query.filter(downloaded_at__gte=dt)
+                    except (ValueError, TypeError):
+                        pass
+                if to_date:
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        dt = parse_datetime(to_date)
+                        if dt:
+                            cards_query = cards_query.filter(downloaded_at__lte=dt)
+                    except (ValueError, TypeError):
+                        pass
 
             card_ids = list(cards_query.order_by('-id').values_list('id', flat=True)[:MAX_CARD_IDS])
 
