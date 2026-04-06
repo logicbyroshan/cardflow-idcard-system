@@ -187,7 +187,7 @@ def website_dashboard(request):
     logo_filter = Q(website_logo__isnull=False) & ~Q(website_logo='')
     client_agg = PanelClient.objects.aggregate(
         total=Count('id', filter=logo_filter),
-        active=Count('id', filter=logo_filter & Q(status='active')),
+        active=Count('id', filter=logo_filter & Q(website_is_visible=True)),
     )
     context['total_clients'] = client_agg['total']
     context['active_clients'] = client_agg['active']
@@ -237,13 +237,19 @@ def clients_page(request):
     """Website client logo management page (uses main Client records)."""
     context = _get_base_context(request, 'clients')
 
-    status_filter = (request.GET.get('status', '') or '').strip().lower()
-    if status_filter not in ('active', 'inactive', 'suspended'):
-        status_filter = ''
+    visibility_filter = (
+        request.GET.get('visibility', '')
+        or request.GET.get('status', '')
+        or ''
+    ).strip().lower()
+    if visibility_filter not in ('visible', 'hidden'):
+        visibility_filter = ''
 
     clients_qs = PanelClient.objects.select_related('user').all().order_by('name', 'id')
-    if status_filter:
-        clients_qs = clients_qs.filter(status=status_filter)
+    if visibility_filter == 'visible':
+        clients_qs = clients_qs.filter(website_is_visible=True)
+    elif visibility_filter == 'hidden':
+        clients_qs = clients_qs.filter(website_is_visible=False)
 
     per_page_options = [10, 25, 50, 100]
     default_per_page = 25
@@ -266,7 +272,8 @@ def clients_page(request):
         page_end = 0
 
     context['clients_list'] = page_obj.object_list
-    context['current_status'] = status_filter
+    context['current_visibility'] = visibility_filter
+    context['current_status'] = visibility_filter
     context['page_obj'] = page_obj
     context['per_page'] = per_page
     context['per_page_options'] = per_page_options
@@ -441,6 +448,8 @@ def api_client_list(request):
         'id': c.id,
         'name': c.name,
         'logo': c.website_logo.url if c.website_logo else None,
+        'website_is_visible': bool(c.website_is_visible),
+        'website_visibility_display': 'Visible' if c.website_is_visible else 'Hidden',
         'status': c.status,
         'status_display': c.get_status_display(),
         'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else '',
@@ -472,6 +481,8 @@ def api_client_get(request, pk):
             'id': c.id,
             'name': c.name,
             'logo': c.website_logo.url if c.website_logo else None,
+            'website_is_visible': bool(c.website_is_visible),
+            'website_visibility_display': 'Visible' if c.website_is_visible else 'Hidden',
             'status': c.status,
             'status_display': c.get_status_display(),
         }
@@ -485,16 +496,25 @@ def api_client_update(request, pk):
     try:
         logo = request.FILES.get('logo')
         remove_logo = _parse_bool(request.POST.get('remove_logo', 'false'))
+        visibility_raw = request.POST.get('website_is_visible', None)
+        website_is_visible = None
+        if visibility_raw is not None and str(visibility_raw).strip() != '':
+            website_is_visible = _parse_bool(visibility_raw)
 
-        if logo is None and not remove_logo:
-            return JsonResponse({'success': False, 'message': 'Please select a logo to upload.'}, status=400)
+        if logo is None and not remove_logo and website_is_visible is None:
+            return JsonResponse({'success': False, 'message': 'No changes submitted.'}, status=400)
 
-        WebsiteClientLogoService.update_logo(pk, logo=logo, remove_logo=remove_logo)
+        WebsiteClientLogoService.update_logo(
+            pk,
+            logo=logo,
+            remove_logo=remove_logo,
+            website_is_visible=website_is_visible,
+        )
     except ValidationError as e:
         return JsonResponse({'success': False, 'message': e.message}, status=400)
     except Http404:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
-    return JsonResponse({'success': True, 'message': 'Client logo updated'})
+    return JsonResponse({'success': True, 'message': 'Client settings updated'})
 
 
 @require_POST

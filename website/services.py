@@ -13,6 +13,7 @@ import logging
 import uuid
 
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from client.models import Client as PanelClient
@@ -188,10 +189,11 @@ class WebsiteClientLogoService:
         return get_object_or_404(PanelClient.objects.select_related('user'), pk=pk)
 
     @staticmethod
-    def update_logo(pk, *, logo=None, remove_logo=False):
+    def update_logo(pk, *, logo=None, remove_logo=False, website_is_visible=None):
         _validate_image_upload(logo, 'logo')
         with transaction.atomic():
             client = get_object_or_404(PanelClient, pk=pk)
+            dirty = False
 
             if remove_logo and client.website_logo:
                 try:
@@ -199,6 +201,7 @@ class WebsiteClientLogoService:
                 except Exception:
                     logger.warning("Failed deleting previous client logo for client %d", pk)
                 client.website_logo = None
+                dirty = True
 
             if logo is not None:
                 if client.website_logo:
@@ -207,8 +210,17 @@ class WebsiteClientLogoService:
                     except Exception:
                         logger.warning("Failed deleting previous client logo for client %d", pk)
                 client.website_logo = logo
+                dirty = True
 
-            client.save()
+            if website_is_visible is not None and client.website_is_visible != bool(website_is_visible):
+                client.website_is_visible = bool(website_is_visible)
+                dirty = True
+
+            if dirty:
+                client.save()
+
+        if dirty:
+            cache.delete('home_sections')
         return client
 
 

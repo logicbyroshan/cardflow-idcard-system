@@ -84,6 +84,11 @@ class Client(models.Model):
         null=True,
         help_text='Logo used on website trusted clients section and client portal UI.',
     )
+    website_is_visible = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text='Controls visibility on public website trusted clients section.',
+    )
     # DEPRECATED: photo field removed - use frontend placeholder avatars instead
     # photo field removed in Phase 1 refactor
     

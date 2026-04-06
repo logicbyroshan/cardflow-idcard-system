@@ -356,14 +356,29 @@ def api_print_reprint_overview(request):
         base_qs = Client.objects.all()
         accessible_clients = PermissionService.get_accessible_clients(user, base_qs)
 
-        # Keep print workflow clients alphabetical, but order reprint by latest update first.
-        print_clients_qs = accessible_clients.order_by('name')[:limit]
-        reprint_clients_qs = accessible_clients.annotate(
-            latest_reprint_update=Max(
-                'id_card_groups__tables__reprint_requests__updated_at',
-                filter=Q(id_card_groups__tables__reprint_requests__status__in=['requested', 'confirmed'])
+        # Order print clients by latest generate-list activity, then newest client.
+        print_clients_qs = accessible_clients.annotate(
+            latest_generate_update=Max(
+                'id_card_groups__tables__print_requests__updated_at',
+                filter=Q(id_card_groups__tables__print_requests__status='generate_list')
             )
-        ).order_by(F('latest_reprint_update').desc(nulls_last=True), 'name')[:limit]
+        ).order_by(
+            F('latest_generate_update').desc(nulls_last=True),
+            F('created_at').desc(nulls_last=True),
+            F('id').desc(),
+        )[:limit]
+
+        # Order reprint clients by latest request-list activity, then newest client.
+        reprint_clients_qs = accessible_clients.annotate(
+            latest_request_update=Max(
+                'id_card_groups__tables__reprint_requests__updated_at',
+                filter=Q(id_card_groups__tables__reprint_requests__status='requested')
+            )
+        ).order_by(
+            F('latest_request_update').desc(nulls_last=True),
+            F('created_at').desc(nulls_last=True),
+            F('id').desc(),
+        )[:limit]
 
         print_clients_list = list(print_clients_qs)
         reprint_clients_list = list(reprint_clients_qs)
@@ -382,10 +397,11 @@ def api_print_reprint_overview(request):
         # ── Print counts per table ───────────────────────────────────
         print_table_qs = PrintRequest.objects.filter(
             table__group__client_id__in=client_ids
-        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+        ).values('table__id', 'table__name', 'table__group__client_id', 'table__created_at').annotate(
             generate_list=Count('id', filter=Q(status='generate_list')),
             finalized=Count('id', filter=Q(status='finalized')),
             pool=Count('id', filter=Q(status='pool')),
+            latest_generate_update=Max('updated_at', filter=Q(status='generate_list')),
         ).order_by('table__id')
         print_tables_map = {}
         for t in print_table_qs:
@@ -398,7 +414,20 @@ def api_print_reprint_overview(request):
                 'generate_list': t['generate_list'],
                 'finalized': t['finalized'],
                 'pool': t['pool'],
+                'latest_generate_update': t.get('latest_generate_update'),
+                'table_created_at': t.get('table__created_at'),
             })
+
+        for cid, tables in print_tables_map.items():
+            tables.sort(
+                key=lambda x: (
+                    x.get('latest_generate_update') is not None,
+                    x.get('latest_generate_update') or x.get('table_created_at'),
+                    x.get('table_created_at'),
+                    x.get('id') or 0,
+                ),
+                reverse=True,
+            )
 
         # ── Reprint source counts per client (Download cards only) ─
         reprint_source_qs = IDCard.objects.filter(
@@ -423,7 +452,7 @@ def api_print_reprint_overview(request):
         reprint_source_table_qs = IDCard.objects.filter(
             table__group__client_id__in=client_ids,
             status='download',
-        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+        ).values('table__id', 'table__name', 'table__group__client_id', 'table__created_at').annotate(
             download_list=Count('id')
         ).order_by('table__id')
         reprint_source_table_map = {}
@@ -437,16 +466,18 @@ def api_print_reprint_overview(request):
                 'download_list': t['download_list'],
                 'requested': 0,
                 'confirmed': 0,
+                'latest_update': None,
+                'table_created_at': t.get('table__created_at'),
             }
 
         # ── Reprint request/confirmed counts per table ───────────────
         reprint_table_qs = ReprintRequest.objects.filter(
             table__group__client_id__in=client_ids,
             card__status='download',
-        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+        ).values('table__id', 'table__name', 'table__group__client_id', 'table__created_at').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
-            latest_update=Max('updated_at', filter=Q(status__in=['requested', 'confirmed'])),
+            latest_update=Max('updated_at', filter=Q(status='requested')),
         ).order_by('table__id')
 
         for t in reprint_table_qs:
@@ -460,15 +491,27 @@ def api_print_reprint_overview(request):
                     'download_list': 0,
                     'requested': 0,
                     'confirmed': 0,
+                    'latest_update': None,
+                    'table_created_at': t.get('table__created_at'),
                 }
             reprint_source_table_map[cid][t['table__id']]['requested'] = t['requested']
             reprint_source_table_map[cid][t['table__id']]['confirmed'] = t['confirmed']
             reprint_source_table_map[cid][t['table__id']]['latest_update'] = t['latest_update']
+            if not reprint_source_table_map[cid][t['table__id']].get('table_created_at'):
+                reprint_source_table_map[cid][t['table__id']]['table_created_at'] = t.get('table__created_at')
 
         reprint_tables_map = {}
         for cid, table_map in reprint_source_table_map.items():
             tables = list(table_map.values())
-            tables.sort(key=lambda x: (x.get('latest_update') is not None, x.get('latest_update')), reverse=True)
+            tables.sort(
+                key=lambda x: (
+                    x.get('latest_update') is not None,
+                    x.get('latest_update') or x.get('table_created_at'),
+                    x.get('table_created_at'),
+                    x.get('id') or 0,
+                ),
+                reverse=True,
+            )
             reprint_tables_map[cid] = tables
 
         # Total requested should represent all accessible clients, not just the limited list.
@@ -491,7 +534,16 @@ def api_print_reprint_overview(request):
                 'generate_list': pc.get('generate_list', 0),
                 'finalized': pc.get('finalized', 0),
                 'pool': pc.get('pool', 0),
-                'tables': print_tables_map.get(c.id, []),
+                'tables': [
+                    {
+                        'id': t['id'],
+                        'name': t['name'],
+                        'generate_list': t['generate_list'],
+                        'finalized': t['finalized'],
+                        'pool': t['pool'],
+                    }
+                    for t in print_tables_map.get(c.id, [])
+                ],
             })
 
 
@@ -506,7 +558,16 @@ def api_print_reprint_overview(request):
                 'reprint_list': source.get('download_list', 0),
                 'requested': rc.get('requested', 0),
                 'confirmed': rc.get('confirmed', 0),
-                'tables': reprint_tables_map.get(c.id, []),
+                'tables': [
+                    {
+                        'id': t['id'],
+                        'name': t['name'],
+                        'download_list': t.get('download_list', 0),
+                        'requested': t.get('requested', 0),
+                        'confirmed': t.get('confirmed', 0),
+                    }
+                    for t in reprint_tables_map.get(c.id, [])
+                ],
             })
 
         payload = {

@@ -25,7 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
-from django.db.models import Count, Q, Max, CharField
+from django.db.models import Count, Q, Max, CharField, F
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
 from django.utils.dateparse import parse_date, parse_datetime
@@ -1107,22 +1107,28 @@ def home(request):
     ctx.update({'recent_activities': _recent_acts, 'has_new_activity': bool(_recent_acts)})
 
     # ── Recent Clients section ──────────────────────────────────────────────
-    # For admins: show top 8 active clients ordered by most-recently updated card.
+    # For admins: mirror desktop dashboard ordering for recent clients.
     # For client / client_staff: show the single client's groups as "clients".
     recent_client_updates = []
     try:
         if _is_admin:
             from client.models import Client as ClientModel
-            # Clients that have cards, ordered by most recent card update
+
+            base_qs = ClientModel.objects.all()
             clients_qs = (
-                ClientModel.objects
-                .filter(status='active')
-                .annotate(last_update=Max('id_card_groups__tables__id_cards__updated_at'))
-                .filter(last_update__isnull=False)
-                .order_by('-last_update')
+                PermissionService.get_accessible_clients(user, base_qs)
+                .annotate(
+                    latest_approved=Max(
+                        'id_card_groups__tables__id_cards__updated_at',
+                        filter=Q(id_card_groups__tables__id_cards__status='approved'),
+                    )
+                )
+                .order_by(
+                    F('latest_approved').desc(nulls_last=True),
+                    F('created_at').desc(nulls_last=True),
+                    F('id').desc(),
+                )
             )
-            if accessible_ids is not None:
-                clients_qs = clients_qs.filter(id__in=accessible_ids)
             client_list = list(clients_qs[:10])
             client_ids = [c.id for c in client_list]
 
@@ -1271,15 +1277,20 @@ def home(request):
         if _is_admin:
             from client.models import Client as ClientModel
 
+            base_qs = ClientModel.objects.all()
             clients_qs = (
-                ClientModel.objects
-                .filter(status='active')
-                .annotate(last_reprint_update=Max('id_card_groups__tables__reprint_requests__updated_at'))
-                .filter(last_reprint_update__isnull=False)
-                .order_by('-last_reprint_update')
+                PermissionService.get_accessible_clients(user, base_qs)
+                .annotate(
+                    latest_reprint_update=Max(
+                        'id_card_groups__tables__reprint_requests__updated_at',
+                        filter=Q(id_card_groups__tables__reprint_requests__status__in=['requested', 'confirmed']),
+                    )
+                )
+                .order_by(
+                    F('latest_reprint_update').desc(nulls_last=True),
+                    'name',
+                )
             )
-            if accessible_ids is not None:
-                clients_qs = clients_qs.filter(id__in=accessible_ids)
 
             client_list = list(clients_qs[:10])
             client_ids = [c.id for c in client_list]

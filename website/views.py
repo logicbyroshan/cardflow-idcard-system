@@ -80,7 +80,7 @@ def home(request):
         home_sections = {
             'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
             'trusted_clients': list(
-                PanelClient.objects.filter(status='active')
+                PanelClient.objects.filter(website_is_visible=True)
                 .exclude(website_logo__isnull=True)
                 .exclude(website_logo='')
                 .order_by('name', 'id')

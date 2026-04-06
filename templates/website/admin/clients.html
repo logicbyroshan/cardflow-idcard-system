@@ -34,7 +34,7 @@
     min-width: 0;
   }
 
-  .client-logo-thumb {
+    .client-logo-thumb {
     width: 40px;
     height: 40px;
     border-radius: 6px;
@@ -95,56 +95,67 @@
     font-weight: 600;
   }
 
-  .client-status-select {
-    min-width: 104px;
-    height: 30px;
-    padding: 4px 8px;
-    font-size: 11.5px;
-    border-radius: 4px;
-  }
+    .client-visibility-select {
+        min-width: 150px;
+        height: 30px;
+        padding: 4px 8px;
+        font-size: 11.5px;
+        border-radius: 4px;
+    }
 
-  .client-status-select.status-active {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
-    color: #166534;
-  }
+    .client-visibility-select.status-visible {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+    }
 
-  .client-status-select.status-inactive {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-    color: #475569;
-  }
+    .client-visibility-select.status-hidden {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+    }
 
-    .client-status-pill {
+    .client-logo-action-block {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .client-logo-action-preview {
+        width: 108px;
+        height: 54px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 92px;
-        height: 28px;
-        border-radius: 4px;
-        font-size: 11.5px;
-        font-weight: 600;
-        border: 1px solid #cbd5e1;
-        color: #475569;
-        background: #f8fafc;
+        overflow: hidden;
+        flex-shrink: 0;
     }
 
-    .client-status-pill.status-active {
-        border-color: #bbf7d0;
-        color: #166534;
-        background: #f0fdf4;
+    .client-logo-action-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #fff;
+        padding: 4px;
     }
 
-    .client-status-pill.status-inactive {
-        border-color: #cbd5e1;
-        color: #475569;
-        background: #f8fafc;
+    .client-logo-action-preview span {
+        font-size: 11px;
+        color: #64748b;
     }
 
-    .client-status-pill.status-suspended {
-        border-color: #fecaca;
-        color: #b91c1c;
-        background: #fef2f2;
+    .client-logo-action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .client-logo-action-buttons .btn {
+        min-width: 118px;
+        justify-content: center;
     }
 
     .client-logo-preview {
@@ -209,10 +220,9 @@
     <div class="notif-actions-bar">
         <div class="notif-actions-left">
             <select id="clientStatusFilter" class="form-select form-select-sm" onchange="onClientStatusFilterChange(this.value)">
-                <option value="" {% if not current_status %}selected{% endif %}>All Statuses</option>
-                <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
-                <option value="inactive" {% if current_status == 'inactive' %}selected{% endif %}>Inactive</option>
-                <option value="suspended" {% if current_status == 'suspended' %}selected{% endif %}>Suspended</option>
+                <option value="" {% if not current_visibility %}selected{% endif %}>All Visibility</option>
+                <option value="visible" {% if current_visibility == 'visible' %}selected{% endif %}>Visible on Landing</option>
+                <option value="hidden" {% if current_visibility == 'hidden' %}selected{% endif %}>Hidden from Landing</option>
             </select>
             <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.location.reload()">
                 <i class="fa-solid fa-rotate-right"></i> Refresh
@@ -224,17 +234,15 @@
     <div class="notif-table-wrap">
         <table class="notif-table" id="clientsTable">
             <colgroup>
-                <col style="width: 46%;">
-                <col style="width: 16%;">
-                <col style="width: 18%;">
-                <col style="width: 20%;">
+                <col style="width: 36%;">
+                <col style="width: 24%;">
+                <col style="width: 40%;">
             </colgroup>
             <thead>
                 <tr>
                     <th>Client</th>
-                    <th>Order</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>Website Visibility</th>
+                    <th>Logo Actions</th>
                 </tr>
             </thead>
             <tbody id="clientsBody">
@@ -249,25 +257,52 @@
                             {% endif %}
                             <div class="client-main">
                                 <strong>{{ c.name }}</strong>
-                                <span>Partner</span>
                             </div>
                         </div>
                     </td>
-                    <td><span class="client-order">{{ page_start|add:forloop.counter0 }}</span></td>
                     <td>
-                        <span class="client-status-pill status-{{ c.status }}">{{ c.get_status_display }}</span>
+                        {% if is_super_admin or perm_website_edit %}
+                        <select
+                            class="form-select form-select-sm client-visibility-select status-{% if c.website_is_visible %}visible{% else %}hidden{% endif %}"
+                            onchange="setClientWebsiteVisibility({{ c.id }}, this.value, this)">
+                            <option value="visible" {% if c.website_is_visible %}selected{% endif %}>Visible on Landing</option>
+                            <option value="hidden" {% if not c.website_is_visible %}selected{% endif %}>Hidden from Landing</option>
+                        </select>
+                        {% else %}
+                        <span class="client-order">{% if c.website_is_visible %}Visible{% else %}Hidden{% endif %}</span>
+                        {% endif %}
                     </td>
                     <td>
-                        <div class="notif-actions-cell">
-                            {% if is_super_admin or perm_website_edit %}
-                            <button class="btn btn-icon" title="Update Logo" onclick="editClient({{ c.id }})"><i class="fa-solid fa-image"></i></button>
-                            {% endif %}
+                        <div class="client-logo-action-block">
+                            <div class="client-logo-action-preview">
+                                {% if c.website_logo %}
+                                <img src="{{ c.website_logo.url }}" alt="{{ c.name }} logo">
+                                {% else %}
+                                <span>No Logo</span>
+                                {% endif %}
+                            </div>
+                            <div class="client-logo-action-buttons">
+                                {% if is_super_admin or perm_website_edit %}
+                                    {% if c.website_logo %}
+                                    <button class="btn btn-sm btn-outline-primary" type="button" onclick="openUploadClientLogo({{ c.id }})">
+                                        <i class="fa-solid fa-upload"></i> Upload New
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" type="button" onclick="removeClientLogo({{ c.id }}, '{{ c.name|escapejs }}')">
+                                        <i class="fa-solid fa-trash"></i> Remove
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-primary" type="button" onclick="openUploadClientLogo({{ c.id }})">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Logo
+                                    </button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
                         </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr class="notif-table-empty">
-                    <td colspan="4">
+                    <td colspan="3">
                         <div class="empty-state">
                             <i class="fa-solid fa-building-slash"></i>
                             <p>No Clients Added</p>
@@ -327,7 +362,7 @@
                 <input type="text" id="cl_name" name="name" readonly>
             </div>
             <div class="wa-form-group">
-                <label for="cl_status">Status</label>
+                <label for="cl_status">Panel Status</label>
                 <input type="text" id="cl_status" readonly>
             </div>
             <div class="wa-form-group">
@@ -340,15 +375,9 @@
                 <label for="cl_logo">Logo</label>
                 <input type="file" id="cl_logo" name="logo" accept="image/*">
             </div>
-            <div class="wa-form-group">
-                <label class="wa-toggle-label">
-                    <input type="checkbox" id="cl_remove_logo" name="remove_logo" value="true">
-                    <span>Remove current logo</span>
-                </label>
-            </div>
             <div class="wa-modal-footer">
                 <button type="button" class="btn btn-neutral" onclick="closeClientModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Upload</button>
             </div>
         </form>
     </div>
@@ -361,8 +390,9 @@ function onClientStatusFilterChange(status) {
     const url = new URL(window.location.href);
     const params = url.searchParams;
     if (status) {
-        params.set('status', status);
+        params.set('visibility', status);
     } else {
+        params.delete('visibility');
         params.delete('status');
     }
     params.set('page', '1');
@@ -384,5 +414,5 @@ function goClientPage(page) {
     window.location.search = url.searchParams.toString();
 }
 </script>
-<script src="{% static 'js/website-admin/clients.js' %}?v=136"></script>
+<script src="{% static 'js/website-admin/clients.js' %}?v=137"></script>
 {% endblock %}
