@@ -862,6 +862,13 @@ function initReprintPickerHandlers() {
     }
 
     function setInlineEditMode(enabled) {
+        if (enabled && isClientEditLockedStatus()) {
+            if (typeof showToast === 'function') {
+                showToast('Editing is locked in this status. Reprint request will be sent without edits.', 'info');
+            }
+            enabled = false;
+        }
+
         inlineEditMode = !!enabled;
         // Keep confirm modal as the only active editor layer.
         if (inlineEditMode) {
@@ -945,6 +952,17 @@ function initReprintPickerHandlers() {
                 if (data && data.success) return data.card || null;
                 throw new Error((data && data.message) || 'Could not upload image');
             });
+    }
+
+    function isClientEditLockedStatus() {
+        if (!window.IS_CLIENT_USER) return false;
+
+        var currentStatus = String(typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '').toLowerCase();
+        var lockedStatuses = Array.isArray(window.CLIENT_READONLY_STATUSES)
+            ? window.CLIENT_READONLY_STATUSES.map(function(v) { return String(v || '').toLowerCase(); })
+            : ['pool', 'approved', 'download', 'reprint'];
+
+        return lockedStatuses.indexOf(currentStatus) !== -1;
     }
 
     function updateSelectionUi() {
@@ -1085,8 +1103,12 @@ function initReprintPickerHandlers() {
         var submitPromise;
         if (inlineEditMode) {
             if (inlineDirtyCount > 0) {
-                submitPromise = updateCardInline(cardId, collectInlineFieldData(cardId))
-                    .then(function() { return ApiClient.post(endpoints.requestCreate, { card_ids: ids }); });
+                if (isClientEditLockedStatus()) {
+                    submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
+                } else {
+                    submitPromise = updateCardInline(cardId, collectInlineFieldData(cardId))
+                        .then(function() { return ApiClient.post(endpoints.requestCreate, { card_ids: ids }); });
+                }
             } else {
                 submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
             }
@@ -1113,8 +1135,9 @@ function initReprintPickerHandlers() {
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Could not create reprint request', 'error');
                 }
             })
-            .catch(function() {
-                if (typeof showToast === 'function') showToast('Could not create reprint request', 'error');
+            .catch(function(err) {
+                var msg = (err && err.data && err.data.message) || (err && err.message) || 'Could not create reprint request';
+                if (typeof showToast === 'function') showToast(msg, 'error');
             })
             .finally(function() {
                 inlineSaveInFlight = false;
