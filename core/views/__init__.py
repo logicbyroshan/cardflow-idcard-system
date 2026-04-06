@@ -7,6 +7,7 @@ from .base import (
     adarsh_cropper,
     login_as_user_page,
     pro_user_activity_logs_page,
+    pro_user_activity_logs_detail_page,
     dashboard,
     api_global_search,
     api_dashboard_card_stats,

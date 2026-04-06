@@ -75,6 +75,7 @@ urlpatterns = [
 
     # Deep User History (Pro User only)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
+    path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
     # Engine installer download (served via Django so headers are correct)
     path('engine/download/', views.engine_download, name='engine_download'),

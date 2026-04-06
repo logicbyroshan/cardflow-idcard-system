@@ -4,7 +4,7 @@ Split from base.py for maintainability.
 """
 import logging
 from django.core.cache import cache
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -80,6 +80,26 @@ def pro_user_activity_logs_page(request):
         'user_role': get_user_role(request.user),
     }
     return render(request, 'pro_user/user-deep-history.html', context)
+
+
+@login_required
+def pro_user_activity_logs_detail_page(request, user_id):
+    """Dedicated detail page for a selected user's deep history (Pro User only)."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+
+    target_user = get_object_or_404(User, id=user_id)
+    context = {
+        'active_page': 'pro_user_activity_logs',
+        'user_role': get_user_role(request.user),
+        'audit_target': {
+            'id': target_user.id,
+            'name': (target_user.get_full_name() or target_user.username or target_user.email or f'User {target_user.id}').strip(),
+            'email_or_username': target_user.email or target_user.username or '-',
+            'role_display': target_user.get_role_display() if hasattr(target_user, 'get_role_display') else (target_user.role or '-'),
+        },
+    }
+    return render(request, 'pro_user/user-deep-history-detail.html', context)
 
 
 # Dashboard

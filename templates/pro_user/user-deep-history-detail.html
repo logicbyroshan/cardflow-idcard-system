@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}User Deep History - Adarsh ID Cards{% endblock %}
+{% block title %}{{ audit_target.name }} Deep History - Adarsh ID Cards{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -10,111 +10,8 @@
     100% { background-position: -200% 0; }
   }
   .audit-page { padding: 16px 20px; }
-  .audit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-  .audit-pill {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1px solid var(--border-color, #e0e0e0);
-    background: transparent;
-    color: var(--text-secondary, #666);
-    transition: all 0.15s;
-  }
-  .audit-pill:hover, .audit-pill.active {
-    color: #fff;
-    border-color: var(--primary, #667eea);
-    background: var(--primary, #667eea);
-  }
-  .audit-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 10px;
-    margin-top: 16px;
-  }
-  .audit-user-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: #fff;
-    border: 1px solid var(--border-color, #e0e0e0);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .audit-user-card:hover,
-  .audit-user-card.active {
-    background: var(--bg-selected, rgba(102,126,234,0.06));
-    border-color: var(--primary, #667eea);
-    box-shadow: 0 2px 8px rgba(102,126,234,0.12);
-  }
-  .audit-avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-  .audit-user-main { flex: 1; min-width: 0; }
-  .audit-user-name {
-    color: var(--text-primary, #2c3e50);
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .audit-user-email {
-    color: var(--text-secondary, #666);
-    font-size: 11px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-  .audit-role {
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-  }
-  .audit-role.r-super_admin  { background: #ede9fe; color: #6d28d9; }
-  .audit-role.r-admin_staff  { background: #fef3c7; color: #d97706; }
-  .audit-role.r-client       { background: #d1fae5; color: #065f46; }
-  .audit-role.r-client_staff { background: #dbeafe; color: #1e40af; }
-  .audit-role.r-pro_user     { background: #fee2e2; color: #be123c; }
-  .audit-open-btn {
-    display: none;
-    padding: 4px 10px;
-    border-radius: 4px;
-    background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    border: none;
-  }
-  .audit-user-card:hover .audit-open-btn,
-  .audit-user-card.active .audit-open-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .audit-user-card:hover .audit-role,
-  .audit-user-card.active .audit-role {
-    display: none;
-  }
   .audit-history {
-    margin-top: 16px;
+    margin-top: 12px;
     background: #fff;
     border: 1px solid var(--border-color, #e0e0e0);
     border-radius: 10px;
@@ -145,7 +42,7 @@
   }
   .audit-stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
   .audit-stat-value { font-size: 18px; font-weight: 700; color: #1e293b; line-height: 1.2; }
-  .audit-log-list { max-height: 520px; overflow-y: auto; }
+  .audit-log-list { max-height: 70vh; overflow-y: auto; }
   .audit-log-item {
     display: grid;
     grid-template-columns: 42px 1fr;
@@ -215,7 +112,10 @@
   .audit-loader-line.short { width: 46%; margin-bottom: 0; }
   @media (max-width: 768px) {
     .audit-page { padding: 12px; }
-    .audit-grid { grid-template-columns: 1fr; }
+    .audit-history-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 </style>
 {% endblock %}
@@ -223,7 +123,9 @@
 {% block breadcrumb %}
 <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-<span class="breadcrumb-item active">User Deep History</span>
+<a href="{% url 'pro_user_activity_logs' %}" class="breadcrumb-item">User Deep History</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">{{ audit_target.name }}</span>
 {% endblock %}
 
 {% block topbar_right %}
@@ -233,37 +135,29 @@
 {% endblock %}
 
 {% block content %}
-<div class="audit-page">
+<div class="audit-page" id="auditDetailRoot"
+     data-user-id="{{ audit_target.id }}"
+     data-user-name="{{ audit_target.name }}"
+     data-user-role="{{ audit_target.role_display }}"
+     data-user-contact="{{ audit_target.email_or_username }}">
 
   <div class="action-bar">
     <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
-      <div class="search-box" style="max-width:320px;">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-        <input type="text" id="auditSearch" class="search-input" placeholder="Search by name, email, username, role..." oninput="__auditFilter()" autocomplete="off">
-      </div>
-      <div class="audit-pills" id="auditPills">
-        <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All</button>
-        <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User</button>
-        <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin</button>
-        <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Admin Staff</button>
-        <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client</button>
-        <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Client Staff</button>
-      </div>
+      <a href="{% url 'pro_user_activity_logs' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left"></i> Back To Users
+      </a>
+      <div style="font-size:14px;font-weight:700;color:#1f2937;">{{ audit_target.name }} - Deep History</div>
     </div>
     <div class="action-right">
-      <span style="font-size:12px;color:var(--text-muted,#888);" id="auditCount">-</span>
+      <span style="font-size:12px;color:var(--text-muted,#888);">{{ audit_target.role_display }}</span>
     </div>
   </div>
 
-  <div id="auditUserGrid" class="audit-grid">
-    <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
-  </div>
-
-  <div id="auditHistory" class="audit-history" style="display:none;">
+  <div id="auditHistory" class="audit-history">
     <div class="audit-history-head">
       <div>
-        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:#1f2937;">User History</div>
-        <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
+        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:#1f2937;">{{ audit_target.name }} - Deep History</div>
+        <div id="auditSelectedMeta" class="audit-user-meta">{{ audit_target.role_display }} | {{ audit_target.email_or_username }}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <select id="auditActionFilter" class="form-select form-select-sm" onchange="__auditReloadHistory()">
@@ -296,14 +190,16 @@
 {% block extra_js %}
 <script>
 (function() {
-  var _users = [];
-  var _role = 'all';
-  var _text = '';
-  var _selectedUser = null;
   var _historyOffset = 0;
   var _historyLimit = 50;
   var _hasMore = false;
-  var COLORS = { pro_user:'#e11d48', super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var root = document.getElementById('auditDetailRoot');
+  var _selectedUser = {
+    id: Number(root && root.dataset ? root.dataset.userId : 0),
+    name: root && root.dataset ? (root.dataset.userName || 'User') : 'User',
+    roleDisplay: root && root.dataset ? (root.dataset.userRole || '-') : '-',
+    contact: root && root.dataset ? (root.dataset.userContact || '-') : '-'
+  };
 
   function _csrf() {
     return document.querySelector('meta[name="csrf-token"]')?.content
@@ -317,29 +213,19 @@
     return d.innerHTML;
   }
 
-  function _roleClass(role) {
-    return 'r-' + String(role || '').toLowerCase();
+  function _renderHistoryLoading() {
+    var h = '';
+    for (var i = 0; i < 4; i += 1) {
+      h += '<div class="audit-loader-row">'
+        + '<div class="audit-skeleton audit-loader-icon"></div>'
+        + '<div>'
+        + '<div class="audit-skeleton audit-loader-line"></div>'
+        + '<div class="audit-skeleton audit-loader-line short"></div>'
+        + '</div>'
+        + '</div>';
+    }
+    document.getElementById('auditLogList').innerHTML = h;
   }
-
-  function _detailPageUrl(userId) {
-    return '/panel/pro-user/activity-logs/' + encodeURIComponent(String(userId)) + '/';
-  }
-
-  window.__auditLoadUsers = function() {
-    fetch('/panel/api/auth/user-audit/users/', { headers: { 'X-CSRFToken': _csrf() } })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (!data.success) {
-          document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>' + _esc(data.message || 'Failed to load users') + '</div></div>';
-          return;
-        }
-        _users = data.users || [];
-        __auditRenderUsers();
-      })
-      .catch(function() {
-        document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>Network error while loading users.</div></div>';
-      });
-  };
 
   window.__auditLoadActions = function() {
     fetch('/panel/api/auth/user-audit/actions/', { headers: { 'X-CSRFToken': _csrf() } })
@@ -358,75 +244,7 @@
       .catch(function() {});
   };
 
-  window.__auditFilter = function() {
-    _text = document.getElementById('auditSearch').value || '';
-    __auditRenderUsers();
-  };
-
-  window.__auditSetRole = function(role, btn) {
-    _role = role;
-    document.querySelectorAll('.audit-pill').forEach(function(p) { p.classList.remove('active'); });
-    if (btn) btn.classList.add('active');
-    __auditRenderUsers();
-  };
-
-  window.__auditRenderUsers = function() {
-    var list = _users.filter(function(u) {
-      if (_role !== 'all' && u.role !== _role) return false;
-      if (_text) {
-        var q = _text.toLowerCase();
-        return (String(u.name || '').toLowerCase().indexOf(q) !== -1)
-          || (String(u.email || '').toLowerCase().indexOf(q) !== -1)
-          || (String(u.username || '').toLowerCase().indexOf(q) !== -1)
-          || (String(u.role_display || '').toLowerCase().indexOf(q) !== -1);
-      }
-      return true;
-    });
-    document.getElementById('auditCount').textContent = list.length + ' user' + (list.length === 1 ? '' : 's');
-
-    if (!list.length) {
-      document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-users-slash"></i><div>No users found</div></div>';
-      return;
-    }
-
-    var html = '';
-    list.forEach(function(u) {
-      var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
-      var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
-      var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:#fecaca;color:#b91c1c;background:#fef2f2;">Inactive</span>';
-      html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
-        + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || '#64748b') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
-        + '<div class="audit-user-main">'
-        + '<div class="audit-user-name">' + _esc(u.name) + inactive + '</div>'
-        + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
-        + '</div>'
-        + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(u.role_display) + '</span>'
-        + '<button class="audit-open-btn"><i class="fa-solid fa-timeline"></i> Open</button>'
-        + '</div>';
-    });
-    document.getElementById('auditUserGrid').innerHTML = html;
-  };
-
-  function _renderHistoryLoading() {
-    var h = '';
-    for (var i = 0; i < 4; i += 1) {
-      h += '<div class="audit-loader-row">'
-        + '<div class="audit-skeleton audit-loader-icon"></div>'
-        + '<div>'
-        + '<div class="audit-skeleton audit-loader-line"></div>'
-        + '<div class="audit-skeleton audit-loader-line short"></div>'
-        + '</div>'
-        + '</div>';
-    }
-    document.getElementById('auditLogList').innerHTML = h;
-  }
-
-  window.__auditSelectUser = function(userId) {
-    window.location.href = _detailPageUrl(userId);
-  };
-
   window.__auditReloadHistory = function() {
-    if (!_selectedUser) return;
     _historyOffset = 0;
     _hasMore = false;
     _renderHistoryLoading();
@@ -434,12 +252,12 @@
   };
 
   window.__auditLoadMore = function() {
-    if (!_selectedUser || !_hasMore) return;
+    if (!_selectedUser.id || !_hasMore) return;
     __auditFetchHistory(false);
   };
 
   window.__auditFetchHistory = function(reset) {
-    if (!_selectedUser) return;
+    if (!_selectedUser.id) return;
     var action = document.getElementById('auditActionFilter').value || '';
     var url = '/panel/api/auth/user-audit/history/?user_id=' + encodeURIComponent(_selectedUser.id)
       + '&limit=' + encodeURIComponent(_historyLimit)
@@ -503,9 +321,9 @@
       });
   };
 
-  // Bootstrap only after global handlers are assigned.
-  window.__auditLoadUsers();
+  _renderHistoryLoading();
   window.__auditLoadActions();
+  window.__auditFetchHistory(true);
 })();
 </script>
 {% endblock %}
