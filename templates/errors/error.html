@@ -6,16 +6,17 @@
     <title>{{ status_code }} {{ title }}</title>
     <style>
         :root {
-            --bg-a: #f5f7ff;
-            --bg-b: #eef8ff;
-            --card: #ffffff;
-            --text: #0f172a;
+            --bg-a: #f0f5ff;
+            --bg-b: #f9fbff;
+            --ink: #0f172a;
             --muted: #475569;
-            --border: #dbe4ff;
-            --primary: #0f766e;
-            --primary-hover: #115e59;
-            --ghost: #ffffff;
+            --panel: rgba(255, 255, 255, 0.9);
+            --panel-border: rgba(148, 163, 184, 0.32);
+            --brand-a: #0a92dd;
+            --brand-b: #056fb6;
+            --ghost: #f8fafc;
             --ghost-border: #cbd5e1;
+            --glow: rgba(10, 146, 221, 0.28);
         }
 
         * {
@@ -25,51 +26,131 @@
         body {
             margin: 0;
             min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 24px;
-            background:
-                radial-gradient(circle at 10% 10%, #dbeafe 0, transparent 35%),
-                radial-gradient(circle at 90% 80%, #d1fae5 0, transparent 35%),
-                linear-gradient(135deg, var(--bg-a), var(--bg-b));
-            color: var(--text);
+            padding: 30px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--ink);
             font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            background:
+                radial-gradient(circle at 12% 16%, #dbeafe 0, transparent 42%),
+                radial-gradient(circle at 85% 82%, #bae6fd 0, transparent 42%),
+                linear-gradient(130deg, var(--bg-a), var(--bg-b));
+        }
+
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            pointer-events: none;
+            border-radius: 999px;
+            filter: blur(6px);
+            z-index: 0;
+        }
+
+        body::before {
+            width: 300px;
+            height: 300px;
+            left: -90px;
+            top: -70px;
+            background: rgba(56, 189, 248, 0.35);
+        }
+
+        body::after {
+            width: 260px;
+            height: 260px;
+            right: -80px;
+            bottom: -80px;
+            background: rgba(125, 211, 252, 0.28);
+        }
+
+        .error-shell {
+            width: 100%;
+            max-width: 760px;
+            position: relative;
+            z-index: 1;
         }
 
         .error-card {
-            width: 100%;
-            max-width: 680px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 28px;
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+            background: var(--panel);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow:
+                0 30px 80px rgba(15, 23, 42, 0.16),
+                0 0 0 8px rgba(255, 255, 255, 0.18);
+        }
+
+        .top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
         }
 
         .code {
             display: inline-block;
             font-size: 13px;
             font-weight: 700;
-            letter-spacing: 0.08em;
-            color: var(--primary);
-            background: #ecfeff;
-            border: 1px solid #99f6e4;
+            letter-spacing: 0.1em;
+            color: #075985;
+            background: #e0f2fe;
+            border: 1px solid #7dd3fc;
             border-radius: 999px;
-            padding: 6px 12px;
+            padding: 7px 14px;
             text-transform: uppercase;
         }
 
+        .pulse {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--brand-a), var(--brand-b));
+            box-shadow: 0 0 0 0 var(--glow);
+            animation: pulse 2.1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 var(--glow); }
+            70% { box-shadow: 0 0 0 16px rgba(10, 146, 221, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(10, 146, 221, 0); }
+        }
+
         h1 {
-            margin: 14px 0 10px;
-            font-size: clamp(28px, 4vw, 36px);
-            line-height: 1.2;
+            margin: 8px 0 8px;
+            font-size: clamp(30px, 4vw, 42px);
+            line-height: 1.14;
+            letter-spacing: -0.02em;
         }
 
         p {
             margin: 0;
             color: var(--muted);
-            font-size: 16px;
+            font-size: 17px;
             line-height: 1.6;
+        }
+
+        .status-stack {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 12px;
+            padding: 11px 12px;
+            font-size: 13px;
+            color: #334155;
+        }
+
+        .status-item strong {
+            color: #0f172a;
         }
 
         .actions {
@@ -81,30 +162,34 @@
 
         .btn {
             text-decoration: none;
-            border-radius: 10px;
-            padding: 10px 16px;
-            font-weight: 600;
+            border-radius: 12px;
+            padding: 11px 18px;
+            font-weight: 700;
             font-size: 14px;
             border: 1px solid transparent;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
         }
 
         .btn-primary {
             color: #fff;
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+            box-shadow: 0 12px 24px rgba(14, 116, 209, 0.28);
         }
 
         .btn-primary:hover {
-            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 16px 28px rgba(14, 116, 209, 0.34);
         }
 
         .btn-secondary {
-            color: var(--text);
+            color: var(--ink);
             background: var(--ghost);
             border-color: var(--ghost-border);
         }
 
         .btn-secondary:hover {
-            background: #f8fafc;
+            background: #ffffff;
+            transform: translateY(-1px);
         }
 
         .help-note {
@@ -112,20 +197,55 @@
             font-size: 13px;
             color: #64748b;
         }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 16px;
+            }
+
+            .error-card {
+                border-radius: 18px;
+                padding: 22px;
+            }
+
+            p {
+                font-size: 15px;
+            }
+
+            .status-stack {
+                grid-template-columns: 1fr;
+            }
+
+            .btn {
+                flex: 1 1 100%;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
-    <main class="error-card">
-        <span class="code">Error {{ status_code }}</span>
-        <h1>{{ heading }}</h1>
-        <p>{{ message }}</p>
+    <main class="error-shell">
+        <section class="error-card">
+            <div class="top-row">
+                <span class="code">Error {{ status_code }}</span>
+                <span class="pulse" aria-hidden="true"></span>
+            </div>
 
-        <div class="actions">
-            <a class="btn btn-primary" href="{{ home_url }}">Go to Home</a>
-            <a class="btn btn-secondary" href="javascript:history.back()">Go Back</a>
-        </div>
+            <h1>{{ heading }}</h1>
+            <p>{{ message }}</p>
 
-        <p class="help-note">If the issue continues, please contact your administrator.</p>
+            <div class="status-stack" aria-hidden="true">
+                <div class="status-item"><strong>Status:</strong> {{ status_code }}</div>
+                <div class="status-item"><strong>Scope:</strong> Request Routing</div>
+            </div>
+
+            <div class="actions">
+                <a class="btn btn-primary" href="{{ home_url }}">Go to Home</a>
+                <a class="btn btn-secondary" href="javascript:history.back()">Go Back</a>
+            </div>
+
+            <p class="help-note">If the issue continues, please contact your administrator.</p>
+        </section>
     </main>
 </body>
 </html>

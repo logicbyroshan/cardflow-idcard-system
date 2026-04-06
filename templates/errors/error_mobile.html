@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0A92DD">
+    <title>{{ status_code }} {{ title }} - Mobile</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
+    <style>
+        :root {
+            --brand-a: #0a92dd;
+            --brand-b: #056fb6;
+        }
+
+        body {
+            min-height: 100dvh;
+            margin: 0;
+            font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            background:
+                radial-gradient(circle at 18% 14%, rgba(56, 189, 248, 0.25) 0, transparent 38%),
+                radial-gradient(circle at 84% 86%, rgba(125, 211, 252, 0.2) 0, transparent 35%),
+                linear-gradient(160deg, #eff6ff, #f8fbff);
+        }
+
+        .mobile-shell {
+            max-width: 430px;
+            margin: 0 auto;
+            min-height: 100dvh;
+            padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mobile-card {
+            width: 100%;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(148, 163, 184, 0.26);
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.15);
+            padding: 22px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid #7dd3fc;
+            background: #e0f2fe;
+            color: #075985;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 7px 11px;
+        }
+
+        .error-title {
+            margin: 14px 0 6px;
+            color: #0f172a;
+            font-size: clamp(28px, 9vw, 34px);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        .error-message {
+            margin: 0;
+            color: #475569;
+            font-size: 15px;
+            line-height: 1.55;
+        }
+
+        .meta-row {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #334155;
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+
+        .actions {
+            margin-top: 18px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .btn {
+            text-decoration: none;
+            border-radius: 14px;
+            border: 1px solid transparent;
+            text-align: center;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .btn-primary {
+            color: #fff;
+            background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+            box-shadow: 0 12px 24px rgba(14, 116, 209, 0.28);
+        }
+
+        .btn-secondary {
+            color: #0f172a;
+            background: #ffffff;
+            border-color: #cbd5e1;
+        }
+
+        .help-note {
+            margin: 14px 0 0;
+            color: #64748b;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <main class="mobile-shell">
+        <section class="mobile-card">
+            <span class="badge"><i class="fa-solid fa-triangle-exclamation"></i> Error {{ status_code }}</span>
+            <h1 class="error-title">{{ heading }}</h1>
+            <p class="error-message">{{ message }}</p>
+
+            <div class="meta-row" aria-hidden="true">
+                <span class="meta-pill">Mobile App</span>
+                <span class="meta-pill">Status {{ status_code }}</span>
+            </div>
+
+            <div class="actions">
+                <a class="btn btn-primary" href="{{ home_url }}">Go to Home</a>
+                <a class="btn btn-secondary" href="javascript:history.back()">Go Back</a>
+            </div>
+
+            <p class="help-note">If this keeps happening, please try again in a moment.</p>
+        </section>
+    </main>
+</body>
+</html>

@@ -32,10 +32,21 @@ def _resolve_home_url(request) -> str:
     return '/'
 
 
+def _is_mobile_app_error(request) -> bool:
+    """Return True when the failing request belongs to the mobile app surface."""
+    path = str(getattr(request, 'path', '') or '')
+    if path.startswith('/app/'):
+        return True
+
+    urlconf = str(getattr(request, 'urlconf', '') or '')
+    return urlconf.endswith('mobile_app.urls')
+
+
 def _render_error(request, *, status_code: int, title: str, heading: str, message: str):
+    template_name = 'errors/error_mobile.html' if _is_mobile_app_error(request) else 'errors/error.html'
     return render(
         request,
-        'errors/error.html',
+        template_name,
         {
             'status_code': status_code,
             'title': title,

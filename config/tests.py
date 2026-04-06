@@ -122,3 +122,16 @@ class CustomErrorPageTests(TestCase):
         response = error_404(request, Exception('missing'))
         self.assertEqual(response.status_code, 404)
         self.assertIn('href="/"', response.content.decode('utf-8'))
+
+    def test_custom_404_uses_mobile_template_for_app_path(self):
+        from core.views.errors import error_404
+
+        request = self._build_request_with_session('/app/missing-page/')
+        request.user = AnonymousUser()
+
+        response = error_404(request, Exception('missing'))
+        body = response.content.decode('utf-8')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('Mobile App', body)
+        self.assertIn('Error 404', body)
