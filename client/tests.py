@@ -618,6 +618,61 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(group_payload['tables'][0]['id'], table_a.id)
         self.assertEqual(group_payload['tables'][0]['card_count'], 1)
 
+    def test_reprint_history_includes_requested_for_inactive_table(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-history@test.com',
+            email='dash-owner-reprint-history@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint History Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Reprint Group')
+        table = IDCardTable.objects.create(group=group, name='Reprint Table', fields=[])
+        table.is_active = False
+        table.save(update_fields=['is_active'])
+
+        card = IDCard.objects.create(table=table, status='download', field_data={'NAME': 'Student One'})
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        result = ClientDashboardService.get_reprint_history(owner)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(len(result.data['items']), 1)
+        self.assertEqual(result.data['items'][0]['status'], 'requested')
+
+    def test_reprint_stats_count_requested_items(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-stats@test.com',
+            email='dash-owner-reprint-stats@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Stats Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Stats Group')
+        table = IDCardTable.objects.create(group=group, name='Stats Table', fields=[])
+
+        card_requested = IDCard.objects.create(table=table, status='download', field_data={'NAME': 'Requested'})
+        card_confirmed = IDCard.objects.create(table=table, status='download', field_data={'NAME': 'Confirmed'})
+
+        ReprintRequest.objects.create(table=table, card=card_requested, status='requested')
+        ReprintRequest.objects.create(table=table, card=card_confirmed, status='confirmed')
+
+        result = ClientDashboardService.get_reprint_stats(owner)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['reprint_requested'], 1)
+        self.assertEqual(result.data['reprint_confirmed'], 1)
+        self.assertEqual(result.data['reprint_total'], 2)
+
 
 class ClientImageServiceTests(TestCase):
     def setUp(self):

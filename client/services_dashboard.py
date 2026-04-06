@@ -276,7 +276,7 @@ class ClientDashboardService(BaseService):
         
         Returns:
         - total_cards: Total ID cards across all tables
-        - reprint_count: Total reprint requests (confirmed + downloaded)
+        - reprint_count: Total reprint requests (requested + confirmed + downloaded)
         - recent_reprints: Last 10 reprint requests with card details
         """
         try:
@@ -287,24 +287,29 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            tables = IDCardTable.objects.filter(group__client=client, is_active=True).only('id')
+            tables = IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+            ).only('id')
 
             total_cards = IDCard.objects.filter(table__in=tables).count()
 
-            # Reprint counts (confirmed + downloaded = all processed reprints)
+            # Reprint counts for dashboard visibility.
             reprint_qs = ReprintRequest.objects.filter(table__in=tables)
             status_counts = reprint_qs.aggregate(
+                requested=Count('id', filter=Q(status='requested')),
                 confirmed=Count('id', filter=Q(status='confirmed')),
                 downloaded=Count('id', filter=Q(status='downloaded')),
             )
+            reprint_requested = status_counts.get('requested', 0) or 0
             reprint_confirmed = status_counts.get('confirmed', 0) or 0
             reprint_downloaded = status_counts.get('downloaded', 0) or 0
-            reprint_total = reprint_confirmed + reprint_downloaded
+            reprint_total = reprint_requested + reprint_confirmed + reprint_downloaded
 
             # Recent reprints (latest 10)
             recent_qs = (
                 reprint_qs
-                .filter(status__in=['confirmed', 'downloaded'])
+                .filter(status__in=['requested', 'confirmed', 'downloaded'])
                 .select_related('card', 'table', 'requested_by')
                 .only(
                     'id', 'card_id', 'table_id', 'status', 'reason', 'created_at',
@@ -347,6 +352,7 @@ class ClientDashboardService(BaseService):
                 data={
                     'total_cards': total_cards,
                     'reprint_total': reprint_total,
+                    'reprint_requested': reprint_requested,
                     'reprint_confirmed': reprint_confirmed,
                     'reprint_downloaded': reprint_downloaded,
                     'recent_reprints': recent_reprints,
@@ -370,7 +376,10 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            tables = IDCardTable.objects.filter(group__client=client, is_active=True).only('id', 'fields')
+            tables = IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+            ).only('id', 'fields')
 
             reprint_qs = (
                 ReprintRequest.objects.filter(table__in=tables)
