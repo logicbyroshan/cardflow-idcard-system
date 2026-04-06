@@ -1072,6 +1072,14 @@ def home(request):
     from django.utils.timesince import timesince as _timesince
     from django.utils import timezone as _tz
     _now = _tz.now()
+
+    def _safe_client_logo_url(_client_obj):
+        try:
+            _logo = getattr(_client_obj, 'website_logo', None)
+            return _logo.url if _logo else ''
+        except Exception:
+            return ''
+
     _cards_scope = (
         IDCard.objects.all() if _is_admin
         else IDCard.objects.filter(table__group__client=client)
@@ -1182,6 +1190,7 @@ def home(request):
                 recent_client_updates.append({
                     'client_id': c.id,
                     'client_name': c.name,
+                    'logo_url': _safe_client_logo_url(c),
                     'pending': _sm.get('pending', 0),
                     'verified': _sm.get('verified', 0),
                     'approved': _sm.get('approved', 0),
@@ -1351,6 +1360,7 @@ def home(request):
                 recent_reprint_updates.append({
                     'client_id': c.id,
                     'client_name': c.name,
+                    'logo_url': _safe_client_logo_url(c),
                     'requested': _requested,
                     'confirmed': _confirmed,
                     'tables': _tables_data,
@@ -1466,11 +1476,20 @@ def clients_list(request):
             distinct=True,
         ),
     ).order_by('name')
+
+    def _safe_client_logo_url(_client_obj):
+        try:
+            _logo = getattr(_client_obj, 'website_logo', None)
+            return _logo.url if _logo else ''
+        except Exception:
+            return ''
+
     client_data = []
     for c in clients:
         client_data.append({
             'id': c.id,
             'name': c.name,
+            'logo_url': _safe_client_logo_url(c),
             'tables_count': c.tables_count,
             'cards_count': c.cards_count,
             'status': c.status,

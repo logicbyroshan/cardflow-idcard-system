@@ -223,11 +223,15 @@
                              :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? 'bg-indigo-50/60' : 'active:bg-gray-50'"
                              @click="{% if rc.tables %}toggle('{{ rc.client_id }}_{{ forloop.counter }}'){% else %}window.location.href='{% url 'mobile_app:groups_overview' %}'{% endif %}">
                             <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0">
-                                <!-- Mini avatar -->
-                                <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
+                                <!-- Mini avatar/logo -->
+                                <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 overflow-hidden"
                                      :class="expanded === '{{ rc.client_id }}_{{ forloop.counter }}' ? '' : ''"
-                                      style="background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));">
+                                     style="background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));">
+                                    {% if rc.logo_url %}
+                                    <img src="{{ rc.logo_url }}" alt="{{ rc.client_name }} logo" class="w-full h-full object-contain bg-white">
+                                    {% else %}
                                     {{ rc.client_name|slice:":1"|upper }}
+                                    {% endif %}
                                 </div>
                                 <span class="text-[12px] font-semibold text-gray-800 truncate leading-tight">{{ rc.client_name }}</span>
                                 {% if rc.tables %}
@@ -387,9 +391,13 @@
                                  :class="expanded === 'rr_{{ rr.client_id }}_{{ forloop.counter }}' ? 'bg-blue-50/60' : 'active:bg-gray-50'"
                                  @click="{% if rr.tables %}toggle('rr_{{ rr.client_id }}_{{ forloop.counter }}'){% endif %}">
                                 <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0">
-                                    <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
+                                    <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 overflow-hidden"
                                          style="background: linear-gradient(135deg, #0ea5e9, #2563eb);">
+                                        {% if rr.logo_url %}
+                                        <img src="{{ rr.logo_url }}" alt="{{ rr.client_name }} logo" class="w-full h-full object-contain bg-white">
+                                        {% else %}
                                         {{ rr.client_name|slice:":1"|upper }}
+                                        {% endif %}
                                     </div>
                                     <span class="text-[12px] font-semibold text-gray-800 truncate leading-tight">{{ rr.client_name }}</span>
                                     {% if rr.tables %}

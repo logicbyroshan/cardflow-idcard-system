@@ -4,10 +4,16 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
+      {% if current_client_logo_url %}
+      <div class="profile square" style="overflow:hidden;background:#fff;">
+        <img src="{{ current_client_logo_url }}" alt="{{ client.name|default:'Client Logo' }}" width="26" height="26" style="width:100%;height:100%;object-fit:contain;">
+      </div>
+      {% else %}
       <div class="profile square">
         <img src="{% static 'assets/logo.png' %}" alt="logo" width="26" height="26">
       </div>
-      <h3>{{ client.name|default:"Client Portal" }}</h3>
+      {% endif %}
+      <h3>{{ client.name|default:current_client.name|default:"Client Portal" }}</h3>
     </div>
   </div>
   <nav aria-label="Main navigation">

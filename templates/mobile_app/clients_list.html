@@ -70,10 +70,18 @@
                 <!-- Client Row (tap to expand) -->
                  <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
                      @click="toggleExpand(c.id)">
-                    <!-- Avatar with gradient -->
-                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm"
-                         :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark)); box-shadow: 0 8px 16px rgba(10,146,221,0.28)' : 'background: linear-gradient(135deg, #94a3b8, #64748b); box-shadow: 0 8px 16px rgba(71,85,105,0.24)'">
-                        <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
+                    <!-- Avatar/logo -->
+                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm overflow-hidden"
+                         :style="!c.logo_url && c.status === 'active' ? 'box-shadow: 0 8px 16px rgba(10,146,221,0.28)' : !c.logo_url ? 'box-shadow: 0 8px 16px rgba(71,85,105,0.24)' : ''">
+                        <template x-if="c.logo_url">
+                            <img :src="c.logo_url" :alt="(c.name || 'Client') + ' logo'" class="w-full h-full object-contain bg-white">
+                        </template>
+                        <template x-if="!c.logo_url">
+                            <div class="w-full h-full flex items-center justify-center"
+                                 :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));' : 'background: linear-gradient(135deg, #94a3b8, #64748b);'">
+                                <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
+                            </div>
+                        </template>
                     </div>
                     <!-- Name + meta -->
                     <div class="flex-1 min-w-0">

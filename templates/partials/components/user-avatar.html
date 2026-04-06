@@ -21,21 +21,33 @@ Styles:
 {% endcomment %}
 
 {% with avatar_role=role|default:"client" avatar_size=size|default:"medium" %}
-<div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
-    {% if avatar_role == 'pro_user' %}
-    <i class="fa-solid fa-rocket"></i>
-    {% elif avatar_role == 'super_admin' %}
-    <i class="fa-solid fa-crown"></i>
-    {% elif avatar_role == 'admin_staff' %}
-    <i class="fa-solid fa-shield"></i>
-    {% elif avatar_role == 'client' %}
+{% if avatar_role == 'client' or avatar_role == 'client_staff' %}
+  {% if logo_url %}
+  <img src="{{ logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-full bg-white" loading="lazy">
+  {% elif current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
+  <img src="{{ current_client_logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-full bg-white" loading="lazy">
+  {% else %}
+  <div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
+    {% if avatar_role == 'client' %}
     <i class="fa-solid fa-building"></i>
-    {% elif avatar_role == 'client_staff' %}
-    <i class="fa-solid fa-user"></i>
     {% else %}
     <i class="fa-solid fa-user"></i>
     {% endif %}
+  </div>
+  {% endif %}
+{% else %}
+<div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
+  {% if avatar_role == 'pro_user' %}
+  <i class="fa-solid fa-rocket"></i>
+  {% elif avatar_role == 'super_admin' %}
+  <i class="fa-solid fa-crown"></i>
+  {% elif avatar_role == 'admin_staff' %}
+  <i class="fa-solid fa-shield"></i>
+  {% else %}
+  <i class="fa-solid fa-user"></i>
+  {% endif %}
 </div>
+{% endif %}
 {% if show_label %}
 <span class="user-avatar-label user-avatar-label--{{ avatar_role }}">
     {% if avatar_role == 'pro_user' %}Pro User

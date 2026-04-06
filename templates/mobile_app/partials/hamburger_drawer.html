@@ -33,8 +33,10 @@
         <!-- -- Header -- -->
         <div class="pwa-drawer-header relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-4 bg-gradient-to-br from-brand-light to-brand-dark">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-700 select-none border border-gray-200">
-                    {% if is_super_admin %}
+                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-700 select-none border border-gray-200 overflow-hidden">
+                    {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
+                        <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" class="w-full h-full object-contain bg-white">
+                    {% elif is_super_admin %}
                         <i class="fa-solid fa-crown text-sm"></i>
                     {% elif is_admin_staff %}
                         <i class="fa-solid fa-user text-sm"></i>

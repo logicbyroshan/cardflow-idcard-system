@@ -37,8 +37,10 @@
             </button>
 
             <!-- Avatar circle -->
-            <div class="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-white mb-3">
-                {% if is_super_admin %}
+            <div class="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-white mb-3 overflow-hidden">
+                {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
+                    <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" class="w-full h-full object-contain bg-white">
+                {% elif is_super_admin %}
                     <i class="fa-solid fa-crown text-2xl"></i>
                 {% elif is_admin_staff %}
                     <i class="fa-solid fa-user text-2xl"></i>
@@ -69,8 +71,12 @@
             <div class="px-5 py-4 border-b border-gray-100">
                 <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Organization</p>
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-md bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                    <div class="w-8 h-8 rounded-md bg-indigo-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {% if current_client_logo_url %}
+                        <img src="{{ current_client_logo_url }}" alt="{{ client.name|default:'Client Logo' }}" class="w-full h-full object-contain bg-white">
+                        {% else %}
                         <i class="fa-solid fa-building text-indigo-400 text-[12px]"></i>
+                        {% endif %}
                     </div>
                     <div class="min-w-0">
                         <p class="text-[13px] font-semibold text-gray-800 truncate leading-tight">{{ client.name }}</p>
