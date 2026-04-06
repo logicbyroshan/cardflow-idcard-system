@@ -322,14 +322,13 @@ def client_reprint_cards(request, table_id):
 
     # Request List — status='requested'
     request_items = []
-    request_total = 0
+    request_total = request_count
     if current_step == 'request_list':
         req_qs = ReprintRequest.objects.filter(
             table=table,
             status='requested',
             card__status='download',
         ).select_related('card', 'requested_by').order_by('-created_at')
-        request_total = req_qs.count()
         req_batch = req_qs[:INITIAL_LOAD_LIMIT]
         for idx, rr in enumerate(req_batch):
             req_by = rr.requested_by
@@ -348,14 +347,13 @@ def client_reprint_cards(request, table_id):
 
     # Confirmed List — status='confirmed'
     confirmed_items = []
-    confirmed_total = 0
+    confirmed_total = confirmed_count
     if current_step == 'confirmed':
         cf_qs = ReprintRequest.objects.filter(
             table=table,
             status='confirmed',
             card__status='download',
         ).select_related('card', 'requested_by').order_by('-updated_at')
-        confirmed_total = cf_qs.count()
         cf_batch = cf_qs[:INITIAL_LOAD_LIMIT]
         for idx, rr in enumerate(cf_batch):
             req_by = rr.requested_by
@@ -447,15 +445,14 @@ def client_print_cards(request, table_id):
 
     generate_items = []
     finalized_items = []
-    generate_total = 0
-    finalized_total = 0
+    generate_total = int(step_counts_raw.get('gl') or 0)
+    finalized_total = int(step_counts_raw.get('fn') or 0)
 
     template_obj = CardTemplate.objects.filter(table=table).first()
     selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
 
     if current_step == 'generate_list':
         base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
-        generate_total = base_qs.count()
         pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
         for idx, pr in enumerate(pr_batch):
             card = pr.card
@@ -477,7 +474,6 @@ def client_print_cards(request, table_id):
 
     if current_step == 'finalized':
         base_qs = PrintRequest.objects.filter(table=table, status='finalized')
-        finalized_total = base_qs.count()
         pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
         for idx, pr in enumerate(pr_batch):
             card = pr.card

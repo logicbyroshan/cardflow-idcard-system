@@ -92,13 +92,23 @@ class ClientCardService(BaseService):
 
     @classmethod
     def _table_scope_filters(cls, staff, table) -> Tuple[List[str], List[str], List[str]]:
+        table_key = (int(table.id), int(table.group_id))
+        cached_scopes = getattr(staff, '_cached_table_scope_filters', None)
+        if isinstance(cached_scopes, dict) and table_key in cached_scopes:
+            return cached_scopes[table_key]
+
         scopes = getattr(staff, 'assignment_scopes', None)
         if not isinstance(scopes, list) or not scopes:
-            return (
+            result = (
                 cls._dedupe_scope_values(staff.allowed_classes or []),
                 cls._dedupe_scope_values(staff.allowed_sections or []),
                 cls._dedupe_scope_values(staff.allowed_branches or []),
             )
+            if not isinstance(cached_scopes, dict):
+                cached_scopes = {}
+            cached_scopes[table_key] = result
+            setattr(staff, '_cached_table_scope_filters', cached_scopes)
+            return result
 
         matched = []
         for scope in scopes:
@@ -117,11 +127,16 @@ class ClientCardService(BaseService):
                 matched.append(scope)
 
         if not matched:
-            return (
+            result = (
                 cls._dedupe_scope_values(staff.allowed_classes or []),
                 cls._dedupe_scope_values(staff.allowed_sections or []),
                 cls._dedupe_scope_values(staff.allowed_branches or []),
             )
+            if not isinstance(cached_scopes, dict):
+                cached_scopes = {}
+            cached_scopes[table_key] = result
+            setattr(staff, '_cached_table_scope_filters', cached_scopes)
+            return result
 
         classes: List[str] = []
         sections: List[str] = []
@@ -131,14 +146,23 @@ class ClientCardService(BaseService):
             sections.extend(scope.get('sections') or [])
             branches.extend(scope.get('branches') or [])
 
-        return (
+        result = (
             cls._dedupe_scope_values(classes),
             cls._dedupe_scope_values(sections),
             cls._dedupe_scope_values(branches),
         )
+        if not isinstance(cached_scopes, dict):
+            cached_scopes = {}
+        cached_scopes[table_key] = result
+        setattr(staff, '_cached_table_scope_filters', cached_scopes)
+        return result
 
     @staticmethod
     def _assigned_group_ids_for_access(staff) -> List[int]:
+        cached_group_ids = getattr(staff, '_cached_assigned_group_ids_for_card_scope', None)
+        if cached_group_ids is not None:
+            return cached_group_ids
+
         scopes = getattr(staff, 'assignment_scopes', None)
         if isinstance(scopes, list) and scopes:
             out: List[int] = []
@@ -166,13 +190,26 @@ class ClientCardService(BaseService):
                 out.append(sid_int)
 
             if has_any_valid_scope:
+                setattr(staff, '_cached_assigned_group_ids_for_card_scope', out)
                 return out
 
-        return list(staff.assigned_groups.values_list('id', flat=True))
+        fallback_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+        setattr(staff, '_cached_assigned_group_ids_for_card_scope', fallback_group_ids)
+        return fallback_group_ids
+
+    @classmethod
+    def _assigned_table_ids_for_access(cls, staff) -> List[int]:
+        cached_table_ids = getattr(staff, '_cached_assigned_table_ids_for_card_scope', None)
+        if cached_table_ids is not None:
+            return cached_table_ids
+
+        assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
+        setattr(staff, '_cached_assigned_table_ids_for_card_scope', assigned_table_ids)
+        return assigned_table_ids
 
     @classmethod
     def _table_is_assigned_to_staff(cls, staff, table) -> bool:
-        assigned_table_ids = set(cls._normalize_positive_int_ids(staff.assigned_table_ids or []))
+        assigned_table_ids = set(cls._assigned_table_ids_for_access(staff))
         assigned_group_ids = set(cls._assigned_group_ids_for_access(staff))
 
         if assigned_table_ids and assigned_group_ids:

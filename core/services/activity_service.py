@@ -634,20 +634,12 @@ class ActivityService:
         if user.role == 'client':
             client = getattr(user, 'client_profile', None)
             if client:
-                # Collect all user PKs that belong to this client org
-                from core.models import User as UserModel
-                org_user_ids = set()
-                org_user_ids.add(user.pk)  # the client user themselves
-                # Add all client_staff belonging to this client
-                staff_user_ids = list(
-                    UserModel.objects.filter(
-                        role='client_staff',
-                        staff_profile__client_id=client.id,
-                    ).values_list('pk', flat=True)
+                # Keep this as a single SQL query by filtering through joins,
+                # instead of first fetching staff user IDs in a separate query.
+                return queryset.filter(
+                    Q(user_id=user.pk) |
+                    Q(user__role='client_staff', user__staff_profile__client_id=client.id)
                 )
-                org_user_ids.update(staff_user_ids)
-                
-                return queryset.filter(user_id__in=org_user_ids)
             return queryset.none()
         
         # Client staff: see ONLY their own activities

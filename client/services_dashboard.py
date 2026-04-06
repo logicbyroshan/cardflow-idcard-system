@@ -136,13 +136,18 @@ class ClientDashboardService(BaseService):
                 for item in status_counts:
                     if item['status'] in counts:
                         counts[item['status']] = item['count']
+
+            table_meta = tables.aggregate(
+                table_count=Count('id'),
+                group_count=Count('group_id', distinct=True),
+            )
             
             # Total cards - exclude 'pool' status
             total_cards = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
             
             # Get group count and table count (scoped for client_staff)
-            group_count = tables.values('group_id').distinct().count()
-            table_count = tables.count()
+            group_count = int(table_meta.get('group_count') or 0)
+            table_count = int(table_meta.get('table_count') or 0)
             
             # Get staff count (client_staff under this client)
             staff_count = Staff.objects.filter(
@@ -288,8 +293,12 @@ class ClientDashboardService(BaseService):
 
             # Reprint counts (confirmed + downloaded = all processed reprints)
             reprint_qs = ReprintRequest.objects.filter(table__in=tables)
-            reprint_confirmed = reprint_qs.filter(status='confirmed').count()
-            reprint_downloaded = reprint_qs.filter(status='downloaded').count()
+            status_counts = reprint_qs.aggregate(
+                confirmed=Count('id', filter=Q(status='confirmed')),
+                downloaded=Count('id', filter=Q(status='downloaded')),
+            )
+            reprint_confirmed = status_counts.get('confirmed', 0) or 0
+            reprint_downloaded = status_counts.get('downloaded', 0) or 0
             reprint_total = reprint_confirmed + reprint_downloaded
 
             # Recent reprints (latest 10)
