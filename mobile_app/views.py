@@ -3585,19 +3585,19 @@ def api_client_update(request, client_id):
 
 
 # ---------------------------------------------------------------------------
-# WEBSITE MANAGEMENT (Portfolio & Reels — mobile upload)
+# WEBSITE MANAGEMENT (Portfolio Media — mobile upload)
 # ---------------------------------------------------------------------------
 
 @require_mobile_client
 def website_manage(request):
-    """Mobile website management page: portfolio categories + reels upload."""
+    """Mobile website management page: portfolio categories + unified media upload."""
     user = request.user
     if not PermissionService.has(user, 'perm_website_view'):
         return render(request, 'mobile_app/no_access.html', {
             'user_name': user.get_full_name() or user.username,
         }, status=403)
 
-    from website.models import PortfolioCategory, Reel
+    from website.models import PortfolioCategory
 
     # Fetch only the fields needed for JSON serialisation — no full ORM hydration
     categories = (
@@ -3608,13 +3608,6 @@ def website_manage(request):
         .only('id', 'name', 'icon', 'order')
     )
 
-    reels = (
-        Reel.objects
-        .filter(is_active=True)
-        .order_by('order', '-created_at')
-        .only('id', 'title', 'thumbnail', 'order')
-    )
-
     # Skip the client lookup — website_manage doesn’t need a client object
     perms = PermissionService.get_permission_context(user)
 
@@ -3622,20 +3615,10 @@ def website_manage(request):
         {'id': c.id, 'name': c.name, 'icon': c.icon, 'count': c.photo_count}
         for c in categories
     ]
-    reels_data = [
-        {
-            'id': r.id,
-            'title': r.title,
-            'thumbnail_url': r.thumbnail.url if r.thumbnail else '',
-            'video_url': (r.video_file.url if r.video_file else r.video_url),
-        }
-        for r in reels
-    ]
 
     return render(request, 'mobile_app/website_manage.html', {
         'user_name': user.get_full_name() or user.username,
         'categories_json': categories_data,
-        'reels_json': reels_data,
         **perms,
     })
 
@@ -3643,7 +3626,7 @@ def website_manage(request):
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_portfolio_upload(request):
-    """Upload one or more images into a portfolio category from mobile."""
+    """Upload one or more media files (images/videos) into a portfolio category from mobile."""
     user = request.user
     # perm_website_edit required — view-only users must not be able to write content
     if not PermissionService.has(user, 'perm_website_edit'):
@@ -3654,14 +3637,21 @@ def api_portfolio_upload(request):
     from django.core.exceptions import ValidationError
 
     category_id = request.POST.get('category_id')
-    files = request.FILES.getlist('images')
+    files = request.FILES.getlist('files') or request.FILES.getlist('images')
 
     if not category_id:
         return JsonResponse({'success': False, 'message': 'category_id required'}, status=400)
     if not files:
-        return JsonResponse({'success': False, 'message': 'No images provided'}, status=400)
+        return JsonResponse({'success': False, 'message': 'No files provided'}, status=400)
     if len(files) > 20:
-        return JsonResponse({'success': False, 'message': 'Maximum 20 images per upload'}, status=400)
+        return JsonResponse({'success': False, 'message': 'Maximum 20 files per upload'}, status=400)
+
+    def _is_video_file(upload):
+        content_type = (getattr(upload, 'content_type', '') or '').lower()
+        if content_type.startswith('video/'):
+            return True
+        name = (getattr(upload, 'name', '') or '').lower()
+        return name.endswith(('.mp4', '.webm', '.mov', '.avi'))
 
     try:
         get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
@@ -3669,14 +3659,39 @@ def api_portfolio_upload(request):
         failed = []
         for f in files:
             try:
-                # Runs full pipeline: watermark → WebP → compress <500 KB
+                is_video = _is_video_file(f)
+                media_type = 'reel' if is_video else 'image'
                 item = PortfolioItemService.create(
                     category_id=category_id,
-                    image=f,
-                    item_type='image',
+                    image=None if is_video else f,
+                    video_file=f if is_video else None,
+                    item_type=media_type,
                     is_active=True,
                 )
-                created.append({'id': item.id, 'url': item.image.url if item.image else ''})
+
+                item_type = getattr(item, 'item_type', media_type)
+                if not isinstance(item_type, str) or not item_type:
+                    item_type = media_type
+
+                image_obj = getattr(item, 'image', None)
+                image_url = getattr(image_obj, 'url', '') if image_obj else ''
+                if not isinstance(image_url, str):
+                    image_url = ''
+
+                video_file_obj = getattr(item, 'video_file', None)
+                video_file_url = getattr(video_file_obj, 'url', '') if video_file_obj else ''
+                if not isinstance(video_file_url, str):
+                    video_file_url = ''
+
+                video_url = getattr(item, 'video_url', '')
+                if not isinstance(video_url, str):
+                    video_url = ''
+
+                created.append({
+                    'id': item.id,
+                    'type': item_type,
+                    'url': image_url or video_file_url or video_url,
+                })
             except ValidationError as exc:
                 msg = '; '.join(exc.messages) if getattr(exc, 'messages', None) else str(exc)
                 failed.append({'name': getattr(f, 'name', 'file'), 'error': msg})
@@ -3708,7 +3723,7 @@ def api_portfolio_upload(request):
 @require_mobile_client
 @require_http_methods(['GET'])
 def api_portfolio_category_items(request, category_id):
-    """List recent uploaded images for a portfolio category (preview in mobile website manager)."""
+    """List recent uploaded portfolio media for a category (preview in mobile website manager)."""
     user = request.user
     if not PermissionService.has(user, 'perm_website_view'):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
@@ -3724,8 +3739,7 @@ def api_portfolio_category_items(request, category_id):
 
     items_qs = (
         PortfolioItem.objects
-        .filter(category=category, is_active=True, image__isnull=False)
-        .exclude(image='')
+        .filter(category=category, is_active=True)
         .order_by('-created_at')[:limit]
     )
 
@@ -3733,59 +3747,13 @@ def api_portfolio_category_items(request, category_id):
         {
             'id': it.id,
             'title': it.title or category.name,
+            'type': it.item_type,
             'url': it.image.url if it.image else '',
+            'video_url': it.video_file.url if it.video_file else (it.video_url or ''),
         }
         for it in items_qs
     ]
 
     return JsonResponse({'success': True, 'category': {'id': category.id, 'name': category.name}, 'items': items})
 
-
-@require_mobile_client
-@require_http_methods(['POST'])
-def api_reel_upload(request):
-    """Create a new reel with a video file (and optional thumbnail)."""
-    user = request.user
-    # perm_website_edit required — view-only users must not be able to write content
-    if not PermissionService.has(user, 'perm_website_edit'):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
-
-    from website.services import ReelService
-
-    # Strip to plain text — prevent script injection via title field
-    import html as _html
-    raw_title = request.POST.get('title', '')
-    title = _html.unescape(raw_title).strip()[:255]
-    # Remove any HTML/script tags
-    import re as _re
-    title = _re.sub(r'<[^>]+>', '', title).strip()
-
-    video_file = request.FILES.get('video')
-    thumbnail = request.FILES.get('thumbnail')
-
-    if not title:
-        return JsonResponse({'success': False, 'message': 'Title is required'}, status=400)
-    if not video_file:
-        return JsonResponse({'success': False, 'message': 'Video file is required'}, status=400)
-
-    try:
-        # Runs full pipeline: compress video to <10 MB + watermark thumbnail
-        reel = ReelService.create(
-            title=title,
-            video_file=video_file,
-            thumbnail=thumbnail,
-            is_active=True,
-        )
-        return JsonResponse({
-            'success': True,
-            'reel': {
-                'id': reel.id,
-                'title': reel.title,
-                'thumbnail_url': reel.thumbnail.url if reel.thumbnail else '',
-                'video_url': (reel.video_file.url if reel.video_file else reel.video_url),
-            },
-        })
-    except Exception as exc:
-        logger.exception('api_reel_upload error: %s', exc)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 

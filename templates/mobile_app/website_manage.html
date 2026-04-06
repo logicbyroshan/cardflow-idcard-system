@@ -16,34 +16,18 @@
             </a>
             <div class="flex-1 min-w-0">
                 <h1 class="text-white font-bold text-[15px] leading-tight">Manage Website</h1>
-                <p class="text-white/60 text-[10px]">Portfolio & Reels</p>
+                <p class="text-white/60 text-[10px]">Portfolio Media</p>
             </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="flex mt-1">
-            <button @click="tab='portfolio'"
-                    :class="tab==='portfolio' ? 'border-b-2 border-white text-white font-bold' : 'text-white/55 font-medium'"
-                    class="flex-1 py-2.5 text-[13px] transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-images text-xs"></i>
-                <span>Portfolio</span>
-            </button>
-            <button @click="tab='reels'"
-                    :class="tab==='reels' ? 'border-b-2 border-white text-white font-bold' : 'text-white/55 font-medium'"
-                    class="flex-1 py-2.5 text-[13px] transition-colors flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-film text-xs"></i>
-                <span>Reels</span>
-            </button>
         </div>
     </div>
 
     <!--  SCROLLABLE CONTENT  -->
     <div class="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 via-indigo-50/20 to-sky-50/30">
 
-        <!--  PORTFOLIO TAB  -->
-        <div x-show="tab==='portfolio'" x-cloak>
+        <!--  PORTFOLIO MEDIA  -->
+        <div>
             <div class="px-3 pt-3 pb-24">
-                <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos{% else %}Your portfolio categories{% endif %}</p>
+            <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos or reels{% else %}Your portfolio categories{% endif %}</p>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="cat in categories" :key="cat.id">
                         <button {% if perm_website_edit %}@click="openUploadSheet(cat)"{% endif %}
@@ -56,7 +40,7 @@
                             <!-- name -->
                             <p class="text-[12px] font-bold text-gray-800 leading-tight truncate" x-text="cat.name"></p>
                             <!-- count badge -->
-                            <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' photo' + (cat.count !== 1 ? 's' : '')"></p>
+                            <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' item' + (cat.count !== 1 ? 's' : '')"></p>
                             <!-- upload arrow -->
                             {% if perm_website_edit %}
                             <div class="absolute top-3 right-3 w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center">
@@ -83,63 +67,6 @@
                 </template>
             </div>
         </div>
-
-        <!--  REELS TAB  -->
-        <div x-show="tab==='reels'" x-cloak>
-            <div class="px-3 pt-3 pb-28">
-                <p class="text-[11px] text-gray-400 mb-3 font-medium">Your showcase reels visible on the website</p>
-                <template x-if="reels.length === 0">
-                    <div class="text-center py-16">
-                        <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-film text-2xl text-gray-400"></i>
-                        </div>
-                        <p class="text-[13px] font-semibold text-gray-500">No reels yet</p>
-                        <p class="text-[11px] text-gray-400 mt-1">Tap the + button to add your first reel</p>
-                    </div>
-                </template>
-                <div class="grid grid-cols-2 gap-2.5">
-                    <template x-for="reel in reels" :key="reel.id">
-                        <button @click="openReelPreview(reel)" class="bg-gradient-to-br from-white via-white to-indigo-50/30 rounded-2xl overflow-hidden shadow-sm border border-indigo-100 text-left w-full active:scale-[0.99] transition-transform">
-                            <!-- Thumbnail -->
-                            <div class="relative" style="padding-top:56.25%;">
-                                <template x-if="reel.thumbnail_url">
-                                    <img :src="reel.thumbnail_url"
-                                         :alt="reel.title"
-                                         loading="lazy"
-                                         decoding="async"
-                                         class="absolute inset-0 w-full h-full object-cover">
-                                </template>
-                                <template x-if="!reel.thumbnail_url">
-                                    <div class="absolute inset-0 flex items-center justify-center"
-                                         style="background:linear-gradient(135deg,#4c1d95,#6d28d9);">
-                                        <i class="fa-solid fa-film text-white text-2xl opacity-40"></i>
-                                    </div>
-                                </template>
-                                <!-- Play overlay -->
-                                <div class="absolute inset-0 flex items-center justify-center">
-                                    <div class="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                                        <i class="fa-solid fa-play text-white text-xs ml-0.5"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Title -->
-                            <div class="px-3 py-2">
-                                <p class="text-[11px] font-semibold text-gray-800 leading-snug line-clamp-2" x-text="reel.title"></p>
-                            </div>
-                        </button>
-                    </template>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!--  FAB: Add Reel (visible on reels tab)  -->
-    <div x-show="tab==='reels'" x-cloak class="fixed right-5 z-[60]" style="bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pwa-bottom-nav-height) + 12px);">
-        <button @click="openReelSheet()"
-                class="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform"
-            style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
-            <i class="fa-solid fa-plus text-xl"></i>
-        </button>
     </div>
 
 
@@ -162,8 +89,8 @@
             <!-- Header -->
             <div class="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
                 <div>
-                    <h3 class="text-[14px] font-bold text-gray-800" x-text="activeCategory ? activeCategory.name : 'Upload Photos'"></h3>
-                    <p class="text-[10px] text-gray-400">Choose source to add photos</p>
+                    <h3 class="text-[14px] font-bold text-gray-800" x-text="activeCategory ? activeCategory.name : 'Upload Media'"></h3>
+                    <p class="text-[10px] text-gray-400">Choose source to add photos or reels</p>
                 </div>
                 <button @click="closeUploadSheet()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
                     <i class="fa-solid fa-xmark text-xs"></i>
@@ -181,7 +108,7 @@
                             <i class="fa-solid fa-camera text-white text-base"></i>
                         </div>
                         <span class="text-[12px] font-bold text-indigo-700">Camera</span>
-                        <span class="text-[10px] text-indigo-400">Take a photo</span>
+                           <span class="text-[10px] text-indigo-400">Take a photo</span>
                         <input type="file" class="hidden" accept="image/*" capture="environment"
                                @change="handlePortfolioFiles($event)">
                     </label>
@@ -192,8 +119,8 @@
                             <i class="fa-solid fa-images text-white text-base"></i>
                         </div>
                         <span class="text-[12px] font-bold text-teal-700">Gallery</span>
-                        <span class="text-[10px] text-teal-400">Pick multiple</span>
-                        <input type="file" class="hidden" accept="image/*" multiple
+                        <span class="text-[10px] text-teal-400">Photos or videos</span>
+                        <input type="file" class="hidden" accept="image/*,video/*" multiple
                                @change="handlePortfolioFiles($event)">
                     </label>
                 </div>
@@ -201,11 +128,19 @@
                 <!-- Pending previews -->
                 <div x-show="pendingFiles.length > 0">
                     <p class="text-[11px] text-gray-500 font-medium mb-2"
-                       x-text="pendingFiles.length + ' photo(s) ready'"></p>
+                       x-text="pendingFiles.length + ' file(s) ready'"></p>
                     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         <template x-for="(pf, idx) in pendingFiles" :key="idx">
                             <div class="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                                <img :src="pf.preview" class="w-full h-full object-cover" alt="">
+                                <template x-if="pf.kind === 'image' && pf.preview">
+                                    <img :src="pf.preview" class="w-full h-full object-cover" alt="">
+                                </template>
+                                <template x-if="pf.kind === 'video'">
+                                    <div class="w-full h-full bg-gradient-to-br from-indigo-500 to-sky-600 text-white flex flex-col items-center justify-center">
+                                        <i class="fa-solid fa-film text-sm"></i>
+                                        <span class="text-[9px] mt-1 px-1 text-center truncate w-full" x-text="pf.file ? pf.file.name : 'Video'"></span>
+                                    </div>
+                                </template>
                                 <button @click.stop="removeFile(idx)"
                                         class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow">
                                     <i class="fa-solid fa-xmark text-white text-[8px]"></i>
@@ -238,153 +173,13 @@
                     <template x-if="!uploading">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
-                            Upload <span x-text="pendingFiles.length"></span> Photo(s)
+                            Upload <span x-text="pendingFiles.length"></span> File(s)
                         </span>
                     </template>
                 </button>
             </div>
         </div>
     </div>
-
-
-    <!-- 
-         ADD REEL SHEET
-     -->
-        <div x-show="reelSheetOpen" x-cloak
-            class="fixed inset-0 z-[80] flex flex-col justify-end"
-            data-mobile-overlay-root
-         @keydown.escape.window="closeReelSheet()">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="closeReelSheet()"></div>
-
-        <div class="relative rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden bg-white">
-
-            <!-- Gradient top: handle + title -->
-            <div class="flex-shrink-0 rounded-t-3xl pb-5"
-                  style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
-                <!-- Handle -->
-                <div class="flex justify-center pt-3 pb-3">
-                    <div class="w-10 h-1.5 rounded-full bg-white/30"></div>
-                </div>
-                <!-- Header row -->
-                <div class="flex items-center justify-between px-5">
-                    <div>
-                        <h3 class="text-[15px] font-bold text-white">Add New Reel</h3>
-                        <p class="text-white/60 text-[11px]">Upload a video for your website showcase</p>
-                    </div>
-                    <button @click="closeReelSheet()"
-                            class="w-8 h-8 rounded-xl flex items-center justify-center text-white active:bg-white/20 transition-colors"
-                            style="background:rgba(255,255,255,0.15);">
-                        <i class="fa-solid fa-xmark text-sm"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Scrollable body -->
-            <div class="overflow-y-auto flex-1 px-4 pt-5 pb-3 space-y-5 bg-white">
-
-                <!-- Title -->
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
-                        <i class="fa-solid fa-heading text-gray-400 text-xs"></i>
-                    </div>
-                    <input type="text" x-model="reelTitle"
-                           placeholder="Title (auto-generated if blank)"
-                           maxlength="255"
-                           class="w-full pl-9 pr-4 py-3.5 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-gray-50 transition-colors">
-                </div>
-
-                <!-- Video source -->
-                <div>
-                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2.5">
-                        <i class="fa-solid fa-video mr-1 text-indigo-400"></i>Video File *
-                    </p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <!-- Record -->
-                        <label class="flex flex-col items-center justify-center gap-2 rounded-xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-purple-200 bg-purple-50">
-                            <div class="w-11 h-11 rounded-2xl bg-purple-500 flex items-center justify-center shadow-md shadow-purple-200">
-                                <i class="fa-solid fa-video text-white text-base"></i>
-                            </div>
-                            <span class="text-[12px] font-bold text-purple-700">Record</span>
-                            <span class="text-[10px] text-purple-400">Use camera</span>
-                            <input type="file" class="hidden" accept="video/*" capture="environment"
-                                   @change="handleReelVideo($event)">
-                        </label>
-                        <!-- Gallery -->
-                        <label class="flex flex-col items-center justify-center gap-2 rounded-xl p-4 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-orange-200 bg-orange-50">
-                            <div class="w-11 h-11 rounded-2xl bg-orange-500 flex items-center justify-center shadow-md shadow-orange-200">
-                                <i class="fa-solid fa-folder-open text-white text-base"></i>
-                            </div>
-                            <span class="text-[12px] font-bold text-orange-700">Gallery</span>
-                            <span class="text-[10px] text-orange-400">Pick video</span>
-                            <input type="file" class="hidden" accept="video/*"
-                                   @change="handleReelVideo($event)">
-                        </label>
-                    </div>
-
-                    <!-- Video selected indicator -->
-                    <div x-show="reelVideoFile" class="mt-2.5 flex items-center gap-2 px-3 py-2.5 bg-green-50 rounded-xl border border-green-200">
-                        <i class="fa-solid fa-circle-check text-green-500 text-sm flex-shrink-0"></i>
-                        <span class="text-[11px] text-green-700 font-semibold truncate flex-1" x-text="reelVideoFile ? reelVideoFile.name : ''"></span>
-                        <span class="text-[10px] text-green-500 font-medium bg-green-100 px-1.5 py-0.5 rounded-lg flex-shrink-0" x-text="reelVideoSize"></span>
-                    </div>
-                </div>
-
-                <!-- Video inline preview -->
-                <div x-show="reelVideoPreview" class="rounded-xl overflow-hidden bg-black shadow-md">
-                    <video :src="reelVideoPreview" controls playsinline
-                           class="w-full max-h-44 object-contain"></video>
-                </div>
-
-                <!-- Optional thumbnail -->
-                <div x-show="reelVideoFile">
-                    <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">
-                        <i class="fa-solid fa-image mr-1 text-indigo-400"></i>Thumbnail
-                        <span class="normal-case font-normal text-gray-400 ml-1">(optional)</span>
-                    </p>
-                    <label class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                             :class="reelThumbnailName ? 'bg-indigo-100' : 'bg-gray-200'">
-                            <i class="fa-solid fa-image text-xs"
-                               :class="reelThumbnailName ? 'text-indigo-500' : 'text-gray-500'"></i>
-                        </div>
-                        <span class="text-[12px] flex-1 truncate"
-                              :class="reelThumbnailName ? 'text-gray-800 font-semibold' : 'text-gray-400'"
-                              x-text="reelThumbnailName || 'Add thumbnail image'"></span>
-                        <i class="fa-solid fa-plus text-indigo-400 text-xs"></i>
-                        <input type="file" class="hidden" accept="image/*"
-                               @change="handleReelThumbnail($event)">
-                    </label>
-                </div>
-
-            </div><!-- /scrollable body -->
-
-            <!-- Sticky footer buttons -->
-            <div class="flex-shrink-0 px-4 py-3 bg-white border-t border-gray-100 flex gap-2.5">
-                <button @click="closeReelSheet()"
-                        class="flex-1 py-3 rounded-xl text-gray-600 font-semibold text-[13px] bg-gray-100 active:scale-95 active:bg-gray-200 transition-transform flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-xmark text-xs"></i>Cancel
-                </button>
-                <button @click="uploadReel()"
-                        :disabled="!reelVideoFile || uploading"
-                        :class="(!reelVideoFile || uploading) ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'"
-                        class="py-3 px-6 rounded-xl text-white font-bold text-[13px] transition-transform flex items-center justify-center gap-2"
-                        style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));flex:2;">
-                    <template x-if="uploading">
-                        <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-spinner fa-spin"></i>Uploading...
-                        </span>
-                    </template>
-                    <template x-if="!uploading">
-                        <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>Upload Reel
-                        </span>
-                    </template>
-                </button>
-            </div>
-
-        </div>
-    </div>
-
 
     <!--  Toast  -->
     <div x-show="toast.show" x-cloak
@@ -407,8 +202,8 @@
             <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
             <div class="px-4 pb-3 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                    <p class="text-[14px] font-bold text-gray-800" x-text="categoryPreview.name || 'Photos'"></p>
-                    <p class="text-[10px] text-gray-400" x-text="(categoryPreview.items ? categoryPreview.items.length : 0) + ' image(s)'"></p>
+                    <p class="text-[14px] font-bold text-gray-800" x-text="categoryPreview.name || 'Media'"></p>
+                    <p class="text-[10px] text-gray-400" x-text="(categoryPreview.items ? categoryPreview.items.length : 0) + ' item(s)'"></p>
                 </div>
                 <button @click="closeCategoryPreview()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark text-xs"></i></button>
             </div>
@@ -421,28 +216,24 @@
                     </div>
                 </template>
                 <template x-if="!categoryPreview.loading && (!categoryPreview.items || categoryPreview.items.length === 0)">
-                    <div class="py-12 text-center text-gray-400 text-xs">No uploaded photos found.</div>
+                    <div class="py-12 text-center text-gray-400 text-xs">No uploaded media found.</div>
                 </template>
                 <div class="grid grid-cols-3 gap-2" x-show="!categoryPreview.loading && categoryPreview.items && categoryPreview.items.length > 0">
                     <template x-for="img in categoryPreview.items" :key="img.id">
-                        <img :src="img.url" :alt="img.title" class="w-full aspect-square object-cover rounded-xl border border-gray-100" loading="lazy" decoding="async">
+                        <div class="w-full aspect-square rounded-xl border border-gray-100 overflow-hidden">
+                            <template x-if="img.type === 'image' && img.url">
+                                <img :src="img.url" :alt="img.title" class="w-full h-full object-cover" loading="lazy" decoding="async">
+                            </template>
+                            <template x-if="img.type !== 'image' || !img.url">
+                                <div class="w-full h-full bg-gradient-to-br from-indigo-500 to-sky-600 text-white flex flex-col items-center justify-center">
+                                    <i class="fa-solid fa-film text-sm"></i>
+                                    <span class="text-[9px] mt-1 px-1 text-center truncate w-full" x-text="img.title || 'Video'"></span>
+                                </div>
+                            </template>
+                        </div>
                     </template>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Reel video preview -->
-    <div x-show="reelPreview.open" x-cloak class="fixed inset-0 z-[96] bg-black/90 flex items-center justify-center p-4" data-mobile-overlay-root @click.self="closeReelPreview()">
-        <button @click="closeReelPreview()" class="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/15 text-white"><i class="fa-solid fa-xmark"></i></button>
-        <div class="w-full max-w-[430px]">
-            <p class="text-white text-sm font-semibold mb-2 truncate" x-text="reelPreview.title"></p>
-            <template x-if="reelPreview.video_url">
-                <video :src="reelPreview.video_url" controls playsinline autoplay class="w-full max-h-[70vh] rounded-2xl bg-black object-contain"></video>
-            </template>
-            <template x-if="!reelPreview.video_url && reelPreview.thumbnail_url">
-                <img :src="reelPreview.thumbnail_url" :alt="reelPreview.title" class="w-full rounded-2xl">
-            </template>
         </div>
     </div>
 
@@ -452,19 +243,15 @@
 
 {# S1: json_script escapes </script> sequences; |safe does not. #}
 {{ categories_json|json_script:"categories-json-data" }}
-{{ reels_json|json_script:"reels-json-data" }}
 <script>
 // Data injected from Django
 const CATEGORIES_DATA = JSON.parse(document.getElementById('categories-json-data').textContent);
-const REELS_DATA = JSON.parse(document.getElementById('reels-json-data').textContent);
 const CSRF_TOKEN = (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken=')) || '').split('=')[1]
     || '{{ csrf_token|escapejs }}';
 
 function websiteManageApp() {
     return {
-        tab: 'portfolio',
         categories: [],
-        reels: [],
 
         // Portfolio upload
         uploadSheetOpen: false,
@@ -474,22 +261,12 @@ function websiteManageApp() {
         uploadPct: 0,
         uploadStatus: '',
 
-        // Reel upload
-        reelSheetOpen: false,
-        reelTitle: '',
-        reelVideoFile: null,
-        reelVideoPreview: null,
-        reelVideoSize: '',
-        reelThumbnailFile: null,
-        reelThumbnailName: '',
         categoryPreview: { open: false, loading: false, id: null, name: '', items: [] },
-        reelPreview: { open: false, title: '', thumbnail_url: '', video_url: '' },
         toast: { show: false, ok: true, msg: '' },
         overlayTokens: {},
 
         init() {
             this.categories = CATEGORIES_DATA;
-            this.reels = REELS_DATA;
 
             this.$watch('uploadSheetOpen', (isOpen) => {
                 if (isOpen) {
@@ -502,17 +279,6 @@ function websiteManageApp() {
                 }
             });
 
-            this.$watch('reelSheetOpen', (isOpen) => {
-                if (isOpen) {
-                    this._openOverlay('reelSheet', () => {
-                        this.closeReelSheet();
-                        this._closeOverlay('reelSheet', true);
-                    });
-                } else {
-                    this._closeOverlay('reelSheet', false);
-                }
-            });
-
             this.$watch('categoryPreview.open', (isOpen) => {
                 if (isOpen) {
                     this._openOverlay('categoryPreview', () => {
@@ -521,17 +287,6 @@ function websiteManageApp() {
                     });
                 } else {
                     this._closeOverlay('categoryPreview', false);
-                }
-            });
-
-            this.$watch('reelPreview.open', (isOpen) => {
-                if (isOpen) {
-                    this._openOverlay('reelPreview', () => {
-                        this.closeReelPreview();
-                        this._closeOverlay('reelPreview', true);
-                    });
-                } else {
-                    this._closeOverlay('reelPreview', false);
                 }
             });
         },
@@ -580,20 +335,35 @@ function websiteManageApp() {
         },
         handlePortfolioFiles(e) {
             const MAX_FILES = 20;
-            const MAX_MB = 15;
+            const MAX_IMAGE_MB = 15;
+            const MAX_VIDEO_MB = 100;
             const files = Array.from(e.target.files || []);
             if (this.pendingFiles.length + files.length > MAX_FILES) {
-                this.showToast(`Maximum ${MAX_FILES} images per upload`, false);
+                this.showToast(`Maximum ${MAX_FILES} files per upload`, false);
                 e.target.value = '';
                 return;
             }
-            const oversized = files.filter(f => f.size > MAX_MB * 1024 * 1024);
+            const oversized = files.filter(f => {
+                const isVideo = (f.type || '').toLowerCase().startsWith('video/');
+                const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
+                return f.size > maxBytes;
+            });
             if (oversized.length) {
-                this.showToast(`${oversized.length} file(s) exceed ${MAX_MB} MB and were skipped`, false);
+                this.showToast(`${oversized.length} file(s) exceeded size limits and were skipped`, false);
             }
-            files.filter(f => f.size <= MAX_MB * 1024 * 1024).forEach(file => {
-                const objectUrl = URL.createObjectURL(file);
-                this.pendingFiles.push({ file, preview: objectUrl, objectUrl });
+            files.filter(f => {
+                const isVideo = (f.type || '').toLowerCase().startsWith('video/');
+                const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
+                return f.size <= maxBytes;
+            }).forEach(file => {
+                const isVideo = (file.type || '').toLowerCase().startsWith('video/');
+                const objectUrl = isVideo ? null : URL.createObjectURL(file);
+                this.pendingFiles.push({
+                    file,
+                    kind: isVideo ? 'video' : 'image',
+                    preview: objectUrl,
+                    objectUrl,
+                });
             });
             e.target.value = '';
         },
@@ -609,13 +379,13 @@ function websiteManageApp() {
                 const res = await fetch('/app/api/website/portfolio/category/' + cat.id + '/items/?limit=60');
                 const data = await res.json();
                 if (!data.success) {
-                    this.showToast(data.message || 'Failed to load photos', false);
+                    this.showToast(data.message || 'Failed to load media', false);
                     this.categoryPreview.loading = false;
                     return;
                 }
                 this.categoryPreview.items = data.items || [];
             } catch (err) {
-                this.showToast('Could not load photos', false);
+                this.showToast('Could not load media', false);
             } finally {
                 this.categoryPreview.loading = false;
             }
@@ -626,7 +396,7 @@ function websiteManageApp() {
         async uploadPortfolioBatch(files, timeoutMs = 120000) {
             const fd = new FormData();
             fd.append('category_id', this.activeCategory.id);
-            files.forEach(pf => fd.append('images', pf.file));
+            files.forEach(pf => fd.append('files', pf.file));
 
             const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
             const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -705,10 +475,10 @@ function websiteManageApp() {
                 this.pendingFiles = failedCarry;
 
                 if (uploadedCount > 0 && this.pendingFiles.length === 0) {
-                    this.showToast(uploadedCount + ' photo(s) uploaded successfully!');
+                    this.showToast(uploadedCount + ' file(s) uploaded successfully!');
                     this.closeUploadSheet();
                 } else if (uploadedCount > 0 && this.pendingFiles.length > 0) {
-                    this.showToast(uploadedCount + ' uploaded, ' + this.pendingFiles.length + ' failed. Retry failed photos.', false);
+                    this.showToast(uploadedCount + ' uploaded, ' + this.pendingFiles.length + ' failed. Retry failed files.', false);
                 } else if (this.pendingFiles.length > 0) {
                     this.showToast('Upload failed. Please retry with fewer files.', false);
                 } else {
@@ -720,88 +490,6 @@ function websiteManageApp() {
                 this.uploading = false;
                 this.uploadPct = 0;
                 this.uploadStatus = '';
-            }
-        },
-
-        /*  REELS  */
-        openReelSheet() {
-            this.reelTitle = '';
-            this.reelVideoFile = null;
-            this.reelVideoPreview = null;
-            this.reelVideoSize = '';
-            this.reelThumbnailFile = null;
-            this.reelThumbnailName = '';
-            this.reelSheetOpen = true;
-        },
-        closeReelSheet() {
-            if (this.reelVideoPreview) { URL.revokeObjectURL(this.reelVideoPreview); this.reelVideoPreview = null; }
-            this.reelSheetOpen = false;
-        },
-        openReelPreview(reel) {
-            this.reelPreview = {
-                open: true,
-                title: reel.title || 'Reel',
-                thumbnail_url: reel.thumbnail_url || '',
-                video_url: reel.video_url || '',
-            };
-        },
-        closeReelPreview() {
-            this.reelPreview.open = false;
-        },
-        handleReelVideo(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const MAX_VIDEO_MB = 100;
-            if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
-                this.showToast(`Video exceeds ${MAX_VIDEO_MB} MB limit`, false);
-                e.target.value = '';
-                return;
-            }
-            this.reelVideoFile = file;
-            this.reelVideoSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-            if (this.reelVideoPreview) URL.revokeObjectURL(this.reelVideoPreview);
-            this.reelVideoPreview = URL.createObjectURL(file);
-            e.target.value = '';
-        },
-        handleReelThumbnail(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const MAX_THUMB_MB = 10;
-            if (file.size > MAX_THUMB_MB * 1024 * 1024) {
-                this.showToast(`Thumbnail exceeds ${MAX_THUMB_MB} MB limit`, false);
-                e.target.value = '';
-                return;
-            }
-            this.reelThumbnailFile = file;
-            this.reelThumbnailName = file.name;
-            e.target.value = '';
-        },
-        async uploadReel() {
-            if (!this.reelVideoFile || this.uploading) return;
-            this.uploading = true;
-            try {
-                const fd = new FormData();
-                fd.append('title', this.reelTitle.trim());
-                fd.append('video', this.reelVideoFile);
-                if (this.reelThumbnailFile) fd.append('thumbnail', this.reelThumbnailFile);
-
-                const res = await fetch('/app/api/website/reel/upload/', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': CSRF_TOKEN },
-                    body: fd,
-                });
-                const data = await res.json();
-                if (data.success) {
-                    this.reels.unshift(data.reel);
-                    this.showToast('Reel "' + data.reel.title + '" uploaded!');
-                    this.closeReelSheet();
-                } else {
-                    this.showToast(data.message || 'Upload failed', false);
-                }
-            } catch (err) {
-                this.showToast('Network error  -  please try again', false);
-            } finally {
-                this.uploading = false;
             }
         },
     };

@@ -15,7 +15,7 @@ import logging
 
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 
@@ -1021,10 +1021,8 @@ def api_hero_image_reorder(request):
 
 @website_admin_required
 def reels_page(request):
-    """Reels management page."""
-    context = _get_base_context(request, 'reels')
-    context['reels'] = Reel.objects.all().order_by('order', '-created_at')
-    return render(request, 'website/admin/reels.html', context)
+    """Legacy reels page redirects to portfolio where reels are managed as portfolio media."""
+    return redirect('website_admin:portfolio')
 
 
 # =============================================================================
