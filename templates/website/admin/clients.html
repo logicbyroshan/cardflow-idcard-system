@@ -11,10 +11,18 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
 <style>
+    :root {
+        --wa-surface: var(--bg-white, #ffffff);
+        --wa-surface-soft: var(--color-gray-50, #f8fafc);
+        --wa-border: var(--color-gray-200, #e5e7eb);
+        --wa-text: var(--text-primary, #1e293b);
+        --wa-muted: var(--color-gray-500, #64748b);
+    }
+
   .wa-clients-panel {
-    border: 1px solid #e5e7eb;
+        border: 1px solid var(--wa-border);
     border-top: none;
-    background: #fff;
+        background: var(--wa-surface);
     min-height: calc(100vh - 230px);
   }
 
@@ -39,8 +47,8 @@
     height: 40px;
     border-radius: 6px;
     object-fit: contain;
-    background: #fff;
-    border: 1px solid #e5e7eb;
+        background: var(--wa-surface);
+        border: 1px solid var(--wa-border);
     padding: 4px;
     flex-shrink: 0;
   }
@@ -52,9 +60,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #64748b;
-    background: #f8fafc;
-    border: 1px solid #e5e7eb;
+        color: var(--wa-muted);
+        background: var(--wa-surface-soft);
+        border: 1px solid var(--wa-border);
     flex-shrink: 0;
   }
 
@@ -67,7 +75,7 @@
 
   .client-main strong {
     font-size: 12px;
-    color: #1e293b;
+        color: var(--wa-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -75,7 +83,7 @@
 
   .client-main span {
     font-size: 11px;
-    color: #64748b;
+        color: var(--wa-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -88,10 +96,10 @@
     min-width: 24px;
     height: 20px;
     border-radius: 4px;
-    border: 1px solid #e5e7eb;
-    background: #f8fafc;
+        border: 1px solid var(--wa-border);
+        background: var(--wa-surface-soft);
     font-size: 11px;
-    color: #475569;
+        color: var(--text-secondary, #475569);
     font-weight: 600;
   }
 
@@ -104,15 +112,15 @@
     }
 
     .client-visibility-select.status-visible {
-        border-color: #bbf7d0;
-        background: #f0fdf4;
-        color: #166534;
+        border-color: color-mix(in srgb, var(--color-success, #22c55e) 35%, #ffffff 65%);
+        background: var(--color-success-bg, #f0fdf4);
+        color: var(--color-success-dark, #166534);
     }
 
     .client-visibility-select.status-hidden {
-        border-color: #cbd5e1;
-        background: #f8fafc;
-        color: #475569;
+        border-color: var(--color-gray-300, #cbd5e1);
+        background: var(--wa-surface-soft);
+        color: var(--text-secondary, #475569);
     }
 
     .client-logo-action-block {
@@ -125,8 +133,8 @@
         width: 108px;
         height: 54px;
         border-radius: 8px;
-        border: 1px solid #e5e7eb;
-        background: #f8fafc;
+        border: 1px solid var(--wa-border);
+        background: var(--wa-surface-soft);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -138,13 +146,13 @@
         width: 100%;
         height: 100%;
         object-fit: contain;
-        background: #fff;
+        background: var(--wa-surface);
         padding: 4px;
     }
 
     .client-logo-action-preview span {
         font-size: 11px;
-        color: #64748b;
+        color: var(--wa-muted);
     }
 
     .client-logo-action-buttons {
@@ -162,8 +170,8 @@
         width: 100%;
         min-height: 84px;
         border-radius: 8px;
-        border: 1px dashed #cbd5e1;
-        background: #f8fafc;
+        border: 1px dashed var(--color-gray-300, #cbd5e1);
+        background: var(--wa-surface-soft);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -174,12 +182,12 @@
         width: 100%;
         height: 84px;
         object-fit: contain;
-        background: #fff;
+        background: var(--wa-surface);
     }
 
     .client-logo-preview span {
         font-size: 11px;
-        color: #64748b;
+        color: var(--wa-muted);
     }
 
   .wa-clients-panel .btn-icon {
@@ -198,7 +206,7 @@
 
   .wa-clients-panel .pagination-right label {
     font-size: 11px;
-    color: #64748b;
+        color: var(--wa-muted);
   }
 
   .wa-clients-panel #clientRowsPerPage {

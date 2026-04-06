@@ -4,51 +4,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0A92DD">
     <title>{{ status_code }} {{ title }} - Mobile</title>
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
     <style>
         :root {
-            --brand-a: #0a92dd;
-            --brand-b: #056fb6;
-            --ill-a: #0ea5e9;
-            --ill-b: #0369a1;
-            --ill-soft: #e0f2fe;
+            --brand-a: var(--primary, #667eea);
+            --brand-b: var(--primary-dark, #5a67d8);
+            --ill-a: var(--color-blue, #3b82f6);
+            --ill-b: var(--color-blue-dark, #1d4ed8);
+            --ill-soft: var(--color-blue-bg, #dbeafe);
         }
 
         .status-400 {
-            --ill-a: #f59e0b;
-            --ill-b: #b45309;
-            --ill-soft: #fef3c7;
+            --ill-a: var(--color-warning, #f59e0b);
+            --ill-b: var(--color-warning-dark, #b45309);
+            --ill-soft: var(--color-warning-bg, #fef3c7);
         }
 
         .status-403 {
-            --ill-a: #ef4444;
-            --ill-b: #b91c1c;
-            --ill-soft: #fee2e2;
+            --ill-a: var(--color-danger, #ef4444);
+            --ill-b: var(--color-danger-dark, #b91c1c);
+            --ill-soft: var(--color-danger-bg, #fee2e2);
         }
 
         .status-404 {
-            --ill-a: #0ea5e9;
-            --ill-b: #0369a1;
-            --ill-soft: #e0f2fe;
+            --ill-a: var(--color-blue, #3b82f6);
+            --ill-b: var(--color-blue-dark, #1d4ed8);
+            --ill-soft: var(--color-blue-bg, #dbeafe);
         }
 
         .status-500 {
-            --ill-a: #8b5cf6;
-            --ill-b: #6d28d9;
-            --ill-soft: #ede9fe;
+            --ill-a: var(--purple, #8b5cf6);
+            --ill-b: var(--purple-dark, #6d28d9);
+            --ill-soft: var(--purple-bg, #ede9fe);
         }
 
         body {
             min-height: 100dvh;
             margin: 0;
-            font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            font-family: var(--font-family, "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
             background:
-                radial-gradient(circle at 18% 14%, rgba(56, 189, 248, 0.25) 0, transparent 38%),
-                radial-gradient(circle at 84% 86%, rgba(125, 211, 252, 0.2) 0, transparent 35%),
-                linear-gradient(160deg, #eff6ff, #f8fbff);
+                radial-gradient(circle at 18% 14%, rgba(59, 130, 246, 0.25) 0, transparent 38%),
+                radial-gradient(circle at 84% 86%, rgba(102, 126, 234, 0.2) 0, transparent 35%),
+                linear-gradient(160deg, var(--color-blue-bg, #dbeafe), var(--color-gray-50, #f9fafb));
         }
 
         .mobile-shell {
@@ -76,9 +75,9 @@
             align-items: center;
             gap: 8px;
             border-radius: 999px;
-            border: 1px solid #7dd3fc;
-            background: #e0f2fe;
-            color: #075985;
+            border: 1px solid color-mix(in srgb, var(--ill-a) 45%, #ffffff 55%);
+            background: var(--ill-soft);
+            color: var(--ill-b);
             font-weight: 700;
             font-size: 11px;
             letter-spacing: 0.08em;
@@ -88,7 +87,7 @@
 
         .error-title {
             margin: 14px 0 6px;
-            color: #0f172a;
+            color: var(--text-primary, #1f2937);
             font-size: clamp(28px, 9vw, 34px);
             line-height: 1.1;
             letter-spacing: -0.02em;
@@ -96,7 +95,7 @@
 
         .error-message {
             margin: 0;
-            color: #475569;
+            color: var(--text-secondary, #4b5563);
             font-size: 15px;
             line-height: 1.55;
         }
@@ -104,7 +103,7 @@
         .micro-copy {
             margin: 6px 0 0;
             font-size: 13px;
-            color: #64748b;
+            color: var(--color-gray-500, #64748b);
             line-height: 1.4;
         }
 
@@ -190,9 +189,9 @@
 
         .meta-pill {
             border-radius: 999px;
-            border: 1px solid #cbd5e1;
-            background: #f8fafc;
-            color: #334155;
+            border: 1px solid var(--color-gray-300, #cbd5e1);
+            background: var(--color-gray-50, #f8fafc);
+            color: var(--color-gray-700, #334155);
             font-size: 12px;
             padding: 6px 10px;
         }
@@ -214,20 +213,20 @@
         }
 
         .btn-primary {
-            color: #fff;
+            color: var(--text-white, #fff);
             background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
-            box-shadow: 0 12px 24px rgba(14, 116, 209, 0.28);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.28);
         }
 
         .btn-secondary {
-            color: #0f172a;
-            background: #ffffff;
-            border-color: #cbd5e1;
+            color: var(--text-primary, #1f2937);
+            background: var(--bg-white, #ffffff);
+            border-color: var(--color-gray-300, #cbd5e1);
         }
 
         .help-note {
             margin: 14px 0 0;
-            color: #64748b;
+            color: var(--color-gray-500, #64748b);
             font-size: 12px;
             text-align: center;
         }

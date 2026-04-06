@@ -184,7 +184,7 @@
     min-height: 0;
   }
   #reprintPickerModal .reprint-picker-header {
-    background: linear-gradient(135deg, #d97706, #f59e0b);
+    background: linear-gradient(135deg, var(--color-warning-dark,#d97706), var(--color-warning,#f59e0b));
     padding: 14px 18px;
   }
   #reprintPickerModal .reprint-picker-body {
@@ -196,7 +196,7 @@
     flex: 1;
     overflow: hidden;
     text-align: left;
-    background: #f8fafc;
+    background: var(--color-gray-50,#f8fafc);
   }
   #reprintPickerModal .reprint-picker-search {
     display: flex;
@@ -210,8 +210,8 @@
     width: 100% !important;
     max-width: none !important;
     min-width: 0;
-    background: #fff !important;
-    border: 1px solid #d1d5db;
+    background: var(--bg-white,#fff) !important;
+    border: 1px solid var(--color-gray-300,#d1d5db);
     border-radius: 8px;
   }
   #reprintPickerModal .search-box .search-icon {
@@ -225,12 +225,12 @@
     font-size: 14px;
     line-height: 1.2;
     width: 100% !important;
-    background: #ffffff !important;
-    color: #111827 !important;
+    background: var(--bg-white,#fff) !important;
+    color: var(--text-primary,#111827) !important;
     border: none !important;
   }
   #reprintPickerModal .search-box .search-input::placeholder {
-    color: #9ca3af !important;
+    color: var(--color-gray-400,#9ca3af) !important;
   }
   #reprintPickerModal .search-box .search-clear-btn {
     right: 10px;
@@ -240,9 +240,9 @@
   #reprintPickerModal .reprint-picker-selection {
     margin-left: 0;
     font-size: 12px;
-    color: #475569;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    color: var(--text-secondary,#475569);
+    background: var(--bg-white,#fff);
+    border: 1px solid var(--color-gray-200,#e2e8f0);
     border-radius: 999px;
     padding: 0 12px;
     height: 28px;
@@ -254,19 +254,19 @@
   #reprintPickerModal #reprintPickerPreview {
     display: none;
     padding: 8px 10px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
+    background: var(--color-blue-bg,#eff6ff);
+    border: 1px solid var(--color-blue-light,#bfdbfe);
     border-radius: 8px;
-    color: #1e3a8a;
+    color: var(--color-blue-deep,#1e3a8a);
     font-size: 12px;
   }
   #reprintPickerModal .reprint-picker-table-wrap {
     flex: 1;
     min-height: 0;
-    border: 1px solid #dbe3ec;
+    border: 1px solid var(--color-gray-200,#dbe3ec);
     border-radius: 0;
     overflow: auto;
-    background: #fff;
+    background: var(--bg-white,#fff);
   }
   #reprintPickerModal .reprint-picker-table {
     width: 100%;
@@ -278,13 +278,13 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    background: #f1f5f9;
-    color: #334155;
+    background: var(--color-gray-100,#f1f5f9);
+    color: var(--text-primary,#334155);
     font-size: 11px;
     font-weight: 700;
     padding: 8px 6px;
     text-align: left;
-    border-bottom: 1px solid #dbe3ec;
+    border-bottom: 1px solid var(--color-gray-200,#dbe3ec);
     white-space: normal;
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -295,14 +295,14 @@
   }
   #reprintPickerModal .reprint-picker-table tbody td {
     padding: 7px 6px;
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 1px solid var(--color-gray-100,#eef2f7);
     font-size: 12px;
-    color: #1f2937;
+    color: var(--text-primary,#1f2937);
     vertical-align: middle;
     white-space: nowrap;
   }
   #reprintPickerModal .reprint-picker-table tbody tr:hover {
-    background: #f8fafc;
+    background: var(--color-gray-50,#f8fafc);
   }
   #reprintPickerModal .reprint-picker-table .center-cell {
     text-align: center;
@@ -347,10 +347,10 @@
     height: 53px;
     border-radius: 2px;
     object-fit: cover;
-    border: 1px solid #dbe3ec;
+    border: 1px solid var(--color-gray-200,#dbe3ec);
     display: block;
     margin: 0 auto;
-    background: #f3f4f6;
+    background: var(--color-gray-100,#f3f4f6);
   }
   #reprintPickerModal .reprint-picker-table .photo-cell,
   #reprintPickerModal .reprint-picker-table .image-cell {
@@ -361,8 +361,8 @@
     padding: 2px;
   }
   #reprintPickerModal .reprint-picker-footer {
-    border-top: 1px solid #e5e7eb;
-    background: #f8fafc;
+    border-top: 1px solid var(--color-gray-200,#e5e7eb);
+    background: var(--color-gray-50,#f8fafc);
     padding: 12px 16px;
     gap: 10px;
   }
@@ -371,8 +371,8 @@
   }
   #reprintPickerModal #reprintPickerRequestBtn {
     min-width: 150px;
-    background: linear-gradient(135deg, #d97706, #f59e0b);
-    color: #fff;
+    background: linear-gradient(135deg, var(--color-warning-dark,#d97706), var(--color-warning,#f59e0b));
+    color: var(--bg-white,#fff);
     border: none;
     opacity: 1;
   }
@@ -382,13 +382,13 @@
   #reprintPickerModal #reprintPickerRequestBtn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
-    background: linear-gradient(135deg, #f59e0b, #fbbf24);
-    color: #fff;
+    background: linear-gradient(135deg, var(--color-warning,#f59e0b), #fbbf24);
+    color: var(--bg-white,#fff);
   }
   #reprintPickerConfirmModal #reprintPickerEditBtn {
     min-width: 110px;
-    background: #2563eb;
-    color: #fff;
+    background: var(--primary,#2563eb);
+    color: var(--bg-white,#fff);
     border: none;
   }
   #reprintPickerConfirmModal #reprintPickerEditBtn:disabled {
@@ -397,8 +397,8 @@
   }
   #reprintPickerConfirmModal #reprintPickerConfirmBtn {
     min-width: 150px;
-    background: linear-gradient(135deg, #d97706, #f59e0b);
-    color: #fff;
+    background: linear-gradient(135deg, var(--color-warning-dark,#d97706), var(--color-warning,#f59e0b));
+    color: var(--bg-white,#fff);
     border: none;
   }
   #reprintPickerConfirmModal #reprintPickerConfirmBtn:hover:not(:disabled) {
@@ -419,14 +419,14 @@
     }
   }
   #reprintPickerConfirmModal .reprint-confirm-header {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    background: linear-gradient(135deg, var(--primary,#2563eb), var(--color-blue,#3b82f6));
   }
   #reprintPickerConfirmModal .reprint-confirm-preview {
     display: none;
     margin-top: 10px;
     padding: 10px;
-    background: #f8fafc;
-    border: 1px solid #dbeafe;
+    background: var(--color-gray-50,#f8fafc);
+    border: 1px solid var(--color-blue-bg,#dbeafe);
     border-radius: 10px;
   }
   #reprintPickerConfirmModal .reprint-preview-card {
@@ -440,9 +440,9 @@
     width: 84px;
     height: 106px;
     border-radius: 6px;
-    border: 1px solid #bfdbfe;
+    border: 1px solid var(--color-blue-light,#bfdbfe);
     overflow: hidden;
-    background: #eff6ff;
+    background: var(--color-blue-bg,#eff6ff);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -464,9 +464,9 @@
     width: 84px;
     height: 106px;
     border-radius: 6px;
-    border: 1px solid #bfdbfe;
+    border: 1px solid var(--color-blue-light,#bfdbfe);
     overflow: hidden;
-    background: #eff6ff;
+    background: var(--color-blue-bg,#eff6ff);
   }
   #reprintPickerConfirmModal .reprint-preview-extra-image img {
     width: 100%;
@@ -496,14 +496,14 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #fff;
+    color: var(--bg-white,#fff);
     font-size: 10px;
   }
   #reprintPickerConfirmModal .reprint-preview-image-btn.upload {
-    background: #2563eb;
+    background: var(--primary,#2563eb);
   }
   #reprintPickerConfirmModal .reprint-preview-image-btn.remove {
-    background: #dc2626;
+    background: var(--color-danger,#dc2626);
   }
   #reprintPickerConfirmModal .reprint-preview-photo img {
     width: 100%;
@@ -512,7 +512,7 @@
     display: block;
   }
   #reprintPickerConfirmModal .reprint-preview-photo-placeholder {
-    color: #3b82f6;
+    color: var(--color-blue,#3b82f6);
     font-size: 26px;
   }
   #reprintPickerConfirmModal .reprint-preview-meta {
@@ -527,21 +527,21 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   #reprintPickerConfirmModal .reprint-preview-meta-item {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-white,#fff);
+    border: 1px solid var(--color-gray-200,#e2e8f0);
     border-radius: 6px;
     padding: 5px 7px;
     min-width: 0;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
   #reprintPickerConfirmModal .reprint-preview-meta-item.is-dirty {
-    border-color: #60a5fa;
-    background: #eff6ff;
+    border-color: var(--color-blue,#60a5fa);
+    background: var(--color-blue-bg,#eff6ff);
     box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.16);
   }
   #reprintPickerConfirmModal .reprint-preview-meta-label {
     display: block;
-    color: #64748b;
+    color: var(--color-gray-500,#64748b);
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -549,7 +549,7 @@
   }
   #reprintPickerConfirmModal .reprint-preview-meta-value {
     display: block;
-    color: #0f172a;
+    color: var(--text-primary,#0f172a);
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
@@ -557,7 +557,7 @@
     text-overflow: ellipsis;
   }
   #reprintPickerConfirmModal .reprint-preview-meta-value.is-empty {
-    color: #9ca3af;
+    color: var(--color-gray-400,#9ca3af);
     font-style: italic;
     font-weight: 500;
   }
@@ -569,9 +569,9 @@
     margin-top: 10px;
     padding: 7px 10px;
     border-radius: 8px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
+    background: var(--color-blue-bg,#eff6ff);
+    border: 1px solid var(--color-blue-light,#bfdbfe);
+    color: var(--primary-dark,#1d4ed8);
     font-size: 12px;
     font-weight: 600;
   }
@@ -588,8 +588,8 @@
     height: 18px;
     padding: 0 6px;
     border-radius: 999px;
-    background: #2563eb;
-    color: #fff;
+    background: var(--primary,#2563eb);
+    color: var(--bg-white,#fff);
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
@@ -600,28 +600,28 @@
   #reprintPickerConfirmModal .reprint-preview-input {
     width: 100%;
     height: 28px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--color-gray-300,#cbd5e1);
     border-radius: 6px;
     padding: 4px 8px;
-    background: #fff;
-    color: #0f172a;
+    background: var(--bg-white,#fff);
+    color: var(--text-primary,#0f172a);
     font-size: 12px;
     font-weight: 600;
   }
   #reprintPickerConfirmModal .reprint-preview-input::placeholder {
-    color: #9ca3af;
+    color: var(--color-gray-400,#9ca3af);
     font-style: italic;
     font-weight: 500;
   }
   #reprintPickerConfirmModal .reprint-preview-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--color-blue,#3b82f6);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
   }
   #reprintPickerConfirmModal .reprint-preview-input[readonly] {
     border-style: dashed;
-    background: #f8fafc;
-    color: #64748b;
+    background: var(--color-gray-50,#f8fafc);
+    color: var(--color-gray-500,#64748b);
   }
   @media (max-width: 760px) {
     #reprintPickerConfirmModal .reprint-preview-card {
@@ -673,7 +673,7 @@
         <table class="reprint-picker-table">
           <thead id="reprintPickerTableHead"></thead>
           <tbody id="reprintPickerTableBody">
-            <tr><td colspan="5" style="padding:20px;text-align:center;color:#6b7280;">Loading...</td></tr>
+            <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--color-gray-500,#6b7280);">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -709,3 +709,5 @@
     </div>
   </div>
 </div>
+
+

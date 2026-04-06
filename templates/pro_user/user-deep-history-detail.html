@@ -5,6 +5,14 @@
 
 {% block extra_css %}
 <style>
+  :root {
+    --audit-surface: var(--bg-white, #ffffff);
+    --audit-surface-soft: var(--color-gray-50, #f8fafc);
+    --audit-border: var(--color-gray-200, #e0e0e0);
+    --audit-text: var(--text-primary, #1f2937);
+    --audit-muted: var(--color-gray-500, #64748b);
+  }
+
   @keyframes audit-skeleton-shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
@@ -12,8 +20,8 @@
   .audit-page { padding: 16px 20px; }
   .audit-history {
     margin-top: 12px;
-    background: #fff;
-    border: 1px solid var(--border-color, #e0e0e0);
+    background: var(--audit-surface);
+    border: 1px solid var(--audit-border);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -23,32 +31,32 @@
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-bottom: 1px solid #edf2f7;
-    background: #fbfdff;
+    border-bottom: 1px solid var(--color-gray-100, #edf2f7);
+    background: color-mix(in srgb, var(--audit-surface-soft) 70%, #ffffff 30%);
   }
-  .audit-user-meta { font-size: 12px; color: #64748b; }
+  .audit-user-meta { font-size: 12px; color: var(--audit-muted); }
   .audit-stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 8px;
     padding: 12px 14px;
-    border-bottom: 1px solid #edf2f7;
-    background: #fcfcff;
+    border-bottom: 1px solid var(--color-gray-100, #edf2f7);
+    background: color-mix(in srgb, var(--audit-surface-soft) 55%, #ffffff 45%);
   }
   .audit-stat {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-gray-200, #e2e8f0);
     border-radius: 8px;
     padding: 10px;
   }
-  .audit-stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
-  .audit-stat-value { font-size: 18px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+  .audit-stat-label { font-size: 11px; color: var(--audit-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .audit-stat-value { font-size: 18px; font-weight: 700; color: var(--audit-text); line-height: 1.2; }
   .audit-log-list { max-height: 70vh; overflow-y: auto; }
   .audit-log-item {
     display: grid;
     grid-template-columns: 42px 1fr;
     gap: 10px;
     padding: 11px 14px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
   }
   .audit-log-item:last-child { border-bottom: 0; }
   .audit-log-icon {
@@ -58,20 +66,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    background: #6366f1;
+    color: var(--text-white, #fff);
+    background: var(--primary, #6366f1);
   }
   .audit-log-main { min-width: 0; }
   .audit-log-title {
     font-size: 13px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--audit-text);
     margin-bottom: 3px;
     line-height: 1.35;
   }
   .audit-log-sub {
     font-size: 11px;
-    color: #64748b;
+    color: var(--audit-muted);
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
@@ -80,23 +88,23 @@
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-    border: 1px solid #dbeafe;
-    color: #1d4ed8;
-    background: #eff6ff;
+    border: 1px solid color-mix(in srgb, var(--color-blue, #3b82f6) 28%, #ffffff 72%);
+    color: var(--color-blue-dark, #1d4ed8);
+    background: var(--color-blue-bg, #eff6ff);
   }
   .audit-empty {
     text-align: center;
     padding: 48px 18px;
-    color: #94a3b8;
+    color: var(--color-gray-400, #94a3b8);
   }
   .audit-load-more-wrap {
     padding: 10px 14px 14px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--color-gray-100, #f1f5f9);
     text-align: center;
   }
   .audit-skeleton {
     border-radius: 8px;
-    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background: linear-gradient(90deg, var(--color-gray-200, #e2e8f0) 25%, var(--color-gray-50, #f8fafc) 37%, var(--color-gray-200, #e2e8f0) 63%);
     background-size: 200% 100%;
     animation: audit-skeleton-shimmer 1.35s linear infinite;
   }
@@ -105,7 +113,7 @@
     grid-template-columns: 36px 1fr;
     gap: 10px;
     padding: 12px 14px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
   }
   .audit-loader-icon { width: 36px; height: 36px; border-radius: 999px; }
   .audit-loader-line { height: 12px; margin-bottom: 6px; }
@@ -146,17 +154,17 @@
       <a href="{% url 'pro_user_activity_logs' %}" class="btn btn-sm btn-outline-secondary">
         <i class="fa-solid fa-arrow-left"></i> Back To Users
       </a>
-      <div style="font-size:14px;font-weight:700;color:#1f2937;">{{ audit_target.name }} - Deep History</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">{{ audit_target.name }} - Deep History</div>
     </div>
     <div class="action-right">
-      <span style="font-size:12px;color:var(--text-muted,#888);">{{ audit_target.role_display }}</span>
+      <span style="font-size:12px;color:var(--text-secondary,#666);">{{ audit_target.role_display }}</span>
     </div>
   </div>
 
   <div id="auditHistory" class="audit-history">
     <div class="audit-history-head">
       <div>
-        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:#1f2937;">{{ audit_target.name }} - Deep History</div>
+        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">{{ audit_target.name }} - Deep History</div>
         <div id="auditSelectedMeta" class="audit-user-meta">{{ audit_target.role_display }} | {{ audit_target.email_or_username }}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -288,7 +296,7 @@
             var role = l.actor_role ? ('Role: ' + _esc(l.actor_role.replace('_', ' '))) : '';
             var scope = l.scope === 'related'
               ? '<span class="audit-log-tag">Related</span>'
-              : '<span class="audit-log-tag" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534;">Performed</span>';
+              : '<span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-success,#22c55e) 35%, #ffffff 65%);background:var(--color-success-bg,#f0fdf4);color:var(--color-success-dark,#166534);">Performed</span>';
             var ip = l.ip_address ? ('IP: ' + _esc(l.ip_address)) : 'IP: -';
             var target = l.target_name ? ('Target: ' + _esc(l.target_name)) : '';
             html += '<div class="audit-log-item">'

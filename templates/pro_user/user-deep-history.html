@@ -5,6 +5,14 @@
 
 {% block extra_css %}
 <style>
+  :root {
+    --audit-surface: var(--bg-white, #ffffff);
+    --audit-surface-soft: var(--color-gray-50, #f8fafc);
+    --audit-border: var(--color-gray-200, #e0e0e0);
+    --audit-text: var(--text-primary, #2c3e50);
+    --audit-muted: var(--text-secondary, #666);
+  }
+
   @keyframes audit-skeleton-shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
@@ -17,13 +25,13 @@
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    border: 1px solid var(--border-color, #e0e0e0);
+    border: 1px solid var(--audit-border);
     background: transparent;
-    color: var(--text-secondary, #666);
+    color: var(--audit-muted);
     transition: all 0.15s;
   }
   .audit-pill:hover, .audit-pill.active {
-    color: #fff;
+    color: var(--text-white, #fff);
     border-color: var(--primary, #667eea);
     background: var(--primary, #667eea);
   }
@@ -38,8 +46,8 @@
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    background: #fff;
-    border: 1px solid var(--border-color, #e0e0e0);
+    background: var(--audit-surface);
+    border: 1px solid var(--audit-border);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s;
@@ -57,14 +65,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--text-white, #fff);
     font-size: 14px;
     font-weight: 700;
     flex-shrink: 0;
   }
   .audit-user-main { flex: 1; min-width: 0; }
   .audit-user-name {
-    color: var(--text-primary, #2c3e50);
+    color: var(--audit-text);
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
@@ -72,7 +80,7 @@
     text-overflow: ellipsis;
   }
   .audit-user-email {
-    color: var(--text-secondary, #666);
+    color: var(--audit-muted);
     font-size: 11px;
     white-space: nowrap;
     overflow: hidden;
@@ -88,17 +96,17 @@
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
-  .audit-role.r-super_admin  { background: #ede9fe; color: #6d28d9; }
-  .audit-role.r-admin_staff  { background: #fef3c7; color: #d97706; }
-  .audit-role.r-client       { background: #d1fae5; color: #065f46; }
-  .audit-role.r-client_staff { background: #dbeafe; color: #1e40af; }
-  .audit-role.r-pro_user     { background: #fee2e2; color: #be123c; }
+  .audit-role.r-super_admin  { background: color-mix(in srgb, var(--color-purple, #8b5cf6) 18%, #ffffff 82%); color: var(--color-purple-dark, #6d28d9); }
+  .audit-role.r-admin_staff  { background: var(--color-warning-bg, #fef3c7); color: var(--color-warning-dark, #d97706); }
+  .audit-role.r-client       { background: var(--color-success-bg, #d1fae5); color: var(--color-success-dark, #065f46); }
+  .audit-role.r-client_staff { background: var(--color-blue-bg, #dbeafe); color: var(--color-blue-dark, #1e40af); }
+  .audit-role.r-pro_user     { background: var(--color-danger-bg, #fee2e2); color: var(--color-danger-dark, #be123c); }
   .audit-open-btn {
     display: none;
     padding: 4px 10px;
     border-radius: 4px;
     background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
-    color: #fff;
+    color: var(--text-white, #fff);
     font-size: 11px;
     font-weight: 600;
     border: none;
@@ -115,8 +123,8 @@
   }
   .audit-history {
     margin-top: 16px;
-    background: #fff;
-    border: 1px solid var(--border-color, #e0e0e0);
+    background: var(--audit-surface);
+    border: 1px solid var(--audit-border);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -126,32 +134,32 @@
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-bottom: 1px solid #edf2f7;
-    background: #fbfdff;
+    border-bottom: 1px solid var(--color-gray-100, #edf2f7);
+    background: color-mix(in srgb, var(--audit-surface-soft) 70%, #ffffff 30%);
   }
-  .audit-user-meta { font-size: 12px; color: #64748b; }
+  .audit-user-meta { font-size: 12px; color: var(--color-gray-500, #64748b); }
   .audit-stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 8px;
     padding: 12px 14px;
-    border-bottom: 1px solid #edf2f7;
-    background: #fcfcff;
+    border-bottom: 1px solid var(--color-gray-100, #edf2f7);
+    background: color-mix(in srgb, var(--audit-surface-soft) 55%, #ffffff 45%);
   }
   .audit-stat {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-gray-200, #e2e8f0);
     border-radius: 8px;
     padding: 10px;
   }
-  .audit-stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
-  .audit-stat-value { font-size: 18px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+  .audit-stat-label { font-size: 11px; color: var(--color-gray-500, #64748b); text-transform: uppercase; letter-spacing: 0.03em; }
+  .audit-stat-value { font-size: 18px; font-weight: 700; color: var(--audit-text); line-height: 1.2; }
   .audit-log-list { max-height: 520px; overflow-y: auto; }
   .audit-log-item {
     display: grid;
     grid-template-columns: 42px 1fr;
     gap: 10px;
     padding: 11px 14px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
   }
   .audit-log-item:last-child { border-bottom: 0; }
   .audit-log-icon {
@@ -161,20 +169,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    background: #6366f1;
+    color: var(--text-white, #fff);
+    background: var(--primary, #6366f1);
   }
   .audit-log-main { min-width: 0; }
   .audit-log-title {
     font-size: 13px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--audit-text);
     margin-bottom: 3px;
     line-height: 1.35;
   }
   .audit-log-sub {
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-gray-500, #64748b);
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
@@ -183,23 +191,23 @@
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-    border: 1px solid #dbeafe;
-    color: #1d4ed8;
-    background: #eff6ff;
+    border: 1px solid color-mix(in srgb, var(--color-blue, #3b82f6) 28%, #ffffff 72%);
+    color: var(--color-blue-dark, #1d4ed8);
+    background: var(--color-blue-bg, #eff6ff);
   }
   .audit-empty {
     text-align: center;
     padding: 48px 18px;
-    color: #94a3b8;
+    color: var(--color-gray-400, #94a3b8);
   }
   .audit-load-more-wrap {
     padding: 10px 14px 14px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--color-gray-100, #f1f5f9);
     text-align: center;
   }
   .audit-skeleton {
     border-radius: 8px;
-    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background: linear-gradient(90deg, var(--color-gray-200, #e2e8f0) 25%, var(--color-gray-50, #f8fafc) 37%, var(--color-gray-200, #e2e8f0) 63%);
     background-size: 200% 100%;
     animation: audit-skeleton-shimmer 1.35s linear infinite;
   }
@@ -208,7 +216,7 @@
     grid-template-columns: 36px 1fr;
     gap: 10px;
     padding: 12px 14px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
   }
   .audit-loader-icon { width: 36px; height: 36px; border-radius: 999px; }
   .audit-loader-line { height: 12px; margin-bottom: 6px; }
@@ -262,7 +270,7 @@
   <div id="auditHistory" class="audit-history" style="display:none;">
     <div class="audit-history-head">
       <div>
-        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:#1f2937;">User History</div>
+        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">User History</div>
         <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -303,7 +311,13 @@
   var _historyOffset = 0;
   var _historyLimit = 50;
   var _hasMore = false;
-  var COLORS = { pro_user:'#e11d48', super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var COLORS = {
+    pro_user: 'var(--color-danger,#e11d48)',
+    super_admin: 'var(--primary,#667eea)',
+    admin_staff: 'var(--color-warning-dark,#d97706)',
+    client: 'var(--color-success,#38a169)',
+    client_staff: 'var(--color-blue,#3182ce)'
+  };
 
   function _csrf() {
     return document.querySelector('meta[name="csrf-token"]')?.content
@@ -393,9 +407,9 @@
     list.forEach(function(u) {
       var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
       var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
-      var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:#fecaca;color:#b91c1c;background:#fef2f2;">Inactive</span>';
+      var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-danger,#ef4444) 28%, #ffffff 72%);color:var(--color-danger-dark,#b91c1c);background:var(--color-danger-bg,#fef2f2);">Inactive</span>';
       html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
-        + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || '#64748b') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
+        + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || 'var(--color-gray-500,#64748b)') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
         + '<div class="audit-user-main">'
         + '<div class="audit-user-name">' + _esc(u.name) + inactive + '</div>'
         + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
@@ -470,7 +484,7 @@
             var role = l.actor_role ? ('Role: ' + _esc(l.actor_role.replace('_', ' '))) : '';
             var scope = l.scope === 'related'
               ? '<span class="audit-log-tag">Related</span>'
-              : '<span class="audit-log-tag" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534;">Performed</span>';
+              : '<span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-success,#22c55e) 35%, #ffffff 65%);background:var(--color-success-bg,#f0fdf4);color:var(--color-success-dark,#166534);">Performed</span>';
             var ip = l.ip_address ? ('IP: ' + _esc(l.ip_address)) : 'IP: -';
             var target = l.target_name ? ('Target: ' + _esc(l.target_name)) : '';
             html += '<div class="audit-log-item">'
