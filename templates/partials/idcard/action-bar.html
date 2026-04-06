@@ -313,9 +313,9 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
 
     <!-- Right Buttons (Pool Danger Zone only) -->
     <div class="flex items-center gap-[2px]">
-        {% if current_status == 'download' and is_super_admin or current_status == 'download' and is_admin_staff and perm_reprint_request_list or current_status == 'download' and is_admin_staff and perm_confirmed_list or current_status == 'download' and is_client and perm_reprint_request_list or current_status == 'download' and is_client and perm_confirmed_list or current_status == 'download' and is_client_staff and perm_reprint_request_list or current_status == 'download' and is_client_staff and perm_confirmed_list %}
+        {% if current_status == 'download' and is_super_admin or current_status == 'download' and is_admin_staff and perm_reprint_request_list or current_status == 'download' and is_admin_staff and perm_confirmed_list or current_status == 'download' and is_client and perm_idcard_reprint_list or current_status == 'download' and is_client and perm_confirmed_list or current_status == 'download' and is_client_staff and perm_idcard_reprint_list or current_status == 'download' and is_client_staff and perm_confirmed_list %}
         <div class="action-nav-group reprint-links">
-            {% if is_super_admin or is_admin_staff and perm_reprint_request_list or is_client and perm_reprint_request_list or is_client_staff and perm_reprint_request_list %}
+            {% if is_super_admin or is_admin_staff and perm_reprint_request_list or is_client and perm_idcard_reprint_list or is_client_staff and perm_idcard_reprint_list %}
             <a class="btn action-btn btn-blue reprint-nav-link" href="{% if is_client or is_client_staff %}{% url 'client:reprint_cards' table.id %}{% else %}{% url 'reprintcard:reprint_cards' table.id %}{% endif %}?step=request_list" title="Open Request List">
                 <span class="btn-text">Request List</span>
                 <span class="reprint-nav-count" id="downloadRequestCount">{{ reprint_counts.request_list|default:0 }}</span>

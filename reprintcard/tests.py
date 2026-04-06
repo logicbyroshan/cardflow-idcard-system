@@ -369,6 +369,71 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(list_response.status_code, 200)
 		self.assertGreaterEqual(len(list_response.json()['items']), 2)
 
+	def test_reprint_request_create_allows_inline_edit_for_client_reprint_flow(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_b.id],
+				'inline_field_data': {
+					'Name': 'Beta Inline',
+					'Class': '10',
+					'Section': 'B',
+				},
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		self.assertEqual(payload.get('created_count'), 1)
+
+		self.card_b.refresh_from_db()
+		field_data = self.card_b.field_data or {}
+		updated_name = field_data.get('Name') or field_data.get('NAME') or ''
+		self.assertEqual(str(updated_name).upper(), 'BETA INLINE')
+
+	def test_reprint_request_create_inline_edit_requires_single_card(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_a.id, self.card_b.id],
+				'inline_field_data': {'Name': 'Should Fail'},
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('exactly one card', response.json().get('message', '').lower())
+
+	def test_reprint_request_create_inline_edit_rejects_non_object(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_b.id],
+				'inline_field_data': 'bad',
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('must be an object', response.json().get('message', '').lower())
+
+	def test_request_list_visible_for_client_with_reprint_permission(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.get(self._url('api_request_list'))
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		self.assertGreaterEqual(payload.get('total', 0), 1)
+
 	def test_request_list_clamps_offset_and_limit(self):
 		self.client.force_login(self.super_admin)
 		response = self.client.get(self._url('api_request_list'), {'offset': -100, 'limit': 99999})

@@ -22,6 +22,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
+from core.services import IDCardService
 from core.services.permission_service import PermissionService, api_require_permission
 from core.services.activity_service import ActivityService
 from core.views.base import get_user_role, require_any_admin
@@ -215,7 +216,11 @@ def _can_use_reprint_cards(user) -> bool:
 
 def _can_view_reprint_request_list(user) -> bool:
     """Permission for opening the Reprint Request List page/tab."""
-    return PermissionService.has(user, 'perm_reprint_request_list')
+    if PermissionService.has(user, 'perm_reprint_request_list'):
+        return True
+    if PermissionService.is_client_role(user):
+        return PermissionService.has(user, 'perm_idcard_reprint_list')
+    return False
 
 
 def _can_view_reprint_confirmed_list(user) -> bool:
@@ -293,6 +298,59 @@ def _parse_json_body_dict(request):
         return None, JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
 
     return body, None
+
+
+def _apply_inline_reprint_edit(table, user, card_ids, inline_field_data):
+    """Apply optional inline field edits before creating a reprint request."""
+    if inline_field_data is None:
+        return None
+
+    if not isinstance(inline_field_data, dict):
+        return JsonResponse({'status': 'error', 'message': 'inline_field_data must be an object'}, status=400)
+
+    if not inline_field_data:
+        return None
+
+    normalized_ids = ReprintWorkflowService._normalize_positive_int_ids(card_ids)
+    if len(normalized_ids) != 1:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Inline edits are only allowed when exactly one card is selected'},
+            status=400,
+        )
+
+    target_id = normalized_ids[0]
+    card = IDCard.objects.filter(table=table, id=target_id, status='download').only('id').first()
+    if not card:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Inline edits are only allowed for cards in download status'},
+            status=400,
+        )
+
+    update_result = IDCardService.update_card(
+        card_id=card.id,
+        field_data=inline_field_data,
+        uploaded_by=user if getattr(user, 'is_authenticated', False) else None,
+        modified_by=user.username if getattr(user, 'is_authenticated', False) else '',
+    )
+    if not update_result.success:
+        return JsonResponse(
+            {'status': 'error', 'message': update_result.message or 'Could not save inline edits'},
+            status=400,
+        )
+
+    try:
+        ActivityService.log(
+            'card_update',
+            'ID card updated before reprint request',
+            user=user,
+            target_model='IDCard',
+            target_id=card.id,
+            target_name=f'Card #{card.id}',
+        )
+    except Exception:
+        pass
+
+    return None
 
 
 def _get_reprint_step_counts(table):
@@ -533,6 +591,16 @@ def api_reprint_request_create(request, table_id):
 
     card_ids = body.get('card_ids', [])
     reason = body.get('reason', '')
+    inline_field_data = body.get('inline_field_data')
+
+    inline_err = _apply_inline_reprint_edit(
+        table=table,
+        user=request.user,
+        card_ids=card_ids,
+        inline_field_data=inline_field_data,
+    )
+    if inline_err:
+        return inline_err
 
     result = ReprintWorkflowService.create_requests(
         table=table,

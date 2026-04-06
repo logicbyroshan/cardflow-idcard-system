@@ -40,6 +40,6 @@
     --z-drawer: 85;
     --z-modal-backdrop: 90;
     --z-modal: 100;
-    --z-toast: 110;
+    --z-toast: 12000;
   }
 }

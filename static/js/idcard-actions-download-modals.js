@@ -862,13 +862,6 @@ function initReprintPickerHandlers() {
     }
 
     function setInlineEditMode(enabled) {
-        if (enabled && isClientEditLockedStatus()) {
-            if (typeof showToast === 'function') {
-                showToast('Editing is locked in this status. Reprint request will be sent without edits.', 'info');
-            }
-            enabled = false;
-        }
-
         inlineEditMode = !!enabled;
         // Keep confirm modal as the only active editor layer.
         if (inlineEditMode) {
@@ -1100,20 +1093,22 @@ function initReprintPickerHandlers() {
         var ids = pendingEditIds.length ? pendingEditIds.slice() : selectedCardIdsAsNumbers();
         if (!ids.length) return;
         var cardId = ids[0];
+        var requestPayload = { card_ids: ids };
         var submitPromise;
         if (inlineEditMode) {
             if (inlineDirtyCount > 0) {
+                requestPayload.inline_field_data = collectInlineFieldData(cardId);
                 if (isClientEditLockedStatus()) {
-                    submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
+                    submitPromise = ApiClient.post(endpoints.requestCreate, requestPayload);
                 } else {
                     submitPromise = updateCardInline(cardId, collectInlineFieldData(cardId))
-                        .then(function() { return ApiClient.post(endpoints.requestCreate, { card_ids: ids }); });
+                        .then(function() { return ApiClient.post(endpoints.requestCreate, requestPayload); });
                 }
             } else {
-                submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
+                submitPromise = ApiClient.post(endpoints.requestCreate, requestPayload);
             }
         } else {
-            submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
+            submitPromise = ApiClient.post(endpoints.requestCreate, requestPayload);
         }
 
         inlineSaveInFlight = true;
