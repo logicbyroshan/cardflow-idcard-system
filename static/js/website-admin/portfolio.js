@@ -1,7 +1,7 @@
 /**
  * Website Admin  Portfolio Module (v3)
  * CRUD for Portfolio items + Category management
- * Type & orientation are auto-detected server-side.
+ * Orientation is auto-detected server-side for image uploads.
  */
 (function () {
     const BASE = '/website/api';
@@ -14,6 +14,7 @@
         document.getElementById('portfolioModalTitle').textContent = id ? 'Edit Portfolio Item' : 'Add Portfolio Item';
         document.getElementById('portfolioForm').reset();
         document.getElementById('portfolioId').value = id || '';
+        document.getElementById('pf_item_type').value = 'image';
         if (id) {
             ApiClient.get(`${BASE}/portfolio/${id}/`)
                 .then(d => {
@@ -21,6 +22,7 @@
                     const p = d.item;
                     document.getElementById('pf_category').value = p.category_id || '';
                     document.getElementById('pf_order').value = p.order || 0;
+                    document.getElementById('pf_item_type').value = p.item_type || 'image';
                     document.getElementById('pf_active').checked = p.is_active;
                     document.getElementById('pf_featured').checked = p.is_featured;
                 });

@@ -252,7 +252,16 @@
             <div class="wa-form-group">
                 <label for="pf_video_file"><i class="fa-solid fa-video"></i> Video File (optional)</label>
                 <input type="file" id="pf_video_file" name="video_file" accept="video/*">
-                <small class="form-hint">Upload a video file. Type will be set to "video" automatically.</small>
+                <small class="form-hint">Upload video for Video or Reel items.</small>
+            </div>
+            <div class="wa-form-group">
+                <label for="pf_item_type">Media Type</label>
+                <select id="pf_item_type" name="item_type" class="form-select">
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                    <option value="reel">Reel (Short Vertical)</option>
+                </select>
+                <small class="form-hint">For short vertical videos, choose Reel so it is styled correctly in the product range modal.</small>
             </div>
             <div class="wa-form-row">
                 <div class="wa-form-group">
@@ -343,7 +352,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=134"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=135"></script>
 <script>
 function toggleAllPortfolio(master) {
     document.querySelectorAll('.portfolio-row-check').forEach(function(cb) { cb.checked = master.checked; });

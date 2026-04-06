@@ -116,29 +116,29 @@ body.modal-open {
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-    align-content: start;
+    display: block;
+    column-count: 4;
+    column-gap: 16px;
+    column-fill: balance;
 }
 
 .product-gallery-grid .gallery-item {
     break-inside: avoid;
-    margin-bottom: 0;
-    display: block;
+    margin-bottom: 16px;
+    display: inline-block;
     vertical-align: top;
     width: 100%;
 }
 
 @media (max-width: 900px) {
     .product-gallery-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        column-count: 3;
     }
 }
 
 @media (max-width: 600px) {
     .product-gallery-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-count: 2;
     }
 }
 
@@ -185,7 +185,7 @@ body.modal-open {
     height: auto;
     display: block;
     aspect-ratio: auto;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 /* Video item play button overlay (handled by .gallery-video-overlay) */
@@ -256,8 +256,8 @@ body.modal-open {
 
 /* Reel items - taller portrait-style like shorts/reels */
 .gallery-item.reel-item video {
-    aspect-ratio: 9/16;
-    object-fit: cover;
+    aspect-ratio: auto;
+    object-fit: contain;
 }
 
 /* ============================================

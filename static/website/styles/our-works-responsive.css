@@ -10,8 +10,8 @@
     }
     
     .product-gallery-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 15px;
+        column-count: 3;
+        column-gap: 15px;
         padding: 20px;
     }
 }
@@ -32,8 +32,8 @@
     }
     
     .product-gallery-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        column-count: 2;
+        column-gap: 12px;
         padding: 15px;
     }
     
@@ -60,7 +60,7 @@
 
 @media (max-width: 400px) {
     .product-gallery-grid {
-        grid-template-columns: 1fr;
+        column-count: 1;
     }
     
     .gallery-item img {

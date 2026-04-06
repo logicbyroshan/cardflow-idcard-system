@@ -226,16 +226,120 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Open gallery from URL hash ---
-    function checkHashAndOpen() {
-        const hash = window.location.hash;
-        if (hash.startsWith('#category=')) {
-            const slug = hash.replace('#category=', '');
-            if (slug) {
-                const card = document.querySelector('.category-card[data-slug="' + slug + '"]');
-                const extraTag = document.querySelector('.extra-category-tag[data-slug="' + slug + '"]');
-                const target = card ? card.querySelector('.explore-btn') : extraTag;
-                if (target) setTimeout(() => target.click(), 500);
+    function normalizeHashText(value) {
+        return (value || '')
+            .toLowerCase()
+            .replace(/[-_]+/g, ' ')
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function resolveCategoryTargetBySlug(slug) {
+        const normalizedSlug = normalizeHashText(slug);
+        if (!normalizedSlug) return null;
+
+        const exactCard = document.querySelector('.category-card[data-slug="' + slug + '"]');
+        const exactExtra = document.querySelector('.extra-category-tag[data-slug="' + slug + '"]');
+        if (exactCard) return exactCard.querySelector('.explore-btn');
+        if (exactExtra) return exactExtra;
+
+        const allCategories = document.querySelectorAll('.category-card, .extra-category-tag');
+        let bestNode = null;
+        let bestScore = 0;
+
+        allCategories.forEach((node) => {
+            const nodeSlug = normalizeHashText(node.dataset.slug || '');
+            const nodeLabelEl = node.classList.contains('category-card')
+                ? node.querySelector('h3')
+                : node.querySelector('span');
+            const nodeLabel = normalizeHashText(nodeLabelEl ? nodeLabelEl.textContent : '');
+            const haystack = (nodeSlug + ' ' + nodeLabel).trim();
+            if (!haystack) return;
+
+            let score = 0;
+            if (haystack === normalizedSlug) {
+                score = 100;
+            } else if (haystack.includes(normalizedSlug)) {
+                score = 80 + normalizedSlug.length;
+            } else if (normalizedSlug.includes(nodeSlug) && nodeSlug.length > 2) {
+                score = 50 + nodeSlug.length;
             }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestNode = node;
+            }
+        });
+
+        if (!bestNode) return null;
+        return bestNode.classList.contains('category-card') ? bestNode.querySelector('.explore-btn') : bestNode;
+    }
+
+    function resolveCategoryTargetByExpertise(expertiseKey) {
+        const normalizedKey = normalizeHashText(decodeURIComponent(expertiseKey || ''));
+        if (!normalizedKey) return null;
+
+        const expertiseAliasMap = {
+            'school id cards': ['school id cards', 'school id', 'id cards'],
+            'staff identity cards': ['staff identity cards', 'staff id', 'employee id'],
+            'digital lanyards': ['digital lanyards', 'lanyard'],
+            'printed marksheets': ['printed marksheets', 'marksheet', 'report card'],
+            'certificate design': ['certificate design', 'certificate'],
+            'rfid integration': ['rfid integration', 'rfid', 'smart card']
+        };
+
+        const lookupTerms = (expertiseAliasMap[normalizedKey] || [normalizedKey]).map(normalizeHashText);
+        const allCategories = document.querySelectorAll('.category-card, .extra-category-tag');
+        let bestNode = null;
+        let bestScore = 0;
+
+        allCategories.forEach((node) => {
+            const nodeSlug = normalizeHashText(node.dataset.slug || '');
+            const nodeLabelEl = node.classList.contains('category-card')
+                ? node.querySelector('h3')
+                : node.querySelector('span');
+            const nodeLabel = normalizeHashText(nodeLabelEl ? nodeLabelEl.textContent : '');
+            const haystack = (nodeSlug + ' ' + nodeLabel).trim();
+            if (!haystack) return;
+
+            let score = 0;
+            lookupTerms.forEach((term) => {
+                if (!term) return;
+                if (haystack === term) {
+                    score = Math.max(score, 100);
+                } else if (haystack.includes(term)) {
+                    score = Math.max(score, 80 + term.length);
+                } else if (term.includes(nodeSlug) && nodeSlug.length > 2) {
+                    score = Math.max(score, 50 + nodeSlug.length);
+                }
+            });
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestNode = node;
+            }
+        });
+
+        if (!bestNode) return null;
+        return bestNode.classList.contains('category-card') ? bestNode.querySelector('.explore-btn') : bestNode;
+    }
+
+    function openTargetWithDelay(target) {
+        if (!target) return false;
+        setTimeout(() => target.click(), 500);
+        return true;
+    }
+
+    function checkHashAndOpen() {
+        const hash = window.location.hash || '';
+        if (hash.startsWith('#category=')) {
+            const slug = decodeURIComponent(hash.replace('#category=', ''));
+            if (openTargetWithDelay(resolveCategoryTargetBySlug(slug))) return;
+        }
+        if (hash.startsWith('#expertise=')) {
+            const expertiseKey = hash.replace('#expertise=', '');
+            openTargetWithDelay(resolveCategoryTargetByExpertise(expertiseKey));
         }
     }
     checkHashAndOpen();

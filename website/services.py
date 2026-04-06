@@ -354,11 +354,15 @@ class PortfolioItemService:
         _validate_image_upload(image, 'portfolio image')
         _validate_video_upload(video_file, 'portfolio video')
 
-        # Auto-detect type from uploads
+        requested_type = (item_type or '').strip().lower()
+
+        # Auto-detect type from uploads, but preserve explicit reel selection.
         if video_file:
-            item_type = 'video'
+            item_type = requested_type if requested_type in ('video', 'reel') else 'video'
         elif image:
             item_type = 'image'
+        else:
+            item_type = requested_type if requested_type in ('image', 'video', 'reel') else 'image'
 
         # Auto-detect orientation from image dimensions
         if image and item_type == 'image':
@@ -403,11 +407,15 @@ class PortfolioItemService:
         _validate_image_upload(image, 'portfolio image')
         _validate_video_upload(video_file, 'portfolio video')
 
-        # Auto-detect type from new uploads
+        requested_type = (item_type or '').strip().lower() if item_type is not None else None
+
+        # Auto-detect type from new uploads, but preserve explicit reel selection.
         if video_file:
-            item_type = 'video'
+            item_type = requested_type if requested_type in ('video', 'reel') else 'video'
         elif image and not video_file:
             item_type = 'image'
+        elif requested_type in ('image', 'video', 'reel'):
+            item_type = requested_type
 
         # Auto-detect orientation from new image
         if image:
