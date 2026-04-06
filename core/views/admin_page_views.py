@@ -680,17 +680,43 @@ def settings(request):
     return render(request, 'settings.html', context)
 
 
+def _resolve_tutorial_scope(user):
+    """Return the tutorial content scope key for the logged-in user role."""
+    role = str(getattr(user, 'role', '') or '').strip().lower()
+    if role == 'client_staff':
+        return 'client_staff'
+    if role == 'admin_staff':
+        return 'admin_staff'
+    if role in ('super_admin', 'pro_user'):
+        return 'admin'
+    return 'client'
+
+
+def _resolve_tutorial_video_url(scope):
+    """Resolve role-specific tutorial video URL with client URL fallback."""
+    client_url = getattr(django_settings, 'CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/')
+    if scope == 'client_staff':
+        return getattr(django_settings, 'CLIENT_STAFF_TUTORIAL_VIDEO_URL', client_url)
+    if scope == 'admin_staff':
+        return getattr(django_settings, 'ADMIN_STAFF_TUTORIAL_VIDEO_URL', client_url)
+    if scope == 'admin':
+        return getattr(django_settings, 'ADMIN_TUTORIAL_VIDEO_URL', client_url)
+    return client_url
+
+
 @login_required
 def tutorial(request):
-    """Client-facing tutorial and usage guide page."""
+    """Role-aware tutorial and usage guide page."""
     tutorial_lang = str(request.GET.get('lang', 'en')).strip().lower()
     if tutorial_lang not in ('en', 'hi'):
         tutorial_lang = 'en'
+    tutorial_scope = _resolve_tutorial_scope(request.user)
 
     context = {
         'active_page': 'tutorial',
         'user_role': get_user_role(request.user),
-        'tutorial_video_url': getattr(django_settings, 'CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/'),
+        'tutorial_scope': tutorial_scope,
+        'tutorial_video_url': _resolve_tutorial_video_url(tutorial_scope),
         'tutorial_lang': tutorial_lang,
     }
     return render(request, 'tutorial.html', context)

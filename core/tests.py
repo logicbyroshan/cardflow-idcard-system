@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
+from django.urls import reverse
 from django.utils import timezone
 from unittest.mock import patch
 from datetime import timedelta
@@ -104,6 +105,84 @@ class UserModelTests(TestCase):
         user.save()
         user.refresh_from_db()
         self.assertEqual(user.role, 'super_admin')
+
+
+class TutorialRoleScopeTests(TestCase):
+    def setUp(self):
+        self.client_user, self.client_profile = _create_client_user(
+            'tutorial-client@test.com',
+            'testpass123',
+        )
+        owner_user, owner_client = _create_client_user(
+            'tutorial-client-owner@test.com',
+            'testpass123',
+        )
+        del owner_user
+
+        self.client_staff_user = User.objects.create_user(
+            username='tutorial-client-staff@test.com',
+            email='tutorial-client-staff@test.com',
+            password='testpass123',
+            role='client_staff',
+        )
+        from staff.models import Staff
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=owner_client,
+        )
+
+        self.admin_staff_user = User.objects.create_user(
+            username='tutorial-admin-staff@test.com',
+            email='tutorial-admin-staff@test.com',
+            password='testpass123',
+            role='admin_staff',
+        )
+        Staff.objects.create(
+            user=self.admin_staff_user,
+            staff_type='admin_staff',
+        )
+        self.admin_user = User.objects.create_superuser(
+            username='tutorial-admin@test.com',
+            email='tutorial-admin@test.com',
+            password='testpass123',
+        )
+
+    def _assert_role_tutorial(self, username, expected_scope, expected_text):
+        self.assertTrue(self.client.login(username=username, password='testpass123'))
+        response = self.client.get(reverse('tutorial'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['tutorial_scope'], expected_scope)
+        self.assertContains(response, expected_text)
+        self.client.logout()
+
+    def test_client_sees_client_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-client@test.com',
+            'client',
+            'Client Operations Tutorial',
+        )
+
+    def test_client_staff_sees_client_staff_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-client-staff@test.com',
+            'client_staff',
+            'Client Staff Operations Tutorial',
+        )
+
+    def test_admin_staff_sees_admin_staff_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-admin-staff@test.com',
+            'admin_staff',
+            'Admin Staff Support Tutorial',
+        )
+
+    def test_admin_sees_admin_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-admin@test.com',
+            'admin',
+            'Admin Control Tutorial',
+        )
 
 
 # ── IDCard Model Tests ──

@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
       NS.groupMessageSelectedClientIds = new Set();
       NS.groupMessageClients = [];
       NS.groupMessageFocusedClientId = null;
+      NS.groupMessageLastClickedClientId = null;
 
       function escapeHtmlLocal(value) {
         var text = String(value == null ? '' : value);
@@ -146,6 +147,22 @@ document.addEventListener('DOMContentLoaded', function() {
           if (String(NS.groupMessageClients[i].id) === targetId) return NS.groupMessageClients[i];
         }
         return null;
+      }
+
+      function selectGroupMessageClientRange(anchorId, targetId) {
+        if (!NS.groupMessageClients || !NS.groupMessageClients.length) return;
+        var orderedIds = NS.groupMessageClients.map(function(item) {
+          return String(item.id);
+        });
+        var anchorIndex = orderedIds.indexOf(String(anchorId));
+        var targetIndex = orderedIds.indexOf(String(targetId));
+        if (anchorIndex < 0 || targetIndex < 0) return;
+
+        var start = Math.min(anchorIndex, targetIndex);
+        var end = Math.max(anchorIndex, targetIndex);
+        for (var i = start; i <= end; i++) {
+          NS.groupMessageSelectedClientIds.add(orderedIds[i]);
+        }
       }
 
       async function loadFocusedClientMessages() {
@@ -255,6 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.groupMessageFocusedClientId = focusedClientId
           ? String(focusedClientId)
           : (NS.groupMessageSelectedClientIds.size === 1 ? Array.from(NS.groupMessageSelectedClientIds)[0] : null);
+        NS.groupMessageLastClickedClientId = NS.groupMessageFocusedClientId;
 
         if (groupMessageText) groupMessageText.value = '';
         if (groupMessageCounter) groupMessageCounter.textContent = '0 / 2000';
@@ -512,13 +530,20 @@ document.addEventListener('DOMContentLoaded', function() {
           if (!clientId) return;
 
           clientId = String(clientId);
-          if (NS.groupMessageSelectedClientIds.has(clientId)) {
-            NS.groupMessageSelectedClientIds.delete(clientId);
+          var isShiftSelect = !!e.shiftKey && !!NS.groupMessageLastClickedClientId;
+
+          if (isShiftSelect) {
+            selectGroupMessageClientRange(NS.groupMessageLastClickedClientId, clientId);
           } else {
-            NS.groupMessageSelectedClientIds.add(clientId);
+            if (NS.groupMessageSelectedClientIds.has(clientId)) {
+              NS.groupMessageSelectedClientIds.delete(clientId);
+            } else {
+              NS.groupMessageSelectedClientIds.add(clientId);
+            }
           }
 
           NS.groupMessageFocusedClientId = clientId;
+          NS.groupMessageLastClickedClientId = clientId;
           renderGroupMessageClientsList();
           loadFocusedClientMessages();
         });
@@ -559,6 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
         groupMessageClearSelectionBtn.addEventListener('click', function() {
           NS.groupMessageSelectedClientIds = new Set();
           NS.groupMessageFocusedClientId = null;
+          NS.groupMessageLastClickedClientId = null;
           renderGroupMessageClientsList();
           renderGroupMessageHistoryPlaceholder('Select a client from the left list to view message history.');
         });
