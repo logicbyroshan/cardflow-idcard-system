@@ -119,8 +119,9 @@ body.modal-open {
     overflow: visible;
     display: block;
     column-count: 4;
+    column-width: 220px;
     column-gap: 16px;
-    column-fill: auto;
+    column-fill: balance;
 }
 
 .product-gallery-grid .gallery-item {
