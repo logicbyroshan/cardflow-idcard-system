@@ -9,10 +9,13 @@
         height: 85vh;
     }
     
+    .product-gallery-body {
+        padding: 20px;
+    }
+
     .product-gallery-grid {
         column-count: 3;
         column-gap: 15px;
-        padding: 20px;
     }
 }
 
@@ -31,10 +34,13 @@
         font-size: 1.2rem;
     }
     
+    .product-gallery-body {
+        padding: 15px;
+    }
+
     .product-gallery-grid {
         column-count: 2;
         column-gap: 12px;
-        padding: 15px;
     }
     
     .gallery-item img {
