@@ -94,12 +94,46 @@ function switchTab(tabName) {
 /* ============ Load Notifications ============ */
 async function loadNotifications(append) {
   if (!append) panelOffset = 0;
+  let skeletonStart = null;
+  if (!append) {
+    skeletonStart = setPanelTableSkeleton('notifTableBody', {
+      colCount: 8,
+      columns: ['0.7fr', '2.7fr', '1.2fr', '1fr', '1.3fr', '0.9fr', '1.2fr', '1fr'],
+      rows: 3,
+      ariaLabel: 'Loading notifications...',
+    });
+  }
   try {
     const search = document.getElementById('notifSearch')?.value || '';
     const res = await fetch(`/api/notifications/admin/list/?limit=${PANEL_LIMIT}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
-    if (!res.ok) { console.error('Failed to load notifications: HTTP', res.status); return; }
+    if (!res.ok) {
+      console.error('Failed to load notifications: HTTP', res.status);
+      if (!append) {
+        await waitForPanelSkeletonDelay(skeletonStart);
+        setPanelTableError(
+          'notifTableBody',
+          8,
+          'fa-bell-slash',
+          'Unable to load notifications',
+          'Please refresh and try again.'
+        );
+      }
+      return;
+    }
     const data = await res.json();
-    if (!data.success) return;
+    if (!data.success) {
+      if (!append) {
+        await waitForPanelSkeletonDelay(skeletonStart);
+        setPanelTableError(
+          'notifTableBody',
+          8,
+          'fa-bell-slash',
+          'Unable to load notifications',
+          'Please refresh and try again.'
+        );
+      }
+      return;
+    }
 
     if (append) {
       panelNotifications = panelNotifications.concat(data.notifications);
@@ -111,6 +145,7 @@ async function loadNotifications(append) {
     // Cache server-side aggregate stats so updateStats() is accurate
     if (data.stats) window._panelNotifStats = data.stats;
 
+    await waitForPanelSkeletonDelay(skeletonStart);
     renderTable();
     updateStats();
     var totalEl = document.getElementById('totalNotifCount');
@@ -122,6 +157,16 @@ async function loadNotifications(append) {
     }
   } catch (err) {
     console.error('Failed to load notifications:', err);
+    if (!append) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'notifTableBody',
+        8,
+        'fa-bell-slash',
+        'Unable to load notifications',
+        'Network issue. Please refresh and try again.'
+      );
+    }
   }
 }
 
@@ -693,6 +738,57 @@ function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 
+function waitForPanelSkeletonDelay(startTs) {
+  if (startTs == null) return Promise.resolve();
+  if (typeof waitForMinDelay === 'function') {
+    return waitForMinDelay(startTs);
+  }
+  return Promise.resolve();
+}
+
+function setPanelTableSkeleton(tbodyId, options) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return null;
+
+  const cfg = options || {};
+  const colCount = Math.max(1, Number(cfg.colCount || 1));
+  const rows = Math.max(2, Number(cfg.rows || 3));
+  const columns = Array.isArray(cfg.columns) && cfg.columns.length
+    ? cfg.columns.slice(0, colCount)
+    : Array.from({ length: colCount }, function () { return '1fr'; });
+  const gridTemplate = columns.join(' ');
+
+  const rowHtml = Array.from({ length: rows }, function () {
+    return '<div class="panel-table-skeleton-row" style="grid-template-columns:' + gridTemplate + ';">' +
+      columns.map(function () {
+        return '<span class="panel-table-skeleton-block"></span>';
+      }).join('') +
+      '</div>';
+  }).join('');
+
+  const ariaLabel = String(cfg.ariaLabel || 'Loading data...');
+  tbody.innerHTML =
+    '<tr><td colspan="' + colCount + '" class="notif-table-empty-cell">' +
+      '<div class="panel-table-skeleton" role="status" aria-label="' + escAttr(ariaLabel) + '">' + rowHtml + '</div>' +
+    '</td></tr>';
+
+  return Date.now();
+}
+
+function setPanelTableError(tbodyId, colCount, iconClass, title, subtitle) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const cols = Math.max(1, Number(colCount || 1));
+  tbody.innerHTML =
+    '<tr class="notif-table-empty"><td colspan="' + cols + '">' +
+      '<div class="empty-state">' +
+        '<i class="fa-solid ' + escAttr(iconClass || 'fa-circle-exclamation') + '"></i>' +
+        '<p>' + escHtml(title || 'Unable to load data') + '</p>' +
+        '<span>' + escHtml(subtitle || 'Please try again.') + '</span>' +
+      '</div>' +
+    '</td></tr>';
+}
+
 
 /* ================================================================
    DOWNLOAD TEMPLATES TAB
@@ -731,15 +827,51 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 async function loadTemplates() {
+  const skeletonStart = setPanelTableSkeleton('templateTableBody', {
+    colCount: 6,
+    columns: ['0.5fr', '1.5fr', '3fr', '1fr', '1fr', '1fr'],
+    rows: 3,
+    ariaLabel: 'Loading templates...',
+  });
   try {
     const res = await fetch('/api/export-templates/');
-    if (!res.ok) return;
+    if (!res.ok) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'templateTableBody',
+        6,
+        'fa-file-lines',
+        'Unable to load templates',
+        'Please refresh and try again.'
+      );
+      return;
+    }
     const data = await res.json();
     if (data.success) {
+      await waitForPanelSkeletonDelay(skeletonStart);
       panelTemplates = data.templates || [];
       renderTemplateTable();
+      return;
     }
-  } catch (err) { console.error('loadTemplates:', err); }
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'templateTableBody',
+      6,
+      'fa-file-lines',
+      'Unable to load templates',
+      'Please refresh and try again.'
+    );
+  } catch (err) {
+    console.error('loadTemplates:', err);
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'templateTableBody',
+      6,
+      'fa-file-lines',
+      'Unable to load templates',
+      'Network issue. Please refresh and try again.'
+    );
+  }
 }
 
 function renderTemplateTable() {
@@ -1079,6 +1211,12 @@ window.onOpsRowsPerPageChange = function (value) {
 async function loadOperationsFeed(page) {
   if (page !== undefined) _opsPage = Math.max(1, Number(page || 1));
   const refreshBtn = document.getElementById('opsRefreshBtn');
+  const skeletonStart = setPanelTableSkeleton('opsTableBody', {
+    colCount: 7,
+    columns: ['0.5fr', '1fr', '1.3fr', '1.3fr', '1.2fr', '2.4fr', '1.3fr'],
+    rows: 3,
+    ariaLabel: 'Loading operations feed...',
+  });
   if (refreshBtn) {
     refreshBtn.disabled = true;
     refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading';
@@ -1118,10 +1256,28 @@ async function loadOperationsFeed(page) {
     const res = await fetch(url);
     if (!res.ok) {
       console.error('loadOperationsFeed HTTP', res.status);
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'opsTableBody',
+        7,
+        'fa-wave-square',
+        'Unable to load operations',
+        'Please refresh and try again.'
+      );
       return;
     }
     const data = await res.json();
-    if (!data.success) return;
+    if (!data.success) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'opsTableBody',
+        7,
+        'fa-wave-square',
+        'Unable to load operations',
+        'Please refresh and try again.'
+      );
+      return;
+    }
 
     operationsFeed = data.items || [];
     operationsTotal = Number(data.total || operationsFeed.length || 0);
@@ -1132,10 +1288,19 @@ async function loadOperationsFeed(page) {
       return loadOperationsFeed(_opsPage);
     }
 
+    await waitForPanelSkeletonDelay(skeletonStart);
     renderOperationsTable();
     _updateOpsPagination(operationsFeed.length);
   } catch (err) {
     console.error('loadOperationsFeed:', err);
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'opsTableBody',
+      7,
+      'fa-wave-square',
+      'Unable to load operations',
+      'Network issue. Please refresh and try again.'
+    );
   } finally {
     if (refreshBtn) {
       refreshBtn.disabled = false;
