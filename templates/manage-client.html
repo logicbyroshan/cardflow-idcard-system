@@ -18,6 +18,7 @@
     {% include 'partials/client/action-bar.html' %}
 
     <div id="client-table-container"
+          data-table-skeleton="true"
          hx-trigger="refreshTable from:body"
          hx-get="{% url 'manage_clients' %}"
          hx-target="#client-table-container"

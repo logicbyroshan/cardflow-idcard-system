@@ -136,6 +136,7 @@
     {% include 'partials/active-client/action-bar.html' %}
 
     <div id="active-client-table-container"
+          data-table-skeleton="true"
          hx-trigger="refreshTable from:body"
          hx-get="{% url 'active_clients' %}"
          hx-target="#active-client-table-container"

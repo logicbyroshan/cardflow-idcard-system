@@ -113,8 +113,33 @@ Usage:
 
   // -- Global table skeleton loader for HTMX swaps --
   (function() {
+    function resolveTarget(raw) {
+      if (!raw) return null;
+      if (raw instanceof Element) return raw;
+      if (typeof raw === 'string') {
+        try {
+          return document.querySelector(raw);
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+
     function getTarget(evt) {
-      return evt && evt.detail ? evt.detail.target : null;
+      if (!evt || !evt.detail) return null;
+
+      var direct = resolveTarget(evt.detail.target);
+      if (direct) return direct;
+
+      var reqEl = resolveTarget(evt.detail.elt);
+      if (reqEl && reqEl.getAttribute) {
+        var hxTarget = reqEl.getAttribute('hx-target');
+        var resolvedHxTarget = resolveTarget(hxTarget);
+        if (resolvedHxTarget) return resolvedHxTarget;
+      }
+
+      return null;
     }
 
     function isTableTarget(target) {

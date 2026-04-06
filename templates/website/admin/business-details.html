@@ -9,19 +9,278 @@
 <span class="breadcrumb-item active">Business Details</span>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .wa-business-page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .wa-business-hero {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .wa-business-hero-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+        color: #1e293b;
+    }
+
+    .wa-business-hero-sub {
+        margin: 4px 0 0;
+        font-size: 12.5px;
+        color: #64748b;
+        max-width: 720px;
+    }
+
+    .wa-business-status-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .wa-business-status-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #fff;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+
+    .wa-business-status-card.is-live {
+        border-color: #bbf7d0;
+        background: #f8fff9;
+        box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
+    }
+
+    .wa-business-status-card.is-draft {
+        border-color: #fed7aa;
+        background: #fffaf5;
+        box-shadow: 0 6px 18px rgba(234, 88, 12, 0.08);
+    }
+
+    .wa-business-status-card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .wa-business-status-card-header i {
+        color: #4f46e5;
+    }
+
+    .wa-business-status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wa-business-status-note {
+        margin: 0;
+        color: #64748b;
+        font-size: 11.5px;
+        line-height: 1.4;
+    }
+
+    .wa-business-status-meta {
+        margin: 0;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .wa-business-status-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wa-business-status-note a {
+        color: #1d4ed8;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .wa-business-status-note a:hover {
+        text-decoration: underline;
+    }
+
+    .wa-business-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+    }
+
+    .wa-business-status-pill.live {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+    .wa-business-status-pill.draft {
+        border-color: #fed7aa;
+        background: #fff7ed;
+        color: #9a3412;
+    }
+
+    .business-form-shell {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 16px;
+    }
+
+    .business-form-shell .wa-form-group-title {
+        margin-top: 10px;
+        margin-bottom: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #334155;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        border-radius: 999px;
+        padding: 4px 10px;
+    }
+
+    .business-form-shell .wa-form-row {
+        margin-bottom: 8px;
+    }
+
+    .business-form-shell .wa-form-actions {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .wa-form-save-meta {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .wa-form-save-meta.is-dirty {
+        color: #b45309;
+    }
+
+    .wa-form-save-meta.is-error {
+        color: #b91c1c;
+    }
+
+    .business-form-shell input,
+    .business-form-shell textarea,
+    .business-form-shell select {
+        border-color: #cbd5e1;
+        background: #fff;
+    }
+
+    .business-form-shell input:focus,
+    .business-form-shell textarea:focus,
+    .business-form-shell select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+
+    @media (max-width: 960px) {
+        .wa-business-status-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="wa-page-container">
+<div class="wa-page-container wa-business-page">
     <div class="wa-dashboard-section">
-        <div class="wa-dashboard-section-header flex items-center justify-between">
-            <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-building"></i> Business Details</h3>
+        <div class="wa-business-hero">
+            <div>
+                <h3 class="wa-business-hero-title"><i class="fa-solid fa-building"></i> Business Details</h3>
+                <p class="wa-business-hero-sub">Manage your website identity, contacts, social links, hero images, and SEO content from one place.</p>
+            </div>
             {% if business and business.is_active %}
-            <span class="badge badge-success">Active</span>
+            <span class="badge badge-success">Business Record: Active</span>
             {% elif business %}
-            <span class="badge badge-warning">Inactive</span>
+            <span class="badge badge-warning">Business Record: Inactive</span>
+            {% else %}
+            <span class="badge badge-warning">Business Record: Not Created</span>
             {% endif %}
         </div>
 
-        <form id="businessForm" enctype="multipart/form-data" class="wa-form">
+        <div class="wa-business-status-grid">
+            <div class="wa-business-status-card" id="websiteLiveCard">
+                <div class="wa-business-status-card-header">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>Website Live Status</span>
+                </div>
+                <div class="wa-business-status-row">
+                    <span class="wa-business-status-pill {% if website_status == 'live' %}live{% else %}draft{% endif %}" id="websiteLiveStatusBadge">
+                        <i class="fa-solid {% if website_status == 'live' %}fa-circle-check{% else %}fa-eye-slash{% endif %}"></i>
+                        <span id="websiteLiveStatusText">{{ website_status|title }}</span>
+                    </span>
+                    {% if can_publish_website %}
+                    <button type="button" class="btn btn-sm {% if website_status == 'live' %}btn-warning{% else %}btn-success{% endif %}" id="toggleWebsiteLiveBtn">
+                        <i class="fa-solid {% if website_status == 'live' %}fa-pause{% else %}fa-play{% endif %}"></i>
+                        <span id="toggleWebsiteLiveBtnText">{% if website_status == 'live' %}Set Draft{% else %}Go Live{% endif %}</span>
+                    </button>
+                    {% endif %}
+                </div>
+                <p class="wa-business-status-note">This controls whether your public website is currently visible to visitors.</p>
+                <p class="wa-business-status-meta" id="websiteLiveStatusMeta">Current state is synced with website visibility.</p>
+            </div>
+
+            <div class="wa-business-status-card">
+                <div class="wa-business-status-card-header">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Domain Not Found Mode</span>
+                </div>
+                <div class="wa-business-status-row">
+                    <span class="wa-business-status-pill {% if website_not_found_mode %}draft{% else %}live{% endif %}" id="websiteDomainModeBadge">
+                        <i class="fa-solid {% if website_not_found_mode %}fa-triangle-exclamation{% else %}fa-link{% endif %}"></i>
+                        <span>{% if website_not_found_mode %}On{% else %}Off{% endif %}</span>
+                    </span>
+                </div>
+                <div class="wa-business-status-actions">
+                    <a href="{% url 'manage_panel' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-sliders"></i> Open Notifications Controls
+                    </a>
+                </div>
+                <p class="wa-business-status-note">
+                    Domain mode controls moved to the Notifications tab in
+                    <a href="{% url 'manage_panel' %}">Manage Panel</a>.
+                </p>
+            </div>
+        </div>
+
+        <form id="businessForm" enctype="multipart/form-data" class="wa-form business-form-shell">
         {% csrf_token %}
 
         <!-- Basic Info -->
@@ -146,7 +405,8 @@
 
         {% if is_super_admin or perm_website_edit %}
         <div class="wa-form-actions">
-            <button type="submit" class="btn btn-primary">
+            <span class="wa-form-save-meta" id="businessSaveState">No unsaved changes.</span>
+            <button type="submit" class="btn btn-primary" id="businessSaveBtn">
                 <i class="fa-solid fa-save"></i> Save Changes
             </button>
         </div>
@@ -160,7 +420,111 @@
 <script>
 (function() {
     const form = document.getElementById('businessForm');
+    const toggleWebsiteLiveBtn = document.getElementById('toggleWebsiteLiveBtn');
+    const liveStatusBadge = document.getElementById('websiteLiveStatusBadge');
+    const liveStatusText = document.getElementById('websiteLiveStatusText');
+    const toggleWebsiteLiveBtnText = document.getElementById('toggleWebsiteLiveBtnText');
+    const liveStatusMeta = document.getElementById('websiteLiveStatusMeta');
+    const saveBtn = document.getElementById('businessSaveBtn');
+    const saveStateEl = document.getElementById('businessSaveState');
+
+    function setSaveState(type, message) {
+        if (!saveStateEl) return;
+        saveStateEl.classList.toggle('is-dirty', type === 'dirty');
+        saveStateEl.classList.toggle('is-error', type === 'error');
+        saveStateEl.textContent = message || 'No unsaved changes.';
+    }
+
+    function markDirty() {
+        setSaveState('dirty', 'You have unsaved changes.');
+    }
+
+    function markSaved() {
+        setSaveState('saved', 'Saved just now.');
+    }
+
+    function markSaveError() {
+        setSaveState('error', 'Save failed. Please try again.');
+    }
+
+    function applyWebsiteStatusUi(status) {
+        const isLive = String(status || '').toLowerCase() === 'live';
+        const card = document.getElementById('websiteLiveCard');
+
+        if (card) {
+            card.classList.toggle('is-live', isLive);
+            card.classList.toggle('is-draft', !isLive);
+        }
+
+        if (liveStatusBadge) {
+            liveStatusBadge.classList.toggle('live', isLive);
+            liveStatusBadge.classList.toggle('draft', !isLive);
+            const icon = liveStatusBadge.querySelector('i');
+            if (icon) {
+                icon.className = 'fa-solid ' + (isLive ? 'fa-circle-check' : 'fa-eye-slash');
+            }
+        }
+
+        if (liveStatusText) {
+            liveStatusText.textContent = isLive ? 'Live' : 'Draft';
+        }
+
+        if (liveStatusMeta) {
+            liveStatusMeta.textContent = isLive
+                ? 'Website is publicly visible to visitors.'
+                : 'Website is hidden from public visitors (draft mode).';
+        }
+
+        if (toggleWebsiteLiveBtn && toggleWebsiteLiveBtnText) {
+            toggleWebsiteLiveBtn.classList.toggle('btn-warning', isLive);
+            toggleWebsiteLiveBtn.classList.toggle('btn-success', !isLive);
+            toggleWebsiteLiveBtnText.textContent = isLive ? 'Set Draft' : 'Go Live';
+            const icon = toggleWebsiteLiveBtn.querySelector('i');
+            if (icon) {
+                icon.className = 'fa-solid ' + (isLive ? 'fa-pause' : 'fa-play');
+            }
+        }
+    }
+
+    applyWebsiteStatusUi('{{ website_status|default:"draft"|lower }}');
+
+    if (toggleWebsiteLiveBtn) {
+        toggleWebsiteLiveBtn.addEventListener('click', async function() {
+            const ok = await waConfirm({
+                title: 'Change Website Status?',
+                text: 'This will toggle your website between live and draft mode.',
+                icon: 'fa-solid fa-globe',
+                confirmLabel: 'Yes, Change',
+                btnClass: 'btn-primary'
+            });
+            if (!ok) return;
+
+            toggleWebsiteLiveBtn.disabled = true;
+            try {
+                const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    applyWebsiteStatusUi(data.status || 'draft');
+                    if (liveStatusMeta) liveStatusMeta.textContent = 'Updated at ' + new Date().toLocaleTimeString() + '.';
+                    showToast('Website status updated.', 'success');
+                } else {
+                    showToast(data.message || 'Failed to update website status.', 'error');
+                }
+            } catch(err) {
+                showToast('Network error', 'error');
+            } finally {
+                toggleWebsiteLiveBtn.disabled = false;
+            }
+        });
+    }
+
     if (!form) return;
+
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -172,6 +536,11 @@
             fd.set('is_active', 'true');
         }
 
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        }
+
         try {
             const res = await fetch('{% url "website_admin:api_business_update" %}', {
                 method: 'POST',
@@ -181,11 +550,19 @@
             const data = await res.json();
             if (data.success) {
                 showToast('Business details saved!', 'success');
+                markSaved();
             } else {
                 showToast(data.message || 'Error saving', 'error');
+                markSaveError();
             }
         } catch(err) {
             showToast('Network error', 'error');
+            markSaveError();
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Changes';
+            }
         }
     });
 

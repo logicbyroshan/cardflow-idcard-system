@@ -15,6 +15,11 @@ let serverInfoSnapshot = null;
 let serverInfoHasFetched = false;
 let serverInfoLoading = false;
 let _maintenanceEnabled = false;
+let _domainNotFoundEnabled = false;
+let _domainCanSendProAccess = false;
+let _domainStatusLoading = false;
+let _domainToggleBusy = false;
+let _domainEmailBusy = false;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
 
 function _isPageReloadNavigation() {
@@ -60,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!restoredTab || restoredTab === 'notifications') {
     loadNotifications();
     if (typeof loadMaintenanceStatus === 'function') loadMaintenanceStatus();
+    if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
   } else if (restoredTab === 'download-templates') {
     loadTemplates();
   } else if (restoredTab === 'log-history') {
@@ -87,6 +93,9 @@ function switchTab(tabName) {
   if (tabPane) tabPane.classList.add('active');
   if (tabName === 'notifications' && typeof loadMaintenanceStatus === 'function') {
     loadMaintenanceStatus();
+  }
+  if (tabName === 'notifications' && typeof loadDomainNotFoundStatus === 'function') {
+    loadDomainNotFoundStatus();
   }
   _saveManagePanelTab(tabName);
 }
@@ -232,6 +241,309 @@ function updateStats() {
 window.refreshNotificationsPanel = function () {
   loadNotifications(false);
   if (typeof loadMaintenanceStatus === 'function') loadMaintenanceStatus();
+  if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
+};
+
+/* ============ Domain Not Found Controls ============ */
+function _updateDomainQuickBadges(enabled) {
+  const text = enabled ? 'Domain Mode: On' : 'Domain Mode: Off';
+  const quickBadge = document.getElementById('domainNotFoundQuickBadge');
+  const modalBadge = document.getElementById('domainModeStatusText');
+  const quickBtn = document.getElementById('domainQuickControlBtn');
+
+  [quickBadge, modalBadge].forEach(function(el) {
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('is-active', !!enabled);
+  });
+
+  if (quickBtn) quickBtn.classList.toggle('is-active', !!enabled);
+}
+
+function _setDomainSyncText(message, tone) {
+  const syncEl = document.getElementById('domainModeLastSyncText');
+  if (!syncEl) return;
+  syncEl.textContent = message || 'Status not synced yet.';
+  syncEl.style.color = tone === 'error' ? '#b91c1c' : '#64748b';
+}
+
+function _setDomainEmailValidation(message) {
+  const validationEl = document.getElementById('domainRecoveryValidation');
+  if (!validationEl) return;
+  if (!message) {
+    validationEl.style.display = 'none';
+    validationEl.textContent = '';
+    return;
+  }
+  validationEl.textContent = message;
+  validationEl.style.display = '';
+}
+
+function _setDomainControlAvailability() {
+  const input = document.getElementById('domainRecoveryEmailInput');
+  const sendBtn = document.getElementById('domainRecoverySendBtn');
+  const toggleBtn = document.getElementById('domainModeToggleBtn');
+  const refreshBtn = document.getElementById('domainModeRefreshBtn');
+  const canUseEmailAction = _domainNotFoundEnabled && _domainCanSendProAccess;
+
+  if (refreshBtn) {
+    refreshBtn.disabled = !!_domainStatusLoading;
+    refreshBtn.innerHTML = _domainStatusLoading
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing...'
+      : '<i class="fa-solid fa-rotate"></i> Refresh';
+  }
+
+  if (toggleBtn) {
+    toggleBtn.disabled = !!_domainStatusLoading || !!_domainToggleBusy;
+  }
+
+  if (input) {
+    input.disabled = !canUseEmailAction || !!_domainStatusLoading || !!_domainEmailBusy;
+    input.placeholder = _domainCanSendProAccess
+      ? 'Enter account email'
+      : 'Pro User permission required';
+  }
+
+  if (sendBtn) {
+    sendBtn.disabled = !canUseEmailAction || !!_domainStatusLoading || !!_domainEmailBusy;
+    sendBtn.title = _domainCanSendProAccess
+      ? (_domainNotFoundEnabled ? '' : 'Enable Domain Not Found mode first')
+      : 'Pro User permission required';
+    sendBtn.innerHTML = _domainEmailBusy
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Sending...'
+      : '<i class="fa-solid fa-paper-plane"></i> Send Emergency Email';
+  }
+}
+
+function _isValidEmailAddress(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function _updateDomainNotFoundUi(status) {
+  const hasWebsiteMode = status && Object.prototype.hasOwnProperty.call(status, 'website_not_found_mode');
+  const enabled = !!(hasWebsiteMode ? status.website_not_found_mode : status && status.enabled);
+  _domainNotFoundEnabled = enabled;
+
+  if (status && Object.prototype.hasOwnProperty.call(status, 'can_send_pro_access_link')) {
+    _domainCanSendProAccess = !!status.can_send_pro_access_link;
+  }
+
+  _updateDomainQuickBadges(enabled);
+
+  const websiteStatusRaw = ((status && (status.website_status || status.status)) || '').toString().toLowerCase();
+  const websiteStatusText = websiteStatusRaw ? capitalize(websiteStatusRaw) : 'Unknown';
+  const websiteStatusEl = document.getElementById('websiteStatusText');
+  if (websiteStatusEl) {
+    const iconCls = websiteStatusRaw === 'live' ? 'fa-globe' : 'fa-eye-slash';
+    websiteStatusEl.innerHTML = '<i class="fa-solid ' + iconCls + '"></i> Website: ' + escHtml(websiteStatusText);
+  }
+
+  const toggleBtn = document.getElementById('domainModeToggleBtn');
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('btn-danger', !enabled);
+    toggleBtn.classList.toggle('btn-success', enabled);
+    toggleBtn.innerHTML = enabled
+      ? '<i class="fa-solid fa-power-off"></i> Disable Not Found Mode'
+      : '<i class="fa-solid fa-triangle-exclamation"></i> Enable Not Found Mode';
+  }
+
+  const input = document.getElementById('domainRecoveryEmailInput');
+  const helpText = document.getElementById('domainRecoveryHelpText');
+  const proNote = document.getElementById('domainProOnlyNote');
+  _setDomainControlAvailability();
+  if (helpText) {
+    helpText.textContent = enabled
+      ? 'Send a tokenized emergency panel access link while Domain Not Found mode is active.'
+      : 'Enable Domain Not Found mode first, then send emergency access link email.';
+  }
+  if (proNote) {
+    proNote.style.display = _domainCanSendProAccess ? 'none' : '';
+  }
+}
+
+window.loadDomainNotFoundStatus = async function () {
+  const statusUrl = window.WEBSITE_STATUS_SUMMARY_API_URL || '';
+  if (!statusUrl) return;
+
+  _domainStatusLoading = true;
+  _setDomainControlAvailability();
+
+  try {
+    const res = await fetch(statusUrl, { method: 'GET', credentials: 'same-origin' });
+    if (!res.ok) {
+      if (res.status === 403) {
+        _domainCanSendProAccess = false;
+        _updateDomainNotFoundUi({ website_not_found_mode: false, website_status: 'unknown', can_send_pro_access_link: false });
+        _setDomainSyncText('Permission denied while syncing domain mode.', 'error');
+      } else {
+        _setDomainSyncText('Unable to sync status right now.', 'error');
+      }
+      return;
+    }
+    const data = await res.json();
+    if (data && data.success !== false) {
+      _updateDomainNotFoundUi(data);
+      _setDomainSyncText('Last synced: ' + new Date().toLocaleTimeString());
+    }
+  } catch (err) {
+    console.error('loadDomainNotFoundStatus failed:', err);
+    _setDomainSyncText('Network issue while syncing status.', 'error');
+  } finally {
+    _domainStatusLoading = false;
+    _setDomainControlAvailability();
+  }
+};
+
+window.openDomainNotFoundModal = function () {
+  const modal = document.getElementById('domainNotFoundModal');
+  if (!modal) return;
+  _setDomainEmailValidation('');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('domainNotFoundModal', { overlayClass: 'show', focusSelector: '#domainRecoveryEmailInput' });
+  } else {
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+  }
+  if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
+};
+
+window.closeDomainNotFoundModal = function () {
+  const modal = document.getElementById('domainNotFoundModal');
+  if (!modal) return;
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('domainNotFoundModal', { overlayClass: 'show' });
+  } else {
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+};
+
+window.toggleDomainNotFoundMode = async function () {
+  const apiUrl = window.WEBSITE_NOT_FOUND_TOGGLE_API_URL || '';
+  if (!apiUrl) return;
+
+  const nextEnabled = !_domainNotFoundEnabled;
+  const confirmTitle = nextEnabled ? 'Enable Domain Not Found Mode?' : 'Disable Domain Not Found Mode?';
+  const confirmText = nextEnabled
+    ? 'Public website routes will return 404 until this mode is disabled.'
+    : 'Public website routes will become reachable again.';
+
+  let ok = true;
+  if (typeof window.waConfirm === 'function') {
+    ok = await window.waConfirm({
+      title: confirmTitle,
+      text: confirmText,
+      icon: 'fa-solid fa-triangle-exclamation',
+      confirmLabel: nextEnabled ? 'Enable' : 'Disable',
+      btnClass: nextEnabled ? 'btn-danger' : 'btn-success',
+      hideWarning: true,
+    });
+  }
+  if (!ok) return;
+
+  const toggleBtn = document.getElementById('domainModeToggleBtn');
+  _domainToggleBusy = true;
+  _setDomainControlAvailability();
+
+  if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ enabled: String(nextEnabled) }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data && data.success) {
+      if (typeof showToast === 'function') {
+        showToast(nextEnabled ? 'Domain Not Found mode enabled.' : 'Domain Not Found mode disabled.', 'success');
+      }
+      await loadDomainNotFoundStatus();
+      return;
+    }
+
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to update domain mode.', 'error');
+    }
+  } catch (err) {
+    console.error('toggleDomainNotFoundMode failed:', err);
+    if (typeof showToast === 'function') showToast('Network error while updating domain mode.', 'error');
+  } finally {
+    _domainToggleBusy = false;
+    _setDomainControlAvailability();
+    if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
+  }
+};
+
+window.sendDomainRecoveryAccessLink = async function () {
+  const apiUrl = window.WEBSITE_PRO_ACCESS_API_URL || '';
+  if (!apiUrl) return;
+
+  if (!_domainNotFoundEnabled) {
+    if (typeof showToast === 'function') showToast('Enable Domain Not Found mode first.', 'error');
+    return;
+  }
+  if (!_domainCanSendProAccess) {
+    if (typeof showToast === 'function') showToast('Pro User permission required for emergency access emails.', 'error');
+    return;
+  }
+
+  const input = document.getElementById('domainRecoveryEmailInput');
+  const email = (input && input.value ? input.value : '').trim();
+  _setDomainEmailValidation('');
+
+  if (!email) {
+    if (typeof showToast === 'function') showToast('Please enter an email address.', 'error');
+    _setDomainEmailValidation('Please enter a valid email address.');
+    if (input) input.focus();
+    return;
+  }
+
+  if (!_isValidEmailAddress(email)) {
+    if (typeof showToast === 'function') showToast('Enter a valid email address format.', 'error');
+    _setDomainEmailValidation('Email format looks invalid. Example: name@example.com');
+    if (input) input.focus();
+    return;
+  }
+
+  _domainEmailBusy = true;
+  _setDomainControlAvailability();
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ email: email }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data && data.success) {
+      if (typeof showToast === 'function') showToast(data.message || 'Access link sent.', 'success');
+      if (input) input.value = '';
+      return;
+    }
+
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to send access link.', 'error');
+    }
+  } catch (err) {
+    console.error('sendDomainRecoveryAccessLink failed:', err);
+    if (typeof showToast === 'function') showToast('Network error while sending access link.', 'error');
+  } finally {
+    _domainEmailBusy = false;
+    _setDomainControlAvailability();
+  }
 };
 
 /* ============ Maintenance Quick Controls ============ */
@@ -441,6 +753,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     window.setMtDuration(parseInt(document.getElementById('mtDuration')?.value || '60', 10));
   }
+
+  const domainModal = document.getElementById('domainNotFoundModal');
+  if (domainModal) {
+    domainModal.addEventListener('click', function (e) {
+      if (e.target === domainModal) closeDomainNotFoundModal();
+    });
+
+    const domainInput = document.getElementById('domainRecoveryEmailInput');
+    if (domainInput) {
+      domainInput.addEventListener('input', function () {
+        _setDomainEmailValidation('');
+      });
+      domainInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendDomainRecoveryAccessLink();
+        }
+      });
+    }
+  }
 });
 
 async function hideNotification(id) {
@@ -509,6 +841,7 @@ document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
   closeCreateModal();
   if (typeof closeMaintenanceModeModal === 'function') closeMaintenanceModeModal();
+  if (typeof closeDomainNotFoundModal === 'function') closeDomainNotFoundModal();
 });
 
 /* ============ Target Change ============ */

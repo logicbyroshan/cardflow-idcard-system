@@ -147,7 +147,7 @@ def website_publish_required(view_func):
 # HELPER
 # =============================================================================
 
-def _get_base_context(request, active_tab='overview'):
+def _get_base_context(request, active_tab='business'):
     """Common context for all website admin pages."""
     perms = PermissionService.get_permission_context(request.user)
     perms.update({
@@ -164,62 +164,8 @@ def _get_base_context(request, active_tab='overview'):
 
 @website_admin_required
 def website_dashboard(request):
-    """Website Admin Dashboard — overview with stat cards."""
-    context = _get_base_context(request, 'overview')
-
-    # Consolidated stats — one aggregate per model instead of 15 separate .count() queries
-    from django.db.models import Count, Q
-
-    portfolio_agg = PortfolioItem.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_portfolio'] = portfolio_agg['total']
-    context['active_portfolio'] = portfolio_agg['active']
-
-    review_agg = Testimonial.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_reviews'] = review_agg['total']
-    context['active_reviews'] = review_agg['active']
-
-    logo_filter = Q(website_logo__isnull=False) & ~Q(website_logo='')
-    client_agg = PanelClient.objects.aggregate(
-        total=Count('id', filter=logo_filter),
-        active=Count('id', filter=logo_filter & Q(website_is_visible=True)),
-    )
-    context['total_clients'] = client_agg['total']
-    context['active_clients'] = client_agg['active']
-
-    context['total_features'] = Feature.objects.count()
-    context['total_reels'] = Reel.objects.count()
-
-    contact_agg = ContactSubmission.objects.aggregate(
-        total=Count('id'),
-        new=Count('id', filter=Q(status='new')),
-    )
-    context['total_contacts'] = contact_agg['total']
-    context['new_contacts'] = contact_agg['new']
-
-    context['website_status'] = WebsiteStatus.get_status()
-    context['website_not_found_mode'] = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
-
-    hero_agg = HeroImage.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_hero_images'] = hero_agg['total']
-    context['active_hero_images'] = hero_agg['active']
-
-    cat_agg = PortfolioCategory.objects.aggregate(
-        total=Count('id'),
-        bento=Count('id', filter=Q(is_bento=True)),
-    )
-    context['total_categories'] = cat_agg['total']
-    context['bento_categories_count'] = cat_agg['bento']
-
-    return render(request, 'website/admin/dashboard.html', context)
+    """Overview removed: send Website root to Business details page."""
+    return redirect('website_admin:business')
 
 
 @website_admin_required
@@ -229,6 +175,10 @@ def business_details_page(request):
     business = BusinessDetails.objects.first()
     context['business'] = business
     context['hero_images'] = HeroImage.objects.order_by('order', 'pk')
+    context['website_status'] = WebsiteStatus.get_status()
+    context['website_not_found_mode'] = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+    context['can_publish_website'] = PermissionService.has(request.user, 'perm_website_publish')
+    context['can_send_pro_access_link'] = PermissionService.is_pro_user(request.user)
     return render(request, 'website/admin/business-details.html', context)
 
 
@@ -309,6 +259,18 @@ def portfolio_page(request):
 # =============================================================================
 # API — WEBSITE STATUS
 # =============================================================================
+
+@require_GET
+@website_publish_required
+def api_website_status_summary(request):
+    """Return website status summary used by website controls in panel UI."""
+    not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+    return JsonResponse({
+        'success': True,
+        'website_status': WebsiteStatus.get_status(),
+        'website_not_found_mode': not_found_mode,
+        'can_send_pro_access_link': PermissionService.is_pro_user(request.user),
+    })
 
 @require_POST
 @website_publish_required

@@ -40,7 +40,7 @@
                     <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
                     {% endif %}
                     <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-                    <a href="{% url 'website_admin:dashboard' %}" class="breadcrumb-item {% if active_tab == 'overview' %}active{% endif %}">Website</a>
+                    <a href="{% url 'website_admin:business' %}" class="breadcrumb-item {% if active_tab == 'business' %}active{% endif %}">Website</a>
                     {% block breadcrumb_extra %}{% endblock %}
                 </div>
             </div>
@@ -48,9 +48,6 @@
 
         <!-- Tab Navigation -->
         <div class="wa-tabs">
-            <a href="{% url 'website_admin:dashboard' %}" class="wa-tab {% if active_tab == 'overview' %}active{% endif %}">
-                <i class="fa-solid fa-chart-pie"></i> Overview
-            </a>
             <a href="{% url 'website_admin:business' %}" class="wa-tab {% if active_tab == 'business' %}active{% endif %}">
                 <i class="fa-solid fa-building"></i> Business
             </a>
