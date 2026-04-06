@@ -12,6 +12,33 @@
         :root {
             --brand-a: #0a92dd;
             --brand-b: #056fb6;
+            --ill-a: #0ea5e9;
+            --ill-b: #0369a1;
+            --ill-soft: #e0f2fe;
+        }
+
+        .status-400 {
+            --ill-a: #f59e0b;
+            --ill-b: #b45309;
+            --ill-soft: #fef3c7;
+        }
+
+        .status-403 {
+            --ill-a: #ef4444;
+            --ill-b: #b91c1c;
+            --ill-soft: #fee2e2;
+        }
+
+        .status-404 {
+            --ill-a: #0ea5e9;
+            --ill-b: #0369a1;
+            --ill-soft: #e0f2fe;
+        }
+
+        .status-500 {
+            --ill-a: #8b5cf6;
+            --ill-b: #6d28d9;
+            --ill-soft: #ede9fe;
         }
 
         body {
@@ -74,6 +101,86 @@
             line-height: 1.55;
         }
 
+        .micro-copy {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .mobile-illustration {
+            position: relative;
+            margin-top: 14px;
+            height: 132px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: linear-gradient(155deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .mobile-illustration .ring {
+            position: absolute;
+            border-radius: 999px;
+            border: 1px dashed rgba(148, 163, 184, 0.48);
+        }
+
+        .mobile-illustration .ring-a {
+            width: 130px;
+            height: 130px;
+            animation: spin-slow 18s linear infinite;
+        }
+
+        .mobile-illustration .ring-b {
+            width: 92px;
+            height: 92px;
+            animation: spin-slow 12s linear infinite reverse;
+        }
+
+        .mobile-illustration .glyph {
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            background: linear-gradient(145deg, var(--ill-soft), #ffffff);
+            border: 1px solid color-mix(in srgb, var(--ill-a) 35%, #ffffff 65%);
+            color: var(--ill-b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 14px 24px color-mix(in srgb, var(--ill-a) 23%, transparent);
+        }
+
+        .mobile-illustration svg {
+            width: 44px;
+            height: 44px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .mobile-illustration .mini-code {
+            position: absolute;
+            right: 10px;
+            bottom: 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            color: color-mix(in srgb, var(--ill-b) 75%, #334155 25%);
+            background: color-mix(in srgb, var(--ill-soft) 82%, #ffffff 18%);
+            border: 1px solid color-mix(in srgb, var(--ill-a) 28%, #cbd5e1 72%);
+            padding: 4px 8px;
+        }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         .meta-row {
             margin-top: 16px;
             display: flex;
@@ -126,12 +233,58 @@
         }
     </style>
 </head>
-<body>
+<body class="status-{{ status_code }}">
     <main class="mobile-shell">
         <section class="mobile-card">
             <span class="badge"><i class="fa-solid fa-triangle-exclamation"></i> Error {{ status_code }}</span>
             <h1 class="error-title">{{ heading }}</h1>
             <p class="error-message">{{ message }}</p>
+            <p class="micro-copy">
+                {% if status_code == 400 %}The request data needs a quick correction before we continue.
+                {% elif status_code == 403 %}This section is locked for your account right now.
+                {% elif status_code == 404 %}This destination cannot be found from the app route.
+                {% else %}A server glitch occurred and a retry should help.
+                {% endif %}
+            </p>
+
+            <div class="mobile-illustration" aria-hidden="true">
+                <span class="ring ring-a"></span>
+                <span class="ring ring-b"></span>
+                <div class="glyph">
+                    {% if status_code == 400 %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <rect x="12" y="12" width="40" height="30" rx="8"></rect>
+                        <path d="M22 24h20"></path>
+                        <path d="M22 30h13"></path>
+                        <path d="M37 47l6-6"></path>
+                        <path d="M43 47l-6-6"></path>
+                    </svg>
+                    {% elif status_code == 403 %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <path d="M32 9l18 8v12c0 12-7 21-18 26-11-5-18-14-18-26V17l18-8z"></path>
+                        <rect x="24" y="29" width="16" height="12" rx="3"></rect>
+                        <path d="M27 29v-4a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    {% elif status_code == 404 %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <circle cx="27" cy="27" r="12"></circle>
+                        <path d="M36 36l12 12"></path>
+                        <path d="M25 24h4v10"></path>
+                        <path d="M25 36h6"></path>
+                    </svg>
+                    {% else %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <rect x="13" y="16" width="38" height="26" rx="6"></rect>
+                        <path d="M22 25h20"></path>
+                        <path d="M22 32h14"></path>
+                        <circle cx="44" cy="45" r="6"></circle>
+                        <path d="M44 39v12"></path>
+                        <path d="M38 45h12"></path>
+                    </svg>
+                    {% endif %}
+                </div>
+                <span class="mini-code">{{ status_code }}</span>
+            </div>
 
             <div class="meta-row" aria-hidden="true">
                 <span class="meta-pill">Mobile App</span>

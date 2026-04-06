@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,6 +17,9 @@
             --ghost: #f8fafc;
             --ghost-border: #cbd5e1;
             --glow: rgba(10, 146, 221, 0.28);
+            --ill-a: #0ea5e9;
+            --ill-b: #0369a1;
+            --ill-soft: #e0f2fe;
         }
 
         * {
@@ -63,6 +66,30 @@
             right: -80px;
             bottom: -80px;
             background: rgba(125, 211, 252, 0.28);
+        }
+
+        .status-400 {
+            --ill-a: #f59e0b;
+            --ill-b: #b45309;
+            --ill-soft: #fef3c7;
+        }
+
+        .status-403 {
+            --ill-a: #ef4444;
+            --ill-b: #b91c1c;
+            --ill-soft: #fee2e2;
+        }
+
+        .status-404 {
+            --ill-a: #0ea5e9;
+            --ill-b: #0369a1;
+            --ill-soft: #e0f2fe;
+        }
+
+        .status-500 {
+            --ill-a: #8b5cf6;
+            --ill-b: #6d28d9;
+            --ill-soft: #ede9fe;
         }
 
         .error-shell {
@@ -131,6 +158,85 @@
             color: var(--muted);
             font-size: 17px;
             line-height: 1.6;
+        }
+
+        .mini-copy {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .error-illustration {
+            position: relative;
+            margin: 16px 0 6px;
+            height: 170px;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(248, 250, 252, 0.84));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .error-illustration .orbit {
+            position: absolute;
+            border-radius: 999px;
+            border: 1px dashed rgba(148, 163, 184, 0.45);
+        }
+
+        .error-illustration .orbit-a {
+            width: 176px;
+            height: 176px;
+            animation: spin-slow 22s linear infinite;
+        }
+
+        .error-illustration .orbit-b {
+            width: 126px;
+            height: 126px;
+            animation: spin-slow 15s linear infinite reverse;
+        }
+
+        .error-illustration .glyph {
+            width: 88px;
+            height: 88px;
+            border-radius: 24px;
+            background: linear-gradient(145deg, var(--ill-soft), #ffffff);
+            border: 1px solid color-mix(in srgb, var(--ill-a) 35%, #ffffff 65%);
+            color: var(--ill-b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 16px 26px color-mix(in srgb, var(--ill-a) 22%, transparent);
+        }
+
+        .error-illustration svg {
+            width: 54px;
+            height: 54px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .error-illustration .ill-code {
+            position: absolute;
+            bottom: 10px;
+            right: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            color: color-mix(in srgb, var(--ill-b) 78%, #334155 22%);
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--ill-soft) 80%, #ffffff 20%);
+            border: 1px solid color-mix(in srgb, var(--ill-a) 30%, #cbd5e1 70%);
+        }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         .status-stack {
@@ -223,7 +329,7 @@
         }
     </style>
 </head>
-<body>
+<body class="status-{{ status_code }}">
     <main class="error-shell">
         <section class="error-card">
             <div class="top-row">
@@ -233,6 +339,52 @@
 
             <h1>{{ heading }}</h1>
             <p>{{ message }}</p>
+            <p class="mini-copy">
+                {% if status_code == 400 %}The request format looked incomplete. Please check and retry.
+                {% elif status_code == 403 %}You reached a protected area and need proper permission to continue.
+                {% elif status_code == 404 %}We searched for this route but it is not available right now.
+                {% else %}The server hit an unexpected issue. We are ready for your retry.
+                {% endif %}
+            </p>
+
+            <div class="error-illustration" aria-hidden="true">
+                <span class="orbit orbit-a"></span>
+                <span class="orbit orbit-b"></span>
+                <div class="glyph">
+                    {% if status_code == 400 %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <rect x="12" y="12" width="40" height="30" rx="8"></rect>
+                        <path d="M22 24h20"></path>
+                        <path d="M22 30h13"></path>
+                        <path d="M37 47l6-6"></path>
+                        <path d="M43 47l-6-6"></path>
+                    </svg>
+                    {% elif status_code == 403 %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <path d="M32 9l18 8v12c0 12-7 21-18 26-11-5-18-14-18-26V17l18-8z"></path>
+                        <rect x="24" y="29" width="16" height="12" rx="3"></rect>
+                        <path d="M27 29v-4a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    {% elif status_code == 404 %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <circle cx="27" cy="27" r="12"></circle>
+                        <path d="M36 36l12 12"></path>
+                        <path d="M25 24h4v10"></path>
+                        <path d="M25 36h6"></path>
+                    </svg>
+                    {% else %}
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <rect x="13" y="16" width="38" height="26" rx="6"></rect>
+                        <path d="M22 25h20"></path>
+                        <path d="M22 32h14"></path>
+                        <circle cx="44" cy="45" r="6"></circle>
+                        <path d="M44 39v12"></path>
+                        <path d="M38 45h12"></path>
+                    </svg>
+                    {% endif %}
+                </div>
+                <span class="ill-code">{{ status_code }}</span>
+            </div>
 
             <div class="status-stack" aria-hidden="true">
                 <div class="status-item"><strong>Status:</strong> {{ status_code }}</div>
