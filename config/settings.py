@@ -333,8 +333,10 @@ PERMISSION_REVALIDATION_INTERVAL = int(os.getenv('PERMISSION_REVALIDATION_INTERV
 DEV_LOG_OTP = _env_bool('DEV_LOG_OTP', False)
 
 # CSP hardening toggles.
-# Default: strict in production, permissive in DEBUG for local ergonomics.
-CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', DEBUG)
+# IMPORTANT: The current templates still rely on inline <script> blocks and
+# inline event handlers (onclick/oninput). Keep unsafe-inline enabled by
+# default until those scripts are migrated to nonce/hash-safe external files.
+CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
 CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', DEBUG)
 CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', DEBUG)
 
