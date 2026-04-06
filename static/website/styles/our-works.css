@@ -37,7 +37,7 @@ body.modal-open {
     height: 90vh;
     background: #fff;
     border-radius: 20px;
-    overflow: hidden;
+    overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
     display: flex;
@@ -57,6 +57,9 @@ body.modal-open {
     padding: 20px 30px;
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
     color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 
 .product-gallery-header h3 {
@@ -111,15 +114,13 @@ body.modal-open {
 
 /* Pinterest / Masonry Grid Gallery */
 .product-gallery-grid {
-    flex: 1;
+    flex: none;
     padding: 20px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
+    overflow: visible;
     display: block;
     column-count: 4;
     column-gap: 16px;
-    column-fill: balance;
+    column-fill: auto;
 }
 
 .product-gallery-grid .gallery-item {
@@ -142,16 +143,16 @@ body.modal-open {
     }
 }
 
-.product-gallery-grid::-webkit-scrollbar {
+.product-gallery-content::-webkit-scrollbar {
     width: 8px;
 }
 
-.product-gallery-grid::-webkit-scrollbar-track {
+.product-gallery-content::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 4px;
 }
 
-.product-gallery-grid::-webkit-scrollbar-thumb {
+.product-gallery-content::-webkit-scrollbar-thumb {
     background: #100F57;
     border-radius: 4px;
 }
