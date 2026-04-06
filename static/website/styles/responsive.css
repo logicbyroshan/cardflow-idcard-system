@@ -207,13 +207,18 @@ h2 {
     }
 
     .logo-item {
-        min-width: 120px;
-        height: 70px;
+        min-width: 140px;
+        height: 96px;
     }
 
     .logo-item img {
         max-width: 110px;
-        max-height: 60px;
+        max-height: 58px;
+    }
+
+    .school-name {
+        max-width: 130px;
+        font-size: 0.75rem;
     }
 
     /* Why Choose Us */
@@ -645,13 +650,18 @@ h2 {
     }
 
     .logo-item {
-        min-width: 100px;
-        height: 60px;
+        min-width: 120px;
+        height: 86px;
     }
 
     .logo-item img {
         max-width: 90px;
-        max-height: 50px;
+        max-height: 48px;
+    }
+
+    .school-name {
+        max-width: 112px;
+        font-size: 0.72rem;
     }
 
     /* Why Choose Us - 2 Column Grid */
@@ -1256,13 +1266,18 @@ h2 {
     }
 
     .logo-item {
-        min-width: 90px;
-        height: 55px;
+        min-width: 102px;
+        height: 78px;
     }
 
     .logo-item img {
         max-width: 80px;
-        max-height: 45px;
+        max-height: 42px;
+    }
+
+    .school-name {
+        max-width: 96px;
+        font-size: 0.68rem;
     }
 
     /* Why Choose Us - Single Column Cards */
@@ -1813,13 +1828,18 @@ h2 {
     }
 
     .logo-item {
-        min-width: 75px;
-        height: 50px;
+        min-width: 90px;
+        height: 72px;
     }
 
     .logo-item img {
         max-width: 70px;
-        max-height: 40px;
+        max-height: 36px;
+    }
+
+    .school-name {
+        max-width: 84px;
+        font-size: 0.62rem;
     }
 
     /* Why Choose Us */
@@ -2051,6 +2071,11 @@ h2 {
     .logo-item:hover img {
         transform: none;
         filter: grayscale(100%);
+    }
+
+    .logo-item .school-name {
+        opacity: 0.95;
+        transform: none;
     }
 
     /* Active states for touch */
