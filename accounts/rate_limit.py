@@ -12,12 +12,39 @@ import functools
 import logging
 import hashlib
 import ipaddress
+import time
+from threading import Lock
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
+
+
+# Process-local fallback when cache backend is unavailable.
+_FALLBACK_LIMITER = {}
+_FALLBACK_LIMITER_LOCK = Lock()
+
+
+def _fallback_limiter_hit(cache_key, window_seconds):
+    """Increment process-local counter and return current hit count."""
+    now = int(time.time())
+    with _FALLBACK_LIMITER_LOCK:
+        # Opportunistic cleanup to keep memory bounded.
+        if len(_FALLBACK_LIMITER) > 5000:
+            expired = [k for k, (_, exp) in _FALLBACK_LIMITER.items() if exp <= now]
+            for key in expired[:2000]:
+                _FALLBACK_LIMITER.pop(key, None)
+
+        count, expires_at = _FALLBACK_LIMITER.get(cache_key, (0, now + window_seconds))
+        if expires_at <= now:
+            count = 0
+            expires_at = now + window_seconds
+
+        count += 1
+        _FALLBACK_LIMITER[cache_key] = (count, expires_at)
+        return count
 
 
 def _normalize_ip(value):
@@ -118,9 +145,9 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                         hits = int(cache.get(cache_key, 0) or 0) + 1
                         cache.set(cache_key, hits, window_seconds)
             except Exception as exc:
-                # Fail open if cache backend is unavailable.
+                # Fail safely: use in-process fallback counter instead of bypassing throttling.
                 logger.warning('Rate limit cache error on %s: %s', endpoint_id, exc)
-                return view_func(request, *args, **kwargs)
+                hits = _fallback_limiter_hit(cache_key, window_seconds)
 
             if hits > max_requests:
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)

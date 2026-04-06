@@ -25,7 +25,7 @@ from django.views.decorators.http import require_http_methods
 
 from core.models import BackupTask
 from core.services.activity_service import ActivityService
-from core.services.permission_service import require_super_admin
+from core.services.permission_service import require_permission, api_require_permission, PermissionService
 from client.models import Client
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ def _resolve_media_file(file_path: str):
 # ─── Page views ──────────────────────────────────────────────────────────
 
 @login_required
-@require_super_admin
+@require_permission('perm_manage_panel_backup', redirect_url='/panel/')
 def backup_select_clients(request):
     """Page: shows all clients with sort/filter for backup selection."""
     task_id = request.GET.get('task')
@@ -112,14 +112,14 @@ def backup_select_clients(request):
         'task': task,
         'clients': clients_qs,
         'current_sort': sort,
-        'is_super_admin': True,
+        'is_super_admin': PermissionService.is_super_admin(request.user),
     })
 
 
 # ─── API endpoints ───────────────────────────────────────────────────────
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['POST'])
 def api_backup_initiate(request):
     """Step 1 — modal submits the 10-digit code; creates pending BackupTask."""
@@ -153,7 +153,7 @@ def api_backup_initiate(request):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['POST'])
 def api_backup_start(request):
     """Step 2 — client-selection page submits chosen client IDs."""
@@ -214,7 +214,7 @@ def api_backup_start(request):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_status(request, task_id):
     """Poll backup progress."""
@@ -238,7 +238,7 @@ def api_backup_status(request, task_id):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_list(request):
     """List all backup tasks (recent first) for the Manage Panel."""
@@ -262,7 +262,7 @@ def api_backup_list(request):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['POST'])
 def api_backup_delete_now(request, task_id):
     """Immediately delete backup files."""
@@ -284,7 +284,7 @@ def api_backup_delete_now(request, task_id):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_download(request, task_id):
     """Download the combined backup ZIP."""
@@ -312,7 +312,7 @@ def api_backup_download(request, task_id):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_generate_code(request):
     """Generate a 10-digit code for the backup confirmation modal."""

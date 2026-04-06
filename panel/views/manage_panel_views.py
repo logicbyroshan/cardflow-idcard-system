@@ -15,7 +15,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Q
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -23,7 +23,11 @@ from core.models import User, Notification, EmailLog
 from idcards.models import IDCard
 from client.models import Client
 from core.services.activity_service import ActivityService
-from core.services.permission_service import require_super_admin
+from core.services.permission_service import (
+    PermissionService,
+    require_any_admin,
+    api_require_permission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,14 @@ def _send_email_now(subject, body_text, body_html, recipient_email):
     msg.send(fail_silently=False)
 
 
+def _can_access_manage_panel(user) -> bool:
+    return (
+        PermissionService.is_super_admin(user)
+        or PermissionService.has(user, 'perm_manage_panel_backup')
+        or PermissionService.has(user, 'perm_manage_panel_email')
+    )
+
+
 # ── Notifications page (all authenticated users) ─────────────────────────
 
 @login_required
@@ -69,14 +81,16 @@ def notifications_page(request):
 
 # ── Manage Panel ─────────────────────────────────────────────────────────
 
-@require_super_admin
+@require_any_admin
 def manage_panel(request):
     """Manage Panel page — notifications, backups, logs, monitoring."""
+    if not _can_access_manage_panel(request.user):
+        return redirect('/panel/')
+
     import sys
     import django
 
     context = {
-        'is_super_admin': True,
         'active_page': 'manage_panel',
         'django_version': django.get_version(),
         'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
@@ -95,6 +109,8 @@ def manage_panel(request):
         admin_staff=Count('id', filter=Q(role='admin_staff')),
         client_staff=Count('id', filter=Q(role='client_staff')),
     )
+    context['can_manage_panel_backup'] = PermissionService.has(request.user, 'perm_manage_panel_backup')
+    context['can_manage_panel_email'] = PermissionService.has(request.user, 'perm_manage_panel_email')
     context['total_users'] = user_counts['total']
     context['total_admin_staff'] = user_counts['admin_staff']
     context['total_client_staff'] = user_counts['client_staff']
@@ -103,7 +119,7 @@ def manage_panel(request):
 
 # ── Email Logs API ────────────────────────────────────────────────────────
 
-@require_super_admin
+@api_require_permission('perm_manage_panel_email')
 @require_http_methods(['GET'])
 def api_email_logs(request):
     """Return paginated email log entries for the Email Management tab."""
@@ -172,7 +188,7 @@ def api_email_logs(request):
 
 # ── Email Resend API ──────────────────────────────────────────────────────
 
-@require_super_admin
+@api_require_permission('perm_manage_panel_email')
 @require_http_methods(['POST'])
 def api_email_resend(request, log_id):
     """Resend a welcome/activation email for on_hold or failed email log entries.
@@ -345,7 +361,7 @@ def api_email_resend(request, log_id):
     })
 
 
-@require_super_admin
+@api_require_permission('perm_manage_panel_email')
 @require_http_methods(['POST'])
 def api_email_send_new(request):
     """Create and send a new email from Email Management compose modal."""
@@ -397,7 +413,7 @@ def api_email_send_new(request):
         return JsonResponse({'success': False, 'message': 'Failed to send email.'}, status=500)
 
 
-@require_super_admin
+@api_require_permission('perm_manage_panel_email')
 @require_http_methods(['GET'])
 def api_email_compose_defaults(request):
     """Provide default prefilled template for Add New Email compose modal."""

@@ -18,7 +18,7 @@
         <span>Add New Staff</span>
       </a>
       {% endif %}
-      {% if is_super_admin %}
+      {% if is_super_admin or perm_manage_panel_backup %}
       <button type="button" class="quick-action-btn" onclick="openBackupModal()">
         <i class="fa-solid fa-database"></i>
         <span>Take Backup</span>
@@ -30,13 +30,13 @@
         <span>User Settings</span>
       </a>
       {% endif %}
-      {% if is_super_admin %}
+      {% if is_super_admin or perm_website_view or perm_manage_website_clients or perm_manage_website_portfolio %}
       <a href="{% url 'manage_website' %}" class="quick-action-btn">
         <i class="fa-solid fa-globe"></i>
         <span>Manage Website</span>
       </a>
       {% endif %}
-      {% if is_super_admin %}
+      {% if is_super_admin or perm_manage_panel_backup or perm_manage_panel_email %}
       <a href="{% url 'manage_panel' %}" class="quick-action-btn">
         <i class="fa-solid fa-sliders"></i>
         <span>Manage Panel</span>

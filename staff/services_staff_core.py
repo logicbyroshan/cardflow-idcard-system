@@ -54,6 +54,10 @@ class StaffService(BaseService):
         'perm_idcard_upgrade_all',
         # Mobile App
         'perm_mobile_app',
+        # Manage Panel
+        'perm_manage_panel_backup', 'perm_manage_panel_email',
+        # Manage Website sections
+        'perm_manage_website_clients', 'perm_manage_website_portfolio',
     ]
     
     @classmethod

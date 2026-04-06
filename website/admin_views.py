@@ -21,7 +21,6 @@ from django.views.decorators.http import require_POST, require_GET
 
 from core.services.permission_service import (
     PermissionService,
-    api_require_permission,
 )
 from core.services.activity_service import ActivityService
 from core.models import SystemSettings
@@ -62,25 +61,103 @@ from .services import (
 # DECORATORS — thin wrappers delegating to PermissionService (single authority)
 # =============================================================================
 
-def website_admin_required(view_func):
-    """Require perm_website_view (super_admin auto-passes via PermissionService.has)."""
+def _is_ajax_or_api_request(request) -> bool:
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.path.startswith('/panel/website/api/')
+    )
+
+
+def _permission_denied_for_website(request, message='Website access denied'):
+    if _is_ajax_or_api_request(request):
+        return JsonResponse({'success': False, 'message': message}, status=403)
+    return redirect('/panel/')
+
+
+def _auth_required_for_website(request):
+    if _is_ajax_or_api_request(request):
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    return redirect('/panel/auth/login/')
+
+
+def _website_permission_required(*permission_names, denied_message='Website access denied'):
     from functools import wraps
 
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        if not user.is_authenticated:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-            from django.shortcuts import redirect
-            return redirect('/panel/auth/login/')
-        if not PermissionService.has(user, 'perm_website_view'):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'message': 'Website access denied'}, status=403)
-            from django.shortcuts import redirect
-            return redirect('/panel/')
-        return view_func(request, *args, **kwargs)
-    return wrapper
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            user = request.user
+            if not user.is_authenticated:
+                return _auth_required_for_website(request)
+            if not any(PermissionService.has(user, perm) for perm in permission_names):
+                return _permission_denied_for_website(request, denied_message)
+            return view_func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def website_admin_required(view_func):
+    """Require any website area access permission."""
+    return _website_permission_required(
+        'perm_website_view',
+        'perm_manage_website_clients',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_view_required(view_func):
+    """Require general website admin access permission."""
+    return _website_permission_required('perm_website_view')(view_func)
+
+
+def website_clients_read_required(view_func):
+    """Require Clients tab read access permission."""
+    return _website_permission_required(
+        'perm_website_view',
+        'perm_manage_website_clients',
+    )(view_func)
+
+
+def website_clients_manage_required(view_func):
+    """Require Clients tab manage permission."""
+    return _website_permission_required(
+        'perm_website_edit',
+        'perm_manage_website_clients',
+    )(view_func)
+
+
+def website_portfolio_read_required(view_func):
+    """Require Portfolio tab read access permission."""
+    return _website_permission_required(
+        'perm_website_view',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_portfolio_add_required(view_func):
+    """Require Portfolio tab create/add permission."""
+    return _website_permission_required(
+        'perm_website_add',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_portfolio_edit_required(view_func):
+    """Require Portfolio tab edit/toggle permission."""
+    return _website_permission_required(
+        'perm_website_edit',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_portfolio_delete_required(view_func):
+    """Require Portfolio tab delete permission."""
+    return _website_permission_required(
+        'perm_website_delete',
+        'perm_manage_website_portfolio',
+    )(view_func)
 
 
 def website_edit_required(view_func):
@@ -164,11 +241,18 @@ def _get_base_context(request, active_tab='business'):
 
 @website_admin_required
 def website_dashboard(request):
-    """Overview removed: send Website root to Business details page."""
-    return redirect('website_admin:business')
+    """Route Website root to the first allowed tab for this user."""
+    user = request.user
+    if PermissionService.has(user, 'perm_website_view'):
+        return redirect('website_admin:business')
+    if PermissionService.has(user, 'perm_manage_website_clients'):
+        return redirect('website_admin:clients')
+    if PermissionService.has(user, 'perm_manage_website_portfolio'):
+        return redirect('website_admin:portfolio')
+    return redirect('/panel/')
 
 
-@website_admin_required
+@website_view_required
 def business_details_page(request):
     """Business Details management page."""
     context = _get_base_context(request, 'business')
@@ -182,7 +266,7 @@ def business_details_page(request):
     return render(request, 'website/admin/business-details.html', context)
 
 
-@website_admin_required
+@website_clients_read_required
 def clients_page(request):
     """Website client logo management page (uses main Client records)."""
     context = _get_base_context(request, 'clients')
@@ -233,7 +317,7 @@ def clients_page(request):
     return render(request, 'website/admin/clients.html', context)
 
 
-@website_admin_required
+@website_view_required
 def reviews_page(request):
     """Reviews / Testimonials management page."""
     context = _get_base_context(request, 'reviews')
@@ -241,7 +325,7 @@ def reviews_page(request):
     return render(request, 'website/admin/reviews.html', context)
 
 
-@website_admin_required
+@website_portfolio_read_required
 def portfolio_page(request):
     """Our Works / Portfolio management page."""
     from django.db.models import Count
@@ -402,7 +486,7 @@ def api_business_toggle_status(request):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_clients_read_required
 def api_client_list(request):
     """List panel clients for website logo management."""
     qs = WebsiteClientLogoService.list_all()
@@ -420,7 +504,7 @@ def api_client_list(request):
 
 
 @require_POST
-@website_add_required
+@website_clients_manage_required
 def api_client_create(request):
     """Clients are created from Manage Clients panel, not Website tab."""
     return JsonResponse(
@@ -430,7 +514,7 @@ def api_client_create(request):
 
 
 @require_GET
-@website_admin_required
+@website_clients_read_required
 def api_client_get(request, pk):
     """Get a single panel client for logo edit modal."""
     try:
@@ -452,7 +536,7 @@ def api_client_get(request, pk):
 
 
 @require_POST
-@website_edit_required
+@website_clients_manage_required
 def api_client_update(request, pk):
     """Update website logo for a panel client."""
     try:
@@ -480,7 +564,7 @@ def api_client_update(request, pk):
 
 
 @require_POST
-@website_delete_required
+@website_clients_manage_required
 def api_client_delete(request, pk):
     """Clients are deleted from Manage Clients panel, not Website tab."""
     return JsonResponse(
@@ -490,7 +574,7 @@ def api_client_delete(request, pk):
 
 
 @require_POST
-@website_edit_required
+@website_clients_manage_required
 def api_client_toggle(request, pk):
     """Client status is managed from Manage Clients panel."""
     return JsonResponse(
@@ -504,7 +588,7 @@ def api_client_toggle(request, pk):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_review_list(request):
     """List testimonials."""
     qs = TestimonialService.list_all()
@@ -544,7 +628,7 @@ def api_review_create(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_review_get(request, pk):
     """Get a single review."""
     try:
@@ -617,7 +701,7 @@ def api_review_toggle(request, pk):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_portfolio_read_required
 def api_portfolio_list(request):
     """List portfolio items."""
     qs = PortfolioItemService.list_all()
@@ -639,7 +723,7 @@ def api_portfolio_list(request):
 
 
 @require_POST
-@website_add_required
+@website_portfolio_add_required
 def api_portfolio_create(request):
     """Create a portfolio item."""
     try:
@@ -661,7 +745,7 @@ def api_portfolio_create(request):
 
 @require_POST
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='portfolio_bulk')
-@website_add_required
+@website_portfolio_add_required
 def api_portfolio_bulk_upload(request):
     """
     Bulk upload portfolio images (max 50).
@@ -736,7 +820,7 @@ def api_portfolio_bulk_upload(request):
 
 
 @require_GET
-@website_admin_required
+@website_portfolio_read_required
 def api_portfolio_get(request, pk):
     """Get a single portfolio item."""
     try:
@@ -761,7 +845,7 @@ def api_portfolio_get(request, pk):
 
 
 @require_POST
-@website_edit_required
+@website_portfolio_edit_required
 def api_portfolio_update(request, pk):
     """Update a portfolio item."""
     try:
@@ -783,7 +867,7 @@ def api_portfolio_update(request, pk):
 
 
 @require_POST
-@website_delete_required
+@website_portfolio_delete_required
 def api_portfolio_delete(request, pk):
     """Delete a portfolio item."""
     try:
@@ -795,7 +879,7 @@ def api_portfolio_delete(request, pk):
 
 
 @require_POST
-@website_edit_required
+@website_portfolio_edit_required
 def api_portfolio_toggle(request, pk):
     """Toggle portfolio item active/inactive."""
     try:
@@ -811,7 +895,7 @@ def api_portfolio_toggle(request, pk):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_portfolio_read_required
 def api_portfolio_category_list(request):
     """List portfolio categories."""
     from django.db.models import Count
@@ -833,7 +917,7 @@ def api_portfolio_category_list(request):
 
 
 @require_POST
-@website_add_required
+@website_portfolio_add_required
 def api_portfolio_category_create(request):
     """Create a portfolio category."""
     try:
@@ -852,7 +936,7 @@ def api_portfolio_category_create(request):
 
 
 @require_POST
-@website_edit_required
+@website_portfolio_edit_required
 def api_portfolio_category_update(request, pk):
     """Update a portfolio category."""
     try:
@@ -873,7 +957,7 @@ def api_portfolio_category_update(request, pk):
 
 
 @require_POST
-@website_delete_required
+@website_portfolio_delete_required
 def api_portfolio_category_delete(request, pk):
     """Delete a portfolio category (only non-default)."""
     try:
@@ -981,7 +1065,7 @@ def api_hero_image_reorder(request):
 # PAGE VIEW — REELS
 # =============================================================================
 
-@website_admin_required
+@website_view_required
 def reels_page(request):
     """Legacy reels page redirects to portfolio where reels are managed as portfolio media."""
     return redirect('website_admin:portfolio')
@@ -992,7 +1076,7 @@ def reels_page(request):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_reel_list(request):
     """List all reels."""
     qs = ReelService.list_all()
@@ -1028,7 +1112,7 @@ def api_reel_create(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_reel_get(request, pk):
     """Get a single reel."""
     try:
@@ -1097,7 +1181,7 @@ def api_reel_toggle(request, pk):
 # CONTACT SUBMISSIONS — Page + API
 # =============================================================================
 
-@website_admin_required
+@website_view_required
 def contacts_page(request):
     """Contact Messages management page."""
     context = _get_base_context(request, 'contacts')
@@ -1145,7 +1229,7 @@ def contacts_page(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_contact_list(request):
     """List all contact submissions as JSON."""
     status_filter = request.GET.get('status', '')
@@ -1174,7 +1258,7 @@ def api_contact_list(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_contact_get(request, pk):
     """Get a single contact submission."""
     try:

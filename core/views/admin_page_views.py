@@ -26,7 +26,6 @@ from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
-    require_permission,
 )
 from .base_helpers import (
     get_user_role,
@@ -644,10 +643,15 @@ def group_settings(request, client_id):
 
 # Website Management → redirect to new website admin dashboard
 @login_required
-@require_permission('perm_website_view')
 def manage_website(request):
     """Redirect legacy manage-website URL to new website admin dashboard."""
-    from django.shortcuts import redirect
+    can_access_website = (
+        PermissionService.has(request.user, 'perm_website_view')
+        or PermissionService.has(request.user, 'perm_manage_website_clients')
+        or PermissionService.has(request.user, 'perm_manage_website_portfolio')
+    )
+    if not can_access_website:
+        return redirect('/panel/')
     return redirect('/panel/website/')
 
 

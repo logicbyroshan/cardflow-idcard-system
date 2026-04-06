@@ -47,6 +47,52 @@ class ConfigMediaGuardTests(TestCase):
         self.assertEqual(response['X-Accel-Redirect'], '/protected-media/exports/report.pdf')
 
 
+class PanelMediaGuardTests(TestCase):
+    def setUp(self):
+        from config.urls_panel import _protected_media_serve
+
+        self.factory = RequestFactory()
+        self._protected_media_serve = _protected_media_serve
+
+    def test_panel_protected_exports_rejects_non_owner_authenticated_user(self):
+        request = self.factory.get('/media/exports/private.zip')
+        request.user = User.objects.create_user(
+            username='panel-user@test.com',
+            email='panel-user@test.com',
+            password='pass1234',
+            role='client',
+        )
+
+        response = self._protected_media_serve(request, 'exports/private.zip', document_root='.')
+        self.assertEqual(response.status_code, 404)
+
+    def test_panel_media_rejects_path_traversal(self):
+        request = self.factory.get('/media/../exports/private.zip')
+        request.user = User.objects.create_user(
+            username='panel-admin@test.com',
+            email='panel-admin@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        response = self._protected_media_serve(request, '../exports/private.zip', document_root='.')
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(MEDIA_USE_XACCEL=True)
+    def test_panel_media_allows_super_admin_with_x_accel(self):
+        request = self.factory.get('/media/exports/report.pdf')
+        request.user = User.objects.create_user(
+            username='panel-super@test.com',
+            email='panel-super@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        response = self._protected_media_serve(request, 'exports/report.pdf', document_root='.')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['X-Accel-Redirect'], '/protected-media/exports/report.pdf')
+
+
 class PanelAndWebsiteUrlconfTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()

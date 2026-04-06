@@ -212,7 +212,7 @@
                     <span class="wa-count-badge">{{ items|length }} items</span>
                 </div>
                 <div class="wa-action-right">
-                    {% if is_super_admin or perm_website_add %}
+                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
                     <button class="btn btn-secondary" onclick="openBulkUploadModal()">
                         <i class="fa-solid fa-images"></i> Bulk Upload
                     </button>
@@ -232,7 +232,7 @@
 
             <div class="wa-bulk-action-bar" id="portfolioBulkBar" style="display:none;">
                 <span id="portfolioSelectedCount">0 selected</span>
-                {% if is_super_admin or perm_website_delete %}
+                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
                 <button class="btn btn-danger btn-sm" onclick="bulkDeletePortfolio()"><i class="fa-solid fa-trash"></i> Delete Selected</button>
                 {% endif %}
                 <button class="btn btn-neutral btn-sm" onclick="clearPortfolioSelection()"><i class="fa-solid fa-xmark"></i> Clear</button>
@@ -304,10 +304,10 @@
                                 </span>
                             </td>
                             <td class="wa-actions">
-                                {% if is_super_admin or perm_website_edit %}
+                                {% if is_super_admin or perm_website_edit or perm_manage_website_portfolio %}
                                 <button class="btn btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
                                 {% endif %}
-                                {% if is_super_admin or perm_website_delete %}
+                                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
                                 <button class="btn btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
                                 {% endif %}
                             </td>
@@ -337,7 +337,7 @@
                     <span class="wa-count-badge">{{ categories|length }} categories</span>
                 </div>
                 <div class="wa-action-right">
-                    {% if is_super_admin or perm_website_add %}
+                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
                     <button class="btn btn-primary" onclick="openCategoryModal()">
                         <i class="fa-solid fa-plus"></i> Add Category
                     </button>
@@ -400,10 +400,10 @@
                             </td>
                             <td class="wa-actions">
                                 {% if not cat.is_default %}
-                                {% if is_super_admin or perm_website_edit %}
+                                {% if is_super_admin or perm_website_edit or perm_manage_website_portfolio %}
                                 <button class="btn btn-icon" title="Edit" onclick="editCategory({{ cat.id }}, '{{ cat.name|escapejs }}', '{{ cat.icon|escapejs }}', '{{ cat.description|escapejs }}', {{ cat.order }}, {{ cat.is_bento|yesno:'true,false' }}, '{{ cat.bento_size|escapejs }}')"><i class="fa-solid fa-pen"></i></button>
                                 {% endif %}
-                                {% if is_super_admin or perm_website_delete %}
+                                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
                                 <button class="btn btn-icon danger" title="Delete" onclick="deleteCategory({{ cat.id }})"><i class="fa-solid fa-trash"></i></button>
                                 {% endif %}
                                 {% endif %}

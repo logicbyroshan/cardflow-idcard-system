@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from client.models import Client
+from staff.models import Staff
 from core.models import ActivityLog, BackgroundTask, BackupTask, EmailLog, Notification, NotificationRead
 from core.services.notification_service import NotificationService
 
@@ -29,10 +30,20 @@ class PanelBaseTestCase(TestCase):
             password='pass1234',
             role='client',
         )
+        self.admin_staff_user = User.objects.create_user(
+            username='panel-admin-staff@test.com',
+            email='panel-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
         self.client_profile = Client.objects.create(
             user=self.client_user,
             name='Panel Client',
             status='active',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff_user,
+            staff_type='admin_staff',
         )
         cache.clear()
 
@@ -41,14 +52,53 @@ class PanelBaseTestCase(TestCase):
 
 
 class PanelAccessTests(PanelBaseTestCase):
-    def test_manage_panel_requires_super_admin(self):
+    def test_manage_panel_denies_client_role(self):
         self.client.login(username='panel-client@test.com', password='pass1234')
         response = self.client.get('/panel/manage-panel/')
         self.assertIn(response.status_code, [302, 403])
 
+    def test_manage_panel_admin_staff_without_new_permissions_is_denied(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertIn(response.status_code, [302, 403])
+
+    def test_manage_panel_admin_staff_with_backup_permission_can_access(self):
+        self.admin_staff_profile.perm_manage_panel_backup = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_backup'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Backups')
+
+    def test_manage_panel_admin_staff_with_email_permission_can_access(self):
+        self.admin_staff_profile.perm_manage_panel_email = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_email'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Email Management')
+
     def test_manage_panel_super_admin_can_access(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_website_clients_page_allows_manage_website_clients_permission(self):
+        self.admin_staff_profile.perm_manage_website_clients = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_website_clients'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/website/clients/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_website_portfolio_page_allows_manage_website_portfolio_permission(self):
+        self.admin_staff_profile.perm_manage_website_portfolio = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_website_portfolio'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/website/portfolio/')
         self.assertEqual(response.status_code, 200)
 
 
@@ -225,6 +275,20 @@ class PanelEmailApiTests(PanelBaseTestCase):
         self.assertEqual(payload['total'], 1)
         self.assertEqual(len(payload['logs']), 1)
 
+    def test_email_logs_endpoint_denies_admin_staff_without_email_permission(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/email-logs/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_email_logs_endpoint_allows_admin_staff_with_email_permission(self):
+        self.admin_staff_profile.perm_manage_panel_email = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_email'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/email-logs/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+
     def test_compose_defaults_uses_name(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         response = self.client.get('/panel/api/email-compose-defaults/?name=Ravi')
@@ -316,6 +380,20 @@ class PanelBackupApiTests(PanelBaseTestCase):
         code = response.json()['code']
         self.assertEqual(len(code), 10)
         self.assertTrue(code.isdigit())
+
+    def test_backup_generate_code_denies_admin_staff_without_backup_permission(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/backup/generate-code/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_backup_generate_code_allows_admin_staff_with_backup_permission(self):
+        self.admin_staff_profile.perm_manage_panel_backup = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_backup'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/backup/generate-code/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
 
     def test_backup_initiate_validates_confirmation_code(self):
         self.client.login(username='panel-super@test.com', password='pass1234')

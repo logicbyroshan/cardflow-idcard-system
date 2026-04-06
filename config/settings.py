@@ -45,9 +45,16 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
 # Allowed Hosts
-# In DEBUG mode allow everything; in production read from .env
+# In DEBUG mode, default to localhost hosts only. Override via DEBUG_ALLOWED_HOSTS.
 if DEBUG:
-    ALLOWED_HOSTS = ['*']
+    _debug_hosts = os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
+    ALLOWED_HOSTS = [
+        host.strip()
+        for host in _debug_hosts.split(',')
+        if host.strip()
+    ]
+    if not ALLOWED_HOSTS:
+        ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 else:
     ALLOWED_HOSTS = [
         host.strip()
@@ -325,9 +332,10 @@ PERMISSION_REVALIDATION_INTERVAL = int(os.getenv('PERMISSION_REVALIDATION_INTERV
 # DEBUG alone no longer enables plaintext OTP logs.
 DEV_LOG_OTP = _env_bool('DEV_LOG_OTP', False)
 
-# CSP hardening toggles (defaults preserve current behavior).
-CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
-CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', True)
+# CSP hardening toggles.
+# Default: strict in production, permissive in DEBUG for local ergonomics.
+CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', DEBUG)
+CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', DEBUG)
 CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', DEBUG)
 
 # ── Permissions-Policy header ──
@@ -341,14 +349,24 @@ PERMISSIONS_POLICY = 'camera=(self), microphone=(self), geolocation=(), payment=
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 # =============================================================================
 
-# Password validation relaxed: passwords can be simple (e.g., mobile numbers).
-# Only enforce minimum length of 8 characters.
+# Password validation baseline.
+# Keeps 8-char minimum while adding low-friction protections against
+# very weak/common passwords and user-attribute similarity.
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
             'min_length': 8,
         }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'OPTIONS': {
+            'max_similarity': 0.7,
+        },
     },
 ]
 

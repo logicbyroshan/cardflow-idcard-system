@@ -17,6 +17,8 @@ import os
 import tempfile
 import io
 import zipfile
+import hmac
+import time
 
 User = get_user_model()
 
@@ -77,6 +79,145 @@ class HeaderHumanizeFilterTests(TestCase):
     def test_existing_humanize_behavior_remains(self):
         from core.templatetags.custom_filters import humanize_header
         self.assertEqual(humanize_header('STUDENTNAME'), 'STUDENT NAME')
+
+
+class CropperWebhookSecurityTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    def _timestamped_signature(self, secret, timestamp, body_bytes):
+        signed_payload = timestamp.encode('utf-8') + b'.' + body_bytes
+        return 'sha256=' + hmac.digest(secret.encode(), signed_payload, 'sha256').hex()
+
+    def test_verify_webhook_accepts_timestamped_hmac(self):
+        from core.views import cropper_api
+
+        body = json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}).encode('utf-8')
+        timestamp = str(int(time.time()))
+        signature = self._timestamped_signature('test-secret', timestamp, body)
+
+        request = self.factory.post(
+            '/api/cropper/release-webhook/',
+            data=body,
+            content_type='application/json',
+            HTTP_X_HUB_SIGNATURE_256=signature,
+            HTTP_X_WEBHOOK_TIMESTAMP=timestamp,
+            HTTP_X_WEBHOOK_NONCE='nonce-1',
+        )
+
+        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
+             patch.object(cropper_api, 'WEBHOOK_MAX_AGE_SECONDS', 300), \
+             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
+            self.assertTrue(cropper_api._verify_webhook(request))
+
+    def test_verify_webhook_rejects_stale_timestamp(self):
+        from core.views import cropper_api
+
+        body = json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}).encode('utf-8')
+        stale_timestamp = str(int(time.time()) - 1200)
+        signature = self._timestamped_signature('test-secret', stale_timestamp, body)
+
+        request = self.factory.post(
+            '/api/cropper/release-webhook/',
+            data=body,
+            content_type='application/json',
+            HTTP_X_HUB_SIGNATURE_256=signature,
+            HTTP_X_WEBHOOK_TIMESTAMP=stale_timestamp,
+            HTTP_X_WEBHOOK_NONCE='nonce-stale',
+        )
+
+        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
+             patch.object(cropper_api, 'WEBHOOK_MAX_AGE_SECONDS', 300), \
+             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
+            self.assertFalse(cropper_api._verify_webhook(request))
+
+    def test_verify_webhook_rejects_legacy_secret_when_disabled(self):
+        from core.views import cropper_api
+
+        request = self.factory.post(
+            '/api/cropper/release-webhook/',
+            data=json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}),
+            content_type='application/json',
+            HTTP_X_WEBHOOK_SECRET='test-secret',
+        )
+
+        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
+             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
+            self.assertFalse(cropper_api._verify_webhook(request))
+
+
+class EmailProductShowcaseSelectionTests(TestCase):
+    def _create_item(self, title, category, *, featured=False, order=0):
+        from website.models import PortfolioItem
+
+        return PortfolioItem.objects.create(
+            title=title,
+            category=category,
+            is_featured=featured,
+            is_active=True,
+            item_type='video',
+            image=f'images/Products/{title.lower().replace(" ", "-")}.jpg',
+            order=order,
+        )
+
+    def test_showcase_prefers_one_from_each_category(self):
+        from website.models import PortfolioCategory
+        from core.utils.email_utils import get_email_product_showcase
+
+        cat_a = PortfolioCategory.objects.create(name='ID Cards', order=1)
+        cat_b = PortfolioCategory.objects.create(name='Lanyards', order=2)
+        cat_c = PortfolioCategory.objects.create(name='Certificates', order=3)
+
+        # Dominant category has more featured products, but showcase should stay diverse.
+        self._create_item('A Featured 1', cat_a, featured=True, order=0)
+        self._create_item('A Featured 2', cat_a, featured=True, order=1)
+        self._create_item('B Item', cat_b, featured=False, order=0)
+        self._create_item('C Item', cat_c, featured=False, order=0)
+
+        showcase = get_email_product_showcase(limit=3)
+        categories = {item['category'] for item in showcase}
+
+        self.assertEqual(len(showcase), 3)
+        self.assertSetEqual(categories, {'ID Cards', 'Lanyards', 'Certificates'})
+
+    def test_showcase_uses_unique_categories_when_limit_is_smaller(self):
+        from website.models import PortfolioCategory
+        from core.utils.email_utils import get_email_product_showcase
+
+        cat_a = PortfolioCategory.objects.create(name='ID Cards', order=1)
+        cat_b = PortfolioCategory.objects.create(name='Lanyards', order=2)
+        cat_c = PortfolioCategory.objects.create(name='Certificates', order=3)
+
+        self._create_item('A Item', cat_a, featured=True, order=0)
+        self._create_item('B Item', cat_b, featured=False, order=0)
+        self._create_item('C Item', cat_c, featured=False, order=0)
+
+        showcase = get_email_product_showcase(limit=2)
+        categories = [item['category'] for item in showcase]
+
+        self.assertEqual(len(showcase), 2)
+        self.assertEqual(len(set(categories)), 2)
+
+    def test_showcase_fills_remaining_slots_after_category_pass(self):
+        from website.models import PortfolioCategory
+        from core.utils.email_utils import get_email_product_showcase
+
+        cat_a = PortfolioCategory.objects.create(name='ID Cards', order=1)
+        cat_b = PortfolioCategory.objects.create(name='Lanyards', order=2)
+
+        self._create_item('A Featured', cat_a, featured=True, order=0)
+        self._create_item('B Primary', cat_b, featured=False, order=0)
+        self._create_item('A Extra', cat_a, featured=False, order=1)
+
+        showcase = get_email_product_showcase(limit=3)
+        titles = [item['title'] for item in showcase]
+
+        self.assertEqual(len(showcase), 3)
+        self.assertIn('A Extra', titles)
 
 
 # ── User Model Tests ──

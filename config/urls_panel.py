@@ -53,6 +53,23 @@ def _protected_media_serve(request, path, document_root=None):
     from django.views.static import serve
     from django.urls import reverse
     from django.contrib.auth.views import redirect_to_login
+    from core.models import BackgroundTask
+    from core.services.permission_service import PermissionService
+
+    def _normalize_media_path(raw_path):
+        parts = []
+        for part in str(raw_path or '').replace('\\', '/').split('/'):
+            part = part.strip()
+            if not part or part == '.':
+                continue
+            if part == '..':
+                return ''
+            parts.append(part)
+        return '/'.join(parts)
+
+    rel_path = _normalize_media_path(path)
+    if not rel_path:
+        return HttpResponse(status=404)
 
     PROTECTED_PREFIXES = (
         'adarshimg/',
@@ -61,24 +78,51 @@ def _protected_media_serve(request, path, document_root=None):
         'staff_imgs/',
         'temp/',
     )
-    if any(path.startswith(p) for p in PROTECTED_PREFIXES):
+    if any(rel_path.startswith(p) for p in PROTECTED_PREFIXES):
         if not request.user.is_authenticated:
             # Redirect to login, preserving the original URL in ?next=
             # so the user is returned here after successful authentication.
             login_url = reverse('accounts:login')
             return redirect_to_login(request.get_full_path(), login_url=login_url)
 
+        # Keep authz parity with config/urls.py to prevent cross-tenant file access.
+        if not PermissionService.is_super_admin(request.user):
+            if rel_path.startswith('adarshimg/'):
+                from client.models import Client
+
+                parts = rel_path.split('/')
+                folder_code = ''
+                if len(parts) >= 3 and parts[1].lower() == 'thumbs':
+                    folder_code = parts[2]
+                elif len(parts) >= 2:
+                    folder_code = parts[1]
+
+                client = Client.objects.filter(image_folder_code=folder_code).only('id').first() if folder_code else None
+                if not client or not PermissionService.can_access_client(request.user, client.id):
+                    return HttpResponse(status=404)
+
+            elif rel_path.startswith('exports/'):
+                owns_file = BackgroundTask.objects.filter(
+                    user=request.user,
+                    result_path=rel_path,
+                ).exists()
+                if not owns_file:
+                    return HttpResponse(status=404)
+
+            elif not PermissionService.is_any_admin(request.user):
+                return HttpResponse(status=404)
+
     # Production with Nginx: serve via X-Accel-Redirect (zero-copy, non-blocking).
     # Requires MEDIA_USE_XACCEL=true in env AND the Nginx internal
     # /protected-media/ location block (see deployment/nginx_example.conf).
     if getattr(settings, 'MEDIA_USE_XACCEL', False):
         response = HttpResponse()
-        response['X-Accel-Redirect'] = f'/protected-media/{path}'
+        response['X-Accel-Redirect'] = f'/protected-media/{rel_path}'
         response['Content-Type'] = ''  # let Nginx detect from file extension
         return response
 
     # Fallback: Django serves the file directly (dev + prod without X-Accel)
-    return serve(request, path, document_root=document_root)
+    return serve(request, rel_path, document_root=document_root)
 
 
 

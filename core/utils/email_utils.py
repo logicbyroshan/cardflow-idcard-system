@@ -171,14 +171,66 @@ def get_email_product_showcase(request=None, limit=5):
         try:
                 from website.models import PortfolioItem
 
-                products = (
+                ranked_products = list(
                         PortfolioItem.objects
+                        .select_related('category')
                         .filter(is_active=True, image__isnull=False)
                         .exclude(image='')
-                        .order_by('-is_featured', 'order', '-created_at')[:limit]
+                        .order_by('-is_featured', 'order', '-created_at')
                 )
+
+                if not ranked_products:
+                        return []
+
+                try:
+                        limit = int(limit)
+                except (TypeError, ValueError):
+                        limit = 5
+                if limit <= 0:
+                        return []
+
+                def _bucket_key(product):
+                        # Group uncategorized items together so category pass stays stable.
+                        return f'cat:{product.category_id}' if product.category_id else 'uncategorized'
+
+                def _bucket_sort_key(product):
+                        if product.category_id and product.category:
+                                category_order = product.category.order if product.category.order is not None else 10 ** 9
+                                category_name = (product.category.name or '').lower()
+                                return (0, category_order, category_name)
+                        return (1, 10 ** 9, 'uncategorized')
+
+                buckets = {}
+                for product in ranked_products:
+                        buckets.setdefault(_bucket_key(product), []).append(product)
+
+                # Pass 1: pick one item from each category bucket (best-ranked item in that bucket).
+                bucket_order = sorted(
+                        buckets.keys(),
+                        key=lambda key: _bucket_sort_key(buckets[key][0]),
+                )
+                selected = []
+                selected_ids = set()
+
+                for key in bucket_order:
+                        candidate = buckets[key][0]
+                        selected.append(candidate)
+                        selected_ids.add(candidate.id)
+                        if len(selected) >= limit:
+                                break
+
+                # Pass 2: fill remaining slots using the original ranking.
+                if len(selected) < limit:
+                        for product in ranked_products:
+                                if product.id in selected_ids:
+                                        continue
+                                selected.append(product)
+                                selected_ids.add(product.id)
+                                if len(selected) >= limit:
+                                        break
+
                 items = []
-                for product in products:
+                for product in selected:
                         image_url = _absolute_url(product.image.url if product.image else '', request=request)
                         if not image_url:
                                 continue
