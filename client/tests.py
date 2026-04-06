@@ -645,6 +645,37 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(len(result.data['items']), 1)
         self.assertEqual(result.data['items'][0]['status'], 'requested')
 
+    def test_reprint_history_tolerates_malformed_legacy_rows(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-malformed@test.com',
+            email='dash-owner-reprint-malformed@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Malformed Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Malformed Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Malformed Table',
+            fields=['bad-field-entry', {'name': 'Name', 'type': 'text'}],
+        )
+
+        # Legacy corrupted field_data shape should not break whole dashboard history API/service.
+        card = IDCard.objects.create(table=table, status='download', field_data=['not-a-dict'])
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        result = ClientDashboardService.get_reprint_history(owner)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(len(result.data['items']), 1)
+        self.assertEqual(result.data['items'][0]['status'], 'requested')
+        self.assertIn('Card #', result.data['items'][0]['details'])
+
     def test_reprint_stats_count_requested_items(self):
         from client.services import ClientDashboardService
         from client.models import Client

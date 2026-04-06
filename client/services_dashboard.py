@@ -66,6 +66,36 @@ class ClientDashboardService(BaseService):
         logger.exception('ClientDashboardService.%s failed: %s', action, exc)
         return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
 
+    @staticmethod
+    def _to_dashboard_photo_url(raw_path: str) -> str:
+        value = str(raw_path or '').strip()
+        if not value:
+            return ''
+
+        value = value.replace('\\', '/')
+        while '//' in value:
+            value = value.replace('//', '/')
+
+        lower = value.lower()
+        if lower.startswith('http://') or lower.startswith('https://'):
+            return value
+        if lower.startswith('/media/') or lower.startswith('/mediafiles/'):
+            return value
+        if lower.startswith('media/') or lower.startswith('mediafiles/'):
+            return '/' + value
+
+        mediafiles_marker = '/mediafiles/'
+        media_marker = '/media/'
+        mediafiles_idx = lower.find(mediafiles_marker)
+        if mediafiles_idx >= 0:
+            return '/mediafiles/' + value[mediafiles_idx + len(mediafiles_marker):].lstrip('/')
+
+        media_idx = lower.find(media_marker)
+        if media_idx >= 0:
+            return '/media/' + value[media_idx + len(media_marker):].lstrip('/')
+
+        return '/media/' + value.lstrip('/')
+
     @classmethod
     def _get_accessible_tables_qs(cls, user, client):
         tables = IDCardTable.objects.filter(group__client=client, is_active=True)
@@ -401,27 +431,41 @@ class ClientDashboardService(BaseService):
             total_count = ReprintRequest.objects.filter(table__in=tables).count()
 
             for rr in reprint_qs:
-                fd = rr.card.field_data or {}
-                fields = table_fields_map.get(rr.table_id, [])
+                try:
+                    fd = rr.card.field_data if isinstance(rr.card.field_data, dict) else {}
+                except Exception:
+                    fd = {}
+
+                raw_fields = table_fields_map.get(rr.table_id, [])
+                if isinstance(raw_fields, list):
+                    fields = [f for f in raw_fields if isinstance(f, dict)]
+                elif isinstance(raw_fields, dict):
+                    fields = [raw_fields]
+                else:
+                    fields = []
 
                 # Collect first few text field values for display
                 detail_parts = []
                 photo_url = ''
                 for f in fields:
-                    fn = f.get('name', '')
-                    ft = f.get('type', 'text')
+                    fn = str(f.get('name', '') or '')
+                    ft = str(f.get('type', 'text') or 'text')
                     val = fd.get(fn, '')
                     if ft in ('image', 'photo') or fn.upper() in ('PHOTO', 'F PHOTO', 'M PHOTO', 'SIGN', 'SIGN.', 'SIGNATURE', 'FATHER PHOTO', 'MOTHER PHOTO'):
                         if not photo_url:
-                            img_path = ImageService.get_image_path_for_card(
-                                card=rr.card, field_name=fn,
-                                fallback_to_field_data=True, prefer_thumbnail=True
-                            )
-                            if img_path:
-                                photo_url = f'/media/{img_path}'
+                            try:
+                                img_path = ImageService.get_image_path_for_card(
+                                    card=rr.card, field_name=fn,
+                                    fallback_to_field_data=True, prefer_thumbnail=True
+                                )
+                                if img_path:
+                                    photo_url = cls._to_dashboard_photo_url(img_path)
+                            except Exception:
+                                logger.warning('Reprint history image resolution failed rr_id=%s field=%s', rr.id, fn)
                         continue
-                    if val and isinstance(val, str) and not val.startswith(('PENDING:', '/')):
-                        detail_parts.append(val)
+                    val_text = str(val or '').strip()
+                    if val_text and not val_text.startswith(('PENDING:', '/')):
+                        detail_parts.append(val_text)
                     if len(detail_parts) >= 4:
                         break
 
