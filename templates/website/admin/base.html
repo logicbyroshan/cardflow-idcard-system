@@ -14,6 +14,76 @@
     <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
     <!-- Page-specific: website admin -->
     <link rel="stylesheet" href="{% static 'dist/css/wa.min.css' %}">
+    <style>
+        @keyframes waPageSkeletonShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .wa-page .main-content {
+            position: relative;
+        }
+
+        .wa-page-loading-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,255,0.98) 100%);
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            padding: 14px;
+            gap: 12px;
+        }
+
+        .wa-page-loading-overlay.show {
+            display: grid;
+        }
+
+        .wa-page-loading-card {
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            background: #fff;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .wa-page-loading-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .wa-page-loading-block {
+            display: block;
+            height: 11px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+            background-size: 200% 100%;
+            animation: waPageSkeletonShimmer 1.25s linear infinite;
+        }
+
+        .wa-page-loading-block.wide {
+            width: 68%;
+        }
+
+        .wa-page-loading-block.medium {
+            width: 45%;
+        }
+
+        .wa-page-loading-block.short {
+            width: 28%;
+        }
+
+        @media (max-width: 900px) {
+            .wa-page-loading-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
@@ -69,6 +139,23 @@
 
         <!-- Page Content -->
         <div class="main-content">
+            <div class="wa-page-loading-overlay" id="websitePageLoadingOverlay" aria-hidden="true">
+                <div class="wa-page-loading-card">
+                    <span class="wa-page-loading-block wide"></span>
+                    <div class="wa-page-loading-row">
+                        <span class="wa-page-loading-block"></span>
+                        <span class="wa-page-loading-block"></span>
+                        <span class="wa-page-loading-block"></span>
+                        <span class="wa-page-loading-block"></span>
+                    </div>
+                </div>
+                <div class="wa-page-loading-card">
+                    <span class="wa-page-loading-block medium"></span>
+                    <span class="wa-page-loading-block"></span>
+                    <span class="wa-page-loading-block"></span>
+                    <span class="wa-page-loading-block short"></span>
+                </div>
+            </div>
             {% block content %}{% endblock %}
         </div>
     </main>
@@ -244,6 +331,53 @@
         if (firstPath && current === firstPath) {
             window.location.replace(savedHref);
         }
+    })();
+
+    (function() {
+        const overlay = document.getElementById('websitePageLoadingOverlay');
+        const tabs = Array.from(document.querySelectorAll('.wa-tabs .wa-tab[href]'));
+        if (!overlay || !tabs.length) return;
+
+        const normalize = (url) => {
+            try {
+                const parsed = new URL(url, window.location.origin);
+                return parsed.pathname + parsed.search;
+            } catch (e) {
+                return '';
+            }
+        };
+
+        const setLoading = (isLoading) => {
+            overlay.classList.toggle('show', !!isLoading);
+        };
+        window.setWebsiteAdminTabLoading = setLoading;
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', function(event) {
+                if (
+                    event.defaultPrevented ||
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                ) {
+                    return;
+                }
+
+                if (tab.classList.contains('active')) return;
+
+                const current = normalize(window.location.href);
+                const target = normalize(tab.href);
+                if (!target || target === current) return;
+
+                setLoading(true);
+            });
+        });
+
+        window.addEventListener('pageshow', function() {
+            setLoading(false);
+        });
     })();
     </script>
 

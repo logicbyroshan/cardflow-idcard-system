@@ -2247,6 +2247,13 @@ document.addEventListener('visibilitychange', function () {
 
 /* ============ Server Info Tab ============ */
 
+function setServerInfoLoadingState(isLoading) {
+  const contentShell = document.getElementById('serverInfoContentShell');
+  if (contentShell) {
+    contentShell.classList.toggle('is-loading', !!isLoading);
+  }
+}
+
 function initServerInfoTab() {
   const rows = document.getElementById('serverInfoPathRows');
   const otherRows = document.getElementById('serverOtherBreakdownRows');
@@ -2273,6 +2280,8 @@ async function loadServerInfo(forceRefresh) {
 
   serverInfoLoading = true;
   serverInfoHasFetched = true;
+  const skeletonStart = Date.now();
+  setServerInfoLoadingState(true);
 
   if (fetchBtn) {
     fetchBtn.disabled = true;
@@ -2303,7 +2312,9 @@ async function loadServerInfo(forceRefresh) {
     console.error('Server info load error:', err);
     window.showToast && showToast('Unable to fetch server info', 'error');
   } finally {
+    await waitForPanelSkeletonDelay(skeletonStart);
     serverInfoLoading = false;
+    setServerInfoLoadingState(false);
     if (fetchBtn) {
       fetchBtn.disabled = false;
       fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';

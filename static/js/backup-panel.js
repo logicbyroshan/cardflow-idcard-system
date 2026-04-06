@@ -44,26 +44,45 @@
   }
 
   /*  Load backups  */
-  window.loadBackups = function () {
+  window.loadBackups = async function (options) {
     const container = document.getElementById('backupsList');
     if (!container) return;
 
-    fetch('/api/backup/list/')
-      .then(r => r.json())
-      .then(data => {
-        if (!data.success) return;
-        _backups = data.backups || [];
-        _renderBackups();
+    const cfg = (typeof options === 'boolean')
+      ? { showSkeleton: options }
+      : (options || {});
+    const showSkeleton = cfg.showSkeleton !== false;
+    const skeletonStart = showSkeleton ? _renderBackupsSkeleton(container, 3) : null;
 
-        // If any backup is active, keep polling
-        const hasActive = _backups.some(b => b.status === 'processing' || b.status === 'pending');
-        if (hasActive) _startPolling();
-        else _stopPolling();
-      })
-      .catch(err => {
-        container.innerHTML = '<div class="backup-empty-state"><p>Failed to load backups.</p></div>';
-        console.error('loadBackups error', err);
-      });
+    try {
+      const response = await fetch('/api/backup/list/');
+      const data = await response.json();
+
+      if (!data.success) {
+        if (skeletonStart != null && typeof waitForMinDelay === 'function') {
+          await waitForMinDelay(skeletonStart);
+        }
+        return;
+      }
+
+      if (skeletonStart != null && typeof waitForMinDelay === 'function') {
+        await waitForMinDelay(skeletonStart);
+      }
+
+      _backups = data.backups || [];
+      _renderBackups();
+
+      // If any backup is active, keep polling
+      const hasActive = _backups.some(b => b.status === 'processing' || b.status === 'pending');
+      if (hasActive) _startPolling();
+      else _stopPolling();
+    } catch (err) {
+      if (skeletonStart != null && typeof waitForMinDelay === 'function') {
+        await waitForMinDelay(skeletonStart);
+      }
+      container.innerHTML = '<div class="backup-empty-state"><p>Failed to load backups.</p></div>';
+      console.error('loadBackups error', err);
+    }
   };
 
   /*  Render  */
@@ -81,6 +100,24 @@
     }
 
     container.innerHTML = _backups.map(b => _renderCard(b)).join('');
+  }
+
+  function _renderBackupsSkeleton(container, rows) {
+    const count = Math.max(2, Number(rows || 3));
+    const html = Array.from({ length: count }, function () {
+      return '<div class="backup-skeleton-item" aria-hidden="true">' +
+        '<div class="backup-skeleton-left">' +
+          '<div class="backup-skeleton-block backup-skeleton-icon"></div>' +
+          '<div>' +
+            '<div class="backup-skeleton-block backup-skeleton-title"></div>' +
+            '<div class="backup-skeleton-block backup-skeleton-subtitle"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="backup-skeleton-block backup-skeleton-btn"></div>' +
+      '</div>';
+    }).join('');
+    container.innerHTML = html;
+    return Date.now();
   }
 
   function _renderCard(b) {
@@ -229,7 +266,7 @@
   /*  Polling  */
   function _startPolling() {
     if (_pollTimer) return;
-    _pollTimer = setInterval(loadBackups, 3000);
+    _pollTimer = setInterval(function () { loadBackups({ showSkeleton: false }); }, 3000);
   }
 
   function _stopPolling() {

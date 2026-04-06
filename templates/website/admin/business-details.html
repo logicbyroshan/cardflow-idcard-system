@@ -17,12 +17,22 @@
         gap: 12px;
     }
 
+    .wa-dashboard-section {
+        border: 1px solid #dbe3ef;
+        border-radius: 14px;
+        background: radial-gradient(circle at top right, rgba(219, 234, 254, 0.45), rgba(255, 255, 255, 0) 46%), #ffffff;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+        padding: 16px;
+    }
+
     .wa-business-hero {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
         flex-wrap: wrap;
+        border-bottom: 1px dashed #dbe3ef;
+        padding-bottom: 10px;
     }
 
     .wa-business-hero-title {
@@ -42,7 +52,7 @@
     .wa-business-status-grid {
         margin-top: 12px;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
         gap: 10px;
     }
 
@@ -146,10 +156,11 @@
     }
 
     .business-form-shell {
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        padding: 16px;
+        border: 1px solid #dbe3ef;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
     }
 
     .business-form-shell .wa-form-group-title {
@@ -170,7 +181,31 @@
     }
 
     .business-form-shell .wa-form-row {
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .business-form-shell .wa-form-group {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fbff;
+        padding: 10px;
+    }
+
+    .business-form-shell .wa-form-group.full {
+        grid-column: 1 / -1;
+    }
+
+    .business-form-shell label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #64748b;
     }
 
     .business-form-shell .wa-form-actions {
@@ -201,6 +236,17 @@
     .business-form-shell select {
         border-color: #cbd5e1;
         background: #fff;
+        min-height: 40px;
+        border-radius: 9px;
+        width: 100%;
+        padding: 10px 12px;
+        color: #0f172a;
+    }
+
+    .business-form-shell textarea {
+        min-height: 98px;
+        line-height: 1.45;
+        resize: vertical;
     }
 
     .business-form-shell input:focus,
@@ -210,9 +256,115 @@
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
     }
 
+    .business-form-shell .wa-toggle-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 11.5px;
+        color: #1e3a8a;
+        font-weight: 600;
+    }
+
+    #heroImagesGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    .hero-image-card {
+        border: 1px solid #dbe3ef;
+        border-radius: 12px;
+        background: #fff;
+        padding: 8px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+
+    .hero-image-card .wa-img-preview {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        aspect-ratio: 16 / 10;
+        background: #e2e8f0;
+    }
+
+    .hero-image-card .wa-img-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .hero-order-badge,
+    .hero-inactive-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #1e293b;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    .hero-inactive-badge {
+        left: auto;
+        right: 8px;
+        color: #9a3412;
+        border-color: #fdba74;
+        background: #fff7ed;
+    }
+
+    .hero-remove-btn {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: rgba(255, 255, 255, 0.94);
+        color: #b91c1c;
+        font-size: 17px;
+        line-height: 1;
+    }
+
+    #noHeroImagesMsg {
+        grid-column: 1 / -1;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 14px;
+        text-align: center;
+    }
+
+    #noHeroImagesMsg p {
+        margin: 0;
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 600;
+    }
+
     @media (max-width: 960px) {
         .wa-business-status-grid {
             grid-template-columns: 1fr;
+        }
+
+        .business-form-shell .wa-form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .wa-dashboard-section {
+            padding: 12px;
+        }
+
+        .business-form-shell {
+            padding: 14px;
         }
     }
 </style>
@@ -257,27 +409,6 @@
                 <p class="wa-business-status-meta" id="websiteLiveStatusMeta">Current state is synced with website visibility.</p>
             </div>
 
-            <div class="wa-business-status-card">
-                <div class="wa-business-status-card-header">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>Domain Not Found Mode</span>
-                </div>
-                <div class="wa-business-status-row">
-                    <span class="wa-business-status-pill {% if website_not_found_mode %}draft{% else %}live{% endif %}" id="websiteDomainModeBadge">
-                        <i class="fa-solid {% if website_not_found_mode %}fa-triangle-exclamation{% else %}fa-link{% endif %}"></i>
-                        <span>{% if website_not_found_mode %}On{% else %}Off{% endif %}</span>
-                    </span>
-                </div>
-                <div class="wa-business-status-actions">
-                    <a href="{% url 'manage_panel' %}" class="btn btn-sm btn-outline-primary">
-                        <i class="fa-solid fa-sliders"></i> Open Notifications Controls
-                    </a>
-                </div>
-                <p class="wa-business-status-note">
-                    Domain mode controls moved to the Notifications tab in
-                    <a href="{% url 'manage_panel' %}">Manage Panel</a>.
-                </p>
-            </div>
         </div>
 
         <form id="businessForm" enctype="multipart/form-data" class="wa-form business-form-shell">
