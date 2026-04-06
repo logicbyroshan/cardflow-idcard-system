@@ -513,6 +513,9 @@ class ClientCardService(BaseService):
             client = ClientAccessService.get_client_for_user(user)
             if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
+
+            if not PermissionService.has_permission(user, 'perm_idcard_info'):
+                return ServiceResult(success=False, message='Permission denied')
             
             # Get card
             try:

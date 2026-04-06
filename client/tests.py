@@ -945,6 +945,9 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(called_data.get('assignment_scopes'), [])
 
     def test_api_card_detail_success_for_client(self):
+        self.client_obj.perm_idcard_info = True
+        self.client_obj.save(update_fields=['perm_idcard_info'])
+
         self.client.login(username='api-owner@test.com', password='pass1234')
         response = self.client.get(f'/panel/client/api/cards/{self.card.id}/')
         self.assertEqual(response.status_code, 200)
@@ -1258,6 +1261,35 @@ class ClientApiIntegrationTests(TestCase):
         table_cards = table_resp.json().get('data', {}).get('cards', [])
         self.assertEqual(len(table_cards), 1)
         self.assertEqual(table_cards[0].get('field_data', {}).get('CLASS'), '12')
+
+    def test_api_staff_detail_denied_without_manage_client_permission(self):
+        self.client_obj.perm_idcard_client_list = False
+        self.client_obj.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/api/staff/{self.staff_profile.id}/')
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+
+    def test_api_card_detail_requires_card_info_permission(self):
+        self.client_obj.perm_idcard_info = False
+        self.client_obj.save(update_fields=['perm_idcard_info'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/api/cards/{self.card.id}/')
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+
+    def test_client_print_page_redirects_without_print_permissions(self):
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/table/{self.table.id}/print/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/panel/client/idcard-group/', response.url)
 
     def test_client_staff_table_scope_does_not_unlock_full_parent_group(self):
         from idcards.models import IDCardTable, IDCard

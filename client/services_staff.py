@@ -331,6 +331,10 @@ class ClientStaffService(BaseService):
             client = ClientAccessService.get_client_for_user(user)
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
+
+            # Match the same gate as list/create/update/delete staff operations.
+            if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
+                return ServiceResult(success=False, message='Permission denied')
             
             # Get staff and verify ownership
             try:

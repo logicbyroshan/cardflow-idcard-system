@@ -158,17 +158,38 @@ def _mobile_client_edit_locked_response():
     )
 
 
+def _can_access_card_with_row_scope(user, card):
+    """Enforce card ownership plus client_staff row-level scope restrictions."""
+    if not ClientAccessService.can_access_card(user, card):
+        return False
+
+    if not PermissionService.is_client_staff(user):
+        return True
+
+    scoped = ClientCardService._apply_client_staff_row_scope(
+        user,
+        card.table,
+        IDCard.objects.filter(id=card.id, table_id=card.table_id),
+    )
+    return scoped.exists()
+
+
 def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
     """Return system notifications for a user with consistent unread tracking."""
     from core.models import Notification, NotificationRead
     from django.db.models import Q as _Q
+    from django.utils import timezone as _tz
 
     role = getattr(user, 'role', 'all')
     safe_limit = max(1, min(int(limit or 20), 100))
+    now = _tz.now()
 
     notifications = list(
         Notification.objects
-        .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user), is_active=True)
+        .filter(is_active=True)
+        .filter(_Q(expires_at__isnull=True) | _Q(expires_at__gt=now))
+        .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user))
+        .distinct()
         .order_by('-created_at')[:safe_limit]
     )
 
@@ -2376,10 +2397,21 @@ def camera_capture(request, table_id, card_id=None):
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('mobile_app:home')
 
+    if not PermissionService.has(user, 'perm_idcard_edit'):
+        return redirect('mobile_app:home')
+
+    if card_id is not None:
+        scoped_card = IDCard.objects.select_related('table__group').filter(id=card_id, table_id=table.id).first()
+        if not scoped_card or not _can_access_card_with_row_scope(user, scoped_card):
+            return redirect('mobile_app:home')
+
     # If no specific card_id provided, show card picker with all cards for name-based search
     all_cards = []
     if card_id is None:
-        cards_qs = IDCard.objects.filter(table=table).only('id', 'field_data').order_by('id')[:300]
+        cards_qs = IDCard.objects.filter(table=table).only('id', 'field_data').order_by('id')
+        if PermissionService.is_client_staff(user):
+            cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
+        cards_qs = cards_qs[:300]
         for card in cards_qs:
             fd = card.field_data or {}
             name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
@@ -2529,7 +2561,7 @@ def api_upload_photo(request, table_id):
         return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
         card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
-        if not ClientAccessService.can_access_card(request.user, card):
+        if not _can_access_card_with_row_scope(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if _is_mobile_client_edit_locked(request.user, card.status):
             return _mobile_client_edit_locked_response()
@@ -2640,7 +2672,12 @@ def api_card_detail(request, card_id):
     result = ClientCardService.get_card_detail(request.user, card_id)
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})
-    return JsonResponse({'success': False, 'message': result.message}, status=404)
+    msg = (result.message or '').lower()
+    if 'permission' in msg or 'access denied' in msg or 'access' in msg:
+        status_code = 403
+    else:
+        status_code = 404
+    return JsonResponse({'success': False, 'message': result.message}, status=status_code)
 
 
 @require_mobile_client
@@ -2718,7 +2755,7 @@ def api_card_update(request, table_id, card_id):
     """Update an existing card."""
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
-        if not ClientAccessService.can_access_card(request.user, card):
+        if not _can_access_card_with_row_scope(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if not PermissionService.has(request.user, 'perm_idcard_edit'):
             return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
@@ -2981,15 +3018,55 @@ def settings_page(request):
     from django.utils.timesince import timesince as _timesince
     from django.utils import timezone as _tz
     _now = _tz.now()
-    _cards_scope = (
-        IDCard.objects.all() if PermissionService.is_any_admin(user)
-        else IDCard.objects.filter(table__group__client=client)
-    )
-    if PermissionService.is_admin_staff(user):
-        accessible_ids = _admin_accessible_client_ids(user)
-        _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
+    _cards_for_logs = []
+    can_view_logs = PermissionService.is_any_admin(user) or PermissionService.has(user, 'perm_idcard_info')
+
+    if can_view_logs:
+        if PermissionService.is_any_admin(user):
+            _cards_scope = IDCard.objects.all()
+            if PermissionService.is_admin_staff(user):
+                accessible_ids = _admin_accessible_client_ids(user)
+                _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
+            _cards_for_logs = list(
+                _cards_scope.select_related('table', 'table__group').order_by('-updated_at')[:30]
+            )
+        elif PermissionService.is_client_staff(user):
+            _tables_scope = IDCardTable.objects.filter(group__client=client, is_active=True)
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+                if assigned_table_ids and assigned_group_ids:
+                    _tables_scope = _tables_scope.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                elif assigned_table_ids:
+                    _tables_scope = _tables_scope.filter(id__in=assigned_table_ids)
+                elif assigned_group_ids:
+                    _tables_scope = _tables_scope.filter(group_id__in=assigned_group_ids)
+            else:
+                _tables_scope = _tables_scope.none()
+
+            # Pull a larger candidate set, then apply per-card row scope checks.
+            _candidate_cards = (
+                IDCard.objects
+                .filter(table_id__in=_tables_scope.values('id'))
+                .select_related('table', 'table__group')
+                .order_by('-updated_at')[:200]
+            )
+            for _card in _candidate_cards:
+                if _can_access_card_with_row_scope(user, _card):
+                    _cards_for_logs.append(_card)
+                    if len(_cards_for_logs) >= 30:
+                        break
+        else:
+            _cards_for_logs = list(
+                IDCard.objects
+                .filter(table__group__client=client)
+                .select_related('table', 'table__group')
+                .order_by('-updated_at')[:30]
+            )
+
     _log_acts = []
-    for _card in _cards_scope.select_related('table', 'table__group').order_by('-updated_at')[:30]:
+    for _card in _cards_for_logs:
         _fd = _card.field_data or {}
         _name = _fd.get('NAME') or _fd.get('name') or _fd.get('Name') or f'Card #{_card.id}'
         _log_acts.append({
@@ -3112,7 +3189,7 @@ def api_card_delete(request, card_id):
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
         user = request.user
-        if not ClientAccessService.can_access_card(user, card):
+        if not _can_access_card_with_row_scope(user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         data = json.loads(request.body) if request.body else {}
         permanent = data.get('permanent', False)

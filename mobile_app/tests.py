@@ -458,6 +458,150 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertIn('permission', response.json().get('message', '').lower())
 		mock_validate.assert_not_called()
 
+	def _setup_client_staff_row_scope(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'CLASS', 'type': 'class', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.perm_idcard_delete = True
+		self.client_profile.perm_idcard_info = True
+		self.client_profile.save(update_fields=['perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info'])
+
+		self.client_staff_profile.perm_idcard_edit = True
+		self.client_staff_profile.perm_idcard_delete = True
+		self.client_staff_profile.perm_idcard_info = True
+		self.client_staff_profile.allowed_classes = ['10']
+		self.client_staff_profile.allowed_sections = []
+		self.client_staff_profile.save(update_fields=[
+			'perm_idcard_edit',
+			'perm_idcard_delete',
+			'perm_idcard_info',
+			'allowed_classes',
+			'allowed_sections',
+		])
+		self.client_staff_profile.assigned_groups.set([self.group])
+
+		in_scope_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'In Scope Student', 'ROLL NO': '201', 'CLASS': '10'},
+			status='pending',
+		)
+		out_of_scope_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Out Scope Student', 'ROLL NO': '202', 'CLASS': '11'},
+			status='pending',
+		)
+		return in_scope_card, out_of_scope_card
+
+	def test_client_staff_update_card_blocked_outside_row_scope(self):
+		_, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{out_of_scope_card.id}/update/',
+			data={'field_data': json.dumps({'NAME': 'Should Not Update'})},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	def test_client_staff_delete_card_blocked_outside_row_scope(self):
+		_, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.post(
+			f'/app/api/card/{out_of_scope_card.id}/delete/',
+			data=json.dumps({'permanent': False}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_client_staff_upload_photo_blocked_outside_row_scope(self, _mock_validate):
+		_, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		photo = SimpleUploadedFile('ok.jpg', b'fake-image', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(out_of_scope_card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	def test_camera_picker_filters_cards_outside_client_staff_row_scope(self):
+		in_scope_card, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/camera/{self.table.id}/')
+		self.assertEqual(response.status_code, 200)
+
+		card_ids = [row['id'] for row in response.context.get('all_cards_json', [])]
+		self.assertIn(in_scope_card.id, card_ids)
+		self.assertNotIn(out_of_scope_card.id, card_ids)
+
+	def test_mobile_card_detail_requires_card_info_permission(self):
+		self.client_profile.perm_idcard_info = False
+		self.client_profile.save(update_fields=['perm_idcard_info'])
+
+		self._login_mobile_client()
+		response = self.client.get(f'/app/api/card/{self.card.id}/detail/')
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json().get('success'))
+
+	def test_settings_logs_hide_out_of_scope_cards_for_client_staff(self):
+		in_scope_card, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.get('/app/settings/')
+
+		self.assertEqual(response.status_code, 200)
+		log_names = [row.get('name') for row in response.context.get('log_activities', [])]
+		self.assertIn(in_scope_card.field_data.get('NAME'), log_names)
+		self.assertNotIn(out_of_scope_card.field_data.get('NAME'), log_names)
+
+	def test_settings_logs_require_card_info_permission_for_client_role(self):
+		self.client_profile.perm_idcard_info = False
+		self.client_profile.save(update_fields=['perm_idcard_info'])
+
+		self._login_mobile_client()
+		response = self.client.get('/app/settings/')
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('log_activities', []), [])
+
+	def test_mobile_notifications_hide_expired_items(self):
+		from core.models import Notification
+
+		Notification.objects.create(
+			title='Visible Notice',
+			message='Visible message',
+			target='client',
+			expires_at=timezone.now() + timedelta(hours=1),
+		)
+		Notification.objects.create(
+			title='Expired Notice',
+			message='Expired message',
+			target='client',
+			expires_at=timezone.now() - timedelta(minutes=5),
+		)
+
+		self._login_mobile_client()
+		response = self.client.get('/app/notifications/')
+
+		self.assertEqual(response.status_code, 200)
+		titles = [item.get('title') for item in response.context.get('notifications', [])]
+		self.assertIn('Visible Notice', titles)
+		self.assertNotIn('Expired Notice', titles)
+
 
 class MobileAppManagementApiTests(MobileAppBaseTestCase):
 	def test_server_info_requires_super_admin(self):

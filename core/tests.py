@@ -1334,6 +1334,101 @@ class CardHistoryApiTests(TestCase):
         response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
         self.assertEqual(response.status_code, 403)
 
+    def test_history_api_hides_admin_events_for_client_viewer(self):
+        self.client.login(username='card-history-client-a@test.com', password='clientpass1')
+
+        response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        what_values = [event.get('what', '') for event in payload.get('events', [])]
+        who_values = [event.get('who', '') for event in payload.get('events', [])]
+
+        self.assertNotIn('Card moved from Pending to Verified', what_values)
+        self.assertNotIn('Field "NAME" updated', what_values)
+        self.assertNotIn(self.admin.get_full_name() or self.admin.username, who_values)
+
+
+class ActivityFeedIsolationTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+        from core.models import ActivityLog
+
+        self.admin = _create_super_admin('activity-admin@test.com', 'adminpass1')
+        self.client_user, self.client_obj = _create_client_user('activity-client@test.com', 'clientpass1')
+
+        self.client_staff_user = User.objects.create_user(
+            username='activity-client-staff@test.com',
+            email='activity-client-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        # Admin-side activity for the same client domain should never leak to client feeds.
+        ActivityLog.objects.create(
+            user=self.admin,
+            action='staff_create',
+            description='Admin created client staff account',
+            target_model='Staff',
+            target_id=999,
+            target_name='Admin-created staff',
+        )
+        ActivityLog.objects.create(
+            user=None,
+            action='staff_update',
+            description='System user-management sync',
+            target_model='Staff',
+            target_id=998,
+            target_name='System sync',
+        )
+
+        # Legit client-org activities that should remain visible to the client user.
+        ActivityLog.objects.create(
+            user=self.client_user,
+            action='card_update',
+            description='Client updated card details',
+            target_model='IDCard',
+            target_id=101,
+            target_name='Card #101',
+        )
+        ActivityLog.objects.create(
+            user=self.client_staff_user,
+            action='card_status',
+            description='1 card verified',
+            target_model='IDCard',
+            target_id=102,
+            target_name='Card #102',
+        )
+
+    def test_client_recent_activity_excludes_admin_user_management_entries(self):
+        from core.services.activity_service import ActivityService
+
+        rows = ActivityService.get_recent(limit=20, hours=None, user=self.client_user)
+        descriptions = [row.get('description', '') for row in rows]
+        actors = [row.get('actor', '') for row in rows]
+
+        self.assertIn('Client updated card details', descriptions)
+        self.assertIn('1 card verified', descriptions)
+        self.assertNotIn('Admin created client staff account', descriptions)
+        self.assertNotIn('System user-management sync', descriptions)
+        self.assertNotIn(self.admin.get_full_name() or self.admin.username, actors)
+
+    def test_client_staff_recent_activity_is_self_only(self):
+        from core.services.activity_service import ActivityService
+
+        rows = ActivityService.get_recent(limit=20, hours=None, user=self.client_staff_user)
+        descriptions = [row.get('description', '') for row in rows]
+
+        self.assertIn('1 card verified', descriptions)
+        self.assertNotIn('Client updated card details', descriptions)
+        self.assertNotIn('Admin created client staff account', descriptions)
+        self.assertNotIn('System user-management sync', descriptions)
+
 
 class ReuploadDirectTaskFlowTests(TestCase):
     def setUp(self):

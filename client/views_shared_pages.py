@@ -420,6 +420,11 @@ def client_print_cards(request, table_id):
     if not ClientAccessService.can_access_table(user, table):
         return redirect(reverse('client:idcard_group'))
 
+    can_print_list = PermissionService.has_permission(user, 'perm_print_list')
+    can_finalized_list = PermissionService.has_permission(user, 'perm_finalized_list')
+    if not (can_print_list or can_finalized_list):
+        return redirect(reverse('client:idcard_group'))
+
     _promote_legacy_print_list(table)
 
     current_step = request.GET.get('step', 'generate_list')
