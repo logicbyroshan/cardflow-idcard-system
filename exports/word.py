@@ -169,7 +169,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             )
             
             # Sort cards for export (Class → Name, or Name only)
-            cards_list = sort_cards_for_export(list(cards), table.fields)
+            cards_list = sort_cards_for_export(cards, table.fields)
             num_cols = 1 + len(ordered_fields)  # Sr No + fields
             column_widths = self._calculate_column_widths(
                 ordered_fields, cards_list, num_cols

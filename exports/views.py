@@ -496,6 +496,32 @@ def _disk_zip_result_to_payload(disk_result) -> Dict[str, Any]:
     return payload
 
 
+def _write_http_response_to_file(response, file_path: str) -> int:
+    """Persist HttpResponse/StreamingHttpResponse content to disk safely."""
+    if response is None:
+        return 0
+
+    bytes_written = 0
+    with open(file_path, 'wb') as handle:
+        if hasattr(response, 'streaming_content'):
+            for chunk in response.streaming_content:
+                if isinstance(chunk, str):
+                    chunk = chunk.encode('utf-8')
+                if not chunk:
+                    continue
+                handle.write(chunk)
+                bytes_written += len(chunk)
+        elif hasattr(response, 'content'):
+            payload = response.content or b''
+            if isinstance(payload, str):
+                payload = payload.encode('utf-8')
+            if payload:
+                handle.write(payload)
+                bytes_written = len(payload)
+
+    return bytes_written
+
+
 # =============================================================================
 # EXCEL EXPORT
 # =============================================================================
@@ -1150,23 +1176,10 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
                 if xlsx_result.success and xlsx_result.response:
                     xlsx_filename = f"{base_name}.xlsx"
                     xlsx_path = os.path.join(EXPORT_TEMP_DIR, f"{task_id}_{xlsx_filename}")
-                    # Handle both HttpResponse (.content) and StreamingHttpResponse (.streaming_content)
-                    resp = xlsx_result.response
-                    if hasattr(resp, 'content'):
-                        xlsx_bytes = resp.content
-                    elif hasattr(resp, 'streaming_content'):
-                        xlsx_bytes = b''.join(
-                            ch.encode('utf-8') if isinstance(ch, str) else ch
-                            for ch in resp.streaming_content
-                        )
-                    else:
-                        xlsx_bytes = b''
-                    if xlsx_bytes:
-                        with open(xlsx_path, 'wb') as f:
-                            f.write(xlsx_bytes)
+                    written = _write_http_response_to_file(xlsx_result.response, xlsx_path)
+                    if written > 0:
                         file_entries.append((xlsx_filename, xlsx_path))
                         temp_files.append(xlsx_path)
-                    del xlsx_bytes
                     del xlsx_result
             except Exception as e:
                 logger.error("XLSX export failed for status %s: %s", status_key, e)

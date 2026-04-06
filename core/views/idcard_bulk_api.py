@@ -518,9 +518,11 @@ def api_idcard_reupload_images(request, table_id):
     lock_key = f'reupload_lock:{request.user.id}:{table_id}'
     if not django_cache.add(lock_key, 1, 300):
         return JsonResponse({'success': False, 'message': 'Reupload already in progress. Please wait.'}, status=429)
+    zip_photos_store = None
     try:
         import zipfile
         from django.db import transaction
+        from ..services.bulk_upload_service import DiskBackedImageStore
         
         table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
         client = table.group.client
@@ -540,9 +542,9 @@ def api_idcard_reupload_images(request, table_id):
         
         # Extract photos from ZIP — use temp file if available (avoids OOM on large uploads)
         # Uses strict canonical stem keys for exact matching consistency.
-        zip_photos = {}  # { exact_key: { bytes, ext, original_name } }
+        zip_photos_store = DiskBackedImageStore()  # { exact_key -> bytes on disk/RAM }
         duplicate_name_keys = 0
-        duplicate_stems = set()
+        seen_stems = set()
         
         try:
             zip_file = request.FILES['photos_zip']
@@ -586,21 +588,19 @@ def api_idcard_reupload_images(request, table_id):
                                 if not exact_key or not _is_supported_reupload_stem(exact_key):
                                     continue
 
-                                existing = zip_photos.get(exact_key)
-                                if existing is None:
-                                    zip_photos[exact_key] = {
-                                        'bytes': image_bytes,
-                                        'ext': ext,
-                                        'original_name': base_name
-                                    }
-                                else:
+                                if exact_key in seen_stems:
                                     duplicate_name_keys += 1
-                                    duplicate_stems.add(exact_key)
+                                    continue
+
+                                seen_stems.add(exact_key)
+                                zip_photos_store.add(
+                                    exact_key,
+                                    image_bytes,
+                                    ext,
+                                    base_name,
+                                )
                         except Exception:
                             continue
-
-            for key in duplicate_stems:
-                zip_photos.pop(key, None)
         except Exception as zip_error:
             logger.exception('Error reading ZIP file: %s', zip_error)
             return JsonResponse({'success': False, 'message': 'Error reading ZIP file. Please check the file and try again.'}, status=400)
@@ -611,10 +611,14 @@ def api_idcard_reupload_images(request, table_id):
                 'message': 'ZIP contains duplicate image names for exact matching. Please keep one file per image name and retry.'
             }, status=400)
         
-        if not zip_photos:
+        if not zip_photos_store or len(zip_photos_store) == 0:
             return JsonResponse({'success': False, 'message': 'No valid images found in ZIP file!'}, status=400)
         
-        logger.debug("Reupload: %d images extracted from ZIP, keys: %s", len(zip_photos), list(zip_photos.keys())[:10])
+        logger.debug(
+            "Reupload: %d images extracted from ZIP, keys: %s",
+            len(zip_photos_store),
+            list(zip_photos_store.keys())[:10],
+        )
         
         # Get cards — scoped to selected IDs if provided, else all in table for current status
         card_ids = []
@@ -683,7 +687,7 @@ def api_idcard_reupload_images(request, table_id):
                                 continue
 
                             # Try strict-first matching with optional legacy fallback.
-                            photo_info = _resolve_reupload_photo(match_key, zip_photos)
+                            photo_info = _resolve_reupload_photo(match_key, zip_photos_store)
                             if photo_info:
                                 matched_count += 1
 
@@ -746,7 +750,7 @@ def api_idcard_reupload_images(request, table_id):
             'message': result_msg,
             'updated_count': updated_count,
             'matched_count': matched_count,
-            'zip_images_count': len(zip_photos),
+            'zip_images_count': len(zip_photos_store),
         }
         
         if errors:
@@ -758,6 +762,11 @@ def api_idcard_reupload_images(request, table_id):
     except Exception as e:
         return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
     finally:
+        try:
+            if zip_photos_store is not None:
+                zip_photos_store.cleanup()
+        except Exception:
+            pass
         django_cache.delete(lock_key)
 
 

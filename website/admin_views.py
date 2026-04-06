@@ -755,7 +755,7 @@ def api_portfolio_bulk_upload(request):
       - category: category ID
     """
     MAX_BULK_IMAGES = 50
-    MAX_SINGLE_IMAGE_SIZE = 20 * 1024 * 1024  # 20 MB per image
+    MAX_SINGLE_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB per image (matches service validation)
     ALLOWED_IMAGE_TYPES = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
     
     category_id = request.POST.get('category', '')
@@ -782,7 +782,7 @@ def api_portfolio_bulk_upload(request):
             size_mb = img_file.size / (1024 * 1024)
             return JsonResponse({
                 'success': False,
-                'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 20 MB per image.'
+                'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 10 MB per image.'
             }, status=400)
     
     created = 0

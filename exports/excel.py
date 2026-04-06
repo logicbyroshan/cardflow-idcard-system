@@ -126,7 +126,7 @@ class ExcelExporter:
                 column_widths[col_idx] = len(str(header)) + 2
             
             # Sort cards for export (Class → Section → Name)
-            sorted_cards = sort_cards_for_export(list(cards), table.fields)
+            sorted_cards = sort_cards_for_export(cards, table.fields)
 
             # Write data rows
             row_count = 0

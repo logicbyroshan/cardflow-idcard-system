@@ -23,7 +23,7 @@ from .excel import ExcelExporter, ExcelExportResult
 from .word import WordExporter, WordExportResult
 from .pdf import PdfExporter, PdfExportResult
 from .zip import ZipExporter, ZipExportResult
-from .utils import get_text_fields, get_image_fields, sort_cards_for_export
+from .utils import get_text_fields, get_image_fields
 
 
 @dataclass
@@ -200,14 +200,11 @@ class ExportService:
         # Get scoped cards
         cards = self.get_scoped_cards(table, card_ids)
 
-        # Sort cards: class → section → name ascending
-        sorted_cards = sort_cards_for_export(cards, table.fields)
-
-        if not sorted_cards:
+        if not cards.exists():
             return ExportContext(
                 user=self.user,
                 table=table,
-                cards=sorted_cards,
+                cards=cards,
                 has_permission=True,
                 error_message='No cards available for export'
             )
@@ -215,7 +212,7 @@ class ExportService:
         return ExportContext(
             user=self.user,
             table=table,
-            cards=sorted_cards,
+            cards=cards,
             has_permission=True
         )
     

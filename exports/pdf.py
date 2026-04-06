@@ -387,7 +387,7 @@ class PdfExporter:
                 )
 
             # Sort cards for export (Class → Section → Name)
-            cards_list = sort_cards_for_export(list(cards), table.fields)
+            cards_list = sort_cards_for_export(cards, table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list, shorten_titles=shorten_titles)
 
             # ── Resolve font mode ────────────────────────────────
