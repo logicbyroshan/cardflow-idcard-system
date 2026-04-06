@@ -309,32 +309,53 @@ function initReprintPickerHandlers() {
         }
 
         value = value.replace(/\\/g, '/');
+        value = value.replace(/\/{2,}/g, '/');
 
-        // If path contains /media/ anywhere (including absolute FS paths), keep only the media-relative part.
+        // If path contains /media/ or /mediafiles/ anywhere (including absolute FS paths),
+        // keep only the marker-relative part.
         var lower = value.toLowerCase();
-        var marker = '/media/';
-        var markerIndex = lower.indexOf(marker);
-        if (markerIndex !== -1) {
-            value = value.slice(markerIndex + marker.length);
+        var mediaMarker = '/media/';
+        var mediafilesMarker = '/mediafiles/';
+        var markerIndexMediafiles = lower.indexOf(mediafilesMarker);
+        if (markerIndexMediafiles !== -1) {
+            value = value.slice(markerIndexMediafiles + mediafilesMarker.length);
+            value = 'mediafiles/' + value;
+        } else {
+            var markerIndexMedia = lower.indexOf(mediaMarker);
+            if (markerIndexMedia !== -1) {
+                value = value.slice(markerIndexMedia + mediaMarker.length);
+                value = 'media/' + value;
+            }
         }
 
         value = value.replace(/^\/+/, '');
-        if (value.toLowerCase().indexOf('media/') === 0) {
-            value = value.slice(6);
-        }
+        value = value.replace(/\/{2,}/g, '/');
         return value;
     }
 
     function toMediaUrl(rawPath) {
         var normalized = normalizeMediaPath(rawPath);
         if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+
+        var lower = normalized.toLowerCase();
+        if (lower.indexOf('/media/') === 0 || lower.indexOf('/mediafiles/') === 0) {
+            return normalized;
+        }
+        if (lower.indexOf('media/') === 0) {
+            return '/' + normalized;
+        }
+        if (lower.indexOf('mediafiles/') === 0) {
+            return '/' + normalized;
+        }
         return '/media/' + normalized;
     }
 
     function toThumbnailPath(rawPath) {
         var normalized = normalizeMediaPath(rawPath);
         if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
-        return normalized.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+
+        var asUrl = toMediaUrl(normalized);
+        return asUrl.replace(/\/([^\/]+)$/, '/thumbnails/$1');
     }
 
     function normalizeFieldKey(value) {

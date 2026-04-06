@@ -434,6 +434,38 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(payload.get('status'), 'ok')
 		self.assertGreaterEqual(payload.get('total', 0), 1)
 
+	def test_reprint_list_normalizes_legacy_mediafiles_image_paths(self):
+		from idcards.models import IDCardTable, IDCard
+
+		legacy_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Legacy Image Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Photo', 'type': 'image'},
+			],
+		)
+		legacy_card = IDCard.objects.create(
+			table=legacy_table,
+			field_data={
+				'Name': 'Legacy Alpha',
+				'Photo': r'C:\\legacy\\uploads\\mediafiles\\cards\\alpha.jpg',
+			},
+			status='download',
+		)
+
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_reprint_list', table_id=legacy_table.id))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		item = next((entry for entry in payload.get('items', []) if entry.get('card_id') == legacy_card.id), None)
+		self.assertIsNotNone(item)
+		photo_field = next((f for f in item.get('ordered_fields', []) if str(f.get('name', '')).lower() == 'photo'), None)
+		self.assertIsNotNone(photo_field)
+		self.assertEqual(photo_field.get('value'), 'mediafiles/cards/alpha.jpg')
+
 	def test_request_list_clamps_offset_and_limit(self):
 		self.client.force_login(self.super_admin)
 		response = self.client.get(self._url('api_request_list'), {'offset': -100, 'limit': 99999})

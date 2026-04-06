@@ -84,6 +84,8 @@ def _build_ordered_fields(card, table):
             return raw
 
         normalized = raw.replace('\\', '/').strip()
+        while '//' in normalized:
+            normalized = normalized.replace('//', '/')
 
         # URL input: use the path section only.
         if normalized.lower().startswith('http://') or normalized.lower().startswith('https://'):
@@ -92,16 +94,21 @@ def _build_ordered_fields(card, table):
             except Exception:
                 pass
 
-        # Handle absolute paths by extracting the part after /media/.
+        # Handle absolute paths by extracting the part after media root markers.
         lower = normalized.lower()
-        marker = '/media/'
-        idx = lower.find(marker)
-        if idx >= 0:
-            normalized = normalized[idx + len(marker):]
+        mediafiles_marker = '/mediafiles/'
+        media_marker = '/media/'
+        mediafiles_idx = lower.find(mediafiles_marker)
+        if mediafiles_idx >= 0:
+            normalized = 'mediafiles/' + normalized[mediafiles_idx + len(mediafiles_marker):]
+        else:
+            media_idx = lower.find(media_marker)
+            if media_idx >= 0:
+                normalized = 'media/' + normalized[media_idx + len(media_marker):]
 
         normalized = normalized.lstrip('/').strip()
-        if normalized.lower().startswith('media/'):
-            normalized = normalized[6:]
+        while '//' in normalized:
+            normalized = normalized.replace('//', '/')
 
         return normalized
 
