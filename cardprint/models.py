@@ -157,3 +157,38 @@ class CardTemplate(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class CardTemplateDoc(models.Model):
+    """Saved DOCX templates for generate-card editor state reuse."""
+
+    template = models.ForeignKey(
+        CardTemplate,
+        on_delete=models.CASCADE,
+        related_name='saved_docs',
+    )
+    layout_id = models.CharField(max_length=40, db_index=True)
+    name = models.CharField(max_length=80)
+    docx_file = models.FileField(upload_to='card_templates/docs/', null=True, blank=True)
+    snapshot = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='card_template_docs',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.name} ({self.layout_id})'
+
+    class Meta:
+        ordering = ['-updated_at', '-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['template', 'layout_id'], name='uniq_cardtemplate_layout_id'),
+        ]
+        indexes = [
+            models.Index(fields=['template', '-updated_at']),
+        ]

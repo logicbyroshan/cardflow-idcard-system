@@ -12,9 +12,12 @@ ARCHITECTURE RULES (same as reprint):
 import json
 import logging
 import re
+import uuid
+import io
+import base64
 
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
@@ -22,6 +25,8 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.timezone import localtime
 from django.utils.dateparse import parse_datetime
+from django.core.files.base import ContentFile
+from django.urls import reverse
 
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
@@ -29,7 +34,7 @@ from core.views.base import get_user_role, require_any_admin
 from core.services import IDCardService
 from accounts.rate_limit import rate_limit
 
-from .models import PrintRequest, CardTemplate, validate_field_mappings
+from .models import PrintRequest, CardTemplate, CardTemplateDoc, validate_field_mappings
 from .services import PrintWorkflowService, GenerateCardService, PdfTemplateAnalyzerService
 
 logger = logging.getLogger(__name__)
@@ -281,11 +286,444 @@ def _editor_field_config_payload(field_config):
         'card_orientation': orientation,
         'front_fields': _sanitize_name_list(cfg.get('front_fields') or []),
         'back_fields': _sanitize_name_list(cfg.get('back_fields') or []),
+        'doc_page_settings': _sanitize_doc_page_settings(cfg.get('doc_page_settings'), orientation),
     }
 
 
+def _sanitize_doc_page_settings(raw, orientation='landscape'):
+    settings = raw if isinstance(raw, dict) else {}
+    safe_orientation = 'portrait' if orientation == 'portrait' else 'landscape'
+    card_w_mm, card_h_mm = GenerateCardService.dimensions_for_orientation_mm(safe_orientation)
+
+    margins = settings.get('margins_mm') if isinstance(settings.get('margins_mm'), dict) else {}
+    left = _clamp_float(margins.get('left'), 0.0, 25.0, 3.0)
+    right = _clamp_float(margins.get('right'), 0.0, 25.0, 3.0)
+    top = _clamp_float(margins.get('top'), 0.0, 25.0, 3.0)
+    bottom = _clamp_float(margins.get('bottom'), 0.0, 25.0, 3.0)
+
+    max_horizontal = max(4.0, card_w_mm - 8.0)
+    if (left + right) > max_horizontal:
+        ratio = max_horizontal / max(0.1, left + right)
+        left = round(left * ratio, 2)
+        right = round(right * ratio, 2)
+
+    max_vertical = max(4.0, card_h_mm - 8.0)
+    if (top + bottom) > max_vertical:
+        ratio = max_vertical / max(0.1, top + bottom)
+        top = round(top * ratio, 2)
+        bottom = round(bottom * ratio, 2)
+
+    def _sanitize_mm_list(values, max_mm, max_items=24):
+        if isinstance(values, str):
+            src = [chunk.strip() for chunk in values.split(',')]
+        elif isinstance(values, list):
+            src = values
+        else:
+            src = []
+
+        out = []
+        seen = set()
+        for raw_val in src:
+            val = round(_clamp_float(raw_val, 0.0, max_mm, -1.0), 2)
+            if val < 0.0:
+                continue
+            key = f'{val:.2f}'
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(val)
+            if len(out) >= max_items:
+                break
+        return out
+
+    wrap_mode = str(settings.get('wrap_mode') or 'margin').strip().lower()
+    if wrap_mode not in ('margin', 'box'):
+        wrap_mode = 'margin'
+
+    return {
+        'margins_mm': {
+            'left': round(left, 2),
+            'right': round(right, 2),
+            'top': round(top, 2),
+            'bottom': round(bottom, 2),
+        },
+        'line_gap_mm': round(_clamp_float(settings.get('line_gap_mm'), 0.0, 12.0, 2.5), 2),
+        'wrap_mode': wrap_mode,
+        'snap_to_guides': bool(settings.get('snap_to_guides', True)),
+        'guides_x_mm': _sanitize_mm_list(settings.get('guides_x_mm'), card_w_mm),
+        'guides_y_mm': _sanitize_mm_list(settings.get('guides_y_mm'), card_h_mm),
+    }
+
+
+def _sanitize_mapping_confidence(raw):
+    out = {'front': {}, 'back': {}}
+    if not isinstance(raw, dict):
+        return out
+
+    for side in ('front', 'back'):
+        side_raw = raw.get(side)
+        if not isinstance(side_raw, dict):
+            continue
+        for field_name, payload in side_raw.items():
+            name = str(field_name or '').strip()
+            if not name:
+                continue
+            payload = payload if isinstance(payload, dict) else {}
+            confidence = _clamp_float(payload.get('confidence'), 0.0, 1.0, 0.5)
+            reason = str(payload.get('reason') or '').strip()[:200]
+            source = str(payload.get('source') or '').strip()[:50]
+            try:
+                updated_at = int(payload.get('updated_at', 0) or 0)
+            except (TypeError, ValueError):
+                updated_at = 0
+            out[side][name] = {
+                'confidence': round(confidence, 4),
+                'reason': reason,
+                'source': source,
+                'updated_at': max(0, updated_at),
+            }
+
+    return out
+
+
+def _sanitize_doc_layout_name(value):
+    name = re.sub(r'\s+', ' ', str(value or '').strip())
+    if not name:
+        return ''
+    return name[:80]
+
+
+MAX_SAVED_DOC_LAYOUTS = 50
+
+
+def _sanitize_doc_layout_library(raw):
+    """Legacy snapshot validator for one-time migration from field_config."""
+    if not isinstance(raw, list):
+        return []
+
+    out = []
+    seen_ids = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        layout_id = str(item.get('id') or '').strip()
+        name = _sanitize_doc_layout_name(item.get('name'))
+        saved_at = str(item.get('saved_at') or '').strip()[:40]
+        snapshot = item.get('snapshot') if isinstance(item.get('snapshot'), dict) else None
+        if not re.fullmatch(r'[A-Za-z0-9_-]{6,40}', layout_id):
+            continue
+        if not name or not snapshot:
+            continue
+        if layout_id in seen_ids:
+            continue
+        seen_ids.add(layout_id)
+        out.append({
+            'id': layout_id,
+            'name': name,
+            'saved_at': saved_at,
+            'snapshot': snapshot,
+        })
+        if len(out) >= 20:
+            break
+    return out
+
+
+def _saved_doc_layout_meta(tmpl, table_id):
+    docs = list(
+        CardTemplateDoc.objects
+        .filter(template=tmpl)
+        .order_by('-updated_at', '-created_at', '-id')[:MAX_SAVED_DOC_LAYOUTS]
+    )
+    meta = []
+    for item in docs:
+        download_url = ''
+        try:
+            download_url = reverse(
+                'cardprint:api_template_doc_layout_download',
+                kwargs={'table_id': table_id, 'layout_id': item.layout_id},
+            )
+        except Exception:
+            download_url = ''
+        meta.append({
+            'id': item.layout_id,
+            'name': item.name,
+            'saved_at': item.updated_at.isoformat() if item.updated_at else '',
+            'has_doc_file': bool(item.docx_file),
+            'download_url': download_url,
+        })
+    return meta
+
+
+def _snapshot_to_docx_bytes(snapshot, name):
+    """Build a real DOCX file from the current editor snapshot."""
+    try:
+        from docx import Document
+        from docx.enum.section import WD_ORIENT
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Mm, Pt
+    except Exception:
+        return None, 'python-docx is not available for DOC save'
+
+    if not isinstance(snapshot, dict):
+        return None, 'Invalid snapshot payload'
+
+    orientation = str(snapshot.get('card_orientation') or 'landscape').strip().lower()
+    if orientation not in ('landscape', 'portrait'):
+        orientation = 'landscape'
+
+    page_w_mm = 87.0 if orientation == 'landscape' else 57.0
+    page_h_mm = 57.0 if orientation == 'landscape' else 87.0
+    page_settings = _sanitize_doc_page_settings(snapshot.get('doc_page_settings'), orientation)
+    margins = page_settings.get('margins_mm') if isinstance(page_settings.get('margins_mm'), dict) else {}
+
+    doc = Document()
+    section = doc.sections[0]
+    section.orientation = WD_ORIENT.LANDSCAPE if orientation == 'landscape' else WD_ORIENT.PORTRAIT
+    section.page_width = Mm(page_w_mm)
+    section.page_height = Mm(page_h_mm)
+    section.left_margin = Mm(_clamp_float(margins.get('left'), 0.0, 25.0, 3.0))
+    section.right_margin = Mm(_clamp_float(margins.get('right'), 0.0, 25.0, 3.0))
+    section.top_margin = Mm(_clamp_float(margins.get('top'), 0.0, 25.0, 3.0))
+    section.bottom_margin = Mm(_clamp_float(margins.get('bottom'), 0.0, 25.0, 3.0))
+
+    doc.add_heading(str(name or 'Saved DOC'), level=1)
+    doc.add_paragraph(f'Card Size: {page_w_mm:.0f}mm x {page_h_mm:.0f}mm')
+
+    def _write_side(side_key, side_label):
+        model = snapshot.get(f'editable_design_{side_key}') if isinstance(snapshot.get(f'editable_design_{side_key}'), dict) else None
+        if not model:
+            return
+
+        doc.add_heading(side_label, level=2)
+        lines = [x for x in (model.get('lines') or []) if isinstance(x, dict)]
+        lines.sort(key=lambda x: (float(x.get('y_mm') or 0.0), float(x.get('x_mm') or 0.0)))
+        for line in lines:
+            txt = str(line.get('text') or '').strip()
+            if not txt:
+                continue
+            p = doc.add_paragraph(txt)
+            align = str(line.get('text_align') or 'left').strip().lower()
+            if align == 'center':
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            elif align == 'right':
+                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            else:
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+            style_font_size = _clamp_float(line.get('font_size_pt'), 6.0, 72.0, 11.0)
+            style_line_height = _clamp_float(line.get('line_height'), 0.8, 3.0, 1.15)
+            if p.runs:
+                run = p.runs[0]
+                run.font.size = Pt(style_font_size)
+                fam = str(line.get('font_family') or '').strip()
+                if fam:
+                    run.font.name = fam[:80]
+                weight = str(line.get('font_weight') or '400').lower()
+                run.bold = weight in ('700', '600', 'bold', 'semibold')
+
+            try:
+                p.paragraph_format.line_spacing = style_line_height
+            except Exception:
+                pass
+
+        images = [x for x in (model.get('images') or []) if isinstance(x, dict)]
+        for idx, image in enumerate(images[:8], start=1):
+            data_url = str(image.get('data_url') or '').strip()
+            if not data_url.startswith('data:image/') or ',' not in data_url:
+                continue
+            try:
+                encoded = data_url.split(',', 1)[1]
+                raw = base64.b64decode(encoded)
+                width_mm = _clamp_float(image.get('w_mm'), 5.0, page_w_mm - 10.0, 25.0)
+                doc.add_paragraph(f'Image {idx}')
+                doc.add_picture(io.BytesIO(raw), width=Mm(width_mm))
+            except Exception:
+                continue
+
+    _write_side('front', 'Front Side')
+    if bool(snapshot.get('is_two_sided', False)):
+        _write_side('back', 'Back Side')
+
+    out = io.BytesIO()
+    doc.save(out)
+    out.seek(0)
+    return out.getvalue(), None
+
+
+def _migrate_legacy_doc_layouts(tmpl, user=None):
+    """One-time migration: old field_config snapshots -> CardTemplateDoc rows."""
+    cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
+    legacy = _sanitize_doc_layout_library(cfg.get('doc_layout_library') or [])
+    if not legacy:
+        return cfg
+
+    existing_ids = set(
+        CardTemplateDoc.objects.filter(template=tmpl).values_list('layout_id', flat=True)
+    )
+    changed = False
+
+    for item in legacy:
+        layout_id = str(item.get('id') or '').strip()
+        if not layout_id or layout_id in existing_ids:
+            continue
+        snapshot = item.get('snapshot') if isinstance(item.get('snapshot'), dict) else None
+        if not snapshot:
+            continue
+
+        doc_obj = CardTemplateDoc(
+            template=tmpl,
+            layout_id=layout_id,
+            name=_sanitize_doc_layout_name(item.get('name')) or 'Saved DOC',
+            snapshot=snapshot,
+            created_by=user if getattr(user, 'is_authenticated', False) else None,
+        )
+        doc_bytes, _ = _snapshot_to_docx_bytes(snapshot, doc_obj.name)
+        if doc_bytes:
+            filename = f'table_{tmpl.table_id}_{layout_id}.docx'
+            doc_obj.docx_file.save(filename, ContentFile(doc_bytes), save=False)
+        doc_obj.save()
+        existing_ids.add(layout_id)
+        changed = True
+
+    cfg.pop('doc_layout_library', None)
+    if changed or 'doc_layout_library' in (tmpl.field_config or {}):
+        tmpl.field_config = cfg
+        tmpl.save(update_fields=['field_config', 'updated_at'])
+    return cfg
+
+
+def _trim_saved_doc_layouts(tmpl):
+    stale = list(
+        CardTemplateDoc.objects
+        .filter(template=tmpl)
+        .order_by('-updated_at', '-created_at', '-id')[MAX_SAVED_DOC_LAYOUTS:]
+    )
+    for item in stale:
+        if item.docx_file:
+            item.docx_file.delete(save=False)
+        item.delete()
+
+
+def _doc_layout_snapshot_from_template(tmpl):
+    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
+    mappings_raw = tmpl.field_mappings if isinstance(tmpl.field_mappings, dict) else {'front': {}, 'back': {}}
+    try:
+        mappings = json.loads(json.dumps(mappings_raw))
+    except Exception:
+        mappings = {'front': {}, 'back': {}}
+    orientation = str(cfg.get('card_orientation') or 'landscape').strip().lower()
+    if orientation not in ('landscape', 'portrait'):
+        orientation = 'landscape'
+
+    front_fields = _sanitize_name_list(cfg.get('front_fields') or [])
+    back_fields = _sanitize_name_list(cfg.get('back_fields') or []) if tmpl.is_two_sided else []
+    editable_front = _sanitize_editable_design_model(cfg.get('editable_design_front'))
+    editable_back = _sanitize_editable_design_model(cfg.get('editable_design_back')) if tmpl.is_two_sided else None
+    mapping_confidence = _sanitize_mapping_confidence(cfg.get('mapping_confidence'))
+
+    raw_style = cfg.get('docx_text_style') if isinstance(cfg.get('docx_text_style'), dict) else {}
+    style_align = str(raw_style.get('align') or 'left').strip().lower()
+    if style_align not in ('left', 'center', 'right'):
+        style_align = 'left'
+
+    docx_style = {
+        'font_family': str(raw_style.get('font_family') or tmpl.font_family or 'Arial').strip()[:80] or 'Arial',
+        'font_size_pt': _clamp_float(raw_style.get('font_size_pt'), 6.0, 72.0, float(tmpl.font_size or 11)),
+        'line_height': _clamp_float(raw_style.get('line_height'), 0.8, 3.0, 1.15),
+        'char_spacing_pt': _clamp_float(raw_style.get('char_spacing_pt'), -5.0, 20.0, 0.0),
+        'font_weight': str(raw_style.get('font_weight') or 'normal').strip().lower(),
+        'font_color_hex': _normalize_hex_color(raw_style.get('font_color_hex') or '#111111'),
+        'align': style_align,
+    }
+    if docx_style['font_weight'] not in ('normal', 'semibold', 'bold'):
+        docx_style['font_weight'] = 'normal'
+
+    return {
+        'is_two_sided': bool(tmpl.is_two_sided),
+        'card_orientation': orientation,
+        'doc_page_settings': _sanitize_doc_page_settings(cfg.get('doc_page_settings'), orientation),
+        'front_fields': front_fields,
+        'back_fields': back_fields,
+        'field_mappings': mappings,
+        'mapping_confidence': mapping_confidence,
+        'font_size': int(max(6, min(72, int(tmpl.font_size or 11)))),
+        'font_family': str(tmpl.font_family or 'Arial').strip()[:50] or 'Arial',
+        'docx_text_style': docx_style,
+        'editable_design_front': editable_front,
+        'editable_design_back': editable_back,
+        'show_guides': bool(cfg.get('show_guides', True)),
+    }
+
+
+def _apply_doc_layout_snapshot_to_template(tmpl, snapshot):
+    if not isinstance(snapshot, dict):
+        return 'Invalid saved DOC snapshot'
+
+    is_two_sided = bool(snapshot.get('is_two_sided', False))
+    mappings = snapshot.get('field_mappings') if isinstance(snapshot.get('field_mappings'), dict) else {'front': {}, 'back': {}}
+    mapping_err = validate_field_mappings(mappings)
+    if mapping_err:
+        return mapping_err
+
+    tmpl.is_two_sided = is_two_sided
+    tmpl.field_mappings = mappings
+
+    try:
+        font_size = int(snapshot.get('font_size', tmpl.font_size or 11) or 11)
+    except (TypeError, ValueError):
+        font_size = int(tmpl.font_size or 11)
+    tmpl.font_size = max(6, min(72, font_size))
+
+    font_family = str(snapshot.get('font_family', tmpl.font_family or 'Arial') or '').strip()
+    tmpl.font_family = (font_family[:50] if font_family else (tmpl.font_family or 'Arial'))
+
+    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
+    orientation = str(snapshot.get('card_orientation') or 'landscape').strip().lower()
+    if orientation not in ('landscape', 'portrait'):
+        orientation = 'landscape'
+    cfg['card_orientation'] = orientation
+    cfg['is_two_sided'] = is_two_sided
+    cfg['doc_page_settings'] = _sanitize_doc_page_settings(snapshot.get('doc_page_settings'), orientation)
+    cfg['mapping_confidence'] = _sanitize_mapping_confidence(snapshot.get('mapping_confidence'))
+    cfg['front_fields'] = _sanitize_name_list(snapshot.get('front_fields') or [])
+    cfg['back_fields'] = _sanitize_name_list(snapshot.get('back_fields') or []) if is_two_sided else []
+    cfg['show_guides'] = bool(snapshot.get('show_guides', cfg.get('show_guides', True)))
+
+    raw_style = snapshot.get('docx_text_style') if isinstance(snapshot.get('docx_text_style'), dict) else {}
+    style_weight = str(raw_style.get('font_weight') or 'normal').strip().lower()
+    if style_weight not in ('normal', 'semibold', 'bold'):
+        style_weight = 'normal'
+    style_align = str(raw_style.get('align') or 'left').strip().lower()
+    if style_align not in ('left', 'center', 'right'):
+        style_align = 'left'
+
+    cfg['docx_text_style'] = {
+        'font_family': str(raw_style.get('font_family') or tmpl.font_family or 'Arial').strip()[:80] or 'Arial',
+        'font_size_pt': _clamp_float(raw_style.get('font_size_pt'), 6.0, 72.0, float(tmpl.font_size or 11)),
+        'line_height': _clamp_float(raw_style.get('line_height'), 0.8, 3.0, 1.15),
+        'char_spacing_pt': _clamp_float(raw_style.get('char_spacing_pt'), -5.0, 20.0, 0.0),
+        'font_weight': style_weight,
+        'font_color_hex': _normalize_hex_color(raw_style.get('font_color_hex') or '#111111'),
+        'align': style_align,
+    }
+
+    editable_front = _sanitize_editable_design_model(snapshot.get('editable_design_front'))
+    editable_back = _sanitize_editable_design_model(snapshot.get('editable_design_back')) if is_two_sided else None
+    if editable_front:
+        cfg['editable_design_front'] = editable_front
+    else:
+        cfg.pop('editable_design_front', None)
+    if editable_back:
+        cfg['editable_design_back'] = editable_back
+    else:
+        cfg.pop('editable_design_back', None)
+
+    tmpl.field_config = cfg
+    return None
+
+
 def _template_payload(tmpl):
-    field_config = tmpl.field_config or {}
+    field_config = _migrate_legacy_doc_layouts(tmpl)
     card_orientation = field_config.get('card_orientation') or 'landscape'
     if card_orientation not in ('landscape', 'portrait'):
         card_orientation = 'landscape'
@@ -307,6 +745,9 @@ def _template_payload(tmpl):
     style_weight = str(raw_docx_style.get('font_weight') or 'normal').strip().lower()
     if style_weight not in ('normal', 'semibold', 'bold'):
         style_weight = 'normal'
+    style_align = str(raw_docx_style.get('align') or 'left').strip().lower()
+    if style_align not in ('left', 'center', 'right'):
+        style_align = 'left'
     style_color = _normalize_hex_color(raw_docx_style.get('font_color_hex') or '#111111')
     docx_style = {
         'font_family': str(raw_docx_style.get('font_family') or tmpl.font_family or 'Arial').strip()[:80] or 'Arial',
@@ -315,15 +756,22 @@ def _template_payload(tmpl):
         'char_spacing_pt': max(-5.0, min(20.0, style_char_spacing)),
         'font_weight': style_weight,
         'font_color_hex': style_color,
+        'text_align': style_align,
     }
     front_fields = field_config.get('front_fields') or []
     back_fields = field_config.get('back_fields') or []
     editable_design_front = _sanitize_editable_design_model(field_config.get('editable_design_front'))
     editable_design_back = _sanitize_editable_design_model(field_config.get('editable_design_back'))
+    mapping_confidence = _sanitize_mapping_confidence(field_config.get('mapping_confidence'))
+    doc_layout_meta = _saved_doc_layout_meta(tmpl, tmpl.table_id)
+    active_doc_layout_id = str(field_config.get('active_doc_layout_id') or '').strip()
+    if not any(item['id'] == active_doc_layout_id for item in doc_layout_meta):
+        active_doc_layout_id = ''
 
     return {
         'is_two_sided': tmpl.is_two_sided,
         'field_mappings': tmpl.field_mappings or {'front': {}, 'back': {}},
+        'mapping_confidence': mapping_confidence,
         'font_size': tmpl.font_size,
         'font_family': tmpl.font_family,
         'docx_style': docx_style,
@@ -336,6 +784,10 @@ def _template_payload(tmpl):
         'back_fields': back_fields,
         'editable_design_front': editable_design_front,
         'editable_design_back': editable_design_back,
+        'show_guides': bool(field_config.get('show_guides', True)),
+        'doc_page_settings': _sanitize_doc_page_settings(field_config.get('doc_page_settings'), card_orientation),
+        'doc_layout_library': doc_layout_meta,
+        'active_doc_layout_id': active_doc_layout_id,
     }
 
 
@@ -447,6 +899,7 @@ def print_cards(request, table_id):
         'back_fields': [],
         'editable_design_front': None,
         'editable_design_back': None,
+        'doc_page_settings': _sanitize_doc_page_settings({}, 'landscape'),
     }
     front_pdf_url = template_data.get('front_pdf_url') or ''
     back_pdf_url = template_data.get('back_pdf_url') or ''
@@ -1077,6 +1530,14 @@ def api_template_save(request, table_id):
     cfg['back_fields'] = back_fields
     cfg['card_orientation'] = card_orientation
     cfg['is_two_sided'] = tmpl.is_two_sided
+    cfg['show_guides'] = bool(data.get('show_guides', cfg.get('show_guides', True)))
+    cfg['mapping_confidence'] = _sanitize_mapping_confidence(
+        data.get('mapping_confidence', cfg.get('mapping_confidence'))
+    )
+    cfg['doc_page_settings'] = _sanitize_doc_page_settings(
+        data.get('doc_page_settings', cfg.get('doc_page_settings')),
+        card_orientation,
+    )
 
     try:
         style_font_size = float(data.get('docx_font_size_pt', tmpl.font_size or 11) or 11)
@@ -1102,6 +1563,9 @@ def api_template_save(request, table_id):
     style_weight = str(data.get('docx_font_weight', 'normal') or 'normal').strip().lower()
     if style_weight not in ('normal', 'semibold', 'bold'):
         style_weight = 'normal'
+    style_align = str(data.get('docx_text_align', 'left') or 'left').strip().lower()
+    if style_align not in ('left', 'center', 'right'):
+        style_align = 'left'
     style_color = _normalize_hex_color(data.get('docx_font_color_hex', '#111111'))
 
     cfg['docx_text_style'] = {
@@ -1111,6 +1575,7 @@ def api_template_save(request, table_id):
         'char_spacing_pt': char_spacing,
         'font_weight': style_weight,
         'font_color_hex': style_color,
+        'align': style_align,
     }
 
     if 'editable_design_front' in data:
@@ -1139,6 +1604,152 @@ def api_template_save(request, table_id):
 @require_http_methods(["POST"])
 @login_required
 @api_require_permission('perm_print_list')
+def api_template_doc_layout_save(request, table_id):
+    """Save current editor state as a named DOC with persisted DOCX file."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    try:
+        data = json.loads(request.body or '{}')
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    name = _sanitize_doc_layout_name((data or {}).get('name'))
+    if not name:
+        return JsonResponse({'status': 'error', 'message': 'Please enter a DOC name'}, status=400)
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    cfg = _migrate_legacy_doc_layouts(tmpl, request.user)
+    snapshot = _doc_layout_snapshot_from_template(tmpl)
+
+    try:
+        snapshot_size = len(json.dumps(snapshot))
+    except Exception:
+        snapshot_size = 0
+    if snapshot_size > 2_500_000:
+        return JsonResponse(
+            {'status': 'error', 'message': 'DOC snapshot is too large. Reduce embedded images and try again.'},
+            status=400,
+        )
+
+    layout_id = uuid.uuid4().hex[:12]
+    doc_bytes, doc_err = _snapshot_to_docx_bytes(snapshot, name)
+    if doc_err:
+        return JsonResponse({'status': 'error', 'message': doc_err}, status=500)
+
+    doc_obj = CardTemplateDoc(
+        template=tmpl,
+        layout_id=layout_id,
+        name=name,
+        snapshot=snapshot,
+        created_by=request.user,
+    )
+    filename = f'table_{table.id}_{layout_id}.docx'
+    doc_obj.docx_file.save(filename, ContentFile(doc_bytes), save=False)
+    doc_obj.save()
+
+    cfg.pop('doc_layout_library', None)
+    cfg['active_doc_layout_id'] = layout_id
+    tmpl.field_config = cfg
+    tmpl.save(update_fields=['field_config', 'updated_at'])
+    _trim_saved_doc_layouts(tmpl)
+
+    return JsonResponse({'status': 'ok', 'message': 'DOC saved', 'template': _template_payload(tmpl)})
+
+
+@require_http_methods(["GET"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_doc_layout_list(request, table_id):
+    """Return persisted saved DOC list for the current table template."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    cfg = _migrate_legacy_doc_layouts(tmpl, request.user)
+    docs = _saved_doc_layout_meta(tmpl, table.id)
+    active_doc_layout_id = str(cfg.get('active_doc_layout_id') or '').strip()
+    if not any(item['id'] == active_doc_layout_id for item in docs):
+        active_doc_layout_id = ''
+
+    return JsonResponse({'status': 'ok', 'docs': docs, 'active_doc_layout_id': active_doc_layout_id})
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_doc_layout_apply(request, table_id, layout_id):
+    """Apply a previously saved DOC snapshot to the current template."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    cfg = _migrate_legacy_doc_layouts(tmpl, request.user)
+    selected = CardTemplateDoc.objects.filter(template=tmpl, layout_id=str(layout_id or '').strip()).first()
+    if not selected:
+        return JsonResponse({'status': 'error', 'message': 'Saved DOC not found'}, status=404)
+
+    snapshot = selected.snapshot if isinstance(selected.snapshot, dict) else None
+    apply_err = _apply_doc_layout_snapshot_to_template(tmpl, snapshot)
+    if apply_err:
+        return JsonResponse({'status': 'error', 'message': apply_err}, status=400)
+
+    updated_cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
+    updated_cfg.pop('doc_layout_library', None)
+    updated_cfg['active_doc_layout_id'] = selected.layout_id
+    tmpl.field_config = updated_cfg
+    tmpl.save()
+    selected.save(update_fields=['updated_at'])
+
+    return JsonResponse({'status': 'ok', 'message': 'DOC loaded', 'template': _template_payload(tmpl)})
+
+
+@require_http_methods(["GET"])
+@login_required
+@api_require_permission('perm_print_list')
+def api_template_doc_layout_download(request, table_id, layout_id):
+    """Download a saved DOCX file for a previously saved editor DOC layout."""
+    table, err = _check_print_table_scope(request.user, table_id)
+    if err:
+        return err
+
+    tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    _migrate_legacy_doc_layouts(tmpl, request.user)
+
+    selected = CardTemplateDoc.objects.filter(template=tmpl, layout_id=str(layout_id or '').strip()).first()
+    if not selected:
+        return JsonResponse({'status': 'error', 'message': 'Saved DOC not found'}, status=404)
+
+    name = re.sub(r'[^A-Za-z0-9_-]+', '_', str(selected.name or 'saved_doc')).strip('_') or 'saved_doc'
+    filename = f'{name}.docx'
+
+    file_missing = not selected.docx_file or not selected.docx_file.name
+    if not file_missing:
+        try:
+            file_missing = not selected.docx_file.storage.exists(selected.docx_file.name)
+        except Exception:
+            file_missing = True
+
+    if file_missing:
+        snapshot = selected.snapshot if isinstance(selected.snapshot, dict) else None
+        if not snapshot:
+            return JsonResponse({'status': 'error', 'message': 'Saved DOC file is unavailable'}, status=404)
+        doc_bytes, doc_err = _snapshot_to_docx_bytes(snapshot, selected.name)
+        if doc_err:
+            return JsonResponse({'status': 'error', 'message': doc_err}, status=500)
+        regen_name = f'table_{table.id}_{selected.layout_id}.docx'
+        selected.docx_file.save(regen_name, ContentFile(doc_bytes), save=False)
+        selected.save(update_fields=['docx_file', 'updated_at'])
+
+    return FileResponse(selected.docx_file.open('rb'), as_attachment=True, filename=filename)
+
+
+@require_http_methods(["POST"])
+@login_required
+@api_require_permission('perm_print_list')
 def api_template_upload_pdf(request, table_id, side):
     """Upload front or back design PDF file."""
     table, err = _check_print_table_scope(request.user, table_id)
@@ -1159,14 +1770,18 @@ def api_template_upload_pdf(request, table_id, side):
         return JsonResponse({'status': 'error', 'message': 'File too large (max 20 MB)'}, status=400)
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
     if side == 'front':
         if tmpl.front_pdf:
             tmpl.front_pdf.delete(save=False)
         tmpl.front_pdf = template_file
+        cfg.pop('editable_design_front', None)
     else:
         if tmpl.back_pdf:
             tmpl.back_pdf.delete(save=False)
         tmpl.back_pdf = template_file
+        cfg.pop('editable_design_back', None)
+    tmpl.field_config = cfg
     tmpl.save()
 
     template_url = (tmpl.front_pdf.url if side == 'front' else tmpl.back_pdf.url)
@@ -1186,17 +1801,32 @@ def api_template_clear_pdf(request, table_id, side):
         return JsonResponse({'status': 'error', 'message': 'Invalid side'}, status=400)
 
     tmpl, _ = CardTemplate.objects.get_or_create(table=table)
+    cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
+    mappings = dict(tmpl.field_mappings) if isinstance(tmpl.field_mappings, dict) else {}
+    confidence = _sanitize_mapping_confidence(cfg.get('mapping_confidence'))
 
     if side == 'front':
         if tmpl.front_pdf:
             tmpl.front_pdf.delete(save=False)
         tmpl.front_pdf = None
+        cfg.pop('editable_design_front', None)
     else:
         if tmpl.back_pdf:
             tmpl.back_pdf.delete(save=False)
         tmpl.back_pdf = None
+        cfg.pop('editable_design_back', None)
 
-    tmpl.save(update_fields=['front_pdf', 'back_pdf', 'updated_at'])
+    if isinstance(mappings.get(side), dict):
+        mappings[side] = {}
+    else:
+        mappings.pop(side, None)
+
+    confidence[side] = {}
+
+    cfg['mapping_confidence'] = confidence
+    tmpl.field_config = cfg
+    tmpl.field_mappings = mappings
+    tmpl.save(update_fields=['front_pdf', 'back_pdf', 'field_config', 'field_mappings', 'updated_at'])
     return JsonResponse({'status': 'ok', 'message': f'{side.capitalize()} design PDF cleared', 'template': _template_payload(tmpl)})
 
 

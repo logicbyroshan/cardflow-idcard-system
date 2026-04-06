@@ -70,6 +70,10 @@
               <h3>Template Setup</h3>
             </div>
             <p class="gen-setup-status" id="genSetupStatus"></p>
+            <p class="gen-flow-stage-hint" id="genFlowStageHint"></p>
+            <div class="gen-row gen-row-end gen-tight-row">
+              <button type="button" class="btn btn-sm btn-outline" id="flowToggleCardSettingsBtn">Card Settings</button>
+            </div>
           </div>
 
           <div class="gen-section" id="genLayoutBuilderSection">
@@ -78,27 +82,221 @@
               <h3>Design Format Builder</h3>
             </div>
 
-            <div class="gen-row">
-              <label>Field</label>
-              <select id="fieldToPlaceSelect">
-                <option value="">Select field to place</option>
-              </select>
+            <div id="genSetupTemplateControls">
+              <div class="gen-row">
+                <label>Saved DOC</label>
+                <select id="docLayoutSelect">
+                  <option value="">Select saved DOC</option>
+                </select>
+              </div>
+
+              <div class="gen-row gen-doc-layout-actions">
+                <input type="text" id="docLayoutNameInput" class="gen-text-input" maxlength="80" placeholder="Enter DOC name">
+                <button type="button" class="btn btn-sm btn-outline" id="loadDocLayoutBtn" title="Load selected DOC">
+                  <i class="fa-solid fa-folder-open"></i> Load
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" id="downloadDocLayoutBtn" title="Download selected DOC file">
+                  <i class="fa-solid fa-file-arrow-down"></i> Download DOC
+                </button>
+                <button type="button" class="btn btn-sm btn-blue" id="saveDocLayoutBtn" title="Save current editor as named DOC">
+                  <i class="fa-solid fa-file-circle-plus"></i> Save DOC
+                </button>
+              </div>
             </div>
 
-            <div class="gen-map-actions">
-              <button type="button" class="btn btn-sm btn-outline" id="convertWordBtn" title="Convert current side design PDF to editable document layer">
-                <i class="fa-solid fa-file-word"></i> Convert to Editable Doc
+            <div class="gen-map-actions" id="genConvertTemplateActions">
+              <button type="button" class="btn btn-sm btn-outline" id="convertWordBtn" title="Convert current side design PDF to editable template layer">
+                <i class="fa-solid fa-file-word"></i> Convert to Template
               </button>
             </div>
 
-            <div class="gen-active-side-info">Active side: <strong id="activeSideLabel">Front</strong></div>
-            <div id="genPlacedFields"></div>
-            <p class="gen-empty-msg" id="noFieldsMsg">No fields mapped yet. Choose a field, then click the converted text or image block.</p>
+            <div id="genDocStyleControls">
+              <div class="gen-row">
+                <label>Margins</label>
+                <div class="gen-page-margin-inputs">
+                  <input id="marginTopInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Top margin in mm" placeholder="T">
+                  <input id="marginRightInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Right margin in mm" placeholder="R">
+                  <input id="marginBottomInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Bottom margin in mm" placeholder="B">
+                  <input id="marginLeftInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Left margin in mm" placeholder="L">
+                </div>
+              </div>
 
-            <div class="gen-row gen-row-end gen-word-builder-actions">
-              <button type="button" class="btn btn-sm btn-blue" id="saveFormatBtn">
-                <i class="fa-solid fa-floppy-disk"></i> Save Format
-              </button>
+              <div class="gen-row">
+                <label>Line Gap</label>
+                <input id="lineGapInput" type="number" min="0" max="12" step="0.1" class="gen-mini-input" value="2.5">
+                <span class="gen-unit">mm</span>
+              </div>
+
+              <div class="gen-row">
+                <label>Wrap</label>
+                <select id="wrapModeSelect">
+                  <option value="margin">Wrap To Margins</option>
+                  <option value="box">Wrap In Text Box</option>
+                </select>
+              </div>
+
+              <div class="gen-row">
+                <label>Snap</label>
+                <label class="gen-inline-check" for="snapGuidesToggle">
+                  <input id="snapGuidesToggle" type="checkbox" checked>
+                  <span>Snap to guides</span>
+                </label>
+              </div>
+
+              <div class="gen-row">
+                <label>V Guides</label>
+                <input id="verticalGuidesInput" type="text" class="gen-text-input" placeholder="10, 20, 35 (mm)">
+              </div>
+
+              <div class="gen-row">
+                <label>H Guides</label>
+                <input id="horizontalGuidesInput" type="text" class="gen-text-input" placeholder="8, 22, 41 (mm)">
+              </div>
+
+              <div class="gen-row gen-row-end gen-word-builder-actions" id="genSaveFormatRow">
+                <button type="button" class="btn btn-sm btn-blue" id="saveFormatBtn">
+                  <i class="fa-solid fa-floppy-disk"></i> Save Format
+                </button>
+              </div>
+            </div>
+
+            <div id="genMappingControls">
+              <div class="gen-row">
+                <label>Field</label>
+                <select id="fieldToPlaceSelect">
+                  <option value="">Select field to place</option>
+                </select>
+              </div>
+
+              <div class="gen-map-actions">
+                <button type="button" class="btn btn-sm btn-outline" id="autoMapSideBtn" title="Auto map fields on current side based on converted text/image blocks">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Auto Map Side
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" id="clearSideMappingsBtn" title="Clear mapped fields for current side">
+                  <i class="fa-solid fa-eraser"></i> Clear Side Maps
+                </button>
+              </div>
+
+              <div class="gen-map-actions gen-map-actions-tools">
+                <button type="button" class="btn btn-sm btn-outline" id="autoFlowLinesBtn" title="Auto-flow text blocks in reading order inside page margins">
+                  <i class="fa-solid fa-align-left"></i> Auto Flow Lines
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" id="distributeLinesBtn" title="Distribute text blocks evenly from top to bottom margins">
+                  <i class="fa-solid fa-arrow-down-wide-short"></i> Distribute Lines
+                </button>
+                <select id="bulkAlignSelect" class="gen-tool-select" title="Choose horizontal alignment for all text blocks on active side">
+                  <option value="left">Align All Left</option>
+                  <option value="center">Align All Center</option>
+                  <option value="right">Align All Right</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline" id="applyBulkAlignBtn" title="Apply selected horizontal alignment to all text blocks on active side">
+                  <i class="fa-solid fa-arrows-left-right-to-line"></i> Apply Align
+                </button>
+              </div>
+
+              <div class="gen-row gen-row-inline-tools">
+                <label class="gen-inline-check" for="lockMappedBlocksToggle">
+                  <input type="checkbox" id="lockMappedBlocksToggle">
+                  <span>Lock mapped blocks</span>
+                </label>
+                <button type="button" class="btn btn-sm btn-outline" id="auditMappingsBtn" title="Audit active side mappings for overlaps, missing sources, and out-of-bounds placements">
+                  <i class="fa-solid fa-list-check"></i> Audit Side Maps
+                </button>
+              </div>
+
+              <div class="gen-mini-panel">
+                <div class="gen-mini-panel-title">Multi-Select Group Tools</div>
+                <p class="gen-mini-panel-hint" id="multiSelectHint">Tip: Shift+Click blocks to multi-select. Hold Alt and drag on empty canvas area to box-select.</p>
+                <div class="gen-map-actions gen-map-actions-tools gen-tight-actions">
+                  <button type="button" class="btn btn-sm btn-outline" id="groupAlignLeftBtn" title="Align selected blocks to left edge">Group Left</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="groupAlignCenterBtn" title="Align selected blocks to center">Group Center</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="groupAlignRightBtn" title="Align selected blocks to right edge">Group Right</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="groupDistributeHorizontalBtn" title="Distribute selected blocks horizontally">Distribute X</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="groupDistributeVerticalBtn" title="Distribute selected blocks vertically">Distribute Y</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="clearMultiSelectionBtn" title="Clear all selected blocks">Clear Selection</button>
+                </div>
+              </div>
+
+              <div class="gen-mini-panel">
+                <div class="gen-mini-panel-title">Collision Watch</div>
+                <div class="gen-row gen-row-inline-tools gen-tight-row">
+                  <span class="gen-inline-note" id="collisionStatusText">No collisions detected.</span>
+                  <button type="button" class="btn btn-sm btn-outline" id="resolveCollisionsBtn" title="Auto-resolve overlapping blocks on active side">Resolve Collisions</button>
+                </div>
+              </div>
+
+              <div class="gen-mini-panel">
+                <div class="gen-mini-panel-title">Mapping Confidence</div>
+                <div id="mappingConfidencePanel" class="gen-confidence-panel">
+                  <div class="gen-confidence-list" id="mappingConfidenceList"></div>
+                  <div class="gen-row gen-row-end gen-tight-row">
+                    <button type="button" class="btn btn-sm btn-outline" id="reviewLowConfidenceBtn" title="Jump to next low-confidence mapping for manual review">Review Low Confidence</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="gen-mini-panel">
+                <div class="gen-mini-panel-title">Side Sync</div>
+                <div class="gen-row gen-tight-row">
+                  <label>Direction</label>
+                  <select id="syncDirectionSelect">
+                    <option value="front_to_back">Front -> Back</option>
+                    <option value="back_to_front">Back -> Front</option>
+                  </select>
+                </div>
+                <div class="gen-row gen-row-inline-tools gen-tight-row">
+                  <label class="gen-inline-check" for="syncIncludeLayoutToggle">
+                    <input type="checkbox" id="syncIncludeLayoutToggle" checked>
+                    <span>Layout</span>
+                  </label>
+                  <label class="gen-inline-check" for="syncIncludeStylesToggle">
+                    <input type="checkbox" id="syncIncludeStylesToggle" checked>
+                    <span>Styles</span>
+                  </label>
+                  <label class="gen-inline-check" for="syncIncludeMappingsToggle">
+                    <input type="checkbox" id="syncIncludeMappingsToggle">
+                    <span>Mappings</span>
+                  </label>
+                  <button type="button" class="btn btn-sm btn-outline" id="runSideSyncBtn" title="Copy selected data from one side to the other">Run Sync</button>
+                </div>
+              </div>
+
+              <div class="gen-mini-panel">
+                <div class="gen-mini-panel-title">Compare and Restore</div>
+                <div class="gen-row gen-tight-row">
+                  <label>Version</label>
+                  <select id="historyCompareSelect">
+                    <option value="">Select history version</option>
+                  </select>
+                </div>
+                <div class="gen-row gen-row-end gen-tight-row">
+                  <button type="button" class="btn btn-sm btn-outline" id="runHistoryCompareBtn" title="Compare selected version against current editor state">Compare</button>
+                </div>
+                <p class="gen-mini-panel-hint" id="historyCompareSummary">Select a version and click Compare.</p>
+                <div class="gen-row gen-row-inline-tools gen-tight-row">
+                  <label class="gen-inline-check" for="restoreMappingsToggle">
+                    <input type="checkbox" id="restoreMappingsToggle" checked>
+                    <span>Mappings</span>
+                  </label>
+                  <label class="gen-inline-check" for="restoreLayoutToggle">
+                    <input type="checkbox" id="restoreLayoutToggle" checked>
+                    <span>Layout</span>
+                  </label>
+                  <label class="gen-inline-check" for="restoreStylesToggle">
+                    <input type="checkbox" id="restoreStylesToggle" checked>
+                    <span>Styles</span>
+                  </label>
+                  <label class="gen-inline-check" for="restoreGuidesToggle">
+                    <input type="checkbox" id="restoreGuidesToggle">
+                    <span>Guides</span>
+                  </label>
+                  <button type="button" class="btn btn-sm btn-outline" id="applySelectiveRestoreBtn" title="Restore selected parts from compared version">Apply Restore</button>
+                </div>
+              </div>
+
+              <div class="gen-active-side-info">Active side: <strong id="activeSideLabel">Front</strong></div>
+              <div id="genPlacedFields"></div>
+              <p class="gen-empty-msg" id="noFieldsMsg">No fields mapped yet. Choose a field, then click the converted text or image block.</p>
             </div>
           </div>
 
@@ -151,7 +349,7 @@
               </div>
 
               <!-- Upload controls -->
-              <div class="gen-upload-area ml-auto">
+              <div class="gen-upload-area ml-auto" id="genUploadArea">
                 <label class="btn btn-sm btn-outline cursor-pointer" id="uploadFrontWrapper" title="Upload front-side design PDF">
                   <i class="fa-solid fa-file-pdf"></i> <span id="uploadFrontLabel">Design Front PDF</span>
                   <input type="file" id="uploadFrontInput" accept=".pdf" class="hidden">
@@ -218,6 +416,35 @@
                 <span class="gen-style-action-label">Color</span>
                 <input id="fontColorInput" type="color" class="gen-color-input" value="#111111">
                 <input id="fontColorTextInput" type="text" class="gen-color-text" value="#111111" maxlength="7" placeholder="#111111">
+              </div>
+
+              <div class="gen-style-action-item">
+                <span class="gen-style-action-label">Align</span>
+                <select id="textAlignSelect">
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-button">
+                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="toggleGuidesBtn" title="Show or hide layout guidelines">Hide Guides</button>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-button">
+                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="undoEditBtn" title="Undo (Ctrl+Z)">Undo</button>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-button">
+                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="redoEditBtn" title="Redo (Ctrl+Y or Ctrl+Shift+Z)">Redo</button>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-button">
+                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="addTextLineBtn" title="Add a new text block like DOC editor">Add Text</button>
+              </div>
+
+              <div class="gen-style-action-item gen-style-action-button">
+                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="applyStyleToAllLinesBtn" title="Apply current style controls to all text blocks on active side">Apply Style To All</button>
               </div>
             </div>
           </div>
