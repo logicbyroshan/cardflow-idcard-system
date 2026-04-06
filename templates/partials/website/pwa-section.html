@@ -26,16 +26,30 @@
                         <span>Real-time Updates</span>
                     </div>
                 </div>
-                <a id="openAppCta" href="{{ PANEL_URL|default:'' }}/app/" class="download-app-btn">
-                    <i class="fa-solid fa-mobile-screen-button"></i>
-                    <span>Open App</span>
-                </a>
+                <div class="download-app-actions">
+                    <a id="openAppCta" href="{{ PANEL_URL|default:'' }}/app/" class="download-app-btn">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                        <span>Open App Now</span>
+                    </a>
+                    <a id="downloadApkCta" href="#" class="download-app-btn download-app-btn-secondary download-app-btn-disabled" aria-disabled="true" tabindex="-1">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Download App</span>
+                    </a>
+                </div>
             </div>
             <div class="download-app-visual">
                 <div class="download-app-phone">
                     <div class="phone-mockup">
                         <div class="phone-screen">
-                            <div class="phone-status-bar"></div>
+                            <div class="phone-status-bar">
+                                <span class="status-time">9:41</span>
+                                <span class="status-punch-hole" aria-hidden="true"></span>
+                                <span class="status-icons" aria-hidden="true">
+                                    <span class="icon-signal"></span>
+                                    <span class="icon-wifi"></span>
+                                    <span class="icon-battery"><span class="icon-battery-level"></span></span>
+                                </span>
+                            </div>
                             <div class="phone-content">
                                 <div class="phone-card"></div>
                                 <div class="phone-card"></div>
@@ -50,7 +64,7 @@
                                          width="140" height="140">
                                 </div>
                                 <p class="download-app-qr-caption">
-                                    <i class="fa-solid fa-qrcode"></i> Scan to open on mobile
+                                    <i class="fa-solid fa-qrcode"></i> Scan to open mobile app
                                 </p>
                             </div>
                         </div>
