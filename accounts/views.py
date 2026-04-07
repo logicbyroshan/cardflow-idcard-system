@@ -611,7 +611,7 @@ class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
 
         search = str(request.GET.get('search', '') or '').strip()
         role_filter = str(request.GET.get('role', '') or '').strip()
-        users_qs = User.objects.all().order_by('role', 'first_name', 'username')
+        users_qs = User.objects.select_related('client_profile', 'staff_profile__client').all().order_by('role', 'first_name', 'username')
 
         if role_filter and role_filter in {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}:
             users_qs = users_qs.filter(role=role_filter)
@@ -625,6 +625,14 @@ class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
 
         users = []
         for entry in users_qs[:300]:
+            client_name = ''
+            if entry.role == 'client':
+                client_profile = getattr(entry, 'client_profile', None)
+                client_name = getattr(client_profile, 'name', '') or ''
+            elif entry.role == 'client_staff':
+                staff_profile = getattr(entry, 'staff_profile', None)
+                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
+
             users.append({
                 'id': entry.pk,
                 'name': entry.get_full_name() or entry.username,
@@ -634,6 +642,7 @@ class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
                 'role_display': dict(User.ROLE_CHOICES).get(entry.role, entry.role),
                 'is_active': bool(entry.is_active),
                 'last_login': entry.last_login.isoformat() if entry.last_login else None,
+                'client_name': client_name,
             })
 
         return JsonResponse({'success': True, 'users': users})

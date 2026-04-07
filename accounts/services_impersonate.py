@@ -151,21 +151,30 @@ class ImpersonateService:
 
         users = (
             User.objects
+            .select_related('client_profile', 'staff_profile__client')
             .exclude(pk=request.user.pk)
-            .order_by('role', 'first_name', 'username')
-            .values('id', 'username', 'first_name', 'last_name', 'email', 'role', 'is_active')[:100]
+            .order_by('role', 'first_name', 'username')[:100]
         )
 
         result = []
         for u in users:
-            name = f"{u['first_name']} {u['last_name']}".strip() or u['username']
+            name = f"{u.first_name} {u.last_name}".strip() or u.username
+            client_name = ''
+            if u.role == 'client':
+                client_profile = getattr(u, 'client_profile', None)
+                client_name = getattr(client_profile, 'name', '') or ''
+            elif u.role == 'client_staff':
+                staff_profile = getattr(u, 'staff_profile', None)
+                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
+
             result.append({
-                'id': u['id'],
+                'id': u.id,
                 'name': name,
-                'email': u['email'],
-                'role': u['role'],
-                'role_display': dict(User.ROLE_CHOICES).get(u['role'], u['role']),
-                'is_active': u['is_active'],
+                'email': u.email,
+                'role': u.role,
+                'role_display': dict(User.ROLE_CHOICES).get(u.role, u.role),
+                'is_active': u.is_active,
+                'client_name': client_name,
             })
 
         return result

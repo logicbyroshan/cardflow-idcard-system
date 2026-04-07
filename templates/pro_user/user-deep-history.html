@@ -28,7 +28,7 @@
   .audit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .audit-pill {
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -93,6 +93,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     margin-top: 1px;
+  }
+  .audit-user-client {
+    color: #64748b;
+    font-size: 10px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .audit-role {
     font-size: 10px;
@@ -415,11 +423,13 @@
       var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
       var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
       var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-danger,#ef4444) 28%, #ffffff 72%);color:var(--color-danger-dark,#b91c1c);background:var(--color-danger-bg,#fef2f2);">Inactive</span>';
+      var clientMeta = u.client_name ? '<div class="audit-user-client">Client: ' + _esc(u.client_name) + '</div>' : '';
       html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
         + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || 'var(--color-gray-500,#64748b)') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
         + '<div class="audit-user-main">'
         + '<div class="audit-user-name">' + _esc(u.name) + inactive + '</div>'
         + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
+        + clientMeta
         + '</div>'
         + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(u.role_display) + '</span>'
         + '<button class="audit-open-btn"><i class="fa-solid fa-timeline"></i> Open</button>'
