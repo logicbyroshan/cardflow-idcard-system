@@ -63,6 +63,35 @@ function layoutState() {
             return this.activeModal === 'reupload';
         },
 
+        get isDeleteModalOpen() {
+            return this.activeModal === 'delete';
+        },
+
+        get isStatusModalOpen() {
+            return this.activeModal === 'status';
+        },
+
+        get deleteVerificationCodeDisplay() {
+            return this.deleteCode ? this.deleteCode : '----------';
+        },
+
+        get deleteCodeInputClass() {
+            if (!this.deleteCodeInput) return '';
+            return this.deleteCodeInput === this.deleteCode ? 'valid' : 'invalid';
+        },
+
+        get showDeleteCodeError() {
+            return !!this.deleteCodeInput && this.deleteCodeInput.length === 10 && this.deleteCodeInput !== this.deleteCode;
+        },
+
+        get canDeleteConfirm() {
+            return !!this.deleteCodeInput && this.deleteCodeInput.length === 10 && this.deleteCodeInput === this.deleteCode;
+        },
+
+        get disableDeleteConfirm() {
+            return !this.canDeleteConfirm;
+        },
+
         // ---- Filter / search state (bridged from vanilla JS) ----
         searchQuery: '',
         filterValue: '',

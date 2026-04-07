@@ -20,11 +20,11 @@ JS contract (Alpine bridge):
 {% endcomment %}
 
 <div id="{{ modal_id|default:'status-modal' }}" class="modal-backdrop"
-     x-show="activeModal === 'status'" x-transition.opacity
+  x-show="isStatusModalOpen" x-transition.opacity
      style="display:none"
      role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'status-modal' }}-title">
   <div class="modal-center modal-warning" @click.stop
-       x-show="activeModal === 'status'" x-transition.scale.origin.center>
+    x-show="isStatusModalOpen" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header" id="statusModalHeader">

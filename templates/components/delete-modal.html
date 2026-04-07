@@ -19,11 +19,11 @@ JS contract (Alpine bridge):
 {% endcomment %}
 
 <div id="{{ modal_id|default:'delete-modal' }}" class="modal-backdrop"
-     x-show="activeModal === 'delete'" x-transition.opacity
+  x-show="isDeleteModalOpen" x-transition.opacity
      style="display:none"
      role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'delete-modal' }}-title">
   <div class="modal-center modal-danger" @click.stop
-       x-show="activeModal === 'delete'" x-transition.scale.origin.center>
+    x-show="isDeleteModalOpen" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header">
@@ -62,7 +62,7 @@ JS contract (Alpine bridge):
           <p class="verify-hint">
             To confirm deletion, type this code:
           </p>
-          <div id="delete-confirm-code-alpine" class="verify-code" x-text="deleteCode || '----------'"></div>
+            <div id="delete-confirm-code-alpine" class="verify-code" x-text="deleteVerificationCodeDisplay"></div>
           <input type="text" id="delete-code-input-alpine"
               x-model="deleteCodeInput"
               maxlength="10"
@@ -72,9 +72,9 @@ JS contract (Alpine bridge):
               autocomplete="off"
               class="verify-input"
               oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-              :class="deleteCodeInput.length===0 ? '' : (deleteCodeInput===deleteCode ? 'valid' : 'invalid')"
+              :class="deleteCodeInputClass"
           >
-          <p class="verify-error" x-show="deleteCodeInput.length===10 && deleteCodeInput!==deleteCode">
+          <p class="verify-error" x-show="showDeleteCodeError">
             <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please try again.
           </p>
         </div>
@@ -88,7 +88,7 @@ JS contract (Alpine bridge):
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button type="button" class="btn btn-md btn-danger" id="confirmDeleteBtn"
-              :disabled="!(deleteCodeInput && deleteCodeInput.length===10 && deleteCodeInput===deleteCode)">
+              :disabled="disableDeleteConfirm">
         <i class="fa-solid fa-trash-can"></i> Delete
       </button>
     </div>
