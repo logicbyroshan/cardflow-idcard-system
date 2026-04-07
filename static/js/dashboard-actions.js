@@ -288,9 +288,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const verifiedEl = document.getElementById('verifiedCards');
         const approvedEl = document.getElementById('approvedCards');
         const downloadedEl = document.getElementById('downloadedCards');
+        const poolEl = document.getElementById('poolCards');
         const totalEl = document.getElementById('totalCards');
 
-        if (!pendingEl && !verifiedEl && !approvedEl && !downloadedEl && !totalEl) return;
+        if (!pendingEl && !verifiedEl && !approvedEl && !downloadedEl && !poolEl && !totalEl) return;
 
         ApiClient.get(panelUrl('/api/dashboard-card-stats/'))
             .then(data => {
@@ -300,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setDashboardStatValue(verifiedEl, stats.verified);
                 setDashboardStatValue(approvedEl, stats.approved);
                 setDashboardStatValue(downloadedEl, stats.downloaded);
+                setDashboardStatValue(poolEl, stats.pool);
                 setDashboardStatValue(totalEl, stats.total);
             })
             .catch(error => {

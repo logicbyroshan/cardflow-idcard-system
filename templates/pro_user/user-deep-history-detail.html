@@ -18,10 +18,20 @@
     grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
   }
 
+  .main.main-scrollable-page > .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--color-white, #ffffff) !important;
+    border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  }
+
   .main.main-scrollable-page > :not(.topbar) {
     min-height: 0;
     overflow-y: auto !important;
     overflow-x: hidden;
+    background: var(--color-gray-50, #f8fafc);
   }
 
   @keyframes audit-skeleton-shimmer {
@@ -29,11 +39,21 @@
     100% { background-position: -200% 0; }
   }
   .audit-page { padding: 16px 20px; }
+  .audit-page .action-bar {
+    top: 8px;
+    z-index: 22;
+    background: var(--color-white, #ffffff);
+    border: 1px solid var(--color-gray-200, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+    padding: 7px 10px;
+  }
   .audit-history {
     margin-top: 12px;
     background: var(--audit-surface);
     border: 1px solid var(--audit-border);
-    border-radius: 10px;
+    border-radius: 12px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
     overflow: hidden;
   }
   .audit-history-head {

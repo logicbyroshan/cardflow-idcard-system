@@ -137,6 +137,7 @@ def dashboard(request):
             verified=Count('id', filter=Q(status='verified')),
             approved=Count('id', filter=Q(status='approved')),
             downloaded=Count('id', filter=Q(status='download')),
+            pool=Count('id', filter=Q(status='pool')),
         )
         cache.set(card_cache_key, card_stats, 30)
 
@@ -148,6 +149,7 @@ def dashboard(request):
         'verified_cards': card_stats['verified'],
         'approved_cards': card_stats['approved'],
         'downloaded_cards': card_stats['downloaded'],
+        'pool_cards': card_stats.get('pool', 0),
     }
     # Consolidate count queries with aggregate (cached 60s)
     client_cache_key = f'dashboard_client_stats{cache_suffix}'
@@ -222,6 +224,7 @@ def api_dashboard_card_stats(request):
                 verified=Count('id', filter=Q(status='verified')),
                 approved=Count('id', filter=Q(status='approved')),
                 downloaded=Count('id', filter=Q(status='download')),
+                pool=Count('id', filter=Q(status='pool')),
             )
             stats = {
                 'total': agg.get('total', 0),
@@ -229,6 +232,7 @@ def api_dashboard_card_stats(request):
                 'verified': agg.get('verified', 0),
                 'approved': agg.get('approved', 0),
                 'downloaded': agg.get('downloaded', 0),
+                'pool': agg.get('pool', 0),
             }
             cache.set(cache_key, stats, 20)
 

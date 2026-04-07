@@ -8,7 +8,7 @@
    ==================== */
 .stats-cards {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 0;
 }
 
@@ -118,6 +118,11 @@ a.stat-card-link:hover {
 
 .stat-icon.downloaded {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #fff;
+}
+
+.stat-icon.pool {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
     color: #fff;
 }
 

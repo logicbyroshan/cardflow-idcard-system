@@ -41,6 +41,9 @@
     <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
+    <a href="{% url 'manage_client_staff' %}" class="{% if active_page == 'manage_client_staff' %}active{% endif %}">
+      <i class="fa-solid fa-user-gear"></i><span>Manage Client Staff</span>
+    </a>
     {% endif %}
     
     {% if is_client and perm_idcard_client_list %}
@@ -126,14 +129,23 @@
       <span class="nav-section-title">Pro User</span>
       <div class="nav-section-line"></div>
     </div>
-    {% if not is_impersonating %}
-    <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' %}active{% endif %}">
-      <i class="fa-solid fa-user-secret"></i><span>Login As User</span>
-    </a>
-    {% endif %}
-    <a href="{% url 'pro_user_activity_logs' %}" class="{% if active_page == 'pro_user_activity_logs' %}active{% endif %}">
-      <i class="fa-solid fa-clock-rotate-left"></i><span>User Deep History</span>
-    </a>
+    <div class="sidebar-dropdown" x-data="{ open: {% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' %}true{% else %}false{% endif %} }">
+      <button class="sidebar-dropdown-toggle" @click="open = !open" type="button">
+        <i class="fa-solid fa-gem"></i>
+        <span>Pro Feature</span>
+        <i class="fa-solid fa-chevron-down sidebar-dropdown-arrow" :class="{ 'rotated': open }"></i>
+      </button>
+      <div class="sidebar-dropdown-menu" x-show="open" x-cloak>
+        {% if not is_impersonating %}
+        <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' %}active{% endif %}">
+          <i class="fa-solid fa-user-secret"></i><span>Login As User</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'pro_user_activity_logs' %}" class="{% if active_page == 'pro_user_activity_logs' %}active{% endif %}">
+          <i class="fa-solid fa-clock-rotate-left"></i><span>User Deep History</span>
+        </a>
+      </div>
+    </div>
     {% endif %}
   </nav>
   <div class="sidebar-footer">
@@ -141,25 +153,14 @@
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
       </a>
-      <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
-        <i class="fa-solid fa-gear"></i><span>Settings</span>
-      </a>
     </div>
     <div class="sidebar-info">
-      <div class="info-item">
-        <i class="fa-solid fa-calendar-days"></i>
-        <span id="date"></span>
-      </div>
-      <div class="info-item">
-        <i class="fa-solid fa-clock"></i>
-        <span id="time"></span>
-      </div>
       <div class="info-item">
         <i class="fa-solid fa-code-branch"></i>
         <span>{{ APP_VERSION }}</span>
       </div>
     </div>
-    <div class="sidebar-user">
+    <a href="{% url 'settings' %}" class="sidebar-user" style="text-decoration:none;color:inherit;">
       <div class="user-avatar">
         {% include 'partials/components/user-avatar.html' with role=user.role size='medium' %}
       </div>
@@ -167,7 +168,7 @@
         <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
         <span class="user-role">{{ user_role|default:"User" }}</span>
       </div>
-    </div>
+    </a>
   </div>
 </aside>
 <script>
@@ -178,17 +179,5 @@
     document.getElementById('sidebar').classList.add('collapsed');
     document.body.classList.add('sidebar-collapsed');
   }
-})();
-// Fallback clock  -  runs independently of Alpine.js
-(function(){
-  function _sidebarClock(){
-    var now = new Date();
-    var d = document.getElementById('date');
-    var t = document.getElementById('time');
-    if (d) d.textContent = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-    if (t) t.textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false});
-  }
-  _sidebarClock();
-  setInterval(_sidebarClock, 1000);
 })();
 </script>

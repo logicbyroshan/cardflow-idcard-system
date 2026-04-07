@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const verifiedCards = document.getElementById('verifiedCards');
         const approvedCards = document.getElementById('approvedCards');
         const downloadedCards = document.getElementById('downloadedCards');
+        const poolCards = document.getElementById('poolCards');
         
         // Read actual values from DOM, then animate from 0 to that value
         if (pendingCards) {
@@ -235,6 +236,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (downloadedCards) {
             const targetValue = parseInt(downloadedCards.textContent.replace(/,/g, '')) || 0;
             animateValue(downloadedCards, 0, targetValue, 1500);
+        }
+        if (poolCards) {
+            const targetValue = parseInt(poolCards.textContent.replace(/,/g, '')) || 0;
+            animateValue(poolCards, 0, targetValue, 1400);
         }
     }, 500);
     

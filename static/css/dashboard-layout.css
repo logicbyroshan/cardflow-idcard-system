@@ -114,6 +114,17 @@
     display: flex;
     flex-direction: column;
     max-height: var(--dashboard-panel-height, 100%);
+    overflow: hidden;
+}
+
+.dashboard-side-sticky > .dashboard-card {
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.dashboard-side-sticky > .dashboard-card .dashboard-card-body {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 
@@ -223,6 +234,7 @@
 
 .dashboard-card-header.updates-header {
     gap: 12px;
+    padding: 8px 12px;
 }
 
 .dashboard-card-header.updates-header h3 {
@@ -241,11 +253,12 @@
 }
 
 .recent-updates-search-inline .recent-updates-search-input {
-    height: 32px;
+    height: 28px;
 }
 
 .dashboard-card-header.overview-header {
     gap: 12px;
+    padding: 8px 12px;
 }
 
 .overview-search-inline {
@@ -260,7 +273,7 @@
 }
 
 .overview-search-inline .recent-updates-search-input {
-    height: 32px;
+    height: 28px;
 }
 
 @media (max-width: 1024px) {
@@ -271,7 +284,16 @@
     .dashboard-side-sticky {
         position: static;
         max-height: none;
-        overflow-y: visible;
+        overflow: visible;
+    }
+
+    .dashboard-side-sticky > .dashboard-card {
+        flex: none;
+        min-height: auto;
+    }
+
+    .dashboard-side-sticky > .dashboard-card .dashboard-card-body {
+        overflow: visible;
     }
 
     .dashboard-snap-panel {
@@ -309,6 +331,43 @@
         order: 3;
         flex: 1 1 100%;
         max-width: none;
+    }
+}
+
+@media (min-width: 1025px) and (max-height: 860px) {
+    .dashboard-side-sticky .dashboard-card-header {
+        padding: 8px 10px;
+    }
+
+    .dashboard-side-sticky .dashboard-card-header h3 {
+        font-size: 12px;
+        gap: 6px;
+    }
+
+    .dashboard-side-sticky .dashboard-card-header h3 i {
+        font-size: 11px;
+    }
+
+    .dashboard-side-sticky .dashboard-card-body {
+        padding: 8px 10px;
+    }
+
+    .dashboard-side-sticky .card-overview-item,
+    .dashboard-side-sticky .quick-action-btn {
+        padding: 6px 8px;
+    }
+
+    .dashboard-side-sticky .card-overview-icon,
+    .dashboard-side-sticky .quick-action-btn i {
+        width: 26px;
+        height: 26px;
+        font-size: 11px;
+    }
+
+    .dashboard-side-sticky .card-overview-label,
+    .dashboard-side-sticky .quick-action-btn span,
+    .dashboard-side-sticky .card-overview-value {
+        font-size: 12px;
     }
 }
 
