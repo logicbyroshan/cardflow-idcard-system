@@ -104,12 +104,24 @@
       </div>
 
       <!-- Main Grid - Recent Updates & Recent Activity -->
-      <div class="dashboard-grid">
+      <div class="dashboard-grid dashboard-grid-main">
         
         <!-- Recent ID Card Updates - Client view -->
         <div class="dashboard-card">
-          <div class="dashboard-card-header">
+          <div class="dashboard-card-header updates-header">
             <h3><i class="fa-solid fa-id-card"></i> Recent ID Card Updates</h3>
+            <div class="recent-updates-search-inline">
+              <div class="recent-updates-search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input
+                  type="text"
+                  id="recentClientUpdatesSearch"
+                  class="recent-updates-search-input"
+                  placeholder="Search group or table name"
+                  autocomplete="off"
+                >
+              </div>
+            </div>
             {% if perm_idcard_setting_list %}
             <a href="{% url 'client_dashboard' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
             {% endif %}

@@ -104,12 +104,24 @@
       </div>
 
       <!-- Main Grid - My Cards & Recent Activity -->
-      <div class="dashboard-grid">
+      <div class="dashboard-grid dashboard-grid-main">
         
         <!-- My ID Cards - Client Staff view -->
         <div class="dashboard-card">
-          <div class="dashboard-card-header">
+          <div class="dashboard-card-header updates-header">
             <h3><i class="fa-solid fa-id-card"></i> My ID Cards</h3>
+            <div class="recent-updates-search-inline">
+              <div class="recent-updates-search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input
+                  type="text"
+                  id="recentClientUpdatesSearch"
+                  class="recent-updates-search-input"
+                  placeholder="Search card type or status"
+                  autocomplete="off"
+                >
+              </div>
+            </div>
             {% if perm_idcard_setting_list %}
             <a href="{% url 'client_dashboard' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
             {% endif %}
