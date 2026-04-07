@@ -234,6 +234,27 @@
     .portfolio-pagination-bar {
         margin-top: 0;
         border-top: 1px solid #e2e8f0;
+        background: #fff;
+        flex-shrink: 0;
+    }
+
+    .portfolio-fixed-pagination {
+        min-height: calc(100vh - 230px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .portfolio-fixed-pagination .wa-action-bar,
+    .portfolio-fixed-pagination .wa-filter-row,
+    .portfolio-fixed-pagination .wa-bulk-action-bar {
+        flex-shrink: 0;
+    }
+
+    .portfolio-fixed-pagination .wa-table-wrap {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
     }
 
     .portfolio-pagination-bar .pagination-right {
@@ -270,7 +291,7 @@
     </div>
 
     <section class="portfolio-pane portfolio-items-pane active" id="portfolioItemsPane">
-        <div class="wa-dashboard-section">
+        <div class="wa-dashboard-section portfolio-fixed-pagination">
             <div class="wa-action-bar">
                 <div class="wa-action-left">
                     <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
