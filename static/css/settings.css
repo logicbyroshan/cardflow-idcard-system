@@ -5,6 +5,8 @@
 /* ===== Page Layout ===== */
 .settings-page {
     min-height: 0;
+    /* Allow row 2 to shrink so inner columns can scroll correctly */
+    grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
 }
 
 .settings-container {
@@ -13,6 +15,7 @@
     gap: 0;
     height: 100%;
     min-height: 0;
+    align-items: stretch;
     overflow: hidden;
 }
 
@@ -21,12 +24,14 @@
     position: sticky;
     top: 0;
     height: 100%;
+    min-height: 0;
     overflow-y: auto;
 }
 
 .profile-card {
     background: #ffffff;
     height: 100%;
+    min-height: 0;
     border-right: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
