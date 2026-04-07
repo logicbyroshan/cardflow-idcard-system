@@ -68,7 +68,7 @@
     badgeEls.forEach(function (el) {
       if (count > 0) {
         el.textContent = label;
-        el.style.display = '';
+        el.style.display = 'inline-flex';
       } else {
         el.textContent = '0';
         el.style.display = 'none';

@@ -90,16 +90,6 @@
     {% endif %}
     {% endif %}
 
-    {% if is_client or is_client_staff %}
-    <a
-      href="{% url 'client:messages' %}"
-      class="client-message-nav-link {% if active_page == 'client_messages' %}active{% endif %}"
-      data-client-message-open>
-      <i class="fa-solid fa-comments"></i><span>Messages</span>
-      <span class="client-msg-nav-badge" data-client-msg-count>0</span>
-    </a>
-    {% endif %}
-    
     {% if is_super_admin or perm_website_view or perm_manage_website_clients or perm_manage_website_portfolio %}
     <!-- Site Management Section -->
     <div class="nav-section">
