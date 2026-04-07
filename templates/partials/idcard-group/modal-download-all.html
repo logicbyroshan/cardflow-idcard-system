@@ -1,9 +1,9 @@
 <!-- Download All Confirmation + Progress Modal -->
 <div id="downloadAllModal" class="center-modal-overlay center-modal-theme-blue"
-     x-show="activeModal === 'downloadAll'" x-transition.opacity
+  x-show="isDownloadAllModalOpen" x-transition.opacity
      style="display:none">
   <div class="center-modal-card" @click.stop
-       x-show="activeModal === 'downloadAll'" x-transition.scale.origin.center>
+    x-show="isDownloadAllModalOpen" x-transition.scale.origin.center>
     <!-- Header -->
     <div class="center-modal-header">
       <h3><i class="fa-solid fa-download"></i> Download All ID Cards</h3>

@@ -1,9 +1,9 @@
 <!-- Upgrade All Classes Confirmation Modal -->
 <div id="upgradeAllModal" class="center-modal-overlay center-modal-theme-amber"
-     x-show="activeModal === 'upgradeAll'" x-transition.opacity
+  x-show="isUpgradeAllModalOpen" x-transition.opacity
      style="display:none">
   <div class="center-modal-card" @click.stop
-       x-show="activeModal === 'upgradeAll'" x-transition.scale.origin.center>
+    x-show="isUpgradeAllModalOpen" x-transition.scale.origin.center>
     <!-- Header -->
     <div class="center-modal-header">
       <h3><i class="fa-solid fa-arrow-up"></i> Upgrade All Classes</h3>

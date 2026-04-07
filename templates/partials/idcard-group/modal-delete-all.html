@@ -1,9 +1,9 @@
 <!-- Delete All Confirmation Modal -->
 <div id="deleteAllModal" class="center-modal-overlay center-modal-theme-red"
-     x-show="activeModal === 'deleteAll'" x-transition.opacity
+  x-show="isDeleteAllModalOpen" x-transition.opacity
      style="display:none">
   <div class="center-modal-card" @click.stop
-       x-show="activeModal === 'deleteAll'" x-transition.scale.origin.center>
+    x-show="isDeleteAllModalOpen" x-transition.scale.origin.center>
     <!-- Header -->
     <div class="center-modal-header">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete All ID Cards</h3>

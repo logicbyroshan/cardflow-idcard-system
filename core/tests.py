@@ -2103,7 +2103,6 @@ class ClientMessageApiTests(TestCase):
         self.assertEqual(strip_response.status_code, 200)
         strip_payload = strip_response.json()
         self.assertEqual(len(strip_payload.get('items', [])), 0)
-
     def test_group_send_to_selected_clients(self):
         from core.models import ClientMessage
         from staff.models import Staff
@@ -2210,3 +2209,99 @@ class ClientMessageApiTests(TestCase):
         self.assertEqual(strip_response.status_code, 200)
         strip_payload = strip_response.json()
         self.assertEqual(len(strip_payload.get('items', [])), 0)
+
+
+class AdminClientStaffManagementTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('client-staff-admin@test.com', 'adminpass1')
+
+        _owner_a, self.client_a = _create_client_user('client-staff-owner-a@test.com', 'clientpass1')
+        _owner_b, self.client_b = _create_client_user('client-staff-owner-b@test.com', 'clientpass1')
+
+        for client in (self.client_a, self.client_b):
+            client.perm_idcard_pending_list = True
+            client.perm_idcard_add = True
+            client.perm_mobile_app = True
+            client.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_add', 'perm_mobile_app'])
+
+        self.admin_staff = User.objects.create_user(
+            username='client-staff-admin-staff@test.com',
+            email='client-staff-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff,
+            staff_type='admin_staff',
+            perm_idcard_client_list=True,
+        )
+
+    def test_manage_client_staff_htmx_partial_loads_for_super_admin(self):
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/manage-client-staff/', HTTP_HX_REQUEST='true')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'staff-table-body')
+
+    def test_dropdown_clients_api_returns_available_clients(self):
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/client-staff/clients/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        returned_ids = {item['id'] for item in payload.get('clients', [])}
+        self.assertIn(self.client_a.id, returned_ids)
+        self.assertIn(self.client_b.id, returned_ids)
+
+    def test_create_client_staff_saves_selected_client_and_permissions(self):
+        from staff.models import Staff
+
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client-staff/create/',
+            data=json.dumps({
+                'name': 'Admin Added Client Staff',
+                'email': 'added-client-staff@test.com',
+                'phone': '9999999999',
+                'address': 'Admin side add flow',
+                'client_id': self.client_a.id,
+                'is_active': True,
+                'perm_idcard_pending_list': True,
+                'perm_idcard_add': True,
+                'perm_mobile_app': True,
+                'perm_idcard_approve': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        created_staff_id = ((payload.get('staff') or {}).get('id'))
+        self.assertIsNotNone(created_staff_id)
+
+        staff_obj = Staff.objects.select_related('client', 'user').get(id=created_staff_id)
+        self.assertEqual(staff_obj.staff_type, 'client_staff')
+        self.assertEqual(staff_obj.client_id, self.client_a.id)
+        self.assertEqual(staff_obj.user.first_name, 'Admin')
+        self.assertEqual(staff_obj.user.last_name, 'Added Client Staff')
+        self.assertTrue(staff_obj.perm_idcard_pending_list)
+        self.assertTrue(staff_obj.perm_idcard_add)
+        self.assertTrue(staff_obj.perm_mobile_app)
+        self.assertFalse(staff_obj.perm_idcard_approve)
+
+    def test_admin_staff_without_manage_client_permission_is_denied(self):
+        self.admin_staff_profile.perm_idcard_client_list = False
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='client-staff-admin-staff@test.com', password='pass1234')
+
+        page_response = self.client.get('/panel/manage-client-staff/')
+        self.assertEqual(page_response.status_code, 302)
+
+        api_response = self.client.get('/panel/api/client-staff/clients/')
+        self.assertEqual(api_response.status_code, 403)

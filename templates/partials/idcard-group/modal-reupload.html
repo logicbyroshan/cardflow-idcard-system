@@ -1,9 +1,9 @@
 <!-- Reupload Image Modal -->
 <div id="reuploadModal" class="center-modal-overlay center-modal-theme-blue"
-     x-show="activeModal === 'reupload'" x-transition.opacity
+  x-show="isReuploadModalOpen" x-transition.opacity
      style="display:none">
   <div class="center-modal-card" @click.stop
-       x-show="activeModal === 'reupload'" x-transition.scale.origin.center>
+    x-show="isReuploadModalOpen" x-transition.scale.origin.center>
     <!-- Header -->
     <div class="center-modal-header">
       <h3><i class="fa-solid fa-upload"></i> Reupload Images</h3>

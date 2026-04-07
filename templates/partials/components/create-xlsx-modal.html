@@ -28,10 +28,10 @@ and the JS block at the bottom which wires up the logic.
 
 <!-- Create with XLSX Modal -->
 <div class="center-modal-overlay center-modal-theme-green"
-     x-show="activeModal === 'createXlsx'" x-transition.opacity
+  x-show="isCreateXlsxModalOpen" x-transition.opacity
      style="display:none;">
   <div class="center-modal-card"
-       @click.stop x-show="activeModal === 'createXlsx'"
+    @click.stop x-show="isCreateXlsxModalOpen"
        x-transition:enter="transition ease-out duration-200"
        x-transition:enter-start="opacity-0 scale-95"
        x-transition:enter-end="opacity-100 scale-100">

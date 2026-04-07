@@ -94,17 +94,4 @@
     });
   </script>
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var isClientRole = IS_CLIENT_ROLE;
-      var apiUrl = isClientRole
-        ? '/client/api/create-from-xlsx/'
-        : '/api/group/' + GROUP_ID + '/table/create-from-xlsx/';
-      initCreateWithXlsx({
-        apiUrl: apiUrl,
-        csrfToken: '{{ csrf_token }}',
-        onSuccess: function() { document.body.dispatchEvent(new Event('refreshTable')); }
-      });
-    });
-  </script>
 {% endblock %}

@@ -38,6 +38,31 @@ function layoutState() {
         // ---- Global loading ----
         loading: false,
 
+        // ---- CSP-safe Alpine booleans used by x-show ----
+        get hasToasts() {
+            return Array.isArray(this.toastQueue) && this.toastQueue.length > 0;
+        },
+
+        get isCreateXlsxModalOpen() {
+            return this.activeModal === 'createXlsx';
+        },
+
+        get isDownloadAllModalOpen() {
+            return this.activeModal === 'downloadAll';
+        },
+
+        get isDeleteAllModalOpen() {
+            return this.activeModal === 'deleteAll';
+        },
+
+        get isUpgradeAllModalOpen() {
+            return this.activeModal === 'upgradeAll';
+        },
+
+        get isReuploadModalOpen() {
+            return this.activeModal === 'reupload';
+        },
+
         // ---- Filter / search state (bridged from vanilla JS) ----
         searchQuery: '',
         filterValue: '',
