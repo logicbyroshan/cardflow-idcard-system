@@ -23,7 +23,7 @@ class ReprintWorkflowService:
     Single authority for ReprintRequest status transitions.
 
     Workflow: requested → confirmed → downloaded
-    Reject deletes the ReprintRequest and moves card to IDCard pool.
+    Reject removes the ReprintRequest. Card status remains unchanged by default.
     """
 
     ALLOWED_TRANSITIONS: Dict[str, List[str]] = {
@@ -260,7 +260,7 @@ class ReprintWorkflowService:
         cls,
         table: IDCardTable,
         rr_ids: List[int],
-        move_card_to_pool: bool = True,
+        move_card_to_pool: bool = False,
         user=None,
     ) -> ServiceResult:
         """Reject (delete) reprint requests and optionally move cards to IDCard pool."""
@@ -277,24 +277,23 @@ class ReprintWorkflowService:
 
             rejected_ids = list(rr_qs.values_list('id', flat=True))
             rejected_count = len(rejected_ids)
+            card_ids = list(rr_qs.values_list('card_id', flat=True))
 
-            if move_card_to_pool:
-                card_ids = list(rr_qs.values_list('card_id', flat=True))
-                if card_ids:
-                    now = timezone.now()
-                    IDCard.objects.filter(id__in=card_ids).update(
-                        status='pool',
-                        deleted_at=now,
-                        status_changed_at=now,
-                        updated_at=now,
-                    )
+            if move_card_to_pool and card_ids:
+                now = timezone.now()
+                IDCard.objects.filter(id__in=card_ids).update(
+                    status='pool',
+                    deleted_at=now,
+                    status_changed_at=now,
+                    updated_at=now,
+                )
 
             rr_qs.delete()
 
-        for card_id in card_ids if move_card_to_pool else []:
+        for card_id in card_ids:
             ActivityService.log(
                 'reprint_status',
-                'Reprint rejected and card moved to pool',
+                'Reprint rejected and card moved to pool' if move_card_to_pool else 'Reprint rejected',
                 user=user,
                 target_model='IDCard',
                 target_id=card_id,
@@ -303,8 +302,16 @@ class ReprintWorkflowService:
 
         return ServiceResult(
             success=True,
-            message=f'{rejected_count} reprint(s) rejected and moved to pool',
-            data={'rejected_count': rejected_count, 'rejected_ids': rejected_ids},
+            message=(
+                f'{rejected_count} reprint(s) rejected and moved to pool'
+                if move_card_to_pool
+                else f'{rejected_count} reprint(s) removed from request list'
+            ),
+            data={
+                'rejected_count': rejected_count,
+                'rejected_ids': rejected_ids,
+                'moved_to_pool': bool(move_card_to_pool),
+            },
         )
 
     # ── Debug / introspection ───────────────────────────────────────

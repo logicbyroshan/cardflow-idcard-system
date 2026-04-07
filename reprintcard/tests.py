@@ -175,9 +175,24 @@ class ReprintWorkflowServiceTests(TestCase):
 		self.assertFalse(result.success)
 		self.assertIn('No reprint IDs provided', result.message)
 
-	def test_reject_requests_moves_cards_to_pool(self):
+	def test_reject_requests_keeps_cards_in_download_by_default(self):
 		from reprintcard.services import ReprintWorkflowService
 		from reprintcard.models import ReprintRequest
+
+		result = ReprintWorkflowService.reject_requests(
+			table=self.table,
+			rr_ids=[self.rr_requested.id],
+		)
+
+		self.assertTrue(result.success)
+		self.assertEqual(result.data['rejected_count'], 1)
+		self.assertFalse(ReprintRequest.objects.filter(id=self.rr_requested.id).exists())
+		self.card_download_1.refresh_from_db()
+		self.assertEqual(self.card_download_1.status, 'download')
+		self.assertIsNone(self.card_download_1.deleted_at)
+
+	def test_reject_requests_can_optionally_move_cards_to_pool(self):
+		from reprintcard.services import ReprintWorkflowService
 
 		result = ReprintWorkflowService.reject_requests(
 			table=self.table,
@@ -186,8 +201,6 @@ class ReprintWorkflowServiceTests(TestCase):
 		)
 
 		self.assertTrue(result.success)
-		self.assertEqual(result.data['rejected_count'], 1)
-		self.assertFalse(ReprintRequest.objects.filter(id=self.rr_requested.id).exists())
 		self.card_download_1.refresh_from_db()
 		self.assertEqual(self.card_download_1.status, 'pool')
 		self.assertIsNotNone(self.card_download_1.deleted_at)
@@ -425,6 +438,46 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(response.status_code, 400)
 		self.assertIn('must be an object', response.json().get('message', '').lower())
 
+	def test_reprint_request_create_inline_edit_ignores_image_fields(self):
+		from idcards.models import IDCardTable, IDCard
+
+		image_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Inline Image Safe Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Photo', 'type': 'image'},
+			],
+		)
+		image_card = IDCard.objects.create(
+			table=image_table,
+			field_data={
+				'Name': 'Inline Image Card',
+				'Photo': 'mediafiles/cards/original-photo.jpg',
+			},
+			status='download',
+		)
+
+		self.client.force_login(self.client_user)
+		response = self.client.post(
+			self._url('api_reprint_request_create', table_id=image_table.id),
+			data=json.dumps({
+				'card_ids': [image_card.id],
+				'inline_field_data': {
+					'Name': 'Inline Updated',
+					'Photo': '',
+				},
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		image_card.refresh_from_db()
+		field_data = image_card.field_data or {}
+		updated_name = field_data.get('Name') or field_data.get('NAME') or ''
+		self.assertEqual(str(updated_name).upper(), 'INLINE UPDATED')
+		self.assertEqual(field_data.get('Photo') or field_data.get('PHOTO'), 'mediafiles/cards/original-photo.jpg')
+
 	def test_request_list_visible_for_client_with_reprint_permission(self):
 		self.client.force_login(self.client_user)
 
@@ -545,7 +598,7 @@ class ReprintApiIntegrationTests(TestCase):
 
 		self.assertTrue(ReprintRequest.objects.filter(id=self.rr_requested.id, status='downloaded').exists())
 
-	def test_reject_moves_card_to_pool(self):
+	def test_reject_keeps_card_in_download(self):
 		self.client.force_login(self.super_admin)
 		response = self.client.post(
 			self._url('api_reprint_reject'),
@@ -555,7 +608,7 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 
 		self.card_a.refresh_from_db()
-		self.assertEqual(self.card_a.status, 'pool')
+		self.assertEqual(self.card_a.status, 'download')
 
 	def test_send_to_print_requires_selected_ids(self):
 		self.client.force_login(self.super_admin)

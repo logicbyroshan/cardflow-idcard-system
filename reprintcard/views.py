@@ -318,6 +318,21 @@ def _apply_inline_reprint_edit(table, user, card_ids, inline_field_data):
     if not inline_field_data:
         return None
 
+    # Reprint inline edit is for text/meta corrections only.
+    # Image mutations are handled by dedicated upload/remove endpoints and
+    # should never be rewritten by request-create payloads.
+    safe_inline_field_data = {}
+    for key, value in inline_field_data.items():
+        key_name = str(key or '').strip()
+        if not key_name:
+            continue
+        if IDCardService.is_image_field_name_for_table(key_name, table.fields or []):
+            continue
+        safe_inline_field_data[key_name] = value
+
+    if not safe_inline_field_data:
+        return None
+
     normalized_ids = ReprintWorkflowService._normalize_positive_int_ids(card_ids)
     if len(normalized_ids) != 1:
         return JsonResponse(
@@ -335,7 +350,7 @@ def _apply_inline_reprint_edit(table, user, card_ids, inline_field_data):
 
     update_result = IDCardService.update_card(
         card_id=card.id,
-        field_data=inline_field_data,
+        field_data=safe_inline_field_data,
         uploaded_by=user if getattr(user, 'is_authenticated', False) else None,
         modified_by=user.username if getattr(user, 'is_authenticated', False) else '',
     )

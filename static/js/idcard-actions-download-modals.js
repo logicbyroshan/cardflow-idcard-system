@@ -934,16 +934,6 @@ function initReprintPickerHandlers() {
             fieldData[key] = String(inputEl.value || '').trim();
         });
 
-        // Preserve image values from current row state during inline text save.
-        // This keeps images stable even if a backend update path treats payload as replace.
-        var card = getCardById(cardId);
-        var imageRows = getImageRows(card);
-        imageRows.forEach(function(img) {
-            var key = String(img.key || '').trim();
-            if (!key) return;
-            fieldData[key] = String(img.value || '').trim();
-        });
-
         return fieldData;
     }
 

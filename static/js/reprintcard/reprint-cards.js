@@ -1116,7 +1116,7 @@ function requestListStep() {
       if (!ids.length) return;
       var ok = await showConfirm({
         title: 'Reject Requests?',
-        text: 'Reject ' + ids.length + ' reprint request(s)? Cards will move to pool.',
+        text: 'Reject ' + ids.length + ' reprint request(s)? They will be removed from Request List only.',
         icon: 'fa-solid fa-ban',
         confirmLabel: 'Reject',
         hideWarning: true,
