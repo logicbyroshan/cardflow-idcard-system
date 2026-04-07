@@ -68,6 +68,169 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/'/g, '&#039;');
     }
 
+    function panelBasePath() {
+        return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+    }
+
+    function clientStaffHistoryApiUrl(staffId) {
+        return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/login-history/?limit=80';
+    }
+
+    function ensureStaffHistoryDrawer() {
+        if (document.getElementById('staffHistoryDrawer')) return;
+
+        var overlay = document.createElement('div');
+        overlay.id = 'staffHistoryOverlay';
+        overlay.className = 'drawer-overlay card-history-overlay';
+
+        var drawer = document.createElement('aside');
+        drawer.id = 'staffHistoryDrawer';
+        drawer.className = 'side-drawer card-history-drawer';
+        drawer.setAttribute('aria-hidden', 'true');
+        drawer.innerHTML = '' +
+            '<div class="drawer-header card-history-header">' +
+                '<div>' +
+                    '<div class="card-history-title">Client Staff Login History</div>' +
+                    '<div class="card-history-subtitle" id="staffHistorySubtitle">Login, logout, and devices</div>' +
+                '</div>' +
+                '<button type="button" class="drawer-close card-history-close" id="staffHistoryClose" aria-label="Close history">' +
+                    '<i class="fa-solid fa-xmark"></i>' +
+                '</button>' +
+            '</div>' +
+            '<div class="drawer-body card-history-body" id="staffHistoryBody">' +
+                '<div class="card-history-empty">Select a staff member to view login history.</div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(drawer);
+
+        function closeDrawer() {
+            overlay.classList.remove('active');
+            drawer.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        overlay.addEventListener('click', closeDrawer);
+        var closeBtn = document.getElementById('staffHistoryClose');
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+
+        document.addEventListener('keydown', function(evt) {
+            if (evt.key === 'Escape') closeDrawer();
+        });
+    }
+
+    function openStaffHistoryDrawer() {
+        ensureStaffHistoryDrawer();
+        var overlay = document.getElementById('staffHistoryOverlay');
+        var drawer = document.getElementById('staffHistoryDrawer');
+        if (!overlay || !drawer) return;
+        overlay.classList.add('active');
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function renderStaffHistoryLoading(staffName) {
+        var subtitle = document.getElementById('staffHistorySubtitle');
+        var body = document.getElementById('staffHistoryBody');
+        if (subtitle) subtitle.textContent = staffName ? 'Staff: ' + staffName : 'Loading';
+        if (body) {
+            body.innerHTML = '<div class="card-history-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading login history...</div>';
+        }
+    }
+
+    function renderStaffHistoryError(message) {
+        var body = document.getElementById('staffHistoryBody');
+        if (body) {
+            body.innerHTML = '<div class="card-history-error">' + escapeHtml(message || 'Unable to load login history.') + '</div>';
+        }
+    }
+
+    function renderStaffHistory(staffName, payload) {
+        var subtitle = document.getElementById('staffHistorySubtitle');
+        var body = document.getElementById('staffHistoryBody');
+        if (!body) return;
+
+        var activeDevices = Number(payload.active_devices || 0);
+        if (subtitle) {
+            subtitle.textContent = (staffName || 'Client Staff') + ' - Active devices: ' + activeDevices;
+        }
+
+        var events = Array.isArray(payload.events) ? payload.events : [];
+        if (!events.length) {
+            body.innerHTML = '<div class="card-history-empty">No login history available for this client staff yet.</div>';
+            return;
+        }
+
+        var fps = Array.isArray(payload.device_fingerprints) ? payload.device_fingerprints : [];
+
+        var html = events.map(function(item) {
+            var actionLabel = escapeHtml(item.action_display || item.action || 'Event');
+            var description = escapeHtml(item.description || '');
+            var ip = escapeHtml(item.ip_address || '-');
+            var when = escapeHtml(item.created_at || '');
+            var ago = escapeHtml(item.time_ago || '');
+            var icon = escapeHtml(item.icon_class || 'fa-circle-info');
+
+            var fpChips = '';
+            if (fps.length) {
+                fpChips = fps.slice(0, 3).map(function(fp) {
+                    var safeFp = String(fp || '');
+                    var shortFp = safeFp.length > 14 ? safeFp.slice(0, 14) + '...' : safeFp;
+                    return '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-laptop"></i> ' + escapeHtml(shortFp) + '</span>';
+                }).join('');
+            }
+
+            return '' +
+                '<div class="card-history-item">' +
+                    '<div class="card-history-when">' + when + '</div>' +
+                    '<div class="card-history-what">' + (description || actionLabel) + '</div>' +
+                    '<div class="card-history-meta">' + ago + '</div>' +
+                    '<div class="staff-history-chip-row">' +
+                        '<span class="staff-history-chip staff-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
+                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ' + ip + '</span>' +
+                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Active: ' + activeDevices + '</span>' +
+                        fpChips +
+                    '</div>' +
+                '</div>';
+        }).join('');
+
+        body.innerHTML = '<div class="card-history-list">' + html + '</div>';
+    }
+
+    function openStaffHistory(staffId, staffName) {
+        if (!staffId) return;
+
+        openStaffHistoryDrawer();
+        renderStaffHistoryLoading(staffName || 'Client Staff');
+
+        fetch(clientStaffHistoryApiUrl(staffId), {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        })
+            .then(function(resp) {
+                return resp.json().then(function(data) {
+                    if (!resp.ok || !data || !data.success) {
+                        var message = data && data.message ? data.message : 'Failed to load login history.';
+                        throw new Error(message);
+                    }
+                    return data;
+                });
+            })
+            .then(function(data) {
+                var resolvedName = staffName || (data.staff && data.staff.name) || 'Client Staff';
+                renderStaffHistory(resolvedName, data);
+            })
+            .catch(function(err) {
+                renderStaffHistoryError(err && err.message ? err.message : 'Failed to load login history.');
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Unable to load client staff login history', 'error');
+                }
+            });
+    }
+
     function getSelectedClientId() {
         var first = NS.selectedClientIds.values().next();
         return first.done ? null : first.value;
@@ -216,6 +379,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (tableContainer) {
         tableContainer.addEventListener('click', function(e) {
+            var historyBtn = e.target.closest('.client-staff-history-trigger');
+            if (historyBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                openStaffHistory(historyBtn.dataset.staffId, historyBtn.dataset.staffName);
+                return;
+            }
+
             var row = e.target.closest('tr');
             if (row && row.dataset.staffId && !row.classList.contains('no-data-row')) {
                 selectStaffRow(row);

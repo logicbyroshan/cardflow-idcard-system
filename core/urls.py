@@ -168,6 +168,7 @@ urlpatterns = [
     path('api/client/messages/group-send/', views.api_client_messages_group_send, name='api_client_messages_group_send'),
     path('api/client/<int:client_id>/messages/<int:message_id>/delete/', views.api_client_message_delete, name='api_client_message_delete'),
     path('api/client/<int:client_id>/login-history/', views.api_client_login_history, name='api_client_login_history'),
+    path('api/client-staff/<int:staff_id>/login-history/', views.api_client_staff_login_history, name='api_client_staff_login_history'),
     path('api/client-staff/clients/', views.api_admin_client_staff_clients, name='api_admin_client_staff_clients'),
     path('api/client-staff/create/', views.api_admin_client_staff_create, name='api_admin_client_staff_create'),
     path('api/client-staff/<int:staff_id>/', views.api_admin_client_staff_get, name='api_admin_client_staff_get'),

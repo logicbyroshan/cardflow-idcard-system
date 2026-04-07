@@ -24,6 +24,7 @@ from .base import (
     manage_clients,
     active_clients,
     api_client_login_history,
+    api_client_staff_login_history,
     idcard_group,
     idcard_actions,
     group_settings,
