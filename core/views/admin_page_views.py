@@ -81,9 +81,8 @@ def manage_staff(request):
     # This page already uses client-side pagination/search over rendered rows.
     # Keep server pagination as a single page with the full filtered queryset
     # to avoid "10 of 10" mismatches when more rows exist.
-    full_page_size = max(staff_qs.count(), 1)
-    paginator = Paginator(staff_qs, full_page_size)
-    page_obj = paginator.get_page(1)
+    paginator = Paginator(staff_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
     
     context = {
         'active_page': 'manage_staff',
