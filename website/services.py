@@ -182,14 +182,14 @@ class WebsiteClientLogoService:
 
     @staticmethod
     def list_all():
-        return PanelClient.objects.select_related('user').all().order_by('name', 'id')
+        return PanelClient.objects.select_related('user').all().order_by('website_display_order', 'name', 'id')
 
     @staticmethod
     def get(pk):
         return get_object_or_404(PanelClient.objects.select_related('user'), pk=pk)
 
     @staticmethod
-    def update_logo(pk, *, logo=None, remove_logo=False, website_is_visible=None):
+    def update_logo(pk, *, logo=None, remove_logo=False, website_is_visible=None, website_display_order=None):
         _validate_image_upload(logo, 'logo')
         with transaction.atomic():
             client = get_object_or_404(PanelClient, pk=pk)
@@ -215,6 +215,17 @@ class WebsiteClientLogoService:
             if website_is_visible is not None and client.website_is_visible != bool(website_is_visible):
                 client.website_is_visible = bool(website_is_visible)
                 dirty = True
+
+            if website_display_order is not None:
+                try:
+                    order_value = int(website_display_order)
+                except (TypeError, ValueError):
+                    raise ValidationError('Display order must be a valid number.')
+                if order_value < 0:
+                    raise ValidationError('Display order cannot be negative.')
+                if client.website_display_order != order_value:
+                    client.website_display_order = order_value
+                    dirty = True
 
             if dirty:
                 client.save()

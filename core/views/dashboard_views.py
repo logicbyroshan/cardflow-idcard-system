@@ -33,6 +33,7 @@ from .base_helpers import (
 )
 
 logger = logging.getLogger(__name__)
+RECENT_ACTIVITY_FALLBACK_HOURS = 48
 
 
 def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
@@ -42,6 +43,18 @@ def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
     except (ValueError, TypeError):
         limit = default
     return min(max(limit, 1), max_limit)
+
+
+def _get_dashboard_recent_activities(*, user, limit):
+    """Prefer last 48 hours; fall back to overall recent feed when needed."""
+    recent_window = ActivityService.get_recent(
+        limit=limit,
+        hours=RECENT_ACTIVITY_FALLBACK_HOURS,
+        user=user,
+    )
+    if len(recent_window) >= limit:
+        return recent_window
+    return ActivityService.get_recent(limit=limit, hours=None, user=user)
 
 
 # ── Services ─────────────────────────────────────────────────────────────
@@ -193,9 +206,8 @@ def dashboard(request):
         'active_staff': staff_stats['active'],
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
-        # Role-based activity filtering - admin_staff gets filtered by assigned clients.
-        # Dashboard feed shows last N records with no time-window cutoff.
-        'recent_activities': ActivityService.get_recent(limit=ACTIVITY_FEED_MAX, hours=None, user=request.user),
+        # Prefer last 48 hours; fallback to latest overall feed for fuller history.
+        'recent_activities': _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX),
     })
     return render(request, 'index.html', context)
 
@@ -615,10 +627,12 @@ def api_print_reprint_overview(request):
 def api_recent_activity(request):
     """API endpoint for the Recent Activity feed on the dashboard."""
     try:
-        limit = int(request.GET.get('limit', ACTIVITY_FEED_MAX))
-        limit = min(limit, ACTIVITY_FEED_MAX)
-        # Role-based activity filtering
-        activities = ActivityService.get_recent(limit=limit, hours=None, user=request.user)
+        limit = _parse_dashboard_limit(
+            request.GET.get('limit', ACTIVITY_FEED_MAX),
+            default=ACTIVITY_FEED_MAX,
+            max_limit=ACTIVITY_FEED_MAX,
+        )
+        activities = _get_dashboard_recent_activities(user=request.user, limit=limit)
         return JsonResponse({'success': True, 'activities': activities})
     except Exception as e:
         logger.exception('api_recent_activity error: %s', e)

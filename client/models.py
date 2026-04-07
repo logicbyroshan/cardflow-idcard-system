@@ -89,6 +89,11 @@ class Client(models.Model):
         db_index=True,
         help_text='Controls visibility on public website trusted clients section.',
     )
+    website_display_order = models.PositiveIntegerField(
+        default=0,
+        db_index=True,
+        help_text='Controls ordering in public website trusted clients section (lower shows first).',
+    )
     # DEPRECATED: photo field removed - use frontend placeholder avatars instead
     # photo field removed in Phase 1 refactor
     

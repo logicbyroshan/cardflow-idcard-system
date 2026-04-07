@@ -83,7 +83,7 @@ def home(request):
                 PanelClient.objects.filter(website_is_visible=True)
                 .exclude(website_logo__isnull=True)
                 .exclude(website_logo='')
-                .order_by('name', 'id')
+                .order_by('website_display_order', 'name', 'id')
             ),
             'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
             'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]),

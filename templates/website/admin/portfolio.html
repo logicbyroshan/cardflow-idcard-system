@@ -21,7 +21,7 @@
         flex-wrap: wrap;
         gap: 6px;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 4px;
         background: #fff;
         padding: 6px;
     }
@@ -33,7 +33,7 @@
         border: 1px solid #e2e8f0;
         background: #f8fafc;
         color: #475569;
-        border-radius: 7px;
+        border-radius: 3px;
         height: 32px;
         padding: 0 11px;
         font-size: 11.5px;
@@ -57,8 +57,17 @@
 
     .portfolio-subtab-btn .wa-count-badge {
         font-size: 10px;
-        padding: 2px 9px;
-        border-radius: 999px;
+        padding: 2px 8px;
+        border-radius: 3px;
+    }
+
+    .portfolio-admin-page .wa-count-badge {
+        border-radius: 3px;
+        border: 1px solid #dbe3ef;
+        background: #f8fafc;
+        box-shadow: none;
+        padding: 2px 8px;
+        font-weight: 700;
     }
 
     .portfolio-pane {
@@ -90,7 +99,7 @@
     .portfolio-thumb {
         width: 64px;
         height: 50px;
-        border-radius: 8px;
+        border-radius: 3px;
         object-fit: cover;
         border-width: 1px;
     }
@@ -103,7 +112,7 @@
     .portfolio-preview-empty {
         width: 64px;
         height: 50px;
-        border-radius: 8px;
+        border-radius: 3px;
         border: 1px solid #e2e8f0;
         background: #f8fafc;
         color: #94a3b8;
@@ -133,7 +142,7 @@
         justify-content: center;
         width: 30px;
         height: 30px;
-        border-radius: 8px;
+        border-radius: 3px;
         background: #eef2ff;
         color: #4f46e5;
         border: 1px solid #dbeafe;
@@ -155,10 +164,45 @@
         color: #334155;
         border: 1px solid #cbd5e1;
         background: #f8fafc;
-        border-radius: 999px;
+        border-radius: 3px;
         padding: 2px 8px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
+    }
+
+    .portfolio-admin-page .wa-filter-btn {
+        border-radius: 3px;
+        border: 1px solid #dbe3ef;
+        background: #ffffff;
+        box-shadow: none;
+        min-height: 28px;
+        padding: 0 10px;
+    }
+
+    .portfolio-admin-page .wa-filter-btn.active {
+        border-color: #c7d2fe;
+        background: #eef2ff;
+        color: #1e3a8a;
+    }
+
+    .portfolio-admin-page .wa-type-badge,
+    .portfolio-admin-page .wa-status-badge,
+    .portfolio-admin-page .wa-order-badge {
+        border-radius: 3px;
+    }
+
+    .portfolio-admin-page .wa-status-badge {
+        min-width: 62px;
+        justify-content: center;
+    }
+
+    .portfolio-admin-page .btn.btn-icon {
+        border-radius: 3px;
+        box-shadow: none;
+    }
+
+    .portfolio-admin-page .wa-toggle-label {
+        border-radius: 3px;
     }
 
     .portfolio-note-badge.bento {
@@ -186,6 +230,27 @@
     .portfolio-categories-pane .wa-actions {
         width: 1%;
     }
+
+    .portfolio-pagination-bar {
+        margin-top: 0;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .portfolio-pagination-bar .pagination-right {
+        gap: 8px;
+    }
+
+    .portfolio-pagination-bar .pagination-right label {
+        font-size: 11px;
+        color: #64748b;
+    }
+
+    .portfolio-pagination-bar #portfolioRowsPerPage {
+        min-width: 74px;
+        height: 26px;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
 </style>
 {% endblock %}
 
@@ -195,7 +260,7 @@
         <button type="button" class="portfolio-subtab-btn active" data-target="portfolioItemsPane">
             <i class="fa-solid fa-images"></i>
             <span>Portfolio Items</span>
-            <span class="wa-count-badge">{{ items|length }}</span>
+            <span class="wa-count-badge">{{ total_items_count }}</span>
         </button>
         <button type="button" class="portfolio-subtab-btn" data-target="portfolioCategoriesPane">
             <i class="fa-solid fa-layer-group"></i>
@@ -209,7 +274,7 @@
             <div class="wa-action-bar">
                 <div class="wa-action-left">
                     <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
-                    <span class="wa-count-badge">{{ items|length }} items</span>
+                    <span class="wa-count-badge">{{ total_items_count }} items</span>
                 </div>
                 <div class="wa-action-right">
                     {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
@@ -325,6 +390,37 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <div class="pagination-bar notif-pagination-bar portfolio-pagination-bar">
+                <div class="pagination-left">
+                    <span class="pagination-info">Showing {{ page_start }} to {{ page_end }} of {{ total_items_count }} items</span>
+                </div>
+                <div class="pagination-center">
+                    <button class="pagination-btn" type="button" title="First Page" aria-label="First page" onclick="goPortfolioPage(1)" {% if not page_obj.has_previous %}disabled{% endif %}>
+                        <i class="fa-solid fa-angles-left"></i>
+                    </button>
+                    <button class="pagination-btn" type="button" title="Previous Page" aria-label="Previous page" onclick="goPortfolioPage({{ page_obj.number|add:'-1' }})" {% if not page_obj.has_previous %}disabled{% endif %}>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span class="page-numbers">
+                        <span class="page-num active">{{ page_obj.number }}</span>
+                    </span>
+                    <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goPortfolioPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button class="pagination-btn" type="button" title="Last Page" aria-label="Last page" onclick="goPortfolioPage({{ page_obj.paginator.num_pages }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                        <i class="fa-solid fa-angles-right"></i>
+                    </button>
+                </div>
+                <div class="pagination-right">
+                    <label for="portfolioRowsPerPage">Rows per page:</label>
+                    <select id="portfolioRowsPerPage" class="form-select form-select-sm" onchange="onPortfolioRowsPerPageChange(this.value)">
+                        {% for size in per_page_options %}
+                        <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
         </div>
     </section>
@@ -591,7 +687,7 @@
 <div id="imagePreviewOverlay" onclick="closeImagePreview()"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
     <button onclick="event.stopPropagation();closeImagePreview()"
-            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
+            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:4px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.24);color:#fff;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
         <i class="fa-solid fa-xmark"></i>
     </button>
     <img id="imagePreviewImg" src="" alt=""
@@ -670,6 +766,24 @@ function clearPortfolioSelection() {
     document.getElementById('selectAllPortfolio').checked = false;
     document.getElementById('portfolioBulkBar').style.display = 'none';
 }
+
+function onPortfolioRowsPerPageChange(value) {
+    var url = new URL(window.location.href);
+    var params = url.searchParams;
+    params.set('per_page', String(value || 25));
+    params.set('page', '1');
+    var hash = window.location.hash || '#portfolioItemsPane';
+    window.location.href = url.pathname + '?' + params.toString() + hash;
+}
+
+function goPortfolioPage(page) {
+    var targetPage = Math.max(1, parseInt(page || 1, 10));
+    var url = new URL(window.location.href);
+    url.searchParams.set('page', String(targetPage));
+    var hash = window.location.hash || '#portfolioItemsPane';
+    window.location.href = url.pathname + '?' + url.searchParams.toString() + hash;
+}
+
 async function bulkDeletePortfolio() {
     var checked = document.querySelectorAll('.portfolio-row-check:checked');
     if (!checked.length) return;

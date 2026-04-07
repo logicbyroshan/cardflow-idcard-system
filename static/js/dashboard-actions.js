@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ? escapeHtml
             : (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
 
-        ApiClient.get(panelUrl('/api/recent-activity/?limit=12'))
+        ApiClient.get(panelUrl('/api/recent-activity/?limit=100'))
             .then(data => {
                 if (!data || !data.success) return;
 

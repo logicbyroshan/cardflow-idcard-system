@@ -9,8 +9,120 @@
 <span class="breadcrumb-item active">Reviews</span>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .wa-reviews-page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .wa-reviews-page .wa-action-bar {
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .wa-reviews-page .wa-count-badge {
+        border-radius: 3px;
+        border: 1px solid #dbe3ef;
+        background: #f8fafc;
+        box-shadow: none;
+        font-weight: 600;
+        padding: 2px 8px;
+    }
+
+    .wa-reviews-page .wa-table-wrap {
+        margin-top: 0;
+    }
+
+    .wa-reviews-page .wa-table thead th {
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    .wa-reviews-page .wa-table tbody td {
+        font-weight: 400;
+        vertical-align: middle;
+    }
+
+    .wa-reviews-page .wa-avatar.lg {
+        border-radius: 4px;
+        width: 38px;
+        height: 38px;
+        font-weight: 600;
+    }
+
+    .wa-reviews-page .wa-cell-title {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .wa-reviews-page .wa-cell-sub {
+        color: #64748b;
+        font-weight: 400;
+        line-height: 1.3;
+    }
+
+    .wa-reviews-page .wa-stars-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .wa-reviews-page .wa-stars-row i {
+        font-size: 11px;
+        color: #cbd5e1;
+    }
+
+    .wa-reviews-page .wa-stars-row i.filled {
+        color: #f59e0b;
+    }
+
+    .wa-reviews-page .wa-star-text {
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        border: 1px solid #fcd34d;
+        background: #fffbeb;
+        color: #92400e;
+        font-size: 10.5px;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    .wa-reviews-page .wa-review-snippet {
+        margin: 0;
+        color: #475569;
+        font-weight: 400;
+        line-height: 1.4;
+    }
+
+    .wa-reviews-page .wa-status-badge {
+        border-radius: 3px;
+        min-width: 74px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+    }
+
+    .wa-reviews-page .btn.btn-icon {
+        border-radius: 3px;
+        box-shadow: none;
+    }
+
+    #reviewModal .wa-modal-close,
+    #reviewModal .wa-toggle-label,
+    #reviewModal .btn,
+    #reviewModal .form-select,
+    #reviewModal input,
+    #reviewModal textarea {
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="wa-page-container">
+<div class="wa-page-container wa-reviews-page">
     <div class="wa-dashboard-section">
         <div class="wa-action-bar">
             <div class="wa-action-left">

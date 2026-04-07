@@ -80,6 +80,28 @@ class PanelAccessTests(PanelBaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Email Management')
 
+    def test_manage_panel_admin_staff_with_backup_permission_hides_super_admin_tabs(self):
+        self.admin_staff_profile.perm_manage_panel_backup = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_backup'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-tab="backups"')
+        self.assertNotContains(response, 'data-tab="notifications"')
+        self.assertNotContains(response, 'data-tab="download-templates"')
+
+    def test_manage_panel_admin_staff_with_email_permission_hides_super_admin_tabs(self):
+        self.admin_staff_profile.perm_manage_panel_email = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_email'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-tab="email-logs"')
+        self.assertNotContains(response, 'data-tab="notifications"')
+        self.assertNotContains(response, 'data-tab="download-templates"')
+
     def test_manage_panel_super_admin_can_access(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         response = self.client.get('/panel/manage-panel/')

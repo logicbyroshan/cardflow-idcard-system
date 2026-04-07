@@ -279,7 +279,7 @@ def clients_page(request):
     if visibility_filter not in ('visible', 'hidden'):
         visibility_filter = ''
 
-    clients_qs = PanelClient.objects.select_related('user').all().order_by('name', 'id')
+    clients_qs = PanelClient.objects.select_related('user').all().order_by('website_display_order', 'name', 'id')
     if visibility_filter == 'visible':
         clients_qs = clients_qs.filter(website_is_visible=True)
     elif visibility_filter == 'hidden':
@@ -335,8 +335,37 @@ def portfolio_page(request):
     if not cache.get('portfolio_defaults_ensured'):
         PortfolioCategory.ensure_defaults()
         cache.set('portfolio_defaults_ensured', True, 3600)
-    context['items'] = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
+
+    items_qs = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(items_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['items'] = page_obj.object_list
     context['categories'] = PortfolioCategory.objects.annotate(item_count=Count('items')).order_by('order')
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_items_count'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/portfolio.html', context)
 
 
@@ -495,6 +524,7 @@ def api_client_list(request):
         'name': c.name,
         'logo': c.website_logo.url if c.website_logo else None,
         'website_is_visible': bool(c.website_is_visible),
+        'website_display_order': int(c.website_display_order or 0),
         'website_visibility_display': 'Visible' if c.website_is_visible else 'Hidden',
         'status': c.status,
         'status_display': c.get_status_display(),
@@ -528,6 +558,7 @@ def api_client_get(request, pk):
             'name': c.name,
             'logo': c.website_logo.url if c.website_logo else None,
             'website_is_visible': bool(c.website_is_visible),
+            'website_display_order': int(c.website_display_order or 0),
             'website_visibility_display': 'Visible' if c.website_is_visible else 'Hidden',
             'status': c.status,
             'status_display': c.get_status_display(),
@@ -547,7 +578,20 @@ def api_client_update(request, pk):
         if visibility_raw is not None and str(visibility_raw).strip() != '':
             website_is_visible = _parse_bool(visibility_raw)
 
-        if logo is None and not remove_logo and website_is_visible is None:
+        order_raw = request.POST.get('website_display_order', None)
+        website_display_order = None
+        if order_raw is not None and str(order_raw).strip() != '':
+            try:
+                website_display_order = int(str(order_raw).strip())
+            except (TypeError, ValueError):
+                return JsonResponse({'success': False, 'message': 'Display order must be a valid number.'}, status=400)
+
+            if website_display_order < 0:
+                return JsonResponse({'success': False, 'message': 'Display order cannot be negative.'}, status=400)
+            if website_display_order > 9999:
+                return JsonResponse({'success': False, 'message': 'Display order is too large.'}, status=400)
+
+        if logo is None and not remove_logo and website_is_visible is None and website_display_order is None:
             return JsonResponse({'success': False, 'message': 'No changes submitted.'}, status=400)
 
         WebsiteClientLogoService.update_logo(
@@ -555,6 +599,7 @@ def api_client_update(request, pk):
             logo=logo,
             remove_logo=remove_logo,
             website_is_visible=website_is_visible,
+            website_display_order=website_display_order,
         )
     except ValidationError as e:
         return JsonResponse({'success': False, 'message': e.message}, status=400)

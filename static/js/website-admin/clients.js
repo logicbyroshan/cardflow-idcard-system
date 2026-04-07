@@ -129,6 +129,44 @@
             });
     };
 
+    window.setClientWebsiteOrder = function (id, inputEl) {
+        if (!id || !inputEl) return;
+
+        const previousRaw = inputEl.dataset.currentOrder || '0';
+        const previous = Number.parseInt(previousRaw, 10);
+        const parsed = Number.parseInt(String(inputEl.value || '').trim(), 10);
+
+        if (!Number.isInteger(parsed) || parsed < 0 || parsed > 9999) {
+            inputEl.value = Number.isInteger(previous) ? String(previous) : '0';
+            showToast('Order must be between 0 and 9999.', 'error');
+            return;
+        }
+
+        inputEl.value = String(parsed);
+        inputEl.disabled = true;
+
+        const fd = new FormData();
+        fd.set('website_display_order', String(parsed));
+
+        ApiClient.upload(`${BASE}/clients/${id}/update/`, fd)
+            .then(d => {
+                if (d.success) {
+                    inputEl.dataset.currentOrder = String(parsed);
+                    showToast('Landing order updated.', 'success');
+                } else {
+                    inputEl.value = Number.isInteger(previous) ? String(previous) : '0';
+                    showToast(d.message || 'Could not update order', 'error');
+                }
+            })
+            .catch(() => {
+                inputEl.value = Number.isInteger(previous) ? String(previous) : '0';
+                showToast('Network error', 'error');
+            })
+            .finally(() => {
+                inputEl.disabled = false;
+            });
+    };
+
     /* ===== FORM SUBMIT ===== */
     document.getElementById('clientForm').addEventListener('submit', function (e) {
         e.preventDefault();

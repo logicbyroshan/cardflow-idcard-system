@@ -474,14 +474,14 @@
 /* Backup card in list */
 .backup-card {
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 0;
   margin-bottom: 14px;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  box-shadow: none;
   overflow: hidden;
-  transition: box-shadow 0.2s;
+  transition: border-color 0.2s;
 }
-.backup-card:hover { box-shadow: 0 3px 8px rgba(0,0,0,.1); }
+.backup-card:hover { border-color: #d1d5db; }
 .backup-card-header {
   display: flex;
   align-items: center;
@@ -503,7 +503,7 @@
   padding: 3px 10px;
   text-transform: uppercase;
   letter-spacing: .6px;
-  border-radius: 999px;
+  border-radius: 3px;
 }
 .backup-status-pending { background: #fef3c7; color: #92400e; }
 .backup-status-processing { background: #dbeafe; color: #1e40af; }
@@ -526,13 +526,13 @@
 .backup-progress-bar {
   height: 10px;
   background: #e5e7eb;
-  border-radius: 999px;
+  border-radius: 2px;
   overflow: hidden;
 }
 .backup-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  border-radius: 999px;
+  border-radius: 2px;
   transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
 }
@@ -570,7 +570,7 @@
   background: #f0f1ff;
   color: #667eea;
   border: 1px solid #c7d2fe;
-  border-radius: 999px;
+  border-radius: 3px;
 }
 
 /* Download links */
@@ -619,6 +619,7 @@
   align-items: center;
   gap: 5px;
   border: 1px solid;
+  border-radius: 6px;
 }
 .backup-action-delete-now {
   color: #ef4444;

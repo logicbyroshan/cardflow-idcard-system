@@ -14,69 +14,69 @@
     .wa-business-page {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .wa-dashboard-section {
-        border: 1px solid #dbe3ef;
-        border-radius: 14px;
-        background: radial-gradient(circle at top right, rgba(219, 234, 254, 0.45), rgba(255, 255, 255, 0) 46%), #ffffff;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
-        padding: 16px;
+        border: 1px solid #d8e1ee;
+        border-radius: 6px;
+        background: #ffffff;
+        box-shadow: none;
+        padding: 10px;
     }
 
     .wa-business-hero {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 12px;
+        gap: 8px;
         flex-wrap: wrap;
-        border-bottom: 1px dashed #dbe3ef;
-        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 8px;
     }
 
     .wa-business-hero-title {
         margin: 0;
-        font-size: 18px;
-        font-weight: 800;
+        font-size: 17px;
+        font-weight: 700;
         color: #1e293b;
     }
 
     .wa-business-hero-sub {
-        margin: 4px 0 0;
-        font-size: 12.5px;
+        margin: 3px 0 0;
+        font-size: 12px;
         color: #64748b;
         max-width: 720px;
     }
 
     .wa-business-status-grid {
-        margin-top: 12px;
+        margin-top: 8px;
         display: grid;
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 8px;
     }
 
     .wa-business-status-card {
         border: 1px solid #e2e8f0;
-        border-radius: 10px;
+        border-radius: 6px;
         background: #fff;
-        padding: 12px;
+        padding: 9px 10px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
         transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
     }
 
     .wa-business-status-card.is-live {
         border-color: #bbf7d0;
         background: #f8fff9;
-        box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
+        box-shadow: none;
     }
 
     .wa-business-status-card.is-draft {
         border-color: #fed7aa;
         background: #fffaf5;
-        box-shadow: 0 6px 18px rgba(234, 88, 12, 0.08);
+        box-shadow: none;
     }
 
     .wa-business-status-card-header {
@@ -84,7 +84,7 @@
         align-items: center;
         gap: 8px;
         color: #334155;
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 700;
     }
 
@@ -102,15 +102,54 @@
     .wa-business-status-note {
         margin: 0;
         color: #64748b;
-        font-size: 11.5px;
+        font-size: 11px;
         line-height: 1.4;
     }
 
     .wa-business-status-meta {
         margin: 0;
         color: #64748b;
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 600;
+    }
+
+    .wa-business-actions-bar {
+        margin-top: 8px;
+        border: 1px solid #dbe3ef;
+        border-radius: 6px;
+        background: #f8fbff;
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+        position: sticky;
+        top: 0;
+        z-index: 4;
+    }
+
+    .wa-business-actions-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .wa-business-actions-left i {
+        color: #2563eb;
+    }
+
+    .wa-business-actions-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .wa-business-actions-right .btn {
+        min-width: 140px;
     }
 
     .wa-business-status-actions {
@@ -134,7 +173,7 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        border-radius: 999px;
+        border-radius: 5px;
         border: 1px solid #cbd5e1;
         background: #f8fafc;
         color: #334155;
@@ -157,41 +196,53 @@
 
     .business-form-shell {
         border: 1px solid #dbe3ef;
-        border-radius: 14px;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-        padding: 18px;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+        border-radius: 6px;
+        background: #ffffff;
+        padding: 8px;
+        box-shadow: none;
+        margin-top: 8px;
     }
 
     .business-form-shell .wa-form-group-title {
-        margin-top: 10px;
-        margin-bottom: 8px;
-        display: inline-flex;
+        margin-top: 8px;
+        margin-bottom: 6px;
+        display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
-        font-size: 12px;
-        font-weight: 800;
+        width: 100%;
+        font-size: 11px;
+        font-weight: 700;
         letter-spacing: 0.03em;
         text-transform: uppercase;
         color: #334155;
-        border: 1px solid #dbeafe;
-        background: #eff6ff;
-        border-radius: 999px;
-        padding: 4px 10px;
+        border-top: 1px solid #dbe3ef;
+        border-bottom: 1px solid #dbe3ef;
+        background: #f8fafc;
+        border-radius: 0;
+        padding: 7px 8px;
+    }
+
+    .business-form-shell .wa-form-group-title:first-of-type {
+        margin-top: 0;
+    }
+
+    .business-form-shell .wa-form-group-title .wa-inline-action {
+        margin-left: auto;
     }
 
     .business-form-shell .wa-form-row {
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
     }
 
     .business-form-shell .wa-form-group {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        background: #f8fbff;
-        padding: 10px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        padding: 0;
     }
 
     .business-form-shell .wa-form-group.full {
@@ -200,8 +251,8 @@
 
     .business-form-shell label {
         display: block;
-        margin-bottom: 6px;
-        font-size: 11px;
+        margin-bottom: 4px;
+        font-size: 10.5px;
         font-weight: 700;
         letter-spacing: 0.03em;
         text-transform: uppercase;
@@ -209,16 +260,16 @@
     }
 
     .business-form-shell .wa-form-actions {
-        margin-top: 14px;
+        margin-top: 10px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
     }
 
     .wa-form-save-meta {
-        font-size: 11px;
+        font-size: 10.5px;
         color: #64748b;
         font-weight: 700;
     }
@@ -236,15 +287,16 @@
     .business-form-shell select {
         border-color: #cbd5e1;
         background: #fff;
-        min-height: 40px;
-        border-radius: 9px;
+        min-height: 34px;
+        border-radius: 4px;
         width: 100%;
-        padding: 10px 12px;
+        padding: 7px 9px;
         color: #0f172a;
+        font-size: 12px;
     }
 
     .business-form-shell textarea {
-        min-height: 98px;
+        min-height: 84px;
         line-height: 1.45;
         resize: vertical;
     }
@@ -260,10 +312,10 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        border: 1px solid #dbeafe;
-        background: #eff6ff;
-        border-radius: 999px;
-        padding: 8px 12px;
+        border: 1px solid #dbe3ef;
+        background: #f8fbff;
+        border-radius: 6px;
+        padding: 7px 10px;
         font-size: 11.5px;
         color: #1e3a8a;
         font-weight: 600;
@@ -272,20 +324,20 @@
     #heroImagesGrid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 12px;
+        gap: 10px;
     }
 
     .hero-image-card {
         border: 1px solid #dbe3ef;
-        border-radius: 12px;
+        border-radius: 6px;
         background: #fff;
-        padding: 8px;
-        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+        padding: 6px;
+        box-shadow: none;
     }
 
     .hero-image-card .wa-img-preview {
         position: relative;
-        border-radius: 10px;
+        border-radius: 5px;
         overflow: hidden;
         aspect-ratio: 16 / 10;
         background: #e2e8f0;
@@ -326,7 +378,7 @@
         bottom: 8px;
         width: 28px;
         height: 28px;
-        border-radius: 50%;
+        border-radius: 5px;
         border: 1px solid rgba(15, 23, 42, 0.16);
         background: rgba(255, 255, 255, 0.94);
         color: #b91c1c;
@@ -337,9 +389,9 @@
     #noHeroImagesMsg {
         grid-column: 1 / -1;
         border: 1px dashed #cbd5e1;
-        border-radius: 10px;
+        border-radius: 6px;
         background: #f8fafc;
-        padding: 14px;
+        padding: 10px;
         text-align: center;
     }
 
@@ -360,11 +412,24 @@
         }
 
         .wa-dashboard-section {
-            padding: 12px;
+            padding: 8px;
         }
 
         .business-form-shell {
-            padding: 14px;
+            padding: 8px;
+        }
+
+        .wa-business-actions-bar {
+            padding: 7px 8px;
+        }
+
+        .wa-business-actions-left,
+        .wa-business-actions-right {
+            width: 100%;
+        }
+
+        .wa-business-actions-right .btn {
+            width: 100%;
         }
     }
 </style>
@@ -410,6 +475,20 @@
             </div>
 
         </div>
+
+        {% if is_super_admin or perm_website_edit %}
+        <div class="wa-business-actions-bar">
+            <div class="wa-business-actions-left">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span class="wa-form-save-meta" id="businessSaveState">No unsaved changes.</span>
+            </div>
+            <div class="wa-business-actions-right">
+                <button type="submit" form="businessForm" class="btn btn-primary btn-sm" id="businessSaveBtn">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+        {% endif %}
 
         <form id="businessForm" enctype="multipart/form-data" class="wa-form business-form-shell">
         {% csrf_token %}
@@ -476,9 +555,9 @@
         </div>
 
         <!-- Dynamic Hero Images Manager -->
-        <div class="wa-form-group-title mt-3">
+        <div class="wa-form-group-title">
             <i class="fa-solid fa-images"></i> Hero Slider Images
-            <button type="button" class="btn btn-primary btn-sm ml-auto text-sm px-3 py-1" id="addHeroImageBtn">
+            <button type="button" class="btn btn-primary btn-sm wa-inline-action" id="addHeroImageBtn">
                 <i class="fa-solid fa-plus"></i> Add Image
             </button>
         </div>
@@ -534,14 +613,6 @@
             </div>
         </div>
 
-        {% if is_super_admin or perm_website_edit %}
-        <div class="wa-form-actions">
-            <span class="wa-form-save-meta" id="businessSaveState">No unsaved changes.</span>
-            <button type="submit" class="btn btn-primary" id="businessSaveBtn">
-                <i class="fa-solid fa-save"></i> Save Changes
-            </button>
-        </div>
-        {% endif %}
         </form>
     </div>
 </div>

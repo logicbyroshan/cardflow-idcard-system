@@ -35,6 +35,11 @@
     table-layout: fixed;
   }
 
+    .wa-clients-panel #clientsTable th:first-child,
+    .wa-clients-panel #clientsTable td:first-child {
+        text-align: left;
+    }
+
   .client-row-media {
     display: flex;
     align-items: center;
@@ -102,6 +107,25 @@
         color: var(--text-secondary, #475569);
     font-weight: 600;
   }
+
+    .client-order-input {
+        width: 84px;
+        height: 30px;
+        border: 1px solid var(--wa-border);
+        border-radius: 4px;
+        background: var(--wa-surface);
+        color: var(--wa-text);
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .client-order-input:focus {
+        outline: none;
+        border-color: var(--color-primary, #667eea);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #667eea) 18%, transparent 82%);
+    }
 
     .client-visibility-select {
         min-width: 150px;
@@ -242,13 +266,15 @@
     <div class="notif-table-wrap">
         <table class="notif-table" id="clientsTable">
             <colgroup>
-                <col style="width: 36%;">
-                <col style="width: 24%;">
-                <col style="width: 40%;">
+                <col style="width: 34%;">
+                <col style="width: 16%;">
+                <col style="width: 20%;">
+                <col style="width: 30%;">
             </colgroup>
             <thead>
                 <tr>
                     <th>Client</th>
+                    <th>Landing Order</th>
                     <th>Website Visibility</th>
                     <th>Logo Actions</th>
                 </tr>
@@ -267,6 +293,21 @@
                                 <strong>{{ c.name }}</strong>
                             </div>
                         </div>
+                    </td>
+                    <td>
+                        {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                        <input
+                            type="number"
+                            min="0"
+                            max="9999"
+                            step="1"
+                            class="client-order-input"
+                            value="{{ c.website_display_order|default:0 }}"
+                            data-current-order="{{ c.website_display_order|default:0 }}"
+                            onchange="setClientWebsiteOrder({{ c.id }}, this)">
+                        {% else %}
+                        <span class="client-order">{{ c.website_display_order|default:0 }}</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
@@ -310,7 +351,7 @@
                 </tr>
                 {% empty %}
                 <tr class="notif-table-empty">
-                    <td colspan="3">
+                    <td colspan="4">
                         <div class="empty-state">
                             <i class="fa-solid fa-building-slash"></i>
                             <p>No Clients Added</p>
@@ -422,5 +463,5 @@ function goClientPage(page) {
     window.location.search = url.searchParams.toString();
 }
 </script>
-<script src="{% static 'js/website-admin/clients.js' %}?v=137"></script>
+<script src="{% static 'js/website-admin/clients.js' %}?v=138"></script>
 {% endblock %}

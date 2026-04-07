@@ -59,38 +59,68 @@ function _restoreManagePanelTabOnReload() {
   return saved;
 }
 
+function _getAvailablePanelTabs() {
+  return Array.from(document.querySelectorAll('.panel-tab[data-tab]'))
+    .map(function (el) { return el.getAttribute('data-tab') || ''; })
+    .filter(Boolean);
+}
+
+function _loadInitialManagePanelTabData(tabName) {
+  if (!tabName) return;
+  if (tabName === 'notifications') {
+    loadNotifications();
+    return;
+  }
+  if (tabName === 'download-templates') {
+    loadTemplates();
+    return;
+  }
+  if (tabName === 'log-history') {
+    loadOperationsFeed(1);
+    return;
+  }
+  if (tabName === 'email-logs') {
+    loadEmailLogs(1);
+    return;
+  }
+  if (tabName === 'server-info') {
+    initServerInfoTab();
+    return;
+  }
+  if (tabName === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
+    loadMaintenanceStatus();
+  }
+}
+
 /* ============ Init ============ */
 document.addEventListener('DOMContentLoaded', function() {
   const restoredTab = _restoreManagePanelTabOnReload();
-  if (!restoredTab || restoredTab === 'notifications') {
-    loadNotifications();
-    if (typeof loadMaintenanceStatus === 'function') loadMaintenanceStatus();
-    if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
-  } else if (restoredTab === 'download-templates') {
-    loadTemplates();
-  } else if (restoredTab === 'log-history') {
-    loadOperationsFeed(1);
-  } else if (restoredTab === 'email-logs') {
-    loadEmailLogs(1);
-  } else if (restoredTab === 'server-info') {
-    initServerInfoTab();
-  } else if (restoredTab === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
-    loadMaintenanceStatus();
+  if (restoredTab) {
+    _loadInitialManagePanelTabData(restoredTab);
+    return;
   }
+
+  const tabs = _getAvailablePanelTabs();
+  if (!tabs.length) return;
+  const initialTab = tabs[0];
+  switchTab(initialTab);
+  _loadInitialManagePanelTabData(initialTab);
 });
 
 /* ============ Tabs ============ */
 function switchTab(tabName) {
+  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const tabPane = document.getElementById(`tab-${tabName}`);
+  if (!tabBtn || !tabPane) return false;
+
   document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
   // Also strip inline display overrides so the CSS .active rule always wins
   document.querySelectorAll('.panel-tab-content').forEach(c => {
     c.classList.remove('active');
     c.style.removeProperty('display');
   });
-  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
-  const tabPane = document.getElementById(`tab-${tabName}`);
-  if (tabBtn) tabBtn.classList.add('active');
-  if (tabPane) tabPane.classList.add('active');
+  tabBtn.classList.add('active');
+  tabPane.classList.add('active');
   if (tabName === 'notifications' && typeof loadMaintenanceStatus === 'function') {
     loadMaintenanceStatus();
   }
@@ -98,6 +128,7 @@ function switchTab(tabName) {
     loadDomainNotFoundStatus();
   }
   _saveManagePanelTab(tabName);
+  return true;
 }
 
 /* ============ Load Notifications ============ */
@@ -2247,10 +2278,82 @@ document.addEventListener('visibilitychange', function () {
 
 /* ============ Server Info Tab ============ */
 
-function setServerInfoLoadingState(isLoading) {
+const SERVER_INFO_DYNAMIC_VALUE_IDS = [
+  'serverStoragePct',
+  'serverDiskTotal',
+  'serverDiskUsed',
+  'serverDiskFree',
+  'serverProjectTotal',
+  'serverOtherUsed',
+  'serverDiskTracked',
+  'serverCpuCores',
+  'serverMemoryUsed',
+  'serverMemoryTotal',
+  'serverMemoryPct',
+  'serverDbBackend',
+  'serverDbName',
+  'serverDbSize',
+  'serverDbStatus',
+];
+
+function buildServerInfoListSkeleton(sectionLabel) {
+  const safeLabel = escHtml(sectionLabel || 'Loading');
+  return (
+    '<div class="server-list-skeleton" role="status" aria-label="' + safeLabel + '">' +
+      '<div class="server-list-skeleton-row">' +
+        '<span class="server-list-skeleton-block server-list-skeleton-title"></span>' +
+        '<span class="server-list-skeleton-block server-list-skeleton-size"></span>' +
+      '</div>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-bar"></span>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-meta"></span>' +
+    '</div>' +
+    '<div class="server-list-skeleton" aria-hidden="true">' +
+      '<div class="server-list-skeleton-row">' +
+        '<span class="server-list-skeleton-block server-list-skeleton-title"></span>' +
+        '<span class="server-list-skeleton-block server-list-skeleton-size"></span>' +
+      '</div>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-bar"></span>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-meta"></span>' +
+    '</div>' +
+    '<div class="server-list-skeleton" aria-hidden="true">' +
+      '<div class="server-list-skeleton-row">' +
+        '<span class="server-list-skeleton-block server-list-skeleton-title"></span>' +
+        '<span class="server-list-skeleton-block server-list-skeleton-size"></span>' +
+      '</div>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-bar"></span>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-meta"></span>' +
+    '</div>'
+  );
+}
+
+function setServerInfoLoadingState(isLoading, options) {
+  const opts = options || {};
+  const initialLoad = !!opts.initialLoad;
+  const tabRoot = document.getElementById('tab-server-info');
   const contentShell = document.getElementById('serverInfoContentShell');
+  const donutWrap = document.querySelector('.server-donut-wrap');
+  const rows = document.getElementById('serverInfoPathRows');
+  const otherRows = document.getElementById('serverOtherBreakdownRows');
+
+  if (tabRoot) {
+    tabRoot.classList.toggle('is-loading', !!isLoading);
+  }
   if (contentShell) {
-    contentShell.classList.toggle('is-loading', !!isLoading);
+    contentShell.classList.toggle('is-loading', !!isLoading && initialLoad);
+  }
+  if (donutWrap) {
+    donutWrap.classList.toggle('is-loading', !!isLoading && initialLoad);
+  }
+
+  SERVER_INFO_DYNAMIC_VALUE_IDS.forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('server-value-skeleton', !!isLoading && initialLoad);
+  });
+
+  if (isLoading) {
+    if (rows) rows.innerHTML = buildServerInfoListSkeleton('Loading project folder breakdown');
+    if (otherRows) otherRows.innerHTML = buildServerInfoListSkeleton('Loading other system details');
   }
 }
 
@@ -2280,8 +2383,10 @@ async function loadServerInfo(forceRefresh) {
 
   serverInfoLoading = true;
   serverInfoHasFetched = true;
+  let loadedSuccessfully = false;
+  const isInitialLoad = !serverInfoSnapshot;
   const skeletonStart = Date.now();
-  setServerInfoLoadingState(true);
+  setServerInfoLoadingState(true, { initialLoad: isInitialLoad });
 
   if (fetchBtn) {
     fetchBtn.disabled = true;
@@ -2308,13 +2413,23 @@ async function loadServerInfo(forceRefresh) {
 
     serverInfoSnapshot = data.snapshot;
     renderServerInfo(serverInfoSnapshot, data.cached === true);
+    loadedSuccessfully = true;
   } catch (err) {
     console.error('Server info load error:', err);
     window.showToast && showToast('Unable to fetch server info', 'error');
   } finally {
     await waitForPanelSkeletonDelay(skeletonStart);
     serverInfoLoading = false;
-    setServerInfoLoadingState(false);
+    setServerInfoLoadingState(false, { initialLoad: false });
+
+    if (!loadedSuccessfully) {
+      if (serverInfoSnapshot) {
+        renderServerInfo(serverInfoSnapshot, true);
+      } else {
+        initServerInfoTab();
+      }
+    }
+
     if (fetchBtn) {
       fetchBtn.disabled = false;
       fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';
