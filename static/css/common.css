@@ -1114,94 +1114,56 @@ body[style*="overflow:hidden"] {
   border-left: none;
 }
 
-.sidebar-pro-group {
+.pro-feature-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 0 8px;
+  gap: 0;
+  margin: -16px -20px 10px;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-.sidebar-pro-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.sidebar-pro-title i {
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.sidebar-pro-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.sidebar-pro-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 12px;
-  font-weight: 500;
-  text-decoration: none;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-}
-
-.sidebar-pro-tab:hover {
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.sidebar-pro-tab.active {
-  color: #ffffff;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.36) 0%, rgba(118, 75, 162, 0.3) 100%);
-  border-color: rgba(143, 168, 255, 0.45);
-}
-
-.sidebar-pro-tab i {
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.sidebar.collapsed .sidebar-pro-title span,
-.sidebar.collapsed .sidebar-pro-tab span {
+.pro-feature-tabs::-webkit-scrollbar {
   display: none;
 }
 
-.sidebar.collapsed .sidebar-pro-group {
-  padding: 0;
+.pro-feature-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s, background-color .15s;
 }
 
-.sidebar.collapsed .sidebar-pro-tabs {
-  border: none;
-  background: transparent;
-  padding: 0;
+.pro-feature-tab:hover {
+  color: #334155;
+  background: #f8fafc;
 }
 
-.sidebar.collapsed .sidebar-pro-tab,
-.sidebar.collapsed .sidebar-pro-title {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+.pro-feature-tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: rgba(102, 126, 234, 0.06);
+}
+
+@media (max-width: 768px) {
+  .pro-feature-tabs {
+    margin: -12px -12px 10px;
+    padding: 0 12px;
+  }
+
+  .pro-feature-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 }
 
 /* ── Phone / Email table-cell break rules ──────────────────────────

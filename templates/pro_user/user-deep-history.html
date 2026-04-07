@@ -282,6 +282,15 @@
 {% block content %}
 <div class="audit-page">
 
+  <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+    <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+      <i class="fa-solid fa-user-secret"></i> Login As User
+    </a>
+    <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
+      <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+    </a>
+  </div>
+
   <div class="action-bar">
     <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
       <div class="search-box" style="max-width:320px;">
