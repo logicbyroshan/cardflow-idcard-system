@@ -17,8 +17,8 @@
     <!-- Tailwind CSS (pre-built, brand colours + all utilities) -->
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
-    <!-- Alpine.js (self-hosted for offline reliability) -->
-    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    <!-- Alpine.js for mobile pages (full evaluator to support existing modal expressions) -->
+    <script defer src="{% static 'js/vendor/alpine-mobile.min.js' %}"></script>
 
     <!-- Font Awesome (self-hosted for offline reliability) -->
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
