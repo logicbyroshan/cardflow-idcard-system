@@ -736,6 +736,46 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(result.data['items'][0]['photo_url'], '/media/mediafiles/cards/thumb.webp')
         self.assertTrue(get_path.called)
 
+    def test_reprint_history_photo_url_falls_back_when_field_key_format_differs(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-photo-keyfmt@test.com',
+            email='dash-owner-reprint-photo-keyfmt@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Photo KeyFmt Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Photo KeyFmt Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Photo KeyFmt Table',
+            fields=[
+                {'name': 'Name', 'type': 'text'},
+                {'name': 'Student Image', 'type': 'image'},
+            ],
+        )
+
+        card = IDCard.objects.create(
+            table=table,
+            status='download',
+            field_data={
+                'Name': 'Photo Student',
+                'STUDENT_IMAGE': r'C:\\legacy\\uploads\\mediafiles\\cards\\keyfmt.jpg',
+            },
+        )
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        with mock.patch('mediafiles.services.ImageService.get_image_path_for_export', return_value=''):
+            result = ClientDashboardService.get_reprint_history(owner)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(result.data['items'][0]['photo_url'], '/media/mediafiles/cards/keyfmt.jpg')
+
     def test_reprint_stats_count_requested_items(self):
         from client.services import ClientDashboardService
         from client.models import Client

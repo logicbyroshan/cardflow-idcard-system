@@ -558,6 +558,45 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertIsNotNone(photo_field)
 		self.assertEqual(photo_field.get('value'), 'mediafiles/cards/beta.jpg')
 
+	def test_request_list_reads_image_value_when_field_key_format_differs(self):
+		from idcards.models import IDCardTable, IDCard
+		from reprintcard.models import ReprintRequest
+
+		table = IDCardTable.objects.create(
+			group=self.group,
+			name='Key Format Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Student Image', 'type': 'image'},
+			],
+		)
+		card = IDCard.objects.create(
+			table=table,
+			field_data={
+				'Name': 'Format Student',
+				'STUDENT_IMAGE': 'mediafiles/cards/keyfmt-request.jpg',
+			},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			table=table,
+			card=card,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_request_list', table_id=table.id))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		item = next((entry for entry in payload.get('items', []) if entry.get('card_id') == card.id), None)
+		self.assertIsNotNone(item)
+		img_field = next((f for f in item.get('ordered_fields', []) if str(f.get('name', '')).lower() == 'student image'), None)
+		self.assertIsNotNone(img_field)
+		self.assertEqual(img_field.get('value'), 'mediafiles/cards/keyfmt-request.jpg')
+
 	def test_request_list_clamps_offset_and_limit(self):
 		self.client.force_login(self.super_admin)
 		response = self.client.get(self._url('api_request_list'), {'offset': -100, 'limit': 99999})

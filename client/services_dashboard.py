@@ -431,6 +431,30 @@ class ClientDashboardService(BaseService):
             for t in tables:
                 table_fields_map[t.id] = t.fields or []
 
+            def _norm_key(value):
+                return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
+
+            def _field_value_for_name(field_data, field_name):
+                if not isinstance(field_data, dict):
+                    return ''
+
+                if field_name in field_data:
+                    return field_data.get(field_name, '')
+
+                target_upper = str(field_name or '').upper().strip()
+                if target_upper:
+                    for k, v in field_data.items():
+                        if str(k or '').upper().strip() == target_upper:
+                            return v
+
+                target_norm = _norm_key(field_name)
+                if target_norm:
+                    for k, v in field_data.items():
+                        if _norm_key(k) == target_norm:
+                            return v
+
+                return ''
+
             def _looks_like_image_field(field_type, field_name):
                 ft = str(field_type or '').strip().lower()
                 fn = str(field_name or '').strip().lower()
@@ -443,6 +467,54 @@ class ClientDashboardService(BaseService):
                     ('photo' in fn) or ('image' in fn) or ('picture' in fn) or ('pic' in fn) or
                     ('signature' in fn) or ('barcode' in fn) or ('qr' in fn)
                 )
+
+            def _resolve_photo_url(card, field_data, field_name):
+                if not isinstance(field_data, dict):
+                    return ''
+
+                ordered_candidates = []
+                seen = set()
+
+                def _push_candidate(name):
+                    key = str(name or '').strip()
+                    if not key:
+                        return
+                    marker = key.upper()
+                    if marker in seen:
+                        return
+                    seen.add(marker)
+                    ordered_candidates.append(key)
+
+                _push_candidate(field_name)
+
+                matched_key = None
+                target_norm = _norm_key(field_name)
+                if target_norm:
+                    for k in field_data.keys():
+                        if _norm_key(k) == target_norm:
+                            matched_key = str(k)
+                            break
+                _push_candidate(matched_key)
+
+                for key in ordered_candidates:
+                    try:
+                        img_path = ImageService.get_image_path_for_export(
+                            card,
+                            key,
+                            prefer_thumbnail=True,
+                            fallback_to_field_data=True,
+                        )
+                        if img_path:
+                            return cls._to_dashboard_photo_url(img_path)
+                    except Exception:
+                        logger.warning('Reprint history image resolution failed card_id=%s field=%s', getattr(card, 'id', None), key)
+
+                    raw_val = _field_value_for_name(field_data, key)
+                    raw_text = str(raw_val or '').strip()
+                    if raw_text and raw_text != 'NOT_FOUND' and not raw_text.startswith('PENDING:'):
+                        return cls._to_dashboard_photo_url(raw_text)
+
+                return ''
 
             items = []
             total_count = ReprintRequest.objects.filter(table__in=tables).count()
@@ -467,20 +539,10 @@ class ClientDashboardService(BaseService):
                 for f in fields:
                     fn = str(f.get('name', '') or '')
                     ft = str(f.get('type', 'text') or 'text')
-                    val = fd.get(fn, '')
+                    val = _field_value_for_name(fd, fn)
                     if _looks_like_image_field(ft, fn):
                         if not photo_url:
-                            try:
-                                img_path = ImageService.get_image_path_for_export(
-                                    rr.card,
-                                    fn,
-                                    prefer_thumbnail=True,
-                                    fallback_to_field_data=True,
-                                )
-                                if img_path:
-                                    photo_url = cls._to_dashboard_photo_url(img_path)
-                            except Exception:
-                                logger.warning('Reprint history image resolution failed rr_id=%s field=%s', rr.id, fn)
+                            photo_url = _resolve_photo_url(rr.card, fd, fn)
                         continue
                     val_text = str(val or '').strip()
                     if val_text and not val_text.startswith(('PENDING:', '/')):
@@ -495,21 +557,22 @@ class ClientDashboardService(BaseService):
                         'F PHOTO', 'M PHOTO', 'FATHER PHOTO', 'MOTHER PHOTO',
                         'SIGN', 'SIGN.', 'SIGNATURE',
                     ):
-                        source_key = key_by_upper.get(fallback_name)
-                        if not source_key:
+                        source_key = key_by_upper.get(fallback_name) or fallback_name
+                        photo_url = _resolve_photo_url(rr.card, fd, source_key)
+                        if photo_url:
+                            break
+
+                if not photo_url and isinstance(fd, dict):
+                    for candidate_key, candidate_val in fd.items():
+                        candidate_name = str(candidate_key or '')
+                        if not cls.is_image_field_by_name(candidate_name):
                             continue
-                        try:
-                            img_path = ImageService.get_image_path_for_export(
-                                rr.card,
-                                source_key,
-                                prefer_thumbnail=True,
-                                fallback_to_field_data=True,
-                            )
-                            if img_path:
-                                photo_url = cls._to_dashboard_photo_url(img_path)
-                                break
-                        except Exception:
-                            logger.warning('Reprint history fallback image resolution failed rr_id=%s field=%s', rr.id, source_key)
+                        candidate_text = str(candidate_val or '').strip()
+                        if not candidate_text or candidate_text == 'NOT_FOUND' or candidate_text.startswith('PENDING:'):
+                            continue
+                        photo_url = cls._to_dashboard_photo_url(candidate_text)
+                        if photo_url:
+                            break
 
                 req_by = rr.requested_by
                 items.append({
