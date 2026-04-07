@@ -139,9 +139,32 @@
 .recent-table tbody tr.client-row .count-badge.verified,
 .recent-table tbody tr.client-row .count-badge.approved,
 .recent-table tbody tr.client-row .count-badge.downloaded {
-    background: #f3f4f6;
-    color: #6b7280;
-    border-color: #d1d5db;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.recent-table tbody tr.client-row .count-badge.pending {
+    background: #fff4dc;
+    color: #a16207;
+    border-color: #f8d89a;
+}
+
+.recent-table tbody tr.client-row .count-badge.verified {
+    background: #e3efff;
+    color: #1e40af;
+    border-color: #bbd4ff;
+}
+
+.recent-table tbody tr.client-row .count-badge.approved {
+    background: #eee6ff;
+    color: #6d28d9;
+    border-color: #d4c0ff;
+}
+
+.recent-table tbody tr.client-row .count-badge.downloaded {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #acecbf;
 }
 
 .recent-table tbody tr.client-row.expanded .count-badge.pending {
