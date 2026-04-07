@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block title %}Login As User  -  Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -10,6 +11,12 @@
     100% { background-position: -200% 0; }
   }
   .imp-page { padding: 16px 20px; }
+
+  .main.main-scrollable-page .main-content {
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+  }
 
   /* Role filter pills */
   .imp-pills { display: flex; gap: 6px; flex-wrap: wrap; }

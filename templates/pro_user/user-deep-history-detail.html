@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block title %}{{ audit_target.name }} Deep History - Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -11,6 +12,12 @@
     --audit-border: var(--color-gray-200, #e0e0e0);
     --audit-text: var(--text-primary, #1f2937);
     --audit-muted: var(--color-gray-500, #64748b);
+  }
+
+  .main.main-scrollable-page .main-content {
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden;
   }
 
   @keyframes audit-skeleton-shimmer {
