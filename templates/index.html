@@ -41,22 +41,34 @@
 
       <!-- Scrollable Middle -->
       <div class="dashboard-middle-scroll">
-        <!-- Main Grid - Recent Client Updates & Recent Activity -->
-        <div class="dashboard-grid dashboard-grid-main">
-          {% include 'partials/dashboard/recent-updates.html' %}
-          {% include 'partials/dashboard/recent-activity.html' %}
-        </div>
+        <div class="dashboard-workspace">
+          <div class="dashboard-main-column">
+            <section class="dashboard-snap-panel">
+              {% include 'partials/dashboard/recent-updates.html' %}
+            </section>
 
-        <!-- Print & Reprint Overview (admin only) -->
-        {% include 'partials/dashboard/print-reprint-overview.html' %}
-      </div>
+            {% if is_super_admin or is_admin_staff %}
+            <section class="dashboard-snap-panel">
+              {% include 'partials/dashboard/reprint-overview-card.html' %}
+            </section>
 
-      <!-- Fixed Bottom: Quick Actions, Team Overview & Bulk Actions -->
-      <div class="dashboard-bottom-fixed">
-        <div class="dashboard-grid-3col">
-          {% include 'partials/dashboard/quick-actions.html' %}
-          {% include 'partials/dashboard/team-overview.html' %}
-          {% include 'partials/dashboard/bulk-actions.html' %}
+            <section class="dashboard-snap-panel">
+              {% include 'partials/dashboard/print-overview-card.html' %}
+            </section>
+            {% endif %}
+
+            <section class="dashboard-snap-panel">
+              {% include 'partials/dashboard/recent-activity.html' %}
+            </section>
+          </div>
+
+          <aside class="dashboard-side-column">
+            <div class="dashboard-side-sticky">
+              {% include 'partials/dashboard/quick-actions.html' %}
+              {% include 'partials/dashboard/team-overview.html' %}
+              {% include 'partials/dashboard/bulk-actions.html' %}
+            </div>
+          </aside>
         </div>
       </div>
 
