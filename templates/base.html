@@ -24,7 +24,7 @@
   <!-- Alpine.js - Lightweight reactive UI framework -->
   <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body {% block body_class %}{% endblock %} x-data="layoutState()" x-init="init()">
+<body {% block body_class %}{% endblock %} x-data="layoutState" x-init="init">
 
   <!-- Impersonation Banner (Pro User) -->
   {% include 'partials/impersonate-bar.html' %}

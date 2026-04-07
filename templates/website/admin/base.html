@@ -92,7 +92,7 @@
     <!-- Alpine.js (self-hosted  -  consistent with main app) -->
     <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
 
     {% include 'partials/sidebar.html' %}
 

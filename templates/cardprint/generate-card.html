@@ -24,7 +24,7 @@
     var FIELD_CONFIG     = {{ field_config_json|safe }};
   </script>
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
   {% include 'partials/sidebar.html' %}
   <main class="main generate-card-page">
 
