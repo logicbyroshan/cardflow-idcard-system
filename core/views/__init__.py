@@ -20,6 +20,7 @@ from .base import (
     api_debug_image_integrity,
     api_card_allowed_transitions,
     manage_staff,
+    manage_client_staff,
     manage_clients,
     active_clients,
     api_client_login_history,
@@ -81,6 +82,13 @@ from .client_api import (
     api_client_message_targets,
     api_client_messages_group_send,
     api_client_message_delete,
+    api_admin_client_staff_clients,
+    api_admin_client_staff_get,
+    api_admin_client_staff_create,
+    api_admin_client_staff_update,
+    api_admin_client_staff_delete,
+    api_admin_client_staff_toggle_status,
+    api_admin_client_staff_set_temp_password,
 )
 
 from .staff_api import (

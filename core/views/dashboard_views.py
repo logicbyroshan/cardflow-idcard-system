@@ -165,9 +165,8 @@ def dashboard(request):
     staff_cache_key = f'dashboard_staff_stats{cache_suffix}'
     staff_stats = cache.get(staff_cache_key)
     if staff_stats is None:
-        staff_qs = Staff.objects.all()
-        if is_scoped:
-            staff_qs = staff_qs.filter(client_id__in=accessible_ids)
+        # Team Overview "Total/Active Staff" should represent admin staff only.
+        staff_qs = Staff.objects.filter(staff_type='admin_staff')
         staff_stats = staff_qs.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(user__is_active=True)),
@@ -177,15 +176,12 @@ def dashboard(request):
     cs_cache_key = f'dashboard_cs_stats{cache_suffix}'
     cs_stats = cache.get(cs_cache_key)
     if cs_stats is None:
-        cs_qs = User.objects.filter(role='client_staff')
+        cs_qs = Staff.objects.filter(staff_type='client_staff')
         if is_scoped:
-            from staff.models import Staff as StaffModel
-            cs_qs = cs_qs.filter(
-                staff_profile__client_id__in=accessible_ids
-            )
+            cs_qs = cs_qs.filter(client_id__in=accessible_ids)
         cs_stats = cs_qs.aggregate(
             total=Count('id'),
-            active=Count('id', filter=Q(is_active=True)),
+            active=Count('id', filter=Q(user__is_active=True)),
         )
         cache.set(cs_cache_key, cs_stats, 60)
     context.update({

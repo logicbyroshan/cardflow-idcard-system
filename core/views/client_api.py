@@ -9,7 +9,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.db import OperationalError, ProgrammingError
-from ..services import ClientService
+from client.models import Client
+from client.services_staff import ClientStaffService
+from staff.models import Staff
+from ..services import ClientService, StaffService
 from ..services.activity_service import ActivityService
 from ..services.notification_service import NotificationService
 from ..services.permission_service import (
@@ -22,6 +25,9 @@ from accounts.rate_limit import rate_limit
 from mediafiles.utils import normalize_uploaded_image
 
 logger = logging.getLogger(__name__)
+
+
+CLIENT_STAFF_ALLOWED_PERMISSION_FIELDS = list(ClientStaffService.STAFF_PERMISSION_FIELDS)
 
 
 TEMP_MESSAGE_DURATIONS = {
@@ -77,6 +83,51 @@ def _has_manage_client_page_permission(user):
 def _manage_client_permission_denied_response():
     """Standard deny payload for missing Manage Client permission."""
     return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+
+
+def _serialize_admin_client_staff(staff_obj, include_permissions=True):
+    data = StaffService.serialize(staff_obj, include_permissions=include_permissions)
+    data['client_id'] = staff_obj.client_id
+    data['client_name'] = getattr(staff_obj.client, 'name', '')
+    return data
+
+
+def _build_admin_client_staff_payload(payload):
+    data = {}
+    for key in ('name', 'email', 'phone', 'address', 'is_active', 'password'):
+        if key in payload:
+            data[key] = payload.get(key)
+
+    for perm in CLIENT_STAFF_ALLOWED_PERMISSION_FIELDS:
+        if perm in payload:
+            data[perm] = payload.get(perm)
+
+    # Sensitive permissions are never delegable to client staff.
+    data['perm_idcard_approve'] = False
+    data['perm_idcard_delete_from_pool'] = False
+    return data
+
+
+def _parse_client_id(raw_client_id):
+    try:
+        client_id = int(raw_client_id)
+    except (TypeError, ValueError):
+        return None
+    return client_id if client_id > 0 else None
+
+
+def _get_admin_manageable_client_staff(user, staff_id):
+    staff_obj = (
+        Staff.objects
+        .filter(id=staff_id, staff_type='client_staff')
+        .select_related('user', 'client')
+        .first()
+    )
+    if not staff_obj:
+        return None, JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
+    if not _check_admin_staff_client_access(user, staff_obj.client_id):
+        return None, JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+    return staff_obj, None
 
 
 def _serialize_client_message(item):
@@ -376,6 +427,204 @@ def api_client_set_temp_password(request, client_id):
     except Exception as e:
         logger.exception("Client temp password error: %s", e)
         return JsonResponse({'success': False, 'message': 'An error occurred'}, status=400)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='admin_client_staff_clients')
+def api_admin_client_staff_clients(request):
+    """List clients that can be assigned to client staff from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    clients_qs = Client.objects.select_related('user').order_by('name')
+    if PermissionService.is_admin_staff(request.user) and not PermissionService.has(request.user, 'perm_idcard_client_list'):
+        accessible_ids = PermissionService.get_accessible_client_ids(request.user)
+        clients_qs = clients_qs.filter(id__in=accessible_ids)
+
+    return JsonResponse({
+        'success': True,
+        'clients': [
+            {
+                'id': c.id,
+                'name': c.name,
+                'status': c.status,
+                'is_user_active': bool(c.user and c.user.is_active),
+            }
+            for c in clients_qs
+        ],
+    })
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+@rate_limit(max_requests=60, window_seconds=60, key_prefix='admin_client_staff_get')
+def api_admin_client_staff_get(request, staff_id):
+    """Get details for a client staff member from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
+    if denied_response:
+        return denied_response
+
+    return JsonResponse({
+        'success': True,
+        'staff': _serialize_admin_client_staff(staff_obj, include_permissions=True),
+    })
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='admin_client_staff_create')
+def api_admin_client_staff_create(request):
+    """Create a client staff member from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    client_id = _parse_client_id(payload.get('client_id'))
+    if not client_id:
+        return JsonResponse({'success': False, 'message': 'Please select a client'}, status=400)
+    if not _check_admin_staff_client_access(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
+
+    client_obj = Client.objects.filter(id=client_id).first()
+    if not client_obj:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+
+    data = _build_admin_client_staff_payload(payload)
+    result = StaffService.create(
+        data,
+        staff_type='client_staff',
+        client=client_obj,
+        request=request,
+    )
+    if not result.success:
+        return JsonResponse(result.to_response_dict(), status=400)
+
+    created_staff_id = ((result.data or {}).get('staff') or {}).get('id')
+    created_staff = (
+        Staff.objects
+        .filter(id=created_staff_id, staff_type='client_staff')
+        .select_related('user', 'client')
+        .first()
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': result.message,
+        'staff': _serialize_admin_client_staff(created_staff, include_permissions=True) if created_staff else None,
+    })
+
+
+@require_http_methods(["POST", "PUT"])
+@api_require_any_admin
+@rate_limit(max_requests=15, window_seconds=60, key_prefix='admin_client_staff_update')
+def api_admin_client_staff_update(request, staff_id):
+    """Update a client staff member from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
+    if denied_response:
+        return denied_response
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    incoming_client_id = _parse_client_id(payload.get('client_id'))
+    if incoming_client_id and incoming_client_id != staff_obj.client_id:
+        return JsonResponse({'success': False, 'message': 'Changing assigned client is not supported. Create a new staff for another client.'}, status=400)
+
+    data = _build_admin_client_staff_payload(payload)
+    result = StaffService.update(staff_obj.id, data)
+    if not result.success:
+        return JsonResponse(result.to_response_dict(), status=400)
+
+    refreshed = (
+        Staff.objects
+        .filter(id=staff_obj.id, staff_type='client_staff')
+        .select_related('user', 'client')
+        .first()
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': result.message,
+        'staff': _serialize_admin_client_staff(refreshed, include_permissions=True) if refreshed else None,
+    })
+
+
+@require_http_methods(["POST", "DELETE"])
+@api_require_any_admin
+@rate_limit(max_requests=10, window_seconds=60, key_prefix='admin_client_staff_delete')
+def api_admin_client_staff_delete(request, staff_id):
+    """Delete a client staff member from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
+    if denied_response:
+        return denied_response
+
+    result = StaffService.delete(staff_obj.id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+@rate_limit(max_requests=20, window_seconds=60, key_prefix='admin_client_staff_toggle')
+def api_admin_client_staff_toggle_status(request, staff_id):
+    """Toggle active/inactive status for a client staff member from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
+    if denied_response:
+        return denied_response
+
+    result = StaffService.toggle_status(staff_obj.id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
+
+
+@require_http_methods(["POST"])
+@api_require_any_admin
+@rate_limit(max_requests=5, window_seconds=60, key_prefix='admin_client_staff_temp_pw')
+def api_admin_client_staff_set_temp_password(request, staff_id):
+    """Set temporary password for a client staff member from admin pages."""
+    if not _has_manage_client_page_permission(request.user):
+        return _manage_client_permission_denied_response()
+
+    staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
+    if denied_response:
+        return denied_response
+
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    new_password = (payload.get('password') or '').strip()
+    if not new_password:
+        return JsonResponse({'success': False, 'message': 'Password is required'}, status=400)
+    if len(new_password) < 8:
+        return JsonResponse({'success': False, 'message': 'Password must be at least 8 characters'}, status=400)
+
+    from django.contrib.auth.password_validation import validate_password
+    try:
+        validate_password(new_password, user=staff_obj.user)
+    except Exception as validation_error:
+        return JsonResponse({'success': False, 'message': '; '.join(validation_error.messages)}, status=400)
+
+    result = StaffService.set_temp_password(staff_obj.id, new_password, request=request)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @require_http_methods(["GET"])

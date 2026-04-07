@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Client Staff - Adarsh Admin{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">Manage Client Staff</span>
+{% endblock %}
+
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/staff/action-bar.html' %}
+
+    <div id="staff-table-container"
+         data-table-skeleton="true"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% url 'manage_client_staff' %}"
+         hx-target="#staff-table-container"
+         hx-swap="innerHTML">
+      {% include 'partials/client_staff/table-container.html' %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block modals %}
+  {% include 'partials/client_staff/staff-drawer.html' %}
+  {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
+  {% include 'components/status-modal.html' with modal_id="status-modal" item_name="staff member" %}
+  {% include 'partials/staff/temp-password-modal.html' %}
+{% endblock %}
+
+{% block page_js %}
+  <script defer src="{% static 'js/manage-client-staff-admin.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      function initStaffPasswordEyeToggleFallback() {
+        var input = document.getElementById('staff-password');
+        var group = document.getElementById('staffCustomPasswordGroup');
+        if (!input || !group) return;
+
+        var btn = document.getElementById('staffPasswordToggleBtn');
+        var icon = document.getElementById('staffPasswordEyeIcon');
+        if (!btn) return;
+
+        var cleanBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(cleanBtn, btn);
+        btn = cleanBtn;
+        icon = btn.querySelector('#staffPasswordEyeIcon') || icon;
+
+        function setHidden() {
+          input.type = 'password';
+          if (icon) icon.className = 'fa-solid fa-eye';
+        }
+
+        function isGroupVisible() {
+          return group.style.display !== 'none';
+        }
+
+        function syncToggleVisibility() {
+          btn.style.display = isGroupVisible() ? '' : 'none';
+          if (!isGroupVisible()) setHidden();
+        }
+
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'fa-solid fa-eye-slash';
+          } else {
+            setHidden();
+          }
+        });
+
+        var passwordDropdown = document.getElementById('staffPasswordOptionDropdown');
+        if (passwordDropdown && !passwordDropdown.dataset.boundToggleSync) {
+          passwordDropdown.addEventListener('click', function() {
+            setTimeout(syncToggleVisibility, 0);
+          });
+          passwordDropdown.dataset.boundToggleSync = '1';
+        }
+
+        var addBtn = document.getElementById('addStaffBtn');
+        if (addBtn && !addBtn.dataset.boundToggleSync) {
+          addBtn.addEventListener('click', function() {
+            setTimeout(syncToggleVisibility, 0);
+          });
+          addBtn.dataset.boundToggleSync = '1';
+        }
+
+        syncToggleVisibility();
+      }
+
+      setTimeout(initStaffPasswordEyeToggleFallback, 0);
+
+      initHTMXFilters({
+        baseUrl: '{% url "manage_client_staff" %}',
+        target: '#staff-table-container',
+        searchInputId: 'searchInput',
+        filters: [{ name: 'status', optionsId: 'statusOptions' }]
+      });
+    });
+  </script>
+{% endblock %}

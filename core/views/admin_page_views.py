@@ -103,6 +103,75 @@ def manage_staff(request):
     return render(request, 'manage-staff.html', context)
 
 
+# Client Staff Management
+@login_required
+@require_any_admin
+def manage_client_staff(request):
+    """View to manage client staff globally  supports HTMX partial responses."""
+    user = request.user
+    can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
+    if PermissionService.is_admin_staff(user) and not can_manage_clients:
+        if is_htmx(request):
+            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+        return redirect(reverse('admin_staff_dashboard'))
+
+    DEFAULT_PER_PAGE = 25
+    PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
+
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
+    staff_qs = (
+        Staff.objects
+        .filter(staff_type='client_staff')
+        .select_related('user', 'client')
+        .order_by('-id')
+    )
+
+    if search_query:
+        staff_qs = staff_qs.filter(
+            Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+            | Q(user__phone__icontains=search_query)
+            | Q(client__name__icontains=search_query)
+        )
+
+    if status_filter == 'active':
+        staff_qs = staff_qs.filter(user__is_active=True)
+    elif status_filter == 'inactive':
+        staff_qs = staff_qs.filter(user__is_active=False)
+
+    full_page_size = max(staff_qs.count(), 1)
+    paginator = Paginator(staff_qs, full_page_size)
+    page_obj = paginator.get_page(1)
+
+    context = {
+        'active_page': 'manage_client_staff',
+        'user_role': get_user_role(user),
+        'staff_list': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'can_manage_clients': can_manage_clients,
+    }
+
+    if is_htmx(request):
+        return render(request, 'partials/client_staff/table-container.html', context)
+
+    return render(request, 'manage-client-staff.html', context)
+
+
 # Client Management
 @login_required
 @require_any_admin

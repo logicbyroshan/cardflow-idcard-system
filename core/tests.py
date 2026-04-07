@@ -1108,6 +1108,82 @@ class EnginePathScopeTests(TestCase):
 
 
 class DashboardAndLogsHardeningTests(TestCase):
+    def test_dashboard_team_counts_separate_admin_staff_and_client_staff(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        cache.clear()
+
+        admin = _create_super_admin('dashboard-counts-admin@test.com', 'adminpass1')
+
+        client_owner_a = User.objects.create_user(
+            username='dashboard-client-owner-a@test.com',
+            email='dashboard-client-owner-a@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_owner_b = User.objects.create_user(
+            username='dashboard-client-owner-b@test.com',
+            email='dashboard-client-owner-b@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_a = Client.objects.create(user=client_owner_a, name='Dashboard Client A', status='active')
+        Client.objects.create(user=client_owner_b, name='Dashboard Client B', status='inactive')
+
+        admin_staff_active = User.objects.create_user(
+            username='dashboard-admin-staff-active@test.com',
+            email='dashboard-admin-staff-active@test.com',
+            password='pass1234',
+            role='admin_staff',
+            is_active=True,
+        )
+        admin_staff_inactive = User.objects.create_user(
+            username='dashboard-admin-staff-inactive@test.com',
+            email='dashboard-admin-staff-inactive@test.com',
+            password='pass1234',
+            role='admin_staff',
+            is_active=False,
+        )
+        Staff.objects.create(user=admin_staff_active, staff_type='admin_staff')
+        Staff.objects.create(user=admin_staff_inactive, staff_type='admin_staff')
+
+        client_staff_active_a = User.objects.create_user(
+            username='dashboard-client-staff-active-a@test.com',
+            email='dashboard-client-staff-active-a@test.com',
+            password='pass1234',
+            role='client_staff',
+            is_active=True,
+        )
+        client_staff_inactive_a = User.objects.create_user(
+            username='dashboard-client-staff-inactive-a@test.com',
+            email='dashboard-client-staff-inactive-a@test.com',
+            password='pass1234',
+            role='client_staff',
+            is_active=False,
+        )
+        client_staff_active_b = User.objects.create_user(
+            username='dashboard-client-staff-active-b@test.com',
+            email='dashboard-client-staff-active-b@test.com',
+            password='pass1234',
+            role='client_staff',
+            is_active=True,
+        )
+        Staff.objects.create(user=client_staff_active_a, staff_type='client_staff', client=client_a)
+        Staff.objects.create(user=client_staff_inactive_a, staff_type='client_staff', client=client_a)
+        Staff.objects.create(user=client_staff_active_b, staff_type='client_staff', client=client_a)
+
+        self.client.force_login(admin)
+        response = self.client.get('/panel/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_clients'], 2)
+        self.assertEqual(response.context['active_clients'], 1)
+        self.assertEqual(response.context['total_staff'], 2)
+        self.assertEqual(response.context['active_staff'], 1)
+        self.assertEqual(response.context['client_staff_count'], 3)
+        self.assertEqual(response.context['active_client_staff_count'], 2)
+
     def test_dashboard_limit_parser_clamps_values(self):
         from core.views.dashboard_views import _parse_dashboard_limit
 
