@@ -1,14 +1,9 @@
 {% load static %}
 <!-- Recent Client Updates - Super Admin view -->
 <div class="dashboard-card">
-  <div class="dashboard-card-header">
+  <div class="dashboard-card-header updates-header">
     <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
-    {% if is_super_admin or is_admin_staff %}
-    <a href="{% url 'manage_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
-    {% endif %}
-  </div>
-  <div class="dashboard-card-body tall-body p-0 table-scroll-body">
-    <div class="recent-updates-search-wrap">
+    <div class="recent-updates-search-inline">
       <div class="recent-updates-search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input
@@ -20,6 +15,11 @@
         >
       </div>
     </div>
+    {% if is_super_admin or is_admin_staff %}
+    <a href="{% url 'manage_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
+    {% endif %}
+  </div>
+  <div class="dashboard-card-body tall-body p-0 table-scroll-body">
     <div class="recent-table-wrapper dashboard-scroll-table-wrapper">
     <table class="recent-table dashboard-scroll-table recent-table-5col">
       <thead>
