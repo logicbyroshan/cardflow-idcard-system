@@ -102,8 +102,24 @@ function initCreateWithXlsx(opts) {
   var step2El = getByIdLatest('cxStep2');
   var step3El = getByIdLatest('cxStep3');
 
+  function bindTriggerButtons() {
+    document.querySelectorAll('[id="createFromXlsxBtn"]').forEach(function(btn) {
+      if (btn.dataset.cxTriggerBound === '1') return;
+      btn.dataset.cxTriggerBound = '1';
+      btn.addEventListener('click', function() {
+        if (typeof window.__cxResetModal === 'function') {
+          window.__cxResetModal();
+        }
+        if (window.alpineOpenModal) window.alpineOpenModal('createXlsx');
+      });
+    });
+  }
+
   if (!dropzone || !fileInput) return;
-  if (dropzone.dataset.cxInitBound === '1') return;
+  if (dropzone.dataset.cxInitBound === '1') {
+    bindTriggerButtons();
+    return;
+  }
   dropzone.dataset.cxInitBound = '1';
 
   var selectedFile = null;
@@ -141,6 +157,7 @@ function initCreateWithXlsx(opts) {
     if (tableNameInput) tableNameInput.value = '';
     showStep(1);
   }
+  window.__cxResetModal = resetModal;
 
   function setFile(file) {
     if (!file) return;
@@ -512,14 +529,7 @@ function initCreateWithXlsx(opts) {
   uploadBtn.addEventListener('click', function() { doUpload(); });
 
   //  Button trigger 
-  document.querySelectorAll('[id="createFromXlsxBtn"]').forEach(function(btn) {
-    if (btn.dataset.cxTriggerBound === '1') return;
-    btn.dataset.cxTriggerBound = '1';
-    btn.addEventListener('click', function() {
-      resetModal();
-      if (window.alpineOpenModal) window.alpineOpenModal('createXlsx');
-    });
-  });
+  bindTriggerButtons();
 }
 
 (function bootstrapCreateWithXlsx() {
