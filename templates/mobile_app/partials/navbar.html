@@ -3,8 +3,8 @@
     <div class="pwa-topbar-inner flex items-center justify-between px-4">
 
         <!-- -- LEFT: Profile avatar icon only (opens left profile drawer) -- -->
-        <button type="button"
-                @click="$dispatch('open-profile-drawer')"
+        <a href="{% url 'mobile_app:profile' %}"
+            @click="return window.mobileTriggerDrawer($event, 'open-profile-drawer', this.getAttribute('href'))"
             class="w-11 h-11 rounded-2xl bg-white flex items-center justify-center text-gray-700 shadow-sm active:scale-95 transition-transform flex-shrink-0 select-none border border-gray-200 overflow-hidden">
             {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
                 <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" class="w-full h-full object-contain bg-white">
@@ -17,7 +17,7 @@
             {% else %}
                 <i class="fa-solid fa-user text-[15px]"></i>
             {% endif %}
-        </button>
+        </a>
 
         <!-- -- CENTER: App title (subtle) -- -->
         <p class="text-[13px] font-bold text-gray-700 tracking-tight select-none">Adarsh ID Cards</p>
@@ -25,8 +25,8 @@
         <!-- -- RIGHT: Notification bell + Hamburger -- -->
         <div class="flex items-center gap-1">
             <!-- Notification bell with count -->
-            <button type="button"
-                    @click="$dispatch('open-notification-drawer')"
+                <a href="{% url 'mobile_app:notifications' %}"
+                    @click="return window.mobileTriggerDrawer($event, 'open-notification-drawer', this.getAttribute('href'))"
                     class="relative w-11 h-11 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 active:bg-gray-100 transition-colors">
                 <i class="fa-solid fa-bell text-[16px]"></i>
                 {% if notification_count and notification_count > 0 %}
@@ -34,15 +34,15 @@
                     <span class="text-white text-[9px] font-bold leading-none px-0.5">{{ notification_count|default:0 }}</span>
                 </span>
                 {% endif %}
-            </button>
+            </a>
             <!-- Hamburger  -  opens the right side drawer -->
-            <button type="button"
-                    @click="$dispatch('open-hamburger')"
+            <a href="{% url 'mobile_app:settings_page' %}"
+                    @click="return window.mobileTriggerDrawer($event, 'open-hamburger', this.getAttribute('href'))"
                     class="w-11 h-11 flex flex-col items-center justify-center gap-[5px] rounded-xl bg-gray-50 text-gray-600 active:bg-gray-100 transition-colors">
                 <span class="block w-[18px] h-[2px] bg-current rounded-full"></span>
                 <span class="block w-[14px] h-[2px] bg-current rounded-full self-start ml-[2px]"></span>
                 <span class="block w-[18px] h-[2px] bg-current rounded-full"></span>
-            </button>
+            </a>
         </div>
 
     </div>

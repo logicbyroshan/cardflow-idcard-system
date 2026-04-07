@@ -323,6 +323,23 @@
             goBackOnce(fallback);
             return false;
         };
+
+        // Prefer opening drawers via custom events; if listeners are missing,
+        // navigate to a safe page so taps never feel dead.
+        window.mobileTriggerDrawer = function mobileTriggerDrawer(event, eventName, fallbackUrl) {
+            if (event) event.preventDefault();
+            var opened = false;
+            try {
+                window.dispatchEvent(new CustomEvent(eventName));
+                opened = !!(window.mobileOverlay && window.mobileOverlay.isActive());
+            } catch (e) {
+                opened = false;
+            }
+            if (!opened && fallbackUrl) {
+                window.location.href = fallbackUrl;
+            }
+            return false;
+        };
     })();
 
     // Lightweight haptic feedback for mobile interactions across the app.

@@ -247,8 +247,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
                 </a>
-                <button type="button"
-                   @click="close(); $nextTick(() => $dispatch('open-notification-drawer'))"
+                <a href="{% url 'mobile_app:notifications' %}"
+                   @click="close(); return window.mobileTriggerDrawer($event, 'open-notification-drawer', this.getAttribute('href'))"
                    class="pwa-drawer-item w-full text-left">
                     <span class="pwa-drawer-icon-wrap bg-orange-50 text-orange-500">
                         <i class="fa-solid fa-bell"></i>
@@ -258,7 +258,7 @@
                         <span class="pwa-drawer-item-sub">Recent updates</span>
                     </div>
                     <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
-                </button>
+                </a>
                 <a href="{% url 'mobile_app:settings_page' %}"
                    @click="close()"
                    class="pwa-drawer-item">
