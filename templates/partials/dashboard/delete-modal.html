@@ -6,7 +6,7 @@
        x-show="activeModal === 'dashDelete'" x-transition.scale.origin.center>
     <div class="modal-header">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete All ID Cards</h3>
-      <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
+      <button type="button" class="modal-close" @click="closeModal" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
@@ -56,7 +56,7 @@
     </div>
     <div class="modal-footer">
       <button id="dashDeleteCancel" class="btn btn-md btn-neutral" type="button"
-              @click="closeModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+              @click="closeModal"><i class="fa-solid fa-xmark"></i> Cancel</button>
       <button id="dashDeleteConfirm" class="btn btn-md btn-danger" type="button" disabled><i class="fa-solid fa-trash"></i> Delete All Cards</button>
     </div>
   </div>

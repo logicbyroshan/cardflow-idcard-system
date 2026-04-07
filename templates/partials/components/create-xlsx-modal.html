@@ -38,7 +38,7 @@ and the JS block at the bottom which wires up the logic.
     <!-- Header -->
     <div class="center-modal-header">
       <h3><i class="fa-solid fa-file-excel"></i> Create Table from XLSX</h3>
-      <button type="button" class="center-modal-header-close" @click="closeModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button type="button" class="center-modal-header-close" @click="closeModal" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <!-- Body -->
     <div class="center-modal-body-area" style="text-align:left;">
@@ -81,7 +81,7 @@ and the JS block at the bottom which wires up the logic.
       </div>
 
       <div class="center-modal-actions" style="margin-top:14px;">
-        <button type="button" class="center-modal-btn center-modal-btn-cancel" @click="closeModal()">Cancel</button>
+        <button type="button" class="center-modal-btn center-modal-btn-cancel" @click="closeModal">Cancel</button>
         <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxNextBtn" disabled>
           Next <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size:11px;"></i>
         </button>

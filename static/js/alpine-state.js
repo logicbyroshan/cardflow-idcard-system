@@ -43,6 +43,10 @@ function layoutState() {
             return Array.isArray(this.toastQueue) && this.toastQueue.length > 0;
         },
 
+        get sidebarToggleIconClass() {
+            return this.sidebarOpen ? 'fa-xmark' : 'fa-bars';
+        },
+
         get isCreateXlsxModalOpen() {
             return this.activeModal === 'createXlsx';
         },
@@ -245,7 +249,13 @@ function layoutState() {
             // Deduplicate: skip if same message is already in the queue
             if (this.toastQueue.some(t => t.message === message)) return;
             const id = Date.now() + Math.random();
-            this.toastQueue.push({ id, message, type });
+            this.toastQueue.push({
+                id,
+                message,
+                type,
+                toastClass: this.getToastClass(type),
+                toastIcon: this.getToastIcon(type)
+            });
             setTimeout(() => {
                 this.toastQueue = this.toastQueue.filter(t => t.id !== id);
             }, 4000);

@@ -29,7 +29,7 @@ JS contract (Alpine bridge):
     <div class="modal-header">
       <h3 id="{{ modal_id|default:'delete-modal' }}-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
       <button type="button" class="modal-close"
-              @click="closeModal()"
+              @click="closeModal"
               aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -94,7 +94,7 @@ JS contract (Alpine bridge):
     <!-- Footer -->
     <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" id="cancelDeleteBtn"
-              @click="closeModal()">
+              @click="closeModal">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button type="button" class="btn btn-md btn-danger" id="confirmDeleteBtn"

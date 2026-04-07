@@ -40,8 +40,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
           {% block breadcrumb %}
@@ -72,8 +72,8 @@
   <!-- Alpine Toast Container -->
   <div class="alpine-toast-wrapper" x-show="hasToasts" role="status" aria-live="polite">
     <template x-for="toast in toastQueue" :key="toast.id">
-      <div class="alpine-toast" :class="getToastClass(toast.type)" x-transition>
-        <i :class="getToastIcon(toast.type)"></i>
+      <div class="alpine-toast" :class="toast.toastClass" x-transition>
+        <i :class="toast.toastIcon"></i>
         <span x-text="toast.message"></span>
       </div>
     </template>

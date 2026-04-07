@@ -28,8 +28,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
             {% if is_super_admin %}
