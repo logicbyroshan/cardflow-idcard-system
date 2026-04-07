@@ -37,6 +37,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
     const printOverviewSearchInput = document.getElementById('printOverviewSearch');
     const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
+    const dashboardTabCountRecentClients = document.getElementById('dashboardTabCountRecentClients');
+    const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
+    const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
+    const dashboardTabCountPrint = document.getElementById('dashboardTabCountPrint');
+
+    function setDashboardTabCount(element, value) {
+        if (!element) return;
+        const count = Number(value);
+        element.textContent = Number.isFinite(count) ? count.toLocaleString() : '0';
+    }
 
     function applyRecentClientUpdatesSearch() {
         const tbody = document.getElementById('recentClientUpdatesBody');
@@ -175,6 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadRecentClientUpdates() {
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
+        setDashboardTabCount(dashboardTabCountRecentClients, 0);
         setDashboardTableSkeleton(tbody, 5, 3);
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -183,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
+                        setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
                             const inactiveBadge = client.status && client.status !== 'active'
@@ -231,6 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `}).join('');
                         applyRecentClientUpdatesSearch();
                     } else {
+                        setDashboardTabCount(dashboardTabCountRecentClients, 0);
                         tbody.innerHTML = `
                             <tr>
                                 <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
@@ -245,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading recent client updates:', error);
                 waitForMinDelay(skeletonStart).then(() => {
+                    setDashboardTabCount(dashboardTabCountRecentClients, 0);
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="5" class="text-center" style="padding: 40px; color: #dc2626;">
@@ -309,6 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!data || !data.success) return;
 
                 const activities = Array.isArray(data.activities) ? data.activities : [];
+                setDashboardTabCount(dashboardTabCountRecentUpdates, activities.length);
                 if (!activities.length) {
                     activityList.innerHTML = `
                         <div class="activity-item" id="noActivityMessage">
@@ -348,6 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error loading recent activity:', error);
+                setDashboardTabCount(dashboardTabCountRecentUpdates, 0);
             });
     }
 
@@ -369,6 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (document.getElementById('recentActivityList') || document.getElementById('pendingCards')) {
+        refreshLiveDashboardSections();
         startLiveDashboardRefresh();
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
@@ -887,6 +904,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
 
+        setDashboardTabCount(dashboardTabCountPrint, 0);
+        setDashboardTabCount(dashboardTabCountReprint, 0);
+
         setDashboardTableSkeleton(printBody, 3, 3);
         setDashboardTableSkeleton(reprintBody, 3, 3);
         const skeletonStart = Date.now();
@@ -900,6 +920,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     //  Render Print table
                     if (printBody) {
                         const clients = data.print_clients || [];
+                        const totalPrintGenerate = clients.reduce((sum, client) => {
+                            return sum + (Number(client.generate_list) || 0);
+                        }, 0);
+                        setDashboardTabCount(dashboardTabCountPrint, totalPrintGenerate);
                         if (clients.length > 0) {
                             printBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
@@ -939,6 +963,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (reprintTotalBadge) {
                             reprintTotalBadge.textContent = String(data.reprint_total_requested || 0);
                         }
+                        setDashboardTabCount(dashboardTabCountReprint, Number(data.reprint_total_requested) || 0);
                         if (clients.length > 0) {
                             reprintBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
@@ -975,6 +1000,8 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(err => {
                 console.error('Error loading print/reprint overview:', err);
+                setDashboardTabCount(dashboardTabCountPrint, 0);
+                setDashboardTabCount(dashboardTabCountReprint, 0);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
                 waitForMinDelay(skeletonStart).then(() => {
                     if (printBody)   printBody.innerHTML = errHtml(3);

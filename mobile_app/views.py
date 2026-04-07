@@ -48,6 +48,7 @@ from accounts.rate_limit import rate_limit
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
 from core.services import StaffService
+from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
 from mediafiles.services.image_thumbnail import ThumbnailService
@@ -1700,10 +1701,6 @@ def card_list(request, table_id, status):
                 if parsed_to_d is not None:
                     cards_qs = cards_qs.filter(downloaded_at__date__lte=parsed_to_d)
 
-    _card_batch_raw = list(cards_qs[:51])
-    _has_more_raw = len(_card_batch_raw) > 50
-    cards_batch = _card_batch_raw[:50]
-
     # For client_staff: apply class/section filter
     allowed_classes = []
     allowed_sections = []
@@ -1711,6 +1708,11 @@ def card_list(request, table_id, status):
         staff = getattr(user, 'staff_profile', None)
         if staff:
             allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
+        cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
+
+    _card_batch_raw = list(cards_qs[:51])
+    _has_more_raw = len(_card_batch_raw) > 50
+    cards_batch = _card_batch_raw[:50]
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
@@ -1861,6 +1863,22 @@ def card_list(request, table_id, status):
 
         return ordered
 
+    class_field_name = None
+    section_field_name = None
+    for _field in table_fields:
+        _fname = str(_field.get('name', '')).strip()
+        _ftype = str(_field.get('type', '')).strip().lower()
+        _norm = _fname.lower().replace('_', ' ').replace('-', ' ').replace('.', ' ')
+        _norm = ' '.join(_norm.split())
+        if class_field_name is None and (
+            _ftype == 'class' or _norm in ('class', 'class name', 'std', 'standard', 'designation', 'grade')
+        ):
+            class_field_name = _fname
+        if section_field_name is None and (
+            _ftype == 'section' or _norm in ('section', 'section name', 'sec', 'division', 'div')
+        ):
+            section_field_name = _fname
+
     cards = []
     for idx, card in enumerate(cards_batch):
         fd = card.field_data or {}
@@ -1868,8 +1886,8 @@ def card_list(request, table_id, status):
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
         father_name = fd.get('FATHER NAME') or fd.get("FATHER'S NAME") or fd.get('FATHER_NAME') or fd.get('father_name') or ''
         mother_name = fd.get('MOTHER NAME') or fd.get("MOTHER'S NAME") or fd.get('MOTHER_NAME') or fd.get('mother_name') or ''
-        class_name = fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
-        section = fd.get('SECTION') or fd.get('section') or ''
+        class_name = (fd.get(class_field_name) if class_field_name else None) or fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
+        section = (fd.get(section_field_name) if section_field_name else None) or fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
 
         primary_photo_url = card.photo.url if card.photo else None
@@ -1896,20 +1914,10 @@ def card_list(request, table_id, status):
             'display_fields': _build_display_fields(fd, table_fields),
         })
 
-    # Apply class/section filters for client_staff if restrictions are set
-    if allowed_classes:
-        cards = [c for c in cards if c['class_name'] in allowed_classes]
-    if allowed_sections:
-        cards = [c for c in cards if c['section'] in allowed_sections]
-
-    # Re-number sr_no after filtering
-    for i, c in enumerate(cards):
-        c['sr_no'] = i + 1
-
     total_count = len(cards)
 
-    # has_more: only meaningful when no client-side class/section filtering is applied
-    has_more = _has_more_raw and not (allowed_classes or allowed_sections)
+    # Row-scope is applied directly in queryset, so pagination stays accurate for scoped users.
+    has_more = _has_more_raw
 
     # Build and cache filter options from full table data to avoid repeated full-table scans.
     filter_meta = _get_table_filter_metadata(table, table_fields)
@@ -1918,19 +1926,23 @@ def card_list(request, table_id, status):
     class_to_sections = dict(filter_meta.get('class_to_sections') or {})
 
     # Respect explicit client_staff restrictions in filter options.
-    if allowed_classes:
-        _allowed_set = set(allowed_classes)
-        all_classes = [c for c in all_classes if c in _allowed_set]
+    _allowed_norm_classes = {
+        normalize_class_value(value)
+        for value in (allowed_classes or [])
+        if normalize_class_value(value)
+    }
+
+    if _allowed_norm_classes:
+        all_classes = [c for c in all_classes if normalize_class_value(c) in _allowed_norm_classes]
     if allowed_sections:
         _allowed_set = set(allowed_sections)
         all_sections = [s for s in all_sections if s in _allowed_set]
 
-    if allowed_classes:
-        _allowed_cls_set = set(allowed_classes)
+    if _allowed_norm_classes:
         class_to_sections = {
             _cls: _sections
             for _cls, _sections in class_to_sections.items()
-            if _cls in _allowed_cls_set
+            if normalize_class_value(_cls) in _allowed_norm_classes
         }
     if allowed_sections:
         _allowed_sec_set = set(allowed_sections)

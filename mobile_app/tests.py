@@ -547,6 +547,24 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertIn(in_scope_card.id, card_ids)
 		self.assertNotIn(out_of_scope_card.id, card_ids)
 
+	def test_client_staff_pending_list_loads_scoped_rows_beyond_initial_window(self):
+		in_scope_card, _ = self._setup_client_staff_row_scope()
+
+		for idx in range(60):
+			IDCard.objects.create(
+				table=self.table,
+				field_data={'NAME': f'Out Scope Bulk {idx}', 'ROLL NO': str(300 + idx), 'CLASS': '11'},
+				status='pending',
+			)
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/table/{self.table.id}/pending/')
+
+		self.assertEqual(response.status_code, 200)
+		students = response.context.get('students', [])
+		student_ids = [row['id'] for row in students]
+		self.assertIn(in_scope_card.id, student_ids)
+
 	def test_mobile_card_detail_requires_card_info_permission(self):
 		self.client_profile.perm_idcard_info = False
 		self.client_profile.save(update_fields=['perm_idcard_info'])

@@ -40,28 +40,29 @@
       <!-- Scrollable Middle -->
       <div class="dashboard-middle-scroll">
         <div class="dashboard-workspace">
-          <div class="dashboard-main-column">
-            <section class="dashboard-snap-panel">
+          <div class="dashboard-main-column" id="dashboardMainColumn">
+            <section class="dashboard-snap-panel is-active" data-dashboard-panel="recent-clients">
               {% include 'partials/dashboard/recent-updates.html' %}
             </section>
 
+            <section class="dashboard-snap-panel" data-dashboard-panel="recent-updates">
+              {% include 'partials/dashboard/recent-activity.html' %}
+            </section>
+
             {% if is_super_admin or is_admin_staff %}
-            <section class="dashboard-snap-panel">
+            <section class="dashboard-snap-panel" data-dashboard-panel="reprint">
               {% include 'partials/dashboard/reprint-overview-card.html' %}
             </section>
 
-            <section class="dashboard-snap-panel">
+            <section class="dashboard-snap-panel" data-dashboard-panel="print">
               {% include 'partials/dashboard/print-overview-card.html' %}
             </section>
             {% endif %}
-
-            <section class="dashboard-snap-panel">
-              {% include 'partials/dashboard/recent-activity.html' %}
-            </section>
           </div>
 
           <aside class="dashboard-side-column">
             <div class="dashboard-side-sticky">
+              {% include 'partials/dashboard/section-tabs.html' %}
               {% include 'partials/dashboard/quick-actions.html' %}
               {% include 'partials/dashboard/team-overview.html' %}
               {% include 'partials/dashboard/bulk-actions.html' %}

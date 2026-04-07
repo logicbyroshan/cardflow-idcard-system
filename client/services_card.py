@@ -61,11 +61,19 @@ class ClientCardService(BaseService):
             ftype = str(field.get('type', '') or '').strip().lower()
             fname = str(field.get('name', '') or '').strip()
             lower = fname.lower()
+            normalized = lower.replace('_', ' ').replace('-', ' ').replace('.', ' ')
+            normalized = ' '.join(normalized.split())
 
-            if not class_field and (ftype == 'class' or lower == 'class'):
+            if not class_field and (
+                ftype == 'class'
+                or normalized in ('class', 'class name', 'std', 'standard', 'designation', 'grade')
+            ):
                 class_field = fname
                 continue
-            if not section_field and (ftype == 'section' or lower == 'section'):
+            if not section_field and (
+                ftype == 'section'
+                or normalized in ('section', 'section name', 'sec', 'division', 'div')
+            ):
                 section_field = fname
                 continue
             if not branch_field and (
