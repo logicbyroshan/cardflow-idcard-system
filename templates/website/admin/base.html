@@ -87,10 +87,8 @@
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-    <!-- Alpine.js State Module (MUST load before Alpine) -->
-    <script src="{% static 'js/alpine-state.js' %}"></script>
-    <!-- Alpine.js (self-hosted  -  consistent with main app) -->
-    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    <!-- Shared Alpine runtime loader -->
+    {% include 'partials/common/alpine-loader.html' %}
 </head>
 <body x-data="layoutState" x-init="init">
 

@@ -12,8 +12,7 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' %}
 </head>
 <body x-data="layoutState" x-init="init">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>

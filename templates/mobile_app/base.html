@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
     <!-- Alpine.js for mobile pages (full evaluator to support existing modal expressions) -->
-    <script defer src="{% static 'js/vendor/alpine-mobile.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' with include_state=False %}
 
     <!-- Font Awesome (self-hosted for offline reliability) -->
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>

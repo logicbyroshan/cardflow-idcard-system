@@ -143,11 +143,13 @@ function openSideModal(mode, cardData = null) {
         }
     }
     
-    // Show modal - Update Alpine state if available, else fallback to class toggle
+    // Show modal - prefer Alpine state; fallback to global bridge before class toggles.
     const alpineComponent = sideModalOverlay._x_dataStack?.[0];
     if (alpineComponent && typeof alpineComponent.openModal === 'function') {
         // Alpine.js component is available - use its reactive state
         alpineComponent.openModal(mode);
+    } else if (typeof window.openSideModal === 'function' && window.openSideModal !== openSideModal) {
+        window.openSideModal(mode);
     } else {
         // Fallback: direct class manipulation
         sideModalOverlay.classList.add('active');
@@ -164,11 +166,13 @@ function openSideModal(mode, cardData = null) {
 function closeSideModal() {
     const sideModalOverlay = document.getElementById('sideModalOverlay');
     
-    // Update Alpine state if available, else fallback to class toggle
+    // Update Alpine state if available, else use global bridge before class toggle.
     const alpineComponent = sideModalOverlay?._x_dataStack?.[0];
     if (alpineComponent && typeof alpineComponent.closeModal === 'function') {
         // Alpine.js component is available - use its reactive state
         alpineComponent.closeModal();
+    } else if (typeof window.closeSideModal === 'function' && window.closeSideModal !== closeSideModal) {
+        window.closeSideModal();
     } else if (sideModalOverlay) {
         // Fallback: direct class manipulation
         sideModalOverlay.classList.remove('active');

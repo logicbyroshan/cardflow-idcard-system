@@ -337,7 +337,9 @@ DEV_LOG_OTP = _env_bool('DEV_LOG_OTP', False)
 # inline event handlers (onclick/oninput). Keep unsafe-inline enabled by
 # default until those scripts are migrated to nonce/hash-safe external files.
 CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
-CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', DEBUG)
+# Alpine full evaluator is required by existing x-show/x-bind expressions
+# that use comparisons and logical operators across desktop/mobile templates.
+CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', True)
 CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', DEBUG)
 
 # ── Permissions-Policy header ──

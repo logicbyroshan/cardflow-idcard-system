@@ -8,10 +8,12 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from unittest.mock import patch
 from datetime import timedelta
+from pathlib import Path
 import json
 import os
 import tempfile
@@ -57,6 +59,57 @@ def _create_card(table, field_data=None, status='pending'):
     if field_data is None:
         field_data = {'NAME': 'JOHN DOE', 'CLASS': '10'}
     return IDCard.objects.create(table=table, field_data=field_data, status=status)
+
+
+class AlpineRuntimeTemplateGuardTests(TestCase):
+    def test_templates_do_not_embed_alpine_runtime_tags(self):
+        templates_root = Path(__file__).resolve().parent.parent / 'templates'
+        allowed_direct_file = (templates_root / 'partials' / 'common' / 'alpine-loader.html').resolve()
+        forbidden_tokens = (
+            "js/alpine-state.js",
+            "js/vendor/alpine.min.js",
+            "js/vendor/alpine-mobile.min.js",
+        )
+
+        offenders = []
+        for template_path in templates_root.rglob('*.html'):
+            if template_path.resolve() == allowed_direct_file:
+                continue
+            content = template_path.read_text(encoding='utf-8')
+            if any(token in content for token in forbidden_tokens):
+                offenders.append(str(template_path.relative_to(templates_root)).replace('\\', '/'))
+
+        self.assertFalse(
+            offenders,
+            "Templates must use shared Alpine loader include instead of direct runtime tags: "
+            + ', '.join(offenders),
+        )
+
+    def test_core_entry_templates_use_alpine_loader_partial(self):
+        templates_root = Path(__file__).resolve().parent.parent / 'templates'
+        required_templates = [
+            'base.html',
+            'client/base.html',
+            'website/admin/base.html',
+            'mobile_app/base.html',
+            'partials/idcard-actions/head-assets.html',
+        ]
+
+        for rel_path in required_templates:
+            content = (templates_root / rel_path).read_text(encoding='utf-8')
+            self.assertIn(
+                "partials/common/alpine-loader.html",
+                content,
+                f"Missing shared Alpine loader include in {rel_path}",
+            )
+
+    def test_alpine_loader_respects_include_state_flag(self):
+        default_html = render_to_string('partials/common/alpine-loader.html')
+        mobile_html = render_to_string('partials/common/alpine-loader.html', {'include_state': False})
+
+        self.assertIn('js/alpine-state', default_html)
+        self.assertNotIn('js/alpine-state', mobile_html)
+        self.assertIn('js/vendor/alpine-mobile.min', mobile_html)
 
 
 class HeaderHumanizeFilterTests(TestCase):

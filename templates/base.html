@@ -19,10 +19,8 @@
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   {% block extra_head %}{% endblock %}
   
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js - Lightweight reactive UI framework -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
 <body {% block body_class %}{% endblock %} x-data="layoutState" x-init="init">
 

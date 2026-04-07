@@ -11,8 +11,7 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/cardprint/generate-card.css' %}">
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' %}
 </head>
 <body x-data="layoutState" x-init="init">
   {% include 'partials/sidebar.html' %}

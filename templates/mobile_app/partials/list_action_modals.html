@@ -76,7 +76,7 @@
 </div>
 
 <!-- Reprint Picker Bottom Sheet -->
-<div x-show="reprintPicker.show" x-cloak class="fixed inset-0 z-[90]" data-mobile-overlay-root>
+<div x-show="reprintPicker.show" x-cloak class="fixed inset-0 z-[90]" data-mobile-overlay-root style="display:none;">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeReprintPicker()"></div>
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto flex flex-col"
          style="height: 82vh; height: 82dvh;"
@@ -163,7 +163,7 @@
 </div>
 
 <!-- Reprint Confirm Bottom Sheet -->
-<div x-show="reprintConfirm.show" x-cloak class="fixed inset-0 z-[95]" data-mobile-overlay-root>
+<div x-show="reprintConfirm.show" x-cloak class="fixed inset-0 z-[95]" data-mobile-overlay-root style="display:none;">
     <div class="absolute inset-0 bg-black/55 backdrop-blur-sm" @click="closeReprintConfirm()"></div>
     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto overflow-hidden flex flex-col"
          style="height: 84vh; height: 84dvh;"

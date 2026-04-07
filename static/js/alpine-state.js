@@ -361,6 +361,7 @@ function sideModalState() {
 
         initGlobalBindings() {
             const self = this;
+            window.openSideModal = (mode) => self.openModal(mode);
             window.closeSideModal = () => self.closeModal();
             window.addEventListener('openSideModalEvent', (e) => self.openModal(e.detail?.mode));
         }

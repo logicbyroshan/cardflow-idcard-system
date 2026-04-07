@@ -15,8 +15,7 @@
   <link rel="stylesheet" href="{% static 'css/cardprint/generate-card.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/flatpickr.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' %}
   <script>
     var TABLE_ID = {{ table.id }};
     var CLIENT_ID = {{ client.id }};
