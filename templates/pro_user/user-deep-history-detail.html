@@ -40,7 +40,6 @@
   }
   .audit-page { padding: 16px 20px; }
   .audit-page .action-bar {
-    top: 8px;
     z-index: 22;
     background: var(--color-white, #ffffff);
     border: 1px solid var(--color-gray-200, #e2e8f0);
@@ -174,7 +173,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="audit-page" id="auditDetailRoot"
+<div class="audit-page pro-feature-page" id="auditDetailRoot"
      data-user-id="{{ audit_target.id }}"
      data-user-name="{{ audit_target.name }}"
      data-user-role="{{ audit_target.role_display }}"

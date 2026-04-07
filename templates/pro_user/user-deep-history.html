@@ -40,7 +40,6 @@
   }
   .audit-page { padding: 16px 20px; }
   .audit-page .action-bar {
-    top: 8px;
     z-index: 22;
     background: var(--color-white, #ffffff);
     border: 1px solid var(--color-gray-200, #e2e8f0);
@@ -280,7 +279,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="audit-page">
+<div class="audit-page pro-feature-page">
 
   <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
     <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
