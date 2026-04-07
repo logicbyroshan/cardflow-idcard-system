@@ -431,6 +431,19 @@ class ClientDashboardService(BaseService):
             for t in tables:
                 table_fields_map[t.id] = t.fields or []
 
+            def _looks_like_image_field(field_type, field_name):
+                ft = str(field_type or '').strip().lower()
+                fn = str(field_name or '').strip().lower()
+                if ft in ('image', 'photo', 'file'):
+                    return True
+                if 'designation' in fn:
+                    return False
+                return (
+                    ('image' in ft) or ('photo' in ft) or ('file' in ft) or ('upload' in ft) or
+                    ('photo' in fn) or ('image' in fn) or ('picture' in fn) or ('pic' in fn) or
+                    ('signature' in fn) or ('barcode' in fn) or ('qr' in fn)
+                )
+
             items = []
             total_count = ReprintRequest.objects.filter(table__in=tables).count()
 
@@ -455,12 +468,14 @@ class ClientDashboardService(BaseService):
                     fn = str(f.get('name', '') or '')
                     ft = str(f.get('type', 'text') or 'text')
                     val = fd.get(fn, '')
-                    if ft in ('image', 'photo') or fn.upper() in ('PHOTO', 'F PHOTO', 'M PHOTO', 'SIGN', 'SIGN.', 'SIGNATURE', 'FATHER PHOTO', 'MOTHER PHOTO'):
+                    if _looks_like_image_field(ft, fn):
                         if not photo_url:
                             try:
-                                img_path = ImageService.get_image_path_for_card(
-                                    card=rr.card, field_name=fn,
-                                    fallback_to_field_data=True, prefer_thumbnail=True
+                                img_path = ImageService.get_image_path_for_export(
+                                    rr.card,
+                                    fn,
+                                    prefer_thumbnail=True,
+                                    fallback_to_field_data=True,
                                 )
                                 if img_path:
                                     photo_url = cls._to_dashboard_photo_url(img_path)
@@ -472,6 +487,29 @@ class ClientDashboardService(BaseService):
                         detail_parts.append(val_text)
                     if len(detail_parts) >= 4:
                         break
+
+                if not photo_url and isinstance(fd, dict):
+                    key_by_upper = {str(k or '').strip().upper(): k for k in fd.keys()}
+                    for fallback_name in (
+                        'PHOTO', 'STUDENT PHOTO', 'IMAGE', 'PICTURE', 'PIC',
+                        'F PHOTO', 'M PHOTO', 'FATHER PHOTO', 'MOTHER PHOTO',
+                        'SIGN', 'SIGN.', 'SIGNATURE',
+                    ):
+                        source_key = key_by_upper.get(fallback_name)
+                        if not source_key:
+                            continue
+                        try:
+                            img_path = ImageService.get_image_path_for_export(
+                                rr.card,
+                                source_key,
+                                prefer_thumbnail=True,
+                                fallback_to_field_data=True,
+                            )
+                            if img_path:
+                                photo_url = cls._to_dashboard_photo_url(img_path)
+                                break
+                        except Exception:
+                            logger.warning('Reprint history fallback image resolution failed rr_id=%s field=%s', rr.id, source_key)
 
                 req_by = rr.requested_by
                 items.append({

@@ -692,6 +692,50 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(result.data['items'][0]['status'], 'requested')
         self.assertIn('Card #', result.data['items'][0]['details'])
 
+    def test_reprint_history_populates_photo_url_with_export_helper(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-photo@test.com',
+            email='dash-owner-reprint-photo@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Photo Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Photo Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Photo Table',
+            fields=[
+                {'name': 'Name', 'type': 'text'},
+                {'name': 'Student Image', 'type': 'text'},
+            ],
+        )
+
+        card = IDCard.objects.create(
+            table=table,
+            status='download',
+            field_data={
+                'Name': 'Photo Student',
+                'Student Image': 'mediafiles/cards/raw.jpg',
+            },
+        )
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        with mock.patch(
+            'mediafiles.services.ImageService.get_image_path_for_export',
+            return_value='mediafiles/cards/thumb.webp',
+        ) as get_path:
+            result = ClientDashboardService.get_reprint_history(owner)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(result.data['items'][0]['photo_url'], '/media/mediafiles/cards/thumb.webp')
+        self.assertTrue(get_path.called)
+
     def test_reprint_stats_count_requested_items(self):
         from client.services import ClientDashboardService
         from client.models import Client

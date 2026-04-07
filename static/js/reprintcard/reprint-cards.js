@@ -68,23 +68,72 @@ function normalizeMediaPath(rawPath) {
   }
 
   value = value.replace(/\\/g, '/');
-  value = value.replace(/^\/+/, '');
-  if (value.toLowerCase().indexOf('media/') === 0) {
-    value = value.slice(6);
+  value = value.replace(/\/{2,}/g, '/');
+
+  // If path contains /media/ or /mediafiles/ anywhere (including absolute FS paths),
+  // keep only marker-relative part.
+  var lower = value.toLowerCase();
+  var mediaMarker = '/media/';
+  var mediafilesMarker = '/mediafiles/';
+  var markerIndexMediafiles = lower.indexOf(mediafilesMarker);
+  if (markerIndexMediafiles !== -1) {
+    value = value.slice(markerIndexMediafiles + mediafilesMarker.length);
+    value = 'mediafiles/' + value;
+  } else {
+    var markerIndexMedia = lower.indexOf(mediaMarker);
+    if (markerIndexMedia !== -1) {
+      value = value.slice(markerIndexMedia + mediaMarker.length);
+      value = 'media/' + value;
+    }
   }
+
+  value = value.replace(/^\/+/, '');
+  value = value.replace(/\/{2,}/g, '/');
   return value;
 }
 
 function toMediaUrl(rawPath) {
-  var normalized = normalizeMediaPath(rawPath);
+  var original = String(rawPath || '').trim();
+  if (!original || original === 'NOT_FOUND' || original.indexOf('PENDING:') === 0) return '';
+  if (/^https?:\/\//i.test(original)) return original;
+
+  var normalized = normalizeMediaPath(original);
   if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+
+  normalized = normalized.replace(/^\/+/, '');
+  var lower = normalized.toLowerCase();
+  if (lower.indexOf('media/') === 0) {
+    normalized = normalized.slice('media/'.length);
+  }
+
   return '/media/' + normalized;
 }
 
 function toThumbnailPath(rawPath) {
   var normalized = normalizeMediaPath(rawPath);
   if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
-  return normalized.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+
+  normalized = normalized.replace(/^\/+/, '');
+  var lower = normalized.toLowerCase();
+  if (lower.indexOf('media/') === 0) {
+    normalized = normalized.slice('media/'.length);
+    lower = normalized.toLowerCase();
+  }
+
+  if (lower.indexOf('thumbs/') === 0 || lower.indexOf('/thumbs/') !== -1) {
+    return normalized;
+  }
+
+  var parts = normalized.split('/');
+  if (parts.length < 2) return normalized;
+
+  var baseFolder = parts.shift();
+  var rest = parts.join('/');
+  var dot = rest.lastIndexOf('.');
+  if (dot > 0) {
+    rest = rest.slice(0, dot) + '.webp';
+  }
+  return baseFolder + '/thumbs/' + rest;
 }
 
 function isImageField(type, name) {
