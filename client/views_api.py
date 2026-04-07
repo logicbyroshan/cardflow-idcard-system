@@ -8,11 +8,14 @@ import json
 import logging
 
 from django.core.cache import cache
+from django.db.models import Exists, OuterRef, Q
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
 from staff.models import Staff
 
+from core.models import ClientMessage, NotificationRead
 from core.services.permission_service import PermissionService
 from core.services.activity_service import ActivityService
 
@@ -166,6 +169,73 @@ def api_groups_list(request):
         'success': False,
         'error': result.message
     }, status=400)
+
+
+@require_client_user
+@require_http_methods(["GET"])
+def api_messages_drawer(request):
+    """API: Return client message history payload for the right-side drawer."""
+    user = request.user
+    client = ClientAccessService.get_client_for_user(user)
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found.'}, status=403)
+
+    try:
+        limit = max(10, min(int(request.GET.get('limit', 40)), 100))
+    except (TypeError, ValueError):
+        limit = 40
+
+    now = timezone.now()
+    base_qs = (
+        ClientMessage.objects
+        .filter(
+            client_id=client.id,
+            notification__is_active=True,
+            notification__target='selected',
+            notification__target_users=user,
+        )
+        .filter(Q(visibility='permanent') | Q(expires_at__gt=now))
+        .annotate(
+            is_read=Exists(
+                NotificationRead.objects.filter(
+                    notification_id=OuterRef('notification_id'),
+                    user=user,
+                )
+            )
+        )
+        .select_related('client', 'sent_by', 'notification')
+        .order_by('-created_at')
+    )
+
+    total_count = base_qs.count()
+    unread_count = base_qs.filter(is_read=False).count()
+    rows = list(base_qs[:limit])
+
+    items = []
+    for row in rows:
+        sender_name = 'Admin'
+        if row.sent_by:
+            sender_name = row.sent_by.get_full_name() or row.sent_by.username
+        items.append({
+            'id': row.id,
+            'notification_id': row.notification_id,
+            'message': row.message,
+            'scope': row.scope,
+            'scope_display': row.get_scope_display(),
+            'visibility': row.visibility,
+            'expires_at': row.expires_at.isoformat() if row.expires_at else None,
+            'created_at': row.created_at.isoformat(),
+            'sent_by_name': sender_name,
+            'client_name': row.client.name if row.client_id else '',
+            'is_read': bool(getattr(row, 'is_read', False)),
+        })
+
+    return JsonResponse({
+        'success': True,
+        'items': items,
+        'total_count': total_count,
+        'unread_count': unread_count,
+    })
 
 
 # =============================================================================

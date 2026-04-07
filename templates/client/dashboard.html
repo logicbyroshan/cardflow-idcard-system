@@ -20,6 +20,13 @@
     <span>Search ID cards...</span>
     <kbd>Ctrl+K</kbd>
   </button>
+  <button type="button" class="client-message-top-shortcut" data-client-message-open>
+    <span class="client-message-top-shortcut-icon">
+      <i class="fa-solid fa-bell"></i>
+      <span class="client-message-top-shortcut-badge" data-client-msg-count>0</span>
+    </span>
+    <span>Messages</span>
+  </button>
   {% include 'partials/notification-bell.html' %}
 </div>
 {% endblock %}
@@ -223,6 +230,13 @@
         <span>Bulk Upload</span>
       </a>
       {% endif %}
+      <button type="button" class="quick-action-btn quick-action-message" data-client-message-open>
+        <span class="client-message-quick-icon">
+          <i class="fa-solid fa-bell"></i>
+          <span class="client-message-quick-badge" data-client-msg-count>0</span>
+        </span>
+        <span>Messages</span>
+      </button>
       <a href="{% url 'settings' %}" class="quick-action-btn">
         <i class="fa-solid fa-gear"></i>
         <span>Settings</span>

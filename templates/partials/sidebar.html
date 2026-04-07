@@ -91,8 +91,12 @@
     {% endif %}
 
     {% if is_client or is_client_staff %}
-    <a href="{% url 'client:messages' %}" class="{% if active_page == 'client_messages' %}active{% endif %}">
-      <i class="fa-solid fa-envelope-open-text"></i><span>Messages</span>
+    <a
+      href="{% url 'client:messages' %}"
+      class="client-message-nav-link {% if active_page == 'client_messages' %}active{% endif %}"
+      data-client-message-open>
+      <i class="fa-solid fa-comments"></i><span>Messages</span>
+      <span class="client-msg-nav-badge" data-client-msg-count>0</span>
     </a>
     {% endif %}
     

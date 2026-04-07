@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <!-- Page-specific: client portal partials -->
   <link rel="stylesheet" href="{% static 'css/partials-common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/client-message-drawer.css' %}">
   {% block extra_css %}{% endblock %}
   <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
@@ -47,15 +48,18 @@
       {% block topbar_right %}{% endblock %}
     </header>
 
-    {% include 'partials/client-message-strip.html' %}
-
     <!-- Page Content -->
     {% block content %}{% endblock %}
 
   </main>
 
+  {% if is_client or is_client_staff %}
+  {% include 'partials/client-message-drawer.html' %}
+  {% endif %}
+
   <!-- Core JS bundle (api + toast + modal + utils + init + global-search + notification-bell) -->
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+  <script defer src="{% static 'js/client-message-drawer.js' %}"></script>
 
   {% block extra_js %}{% endblock %}
 
