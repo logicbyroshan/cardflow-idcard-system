@@ -116,6 +116,40 @@
     color: #667eea;
 }
 
+.recent-table tbody tr.client-row.expanded td {
+    background: #eef4ff;
+    box-shadow: inset 0 1px 0 #d3dffd, inset 0 -1px 0 #d3dffd;
+}
+
+.recent-table tbody tr.client-row.expanded td:first-child {
+    box-shadow: inset 2px 0 0 #7b94f9, inset 0 1px 0 #d3dffd, inset 0 -1px 0 #d3dffd;
+}
+
+.recent-table tbody tr.client-row.expanded .client-name-link {
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+.client-sub-row .count-badge {
+    border: 1px solid transparent;
+}
+
+.client-sub-row .count-badge.pending {
+    border-color: #f3d18a;
+}
+
+.client-sub-row .count-badge.verified {
+    border-color: #9fc2ff;
+}
+
+.client-sub-row .count-badge.approved {
+    border-color: #c5b2ff;
+}
+
+.client-sub-row .count-badge.downloaded {
+    border-color: #86dcb0;
+}
+
 /* ====================
    View All Link
    ==================== */

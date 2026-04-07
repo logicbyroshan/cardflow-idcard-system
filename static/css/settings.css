@@ -9,6 +9,11 @@
     grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
 }
 
+.main.settings-page > .settings-container {
+    min-height: 0;
+    overflow: hidden;
+}
+
 .settings-container {
     display: grid;
     grid-template-columns: 300px 1fr;

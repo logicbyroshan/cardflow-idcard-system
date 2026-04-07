@@ -14,8 +14,12 @@
     --audit-muted: var(--text-secondary, #666);
   }
 
-  .main.main-scrollable-page .main-content {
-    display: block !important;
+  .main.main-scrollable-page {
+    grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
+  }
+
+  .main.main-scrollable-page > :not(.topbar) {
+    min-height: 0;
     overflow-y: auto !important;
     overflow-x: hidden;
   }

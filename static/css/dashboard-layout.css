@@ -230,7 +230,8 @@
 }
 
 .recent-updates-search-inline {
-    flex: 1 1 320px;
+    margin-left: auto;
+    flex: 0 1 420px;
     min-width: 180px;
     max-width: 560px;
 }
@@ -243,16 +244,13 @@
     height: 32px;
 }
 
-.dashboard-card-header.updates-header .view-all {
-    flex-shrink: 0;
-}
-
 .dashboard-card-header.overview-header {
     gap: 12px;
 }
 
 .overview-search-inline {
-    flex: 1 1 260px;
+    margin-left: auto;
+    flex: 0 1 380px;
     min-width: 170px;
     max-width: 420px;
 }

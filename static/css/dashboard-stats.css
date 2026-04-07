@@ -139,6 +139,7 @@ a.stat-card-link:hover {
     font-size: 13px;
     font-weight: 600;
     border-radius: 2px;
+    border: 1px solid transparent;
     text-decoration: none;
     transition: all 0.2s ease;
 }
@@ -153,39 +154,43 @@ a.count-badge:hover {
 }
 
 .count-badge.pending {
-    background: #fef3c7;
-    color: #d97706;
+    background: #fde8bb;
+    color: #b45309;
+    border-color: #f2c880;
 }
 
 a.count-badge.pending:hover {
-    background: #fde68a;
+    background: #f9d78f;
 }
 
 .count-badge.verified {
-    background: #dbeafe;
-    color: #2563eb;
+    background: #cfe3ff;
+    color: #1d4ed8;
+    border-color: #9fc2ff;
 }
 
 a.count-badge.verified:hover {
-    background: #bfdbfe;
+    background: #b9d4ff;
 }
 
 .count-badge.approved {
-    background: #ede9fe;
-    color: #7c3aed;
+    background: #e2d8ff;
+    color: #6d28d9;
+    border-color: #c5b2ff;
 }
 
 a.count-badge.approved:hover {
-    background: #ddd6fe;
+    background: #d3c2ff;
 }
 
 .count-badge.downloaded {
-    background: #dcfce7;
-    color: #16a34a;
+    background: #c9f3da;
+    color: #15803d;
+    border-color: #86dcb0;
 }
 
 a.count-badge.downloaded:hover {
-    background: #bbf7d0;
+    background: #aeeac8;
 }
 
 /* ====================
