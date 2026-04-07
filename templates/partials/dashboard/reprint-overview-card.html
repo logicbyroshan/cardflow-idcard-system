@@ -4,11 +4,23 @@ Loaded dynamically via api_print_reprint_overview.
 {% endcomment %}
 
 <div class="dashboard-card">
-  <div class="dashboard-card-header">
+  <div class="dashboard-card-header overview-header">
     <h3>
       <i class="fa-solid fa-arrows-rotate"></i> Card Reprinting
       <span class="count-badge pending" id="reprintOverviewTotalRequested" style="margin-left:8px;">0</span>
     </h3>
+    <div class="overview-search-inline">
+      <div class="recent-updates-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          type="text"
+          id="reprintOverviewSearch"
+          class="recent-updates-search-input"
+          placeholder="Search reprint client or table"
+          autocomplete="off"
+        >
+      </div>
+    </div>
   </div>
   <div class="dashboard-card-body tall-body p-0 table-scroll-body">
     <div class="recent-table-wrapper dashboard-scroll-table-wrapper">

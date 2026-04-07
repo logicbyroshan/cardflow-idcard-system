@@ -45,6 +45,18 @@ window.DashboardPage.toggleClientExpandRow = toggleClientExpandRow;
 window.DashboardPage.toggleScopedExpandRow = toggleScopedExpandRow;
 
 document.addEventListener('DOMContentLoaded', function() {
+    const dashboardMiddleScroll = document.querySelector('.dashboard-middle-scroll');
+
+    function syncDashboardPanelHeight() {
+        if (!dashboardMiddleScroll) return;
+        const panelHeight = dashboardMiddleScroll.clientHeight;
+        if (panelHeight > 0) {
+            document.documentElement.style.setProperty('--dashboard-panel-height', `${panelHeight}px`);
+        }
+    }
+
+    syncDashboardPanelHeight();
+    window.addEventListener('resize', syncDashboardPanelHeight);
     
     // ====================
     // Update Welcome Banner Date/Time

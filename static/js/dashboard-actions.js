@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
+    const printOverviewSearchInput = document.getElementById('printOverviewSearch');
+    const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
 
     function applyRecentClientUpdatesSearch() {
         const tbody = document.getElementById('recentClientUpdatesBody');
@@ -95,6 +97,76 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (recentClientUpdatesSearchInput) {
         recentClientUpdatesSearchInput.addEventListener('input', applyRecentClientUpdatesSearch);
+    }
+
+    function applyOverviewSearch(scope) {
+        const tbody = scope === 'print'
+            ? document.getElementById('printOverviewBody')
+            : document.getElementById('reprintOverviewBody');
+        const inputEl = scope === 'print' ? printOverviewSearchInput : reprintOverviewSearchInput;
+        if (!tbody) return;
+
+        const noResultClass = `${scope}-table-no-search-results`;
+        const existingNoResultRow = tbody.querySelector('.' + noResultClass);
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const query = (inputEl && inputEl.value ? inputEl.value.trim().toLowerCase() : '');
+        let visibleClients = 0;
+
+        clientRows.forEach(row => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll(`tr.${scope}-expand-group-${idx}`)) : [];
+
+            const clientName = (row.querySelector('.client-name-link')?.textContent || '').trim().toLowerCase();
+            const tableNames = subRows
+                .map(subRow => (subRow.querySelector('.sub-row-name')?.textContent || '').trim().toLowerCase())
+                .join(' ');
+            const searchable = `${clientName} ${tableNames}`.trim();
+            const isMatch = !query || searchable.includes(query);
+
+            if (!isMatch) {
+                row.style.display = 'none';
+                row.classList.remove('expanded');
+                subRows.forEach(subRow => { subRow.style.display = 'none'; });
+                return;
+            }
+
+            visibleClients += 1;
+            row.style.display = '';
+            const isExpanded = row.classList.contains('expanded');
+            subRows.forEach(subRow => {
+                subRow.style.display = isExpanded ? '' : 'none';
+            });
+        });
+
+        if (!query || visibleClients > 0) return;
+
+        tbody.insertAdjacentHTML(
+            'beforeend',
+            `
+                <tr class="recent-table-no-search-results ${noResultClass}">
+                    <td colspan="3">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        No ${scope} clients matched "${query.replace(/"/g, '&quot;')}"
+                    </td>
+                </tr>
+            `
+        );
+    }
+
+    if (printOverviewSearchInput) {
+        printOverviewSearchInput.addEventListener('input', function() {
+            applyOverviewSearch('print');
+        });
+    }
+
+    if (reprintOverviewSearchInput) {
+        reprintOverviewSearchInput.addEventListener('input', function() {
+            applyOverviewSearch('reprint');
+        });
     }
 
     // ====================
@@ -854,8 +926,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${subRows}
                                 `;
                             }).join('');
+                            applyOverviewSearch('print');
                         } else {
                             printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                            applyOverviewSearch('print');
                         }
                     }
 
@@ -891,8 +965,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${subRows}
                                 `;
                             }).join('');
+                            applyOverviewSearch('reprint');
                         } else {
                             reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                            applyOverviewSearch('reprint');
                         }
                     }
                 });
