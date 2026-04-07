@@ -629,6 +629,13 @@ class ClientService(BaseService):
                     active_count += 1
                 else:
                     inactive_count += 1
+
+                # Include all permission booleans so UI can render current staff grants.
+                staff_permissions = {
+                    field.name: bool(getattr(staff, field.name, False))
+                    for field in staff._meta.fields
+                    if field.name.startswith('perm_')
+                }
                 
                 staff_list.append({
                     'id': staff.id,
@@ -642,14 +649,7 @@ class ClientService(BaseService):
                     'status': 'active' if is_active else 'inactive',
                     'status_display': 'Active' if is_active else 'Inactive',
                     'created_at': staff.created_at.strftime('%d-%m-%Y'),
-                    # ID Card Client List Permission
-                    'perm_idcard_client_list': staff.perm_idcard_client_list,
-                    # ID Card Setting Permissions
-                    'perm_idcard_setting_list': staff.perm_idcard_setting_list,
-                    'perm_idcard_setting_add': staff.perm_idcard_setting_add,
-                    'perm_idcard_setting_edit': staff.perm_idcard_setting_edit,
-                    'perm_idcard_setting_delete': staff.perm_idcard_setting_delete,
-                    'perm_idcard_setting_status': staff.perm_idcard_setting_status,
+                    **staff_permissions,
                 })
             
             return ServiceResult(

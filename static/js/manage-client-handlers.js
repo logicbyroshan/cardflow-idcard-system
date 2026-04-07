@@ -681,8 +681,31 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm_idcard_setting_add': 'Create New Template',
         'perm_idcard_setting_edit': 'Edit Template',
         'perm_idcard_setting_delete': 'Delete Template',
-        'perm_idcard_setting_status': 'Enable / Disable Template'
+        'perm_idcard_setting_status': 'Enable / Disable Template',
+        'perm_idcard_pending_list': 'Pending List',
+        'perm_idcard_verified_list': 'Verified List',
+        'perm_idcard_pool_list': 'Pool List',
+        'perm_idcard_approved_list': 'Approved List',
+        'perm_idcard_download_list': 'Download List',
+        'perm_reprint_request_list': 'Reprint Request List',
+        'perm_confirmed_list': 'Confirmed List',
+        'perm_idcard_bulk_download': 'Bulk Download',
+        'perm_idcard_add': 'Add Card',
+        'perm_idcard_edit': 'Edit Card',
+        'perm_idcard_delete': 'Delete Card',
+        'perm_idcard_info': 'Card Info',
+        'perm_idcard_verify': 'Verify Card',
+        'perm_idcard_reprint_list': 'Reprint Cards',
+        'perm_idcard_updated_at': 'Updated At Details',
+        'perm_mobile_app': 'Mobile App Access'
       };
+
+      function humanizePermissionKey(key) {
+        return String(key || '')
+          .replace(/^perm_/, '')
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, function(ch) { return ch.toUpperCase(); });
+      }
 
       async function fetchClientStaff(clientId) {
         try {
@@ -700,13 +723,16 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       function formatPermissions(staff) {
-        var permissions = [];
-        Object.keys(permissionLabels).forEach(function(key) {
-          if (staff[key]) {
-            permissions.push(permissionLabels[key]);
-          }
-        });
-        return permissions;
+        if (!staff || typeof staff !== 'object') return [];
+
+        return Object.keys(staff)
+          .filter(function(key) {
+            return key.indexOf('perm_') === 0 && staff[key] === true;
+          })
+          .map(function(key) {
+            return permissionLabels[key] || humanizePermissionKey(key);
+          })
+          .sort();
       }
 
       function ensureStaffSkeletonStyles() {
