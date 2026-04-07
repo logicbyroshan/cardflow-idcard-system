@@ -444,7 +444,7 @@ class ActivityService:
         now = timezone.now()
 
         # Base queryset (no time filter when hours is None)
-        qs = ActivityLog.objects.select_related('user').order_by('-created_at')
+        qs = ActivityLog.objects.select_related('user', 'user__client_profile', 'user__staff_profile__client').order_by('-created_at')
         if hours is not None:
             cutoff = now - timezone.timedelta(hours=hours)
             qs = qs.filter(created_at__gte=cutoff)
@@ -464,13 +464,20 @@ class ActivityService:
         raw_results = []
         for entry in qs[:fetch_limit]:
             actor = cls._get_actor_display(entry, user, hide_admin_names)
+            actor_role = getattr(entry.user, 'role', '') if entry.user else ''
+            client_context = cls._resolve_activity_client_context(entry)
 
             raw_results.append({
                 'id': entry.pk,
                 'user_id': entry.user_id,
                 'actor': actor,
+                'actor_role': actor_role,
                 'action': entry.action,
                 'description': entry.description,
+                'target_model': entry.target_model,
+                'target_id': entry.target_id,
+                'target_name': entry.target_name,
+                'client_context': client_context,
                 'icon_class': entry.icon_class,
                 'icon_color': entry.icon_color,
                 'created_at_dt': entry.created_at,
@@ -485,12 +492,108 @@ class ActivityService:
                 'actor': item['actor'],
                 'action': item['action'],
                 'description': item['description'],
+                'display_text': cls._build_activity_display_text(item),
+                'target_name': item.get('target_name', ''),
+                'client_context': item.get('client_context', ''),
                 'icon_class': item['icon_class'],
                 'icon_color': item['icon_color'],
                 'time_ago': timesince(item['created_at_dt'], now),
                 'created_at': item['created_at_dt'].isoformat(),
             })
         return results
+
+    @classmethod
+    def _build_activity_display_text(cls, item):
+        """Build richer activity chip text without mutating canonical description."""
+        text = str(item.get('description') or '').strip() or 'Activity update'
+        action = str(item.get('action') or '').strip().lower()
+        actor = str(item.get('actor') or '').strip()
+        actor_role = str(item.get('actor_role') or '').strip().lower()
+        target_name = str(item.get('target_name') or '').strip()
+        client_context = str(item.get('client_context') or '').strip()
+
+        if action.startswith('staff_') and target_name and target_name.lower() not in text.lower():
+            text = f'{text} (Staff: {target_name})'
+
+        if action.startswith('client_') and target_name and target_name.lower() not in text.lower():
+            text = f'{text} (Client: {target_name})'
+
+        if action in ('login', 'logout'):
+            role_label = cls._format_activity_role(actor_role)
+            extras = []
+            if role_label:
+                extras.append(role_label)
+            if client_context:
+                extras.append(client_context)
+            scope = ' | '.join(extras)
+            if scope and scope.lower() not in text.lower():
+                text = f'{text} ({scope})'
+            return text
+
+        if actor and actor != 'System' and actor.lower() not in text.lower():
+            text = f'{actor}: {text}'
+
+        if client_context and client_context.lower() not in text.lower():
+            text = f'{text} | Client: {client_context}'
+
+        return text
+
+    @staticmethod
+    def _format_activity_role(role):
+        """Return compact human labels for activity role hints."""
+        labels = {
+            'super_admin': 'Super Admin',
+            'admin_staff': 'Admin Staff',
+            'client': 'Client',
+            'client_staff': 'Client Staff',
+            'pro_user': 'Pro User',
+        }
+        return labels.get(str(role or '').strip().lower(), '')
+
+    @classmethod
+    def _resolve_activity_client_context(cls, entry):
+        """Best-effort client label for activity chips (staff/client/login actions)."""
+        target_model = str(getattr(entry, 'target_model', '') or '').strip().lower()
+        target_name = str(getattr(entry, 'target_name', '') or '').strip()
+
+        if target_model == 'client' and target_name:
+            return target_name
+
+        user = getattr(entry, 'user', None)
+        if user:
+            if user.role == 'client':
+                client_profile = getattr(user, 'client_profile', None)
+                if client_profile and client_profile.name:
+                    return client_profile.name
+            if user.role == 'client_staff':
+                staff_profile = getattr(user, 'staff_profile', None)
+                client = getattr(staff_profile, 'client', None) if staff_profile else None
+                if client and client.name:
+                    return client.name
+
+        if target_model != 'staff':
+            return ''
+
+        target_id = getattr(entry, 'target_id', None)
+        if not target_id:
+            return ''
+
+        try:
+            from staff.models import Staff
+
+            staff_obj = (
+                Staff.objects
+                .select_related('client')
+                .only('id', 'client__name')
+                .filter(id=target_id)
+                .first()
+            )
+            if staff_obj and staff_obj.client and staff_obj.client.name:
+                return staff_obj.client.name
+        except Exception:
+            return ''
+
+        return ''
 
     @classmethod
     def _parse_card_activity_description(cls, description):

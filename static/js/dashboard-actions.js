@@ -34,6 +34,69 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML = rows.join('');
     }
 
+    const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
+
+    function applyRecentClientUpdatesSearch() {
+        const tbody = document.getElementById('recentClientUpdatesBody');
+        if (!tbody) return;
+
+        const existingNoResultRow = tbody.querySelector('.recent-table-no-search-results');
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const query = (recentClientUpdatesSearchInput && recentClientUpdatesSearchInput.value
+            ? recentClientUpdatesSearchInput.value.trim().toLowerCase()
+            : '');
+
+        let visibleClients = 0;
+
+        clientRows.forEach(row => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll('tr.expand-group-' + idx)) : [];
+
+            const clientName = (row.querySelector('.client-name-link')?.textContent || '').trim().toLowerCase();
+            const tableNames = subRows
+                .map(subRow => (subRow.querySelector('.sub-row-name')?.textContent || '').trim().toLowerCase())
+                .join(' ');
+            const searchable = `${clientName} ${tableNames}`.trim();
+            const isMatch = !query || searchable.includes(query);
+
+            if (!isMatch) {
+                row.style.display = 'none';
+                row.classList.remove('expanded');
+                subRows.forEach(subRow => { subRow.style.display = 'none'; });
+                return;
+            }
+
+            visibleClients += 1;
+            row.style.display = '';
+            const isExpanded = row.classList.contains('expanded');
+            subRows.forEach(subRow => {
+                subRow.style.display = isExpanded ? '' : 'none';
+            });
+        });
+
+        if (!query || visibleClients > 0) return;
+
+        tbody.insertAdjacentHTML(
+            'beforeend',
+            `
+                <tr class="recent-table-no-search-results">
+                    <td colspan="5">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        No clients matched "${query.replace(/"/g, '&quot;')}"
+                    </td>
+                </tr>
+            `
+        );
+    }
+
+    if (recentClientUpdatesSearchInput) {
+        recentClientUpdatesSearchInput.addEventListener('input', applyRecentClientUpdatesSearch);
+    }
+
     // ====================
     // Load Recent Client Updates
     // ====================
@@ -94,6 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </tr>
                             ${tableSubRows}
                         `}).join('');
+                        applyRecentClientUpdatesSearch();
                     } else {
                         tbody.innerHTML = `
                             <tr>
@@ -102,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </td>
                             </tr>
                         `;
+                        applyRecentClientUpdatesSearch();
                     }
                 });
             })
@@ -115,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </td>
                         </tr>
                     `;
+                    applyRecentClientUpdatesSearch();
                 });
             });
     }
@@ -189,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 activityList.innerHTML = activities.map(activity => {
                     const iconColor = esc(activity.icon_color || 'edit');
                     const iconClass = esc(activity.icon_class || 'fa-circle-info');
-                    const description = esc(activity.description || 'Activity update');
+                    const description = esc(activity.display_text || activity.description || 'Activity update');
                     const rawTimeAgo = String(activity.time_ago || '').trim();
                     const timeAgo = rawTimeAgo
                         ? (/ago$/i.test(rawTimeAgo) ? rawTimeAgo : `${rawTimeAgo} ago`)
