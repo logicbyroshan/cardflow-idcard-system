@@ -470,6 +470,22 @@ class ClientAccessServiceAdvancedTests(TestCase):
 
 
 class ClientDashboardServiceTests(TestCase):
+    def test_dashboard_photo_url_maps_mediafiles_under_media_route(self):
+        from client.services import ClientDashboardService
+
+        self.assertEqual(
+            ClientDashboardService._to_dashboard_photo_url('mediafiles/cards/sample.jpg'),
+            '/media/mediafiles/cards/sample.jpg',
+        )
+        self.assertEqual(
+            ClientDashboardService._to_dashboard_photo_url('/mediafiles/cards/sample.jpg'),
+            '/media/mediafiles/cards/sample.jpg',
+        )
+        self.assertEqual(
+            ClientDashboardService._to_dashboard_photo_url('media/adarshimg/CODE/sample.jpg'),
+            '/media/adarshimg/CODE/sample.jpg',
+        )
+
     def test_dashboard_data_for_non_client_returns_error(self):
         from client.services import ClientDashboardService
         admin = User.objects.create_user(

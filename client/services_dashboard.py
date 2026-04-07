@@ -79,16 +79,20 @@ class ClientDashboardService(BaseService):
         lower = value.lower()
         if lower.startswith('http://') or lower.startswith('https://'):
             return value
-        if lower.startswith('/media/') or lower.startswith('/mediafiles/'):
+        if lower.startswith('/media/'):
             return value
+        if lower.startswith('/mediafiles/'):
+            return '/media/' + value.lstrip('/')
         if lower.startswith('media/') or lower.startswith('mediafiles/'):
-            return '/' + value
+            if lower.startswith('media/'):
+                return '/' + value
+            return '/media/' + value
 
         mediafiles_marker = '/mediafiles/'
         media_marker = '/media/'
         mediafiles_idx = lower.find(mediafiles_marker)
         if mediafiles_idx >= 0:
-            return '/mediafiles/' + value[mediafiles_idx + len(mediafiles_marker):].lstrip('/')
+            return '/media/mediafiles/' + value[mediafiles_idx + len(mediafiles_marker):].lstrip('/')
 
         media_idx = lower.find(media_marker)
         if media_idx >= 0:

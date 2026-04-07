@@ -334,19 +334,22 @@ function initReprintPickerHandlers() {
     }
 
     function toMediaUrl(rawPath) {
-        var normalized = normalizeMediaPath(rawPath);
+        var original = String(rawPath || '').trim();
+        if (!original || original === 'NOT_FOUND' || original.indexOf('PENDING:') === 0) return '';
+        if (/^https?:\/\//i.test(original)) return original;
+
+        var normalized = normalizeMediaPath(original);
         if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
 
+        normalized = normalized.replace(/^\/+/, '');
         var lower = normalized.toLowerCase();
-        if (lower.indexOf('/media/') === 0 || lower.indexOf('/mediafiles/') === 0) {
-            return normalized;
-        }
+
+        // Django serves uploads via /media/<path>; map both legacy "media/"
+        // and new "mediafiles/" relative values under that route.
         if (lower.indexOf('media/') === 0) {
-            return '/' + normalized;
+            normalized = normalized.slice('media/'.length);
         }
-        if (lower.indexOf('mediafiles/') === 0) {
-            return '/' + normalized;
-        }
+
         return '/media/' + normalized;
     }
 
@@ -354,8 +357,27 @@ function initReprintPickerHandlers() {
         var normalized = normalizeMediaPath(rawPath);
         if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
 
-        var asUrl = toMediaUrl(normalized);
-        return asUrl.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+        normalized = normalized.replace(/^\/+/, '');
+        var lower = normalized.toLowerCase();
+        if (lower.indexOf('media/') === 0) {
+            normalized = normalized.slice('media/'.length);
+            lower = normalized.toLowerCase();
+        }
+
+        if (lower.indexOf('thumbs/') === 0 || lower.indexOf('/thumbs/') !== -1) {
+            return normalized;
+        }
+
+        var parts = normalized.split('/');
+        if (parts.length < 2) return normalized;
+
+        var baseFolder = parts.shift();
+        var rest = parts.join('/');
+        var dot = rest.lastIndexOf('.');
+        if (dot > 0) {
+            rest = rest.slice(0, dot) + '.webp';
+        }
+        return baseFolder + '/thumbs/' + rest;
     }
 
     function normalizeFieldKey(value) {
