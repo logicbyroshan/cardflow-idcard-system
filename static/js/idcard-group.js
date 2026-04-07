@@ -134,9 +134,34 @@ function initIdcardGroup(config) {
     });
   }
 
+  function sanitizeCodeInputValue(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
+  function renderCodeBoxes(container, value) {
+    if (!container) return;
+    var clean = sanitizeCodeInputValue(value);
+    var boxes = container.querySelectorAll('.confirm-code-box');
+    boxes.forEach(function(box, idx) {
+      var ch = clean[idx] || '';
+      box.textContent = ch;
+      box.classList.toggle('is-filled', !!ch);
+      box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+    });
+  }
+
+  function setCodeWrapState(wrapEl, isMatch, isComplete) {
+    if (!wrapEl) return;
+    wrapEl.classList.remove('is-valid', 'is-invalid');
+    if (!isComplete) return;
+    wrapEl.classList.add(isMatch ? 'is-valid' : 'is-invalid');
+  }
+
   // ==================== DELETE ALL SECURE MODAL ====================
   var deleteAllCodeDisplay = document.getElementById('deleteAllCode');
   var deleteAllCodeInput = document.getElementById('deleteAllCodeInput');
+  var deleteAllCodeBoxes = document.getElementById('deleteAllCodeBoxes');
+  var deleteAllCodeWrap = document.getElementById('deleteAllCodeWrap');
   var deleteAllConfirmBtn = document.getElementById('deleteAllConfirm');
   var deleteAllCancelBtn = document.getElementById('deleteAllCancel');
   var deleteAllTableNameEl = document.getElementById('deleteAllTableName');
@@ -147,6 +172,8 @@ function initIdcardGroup(config) {
   function openDeleteAllModal(tableId) {
     deleteAllTableId = tableId;
     deleteAllCodeInput.value = '';
+    renderCodeBoxes(deleteAllCodeBoxes, '');
+    setCodeWrapState(deleteAllCodeWrap, false, false);
     deleteAllConfirmBtn.disabled = true;
 
     fetch(panelUrl('/api/table/' + tableId + '/cards/generate-delete-code/'), {
@@ -174,11 +201,17 @@ function initIdcardGroup(config) {
     deleteAllTableId = null;
     deleteAllExpectedCode = '';
     deleteAllCodeInput.value = '';
+    renderCodeBoxes(deleteAllCodeBoxes, '');
+    setCodeWrapState(deleteAllCodeWrap, false, false);
   }
 
   if (deleteAllCodeInput) {
     deleteAllCodeInput.addEventListener('input', function() {
-      var match = this.value.trim() === deleteAllExpectedCode;
+      this.value = sanitizeCodeInputValue(this.value);
+      renderCodeBoxes(deleteAllCodeBoxes, this.value);
+      var isComplete = this.value.length === 10;
+      var match = isComplete && this.value === deleteAllExpectedCode;
+      setCodeWrapState(deleteAllCodeWrap, match, isComplete);
       deleteAllConfirmBtn.disabled = !match;
     });
   }
@@ -620,6 +653,8 @@ function initIdcardGroup(config) {
   // ==================== UPGRADE ALL CLASSES ====================
   var upgradeAllCodeDisplay = document.getElementById('upgradeAllCode');
   var upgradeAllCodeInput = document.getElementById('upgradeAllCodeInput');
+  var upgradeAllCodeBoxes = document.getElementById('upgradeAllCodeBoxes');
+  var upgradeAllCodeWrap = document.getElementById('upgradeAllCodeWrap');
   var upgradeAllConfirmBtn = document.getElementById('upgradeAllConfirm');
   var upgradeAllCancelBtn = document.getElementById('upgradeAllCancel');
   var upgradeAllTableNameEl = document.getElementById('upgradeAllTableName');
@@ -630,6 +665,8 @@ function initIdcardGroup(config) {
   function openUpgradeAllModal(tableId) {
     upgradeAllTableId = tableId;
     upgradeAllCodeInput.value = '';
+    renderCodeBoxes(upgradeAllCodeBoxes, '');
+    setCodeWrapState(upgradeAllCodeWrap, false, false);
     upgradeAllConfirmBtn.disabled = true;
     upgradeAllConfirmBtn.textContent = 'Upgrade All Classes';
 
@@ -658,11 +695,17 @@ function initIdcardGroup(config) {
     upgradeAllTableId = null;
     upgradeAllExpectedCode = '';
     upgradeAllCodeInput.value = '';
+    renderCodeBoxes(upgradeAllCodeBoxes, '');
+    setCodeWrapState(upgradeAllCodeWrap, false, false);
   }
 
   if (upgradeAllCodeInput) {
     upgradeAllCodeInput.addEventListener('input', function() {
-      var match = this.value.trim() === upgradeAllExpectedCode;
+      this.value = sanitizeCodeInputValue(this.value);
+      renderCodeBoxes(upgradeAllCodeBoxes, this.value);
+      var isComplete = this.value.length === 10;
+      var match = isComplete && this.value === upgradeAllExpectedCode;
+      setCodeWrapState(upgradeAllCodeWrap, match, isComplete);
       upgradeAllConfirmBtn.disabled = !match;
     });
   }

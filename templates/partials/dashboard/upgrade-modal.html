@@ -31,15 +31,28 @@
         <div style="width:100%;">
           <p class="confirm-code-hint">Type this code to confirm:</p>
           <div id="dashUpgradeCode" class="confirm-code-display confirm-code-display-warning">----------</div>
-          <input type="text" id="dashUpgradeCodeInput"
-              maxlength="10"
-              inputmode="numeric"
-              pattern="[0-9]{10}"
-              placeholder="_ _ _ _ _ _ _ _ _ _"
-              autocomplete="off"
-              class="confirm-code-input"
-              oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-          >
+          <div class="confirm-code-input-wrap" id="dashUpgradeCodeWrap" onclick="document.getElementById('dashUpgradeCodeInput').focus()">
+            <div class="confirm-code-boxes" id="dashUpgradeCodeBoxes" aria-hidden="true">
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+            </div>
+            <input type="text" id="dashUpgradeCodeInput"
+                maxlength="10"
+                inputmode="numeric"
+                pattern="[0-9]{10}"
+                autocomplete="off"
+                class="confirm-code-input confirm-code-input-hidden"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            >
+          </div>
         </div>
       </div>
     </div>

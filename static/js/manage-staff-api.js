@@ -91,6 +91,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('tempPwStep2').style.display = 'none';
         document.getElementById('tempPwVerifyCode').textContent = tempPwVerificationCode;
         document.getElementById('tempPwCodeInput').value = '';
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes('');
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
         document.getElementById('tempPwCodeError').style.display = 'none';
         document.getElementById('tempPwNewPassword').value = '';
         document.getElementById('tempPwError').style.display = 'none';
@@ -111,17 +113,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         tempPwVerificationCode = '';
         tempPwTargetId = null;
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
     };
 
     window.verifyTempPwCode = function() {
-        var input = document.getElementById('tempPwCodeInput').value.trim();
+        var codeInputEl = document.getElementById('tempPwCodeInput');
+        var input = (codeInputEl ? codeInputEl.value : '').replace(/\D/g, '').slice(0, 10);
+        if (codeInputEl) codeInputEl.value = input;
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes(input);
         var errEl = document.getElementById('tempPwCodeError');
         if (input === tempPwVerificationCode) {
+            if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('is-valid');
             errEl.style.display = 'none';
             document.getElementById('tempPwStep1').style.display = 'none';
             document.getElementById('tempPwStep2').style.display = '';
             document.getElementById('tempPwNewPassword').focus();
         } else {
+            if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState(input.length === 10 ? 'is-invalid' : '');
             errEl.style.display = '';
         }
     };

@@ -30,14 +30,33 @@
             </div>
 
             <div>
-                <input type="text"
-                       x-model="permanentDeleteModal.input"
-                       inputmode="numeric"
-                       maxlength="10"
-                       @input="permanentDeleteModal.input = permanentDeleteModal.input.replace(/[^0-9]/g, '')"
-                       placeholder="Enter 10-digit code"
-                       class="w-full px-3 py-2.5 rounded-xl border text-[13px] focus:outline-none"
-                       :class="permanentDeleteModal.input.length === 10 ? (permanentDeleteModal.input === permanentDeleteModal.code ? 'border-green-300 bg-green-50 text-green-700' : 'border-red-300 bg-red-50 text-red-700') : 'border-gray-200 bg-white text-gray-700'">
+                <div class="relative"
+                     @click="$refs.mobilePermanentDeleteInput.focus()">
+                    <div class="grid grid-cols-10 gap-1.5"
+                         :class="permanentDeleteModal.input.length === 10 ? (permanentDeleteModal.input === permanentDeleteModal.code ? '' : '') : ''">
+                        <template x-for="idx in 10" :key="'mobile-perm-delete-box-' + idx">
+                            <span class="h-9 rounded-lg border-2 text-[14px] font-bold tracking-normal flex items-center justify-center transition-all"
+                                  :class="permanentDeleteModal.input.length === 10
+                                      ? (permanentDeleteModal.input === permanentDeleteModal.code
+                                          ? 'border-green-300 bg-green-50 text-green-700'
+                                          : 'border-red-300 bg-red-50 text-red-700')
+                                      : (permanentDeleteModal.input.length === (idx - 1)
+                                          ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                          : (permanentDeleteModal.input[idx - 1]
+                                              ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                              : 'border-gray-200 bg-white text-gray-500'))"
+                                  x-text="permanentDeleteModal.input[idx - 1] || ''"></span>
+                        </template>
+                    </div>
+                    <input type="text"
+                           x-ref="mobilePermanentDeleteInput"
+                           x-model="permanentDeleteModal.input"
+                           inputmode="numeric"
+                           maxlength="10"
+                           @input="permanentDeleteModal.input = permanentDeleteModal.input.replace(/[^0-9]/g, '')"
+                           class="absolute inset-0 opacity-0 w-full h-full"
+                           autocomplete="off">
+                </div>
                 <p class="text-[11px] mt-1"
                    :class="permanentDeleteModal.input === permanentDeleteModal.code && permanentDeleteModal.input.length === 10 ? 'text-green-600' : 'text-gray-400'"
                    x-text="permanentDeleteModal.input === permanentDeleteModal.code && permanentDeleteModal.input.length === 10 ? 'Code matched' : 'Enter exact code to enable delete'"></p>

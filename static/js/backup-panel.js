@@ -16,6 +16,29 @@
   let _activeModalTaskId = null;
   let _deleteNowCode = '';
 
+  function _sanitizeCodeInput(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
+  function _renderCodeBoxes(container, value) {
+    if (!container) return;
+    const clean = _sanitizeCodeInput(value);
+    const boxes = container.querySelectorAll('.confirm-code-box');
+    boxes.forEach(function (box, idx) {
+      const ch = clean[idx] || '';
+      box.textContent = ch;
+      box.classList.toggle('is-filled', !!ch);
+      box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+    });
+  }
+
+  function _setCodeWrapState(wrapEl, isMatch, isComplete) {
+    if (!wrapEl) return;
+    wrapEl.classList.remove('is-valid', 'is-invalid');
+    if (!isComplete) return;
+    wrapEl.classList.add(isMatch ? 'is-valid' : 'is-invalid');
+  }
+
   /*  Init  */
   document.addEventListener('DOMContentLoaded', function () {
     // Auto-open backups tab if URL contains ?tab=backups
@@ -23,6 +46,24 @@
     if (params.get('tab') === 'backups' && typeof switchTab === 'function') {
       switchTab('backups');
       loadBackups();
+    }
+
+    const deleteNowInput = document.getElementById('deleteNowCode');
+    const deleteNowBoxes = document.getElementById('deleteNowCodeBoxes');
+    const deleteNowWrap = document.getElementById('deleteNowCodeWrap');
+    if (deleteNowInput) {
+      _renderCodeBoxes(deleteNowBoxes, deleteNowInput.value);
+      deleteNowInput.addEventListener('input', function () {
+        this.value = _sanitizeCodeInput(this.value);
+        _renderCodeBoxes(deleteNowBoxes, this.value);
+        const isComplete = this.value.length === 10;
+        const isMatch = isComplete && this.value === _deleteNowCode;
+        _setCodeWrapState(deleteNowWrap, isMatch, isComplete);
+        const errEl = document.getElementById('deleteNowError');
+        if (errEl && this.value.length < 10) {
+          errEl.style.display = 'none';
+        }
+      });
     }
   });
 
@@ -204,6 +245,8 @@
     const freshCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : String(Math.floor(1000000000 + Math.random() * 9000000000));
     _deleteNowCode = freshCode;
     document.getElementById('deleteNowCode').value = '';
+    _renderCodeBoxes(document.getElementById('deleteNowCodeBoxes'), '');
+    _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), false, false);
     document.getElementById('deleteNowCodeDisplay').textContent = freshCode;
     document.getElementById('deleteNowError').style.display = 'none';
     if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
@@ -221,17 +264,23 @@
       document.getElementById('deleteNowModal').style.display = 'none';
     }
     _activeModalTaskId = null;
+    _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), false, false);
   };
 
   window.submitDeleteNow = function () {
-    const entered = document.getElementById('deleteNowCode').value.trim();
+    const entered = _sanitizeCodeInput(document.getElementById('deleteNowCode').value);
+    document.getElementById('deleteNowCode').value = entered;
+    _renderCodeBoxes(document.getElementById('deleteNowCodeBoxes'), entered);
     const errEl = document.getElementById('deleteNowError');
 
     if (entered !== _deleteNowCode) {
+      _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), false, entered.length === 10);
       errEl.textContent = 'Incorrect code. Please enter the code shown above.';
       errEl.style.display = 'block';
       return;
     }
+
+    _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), true, true);
 
     const btn = document.getElementById('deleteNowBtn');
     btn.disabled = true;

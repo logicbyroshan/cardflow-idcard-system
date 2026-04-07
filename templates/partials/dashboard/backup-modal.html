@@ -24,9 +24,21 @@
       <div class="backup-code-section">
         <p class="backup-code-label">Type this code to confirm:</p>
         <div class="backup-code-display" id="backupCodeDisplay">Loading...</div>
-        <div class="backup-code-input-wrap">
-          <input type="text" id="backupCodeInput" class="backup-code-input" maxlength="10"
-                 placeholder="_ _ _ _ _ _ _ _ _ _" autocomplete="off"
+        <div class="confirm-code-input-wrap" id="backupCodeWrap" onclick="document.getElementById('backupCodeInput').focus()">
+          <div class="confirm-code-boxes" id="backupCodeBoxes" aria-hidden="true">
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+          </div>
+          <input type="text" id="backupCodeInput" class="backup-code-input confirm-code-input-hidden" maxlength="10"
+                 autocomplete="off"
                  inputmode="numeric" pattern="[0-9]{10}"
                  oninput="this.value=this.value.replace(/[^0-9]/g,'')">
         </div>
@@ -47,10 +59,35 @@
 (function(){
   let _backupCode = '';
 
+  function sanitizeCodeInput(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
+  function renderBackupCodeBoxes(value) {
+    const clean = sanitizeCodeInput(value);
+    const boxes = document.querySelectorAll('#backupCodeBoxes .confirm-code-box');
+    boxes.forEach((box, idx) => {
+      const ch = clean[idx] || '';
+      box.textContent = ch;
+      box.classList.toggle('is-filled', !!ch);
+      box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+    });
+    return clean;
+  }
+
+  function setBackupWrapState(state) {
+    const wrap = document.getElementById('backupCodeWrap');
+    if (!wrap) return;
+    wrap.classList.remove('is-valid', 'is-invalid');
+    if (state) wrap.classList.add(state);
+  }
+
   window.openBackupModal = function() {
     const modal = document.getElementById('backupModal');
     modal.style.display = 'flex';
     document.getElementById('backupCodeInput').value = '';
+    renderBackupCodeBoxes('');
+    setBackupWrapState('');
     document.getElementById('backupCodeError').style.display = 'none';
     // Generate code
     fetch('/api/backup/generate-code/')
@@ -68,22 +105,46 @@
 
   window.closeBackupModal = function() {
     document.getElementById('backupModal').style.display = 'none';
+    setBackupWrapState('');
   };
 
+  const backupCodeInput = document.getElementById('backupCodeInput');
+  if (backupCodeInput) {
+    renderBackupCodeBoxes(backupCodeInput.value);
+    backupCodeInput.addEventListener('input', function() {
+      this.value = renderBackupCodeBoxes(this.value);
+      const errEl = document.getElementById('backupCodeError');
+      if (errEl && this.value.length < 10) {
+        errEl.style.display = 'none';
+      }
+      if (this.value.length < 10) {
+        setBackupWrapState('');
+        return;
+      }
+      setBackupWrapState(this.value === _backupCode ? 'is-valid' : 'is-invalid');
+    });
+  }
+
   window.confirmBackup = function() {
-    const input = document.getElementById('backupCodeInput').value.trim();
+    const inputEl = document.getElementById('backupCodeInput');
+    const input = sanitizeCodeInput(inputEl.value);
+    inputEl.value = input;
+    renderBackupCodeBoxes(input);
     const errEl = document.getElementById('backupCodeError');
 
     if(input.length !== 10 || !/^\d{10}$/.test(input)) {
+      setBackupWrapState('');
       errEl.textContent = 'Please enter a valid 10-digit numeric code.';
       errEl.style.display = 'block';
       return;
     }
     if(input !== _backupCode) {
+      setBackupWrapState('is-invalid');
       errEl.textContent = 'Code does not match. Please enter the code shown above.';
       errEl.style.display = 'block';
       return;
     }
+    setBackupWrapState('is-valid');
     errEl.style.display = 'none';
 
     const btn = document.getElementById('backupConfirmBtn');

@@ -115,15 +115,28 @@
           <div style="width:100%;">
             <p class="confirm-code-hint">Type this code to confirm:</p>
             <div class="backup-code-display" id="deleteNowCodeDisplay">----------</div>
-            <input type="text" id="deleteNowCode"
-                maxlength="10"
-                inputmode="numeric"
-                pattern="[0-9]{10}"
-                placeholder="_ _ _ _ _ _ _ _ _ _"
-                autocomplete="off"
-                class="backup-code-input"
-                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-            >
+            <div class="confirm-code-input-wrap" id="deleteNowCodeWrap" onclick="document.getElementById('deleteNowCode').focus()">
+              <div class="confirm-code-boxes" id="deleteNowCodeBoxes" aria-hidden="true">
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+              </div>
+              <input type="text" id="deleteNowCode"
+                  maxlength="10"
+                  inputmode="numeric"
+                  pattern="[0-9]{10}"
+                  autocomplete="off"
+                  class="backup-code-input confirm-code-input-hidden"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+              >
+            </div>
             <p class="backup-code-hint" id="deleteNowError" style="display:none;"></p>
           </div>
         </div>

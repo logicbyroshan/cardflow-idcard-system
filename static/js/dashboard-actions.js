@@ -400,8 +400,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    function sanitizeCodeInputValue(value) {
+        return String(value || '').replace(/\D/g, '').slice(0, 10);
+    }
+
+    function renderCodeBoxes(container, value) {
+        if (!container) return;
+        const clean = sanitizeCodeInputValue(value);
+        const boxes = container.querySelectorAll('.confirm-code-box');
+        boxes.forEach((box, idx) => {
+            const ch = clean[idx] || '';
+            box.textContent = ch;
+            box.classList.toggle('is-filled', !!ch);
+            box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+        });
+    }
+
+    function setCodeWrapState(wrapEl, isMatch, isComplete) {
+        if (!wrapEl) return;
+        wrapEl.classList.remove('is-valid', 'is-invalid');
+        if (!isComplete) return;
+        wrapEl.classList.add(isMatch ? 'is-valid' : 'is-invalid');
+    }
+
     // ====================
-    // Delete All (Secure 6-digit code) on Dashboard
+    // Delete All (Secure 10-digit code) on Dashboard
     // ====================
     let dashDeleteTableId = null;
     let dashDeleteExpectedCode = '';
@@ -410,13 +433,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashDeleteConfirmBtn = document.getElementById('dashDeleteConfirm');
     const dashDeleteCancelBtn = document.getElementById('dashDeleteCancel');
     const dashDeleteCodeDisplay = document.getElementById('dashDeleteCode');
+    const dashDeleteCodeBoxes = document.getElementById('dashDeleteCodeBoxes');
+    const dashDeleteCodeWrap = document.getElementById('dashDeleteCodeWrap');
     const dashDeleteTableNameEl = document.getElementById('dashDeleteTableName');
     const dashDeleteCountEl = document.getElementById('dashDeleteCount');
 
     function dashOpenDeleteAllModal(tableId) {
         dashDeleteTableId = tableId;
         dashDeleteExpectedCode = '';
-        if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
+        if (dashDeleteCodeInput) {
+            dashDeleteCodeInput.value = '';
+            renderCodeBoxes(dashDeleteCodeBoxes, '');
+        }
+        setCodeWrapState(dashDeleteCodeWrap, false, false);
         if (dashDeleteConfirmBtn) { dashDeleteConfirmBtn.disabled = true; dashDeleteConfirmBtn.style.opacity = '0.5'; dashDeleteConfirmBtn.textContent = 'Delete All Cards'; }
 
         ApiClient.post(`/api/table/${tableId}/cards/generate-delete-code/`)
@@ -439,12 +468,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.alpineCloseModal) window.alpineCloseModal();
         dashDeleteTableId = null;
         dashDeleteExpectedCode = '';
-        if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
+        if (dashDeleteCodeInput) {
+            dashDeleteCodeInput.value = '';
+            renderCodeBoxes(dashDeleteCodeBoxes, '');
+        }
+        setCodeWrapState(dashDeleteCodeWrap, false, false);
     }
 
     if (dashDeleteCodeInput) {
         dashDeleteCodeInput.addEventListener('input', function() {
-            const match = this.value.trim() === dashDeleteExpectedCode;
+            this.value = sanitizeCodeInputValue(this.value);
+            renderCodeBoxes(dashDeleteCodeBoxes, this.value);
+            const isComplete = this.value.length === 10;
+            const match = isComplete && this.value === dashDeleteExpectedCode;
+            setCodeWrapState(dashDeleteCodeWrap, match, isComplete);
             if (dashDeleteConfirmBtn) { dashDeleteConfirmBtn.disabled = !match; dashDeleteConfirmBtn.style.opacity = match ? '1' : '0.5'; }
         });
     }
@@ -511,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====================
-    // Upgrade All Classes (Secure 6-digit code) on Dashboard
+    // Upgrade All Classes (Secure 10-digit code) on Dashboard
     // ====================
     let dashUpgradeTableId = null;
     let dashUpgradeExpectedCode = '';
@@ -520,6 +557,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashUpgradeConfirmBtn = document.getElementById('dashUpgradeConfirm');
     const dashUpgradeCancelBtn = document.getElementById('dashUpgradeCancel');
     const dashUpgradeCodeDisplay = document.getElementById('dashUpgradeCode');
+    const dashUpgradeCodeBoxes = document.getElementById('dashUpgradeCodeBoxes');
+    const dashUpgradeCodeWrap = document.getElementById('dashUpgradeCodeWrap');
     const dashUpgradeTableNameEl = document.getElementById('dashUpgradeTableName');
     const dashUpgradeCountEl = document.getElementById('dashUpgradeCount');
 
@@ -536,7 +575,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function dashOpenUpgradeAllModal(tableId) {
         dashUpgradeTableId = tableId;
         dashUpgradeExpectedCode = '';
-        if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
+        if (dashUpgradeCodeInput) {
+            dashUpgradeCodeInput.value = '';
+            renderCodeBoxes(dashUpgradeCodeBoxes, '');
+        }
+        setCodeWrapState(dashUpgradeCodeWrap, false, false);
         if (dashUpgradeConfirmBtn) { dashUpgradeConfirmBtn.disabled = true; dashUpgradeConfirmBtn.style.opacity = '0.5'; dashUpgradeConfirmBtn.textContent = 'Upgrade All Classes'; }
 
         ApiClient.post(`/api/table/${tableId}/cards/generate-upgrade-code/`)
@@ -559,12 +602,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.alpineCloseModal) window.alpineCloseModal();
         dashUpgradeTableId = null;
         dashUpgradeExpectedCode = '';
-        if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
+        if (dashUpgradeCodeInput) {
+            dashUpgradeCodeInput.value = '';
+            renderCodeBoxes(dashUpgradeCodeBoxes, '');
+        }
+        setCodeWrapState(dashUpgradeCodeWrap, false, false);
     }
 
     if (dashUpgradeCodeInput) {
         dashUpgradeCodeInput.addEventListener('input', function() {
-            const match = this.value.trim() === dashUpgradeExpectedCode;
+            this.value = sanitizeCodeInputValue(this.value);
+            renderCodeBoxes(dashUpgradeCodeBoxes, this.value);
+            const isComplete = this.value.length === 10;
+            const match = isComplete && this.value === dashUpgradeExpectedCode;
+            setCodeWrapState(dashUpgradeCodeWrap, match, isComplete);
             if (dashUpgradeConfirmBtn) { dashUpgradeConfirmBtn.disabled = !match; dashUpgradeConfirmBtn.style.opacity = match ? '1' : '0.5'; }
         });
     }

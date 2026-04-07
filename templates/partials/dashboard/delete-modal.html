@@ -32,13 +32,26 @@
 
         <p class="verify-hint" style="text-align:center;margin-bottom:8px;">Type this code to confirm:</p>
         <div class="verify-code" id="dashDeleteCode">----------</div>
-        <input type="text" id="dashDeleteCodeInput" maxlength="10"
-               inputmode="numeric"
-               pattern="[0-9]{10}"
-               placeholder="_ _ _ _ _ _ _ _ _ _"
-               autocomplete="off"
-               class="verify-input"
-               oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+        <div class="confirm-code-input-wrap" id="dashDeleteCodeWrap" onclick="document.getElementById('dashDeleteCodeInput').focus()">
+          <div class="confirm-code-boxes" id="dashDeleteCodeBoxes" aria-hidden="true">
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+          </div>
+          <input type="text" id="dashDeleteCodeInput" maxlength="10"
+                 inputmode="numeric"
+                 pattern="[0-9]{10}"
+                 autocomplete="off"
+                 class="verify-input confirm-code-input-hidden"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+        </div>
       </div>
     </div>
     <div class="modal-footer">

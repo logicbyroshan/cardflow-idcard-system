@@ -1282,6 +1282,8 @@ document.addEventListener('DOMContentLoaded', function () {
         step2.style.display = 'none';
         codeEl.textContent = tempPwVerificationCode;
         codeInput.value = '';
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes('');
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
         codeErr.style.display = 'none';
         pwInput.value = '';
         pwInput.type = 'password';
@@ -1305,6 +1307,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         tempPwVerificationCode = '';
         tempPwTargetId = null;
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
     };
 
     window.verifyTempPwCode = function () {
@@ -1315,13 +1318,19 @@ document.addEventListener('DOMContentLoaded', function () {
         var pwInput = document.getElementById('tempPwNewPassword');
         if (!codeInput || !codeErr || !step1 || !step2) return;
 
-        if ((codeInput.value || '').trim() === tempPwVerificationCode) {
+        var input = (codeInput.value || '').replace(/\D/g, '').slice(0, 10);
+        codeInput.value = input;
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes(input);
+
+        if (input === tempPwVerificationCode) {
+            if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('is-valid');
             codeErr.style.display = 'none';
             step1.style.display = 'none';
             step2.style.display = '';
             if (pwInput) pwInput.focus();
             return;
         }
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState(input.length === 10 ? 'is-invalid' : '');
         codeErr.style.display = '';
     };
 
