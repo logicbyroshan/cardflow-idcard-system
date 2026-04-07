@@ -709,11 +709,13 @@
     font-weight: 700;
     background: #667eea;
     color: #fff;
-    padding: 1px 8px;
+    width: 5ch;
+    min-width: 5ch;
+    padding: 1px 0;
     border-radius: 8px;
-    min-width: 20px;
     text-align: center;
     line-height: 18px;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ====================
