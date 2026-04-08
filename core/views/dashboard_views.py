@@ -544,7 +544,7 @@ def api_recent_client_updates(request):
         if cached is not None:
             if isinstance(cached, dict):
                 return JsonResponse({'success': True, **cached})
-            return JsonResponse({'success': True, 'clients': cached, 'active_clients_now': 0})
+            return JsonResponse({'success': True, 'clients': cached, 'active_clients_now': 0, 'active_client_ids': []})
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
@@ -632,10 +632,12 @@ def api_recent_client_updates(request):
                 'pool': cc.get('pool', 0),
             })
 
-        active_clients_now = len(_get_live_active_client_ids_for_dashboard(user))
+        live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+        active_clients_now = len(live_active_client_ids)
         payload = {
             'clients': results,
             'active_clients_now': active_clients_now,
+            'active_client_ids': sorted(live_active_client_ids),
         }
 
         cache.set(cache_key, payload, 20)

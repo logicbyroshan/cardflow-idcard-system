@@ -45,7 +45,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    background: #fff;
+    background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
     border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 0;
     margin-left: -1px;
@@ -66,6 +66,7 @@ a.stat-card-link {
 }
 a.stat-card-link:hover {
     border-color: #667eea;
+    background: linear-gradient(145deg, #ffffff 0%, #f4f7ff 100%);
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.13);
 }
 

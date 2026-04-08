@@ -36,6 +36,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
     const recentClientUpdatesActiveBadge = document.getElementById('recentClientUpdatesActiveBadge');
+    const recentClientUpdatesSortHeaders = Array.from(document.querySelectorAll('th[data-recent-sort-key]'));
+    const printOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="print"][data-overview-sort-key]'));
+    const reprintOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="reprint"][data-overview-sort-key]'));
+    let recentClientUpdatesLiveOnly = false;
+    let recentClientUpdatesLiveClientIds = new Set();
+    let recentClientUpdatesSortKey = '';
+    let printOverviewSortKey = '';
+    let reprintOverviewSortKey = '';
     const printOverviewSearchInput = document.getElementById('printOverviewSearch');
     const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
     const recentActivityTimeFilter = document.getElementById('recentActivityTimeFilter');
@@ -54,6 +62,164 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!recentClientUpdatesActiveBadge) return;
         const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
         recentClientUpdatesActiveBadge.textContent = `Live Working Clients: ${safeCount.toLocaleString()}`;
+    }
+
+    function setRecentClientUpdatesLiveFilterUI() {
+        if (!recentClientUpdatesActiveBadge) return;
+        recentClientUpdatesActiveBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveOnly);
+    }
+
+    function setRecentClientUpdatesSortUI() {
+        if (!recentClientUpdatesSortHeaders.length) return;
+        recentClientUpdatesSortHeaders.forEach((header) => {
+            const key = header.getAttribute('data-recent-sort-key') || '';
+            const isActive = key && key === recentClientUpdatesSortKey;
+            header.classList.toggle('is-sort-active', isActive);
+            header.setAttribute('aria-sort', isActive ? 'descending' : 'none');
+
+            const icon = header.querySelector('.recent-sort-icon');
+            if (icon) {
+                icon.classList.remove('fa-sort', 'fa-sort-down');
+                icon.classList.add(isActive ? 'fa-sort-down' : 'fa-sort');
+            }
+        });
+    }
+
+    function getRecentClientSortValue(row, key) {
+        if (!key) return 0;
+        const rawValue = Number(row.getAttribute(`data-sort-${key}`));
+        return Number.isFinite(rawValue) ? rawValue : 0;
+    }
+
+    function applyRecentClientUpdatesSort() {
+        const tbody = document.getElementById('recentClientUpdatesBody');
+        if (!tbody) return;
+
+        const existingNoResultRow = tbody.querySelector('.recent-table-no-search-results');
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const groupedRows = clientRows.map((row) => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll(`tr.expand-group-${idx}`)) : [];
+            const baseOrder = Number(row.getAttribute('data-base-order'));
+            return {
+                row,
+                subRows,
+                baseOrder: Number.isFinite(baseOrder) ? baseOrder : 0,
+            };
+        });
+
+        groupedRows.sort((a, b) => {
+            if (!recentClientUpdatesSortKey) {
+                return a.baseOrder - b.baseOrder;
+            }
+
+            const aValue = getRecentClientSortValue(a.row, recentClientUpdatesSortKey);
+            const bValue = getRecentClientSortValue(b.row, recentClientUpdatesSortKey);
+            if (bValue !== aValue) {
+                return bValue - aValue;
+            }
+            return a.baseOrder - b.baseOrder;
+        });
+
+        const fragment = document.createDocumentFragment();
+        groupedRows.forEach((entry) => {
+            fragment.appendChild(entry.row);
+            entry.subRows.forEach((subRow) => {
+                fragment.appendChild(subRow);
+            });
+        });
+        tbody.appendChild(fragment);
+    }
+
+    function getOverviewSortHeaders(scope) {
+        return scope === 'print' ? printOverviewSortHeaders : reprintOverviewSortHeaders;
+    }
+
+    function getOverviewSortKey(scope) {
+        return scope === 'print' ? printOverviewSortKey : reprintOverviewSortKey;
+    }
+
+    function setOverviewSortKey(scope, nextKey) {
+        if (scope === 'print') {
+            printOverviewSortKey = nextKey;
+            return;
+        }
+        reprintOverviewSortKey = nextKey;
+    }
+
+    function setOverviewSortUI(scope) {
+        const headers = getOverviewSortHeaders(scope);
+        if (!headers.length) return;
+        const activeKey = getOverviewSortKey(scope);
+
+        headers.forEach((header) => {
+            const key = header.getAttribute('data-overview-sort-key') || '';
+            const isActive = key && key === activeKey;
+            header.classList.toggle('is-sort-active', isActive);
+            header.setAttribute('aria-sort', isActive ? 'descending' : 'none');
+
+            const icon = header.querySelector('.recent-sort-icon');
+            if (icon) {
+                icon.classList.remove('fa-sort', 'fa-sort-down');
+                icon.classList.add(isActive ? 'fa-sort-down' : 'fa-sort');
+            }
+        });
+    }
+
+    function applyOverviewSort(scope) {
+        const tbody = scope === 'print'
+            ? document.getElementById('printOverviewBody')
+            : document.getElementById('reprintOverviewBody');
+        if (!tbody) return;
+
+        const noResultClass = `${scope}-table-no-search-results`;
+        const existingNoResultRow = tbody.querySelector('.' + noResultClass);
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const activeKey = getOverviewSortKey(scope);
+        const groupedRows = clientRows.map((row) => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll(`tr.${scope}-expand-group-${idx}`)) : [];
+            const baseOrder = Number(row.getAttribute('data-base-order'));
+            return {
+                row,
+                subRows,
+                baseOrder: Number.isFinite(baseOrder) ? baseOrder : 0,
+            };
+        });
+
+        groupedRows.sort((a, b) => {
+            if (!activeKey) {
+                return a.baseOrder - b.baseOrder;
+            }
+
+            const aValue = Number(a.row.getAttribute(`data-sort-${activeKey}`));
+            const bValue = Number(b.row.getAttribute(`data-sort-${activeKey}`));
+            const safeA = Number.isFinite(aValue) ? aValue : 0;
+            const safeB = Number.isFinite(bValue) ? bValue : 0;
+
+            if (safeB !== safeA) {
+                return safeB - safeA;
+            }
+
+            return a.baseOrder - b.baseOrder;
+        });
+
+        const fragment = document.createDocumentFragment();
+        groupedRows.forEach((entry) => {
+            fragment.appendChild(entry.row);
+            entry.subRows.forEach((subRow) => {
+                fragment.appendChild(subRow);
+            });
+        });
+        tbody.appendChild(fragment);
     }
 
     function renderDashboardClientStatusBadge(status, esc) {
@@ -89,7 +255,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .map(subRow => (subRow.querySelector('.sub-row-name')?.textContent || '').trim().toLowerCase())
                 .join(' ');
             const searchable = `${clientName} ${tableNames}`.trim();
-            const isMatch = !query || searchable.includes(query);
+            const isSearchMatch = !query || searchable.includes(query);
+            const isLiveMatch = !recentClientUpdatesLiveOnly || row.getAttribute('data-live-active') === '1';
+            const isMatch = isSearchMatch && isLiveMatch;
 
             if (!isMatch) {
                 row.style.display = 'none';
@@ -106,7 +274,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        if (!query || visibleClients > 0) return;
+        if ((!query && !recentClientUpdatesLiveOnly) || visibleClients > 0) return;
+
+        let noResultMessage = 'No clients matched your filters';
+        if (query && recentClientUpdatesLiveOnly) {
+            noResultMessage = `No live working clients matched "${query.replace(/"/g, '&quot;')}"`;
+        } else if (query) {
+            noResultMessage = `No clients matched "${query.replace(/"/g, '&quot;')}"`;
+        } else if (recentClientUpdatesLiveOnly) {
+            noResultMessage = 'No live working clients found right now';
+        }
 
         tbody.insertAdjacentHTML(
             'beforeend',
@@ -114,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <tr class="recent-table-no-search-results">
                     <td colspan="${headerColumns}">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        No clients matched "${query.replace(/"/g, '&quot;')}"
+                        ${noResultMessage}
                     </td>
                 </tr>
             `
@@ -124,6 +301,37 @@ document.addEventListener('DOMContentLoaded', function() {
     if (recentClientUpdatesSearchInput) {
         recentClientUpdatesSearchInput.addEventListener('input', applyRecentClientUpdatesSearch);
     }
+
+    if (recentClientUpdatesActiveBadge) {
+        recentClientUpdatesActiveBadge.addEventListener('click', function() {
+            recentClientUpdatesLiveOnly = !recentClientUpdatesLiveOnly;
+            setRecentClientUpdatesLiveFilterUI();
+            applyRecentClientUpdatesSearch();
+        });
+    }
+
+    if (recentClientUpdatesSortHeaders.length) {
+        recentClientUpdatesSortHeaders.forEach((header) => {
+            header.addEventListener('click', function() {
+                const key = header.getAttribute('data-recent-sort-key') || '';
+                if (!key) return;
+
+                recentClientUpdatesSortKey = recentClientUpdatesSortKey === key ? '' : key;
+                setRecentClientUpdatesSortUI();
+                applyRecentClientUpdatesSort();
+                applyRecentClientUpdatesSearch();
+            });
+
+            header.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                header.click();
+            });
+        });
+    }
+
+    setRecentClientUpdatesLiveFilterUI();
+    setRecentClientUpdatesSortUI();
 
     function applyOverviewSearch(scope) {
         const tbody = scope === 'print'
@@ -195,6 +403,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (printOverviewSortHeaders.length) {
+        printOverviewSortHeaders.forEach((header) => {
+            header.addEventListener('click', function() {
+                const key = header.getAttribute('data-overview-sort-key') || '';
+                if (!key) return;
+
+                const nextKey = printOverviewSortKey === key ? '' : key;
+                setOverviewSortKey('print', nextKey);
+                setOverviewSortUI('print');
+                applyOverviewSort('print');
+                applyOverviewSearch('print');
+            });
+
+            header.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                header.click();
+            });
+        });
+    }
+
+    if (reprintOverviewSortHeaders.length) {
+        reprintOverviewSortHeaders.forEach((header) => {
+            header.addEventListener('click', function() {
+                const key = header.getAttribute('data-overview-sort-key') || '';
+                if (!key) return;
+
+                const nextKey = reprintOverviewSortKey === key ? '' : key;
+                setOverviewSortKey('reprint', nextKey);
+                setOverviewSortUI('reprint');
+                applyOverviewSort('reprint');
+                applyOverviewSearch('reprint');
+            });
+
+            header.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                header.click();
+            });
+        });
+    }
+
+    setOverviewSortUI('print');
+    setOverviewSortUI('reprint');
+
     // ====================
     // Load Recent Client Updates
     // ====================
@@ -213,12 +466,28 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
+                        const liveClientIds = Array.isArray(data.active_client_ids)
+                            ? data.active_client_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+                            : [];
+                        recentClientUpdatesLiveClientIds = new Set(liveClientIds);
                         const liveActiveClients = Number(data.active_clients_now);
                         setRecentClientUpdatesActiveBadge(Number.isFinite(liveActiveClients) ? liveActiveClients : 0);
                         setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
                             const inactiveBadge = renderDashboardClientStatusBadge(client.status, esc);
+                            const clientId = Number(client.client_id);
+                            const isLiveActive = Number.isFinite(clientId) && recentClientUpdatesLiveClientIds.has(clientId);
+                            const pendingCount = Number(client.pending);
+                            const verifiedCount = Number(client.verified);
+                            const approvedCount = Number(client.approved);
+                            const downloadedCount = Number(client.downloaded);
+                            const poolCount = Number(client.pool);
+                            const safePending = Number.isFinite(pendingCount) ? pendingCount : 0;
+                            const safeVerified = Number.isFinite(verifiedCount) ? verifiedCount : 0;
+                            const safeApproved = Number.isFinite(approvedCount) ? approvedCount : 0;
+                            const safeDownloaded = Number.isFinite(downloadedCount) ? downloadedCount : 0;
+                            const safePool = Number.isFinite(poolCount) ? poolCount : 0;
                             // Build sub-rows for each table (same column structure)
                             const tableSubRows = tables.map(t => `
                                 <tr class="client-sub-row expand-group-${i}" style="display:none">
@@ -246,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             `).join('');
 
                             return `
-                            <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
+                            <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-live-active="${isLiveActive ? '1' : '0'}" data-sort-pending="${safePending}" data-sort-verified="${safeVerified}" data-sort-approved="${safeApproved}" data-sort-downloaded="${safeDownloaded}" data-sort-pool="${safePool}" onclick="toggleClientExpandRow(this)">
                                 <td>
                                     <a href="${panelUrl('/client/' + client.client_id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
                                 </td>
@@ -270,8 +539,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             </tr>
                             ${tableSubRows}
                         `}).join('');
+                        setRecentClientUpdatesLiveFilterUI();
+                        setRecentClientUpdatesSortUI();
+                        applyRecentClientUpdatesSort();
                         applyRecentClientUpdatesSearch();
                     } else {
+                        recentClientUpdatesLiveClientIds = new Set();
                         setRecentClientUpdatesActiveBadge(0);
                         setDashboardTabCount(dashboardTabCountRecentClients, 0);
                         tbody.innerHTML = `
@@ -281,6 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </td>
                             </tr>
                         `;
+                        setRecentClientUpdatesSortUI();
                         applyRecentClientUpdatesSearch();
                     }
                 });
@@ -288,6 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading recent client updates:', error);
                 waitForMinDelay(skeletonStart).then(() => {
+                    recentClientUpdatesLiveClientIds = new Set();
                     setRecentClientUpdatesActiveBadge(0);
                     setDashboardTabCount(dashboardTabCountRecentClients, 0);
                     tbody.innerHTML = `
@@ -297,6 +572,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </td>
                         </tr>
                     `;
+                    setRecentClientUpdatesSortUI();
                     applyRecentClientUpdatesSearch();
                 });
             });
@@ -984,6 +1260,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             printBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
                                 const iBadge = renderDashboardClientStatusBadge(client.status, esc);
+                                const generateList = Number(client.generate_list);
+                                const finalized = Number(client.finalized);
+                                const safeGenerateList = Number.isFinite(generateList) ? generateList : 0;
+                                const safeFinalized = Number.isFinite(finalized) ? finalized : 0;
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row print-expand-group-${i}" style="display:none">
                                         <td>
@@ -994,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </tr>
                                 `).join('');
                                 return `
-                                    <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
+                                    <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="print" data-sort-pending="${safeGenerateList}" data-sort-verified="${safeFinalized}" onclick="toggleScopedExpandRow(this)">
                                         <td>
                                             <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                         </td>
@@ -1004,9 +1284,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${subRows}
                                 `;
                             }).join('');
+                            setOverviewSortUI('print');
+                            applyOverviewSort('print');
                             applyOverviewSearch('print');
                         } else {
                             printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                            setOverviewSortUI('print');
                             applyOverviewSearch('print');
                         }
                     }
@@ -1022,6 +1305,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             reprintBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
                                 const iBadge = renderDashboardClientStatusBadge(client.status, esc);
+                                const requested = Number(client.requested);
+                                const confirmed = Number(client.confirmed);
+                                const safeRequested = Number.isFinite(requested) ? requested : 0;
+                                const safeConfirmed = Number.isFinite(confirmed) ? confirmed : 0;
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
                                         <td>
@@ -1032,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </tr>
                                 `).join('');
                                 return `
-                                    <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
+                                    <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="reprint" data-sort-pending="${safeRequested}" data-sort-verified="${safeConfirmed}" onclick="toggleScopedExpandRow(this)">
                                         <td>
                                             <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
                                         </td>
@@ -1042,9 +1329,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${subRows}
                                 `;
                             }).join('');
+                            setOverviewSortUI('reprint');
+                            applyOverviewSort('reprint');
                             applyOverviewSearch('reprint');
                         } else {
                             reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                            setOverviewSortUI('reprint');
                             applyOverviewSearch('reprint');
                         }
                     }
