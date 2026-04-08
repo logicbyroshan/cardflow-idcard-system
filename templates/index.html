@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <!-- Page-specific: dashboard cards, stats, activity -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-  <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <!-- Shared Alpine runtime loader -->
   {% include 'partials/common/alpine-loader.html' %}
@@ -78,9 +77,6 @@
   {% include 'partials/dashboard/delete-modal.html' %}
   {% include 'partials/dashboard/upgrade-modal.html' %}
   {% include 'partials/dashboard/reupload-modal.html' %}
-  {% if is_super_admin %}
-  {% include 'partials/dashboard/backup-modal.html' %}
-  {% endif %}
 
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/dashboard.min.js' %}"></script>
