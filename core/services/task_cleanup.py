@@ -265,19 +265,15 @@ def run_all_cleanup():
     Returns:
         Dict with counts of cleaned up items
     """
-    from core.services.activity_service import ActivityService
     results = {
         'stale_tasks': cleanup_stale_tasks(hours=24),
         'old_results': cleanup_old_results(days=7),
         'orphaned_temp': cleanup_orphaned_temp_files(hours=24),
         'old_exports': cleanup_old_exports(days=3),
     }
-    # Activity log cleanup is rate-limited to once per hour (same as other cleanups)
-    if _should_run('activity_logs'):
-        results['old_activity_logs'] = ActivityService.cleanup_old(days=30)
-        _mark_ran('activity_logs')
-    else:
-        results['old_activity_logs'] = 0
+    # Activity logs are intentionally NOT auto-cleared.
+    # They can be cleared manually from Operations Hub.
+    results['old_activity_logs'] = 0
     
     total = sum(results.values())
     if total:

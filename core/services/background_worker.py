@@ -215,7 +215,8 @@ class BackgroundWorker:
             # so concurrent workers or rapid task completions skip the scan cheaply.
             try:
                 from core.services.task_cleanup import run_all_cleanup
-                # Periodic cleanup: temp files (24h), exports (3d), activity logs (30d).
+                # Periodic cleanup: temp files (24h), exports (3d).
+                # Activity logs are now cleared manually from Operations Hub.
                 # All functions are rate-limited internally so repeated calls are cheap.
                 run_all_cleanup()
             except Exception as cleanup_err:

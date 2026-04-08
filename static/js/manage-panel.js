@@ -1571,6 +1571,56 @@ function resetOperationsFilters() {
   handleOpsSourceChange();
 }
 
+async function clearActivityLogsManual() {
+  const clearBtn = document.getElementById('opsClearLogsBtn');
+  const ok = await showConfirm({
+    title: 'Clear Activity Logs?',
+    text: 'This will permanently delete all activity logs. This action cannot be undone.',
+    icon: 'fa-solid fa-trash-can',
+    confirmLabel: 'Clear Logs',
+    btnClass: 'btn-danger',
+  });
+  if (!ok) return;
+
+  const originalHtml = clearBtn ? clearBtn.innerHTML : '';
+  if (clearBtn) {
+    clearBtn.disabled = true;
+    clearBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing';
+  }
+
+  try {
+    const res = await fetch('/api/activity-logs/clear/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+    const data = await res.json();
+    if (res.ok && data && data.success) {
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Activity logs cleared.', 'success');
+      }
+      _opsPage = 1;
+      await loadOperationsFeed(1);
+      return;
+    }
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to clear activity logs.', 'error');
+    }
+  } catch (err) {
+    console.error('clearActivityLogsManual:', err);
+    if (typeof showToast === 'function') {
+      showToast('Network error while clearing activity logs.', 'error');
+    }
+  } finally {
+    if (clearBtn) {
+      clearBtn.disabled = false;
+      clearBtn.innerHTML = originalHtml || '<i class="fa-solid fa-trash-can"></i> Clear Activity Logs';
+    }
+  }
+}
+
 function _syncOpsAutoRefresh(shouldRun) {
   if (!shouldRun) {
     if (opsAutoRefreshTimer) {

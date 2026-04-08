@@ -162,6 +162,7 @@ from .task_api import (
 
 from .monitoring_api import (
     api_client_errors,
+    api_clear_activity_logs,
     api_monitoring_data,
     api_operations_feed,
     api_server_info_snapshot,

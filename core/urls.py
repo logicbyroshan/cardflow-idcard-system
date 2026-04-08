@@ -253,6 +253,7 @@ urlpatterns = [
 
     # Activity Logs API
     path('api/activity-logs/', views.api_activity_logs, name='api_activity_logs'),
+    path('api/activity-logs/clear/', views.api_clear_activity_logs, name='api_clear_activity_logs'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),
