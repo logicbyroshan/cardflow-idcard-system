@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
         drawer.innerHTML = '' +
             '<div class="drawer-header card-history-header">' +
                 '<div>' +
-                    '<div class="card-history-title">Client Staff Login History</div>' +
+                    '<div class="card-history-title">Assistent Login History</div>' +
                     '<div class="card-history-subtitle" id="staffHistorySubtitle">Login, logout, and devices</div>' +
                 '</div>' +
                 '<button type="button" class="drawer-close card-history-close" id="staffHistoryClose" aria-label="Close history">' +
@@ -154,12 +154,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var activeDevices = Number(payload.active_devices || 0);
         if (subtitle) {
-            subtitle.textContent = (staffName || 'Client Staff') + ' - Active devices: ' + activeDevices;
+            subtitle.textContent = (staffName || 'Assistent') + ' - Active devices: ' + activeDevices;
         }
 
         var events = Array.isArray(payload.events) ? payload.events : [];
         if (!events.length) {
-            body.innerHTML = '<div class="card-history-empty">No login history available for this client staff yet.</div>';
+            body.innerHTML = '<div class="card-history-empty">No login history available for this assistent yet.</div>';
             return;
         }
 
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!staffId) return;
 
         openStaffHistoryDrawer();
-        renderStaffHistoryLoading(staffName || 'Client Staff');
+        renderStaffHistoryLoading(staffName || 'Assistent');
 
         fetch(clientStaffHistoryApiUrl(staffId), {
             method: 'GET',
@@ -220,13 +220,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             })
             .then(function(data) {
-                var resolvedName = staffName || (data.staff && data.staff.name) || 'Client Staff';
+                var resolvedName = staffName || (data.staff && data.staff.name) || 'Assistent';
                 renderStaffHistory(resolvedName, data);
             })
             .catch(function(err) {
                 renderStaffHistoryError(err && err.message ? err.message : 'Failed to load login history.');
                 if (typeof window.showToast === 'function') {
-                    window.showToast('Unable to load client staff login history', 'error');
+                    window.showToast('Unable to load assistent login history', 'error');
                 }
             });
     }
@@ -629,7 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pwRow = document.getElementById('staffPasswordOptionRow');
 
         if (mode === 'add') {
-            if (drawerTitle) drawerTitle.textContent = 'Add New Client Staff';
+            if (drawerTitle) drawerTitle.textContent = 'Add New Assistent';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-user-plus';
             if (submitBtnText) submitBtnText.textContent = 'Add Staff';
             if (submitBtn) submitBtn.style.display = 'inline-flex';
@@ -638,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
             enableFormInputs(true);
             initClientAssignment(null);
         } else if (mode === 'edit') {
-            if (drawerTitle) drawerTitle.textContent = 'Edit Client Staff';
+            if (drawerTitle) drawerTitle.textContent = 'Edit Assistent';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-pen-to-square';
             if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             if (submitBtn) submitBtn.style.display = 'inline-flex';
@@ -662,7 +662,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 initClientAssignment(staffData.client_id || null);
             }
         } else {
-            if (drawerTitle) drawerTitle.textContent = 'View Client Staff';
+            if (drawerTitle) drawerTitle.textContent = 'View Assistent';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-eye';
             if (submitBtn) submitBtn.style.display = 'none';
             if (pwRow) pwRow.style.display = 'none';

@@ -103,7 +103,7 @@ async function loadStaff() {
           <td colspan="7">
             <div class="empty-state">
               <i class="fa-solid fa-users-gear"></i>
-              <p>No admin staff yet. Click "Add Admin Staff" to create one.</p>
+              <p>No operator yet. Click "Add Operator" to create one.</p>
             </div>
           </td>
         </tr>
@@ -154,7 +154,7 @@ async function loadStaff() {
 
 // Open create modal
 function openCreateModal() {
-  document.getElementById('modalTitle').textContent = 'Add Admin Staff';
+  document.getElementById('modalTitle').textContent = 'Add Operator';
   document.getElementById('submitBtn').textContent = 'Create Staff';
   document.getElementById('staffId').value = '';
   document.getElementById('staffForm').reset();
@@ -175,7 +175,7 @@ async function editStaff(id) {
     
     if (data.success) {
       const staff = data.staff;
-      document.getElementById('modalTitle').textContent = 'Edit Admin Staff';
+      document.getElementById('modalTitle').textContent = 'Edit Operator';
       document.getElementById('submitBtn').textContent = 'Update Staff';
       document.getElementById('staffId').value = staff.id;
       document.getElementById('firstName').value = staff.first_name;
@@ -309,7 +309,7 @@ function executeConfirmAction() {
 // Confirm delete
 function confirmDelete(id, name) {
   openConfirmModal(
-    'Delete Admin Staff',
+    'Delete Operator',
     `Are you sure you want to delete "${name}"? This cannot be undone.`,
     async () => {
       try {

@@ -74,11 +74,37 @@
     </table>
   </div>
 
-  <!-- Load More -->
-  <div class="notif-load-more panel-hidden" id="notifLoadMore">
-    <button class="btn btn-md btn-neutral" onclick="loadMoreNotifications()">
-      <i class="fa-solid fa-arrow-down"></i> Load More
-    </button>
+  <!-- Pagination -->
+  <div class="pagination-bar notif-pagination-bar">
+    <div class="pagination-left">
+      <span class="pagination-info" id="notifPaginationInfo">Showing <strong>0-0</strong> of <strong>0</strong> results</span>
+    </div>
+    <div class="pagination-center">
+      <button class="pagination-btn" id="notifFirstBtn" onclick="notifSetPage(1)" disabled title="First Page" aria-label="First page">
+        <i class="fa-solid fa-angles-left"></i>
+      </button>
+      <button class="pagination-btn" id="notifPrevBtn" onclick="notifPage(-1)" disabled title="Previous Page" aria-label="Previous page">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <span class="page-numbers" id="notifPageNumbers">
+        <button class="page-num active">1</button>
+      </span>
+      <button class="pagination-btn" id="notifNextBtn" onclick="notifPage(1)" disabled title="Next Page" aria-label="Next page">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+      <button class="pagination-btn" id="notifLastBtn" onclick="notifSetPage(-1)" disabled title="Last Page" aria-label="Last page">
+        <i class="fa-solid fa-angles-right"></i>
+      </button>
+    </div>
+    <div class="pagination-right">
+      <label for="notifRowsPerPage">Rows per page:</label>
+      <select id="notifRowsPerPage" class="form-select form-select-sm" onchange="onNotifRowsPerPageChange(this.value)">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
   </div>
 
   {% if is_super_admin %}

@@ -20,83 +20,6 @@
         gap: 0;
     }
 
-    .portfolio-toolbar {
-        position: sticky;
-        top: 0;
-        z-index: 8;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-        border-bottom: 1px solid #e2e8f0;
-        background: #fff;
-        padding: 8px 0;
-        flex-shrink: 0;
-    }
-
-    .portfolio-subtabs {
-        display: inline-flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        border: 1px solid #e2e8f0;
-        border-radius: 4px;
-        background: #fff;
-        padding: 6px;
-    }
-
-    .portfolio-toolbar-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-left: auto;
-    }
-
-    .portfolio-toolbar-actions-group {
-        display: none;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .portfolio-toolbar-actions-group.active {
-        display: inline-flex;
-    }
-
-    .portfolio-subtab-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-        color: #475569;
-        border-radius: 3px;
-        height: 32px;
-        padding: 0 11px;
-        font-size: 11.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.16s ease;
-    }
-
-    .portfolio-subtab-btn:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
-        color: #334155;
-    }
-
-    .portfolio-subtab-btn.active {
-        color: #1d4ed8;
-        border-color: #bfdbfe;
-        background: #eff6ff;
-        box-shadow: none;
-    }
-
-    .portfolio-subtab-btn .wa-count-badge {
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 3px;
-    }
-
     .portfolio-admin-page .wa-count-badge {
         border-radius: 3px;
         border: 1px solid #dbe3ef;
@@ -242,6 +165,25 @@
         box-shadow: none;
     }
 
+    .portfolio-admin-page .wa-action-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .portfolio-pane-switch {
+        border: 1px solid #dbe3ef;
+        background: #f8fafc;
+        color: #334155;
+    }
+
+    .portfolio-pane-switch:hover {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #1e3a8a;
+    }
+
     .portfolio-admin-page .wa-toggle-label {
         border-radius: 3px;
     }
@@ -276,6 +218,8 @@
         margin-top: 0;
         border-top: 1px solid #e2e8f0;
         background: #fff;
+        padding: 4px 10px;
+        min-height: 34px;
         flex-shrink: 0;
     }
 
@@ -333,75 +277,52 @@
     }
 
     .portfolio-pagination-bar .pagination-right {
+        display: flex;
+        align-items: center;
         gap: 8px;
+        flex-shrink: 0;
+        white-space: nowrap;
     }
 
     .portfolio-pagination-bar .pagination-right label {
         font-size: 11px;
         color: #64748b;
+        white-space: nowrap;
+        margin: 0;
     }
 
     .portfolio-pagination-bar #portfolioRowsPerPage {
+        width: 74px;
+        flex: 0 0 auto;
         min-width: 74px;
         height: 26px;
         padding: 2px 8px;
         border-radius: 4px;
-    }
-
-    @media (max-width: 920px) {
-        .portfolio-toolbar {
-            align-items: stretch;
-        }
-
-        .portfolio-toolbar-actions {
-            width: 100%;
-            margin-left: 0;
-        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="wa-page-container portfolio-admin-page">
-    <div class="portfolio-toolbar">
-        <div class="portfolio-subtabs" id="portfolioSubtabs">
-            <button type="button" class="portfolio-subtab-btn active" data-target="portfolioItemsPane">
-                <i class="fa-solid fa-images"></i>
-                <span>Portfolio Items</span>
-                <span class="wa-count-badge">{{ total_items_count }}</span>
-            </button>
-            <button type="button" class="portfolio-subtab-btn" data-target="portfolioCategoriesPane">
-                <i class="fa-solid fa-layer-group"></i>
-                <span>Categories</span>
-                <span class="wa-count-badge">{{ categories|length }}</span>
-            </button>
-        </div>
-
-        <div class="portfolio-toolbar-actions">
-            {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
-            <div class="portfolio-toolbar-actions-group active" data-portfolio-actions="portfolioItemsPane">
-                <button class="btn btn-secondary" type="button" onclick="openBulkUploadModal()">
-                    <i class="fa-solid fa-images"></i> Bulk Upload
-                </button>
-                <button class="btn btn-primary" type="button" onclick="openPortfolioModal()">
-                    <i class="fa-solid fa-plus"></i> Add Item
-                </button>
-            </div>
-            <div class="portfolio-toolbar-actions-group" data-portfolio-actions="portfolioCategoriesPane">
-                <button class="btn btn-primary" type="button" onclick="openCategoryModal()">
-                    <i class="fa-solid fa-plus"></i> Add Category
-                </button>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
     <section class="portfolio-pane portfolio-items-pane active" id="portfolioItemsPane">
         <div class="wa-dashboard-section portfolio-fixed-pagination">
             <div class="wa-action-bar">
                 <div class="wa-action-left">
                     <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
                     <span class="wa-count-badge">{{ total_items_count }} items</span>
+                </div>
+                <div class="wa-action-right">
+                    <button class="btn btn-sm portfolio-pane-switch" type="button" onclick="openPortfolioPane('portfolioCategoriesPane')">
+                        <i class="fa-solid fa-layer-group"></i> Categories
+                    </button>
+                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+                    <button class="btn btn-secondary" type="button" onclick="openBulkUploadModal()">
+                        <i class="fa-solid fa-images"></i> Bulk Upload
+                    </button>
+                    <button class="btn btn-primary" type="button" onclick="openPortfolioModal()">
+                        <i class="fa-solid fa-plus"></i> Add Item
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -554,6 +475,16 @@
                 <div class="wa-action-left">
                     <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-layer-group"></i> Categories</h3>
                     <span class="wa-count-badge">{{ categories|length }} categories</span>
+                </div>
+                <div class="wa-action-right">
+                    <button class="btn btn-sm portfolio-pane-switch" type="button" onclick="openPortfolioPane('portfolioItemsPane')">
+                        <i class="fa-solid fa-images"></i> Portfolio Items
+                    </button>
+                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+                    <button class="btn btn-primary" type="button" onclick="openCategoryModal()">
+                        <i class="fa-solid fa-plus"></i> Add Category
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -829,17 +760,9 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 <script src="{% static 'js/website-admin/portfolio.js' %}?v=136"></script>
 <script>
 function switchPortfolioPane(targetId) {
-    var tabs = document.querySelectorAll('#portfolioSubtabs .portfolio-subtab-btn');
     var panes = document.querySelectorAll('.portfolio-pane');
-    var actionGroups = document.querySelectorAll('[data-portfolio-actions]');
-    tabs.forEach(function(tab) {
-        tab.classList.toggle('active', tab.getAttribute('data-target') === targetId);
-    });
     panes.forEach(function(pane) {
         pane.classList.toggle('active', pane.id === targetId);
-    });
-    actionGroups.forEach(function(group) {
-        group.classList.toggle('active', group.getAttribute('data-portfolio-actions') === targetId);
     });
 
     if (targetId !== 'portfolioItemsPane' && typeof clearPortfolioSelection === 'function') {
@@ -847,17 +770,12 @@ function switchPortfolioPane(targetId) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    var tabs = document.querySelectorAll('#portfolioSubtabs .portfolio-subtab-btn');
-    tabs.forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            var targetId = tab.getAttribute('data-target');
-            if (!targetId) return;
-            switchPortfolioPane(targetId);
-            if (history.replaceState) history.replaceState(null, '', '#' + targetId);
-        });
-    });
+function openPortfolioPane(targetId) {
+    switchPortfolioPane(targetId);
+    if (history.replaceState) history.replaceState(null, '', '#' + targetId);
+}
 
+document.addEventListener('DOMContentLoaded', function() {
     var hashTarget = (window.location.hash || '').replace('#', '');
     if (hashTarget && document.getElementById(hashTarget)) {
         switchPortfolioPane(hashTarget);

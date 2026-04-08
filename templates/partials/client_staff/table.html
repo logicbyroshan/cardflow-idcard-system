@@ -11,7 +11,7 @@
                 <th scope="col" class="w-24 text-center">Status</th>
                 <th scope="col" class="text-center">Created At</th>
                 <th scope="col" class="text-center">Updated At</th>
-                <th scope="col" class="text-center" title="Client staff login history"><i class="fa-solid fa-circle-info"></i></th>
+                <th scope="col" class="text-center" title="Assistent login history"><i class="fa-solid fa-circle-info"></i></th>
             </tr>
         </thead>
         <tbody id="staff-table-body">
@@ -33,8 +33,8 @@
                             class="client-staff-history-trigger"
                             data-staff-id="{{ staff.id }}"
                             data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
-                            title="View client staff login history"
-                            aria-label="View client staff login history">
+                            title="View assistent login history"
+                            aria-label="View assistent login history">
                         <i class="fa-solid fa-circle-info"></i>
                     </button>
                 </td>
@@ -42,12 +42,12 @@
             {% empty %}
             <tr>
                 <td colspan="8">
-                    {% include 'components/empty-state.html' with id='client-staff-table-empty-inline' icon='fa-user-slash' title='No Client Staff Found' message='No client staff members match your current filters. Try adjusting your search.' hidden=False %}
+                    {% include 'components/empty-state.html' with id='client-staff-table-empty-inline' icon='fa-user-slash' title='No Assistent Found' message='No assistent members match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
-    {% include 'components/empty-state.html' with id='staff-empty-state' icon='fa-user-slash' title='No Client Staff Found' message='Try adjusting your search or filter criteria' hidden=True %}
+    {% include 'components/empty-state.html' with id='staff-empty-state' icon='fa-user-slash' title='No Assistent Found' message='Try adjusting your search or filter criteria' hidden=True %}
 </div>

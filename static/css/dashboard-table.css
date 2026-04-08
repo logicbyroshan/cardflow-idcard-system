@@ -426,7 +426,7 @@
     width: 88px;
 }
 
-/* Client staff dashboard uses a 4-column recent table where Created holds date+time. */
+/* Assistent dashboard uses a 4-column recent table where Created holds date+time. */
 .recent-table.client-staff-recent-table th:nth-child(1),
 .recent-table.client-staff-recent-table td:nth-child(1) { width: 40%; }
 

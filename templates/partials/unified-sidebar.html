@@ -38,7 +38,7 @@
     {% endif %}
     
     {% if is_super_admin or is_admin_staff %}
-    <!-- Super Admin / Admin Staff Menu -->
+    <!-- Super Admin / Operator Menu -->
     {% if is_super_admin or perm_idcard_client_list %}
     <div class="nav-section">
       <div class="nav-section-line"></div>
@@ -94,7 +94,7 @@
     {% endif %}
     
     {% elif is_client_staff %}
-    <!-- Client Staff Menu - Permission-controlled -->
+    <!-- Assistent Menu - Permission-controlled -->
     {% if perm_idcard_setting_list %}
     <div class="nav-section">
       <div class="nav-section-line"></div>
@@ -108,7 +108,7 @@
     {% endif %}
 
     {% if is_super_admin or is_admin_staff %}
-    <!-- Services Dropdown  -  Admin & Admin Staff only -->
+    <!-- Services Dropdown  -  Admin & Operator only -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Tools</span>

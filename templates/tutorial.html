@@ -9,8 +9,8 @@
     {% else %}क्लाइंट ट्यूटोरियल - Adarsh ID Cards
     {% endif %}
   {% else %}
-    {% if tutorial_scope == 'client_staff' %}Client Staff Tutorial - Adarsh ID Cards
-    {% elif tutorial_scope == 'admin_staff' %}Admin Staff Tutorial - Adarsh ID Cards
+    {% if tutorial_scope == 'client_staff' %}Assistent Tutorial - Adarsh ID Cards
+    {% elif tutorial_scope == 'admin_staff' %}Operator Tutorial - Adarsh ID Cards
     {% elif tutorial_scope == 'admin' %}Admin Tutorial - Adarsh ID Cards
     {% else %}Client Tutorial - Adarsh ID Cards
     {% endif %}
@@ -43,8 +43,8 @@
   <section class="tutorial-hero">
     <div class="tutorial-hero-content">
       {% if tutorial_scope == 'client_staff' %}
-      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}क्लाइंट स्टाफ गाइड{% else %}Client Staff Guide{% endif %}</p>
-      <h1>{% if tutorial_lang == 'hi' %}क्लाइंट स्टाफ ऑपरेशन ट्यूटोरियल{% else %}Client Staff Operations Tutorial{% endif %}</h1>
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}क्लाइंट स्टाफ गाइड{% else %}Assistent Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}क्लाइंट स्टाफ ऑपरेशन ट्यूटोरियल{% else %}Assistent Operations Tutorial{% endif %}</h1>
       <p>
         {% if tutorial_lang == 'hi' %}
         Aapke liye sirf wahi steps: data upload/cleanup, pending se verified workflow, aur timely handover.
@@ -53,8 +53,8 @@
         {% endif %}
       </p>
       {% elif tutorial_scope == 'admin_staff' %}
-      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}एडमिन स्टाफ गाइड{% else %}Admin Staff Guide{% endif %}</p>
-      <h1>{% if tutorial_lang == 'hi' %}एडमिन स्टाफ सपोर्ट ट्यूटोरियल{% else %}Admin Staff Support Tutorial{% endif %}</h1>
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}एडमिन स्टाफ गाइड{% else %}Operator Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}एडमिन स्टाफ सपोर्ट ट्यूटोरियल{% else %}Operator Support Tutorial{% endif %}</h1>
       <p>
         {% if tutorial_lang == 'hi' %}
         Assigned clients ko support karne ke liye focused guide: queue monitoring, issue escalation, aur permission-safe actions.
@@ -130,7 +130,7 @@
           </div>
           <div class="callout"><strong>Important:</strong> aapka primary target clean data + fast verification handoff hai.</div>
           {% else %}
-          <h2>Focused Start for Client Staff</h2>
+          <h2>Focused Start for Assistent</h2>
           <div class="quick-grid">
             <article><span>1</span><p>Select assigned table and validate required columns.</p></article>
             <article><span>2</span><p>Check data format and photo naming before upload.</p></article>
@@ -150,7 +150,7 @@
           </div>
           <div class="callout"><strong>Important:</strong> client support + audit trail dono maintain karna mandatory hai.</div>
           {% else %}
-          <h2>Start Guide for Admin Staff</h2>
+          <h2>Start Guide for Operator</h2>
           <div class="quick-grid">
             <article><span>1</span><p>Open assigned client queues daily and identify blockers.</p></article>
             <article><span>2</span><p>Respond to high-priority tables first.</p></article>
@@ -195,7 +195,7 @@
             </tbody>
           </table>
           {% else %}
-          <h2>Daily Workflow for Client Staff</h2>
+          <h2>Daily Workflow for Assistent</h2>
           <table class="tutorial-table">
             <thead><tr><th>Step</th><th>What To Do</th><th>Done Check</th></tr></thead>
             <tbody>
@@ -217,7 +217,7 @@
             </tbody>
           </table>
           {% else %}
-          <h2>Daily Workflow for Admin Staff</h2>
+          <h2>Daily Workflow for Operator</h2>
           <table class="tutorial-table">
             <thead><tr><th>Window</th><th>Task</th><th>Measure</th></tr></thead>
             <tbody>
@@ -263,7 +263,7 @@
             <label><input type="checkbox"> Shared login avoid karo; personal account hi use karo.</label>
           </div>
           {% else %}
-          <h2>Client Staff Controls</h2>
+          <h2>Assistent Controls</h2>
           <div class="daily-checklist">
             <label><input type="checkbox"> Work only on assigned tables.</label>
             <label><input type="checkbox"> Do not perform approval or permission changes without authority.</label>
@@ -281,7 +281,7 @@
             <label><input type="checkbox"> Weekly permission review me extra access remove karo.</label>
           </div>
           {% else %}
-          <h2>Admin Staff Controls</h2>
+          <h2>Operator Controls</h2>
           <div class="daily-checklist">
             <label><input type="checkbox"> Do not act outside assigned client scope.</label>
             <label><input type="checkbox"> Include evidence links in escalation notes.</label>
@@ -385,7 +385,7 @@
 
         <h3>क्लाइंट रोल्स और एक्सेस</h3>
         <p>
-          Usually ek Client Admin hota hai aur zarurat ke hisab se Client Staff users hote hain.
+          Usually ek Client Admin hota hai aur zarurat ke hisab se Assistent users hote hain.
           Client Admin final control rakhta hai. Staff ke liye alag login rakho.
         </p>
         <div class="callout">
@@ -416,7 +416,7 @@
 
         <h3>Client Roles and Access</h3>
         <p>
-          Usually there is one client admin and some client staff users. Client admin manages final approval and access.
+          Usually there is one client admin and some assistent users. Client admin manages final approval and access.
           Keep separate login for each staff member.
         </p>
         <div class="callout">

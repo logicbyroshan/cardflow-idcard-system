@@ -15,9 +15,9 @@ Parameters:
 Styles:
   Pro User     - Gold/amber with rocket icon
   Super Admin  - Purple/indigo with crown icon
-  Admin Staff  - Blue with shield icon
+  Operator  - Blue with shield icon
   Client       - Green with building icon
-  Client Staff - Teal with user icon
+  Assistent - Teal with user icon
 {% endcomment %}
 
 {% with avatar_role=role|default:"client" avatar_size=size|default:"medium" %}
@@ -52,9 +52,9 @@ Styles:
 <span class="user-avatar-label user-avatar-label--{{ avatar_role }}">
     {% if avatar_role == 'pro_user' %}Pro User
     {% elif avatar_role == 'super_admin' %}Super Admin
-    {% elif avatar_role == 'admin_staff' %}Admin Staff
+    {% elif avatar_role == 'admin_staff' %}Operator
     {% elif avatar_role == 'client' %}Client
-    {% elif avatar_role == 'client_staff' %}Client Staff
+    {% elif avatar_role == 'client_staff' %}Assistent
     {% else %}User
     {% endif %}
 </span>

@@ -50,9 +50,9 @@
                     <p class="text-white font-semibold text-sm leading-tight">{{ user_name|default:"Admin" }}</p>
                     <p class="text-white/70 text-[10px] leading-none mt-0.5">
                         {% if is_super_admin %}Super Admin
-                        {% elif is_admin_staff %}Admin Staff
+                        {% elif is_admin_staff %}Operator
                         {% elif is_client %}Client Admin
-                        {% else %}Client Staff{% endif %}
+                        {% else %}Assistent{% endif %}
                     </p>
                 </div>
             </div>

@@ -7,7 +7,7 @@
 
   var showToast = window.showToast || function() {};
 
-  // Client and client staff must not see the history info column.
+  // Client and assistent must not see the history info column.
   if (typeof IS_CLIENT_USER !== 'undefined' && IS_CLIENT_USER) {
     return;
   }

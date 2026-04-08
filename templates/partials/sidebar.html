@@ -42,7 +42,7 @@
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
     <a href="{% url 'manage_client_staff' %}" class="{% if active_page == 'manage_client_staff' %}active{% endif %}">
-      <i class="fa-solid fa-user-gear"></i><span>Manage Client Staff</span>
+      <i class="fa-solid fa-user-gear"></i><span>Manage Assistent</span>
     </a>
     {% endif %}
     
@@ -111,7 +111,7 @@
     {% endif %}
 
     {% if is_super_admin or is_admin_staff %}
-    <!-- Tools  -  Admin & Admin Staff only -->
+    <!-- Tools  -  Admin & Operator only -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Tools</span>

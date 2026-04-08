@@ -104,6 +104,24 @@ select.wa-status-select:disabled,
   font-size: 12px !important;
 }
 
+.main.wa-page .main-content select.form-select,
+.main.wa-page .main-content select.form-select-sm,
+.main.wa-page .main-content select.wa-status-select,
+.main.wa-page .main-content select.contact-status-select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border-radius: var(--dropdown-unified-radius) !important;
+  border: 1px solid var(--dropdown-unified-border) !important;
+  background-image: var(--dropdown-unified-arrow) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 10px 6px !important;
+  height: var(--dropdown-unified-height) !important;
+  min-height: var(--dropdown-unified-height) !important;
+  padding: 4px 30px 4px 10px !important;
+  box-shadow: none !important;
+}
+
 .custom-dropdown .dropdown-toggle,
 .form-dropdown .dropdown-toggle,
 .filter-dropdown .dropdown-toggle,

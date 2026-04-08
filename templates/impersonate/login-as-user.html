@@ -11,7 +11,7 @@
     100% { background-position: -200% 0; }
   }
   .imp-page {
-    padding: 16px 20px;
+    padding: 0 20px 12px;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -48,17 +48,37 @@
     top: 0;
     z-index: 28;
     background: var(--color-gray-50, #f8fafc);
-    padding-bottom: 10px;
+    padding-bottom: 8px;
     flex-shrink: 0;
   }
 
+  .imp-page .pro-feature-tabs {
+    position: static;
+    top: auto;
+    margin: 0 0 8px;
+    padding: 0;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    background: #fff;
+  }
+
   .imp-page .action-bar {
+    position: static;
+    top: auto !important;
     z-index: 22;
+    margin: 0;
     background: var(--color-white, #ffffff);
-    border: 1px solid var(--color-gray-200, #e2e8f0);
-    border-radius: 10px;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
-    padding: 7px 10px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px 10px;
+  }
+
+  .imp-page .action-bar .action-left,
+  .imp-page .action-bar .action-right {
+    align-items: center;
   }
 
   .imp-grid-wrap {
@@ -66,7 +86,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-top: 10px;
+    padding-top: 8px;
   }
 
   /* Role filter pills */
@@ -289,9 +309,9 @@
         </div>
         <div class="imp-pills" id="impPills">
           <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All</button>
-          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Admin Staff</button>
+          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator</button>
           <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client</button>
-          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Client Staff</button>
+          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistent</button>
           <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin</button>
         </div>
       </div>

@@ -5,9 +5,10 @@
 
 /* ============ State ============ */
 let panelNotifications = [];
-let panelOffset = 0;
-const PANEL_LIMIT = 20;
 let panelTotal = 0;
+let _notifPage = 1;
+let _notifPerPage = 25;
+let _notifTotalPages = 1;
 let allUsers = {};       // { role: [{id, name, username, role_display}] }
 let selectedUserIds = new Set();
 let searchTimer = null;
@@ -132,88 +133,145 @@ function switchTab(tabName) {
 }
 
 /* ============ Load Notifications ============ */
-async function loadNotifications(append) {
-  if (!append) panelOffset = 0;
-  let skeletonStart = null;
-  if (!append) {
-    skeletonStart = setPanelTableSkeleton('notifTableBody', {
-      colCount: 8,
-      columns: ['0.7fr', '2.7fr', '1.2fr', '1fr', '1.3fr', '0.9fr', '1.2fr', '1fr'],
-      rows: 3,
-      ariaLabel: 'Loading notifications...',
-    });
+async function loadNotifications(page) {
+  if (page !== undefined && page !== null) {
+    if (typeof page === 'number') {
+      _notifPage = Math.max(1, Number(page || 1));
+    } else if (page === false) {
+      _notifPage = 1;
+    }
   }
+
+  const panelOffset = (_notifPage - 1) * _notifPerPage;
+  let skeletonStart = null;
+  skeletonStart = setPanelTableSkeleton('notifTableBody', {
+    colCount: 8,
+    columns: ['0.7fr', '2.7fr', '1.2fr', '1fr', '1.3fr', '0.9fr', '1.2fr', '1fr'],
+    rows: 3,
+    ariaLabel: 'Loading notifications...',
+  });
   try {
     const search = document.getElementById('notifSearch')?.value || '';
-    const res = await fetch(`/api/notifications/admin/list/?limit=${PANEL_LIMIT}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
+    const res = await fetch(`/api/notifications/admin/list/?limit=${_notifPerPage}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
     if (!res.ok) {
       console.error('Failed to load notifications: HTTP', res.status);
-      if (!append) {
-        await waitForPanelSkeletonDelay(skeletonStart);
-        setPanelTableError(
-          'notifTableBody',
-          8,
-          'fa-bell-slash',
-          'Unable to load notifications',
-          'Please refresh and try again.'
-        );
-      }
-      return;
-    }
-    const data = await res.json();
-    if (!data.success) {
-      if (!append) {
-        await waitForPanelSkeletonDelay(skeletonStart);
-        setPanelTableError(
-          'notifTableBody',
-          8,
-          'fa-bell-slash',
-          'Unable to load notifications',
-          'Please refresh and try again.'
-        );
-      }
-      return;
-    }
-
-    if (append) {
-      panelNotifications = panelNotifications.concat(data.notifications);
-    } else {
-      panelNotifications = data.notifications;
-    }
-    panelTotal = data.total;
-
-    // Cache server-side aggregate stats so updateStats() is accurate
-    if (data.stats) window._panelNotifStats = data.stats;
-
-    await waitForPanelSkeletonDelay(skeletonStart);
-    renderTable();
-    updateStats();
-    var totalEl = document.getElementById('totalNotifCount');
-    if (totalEl) totalEl.textContent = panelTotal;
-
-    const loadMoreEl = document.getElementById('notifLoadMore');
-    if (loadMoreEl) {
-      loadMoreEl.style.display = panelNotifications.length < panelTotal ? '' : 'none';
-    }
-  } catch (err) {
-    console.error('Failed to load notifications:', err);
-    if (!append) {
       await waitForPanelSkeletonDelay(skeletonStart);
       setPanelTableError(
         'notifTableBody',
         8,
         'fa-bell-slash',
         'Unable to load notifications',
-        'Network issue. Please refresh and try again.'
+        'Please refresh and try again.'
       );
+      return;
     }
+    const data = await res.json();
+    if (!data.success) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'notifTableBody',
+        8,
+        'fa-bell-slash',
+        'Unable to load notifications',
+        'Please refresh and try again.'
+      );
+      return;
+    }
+
+    panelNotifications = data.notifications || [];
+    panelTotal = data.total;
+    _notifTotalPages = Math.max(1, Math.ceil(Math.max(0, panelTotal) / _notifPerPage));
+
+    if (_notifPage > _notifTotalPages) {
+      _notifPage = _notifTotalPages;
+      return loadNotifications(_notifPage);
+    }
+
+    // Cache server-side aggregate stats so updateStats() is accurate
+    if (data.stats) window._panelNotifStats = data.stats;
+
+    await waitForPanelSkeletonDelay(skeletonStart);
+    renderTable();
+    _updateNotifPagination(panelNotifications.length);
+    updateStats();
+    var totalEl = document.getElementById('totalNotifCount');
+    if (totalEl) totalEl.textContent = panelTotal;
+  } catch (err) {
+    console.error('Failed to load notifications:', err);
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'notifTableBody',
+      8,
+      'fa-bell-slash',
+      'Unable to load notifications',
+      'Network issue. Please refresh and try again.'
+    );
   }
 }
 
-function loadMoreNotifications() {
-  panelOffset += PANEL_LIMIT;
-  loadNotifications(true);
+function _buildNotifPageNumbers(currentPage, totalPages) {
+  if (!totalPages || totalPages < 1) return '';
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if ((end - start + 1) < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  let html = '';
+  for (let p = start; p <= end; p++) {
+    html += '<button class="page-num' + (p === currentPage ? ' active' : '') + '" onclick="notifSetPage(' + p + ')">' + p + '</button>';
+  }
+  return html;
 }
+
+function _updateNotifPagination(rowsOnPage) {
+  const safeTotal = Math.max(0, Number(panelTotal || 0));
+  const safeRows = Math.max(0, Number(rowsOnPage || 0));
+  const start = safeTotal ? ((_notifPage - 1) * _notifPerPage) + 1 : 0;
+  const end = safeTotal ? (start + safeRows - 1) : 0;
+
+  const info = document.getElementById('notifPaginationInfo');
+  const pageNumbers = document.getElementById('notifPageNumbers');
+  const firstBtn = document.getElementById('notifFirstBtn');
+  const prevBtn = document.getElementById('notifPrevBtn');
+  const nextBtn = document.getElementById('notifNextBtn');
+  const lastBtn = document.getElementById('notifLastBtn');
+  const rowsSelect = document.getElementById('notifRowsPerPage');
+
+  if (info) {
+    info.innerHTML = 'Showing <strong>' + start + '-' + end + '</strong> of <strong>' + safeTotal + '</strong> results';
+  }
+  if (pageNumbers) {
+    pageNumbers.innerHTML = _buildNotifPageNumbers(_notifPage, _notifTotalPages);
+  }
+
+  if (firstBtn) firstBtn.disabled = _notifPage <= 1;
+  if (prevBtn) prevBtn.disabled = _notifPage <= 1;
+  if (nextBtn) nextBtn.disabled = _notifPage >= _notifTotalPages;
+  if (lastBtn) lastBtn.disabled = _notifPage >= _notifTotalPages;
+  if (rowsSelect && String(rowsSelect.value) !== String(_notifPerPage)) {
+    rowsSelect.value = String(_notifPerPage);
+  }
+}
+
+window.notifSetPage = function (page) {
+  const requested = page === -1 ? _notifTotalPages : Number(page || 1);
+  const nextPage = Math.max(1, Math.min(requested, _notifTotalPages));
+  if (nextPage === _notifPage) return;
+  loadNotifications(nextPage);
+};
+
+window.notifPage = function (delta) {
+  notifSetPage(_notifPage + Number(delta || 0));
+};
+
+window.onNotifRowsPerPageChange = function (value) {
+  const next = Number(value || 25);
+  _notifPerPage = [10, 25, 50, 100].includes(next) ? next : 25;
+  _notifPage = 1;
+  loadNotifications(1);
+};
 
 /* ============ Render Table ============ */
 function renderTable() {
@@ -231,8 +289,9 @@ function renderTable() {
 
   tbody.innerHTML = panelNotifications.map((n, i) => {
     const msgPreview = n.message.length > 60 ? n.message.substring(0, 60) + '...' : n.message;
+    const rowNumber = ((_notifPage - 1) * _notifPerPage) + i + 1;
     return `<tr>
-      <td class="text-center text-xs text-gray-400">${i + 1}</td>
+      <td class="text-center text-xs text-gray-400">${rowNumber}</td>
       <td>
         <div class="notif-title-cell">
           <strong>${escHtml(n.title)}</strong>
@@ -703,7 +762,7 @@ window.loadMaintenanceStatus = async function () {
 /* ============ Search ============ */
 function debounceSearch() {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => loadNotifications(false), 350);
+  searchTimer = setTimeout(() => loadNotifications(1), 350);
 }
 
 /* ============ Delete ============ */
@@ -948,9 +1007,9 @@ function renderUserPicker(filter) {
   const roleLabels = {
     pro_user: 'Pro User',
     super_admin: 'Super Admin',
-    admin_staff: 'Admin Staff',
+    admin_staff: 'Operator',
     client: 'Client',
-    client_staff: 'Client Staff',
+    client_staff: 'Assistent',
   };
 
   for (const [role, users] of Object.entries(allUsers)) {

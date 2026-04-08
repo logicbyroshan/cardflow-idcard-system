@@ -1535,6 +1535,17 @@ textarea.panel-form-input {
   gap: 8px;
 }
 
+.notif-panel-theme .pagination-right {
+  gap: 8px;
+}
+
+.notif-panel-theme #notifRowsPerPage {
+  min-width: 74px;
+  height: 26px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
 .email-panel-theme #emailRowsPerPage {
   min-width: 74px;
   height: 26px;

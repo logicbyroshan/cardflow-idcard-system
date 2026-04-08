@@ -1,4 +1,4 @@
-// Manage Client Staff Page  config wrapper for manage-staff-common.js
+// Manage Assistent Page  config wrapper for manage-staff-common.js
 // Uses client API endpoints and Group Assignment instead of Client Assignment.
 
 document.addEventListener('DOMContentLoaded', function () {

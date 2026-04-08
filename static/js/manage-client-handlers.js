@@ -880,7 +880,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // Toggle client staff status (requires full manage-clients capability)
+      // Toggle assistent status (requires full manage-clients capability)
       window.toggleClientStaffStatus = async function(staffId) {
         if (!NS.selectedClientId || !NS.canManageClients) return;
 

@@ -54,9 +54,9 @@
             <p class="text-white font-bold text-[15px] leading-tight text-center">{{ user_name|default:"User" }}</p>
             <p class="text-white/70 text-[11px] mt-0.5 leading-none">
                 {% if is_super_admin %}Super Admin
-                {% elif is_admin_staff %}Admin Staff
+                {% elif is_admin_staff %}Operator
                 {% elif is_client %}Client Admin
-                {% else %}Client Staff{% endif %}
+                {% else %}Assistent{% endif %}
             </p>
             {% if request.user.email %}
             <p class="text-white/50 text-[10px] mt-1.5 truncate max-w-full">{{ request.user.email }}</p>
