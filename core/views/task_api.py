@@ -124,6 +124,32 @@ def _parse_reupload_scope_payload(request):
     }
 
 
+def _parse_field_mapping_payload(raw_mapping):
+    """Parse optional frontend field-mapping payload for bulk uploads."""
+    if not raw_mapping:
+        return {}
+
+    try:
+        parsed = json.loads(raw_mapping)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
+
+    if not isinstance(parsed, dict):
+        return {}
+
+    normalized = {}
+    for table_field, upload_header in parsed.items():
+        field_name = str(table_field or '').strip()
+        header_name = str(upload_header or '').strip()
+        if not field_name or not header_name:
+            continue
+        normalized[field_name] = header_name
+        if len(normalized) >= 500:
+            break
+
+    return normalized
+
+
 def _acquire_task_lock(user_id, task_type, ttl=10):
     """
     Acquire a short-lived cache lock to prevent double-click duplicate tasks.
@@ -291,6 +317,42 @@ def api_task_cancel(request, task_id):
     but their status will be marked as cancelled.
     """
     try:
+        payload = {}
+        if request.body:
+            try:
+                payload = json.loads(request.body.decode('utf-8'))
+            except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+                payload = {}
+
+        latest_only_raw = payload.get('latest_only', request.POST.get('latest_only', False))
+        latest_only = str(latest_only_raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+        if latest_only:
+            if not PermissionService.is_pro_user(request.user):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Latest-only cancel is available for pro user only.'
+                }, status=403)
+
+            latest_active_task_id = (
+                BackgroundTask.objects
+                .filter(status__in=['pending', 'processing'])
+                .order_by('-created_at', '-id')
+                .values_list('id', flat=True)
+                .first()
+            )
+            if latest_active_task_id is None:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No active task is available to cancel.'
+                }, status=400)
+
+            if int(task_id) != int(latest_active_task_id):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only the latest active task can be cancelled from Operations Hub.'
+                }, status=400)
+
         result = background_cancel_task(task_id, user=request.user)
 
         if result['success']:
@@ -440,6 +502,7 @@ def api_create_bulk_upload_task(request, table_id):
     
     Request:
         - file: XLSX/CSV file (required)
+        - field_mapping: JSON object {table_field: uploaded_header} (optional)
         - photos_zip_<FIELDNAME>: ZIP files for specific image fields (optional)
         - unified_zip_<N>: Unified ZIP files for all image fields (optional)
         - unified_zip_count: Number of unified ZIPs (optional)
@@ -488,6 +551,7 @@ def api_create_bulk_upload_task(request, table_id):
         
         # Save main file to disk
         main_file_path = save_uploaded_file_to_disk(uploaded_file)
+        field_mapping = _parse_field_mapping_payload(request.POST.get('field_mapping', ''))
         
         # Process ZIP files
         zip_paths = {}  # {field_name: relative_path}
@@ -558,6 +622,7 @@ def api_create_bulk_upload_task(request, table_id):
             file_path=main_file_path,
             metadata={
                 'table_id': table_id,
+                'field_mapping': field_mapping,
                 'zip_paths': zip_paths,
                 'unified_zip_paths': unified_zip_paths,
                 'original_filename': uploaded_file.name,
