@@ -15,6 +15,7 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        padding: 0 20px;
     }
 
     .wa-dashboard-section {
@@ -29,10 +30,8 @@
         margin-top: 0;
         border-radius: 0;
         border: 1px solid rgba(102, 126, 234, 0.48);
-        border-left: 0;
-        border-right: 0;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 9px 10px;
+        padding: 9px 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -94,10 +93,8 @@
         margin-top: 0;
         border: 1px solid #dbe3ef;
         border-radius: 0;
-        border-left: 0;
-        border-right: 0;
         background: #f8fbff;
-        padding: 7px 10px;
+        padding: 7px 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -210,7 +207,7 @@
         border-bottom: 1px solid #dbe3ef;
         background: #f8fafc;
         border-radius: 0;
-        padding: 8px 10px;
+        padding: 8px 14px;
     }
 
     .business-form-shell .wa-form-group-title:first-of-type {
@@ -226,7 +223,7 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
-        padding: 8px 10px;
+        padding: 8px 14px;
         border-bottom: 1px solid #e8eef7;
     }
 
@@ -405,6 +402,10 @@
     }
 
     @media (max-width: 960px) {
+        .wa-business-page {
+            padding: 0 12px;
+        }
+
         .business-form-shell .wa-form-row {
             grid-template-columns: 1fr;
         }

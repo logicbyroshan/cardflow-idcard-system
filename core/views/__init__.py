@@ -23,6 +23,7 @@ from .base import (
     manage_client_staff,
     manage_clients,
     active_clients,
+    api_staff_login_history,
     api_client_login_history,
     api_client_staff_login_history,
     idcard_group,

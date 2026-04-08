@@ -457,6 +457,77 @@ def api_client_staff_login_history(request, staff_id):
     })
 
 
+@super_admin_required
+@require_http_methods(['GET'])
+def api_staff_login_history(request, staff_id):
+    """Return login/logout timeline for a single admin staff (operator)."""
+    staff = get_object_or_404(
+        Staff.objects.select_related('user'),
+        id=staff_id,
+        staff_type='admin_staff',
+    )
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    def _active_device_fingerprints(user_id):
+        ids = {str(user_id)}
+        fingerprints = set()
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+
+            user_id_str = str(data.get('_auth_user_id') or '')
+            if user_id_str not in ids:
+                continue
+
+            fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
+            fingerprints.add(fingerprint)
+        return sorted(fingerprints)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(user=staff.user, action__in=['login', 'logout'])
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    device_fingerprints = _active_device_fingerprints(staff.user_id) if staff.user_id else []
+
+    events = []
+    for entry in logs_qs:
+        events.append({
+            'id': entry.pk,
+            'action': entry.action,
+            'action_display': action_display_map.get(entry.action, entry.action),
+            'description': entry.description or '',
+            'ip_address': entry.ip_address or '',
+            'icon_class': entry.icon_class,
+            'icon_color': entry.icon_color,
+            'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
+            'time_ago': django_timesince(entry.created_at, now) + ' ago',
+        })
+
+    staff_name = staff.user.get_full_name() or staff.user.username
+    return JsonResponse({
+        'success': True,
+        'staff': {
+            'id': staff.id,
+            'name': staff_name,
+            'status': 'active' if staff.user.is_active else 'inactive',
+        },
+        'active_devices': len(device_fingerprints),
+        'device_fingerprints': device_fingerprints,
+        'events': events,
+    })
+
+
 # ID Card Group
 @login_required
 @require_any_admin

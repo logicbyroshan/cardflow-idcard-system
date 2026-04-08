@@ -35,8 +35,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
+    const recentClientUpdatesActiveBadge = document.getElementById('recentClientUpdatesActiveBadge');
     const printOverviewSearchInput = document.getElementById('printOverviewSearch');
     const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
+    const recentActivityTimeFilter = document.getElementById('recentActivityTimeFilter');
     const dashboardTabCountRecentClients = document.getElementById('dashboardTabCountRecentClients');
     const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
     const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
@@ -46,6 +48,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!element) return;
         const count = Number(value);
         element.textContent = Number.isFinite(count) ? count.toLocaleString() : '0';
+    }
+
+    function setRecentClientUpdatesActiveBadge(count) {
+        if (!recentClientUpdatesActiveBadge) return;
+        const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+        recentClientUpdatesActiveBadge.textContent = `Active: ${safeCount.toLocaleString()}`;
     }
 
     function applyRecentClientUpdatesSearch() {
@@ -189,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
         const showPool = headerColumns >= 6;
         setDashboardTabCount(dashboardTabCountRecentClients, 0);
+        setRecentClientUpdatesActiveBadge(0);
         setDashboardTableSkeleton(tbody, headerColumns, 3);
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -197,6 +206,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
+                        const activeClients = data.clients.filter(function(client) {
+                            return String(client.status || '').toLowerCase() === 'active';
+                        }).length;
+                        setRecentClientUpdatesActiveBadge(activeClients);
                         setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
@@ -256,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `}).join('');
                         applyRecentClientUpdatesSearch();
                     } else {
+                        setRecentClientUpdatesActiveBadge(0);
                         setDashboardTabCount(dashboardTabCountRecentClients, 0);
                         tbody.innerHTML = `
                             <tr>
@@ -271,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading recent client updates:', error);
                 waitForMinDelay(skeletonStart).then(() => {
+                    setRecentClientUpdatesActiveBadge(0);
                     setDashboardTabCount(dashboardTabCountRecentClients, 0);
                     tbody.innerHTML = `
                         <tr>
@@ -328,12 +343,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadRecentActivity() {
         const activityList = document.getElementById('recentActivityList');
         if (!activityList) return;
+        const timeWindow = (recentActivityTimeFilter && recentActivityTimeFilter.value)
+            ? recentActivityTimeFilter.value
+            : 'all';
 
         const esc = typeof escapeHtml === 'function'
             ? escapeHtml
             : (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
 
-        ApiClient.get(panelUrl('/api/recent-activity/?limit=100'))
+        ApiClient.get(panelUrl(`/api/recent-activity/?limit=100&window=${encodeURIComponent(timeWindow)}`))
             .then(data => {
                 if (!data || !data.success) return;
 
@@ -359,19 +377,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     const iconClass = esc(activity.icon_class || 'fa-circle-info');
                     const description = esc(activity.display_text || activity.description || 'Activity update');
                     const rawTimeAgo = String(activity.time_ago || '').trim();
+                    const rawTimestamp = String(activity.created_at_display || '').trim();
+                    const detailUrl = String(activity.url || '').trim();
                     const timeAgo = rawTimeAgo
                         ? (/ago$/i.test(rawTimeAgo) ? rawTimeAgo : `${rawTimeAgo} ago`)
                         : 'just now';
 
+                    const timeMeta = rawTimestamp
+                        ? `${esc(timeAgo)} <span class="activity-time-dot">&bull;</span> <span class="activity-time-absolute">${esc(rawTimestamp)}</span>`
+                        : esc(timeAgo);
+
+                    const itemInner = `
+                        <div class="activity-icon ${iconColor}">
+                            <i class="fa-solid ${iconClass}"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-text">${description}</div>
+                            <div class="activity-time">${timeMeta}</div>
+                        </div>
+                    `;
+
+                    if (detailUrl) {
+                        return `<a href="${esc(detailUrl)}" class="activity-item activity-item-link">${itemInner}</a>`;
+                    }
+
                     return `
                         <div class="activity-item">
-                            <div class="activity-icon ${iconColor}">
-                                <i class="fa-solid ${iconClass}"></i>
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-text">${description}</div>
-                                <div class="activity-time">${esc(timeAgo)}</div>
-                            </div>
+                            ${itemInner}
                         </div>
                     `;
                 }).join('');
@@ -380,6 +412,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading recent activity:', error);
                 setDashboardTabCount(dashboardTabCountRecentUpdates, 0);
             });
+    }
+
+    if (recentActivityTimeFilter) {
+        recentActivityTimeFilter.addEventListener('change', function() {
+            loadRecentActivity();
+        });
     }
 
     function refreshLiveDashboardSections() {

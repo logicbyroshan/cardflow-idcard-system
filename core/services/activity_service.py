@@ -487,18 +487,23 @@ class ActivityService:
 
         results = []
         for item in merged_results[:limit]:
+            created_at_dt = item['created_at_dt']
             results.append({
                 'id': item['id'],
                 'actor': item['actor'],
+                'actor_role': item.get('actor_role', ''),
                 'action': item['action'],
                 'description': item['description'],
                 'display_text': cls._build_activity_display_text(item),
+                'target_model': item.get('target_model', ''),
+                'target_id': item.get('target_id'),
                 'target_name': item.get('target_name', ''),
                 'client_context': item.get('client_context', ''),
                 'icon_class': item['icon_class'],
                 'icon_color': item['icon_color'],
-                'time_ago': timesince(item['created_at_dt'], now),
-                'created_at': item['created_at_dt'].isoformat(),
+                'time_ago': timesince(created_at_dt, now),
+                'created_at': created_at_dt.isoformat(),
+                'created_at_display': timezone.localtime(created_at_dt).strftime('%d-%m-%Y %H:%M'),
             })
         return results
 
@@ -511,6 +516,7 @@ class ActivityService:
         actor_role = str(item.get('actor_role') or '').strip().lower()
         target_name = str(item.get('target_name') or '').strip()
         client_context = str(item.get('client_context') or '').strip()
+        actor_descriptor = cls._format_actor_descriptor(actor, actor_role, client_context)
 
         if action.startswith('staff_') and target_name and target_name.lower() not in text.lower():
             text = f'{text} (Staff: {target_name})'
@@ -519,24 +525,43 @@ class ActivityService:
             text = f'{text} (Client: {target_name})'
 
         if action in ('login', 'logout'):
-            role_label = cls._format_activity_role(actor_role)
-            extras = []
-            if role_label:
-                extras.append(role_label)
-            if client_context:
-                extras.append(client_context)
-            scope = ' | '.join(extras)
-            if scope and scope.lower() not in text.lower():
-                text = f'{text} ({scope})'
+            if actor_descriptor != 'System':
+                verb = 'logged in' if action == 'login' else 'logged out'
+                return f'{actor_descriptor} {verb}'
             return text
 
-        if actor and actor != 'System' and actor.lower() not in text.lower():
-            text = f'{actor}: {text}'
+        if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
+            text = f'{actor_descriptor}: {text}'
 
-        if client_context and client_context.lower() not in text.lower():
+        if client_context and client_context.lower() not in text.lower() and actor_role not in ('client', 'client_staff'):
             text = f'{text} | Client: {client_context}'
 
         return text
+
+    @classmethod
+    def _format_actor_descriptor(cls, actor, actor_role, client_context=''):
+        """Return actor label with role context for richer dashboard activity chips."""
+        actor_name = str(actor or '').strip()
+        role = str(actor_role or '').strip().lower()
+        client_name = str(client_context or '').strip()
+
+        if not actor_name or actor_name == 'System':
+            return 'System'
+
+        if role == 'super_admin':
+            return f'Admin "{actor_name}"'
+        if role == 'admin_staff':
+            return f'Operator "{actor_name}"'
+        if role == 'client':
+            return f'Client "{actor_name}"'
+        if role == 'client_staff':
+            if client_name:
+                return f'Assistent "{actor_name}" for "{client_name}"'
+            return f'Assistent "{actor_name}"'
+        if role == 'pro_user':
+            return f'Pro User "{actor_name}"'
+
+        return actor_name
 
     @staticmethod
     def _format_activity_role(role):

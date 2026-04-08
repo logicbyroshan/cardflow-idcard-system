@@ -183,6 +183,7 @@ urlpatterns = [
     path('api/staff/<int:staff_id>/update/', views.api_staff_update, name='api_staff_update'),
     path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
     path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
+    path('api/staff/<int:staff_id>/login-history/', views.api_staff_login_history, name='api_staff_login_history'),
     path('api/clients/active/', views.api_active_clients_list, name='api_active_clients_list'),
     path('api/clients/for-staff-assignment/', views.api_all_clients_for_assignment, name='api_all_clients_for_assignment'),
     path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),

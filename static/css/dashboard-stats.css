@@ -266,6 +266,14 @@ a.count-badge.pool:hover {
     background: #f0f4f8;
 }
 
+.card-overview-item-static {
+    cursor: default;
+}
+
+.card-overview-item-static:hover {
+    background: #fafbfc;
+}
+
 .card-overview-item:first-child {
     margin-top: 0;
 }

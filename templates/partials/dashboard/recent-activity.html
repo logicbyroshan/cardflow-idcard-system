@@ -2,20 +2,41 @@
 <div class="dashboard-card">
   <div class="dashboard-card-header">
     <h3><i class="fa-solid fa-history"></i> Recent Updates</h3>
+    <div class="recent-activity-filter-inline">
+      <label for="recentActivityTimeFilter">Time</label>
+      <select id="recentActivityTimeFilter" class="recent-activity-time-filter" aria-label="Recent updates time filter">
+        <option value="all" selected>All</option>
+        <option value="1">Last 1 hr</option>
+        <option value="12">Last 12 hr</option>
+        <option value="24">Last 24 hr</option>
+      </select>
+    </div>
   </div>
   <div class="dashboard-card-body tall-body">
     <div class="activity-list" id="recentActivityList">
       {% if recent_activities %}
         {% for activity in recent_activities %}
+        {% if activity.url %}
+        <a href="{{ activity.url }}" class="activity-item activity-item-link">
+          <div class="activity-icon {{ activity.icon_color }}">
+            <i class="fa-solid {{ activity.icon_class }}"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-text">{{ activity.display_text|default:activity.description }}</div>
+            <div class="activity-time">{{ activity.time_ago }} ago{% if activity.created_at_display %} • {{ activity.created_at_display }}{% endif %}</div>
+          </div>
+        </a>
+        {% else %}
         <div class="activity-item">
           <div class="activity-icon {{ activity.icon_color }}">
             <i class="fa-solid {{ activity.icon_class }}"></i>
           </div>
           <div class="activity-content">
             <div class="activity-text">{{ activity.display_text|default:activity.description }}</div>
-            <div class="activity-time">{{ activity.time_ago }} ago</div>
+            <div class="activity-time">{{ activity.time_ago }} ago{% if activity.created_at_display %} • {{ activity.created_at_display }}{% endif %}</div>
           </div>
         </div>
+        {% endif %}
         {% endfor %}
       {% else %}
         <div class="activity-item" id="noActivityMessage">

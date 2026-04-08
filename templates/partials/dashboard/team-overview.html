@@ -33,7 +33,7 @@
         </div>
         <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
       </a>
-      <a href="{% url 'manage_staff' %}" class="card-overview-item">
+      <div class="card-overview-item card-overview-item-static" aria-disabled="true">
         <div class="card-overview-left">
           <div class="card-overview-icon approved">
             <i class="fa-solid fa-user-shield"></i>
@@ -41,7 +41,7 @@
           <span class="card-overview-label">Admins</span>
         </div>
         <span class="card-overview-value">{{ admin_count|default:0 }}</span>
-      </a>
+      </div>
     </div>
   </div>
 </div>

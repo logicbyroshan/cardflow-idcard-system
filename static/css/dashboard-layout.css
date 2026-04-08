@@ -258,6 +258,22 @@
     height: 28px;
 }
 
+.recent-updates-active-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .dashboard-card-header.overview-header {
     gap: 12px;
     padding: 8px 12px;
@@ -333,6 +349,10 @@
         order: 3;
         flex: 1 1 100%;
         max-width: none;
+    }
+
+    .recent-updates-active-badge {
+        order: 2;
     }
 }
 
