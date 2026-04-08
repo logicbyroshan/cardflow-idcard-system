@@ -9,6 +9,31 @@
 <!-- === DOWNLOAD TEMPLATES TAB === -->
 <div class="panel-tab-content panel-tab-full-height templates-panel-theme" id="tab-download-templates">
 
+  <div class="notif-actions-bar" style="border-bottom:none;padding-bottom:10px;">
+    <div class="notif-actions-left" style="flex:1;min-width:0;">
+      <div style="width:100%;max-width:980px;background:#f8fafc;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#1e3a8a;font-weight:700;">
+          <i class="fa-solid fa-file-export"></i>
+          <span>Export Document Settings</span>
+        </div>
+        <form id="panelExportSettingsForm">
+          <label class="panel-form-label" for="panelExportNoteLine">Note Line</label>
+          <textarea id="panelExportNoteLine" class="panel-form-input" rows="2" placeholder="Appears as the first footer line in PDF/Word exports"></textarea>
+
+          <label class="panel-form-label" for="panelExportCopyrightLine">Copyright / Branding Line</label>
+          <textarea id="panelExportCopyrightLine" class="panel-form-input" rows="2" placeholder="Appears with timestamp in footer"></textarea>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+            <button type="submit" class="btn btn-md btn-primary" id="panelSaveExportSettingsBtn">
+              <i class="fa-solid fa-save"></i> Save Export Settings
+            </button>
+            <span id="panelExportSettingsStatus" class="text-xs text-gray-500"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Header bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">

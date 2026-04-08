@@ -73,6 +73,7 @@ function _loadInitialManagePanelTabData(tabName) {
     return;
   }
   if (tabName === 'download-templates') {
+    loadExportSettings();
     loadTemplates();
     return;
   }
@@ -127,6 +128,10 @@ function switchTab(tabName) {
   }
   if (tabName === 'notifications' && typeof loadDomainNotFoundStatus === 'function') {
     loadDomainNotFoundStatus();
+  }
+  if (tabName === 'download-templates') {
+    loadExportSettings();
+    loadTemplates();
   }
   _saveManagePanelTab(tabName);
   return true;
@@ -1219,6 +1224,79 @@ function setPanelTableError(tbodyId, colCount, iconClass, title, subtitle) {
 let panelTemplates = [];
 let _templateBoldState = false;
 
+async function loadExportSettings() {
+  const noteEl = document.getElementById('panelExportNoteLine');
+  const copyrightEl = document.getElementById('panelExportCopyrightLine');
+  if (!noteEl || !copyrightEl) return;
+
+  try {
+    const res = await fetch('/api/export-settings/');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.success) return;
+    const settings = data.data || {};
+    noteEl.value = settings.export_note_line || '';
+    copyrightEl.value = settings.export_copyright_line || '';
+  } catch (err) {
+    console.error('loadExportSettings:', err);
+  }
+}
+
+async function saveExportSettings() {
+  const noteEl = document.getElementById('panelExportNoteLine');
+  const copyrightEl = document.getElementById('panelExportCopyrightLine');
+  const saveBtn = document.getElementById('panelSaveExportSettingsBtn');
+  const statusEl = document.getElementById('panelExportSettingsStatus');
+  if (!noteEl || !copyrightEl || !saveBtn) return;
+
+  const payload = {
+    export_note_line: (noteEl.value || '').trim(),
+    export_copyright_line: (copyrightEl.value || '').trim(),
+  };
+
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+  if (statusEl) {
+    statusEl.textContent = '';
+    statusEl.style.color = '';
+  }
+
+  try {
+    const res = await fetch('/api/export-settings/update/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data && data.success) {
+      if (window.showToast) showToast('Export settings saved', 'success');
+      if (statusEl) {
+        statusEl.textContent = 'Saved';
+        statusEl.style.color = '#15803d';
+      }
+      return;
+    }
+    if (window.showToast) showToast((data && data.message) || 'Failed to save export settings', 'error');
+    if (statusEl) {
+      statusEl.textContent = 'Failed';
+      statusEl.style.color = '#b91c1c';
+    }
+  } catch (err) {
+    console.error('saveExportSettings:', err);
+    if (window.showToast) showToast('Network error saving export settings', 'error');
+    if (statusEl) {
+      statusEl.textContent = 'Error';
+      statusEl.style.color = '#b91c1c';
+    }
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Export Settings';
+  }
+}
+
 /* Live-preview: update textarea font based on language + bold selection */
 function _syncTemplatePreviewFont() {
   const ta = document.getElementById('templateInstructions');
@@ -1247,6 +1325,15 @@ function toggleTemplateBold() {
 document.addEventListener('DOMContentLoaded', function () {
   var sel = document.getElementById('templateFontName');
   if (sel) sel.addEventListener('change', _syncTemplatePreviewFont);
+
+  const exportForm = document.getElementById('panelExportSettingsForm');
+  if (exportForm && !exportForm.dataset.bound) {
+    exportForm.dataset.bound = '1';
+    exportForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      saveExportSettings();
+    });
+  }
 });
 
 async function loadTemplates() {
@@ -1415,7 +1502,7 @@ async function deleteTemplate(id) {
     async function () {
       try {
         const res = await fetch(`/api/export-templates/${id}/delete/`, {
-          method: 'DELETE',
+          method: 'POST',
           headers: { 'X-CSRFToken': getCSRFToken() },
         });
         const data = await res.json();

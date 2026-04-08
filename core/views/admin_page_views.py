@@ -20,7 +20,7 @@ from staff.models import Staff
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
 from cardprint.models import PrintRequest
-from ..models import User, SystemSettings, Notification, EmailLog, ActivityLog
+from ..models import User, Notification, EmailLog, ActivityLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
@@ -897,11 +897,9 @@ from panel.views.manage_panel_views import (  # noqa: F401
 @login_required
 def settings(request):
     """User settings/profile view - accessible by all user types"""
-    export_settings = SystemSettings.get_export_settings()
     context = {
         'active_page': 'settings',
         'user_role': get_user_role(request.user),
-        'export_settings': export_settings,
     }
     return render(request, 'settings.html', context)
 
