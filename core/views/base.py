@@ -48,6 +48,7 @@ from .admin_page_views import (                      # noqa: F401
     manage_client_staff,
     manage_clients,
     active_clients,
+    active_client_status_redirect,
     api_staff_login_history,
     api_client_login_history,
     api_client_staff_login_history,

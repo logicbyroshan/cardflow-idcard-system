@@ -61,6 +61,9 @@ urlpatterns = [
     
     # ID Card Group for a client (shows all tables with status counts)
     path('client/<int:client_id>/groups/', views.idcard_group, name='idcard_group'),
+
+    # Active-client status badge redirect (opens requested status list)
+    path('client/<int:client_id>/status/<str:status>/', views.active_client_status_redirect, name='active_client_status_redirect'),
     
     # ID Card Actions for a table (shows cards, can filter by status)
     path('table/<int:table_id>/cards/', views.idcard_actions, name='idcard_actions'),

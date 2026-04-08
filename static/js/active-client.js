@@ -269,8 +269,7 @@
         const filterColumnMap = {
             'all': null,
             'name': 0,
-            'email': 1,
-            'phone': 2
+            'email': 1
         };
         
         rows.forEach(row => {
@@ -284,9 +283,13 @@
             } else {
                 // Search specific column
                 const columnIndex = filterColumnMap[currentFilter];
-                if (columnIndex !== null && cells[columnIndex]) {
+                if (Number.isInteger(columnIndex) && cells[columnIndex]) {
                     const cellText = cells[columnIndex].textContent.toLowerCase();
                     match = cellText.includes(searchTerm);
+                } else {
+                    // Fallback to all-text search for unknown filter values.
+                    const text = row.textContent.toLowerCase();
+                    match = searchTerm === '' || text.includes(searchTerm);
                 }
             }
             

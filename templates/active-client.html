@@ -44,6 +44,97 @@
       justify-content: flex-start;
       gap: 8px;
     }
+
+    .active-client-stats-row {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 2px 0;
+      scrollbar-width: none;
+    }
+
+    .active-client-stats-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .active-client-stats-row .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 22px;
+      width: auto;
+      min-width: auto;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      flex: 0 0 auto;
+    }
+
+    .active-client-stats-row a.count-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      text-decoration: none;
+    }
+
+    .active-client-stats-row .count-badge.pending {
+      background: #fff4dc;
+      color: #a16207;
+      border-color: #f8d89a;
+    }
+
+    .active-client-stats-row .count-badge.verified {
+      background: #e8fdf3;
+      color: #065f46;
+      border-color: #9fe8c9;
+    }
+
+    .active-client-stats-row .count-badge.approved {
+      background: #e3efff;
+      color: #1e40af;
+      border-color: #bbd4ff;
+    }
+
+    .active-client-stats-row .count-badge.downloaded {
+      background: #f9fafb;
+      color: #374151;
+      border-color: #d1d5db;
+    }
+
+    .active-client-stats-row .count-badge.pool {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    .active-client-stats-row .stat-label {
+      font-weight: 600;
+    }
+
+    .active-client-stats-row .stat-value {
+      font-weight: 700;
+    }
+
+    @media (max-width: 1280px) {
+      .active-client-stats-row {
+        justify-content: flex-start;
+      }
+
+      .active-client-stats-row .count-badge {
+        font-size: 10px;
+        padding: 0 7px;
+      }
+    }
   </style>
 {% endblock %}
 

@@ -148,9 +148,8 @@ def manage_client_staff(request):
     elif status_filter == 'inactive':
         staff_qs = staff_qs.filter(user__is_active=False)
 
-    full_page_size = max(staff_qs.count(), 1)
-    paginator = Paginator(staff_qs, full_page_size)
-    page_obj = paginator.get_page(1)
+    paginator = Paginator(staff_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
 
     context = {
         'active_page': 'manage_client_staff',
@@ -209,12 +208,8 @@ def manage_clients(request):
     if status_filter and status_filter in ('active', 'inactive', 'suspended'):
         clients_qs = clients_qs.filter(status=status_filter)
     
-    # This page already uses client-side pagination/search over rendered rows.
-    # Keep server pagination as a single page with the full filtered queryset
-    # to avoid "10 of 10" mismatches when more rows exist.
-    full_page_size = max(clients_qs.count(), 1)
-    paginator = Paginator(clients_qs, full_page_size)
-    page_obj = paginator.get_page(1)
+    paginator = Paginator(clients_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
     
     context = {
         'active_page': 'manage_clients',
@@ -272,8 +267,33 @@ def active_clients(request):
     clients_qs = PermissionService.get_accessible_clients(
         user, base_qs
     ).prefetch_related('id_card_groups').annotate(
-        group_count=Count('id_card_groups'),
-        table_count=Count('id_card_groups__tables', distinct=True)
+        group_count=Count('id_card_groups', distinct=True),
+        table_count=Count('id_card_groups__tables', distinct=True),
+        pending_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='pending'),
+            distinct=True,
+        ),
+        verified_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='verified'),
+            distinct=True,
+        ),
+        approved_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='approved'),
+            distinct=True,
+        ),
+        download_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='download'),
+            distinct=True,
+        ),
+        pool_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='pool'),
+            distinct=True,
+        ),
     ).order_by('-id')
     
     if search_query:
@@ -372,6 +392,38 @@ def api_client_login_history(request, client_id):
         'device_fingerprints': device_fingerprints,
         'events': events,
     })
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
+def active_client_status_redirect(request, client_id, status):
+    """Open a client's most relevant table for the requested status."""
+    normalized_status = (status or '').strip().lower()
+    allowed_statuses = ('pending', 'verified', 'approved', 'download', 'pool')
+
+    client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+
+    if not PermissionService.can_access_client(request.user, client.id):
+        return redirect('active_clients')
+
+    if normalized_status not in allowed_statuses:
+        return redirect('idcard_group', client_id=client.id)
+
+    table = (
+        IDCardTable.objects
+        .filter(group__client=client)
+        .annotate(
+            status_card_count=Count('id_cards', filter=Q(id_cards__status=normalized_status))
+        )
+        .order_by('-status_card_count', '-updated_at', '-id')
+        .first()
+    )
+
+    if not table:
+        return redirect('idcard_group', client_id=client.id)
+
+    return redirect(f"{reverse('idcard_actions', args=[table.id])}?status={normalized_status}")
 
 
 @login_required

@@ -100,6 +100,9 @@
   }
   .audit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .audit-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 4px 12px;
     border-radius: 2px;
     font-size: 12px;
@@ -114,6 +117,27 @@
     color: var(--text-white, #fff);
     border-color: var(--primary, #667eea);
     background: var(--primary, #667eea);
+  }
+  .audit-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    border: 1px solid var(--audit-border);
+    background: color-mix(in srgb, var(--audit-muted, #666) 12%, #ffffff 88%);
+    color: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .audit-pill:hover .audit-pill-count,
+  .audit-pill.active .audit-pill-count {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--text-white, #fff);
   }
   .audit-grid {
     display: grid;
@@ -351,12 +375,12 @@
           <input type="text" id="auditSearch" class="search-input" placeholder="Search by name, email, username, role..." oninput="__auditFilter()" autocomplete="off">
         </div>
         <div class="audit-pills" id="auditPills">
-          <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All</button>
-          <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User</button>
-          <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin</button>
-          <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Operator</button>
-          <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client</button>
-          <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Assistent</button>
+          <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Operator <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Assistant <span class="audit-pill-count">0</span></button>
         </div>
       </div>
       <div class="action-right">
@@ -415,6 +439,7 @@
   var _historyOffset = 0;
   var _historyLimit = 50;
   var _hasMore = false;
+  var ROLE_LABELS = { admin_staff: 'Operator', client_staff: 'Assistant' };
   var COLORS = {
     pro_user: 'var(--color-danger,#e11d48)',
     super_admin: 'var(--primary,#667eea)',
@@ -439,6 +464,32 @@
     return 'r-' + String(role || '').toLowerCase();
   }
 
+  function _displayRole(role, fallback) {
+    return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');
+  }
+
+  function _updateRolePillCounts() {
+    var counts = {
+      all: 0,
+      pro_user: 0,
+      super_admin: 0,
+      admin_staff: 0,
+      client: 0,
+      client_staff: 0
+    };
+    _users.forEach(function(u) {
+      counts.all += 1;
+      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+        counts[u.role] += 1;
+      }
+    });
+    document.querySelectorAll('.audit-pill[data-role]').forEach(function(btn) {
+      var role = btn.dataset.role || 'all';
+      var countEl = btn.querySelector('.audit-pill-count');
+      if (countEl) countEl.textContent = String(counts[role] || 0);
+    });
+  }
+
   function _detailPageUrl(userId) {
     return '/panel/pro-user/activity-logs/' + encodeURIComponent(String(userId)) + '/';
   }
@@ -452,6 +503,7 @@
           return;
         }
         _users = data.users || [];
+        _updateRolePillCounts();
         __auditRenderUsers();
       })
       .catch(function() {
@@ -493,10 +545,11 @@
       if (_role !== 'all' && u.role !== _role) return false;
       if (_text) {
         var q = _text.toLowerCase();
+        var roleText = _displayRole(u.role, u.role_display).toLowerCase();
         return (String(u.name || '').toLowerCase().indexOf(q) !== -1)
           || (String(u.email || '').toLowerCase().indexOf(q) !== -1)
           || (String(u.username || '').toLowerCase().indexOf(q) !== -1)
-          || (String(u.role_display || '').toLowerCase().indexOf(q) !== -1);
+          || (roleText.indexOf(q) !== -1);
       }
       return true;
     });
@@ -512,7 +565,9 @@
       var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
       var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
       var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-danger,#ef4444) 28%, #ffffff 72%);color:var(--color-danger-dark,#b91c1c);background:var(--color-danger-bg,#fef2f2);">Inactive</span>';
-      var clientMeta = u.client_name ? '<div class="audit-user-client">Client: ' + _esc(u.client_name) + '</div>' : '';
+      var roleDisplay = _displayRole(u.role, u.role_display);
+      var showClientMeta = u.role === 'client_staff';
+      var clientMeta = (showClientMeta && u.client_name) ? '<div class="audit-user-client">Client: ' + _esc(u.client_name) + '</div>' : '';
       html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
         + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || 'var(--color-gray-500,#64748b)') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
         + '<div class="audit-user-main">'
@@ -520,7 +575,7 @@
         + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
         + clientMeta
         + '</div>'
-        + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(u.role_display) + '</span>'
+        + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(roleDisplay) + '</span>'
         + '<button class="audit-open-btn"><i class="fa-solid fa-timeline"></i> Open</button>'
         + '</div>';
     });

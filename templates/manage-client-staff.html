@@ -174,6 +174,94 @@
 
       setTimeout(initStaffPasswordEyeToggleFallback, 0);
 
+      function initStatusFilterDropdown() {
+        var dropdown = document.getElementById('status-dropdown');
+        var toggle = document.getElementById('statusToggle');
+        var options = document.getElementById('statusOptions');
+        var selectedText = document.getElementById('statusSelectedText');
+        var searchInput = document.getElementById('searchInput');
+
+        if (!dropdown || !toggle || !options || dropdown.dataset.dropdownBound === '1') return;
+
+        function syncSelectedText() {
+          if (!selectedText) return;
+          var active = options.querySelector('.dropdown-option.selected');
+          if (active) selectedText.textContent = active.textContent.trim();
+        }
+
+        toggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          dropdown.classList.toggle('open');
+        });
+
+        options.addEventListener('click', function(e) {
+          var option = e.target.closest('.dropdown-option');
+          if (!option) return;
+
+          options.querySelectorAll('.dropdown-option').forEach(function(item) {
+            item.classList.remove('selected');
+          });
+          option.classList.add('selected');
+
+          if (selectedText) selectedText.textContent = option.textContent.trim();
+          if (searchInput) {
+            var val = option.dataset.value || '';
+            searchInput.placeholder = val ? ('Search ' + option.textContent.trim() + '...') : 'Search All...';
+          }
+
+          dropdown.classList.remove('open');
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+
+        syncSelectedText();
+        dropdown.dataset.dropdownBound = '1';
+      }
+
+      function initRowsDropdownDelegation() {
+        if (document.body.dataset.rowsDropdownBound === '1') return;
+
+        document.addEventListener('click', function(e) {
+          var toggle = e.target.closest('#rowsToggle');
+          if (toggle) {
+            e.stopPropagation();
+            var dropdown = document.getElementById('rowsDropdown');
+            if (dropdown) dropdown.classList.toggle('open');
+            return;
+          }
+
+          var option = e.target.closest('#rowsOptions .dropdown-option');
+          if (option) {
+            var options = document.getElementById('rowsOptions');
+            var selectedText = document.getElementById('rowsSelectedText');
+            var dropdown = document.getElementById('rowsDropdown');
+
+            if (options) {
+              options.querySelectorAll('.dropdown-option').forEach(function(item) {
+                item.classList.remove('selected');
+              });
+            }
+
+            option.classList.add('selected');
+            if (selectedText) selectedText.textContent = option.dataset.value || option.textContent.trim();
+            if (dropdown) dropdown.classList.remove('open');
+            return;
+          }
+
+          var rowsDropdown = document.getElementById('rowsDropdown');
+          if (rowsDropdown && !rowsDropdown.contains(e.target)) {
+            rowsDropdown.classList.remove('open');
+          }
+        });
+
+        document.body.dataset.rowsDropdownBound = '1';
+      }
+
+      initStatusFilterDropdown();
+      initRowsDropdownDelegation();
+
       initHTMXFilters({
         baseUrl: '{% url "manage_client_staff" %}',
         target: '#staff-table-container',

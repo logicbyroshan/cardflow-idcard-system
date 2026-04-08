@@ -53,7 +53,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function setRecentClientUpdatesActiveBadge(count) {
         if (!recentClientUpdatesActiveBadge) return;
         const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-        recentClientUpdatesActiveBadge.textContent = `Live Active: ${safeCount.toLocaleString()}`;
+        recentClientUpdatesActiveBadge.textContent = `Live Working Clients: ${safeCount.toLocaleString()}`;
+    }
+
+    function renderDashboardClientStatusBadge(status, esc) {
+        const normalized = String(status || '').trim().toLowerCase();
+        if (!normalized || normalized === 'active') return '';
+        const stateClass = normalized === 'suspended' ? 'is-suspended' : 'is-inactive';
+        return ` <span class="dashboard-client-status-badge ${stateClass}">${esc(normalized)}</span>`;
     }
 
     function applyRecentClientUpdatesSearch() {
@@ -211,9 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
-                            const inactiveBadge = client.status && client.status !== 'active'
-                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                : '';
+                            const inactiveBadge = renderDashboardClientStatusBadge(client.status, esc);
                             // Build sub-rows for each table (same column structure)
                             const tableSubRows = tables.map(t => `
                                 <tr class="client-sub-row expand-group-${i}" style="display:none">
@@ -978,9 +983,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (clients.length > 0) {
                             printBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
-                                const iBadge = client.status && client.status !== 'active'
-                                    ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                    : '';
+                                const iBadge = renderDashboardClientStatusBadge(client.status, esc);
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row print-expand-group-${i}" style="display:none">
                                         <td>
@@ -1018,9 +1021,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (clients.length > 0) {
                             reprintBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
-                                const iBadge = client.status && client.status !== 'active'
-                                    ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                    : '';
+                                const iBadge = renderDashboardClientStatusBadge(client.status, esc);
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
                                         <td>

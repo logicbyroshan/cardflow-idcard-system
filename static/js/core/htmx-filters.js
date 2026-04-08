@@ -89,11 +89,20 @@
       }
 
       // Preserve per_page from current pagination
-      var perPageLabel = document.querySelector(target + ' #rowsLabel,' + target + ' [id$="rowsLabel"]');
+      var perPageLabel = document.querySelector(
+        target + ' #rowsLabel,' +
+        target + ' [id$="rowsLabel"],' +
+        target + ' #rowsSelectedText,' +
+        target + ' [id$="rowsSelectedText"]'
+      );
+      var pp = '';
       if (perPageLabel) {
-        var pp = perPageLabel.textContent.trim();
-        if (pp && !isNaN(pp)) params.set('per_page', pp);
+        pp = perPageLabel.textContent.trim();
       }
+      if ((!pp || isNaN(pp)) && document.querySelector(target + ' #rowsOptions .dropdown-option.selected')) {
+        pp = document.querySelector(target + ' #rowsOptions .dropdown-option.selected').dataset.value || '';
+      }
+      if (pp && !isNaN(pp)) params.set('per_page', pp);
 
       return params;
     }

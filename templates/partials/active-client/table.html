@@ -10,9 +10,9 @@ Contains: Table displaying active clients with groups info
             <tr>
                 <th scope="col" class="name-col text-left">Client Name</th>
                 <th scope="col" class="email-col text-left">Email</th>
-                <th scope="col" class="phone-col text-center">Phone</th>
                 <th scope="col" class="status-col text-center">Status</th>
                 <th scope="col" class="updates-col text-center">Group</th>
+                <th scope="col" class="stats-col text-center">Stats</th>
             </tr>
         </thead>
         <tbody id="client-table-body">
@@ -26,7 +26,6 @@ Contains: Table displaying active clients with groups info
                     </div>
                 </td>
                 <td class="email-col text-left">{{ client.user.email }}</td>
-                <td class="phone-col text-center">{{ client.user.phone|default:"-" }}</td>
                 <td class="status-col text-center">
                     <span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span>
                 </td>
@@ -35,6 +34,30 @@ Contains: Table displaying active clients with groups info
                         <a href="{% url 'idcard_group' client.id %}" class="active-client-group-btn" title="Open ID Card Group page">
                             <i class="fa-solid fa-layer-group"></i>
                             {{ client.group_count }} group{{ client.group_count|pluralize }}
+                        </a>
+                    </div>
+                </td>
+                <td class="stats-col text-center">
+                    <div class="active-client-stats-row" role="group" aria-label="Card status counts">
+                        <a href="{% url 'active_client_status_redirect' client.id 'pending' %}" class="count-badge pending" title="Open Pending list">
+                            <span class="stat-label">Pending</span>
+                            <span class="stat-value">{{ client.pending_count|default:0 }}</span>
+                        </a>
+                        <a href="{% url 'active_client_status_redirect' client.id 'verified' %}" class="count-badge verified" title="Open Verified list">
+                            <span class="stat-label">Verified</span>
+                            <span class="stat-value">{{ client.verified_count|default:0 }}</span>
+                        </a>
+                        <a href="{% url 'active_client_status_redirect' client.id 'approved' %}" class="count-badge approved" title="Open Approved list">
+                            <span class="stat-label">Approved</span>
+                            <span class="stat-value">{{ client.approved_count|default:0 }}</span>
+                        </a>
+                        <a href="{% url 'active_client_status_redirect' client.id 'download' %}" class="count-badge downloaded" title="Open Download list">
+                            <span class="stat-label">Download</span>
+                            <span class="stat-value">{{ client.download_count|default:0 }}</span>
+                        </a>
+                        <a href="{% url 'active_client_status_redirect' client.id 'pool' %}" class="count-badge pool" title="Open Pool list">
+                            <span class="stat-label">Pool</span>
+                            <span class="stat-value">{{ client.pool_count|default:0 }}</span>
                         </a>
                     </div>
                 </td>

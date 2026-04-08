@@ -108,6 +108,9 @@
   /* Role filter pills */
   .imp-pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .imp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 4px 12px;
     border-radius: 2px;
     font-size: 12px;
@@ -123,6 +126,27 @@
     color: #fff;
     border-color: var(--primary, #667eea);
     background: var(--primary, #667eea);
+  }
+  .imp-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: rgba(15, 23, 42, 0.06);
+    color: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .imp-pill:hover .imp-pill-count,
+  .imp-pill.active .imp-pill-count {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
   }
 
   /* User Cards Grid */
@@ -324,11 +348,11 @@
           <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="imp-pills" id="impPills">
-          <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All</button>
-          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator</button>
-          <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client</button>
-          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistent</button>
-          <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin</button>
+          <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin <span class="imp-pill-count">0</span></button>
         </div>
       </div>
       <div class="action-right">
@@ -363,6 +387,26 @@
 (function() {
   var _users = [], _role = 'all', _text = '';
   var COLORS = { super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
+
+  function _displayRole(role, fallback) {
+    return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');
+  }
+
+  function _updateRolePillCounts() {
+    var counts = { all: 0, super_admin: 0, admin_staff: 0, client: 0, client_staff: 0 };
+    _users.forEach(function(u) {
+      counts.all += 1;
+      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+        counts[u.role] += 1;
+      }
+    });
+    document.querySelectorAll('.imp-pill[data-role]').forEach(function(btn) {
+      var role = btn.dataset.role || 'all';
+      var countEl = btn.querySelector('.imp-pill-count');
+      if (countEl) countEl.textContent = String(counts[role] || 0);
+    });
+  }
 
   // Load users on page load
   _load();
@@ -373,7 +417,7 @@
     fetch('/panel/api/auth/impersonate/users/', { headers: { 'X-CSRFToken': csrf } })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.success) { _users = d.users; _render(); }
+        if (d.success) { _users = d.users; _updateRolePillCounts(); _render(); }
         else { document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-circle-exclamation"></i>' + _esc(d.message || 'Failed to load') + '</div>'; }
       })
       .catch(function() {
@@ -384,20 +428,29 @@
   function _render() {
     var f = _users.filter(function(u) {
       if (_role !== 'all' && u.role !== _role) return false;
-      if (_text) { var q = _text.toLowerCase(); return u.name.toLowerCase().indexOf(q) !== -1 || u.email.toLowerCase().indexOf(q) !== -1 || u.role_display.toLowerCase().indexOf(q) !== -1; }
+      if (_text) {
+        var q = _text.toLowerCase();
+        var nameText = String(u.name || '').toLowerCase();
+        var emailText = String(u.email || '').toLowerCase();
+        var roleText = _displayRole(u.role, u.role_display).toLowerCase();
+        return nameText.indexOf(q) !== -1 || emailText.indexOf(q) !== -1 || roleText.indexOf(q) !== -1;
+      }
       return true;
     });
     document.getElementById('impCount').textContent = f.length + ' user' + (f.length !== 1 ? 's' : '');
     if (!f.length) { document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-users-slash"></i>No users found</div>'; return; }
     var h = '';
     f.forEach(function(u) {
-      var init = (u.name[0] || '?').toUpperCase();
+      var nameText = String(u.name || 'User');
+      var init = (nameText[0] || '?').toUpperCase();
       var inactiveBadge = u.is_active === false ? '<span class="imp-inactive-tag">Inactive</span>' : '';
-      var clientMeta = u.client_name ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
-      h += '<div class="imp-card" onclick="__impStart(' + u.id + ')" title="Login as ' + _esc(u.name) + '" role="button" tabindex="0">'
+      var roleDisplay = _displayRole(u.role, u.role_display);
+      var showClientMeta = u.role === 'client_staff';
+      var clientMeta = (showClientMeta && u.client_name) ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
+      h += '<div class="imp-card" onclick="__impStart(' + u.id + ')" title="Login as ' + _esc(nameText) + '" role="button" tabindex="0">'
         + '<div class="imp-avatar" style="background:' + (COLORS[u.role]||'#667eea') + (!u.is_active ? ';opacity:0.6' : '') + '">' + init + '</div>'
-        + '<div class="imp-info"><div class="imp-name">' + _esc(u.name) + inactiveBadge + '</div><div class="imp-email">' + _esc(u.email) + '</div>' + clientMeta + '</div>'
-        + '<span class="imp-role-tag r-' + u.role + '">' + _esc(u.role_display) + '</span>'
+        + '<div class="imp-info"><div class="imp-name">' + _esc(nameText) + inactiveBadge + '</div><div class="imp-email">' + _esc(u.email) + '</div>' + clientMeta + '</div>'
+        + '<span class="imp-role-tag r-' + u.role + '">' + _esc(roleDisplay) + '</span>'
         + '<button class="imp-login-btn"><i class="fa-solid fa-right-to-bracket"></i> Login</button>'
         + '</div>';
     });
