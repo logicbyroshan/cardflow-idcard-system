@@ -995,6 +995,7 @@ class SessionIdleTimeoutMiddleware:
 
     SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
     ACTIVITY_WRITE_INTERVAL = 60  # seconds
+    USER_IDLE_TIMEOUT_SESSION_KEY = '_user_idle_timeout_seconds'
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -1023,6 +1024,33 @@ class SessionIdleTimeoutMiddleware:
             }, status=401)
         return redirect(login_url)
 
+    def _resolve_user_idle_timeout_seconds(self, request):
+        """
+        Resolve per-user idle timeout in seconds.
+        Falls back to global SESSION_IDLE_TIMEOUT when no user override exists.
+        """
+        cached = request.session.get(self.USER_IDLE_TIMEOUT_SESSION_KEY)
+        if cached is not None:
+            try:
+                return max(int(cached), 0)
+            except (TypeError, ValueError):
+                request.session.pop(self.USER_IDLE_TIMEOUT_SESSION_KEY, None)
+
+        try:
+            from core.services.user_profile_service import UserProfileService
+
+            security = UserProfileService.get_security_settings(request.user)
+            timeout_minutes = int(security.get('session_timeout_minutes') or 0)
+            timeout_seconds = max(timeout_minutes, 0) * 60
+            request.session[self.USER_IDLE_TIMEOUT_SESSION_KEY] = timeout_seconds
+            return timeout_seconds
+        except Exception:
+            logger.exception(
+                "SessionIdleTimeout: failed to resolve per-user timeout for user=%s",
+                getattr(request.user, 'pk', None),
+            )
+            return max(int(self._timeout or 0), 0)
+
     def __call__(self, request):
         # Skip for static/media and unauthenticated users
         if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
@@ -1032,11 +1060,12 @@ class SessionIdleTimeoutMiddleware:
             return self.get_response(request)
 
         now = time.time()
+        user_idle_timeout = self._resolve_user_idle_timeout_seconds(request)
 
         # ── Policy 1: Idle timeout ────────────────────────────────────────────
-        if self._timeout > 0:
+        if user_idle_timeout > 0:
             last_activity = request.session.get('_last_activity')
-            if last_activity is not None and (now - last_activity) > self._timeout:
+            if last_activity is not None and (now - last_activity) > user_idle_timeout:
                 return self._force_logout(request, reason='idle')
 
         # ── Policy 2: Absolute max-age ────────────────────────────────────────

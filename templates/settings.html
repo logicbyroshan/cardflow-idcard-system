@@ -236,16 +236,17 @@
               </div>
               <select class="form-select session-select" id="sessionTimeout">
                 <option value="15">15 minutes</option>
-                <option value="30" selected>30 minutes</option>
+                <option value="30">30 minutes</option>
                 <option value="60">1 hour</option>
                 <option value="120">2 hours</option>
+                <option value="10080" selected>7 days (default)</option>
                 <option value="0">Never</option>
               </select>
             </div>
           </div>
         </div>
 
-        {% if user_role == 'pro_user' or user_role == 'super_admin' or user_role == 'admin_staff' %}
+        {% if is_pro_user or is_super_admin or is_admin_staff %}
         <!-- Export Document Settings -->
         <div class="settings-section">
           <div class="section-header">

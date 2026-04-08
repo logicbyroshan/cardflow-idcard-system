@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setRecentClientUpdatesActiveBadge(count) {
         if (!recentClientUpdatesActiveBadge) return;
         const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-        recentClientUpdatesActiveBadge.textContent = `Active: ${safeCount.toLocaleString()}`;
+        recentClientUpdatesActiveBadge.textContent = `Live Active: ${safeCount.toLocaleString()}`;
     }
 
     function applyRecentClientUpdatesSearch() {
@@ -206,10 +206,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
-                        const activeClients = data.clients.filter(function(client) {
-                            return String(client.status || '').toLowerCase() === 'active';
-                        }).length;
-                        setRecentClientUpdatesActiveBadge(activeClients);
+                        const liveActiveClients = Number(data.active_clients_now);
+                        setRecentClientUpdatesActiveBadge(Number.isFinite(liveActiveClients) ? liveActiveClients : 0);
                         setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];

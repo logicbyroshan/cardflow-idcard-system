@@ -141,6 +141,7 @@ from .settings_api import (
     api_get_profile,
     api_update_profile,
     api_change_password,
+    api_update_security_settings,
     api_upload_profile_image,
     api_remove_profile_image,
 )

@@ -3,54 +3,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Load profile data on page load
     loadProfile();
-    
-    // ===== Avatar Upload =====
-    const avatarUpload = document.getElementById('avatarUpload');
-    const profileAvatar = document.getElementById('profileAvatar');
-
-    if (avatarUpload) {
-        avatarUpload.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // Validate file type
-                const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-                if (!allowedTypes.includes(file.type)) {
-                    showToast('Invalid file type. Please use JPEG, PNG, GIF, or WebP.', 'warning');
-                    return;
-                }
-                
-                // Validate file size (5MB max)
-                if (file.size > 5 * 1024 * 1024) {
-                    showToast('File size too large. Maximum 5MB allowed.', 'warning');
-                    return;
-                }
-                
-                // Upload to server
-                const formData = new FormData();
-                formData.append('profile_image', file);
-                
-                try {
-                    const data = await ApiClient.upload('/api/profile/upload-image/', formData);
-                    
-                    if (data.success) {
-                        // Update avatar displays
-                        if (profileAvatar) profileAvatar.src = data.image_url;
-                        
-                        // Update sidebar avatar if exists
-                        const sidebarAvatar = document.querySelector('.sidebar-user img, .user-avatar img');
-                        if (sidebarAvatar) sidebarAvatar.src = data.image_url;
-                        
-                        showToast('Profile picture updated!', 'success');
-                    } else {
-                        showToast(data.message || 'Failed to upload image', 'error');
-                    }
-                } catch (error) {
-                    console.error('Upload error:', error);
-                    showToast('Failed to upload image', 'error');
-                }
-            }
-        });
-    }
 
     // ===== Password Toggle =====
     const passwordToggles = document.querySelectorAll('.password-toggle');
@@ -178,14 +130,45 @@ document.addEventListener('DOMContentLoaded', function() {
         logoutBtn.addEventListener('click', async function() {
             var ok = await showConfirm({ title: 'Logout?', text: 'Are you sure you want to logout?', icon: 'fa-solid fa-right-from-bracket', confirmLabel: 'Logout', btnClass: 'btn-danger', hideWarning: true });
             if (ok) {
-                // Must use POST for logout (GET is ignored for CSRF safety)
+                const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                logoutBtn.disabled = true;
+                try {
+                    const response = await fetch('/panel/auth/logout/', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: '{}'
+                    });
+
+                    let data = {};
+                    try {
+                        data = await response.json();
+                    } catch (parseError) {
+                        data = {};
+                    }
+
+                    if (response.ok && data.success !== false) {
+                        window.location.href = data.redirect || '/';
+                        return;
+                    }
+
+                    showToast(data.message || 'Unable to logout right now. Retrying...', 'warning');
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+
+                // Fallback form-submit keeps logout reliable if AJAX fails.
                 var form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/auth/logout/';
+                form.action = '/panel/auth/logout/';
                 var csrfInput = document.createElement('input');
                 csrfInput.type = 'hidden';
                 csrfInput.name = 'csrfmiddlewaretoken';
-                csrfInput.value = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                csrfInput.value = csrfToken;
                 form.appendChild(csrfInput);
                 document.body.appendChild(form);
                 form.submit();
@@ -230,14 +213,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     profileEmail.appendChild(document.createTextNode(' ' + (profile.email || '')));
                 }
                 if (memberSinceEl) memberSinceEl.textContent = profile.member_since;
-                
-                // Update avatar if exists
-                if (profile.profile_image) {
-                    const profileAvatar = document.getElementById('profileAvatar');
-                    if (profileAvatar) profileAvatar.src = profile.profile_image;
-                    
-                    const sidebarAvatar = document.querySelector('.sidebar-user img, .user-avatar img');
-                    if (sidebarAvatar) sidebarAvatar.src = profile.profile_image;
+
+                const securitySettings = profile.security_settings || {};
+                const twoFactorToggleEl = document.getElementById('twoFactorToggle');
+                const loginNotifyToggleEl = document.getElementById('loginNotifyToggle');
+                const sessionTimeoutEl = document.getElementById('sessionTimeout');
+
+                if (twoFactorToggleEl && typeof securitySettings.two_factor_enabled === 'boolean') {
+                    twoFactorToggleEl.checked = securitySettings.two_factor_enabled;
+                }
+                if (loginNotifyToggleEl && typeof securitySettings.login_notifications_enabled === 'boolean') {
+                    loginNotifyToggleEl.checked = securitySettings.login_notifications_enabled;
+                }
+                if (sessionTimeoutEl && securitySettings.session_timeout_minutes !== undefined && securitySettings.session_timeout_minutes !== null) {
+                    sessionTimeoutEl.value = String(securitySettings.session_timeout_minutes);
+                    sessionTimeoutEl.dataset.previous = sessionTimeoutEl.value;
                 }
             }
         } catch (error) {
@@ -254,42 +244,78 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginNotifyToggle = document.getElementById('loginNotifyToggle');
     const sessionTimeout = document.getElementById('sessionTimeout');
 
+    function getSessionTimeoutMessage(value) {
+        if (value === '0') {
+            return 'Session timeout disabled';
+        }
+        if (value === '10080') {
+            return 'Session timeout set to 7 days';
+        }
+        if (value === '60') {
+            return 'Session timeout set to 1 hour';
+        }
+        if (value === '120') {
+            return 'Session timeout set to 2 hours';
+        }
+        return `Session timeout set to ${value} minutes`;
+    }
+
+    async function saveSecuritySettings(payload, successMessage) {
+        try {
+            const data = await ApiClient.post('/api/profile/security-settings/update/', payload);
+            if (!data.success) {
+                showToast(data.message || 'Failed to update security settings', 'error');
+                return false;
+            }
+            showToast(successMessage, 'success');
+            return true;
+        } catch (error) {
+            console.error('Security settings update error:', error);
+            showToast('Failed to update security settings', 'error');
+            return false;
+        }
+    }
+
     if (twoFactorToggle) {
-        twoFactorToggle.addEventListener('change', function() {
-            if (this.checked) {
-                showToast('Two-Factor Authentication enabled!', 'success');
-            } else {
-                showToast('Two-Factor Authentication disabled', 'success');
+        twoFactorToggle.addEventListener('change', async function() {
+            const nextValue = this.checked;
+            const ok = await saveSecuritySettings(
+                { two_factor_enabled: nextValue },
+                nextValue ? 'Two-Factor Authentication enabled!' : 'Two-Factor Authentication disabled'
+            );
+            if (!ok) {
+                this.checked = !nextValue;
             }
         });
     }
 
     if (loginNotifyToggle) {
-        loginNotifyToggle.addEventListener('change', function() {
-            if (this.checked) {
-                showToast('Login notifications enabled!', 'success');
-            } else {
-                showToast('Login notifications disabled', 'success');
+        loginNotifyToggle.addEventListener('change', async function() {
+            const nextValue = this.checked;
+            const ok = await saveSecuritySettings(
+                { login_notifications_enabled: nextValue },
+                nextValue ? 'Login notifications enabled!' : 'Login notifications disabled'
+            );
+            if (!ok) {
+                this.checked = !nextValue;
             }
         });
     }
 
     if (sessionTimeout) {
-        sessionTimeout.addEventListener('change', function() {
+        sessionTimeout.dataset.previous = sessionTimeout.value;
+        sessionTimeout.addEventListener('change', async function() {
             const value = this.value;
-            let message = '';
-            
-            if (value === '0') {
-                message = 'Session timeout disabled';
-            } else if (value === '60') {
-                message = 'Session timeout set to 1 hour';
-            } else if (value === '120') {
-                message = 'Session timeout set to 2 hours';
+            const previousValue = this.dataset.previous || '10080';
+            const ok = await saveSecuritySettings(
+                { session_timeout_minutes: parseInt(value, 10) },
+                getSessionTimeoutMessage(value)
+            );
+            if (ok) {
+                this.dataset.previous = value;
             } else {
-                message = `Session timeout set to ${value} minutes`;
+                this.value = previousValue;
             }
-            
-            showToast(message, 'success');
         });
     }
 
@@ -298,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportSettingsForm) {
         exportSettingsForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const saveBtn = exportSettingsForm.querySelector('.save-btn');
+            const saveBtn = document.getElementById('saveExportSettingsBtn');
             const statusSpan = document.getElementById('exportSettingsStatus');
             
             const noteLine = document.getElementById('exportNoteLine').value.trim();
@@ -340,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } finally {
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.textContent = 'Save Export Settings';
+                    saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Export Settings';
                 }
             }
         });

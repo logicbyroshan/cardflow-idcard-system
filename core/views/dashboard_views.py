@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
@@ -66,6 +67,59 @@ def _parse_recent_activity_window(raw_window):
     if token in ('24', '24h', '24hr', '24hour', 'last_24h', 'last24h'):
         return 24
     return None
+
+
+def _get_live_active_client_ids_for_dashboard(user):
+    """
+    Return client IDs that have at least one currently active authenticated session.
+    Includes direct client users and client_staff users mapped to their clients.
+    """
+    now = timezone.now()
+    active_user_ids = set()
+
+    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+
+        raw_user_id = data.get('_auth_user_id')
+        if not raw_user_id:
+            continue
+
+        try:
+            active_user_ids.add(int(raw_user_id))
+        except (TypeError, ValueError):
+            continue
+
+    if not active_user_ids:
+        return set()
+
+    direct_client_ids = set(
+        Client.objects.filter(
+            user_id__in=active_user_ids,
+            status='active',
+            user__is_active=True,
+        ).values_list('id', flat=True)
+    )
+
+    staff_client_ids = set(
+        Staff.objects.filter(
+            user_id__in=active_user_ids,
+            staff_type='client_staff',
+            status='active',
+            user__is_active=True,
+            client_id__isnull=False,
+            client__status='active',
+        ).values_list('client_id', flat=True)
+    )
+
+    active_client_ids = direct_client_ids | staff_client_ids
+    if PermissionService.is_admin_staff(user):
+        allowed_ids = set(PermissionService.get_accessible_client_ids(user))
+        active_client_ids &= allowed_ids
+
+    return active_client_ids
 
 
 def _get_dashboard_recent_activities(*, user, limit, hours=None):
@@ -489,7 +543,9 @@ def api_recent_client_updates(request):
         cache_key = f'dash_rcu:{user.pk if is_scoped else "sa"}:{limit}'
         cached = cache.get(cache_key)
         if cached is not None:
-            return JsonResponse({'success': True, 'clients': cached})
+            if isinstance(cached, dict):
+                return JsonResponse({'success': True, **cached})
+            return JsonResponse({'success': True, 'clients': cached, 'active_clients_now': 0})
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
@@ -570,10 +626,16 @@ def api_recent_client_updates(request):
                 'pool': cc.get('pool', 0),
             })
 
-        cache.set(cache_key, results, 20)
+        active_clients_now = len(_get_live_active_client_ids_for_dashboard(user))
+        payload = {
+            'clients': results,
+            'active_clients_now': active_clients_now,
+        }
+
+        cache.set(cache_key, payload, 20)
         return JsonResponse({
             'success': True,
-            'clients': results
+            **payload,
         })
     except Exception as e:
         logger.exception('api_recent_client_updates error: %s', e)

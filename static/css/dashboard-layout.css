@@ -262,16 +262,28 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 90px;
-    height: 28px;
-    padding: 0 10px;
-    border: 1px solid #bbf7d0;
+    gap: 6px;
+    min-width: 132px;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid #86efac;
     border-radius: 999px;
-    background: #ecfdf5;
-    color: #166534;
+    background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #14532d;
     font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.1px;
     white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(22, 101, 52, 0.16);
+}
+
+.recent-updates-active-badge::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #22c55e;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.22);
 }
 
 .dashboard-card-header.overview-header {

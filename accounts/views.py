@@ -87,19 +87,23 @@ class LogoutView(View):
     
     def post(self, request):
         from .services_impersonate import ImpersonateService
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
         # If this session is impersonating, stopping logout returns control to Pro User.
         if request.user.is_authenticated and ImpersonateService.is_impersonating(request):
             result = ImpersonateService.stop(request)
             if result.get('success'):
-                return redirect(result.get('redirect_url') or '/panel/')
+                redirect_url = result.get('redirect_url') or '/panel/'
+                if is_ajax:
+                    return JsonResponse({'success': True, 'redirect': redirect_url})
+                return redirect(redirect_url)
 
         if request.user.is_authenticated:
             # Pro User cannot logout the final active session.
             if getattr(request.user, 'role', '') == 'pro_user':
                 active_sessions = AuthService.count_active_sessions_for_user(request.user.id, stop_after=2)
                 if active_sessions <= 1:
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    if is_ajax:
                         return JsonResponse({
                             'success': False,
                             'message': 'Pro User must remain logged in on at least one active session.'
@@ -113,14 +117,17 @@ class LogoutView(View):
         # S7: use Django's safe-redirect helper ÔÇö blocks //evil.com, /\evil.com, etc.
         if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             login_url = reverse('accounts:login') + '?next=' + next_url
+            if is_ajax:
+                return JsonResponse({'success': True, 'redirect': login_url})
             return redirect(login_url)
         # Redirect to the main website landing page if configured,
         # otherwise fall back to the login page
         from django.conf import settings
         website_url = getattr(settings, 'WEBSITE_URL', '')
-        if website_url:
-            return redirect(website_url)
-        return redirect('accounts:login')
+        target_url = website_url or '/'
+        if is_ajax:
+            return JsonResponse({'success': True, 'redirect': target_url})
+        return redirect(target_url)
 
 
 # =============================================================================

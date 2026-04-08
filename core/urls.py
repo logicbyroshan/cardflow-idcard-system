@@ -255,6 +255,7 @@ urlpatterns = [
     path('api/profile/', views.api_get_profile, name='api_get_profile'),
     path('api/profile/update/', views.api_update_profile, name='api_update_profile'),
     path('api/profile/change-password/', views.api_change_password, name='api_change_password'),
+    path('api/profile/security-settings/update/', views.api_update_security_settings, name='api_update_security_settings'),
     path('api/profile/upload-image/', views.api_upload_profile_image, name='api_upload_profile_image'),
     path('api/profile/remove-image/', views.api_remove_profile_image, name='api_remove_profile_image'),
 

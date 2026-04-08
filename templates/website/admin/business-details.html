@@ -31,6 +31,7 @@
         border-radius: 0;
         border: 1px solid rgba(102, 126, 234, 0.48);
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        width: 100%;
         padding: 9px 14px;
         display: flex;
         align-items: center;
@@ -69,7 +70,7 @@
     }
 
     .wa-business-live-title {
-        font-size: 11.5px;
+        font-size: 11.8px;
         font-weight: 800;
         letter-spacing: 0.03em;
         text-transform: uppercase;
@@ -78,7 +79,7 @@
     .wa-business-live-sub {
         font-size: 11px;
         opacity: 0.94;
-        font-weight: 600;
+        font-weight: 700;
     }
 
     .wa-business-live-right {
@@ -87,45 +88,6 @@
         gap: 8px;
         margin-left: auto;
         flex-wrap: wrap;
-    }
-
-    .wa-business-actions-bar {
-        margin-top: 0;
-        border: 1px solid #dbe3ef;
-        border-radius: 0;
-        background: #f8fbff;
-        padding: 7px 14px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        flex-wrap: wrap;
-        position: sticky;
-        top: 0;
-        z-index: 4;
-    }
-
-    .wa-business-actions-left {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: #475569;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    .wa-business-actions-left i {
-        color: #2563eb;
-    }
-
-    .wa-business-actions-right {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .wa-business-actions-right .btn {
-        min-width: 140px;
     }
 
     .wa-business-status-actions {
@@ -174,7 +136,7 @@
         border-color: rgba(255, 255, 255, 0.55);
         color: #ffffff;
         background: rgba(15, 23, 42, 0.26);
-        min-width: 118px;
+        min-width: 122px;
     }
 
     .wa-business-live-right #toggleWebsiteLiveBtn:hover:not(:disabled) {
@@ -195,7 +157,7 @@
         margin-bottom: 0;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 8px;
         width: 100%;
         font-size: 11px;
@@ -210,12 +172,38 @@
         padding: 8px 14px;
     }
 
+    .business-form-shell .wa-section-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .business-form-shell .wa-section-bar-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .business-form-shell .wa-section-bar-actions {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .business-form-shell .wa-section-save-btn {
+        min-width: 132px;
+    }
+
     .business-form-shell .wa-form-group-title:first-of-type {
         margin-top: 0;
     }
 
     .business-form-shell .wa-form-group-title .wa-inline-action {
-        margin-left: auto;
+        margin-left: 0;
     }
 
     .business-form-shell .wa-form-row {
@@ -424,16 +412,18 @@
             justify-content: flex-start;
         }
 
-        .wa-business-actions-bar {
-            padding: 7px 8px;
+        .business-form-shell .wa-section-bar {
+            align-items: flex-start;
+            flex-direction: column;
         }
 
-        .wa-business-actions-left,
-        .wa-business-actions-right {
+        .business-form-shell .wa-section-bar-actions {
             width: 100%;
+            margin-left: 0;
         }
 
-        .wa-business-actions-right .btn {
+        .business-form-shell .wa-section-save-btn,
+        .business-form-shell .wa-section-bar-actions .wa-inline-action {
             width: 100%;
         }
     }
@@ -447,50 +437,38 @@
             <div class="wa-business-live-left">
                 <i class="fa-solid fa-globe"></i>
                 <span class="wa-business-live-copy">
-                    <span class="wa-business-live-title">Website Visibility Control</span>
-                    <span class="wa-business-live-sub">Controls whether your public website is visible to visitors.</span>
+                    <span class="wa-business-live-title">Website Visibility</span>
+                    <span class="wa-business-live-sub">Turn your public website ON or OFF for visitors.</span>
                 </span>
             </div>
             <div class="wa-business-live-right">
                 <span class="wa-business-status-pill {% if website_status == 'live' %}live{% else %}draft{% endif %}" id="websiteLiveStatusBadge">
-                    <i class="fa-solid {% if website_status == 'live' %}fa-circle-check{% else %}fa-eye-slash{% endif %}"></i>
-                    <span id="websiteLiveStatusText">{{ website_status|title }}</span>
+                    <i class="fa-solid {% if website_status == 'live' %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+                    <span id="websiteLiveStatusText">{% if website_status == 'live' %}ON{% else %}OFF{% endif %}</span>
                 </span>
                 {% if can_publish_website %}
-                <button type="button" class="btn btn-sm {% if website_status == 'live' %}btn-warning{% else %}btn-success{% endif %}" id="toggleWebsiteLiveBtn">
-                    <i class="fa-solid {% if website_status == 'live' %}fa-pause{% else %}fa-play{% endif %}"></i>
-                    <span id="toggleWebsiteLiveBtnText">{% if website_status == 'live' %}Set Draft{% else %}Go Live{% endif %}</span>
+                <button type="button" class="btn btn-sm {% if website_status == 'live' %}btn-danger{% else %}btn-success{% endif %}" id="toggleWebsiteLiveBtn">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span id="toggleWebsiteLiveBtnText">{% if website_status == 'live' %}Turn OFF{% else %}Turn ON{% endif %}</span>
                 </button>
-                {% endif %}
-                {% if business and business.is_active %}
-                <span class="wa-business-status-pill live"><i class="fa-solid fa-database"></i> Record Active</span>
-                {% elif business %}
-                <span class="wa-business-status-pill draft"><i class="fa-solid fa-database"></i> Record Inactive</span>
-                {% else %}
-                <span class="wa-business-status-pill draft"><i class="fa-solid fa-database"></i> Record Missing</span>
                 {% endif %}
             </div>
         </div>
-
-        {% if is_super_admin or perm_website_edit %}
-        <div class="wa-business-actions-bar">
-            <div class="wa-business-actions-left">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span class="wa-form-save-meta" id="businessSaveState">No unsaved changes.</span>
-            </div>
-            <div class="wa-business-actions-right">
-                <button type="submit" form="businessForm" class="btn btn-primary btn-sm" id="businessSaveBtn">
-                    <i class="fa-solid fa-save"></i> Save Changes
-                </button>
-            </div>
-        </div>
-        {% endif %}
 
         <form id="businessForm" enctype="multipart/form-data" class="wa-form business-form-shell">
         {% csrf_token %}
 
         <!-- Basic Info -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-info-circle"></i> Basic Info</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-info-circle"></i> Basic Info</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="site_name,tagline">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label for="site_name">Business Name</label>
@@ -503,7 +481,16 @@
         </div>
 
         <!-- Contact Info -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-phone"></i> Contact Info</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-phone"></i> Contact Info</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone,address,working_hours">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label for="email">Email</label>
@@ -528,7 +515,16 @@
         </div>
 
         <!-- Social Links -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-share-nodes"></i> Social Links</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-share-nodes"></i> Social Links</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="facebook_url,instagram_url,twitter_url,whatsapp_number">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label for="facebook_url"><i class="fa-brands fa-facebook"></i> Facebook</label>
@@ -551,11 +547,13 @@
         </div>
 
         <!-- Dynamic Hero Images Manager -->
-        <div class="wa-form-group-title">
-            <i class="fa-solid fa-images"></i> Hero Slider Images
-            <button type="button" class="btn btn-primary btn-sm wa-inline-action" id="addHeroImageBtn">
-                <i class="fa-solid fa-plus"></i> Add Image
-            </button>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-images"></i> Hero Slider Images</span>
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-inline-action" id="addHeroImageBtn">
+                    <i class="fa-solid fa-plus"></i> Add Image
+                </button>
+            </span>
         </div>
         <div id="heroImagesGrid" class="wa-form-row wa-form-images">
             {% for hero in hero_images %}
@@ -579,7 +577,16 @@
         <input type="file" id="heroImageFileInput" accept="image/*" class="hidden">
 
         <!-- Footer & SEO -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-paragraph"></i> Footer & SEO</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-paragraph"></i> Footer & SEO</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="footer_text,meta_description,meta_keywords">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group full">
                 <label for="footer_text">Footer Text</label>
@@ -600,6 +607,16 @@
         </div>
 
         <!-- Active Toggle -->
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-power-off"></i> Visibility Preference</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="is_active">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label class="wa-toggle-label">
@@ -623,7 +640,6 @@
     const liveStatusBadge = document.getElementById('websiteLiveStatusBadge');
     const liveStatusText = document.getElementById('websiteLiveStatusText');
     const toggleWebsiteLiveBtnText = document.getElementById('toggleWebsiteLiveBtnText');
-    const saveBtn = document.getElementById('businessSaveBtn');
     const saveStateEl = document.getElementById('businessSaveState');
 
     function setSaveState(type, message) {
@@ -658,21 +674,21 @@
             liveStatusBadge.classList.toggle('draft', !isLive);
             const icon = liveStatusBadge.querySelector('i');
             if (icon) {
-                icon.className = 'fa-solid ' + (isLive ? 'fa-circle-check' : 'fa-eye-slash');
+                icon.className = 'fa-solid ' + (isLive ? 'fa-toggle-on' : 'fa-toggle-off');
             }
         }
 
         if (liveStatusText) {
-            liveStatusText.textContent = isLive ? 'Live' : 'Draft';
+            liveStatusText.textContent = isLive ? 'ON' : 'OFF';
         }
 
         if (toggleWebsiteLiveBtn && toggleWebsiteLiveBtnText) {
-            toggleWebsiteLiveBtn.classList.toggle('btn-warning', isLive);
+            toggleWebsiteLiveBtn.classList.toggle('btn-danger', isLive);
             toggleWebsiteLiveBtn.classList.toggle('btn-success', !isLive);
-            toggleWebsiteLiveBtnText.textContent = isLive ? 'Set Draft' : 'Go Live';
+            toggleWebsiteLiveBtnText.textContent = isLive ? 'Turn OFF' : 'Turn ON';
             const icon = toggleWebsiteLiveBtn.querySelector('i');
             if (icon) {
-                icon.className = 'fa-solid ' + (isLive ? 'fa-pause' : 'fa-play');
+                icon.className = 'fa-solid fa-power-off';
             }
         }
     }
@@ -682,10 +698,10 @@
     if (toggleWebsiteLiveBtn) {
         toggleWebsiteLiveBtn.addEventListener('click', async function() {
             const ok = await waConfirm({
-                title: 'Change Website Status?',
-                text: 'This will toggle your website between live and draft mode.',
+                title: 'Toggle Website Visibility?',
+                text: 'This will switch your website ON or OFF for visitors.',
                 icon: 'fa-solid fa-globe',
-                confirmLabel: 'Yes, Change',
+                confirmLabel: 'Apply',
                 btnClass: 'btn-primary'
             });
             if (!ok) return;
@@ -713,29 +729,18 @@
 
     if (!form) return;
 
-    form.addEventListener('input', markDirty);
-    form.addEventListener('change', markDirty);
-
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const fd = new FormData(form);
-        // Handle checkbox
-        if (!form.querySelector('[name="is_active"]').checked) {
-            fd.set('is_active', 'false');
-        } else {
-            fd.set('is_active', 'true');
-        }
-
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+    async function submitBusinessFormData(formData, saveButton) {
+        const originalHtml = saveButton ? saveButton.innerHTML : '';
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         }
 
         try {
             const res = await fetch('{% url "website_admin:api_business_update" %}', {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
-                body: fd,
+                body: formData,
             });
             const data = await res.json();
             if (data.success) {
@@ -749,11 +754,56 @@
             showToast('Network error', 'error');
             markSaveError();
         } finally {
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Changes';
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalHtml;
             }
         }
+    }
+
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(form);
+        // Handle checkbox
+        if (!form.querySelector('[name="is_active"]').checked) {
+            fd.set('is_active', 'false');
+        } else {
+            fd.set('is_active', 'true');
+        }
+
+        await submitBusinessFormData(fd, null);
+    });
+
+    const sectionSaveButtons = form.querySelectorAll('.wa-section-save-btn[data-fields]');
+    sectionSaveButtons.forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            const fields = String(btn.getAttribute('data-fields') || '')
+                .split(',')
+                .map(function(name) { return name.trim(); })
+                .filter(Boolean);
+
+            if (!fields.length) {
+                showToast('No fields configured for this section.', 'warning');
+                return;
+            }
+
+            const fd = new FormData();
+            fields.forEach(function(name) {
+                const fieldEl = form.querySelector('[name="' + name.replace(/"/g, '') + '"]');
+                if (!fieldEl) return;
+
+                if (fieldEl.type === 'checkbox') {
+                    fd.set(name, fieldEl.checked ? 'true' : 'false');
+                } else {
+                    fd.set(name, fieldEl.value || '');
+                }
+            });
+
+            await submitBusinessFormData(fd, btn);
+        });
     });
 
 })();

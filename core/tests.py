@@ -361,14 +361,14 @@ class TutorialRoleScopeTests(TestCase):
         self._assert_role_tutorial(
             'tutorial-client-staff@test.com',
             'client_staff',
-            'Client Staff Operations Tutorial',
+            'Assistent Operations Tutorial',
         )
 
     def test_admin_staff_sees_admin_staff_tutorial(self):
         self._assert_role_tutorial(
             'tutorial-admin-staff@test.com',
             'admin_staff',
-            'Admin Staff Support Tutorial',
+            'Operator Support Tutorial',
         )
 
     def test_admin_sees_admin_tutorial(self):
