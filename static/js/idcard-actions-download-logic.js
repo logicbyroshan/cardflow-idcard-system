@@ -186,6 +186,18 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
         .then(function (data) {
             if (!data || !data.success || !data.task_id) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
+
+                if (data && data.active_task_id) {
+                    if (typeof showToast === 'function') {
+                        showToast((data.message || 'An export is already running. Tracking existing task.'), 'info');
+                    }
+                    if (typeof showProgressToast === 'function') {
+                        showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
+                    }
+                    _pollGenericTaskStatus(data.active_task_id, options, function () { return _asyncCancelled; }, cancelFn);
+                    return;
+                }
+
                 if (typeof showToast === 'function') showToast((data && data.message) || 'Failed to start export task', false);
                 return;
             }
@@ -193,7 +205,20 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
         })
         .catch(function (err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
-            if (typeof showToast === 'function') showToast('Failed to start export. Please try again.', false);
+
+            var errData = (err && err.data && typeof err.data === 'object') ? err.data : null;
+            var errMessage = (errData && errData.message) || (err && err.message) || 'Failed to start export. Please try again.';
+
+            if (errData && errData.active_task_id) {
+                if (typeof showToast === 'function') showToast(errMessage, 'info');
+                if (typeof showProgressToast === 'function') {
+                    showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
+                }
+                _pollGenericTaskStatus(errData.active_task_id, options, function () { return _asyncCancelled; }, cancelFn);
+                return;
+            }
+
+            if (typeof showToast === 'function') showToast(errMessage, false);
             console.error('Async export start error:', err);
         });
 }

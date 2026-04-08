@@ -823,10 +823,19 @@ def api_create_export_task(request, table_id):
         )
         
         if not task:
-            return JsonResponse({
+            response = {
                 'success': False,
                 'message': error_msg
-            }, status=429)
+            }
+
+            if error_msg and 'active task' in str(error_msg).lower():
+                active_task = BackgroundTask.has_active_task(request.user)
+                if active_task:
+                    response['active_task_id'] = active_task.id
+                    response['active_task_type'] = active_task.task_type
+                    response['active_task_status'] = active_task.status
+
+            return JsonResponse(response, status=429)
         
         # Submit to background worker
         background_worker.submit_task(task.id)
