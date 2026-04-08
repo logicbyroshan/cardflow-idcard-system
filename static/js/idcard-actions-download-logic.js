@@ -150,10 +150,33 @@ function _getEffectiveExportCount(cardIds) {
 function _downloadExportAsync(tableId, exportType, cardIds, options) {
     options = options || {};
     var _asyncCancelled = false;
+    var _activeTaskId = null;
+    var _cancelRequested = false;
 
     var cancelFn = function () {
         _asyncCancelled = true;
-        if (typeof showToast === 'function') {
+        if (_activeTaskId && !_cancelRequested) {
+            _cancelRequested = true;
+            fetch('/api/task-cancel/' + _activeTaskId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (typeof showToast === 'function') {
+                        showToast((data && data.message) || ((options.cancelLabel || 'Export') + ' cancelled'), 'info');
+                    }
+                })
+                .catch(function (err) {
+                    if (typeof showToast === 'function') {
+                        showToast((options.cancelLabel || 'Export') + ' cancel request sent', 'info');
+                    }
+                    console.error('Cancel export task failed:', err);
+                });
+        } else if (typeof showToast === 'function') {
             showToast((options.cancelLabel || 'Export') + ' cancelled', 'info');
         }
     };
@@ -165,7 +188,8 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
     var body = Object.assign({
         export_type: exportType,
         card_ids: cardIds,
-        status: _getCurrentStatus()
+        status: _getCurrentStatus(),
+        replace_active: true
     }, _getActiveFilters(), (options.extraPayload || {}));
 
     var startReq;
@@ -188,6 +212,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
 
                 if (data && data.active_task_id) {
+                    _activeTaskId = data.active_task_id;
                     if (typeof showToast === 'function') {
                         showToast((data.message || 'An export is already running. Tracking existing task.'), 'info');
                     }
@@ -201,6 +226,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 if (typeof showToast === 'function') showToast((data && data.message) || 'Failed to start export task', false);
                 return;
             }
+            _activeTaskId = data.task_id;
             _pollGenericTaskStatus(data.task_id, options, function () { return _asyncCancelled; }, cancelFn);
         })
         .catch(function (err) {
@@ -210,6 +236,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
             var errMessage = (errData && errData.message) || (err && err.message) || 'Failed to start export. Please try again.';
 
             if (errData && errData.active_task_id) {
+                _activeTaskId = errData.active_task_id;
                 if (typeof showToast === 'function') showToast(errMessage, 'info');
                 if (typeof showProgressToast === 'function') {
                     showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);

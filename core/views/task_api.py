@@ -37,6 +37,7 @@ from core.services.permission_service import (
 )
 from core.services.background_worker import (
     background_worker,
+    cancel_task as background_cancel_task,
     save_uploaded_file_to_disk,
     cleanup_temp_file,
 )
@@ -290,8 +291,7 @@ def api_task_cancel(request, task_id):
     but their status will be marked as cancelled.
     """
     try:
-        from ..services.background_worker import cancel_task
-        result = cancel_task(task_id, user=request.user)
+        result = background_cancel_task(task_id, user=request.user)
 
         if result['success']:
             return JsonResponse({'success': True, 'message': result['message']})
@@ -806,6 +806,12 @@ def api_create_export_task(request, table_id):
             except (TypeError, ValueError):
                 template_id = None
 
+        replace_active_raw = data.get('replace_active', False)
+        if isinstance(replace_active_raw, str):
+            replace_active = replace_active_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+        else:
+            replace_active = bool(replace_active_raw)
+
         metadata = {
             'table_id': table_id,
             'card_ids': card_ids,
@@ -814,13 +820,25 @@ def api_create_export_task(request, table_id):
         if task_type == 'export_docx':
             metadata['doc_format'] = doc_format
             metadata['template_id'] = template_id
+
+        def _create_task_once():
+            return BackgroundTask.create_if_no_active(
+                user=request.user,
+                task_type=task_type,
+                metadata=metadata,
+            )
         
         # Create BackgroundTask atomically (prevents race conditions)
-        task, error_msg = BackgroundTask.create_if_no_active(
-            user=request.user,
-            task_type=task_type,
-            metadata=metadata,
-        )
+        task, error_msg = _create_task_once()
+
+        replaced_task_id = None
+        if not task and replace_active:
+            active_task = BackgroundTask.has_active_task(request.user)
+            if active_task and active_task.task_type in ('export_zip', 'export_pdf', 'export_docx', 'export_excel'):
+                cancel_result = background_cancel_task(active_task.id, user=request.user)
+                if cancel_result.get('success'):
+                    replaced_task_id = active_task.id
+                    task, error_msg = _create_task_once()
         
         if not task:
             response = {
@@ -843,6 +861,7 @@ def api_create_export_task(request, table_id):
         return JsonResponse({
             'success': True,
             'task_id': task.id,
+            'replaced_task_id': replaced_task_id,
             'message': f'Export task created. Check progress at /api/task-status/{task.id}/'
         })
         
