@@ -315,38 +315,19 @@
 }
 
 .recent-table thead th.recent-updates-sortable:hover,
-.recent-table thead th.recent-updates-sortable:focus-visible,
-.recent-table thead th.recent-updates-sortable.is-sort-active {
-    background: rgba(148, 163, 184, 0.14);
-    color: #0f172a;
+.recent-table thead th.recent-updates-sortable:focus-visible {
+    background: rgba(56, 189, 248, 0.16);
+    color: #083344;
     outline: none;
 }
 
+.recent-table thead th.recent-updates-sortable.is-sort-active {
+    background: rgba(52, 211, 153, 0.22);
+    color: #064e3b !important;
+}
+
 .recent-table thead th.recent-updates-sortable.is-sort-active .recent-sort-icon {
-    color: #1e293b;
-}
-
-/* Subtle column tinting for numeric status columns */
-.recent-table-6col tbody td:nth-child(2),
-.recent-table-3col tbody td:nth-child(2) {
-    background: #fffdf2;
-}
-
-.recent-table-6col tbody td:nth-child(3),
-.recent-table-3col tbody td:nth-child(3) {
-    background: #f4fcf7;
-}
-
-.recent-table-6col tbody td:nth-child(4) {
-    background: #f3f8ff;
-}
-
-.recent-table-6col tbody td:nth-child(5) {
-    background: #f8fafc;
-}
-
-.recent-table-6col tbody td:nth-child(6) {
-    background: #fff4f4;
+    color: #064e3b !important;
 }
 
 .dashboard-card-header.overview-header {

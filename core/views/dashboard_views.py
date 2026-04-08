@@ -4,6 +4,7 @@ Split from base.py for maintainability.
 """
 import logging
 import re
+from django.conf import settings as django_settings
 from django.core.cache import cache
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
@@ -71,16 +72,31 @@ def _parse_recent_activity_window(raw_window):
 
 def _get_live_active_client_ids_for_dashboard(user):
     """
-    Return client IDs that have at least one currently active authenticated session.
+    Return client IDs with recent authenticated activity.
     Includes direct client users and client_staff users mapped to their clients.
+
+    A session is considered "live" only when it has a recent `_last_activity`
+    stamp (written by SessionIdleTimeoutMiddleware), so stale open sessions are
+    excluded shortly after a browser/app is closed.
     """
     now = timezone.now()
+    live_window_seconds = max(int(getattr(django_settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 180) or 0), 30)
+    live_cutoff_epoch = now.timestamp() - live_window_seconds
     active_user_ids = set()
 
     for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
         try:
             data = session.get_decoded()
         except Exception:
+            continue
+
+        raw_last_activity = data.get('_last_activity')
+        try:
+            last_activity = float(raw_last_activity)
+        except (TypeError, ValueError):
+            continue
+
+        if last_activity < live_cutoff_epoch:
             continue
 
         raw_user_id = data.get('_auth_user_id')
@@ -535,16 +551,22 @@ def api_recent_client_updates(request):
         limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
 
-        # Cache per-user with 20-second TTL — tolerable staleness for a dashboard poll.
+        # Cache per-user with 20-second TTL for client rows.
+        # Live-active count is recomputed on every request to keep refreshes accurate.
         # admin_staff sees a scoped view (their assigned clients only), so the key
         # must include user.pk to prevent cross-user data leakage.
         is_scoped = PermissionService.is_admin_staff(user)
         cache_key = f'dash_rcu:{user.pk if is_scoped else "sa"}:{limit}'
         cached = cache.get(cache_key)
         if cached is not None:
-            if isinstance(cached, dict):
-                return JsonResponse({'success': True, **cached})
-            return JsonResponse({'success': True, 'clients': cached, 'active_clients_now': 0, 'active_client_ids': []})
+            cached_clients = cached.get('clients', []) if isinstance(cached, dict) else cached
+            live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+            return JsonResponse({
+                'success': True,
+                'clients': cached_clients,
+                'active_clients_now': len(live_active_client_ids),
+                'active_client_ids': sorted(live_active_client_ids),
+            })
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
@@ -640,7 +662,7 @@ def api_recent_client_updates(request):
             'active_client_ids': sorted(live_active_client_ids),
         }
 
-        cache.set(cache_key, payload, 20)
+        cache.set(cache_key, {'clients': results}, 20)
         return JsonResponse({
             'success': True,
             **payload,

@@ -312,6 +312,11 @@ SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 
 # Set to 0 to disable. Default: 30 days.
 SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60 * 24 * 30)))
 
+# ── Dashboard live-activity window (seconds) ──
+# Used by dashboard "Live Working Clients". A user is considered live only if
+# their session `_last_activity` is within this recent window.
+DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS = int(os.getenv('DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', '180'))
+
 # ── Session fingerprint validation ──
 # Adds lightweight binding of a session to browser fingerprint material.
 # Include IP binding only when infra has stable client egress IPs.
