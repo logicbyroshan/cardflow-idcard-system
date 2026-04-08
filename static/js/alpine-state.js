@@ -175,16 +175,6 @@ function layoutState() {
                     this.closeModal();
                     return;
                 }
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-                if (e.key.toLowerCase() === 'c' && this.sidebarOpen) {
-                    this.sidebarOpen = false;
-                    localStorage.setItem('sidebarCollapsed', 'true');
-                    this.applySidebarState();
-                } else if (e.key.toLowerCase() === 'v' && !this.sidebarOpen) {
-                    this.sidebarOpen = true;
-                    localStorage.setItem('sidebarCollapsed', 'false');
-                    this.applySidebarState();
-                }
             });
         },
 
