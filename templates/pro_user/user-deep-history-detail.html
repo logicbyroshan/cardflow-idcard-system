@@ -38,17 +38,32 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
-  .audit-page { padding: 16px 20px; }
+  .audit-page { padding: 0 0 12px; }
+
+  .audit-page .pro-feature-tabs {
+    position: static;
+    top: auto;
+    margin: 0 0 8px;
+    padding: 0 20px;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    background: #fff;
+  }
+
   .audit-page .action-bar {
     z-index: 22;
     background: var(--color-white, #ffffff);
     border: 1px solid var(--color-gray-200, #e2e8f0);
-    border-radius: 10px;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
-    padding: 7px 10px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px 20px;
   }
   .audit-history {
-    margin-top: 12px;
+    margin: 12px 20px 0;
     background: var(--audit-surface);
     border: 1px solid var(--audit-border);
     border-radius: 12px;
@@ -149,7 +164,9 @@
   .audit-loader-line { height: 12px; margin-bottom: 6px; }
   .audit-loader-line.short { width: 46%; margin-bottom: 0; }
   @media (max-width: 768px) {
-    .audit-page { padding: 12px; }
+    .audit-page .pro-feature-tabs { padding: 0 12px; }
+    .audit-page .action-bar { padding: 8px 12px; }
+    .audit-history { margin: 12px 12px 0; }
     .audit-history-head {
       flex-direction: column;
       align-items: stretch;

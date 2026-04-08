@@ -20,21 +20,32 @@ Required context:
                 <th class="text-center">Status</th>
                 <th class="text-center">Created At</th>
                 <th class="text-center">Updated At</th>
+                <th class="text-center" title="Client login history"><i class="fa-solid fa-circle-info"></i></th>
             </tr>
         </thead>
         <tbody id="client-table-body">
             {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
+            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}">
                 <td class="text-left">{{ client.name }}</td>
                 <td class="email-cell text-left">{{ client.user.email|email_break }}</td>
                 <td class="phone-cell text-center">{{ client.user.phone|default:"-"|phone_break }}</td>
                 <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
                 <td class="text-center">{{ client.created_at|date:"d-m-Y H:i" }}</td>
                 <td class="text-center">{{ client.updated_at|date:"d-m-Y H:i" }}</td>
+                <td class="text-center">
+                    <button type="button"
+                            class="client-history-trigger"
+                            data-client-id="{{ client.id }}"
+                            data-client-name="{{ client.name|escape }}"
+                            title="View client login history"
+                            aria-label="View client login history">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6">
+                <td colspan="7">
                     {% include 'components/empty-state.html' with id='client-table-empty-inline' icon='fa-building-slash' title='No Clients Found' message='No clients match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>

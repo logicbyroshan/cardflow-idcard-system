@@ -435,14 +435,6 @@
         if (tableContainer) {
             // Row click handler (delegated)
             tableContainer.addEventListener('click', function(e) {
-                const historyBtn = e.target.closest('.client-history-trigger');
-                if (historyBtn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openClientHistory(historyBtn.dataset.clientId, historyBtn.dataset.clientName);
-                    return;
-                }
-
                 if (e.target.closest('a, button, input, textarea, select, label')) {
                     return;
                 }
@@ -538,7 +530,6 @@
 
     // ==================== INITIALIZATION ====================
     function init() {
-        ensureClientHistoryDrawer();
         setupEventListeners();
         setupFilterDropdown();
         highlightFromUrl();

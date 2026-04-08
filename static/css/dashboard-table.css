@@ -25,6 +25,20 @@
 .recent-table th:nth-child(5),
 .recent-table td:nth-child(5) { width: 15%; }
 
+.recent-table.recent-table-6col th:nth-child(1),
+.recent-table.recent-table-6col td:nth-child(1) { width: 35%; }
+
+.recent-table.recent-table-6col th:nth-child(2),
+.recent-table.recent-table-6col td:nth-child(2),
+.recent-table.recent-table-6col th:nth-child(3),
+.recent-table.recent-table-6col td:nth-child(3),
+.recent-table.recent-table-6col th:nth-child(4),
+.recent-table.recent-table-6col td:nth-child(4),
+.recent-table.recent-table-6col th:nth-child(5),
+.recent-table.recent-table-6col td:nth-child(5),
+.recent-table.recent-table-6col th:nth-child(6),
+.recent-table.recent-table-6col td:nth-child(6) { width: 13%; }
+
 .recent-table th {
     padding: 6px 12px;
     font-size: 11px;
@@ -138,7 +152,8 @@
 .recent-table tbody tr.client-row .count-badge.pending,
 .recent-table tbody tr.client-row .count-badge.verified,
 .recent-table tbody tr.client-row .count-badge.approved,
-.recent-table tbody tr.client-row .count-badge.downloaded {
+.recent-table tbody tr.client-row .count-badge.downloaded,
+.recent-table tbody tr.client-row .count-badge.pool {
     border-width: 1px;
     border-style: solid;
 }
@@ -150,21 +165,27 @@
 }
 
 .recent-table tbody tr.client-row .count-badge.verified {
+    background: #e8fdf3;
+    color: #065f46;
+    border-color: #9fe8c9;
+}
+
+.recent-table tbody tr.client-row .count-badge.approved {
     background: #e3efff;
     color: #1e40af;
     border-color: #bbd4ff;
 }
 
-.recent-table tbody tr.client-row .count-badge.approved {
-    background: #eee6ff;
-    color: #6d28d9;
-    border-color: #d4c0ff;
+.recent-table tbody tr.client-row .count-badge.downloaded {
+    background: #f9fafb;
+    color: #374151;
+    border-color: #d1d5db;
 }
 
-.recent-table tbody tr.client-row .count-badge.downloaded {
-    background: #dcfce7;
-    color: #166534;
-    border-color: #acecbf;
+.recent-table tbody tr.client-row .count-badge.pool {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
 }
 
 .recent-table tbody tr.client-row.expanded .count-badge.pending {
@@ -174,21 +195,27 @@
 }
 
 .recent-table tbody tr.client-row.expanded .count-badge.verified {
-    background: #cfe3ff;
-    color: #1d4ed8;
-    border-color: #9fc2ff;
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
 }
 
 .recent-table tbody tr.client-row.expanded .count-badge.approved {
-    background: #e2d8ff;
-    color: #6d28d9;
-    border-color: #c5b2ff;
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
 }
 
 .recent-table tbody tr.client-row.expanded .count-badge.downloaded {
-    background: #c9f3da;
-    color: #15803d;
-    border-color: #86dcb0;
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+.recent-table tbody tr.client-row.expanded .count-badge.pool {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
 }
 
 .client-sub-row .count-badge {
@@ -200,15 +227,19 @@
 }
 
 .client-sub-row .count-badge.verified {
-    border-color: #9fc2ff;
+    border-color: #6ee7b7;
 }
 
 .client-sub-row .count-badge.approved {
-    border-color: #c5b2ff;
+    border-color: #93c5fd;
 }
 
 .client-sub-row .count-badge.downloaded {
-    border-color: #86dcb0;
+    border-color: #d1d5db;
+}
+
+.client-sub-row .count-badge.pool {
+    border-color: #fca5a5;
 }
 
 /* ====================
@@ -390,6 +421,20 @@
 .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(4),
 .recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(5),
 .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(5) { width: 15%; }
+
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(1),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(1) { width: 35%; }
+
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(6),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(6) { width: 13%; }
 
 .recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(1),
 .recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(1) { width: 44%; }

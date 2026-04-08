@@ -936,6 +936,12 @@ body[style*="overflow:hidden"] {
 /* Sidebar-specific avatar styling */
 .sidebar .user-avatar {
   position: relative;
+  border-radius: 8px !important;
+}
+
+.sidebar .user-avatar .user-avatar-placeholder,
+.sidebar .user-avatar img {
+  border-radius: 8px !important;
 }
 
 /* ===========================================

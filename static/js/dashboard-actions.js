@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function applyRecentClientUpdatesSearch() {
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
+        const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
 
         const existingNoResultRow = tbody.querySelector('.recent-table-no-search-results');
         if (existingNoResultRow) existingNoResultRow.remove();
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'beforeend',
             `
                 <tr class="recent-table-no-search-results">
-                    <td colspan="5">
+                    <td colspan="${headerColumns}">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         No clients matched "${query.replace(/"/g, '&quot;')}"
                     </td>
@@ -185,8 +186,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadRecentClientUpdates() {
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
+        const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
+        const showPool = headerColumns >= 6;
         setDashboardTabCount(dashboardTabCountRecentClients, 0);
-        setDashboardTableSkeleton(tbody, 5, 3);
+        setDashboardTableSkeleton(tbody, headerColumns, 3);
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
@@ -218,6 +221,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td class="text-center">
                                         <a href="${panelUrl('/table/' + t.id + '/cards/?status=download')}" class="count-badge downloaded">${t.downloaded}</a>
                                     </td>
+                                    ${showPool ? `
+                                    <td class="text-center">
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/?status=pool')}" class="count-badge pool">${t.pool}</a>
+                                    </td>
+                                    ` : ''}
                                 </tr>
                             `).join('');
 
@@ -238,6 +246,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td class="text-center">
                                     <span class="count-badge downloaded">${client.downloaded}</span>
                                 </td>
+                                ${showPool ? `
+                                <td class="text-center">
+                                    <span class="count-badge pool">${client.pool}</span>
+                                </td>
+                                ` : ''}
                             </tr>
                             ${tableSubRows}
                         `}).join('');
@@ -246,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         setDashboardTabCount(dashboardTabCountRecentClients, 0);
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                                <td colspan="${headerColumns}" class="text-center" style="padding: 40px; color: #888;">
                                     <i class="fa-solid fa-users-slash"></i> No recent client updates
                                 </td>
                             </tr>
@@ -261,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     setDashboardTabCount(dashboardTabCountRecentClients, 0);
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="text-center" style="padding: 40px; color: #dc2626;">
+                            <td colspan="${headerColumns}" class="text-center" style="padding: 40px; color: #dc2626;">
                                 <i class="fa-solid fa-exclamation-triangle"></i> Error loading data
                             </td>
                         </tr>

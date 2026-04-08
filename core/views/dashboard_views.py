@@ -199,6 +199,13 @@ def dashboard(request):
             active=Count('id', filter=Q(user__is_active=True)),
         )
         cache.set(cs_cache_key, cs_stats, 60)
+
+    admin_cache_key = f'dashboard_admin_stats{cache_suffix}'
+    admin_stats = cache.get(admin_cache_key)
+    if admin_stats is None:
+        admin_stats = User.objects.filter(role='super_admin').aggregate(total=Count('id'))
+        cache.set(admin_cache_key, admin_stats, 60)
+
     context.update({
         'total_clients': client_stats['total'],
         'active_clients': client_stats['active'],
@@ -206,6 +213,7 @@ def dashboard(request):
         'active_staff': staff_stats['active'],
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
+        'admin_count': admin_stats.get('total', 0),
         # Prefer last 48 hours; fallback to latest overall feed for fuller history.
         'recent_activities': _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX),
     })

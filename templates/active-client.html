@@ -4,7 +4,6 @@
 {% block title %}{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %} - Adarsh Admin{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'css/card-history-drawer.css' %}">
   <style>
     .active-client-group-btn {
       display: inline-flex;
@@ -28,79 +27,6 @@
       box-shadow: 0 4px 10px rgba(59, 130, 246, 0.22);
       color: #1e3a8a;
       text-decoration: none;
-    }
-
-    .client-history-trigger {
-      width: 28px;
-      height: 28px;
-      border: none;
-      border-radius: 999px;
-      color: #2563eb;
-      background: rgba(37, 99, 235, 0.12);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.16s ease;
-    }
-
-    .client-history-trigger:hover {
-      background: rgba(37, 99, 235, 0.2);
-      color: #1e40af;
-      transform: translateY(-1px);
-    }
-
-    .client-history-chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .client-history-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 3px 9px;
-      font-size: 10.5px;
-      font-weight: 500;
-      line-height: 1.2;
-      border: 1px solid #dbe2ea;
-      background: #f8fafc;
-      color: #334155;
-    }
-
-    .client-history-chip i {
-      width: 15px;
-      height: 15px;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8.5px;
-    }
-
-    .client-history-chip--action {
-      color: #1e40af;
-      background: #eaf1ff;
-      border-color: #bfd5ff;
-    }
-
-    .client-history-chip--action i {
-      background: #2563eb;
-      color: #ffffff;
-    }
-
-    .client-history-chip--meta {
-      color: #334155;
-      background: #f8fafc;
-      border-color: #dbe2ea;
-    }
-
-    .client-history-chip--meta i {
-      background: #e2e8f0;
-      color: #475569;
     }
 
     #client-table-body .client-main-row {
