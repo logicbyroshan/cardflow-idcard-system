@@ -100,17 +100,11 @@
 
     threadEl.innerHTML = state.items.map(function (item) {
       var unreadClass = item.is_read ? '' : ' unread';
-      var visibilityChip = item.visibility === 'temporary'
-        ? '<span class="client-message-chip temp">Temporary</span>'
-        : '<span class="client-message-chip read">Permanent</span>';
       var expiresText = (item.visibility === 'temporary' && item.expires_at)
-        ? '<span class="client-message-chip temp">Expires ' + escHtml(formatDateTime(item.expires_at)) + '</span>'
+        ? '<span class="client-message-meta-info">Visible until ' + escHtml(formatDateTime(item.expires_at)) + '</span>'
         : '';
-      var readChip = item.is_read
-        ? '<span class="client-message-chip read">Read</span>'
-        : '<span class="client-message-chip unread">Unread</span>';
       var readAction = item.is_read
-        ? ''
+        ? '<span class="client-message-read-state">Seen</span>'
         : '<button type="button" class="client-message-read-btn" data-client-msg-read-btn="' + escHtml(item.notification_id) + '">Mark read</button>';
 
       return '' +
@@ -122,10 +116,7 @@
             '</div>' +
             '<div class="client-message-text">' + escHtml(item.message || '') + '</div>' +
             '<div class="client-message-meta">' +
-              '<span class="client-message-chip scope">' + escHtml(item.scope_display || item.scope || 'Message') + '</span>' +
-              visibilityChip +
               expiresText +
-              readChip +
               readAction +
             '</div>' +
           '</div>' +

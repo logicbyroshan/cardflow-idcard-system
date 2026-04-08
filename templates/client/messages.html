@@ -6,136 +6,273 @@
 {% block extra_css %}
 <style>
   .client-msg-shell {
-    max-width: 1120px;
+    max-width: 1220px;
     margin: 0 auto;
   }
 
-  .client-msg-hero {
-    border: 1px solid #dbeafe;
-    background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 55%, #ffffff 100%);
-    border-radius: 18px;
-    padding: 18px;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
-  }
-
-  .client-msg-hero h1 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1.2rem;
-    line-height: 1.35;
-    color: #0f172a;
-  }
-
-  .client-msg-hero p {
-    margin: 6px 0 0 0;
-    color: #334155;
-    font-size: 0.92rem;
-  }
-
-  .client-msg-hero-stats {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 12px;
-  }
-
-  .client-msg-stat {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    padding: 6px 11px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .client-msg-stat.total {
-    background: #e2e8f0;
-    color: #1e293b;
-  }
-
-  .client-msg-stat.unread.has-unread {
-    background: #fef3c7;
-    color: #92400e;
-  }
-
-  .client-msg-stat.unread.no-unread {
-    background: #dcfce7;
-    color: #166534;
-  }
-
-  .client-msg-list {
-    margin-top: 14px;
+  .client-messenger-grid {
     display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .client-msg-sidebar {
+    border: 1px solid #dbe3f1;
+    border-radius: 18px;
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 55%, #334155 100%);
+    color: #e2e8f0;
+    padding: 16px;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.26);
+    display: flex;
+    flex-direction: column;
     gap: 12px;
   }
 
-  .client-msg-item {
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    background: #fff;
-    overflow: hidden;
-  }
-
-  .client-msg-item.unread {
-    border-color: #93c5fd;
-    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.11);
-  }
-
-  .client-msg-item-head {
-    padding: 12px 14px;
+  .client-msg-sidebar-title {
+    margin: 0;
+    font-size: 1.05rem;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    gap: 8px;
+    color: #f8fafc;
+  }
+
+  .client-msg-sidebar-subtitle {
+    margin: 0;
+    font-size: 0.86rem;
+    color: #cbd5e1;
+    line-height: 1.55;
+  }
+
+  .client-msg-stat-stack {
+    display: grid;
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  .client-msg-stat-card {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: rgba(15, 23, 42, 0.42);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .client-msg-stat-card .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #cbd5e1;
+    font-weight: 700;
+  }
+
+  .client-msg-stat-card .value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  .client-msg-stat-card.unread.has-unread .value {
+    color: #facc15;
+  }
+
+  .client-msg-stat-card.unread.no-unread .value {
+    color: #86efac;
+  }
+
+  .client-msg-sidebar-footnote {
+    margin-top: auto;
+    border-top: 1px solid rgba(148, 163, 184, 0.28);
+    padding-top: 12px;
+    font-size: 12px;
+    color: #cbd5e1;
+    line-height: 1.55;
+  }
+
+  .client-chat-panel {
+    border: 1px solid #dbe3f1;
+    border-radius: 18px;
+    background: #ffffff;
+    overflow: hidden;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+    display: flex;
+    flex-direction: column;
+    min-height: 72vh;
+  }
+
+  .client-chat-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(120deg, #eff6ff 0%, #f8fafc 75%);
+    display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 10px;
-    background: #f8fafc;
   }
 
-  .client-msg-item.unread .client-msg-item-head {
-    background: #eff6ff;
+  .client-chat-head-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
 
-  .client-msg-meta {
+  .client-chat-head-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.28);
+  }
+
+  .client-chat-head h2 {
+    margin: 0;
+    font-size: 1.02rem;
+    color: #0f172a;
+    line-height: 1.35;
+  }
+
+  .client-chat-head p {
+    margin: 2px 0 0 0;
     font-size: 12px;
     color: #475569;
-    font-weight: 700;
     line-height: 1.45;
   }
 
-  .client-msg-pill-row {
+  .client-chat-head-pill {
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #1e293b;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+
+  .client-chat-body {
+    padding: 16px;
+    background:
+      radial-gradient(circle at 24% 16%, rgba(59, 130, 246, 0.08), transparent 32%),
+      radial-gradient(circle at 76% 82%, rgba(34, 197, 94, 0.08), transparent 30%),
+      linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    flex: 1;
+    overflow: auto;
+  }
+
+  .client-chat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .client-chat-row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .client-chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .client-chat-bubble-wrap {
+    min-width: 0;
+  }
+
+  .client-chat-bubble {
+    position: relative;
+    border: 1px solid #dbe3f1;
+    border-radius: 14px 14px 14px 4px;
+    background: #ffffff;
+    padding: 12px 13px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .client-chat-row.is-unread .client-chat-bubble {
+    border-color: #60a5fa;
+    box-shadow: 0 12px 22px rgba(37, 99, 235, 0.2);
+  }
+
+  .client-chat-row.is-unread .client-chat-bubble::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+  }
+
+  .client-chat-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .client-chat-sender {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e3a8a;
+  }
+
+  .client-chat-time {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  .client-chat-text {
+    margin: 0;
+    color: #0f172a;
+    line-height: 1.64;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.95rem;
+  }
+
+  .client-chat-expiry {
+    margin: 8px 0 0 0;
+    font-size: 11px;
+    color: #9a3412;
+    font-weight: 700;
+  }
+
+  .client-chat-actions {
     margin-top: 6px;
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 7px;
+    justify-content: flex-end;
   }
 
-  .client-msg-body {
-    padding: 14px;
-    color: #0f172a;
-    line-height: 1.62;
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-size: 0.96rem;
+  .client-chat-read-state {
+    font-size: 11px;
+    color: #15803d;
+    font-weight: 700;
   }
 
-  .client-msg-empty {
-    border: 1px dashed #cbd5e1;
-    border-radius: 16px;
-    padding: 26px 16px;
-    text-align: center;
-    color: #64748b;
-    background: #f8fafc;
-    margin-top: 14px;
-  }
-
-  .client-msg-pager {
-    margin-top: 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    background: #fff;
+  .client-chat-footer {
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
     padding: 10px 12px;
     display: flex;
     align-items: center;
@@ -143,18 +280,42 @@
     gap: 10px;
   }
 
-  @media (max-width: 720px) {
-    .client-msg-item-head {
+  .client-chat-empty {
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 34px 16px;
+    text-align: center;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  @media (max-width: 980px) {
+    .client-messenger-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .client-msg-sidebar {
+      order: 2;
+    }
+
+    .client-chat-panel {
+      min-height: 60vh;
+      order: 1;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .client-chat-head {
       flex-direction: column;
       align-items: stretch;
     }
 
-    .client-msg-pager {
+    .client-chat-footer {
       flex-direction: column;
       align-items: stretch;
     }
 
-    .client-msg-pager .pager-actions {
+    .client-chat-footer .pager-actions {
       display: flex;
       gap: 8px;
       justify-content: flex-end;
@@ -177,89 +338,98 @@
 {% block content %}
 <div class="p-4 md:p-6">
   <section class="client-msg-shell">
-    <div class="client-msg-hero">
-      <h1>
-        <i class="fa-solid fa-envelope-open-text text-blue-600"></i>
-        Messages from Admin Team
-      </h1>
-      <p>Read-only timeline for all client announcements shared with you.</p>
-      <div class="client-msg-hero-stats">
-        <span class="client-msg-stat total">Total: {{ total_count }}</span>
-        <span class="client-msg-stat unread {% if unread_count %}has-unread{% else %}no-unread{% endif %}">Unread: {{ unread_count }}</span>
-      </div>
-    </div>
+    <div class="client-messenger-grid">
+      <aside class="client-msg-sidebar">
+        <h1 class="client-msg-sidebar-title">
+          <i class="fa-solid fa-comments"></i>
+          Admin Messages
+        </h1>
+        <p class="client-msg-sidebar-subtitle">Read-only inbox for updates shared by your admin team.</p>
+        <div class="client-msg-stat-stack">
+          <div class="client-msg-stat-card total">
+            <span class="label">Total Messages</span>
+            <span class="value">{{ total_count }}</span>
+          </div>
+          <div class="client-msg-stat-card unread {% if unread_count %}has-unread{% else %}no-unread{% endif %}">
+            <span class="label">Unread Messages</span>
+            <span class="value" data-client-unread-count>{{ unread_count }}</span>
+          </div>
+        </div>
+        <div class="client-msg-sidebar-footnote">
+          Use Mark read on any message once you have reviewed it.
+        </div>
+      </aside>
 
-    {% if messages_page.object_list %}
-    <div class="client-msg-list">
-      {% for msg in messages_page.object_list %}
-      <article class="client-msg-item {% if not msg.is_read %}unread{% endif %}" data-notification-id="{{ msg.notification_id }}">
-        <div class="client-msg-item-head">
-          <div>
-            <div class="client-msg-meta">
-              From {{ msg.sent_by.get_full_name|default:msg.sent_by.username }}
-              <span class="mx-1">|</span>
-              {{ msg.created_at|date:"d M Y, h:i A" }}
-            </div>
-            <div class="client-msg-pill-row">
-              <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 text-xs font-semibold">
-                {{ msg.get_scope_display }}
-              </span>
-              {% if msg.visibility == 'temporary' %}
-              <span class="inline-flex items-center rounded-full bg-orange-50 text-orange-700 border border-orange-100 px-2.5 py-1 text-xs font-semibold">
-                Temporary
-              </span>
-              {% if msg.expires_at %}
-              <span class="inline-flex items-center rounded-full bg-orange-50 text-orange-700 border border-orange-100 px-2.5 py-1 text-xs font-semibold">
-                Expires {{ msg.expires_at|date:"d M Y, h:i A" }}
-              </span>
-              {% endif %}
-              {% else %}
-              <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 text-xs font-semibold">
-                Permanent
-              </span>
-              {% endif %}
-              {% if msg.is_read %}
-              <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 text-xs font-semibold" data-read-badge>
-                Read
-              </span>
-              {% else %}
-              <span class="inline-flex items-center rounded-full bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-1 text-xs font-semibold" data-read-badge>
-                Unread
-              </span>
-              {% endif %}
+      <section class="client-chat-panel" aria-label="Client messages">
+        <header class="client-chat-head">
+          <div class="client-chat-head-main">
+            <span class="client-chat-head-avatar">
+              <i class="fa-solid fa-user-shield"></i>
+            </span>
+            <div>
+              <h2>Conversation with Admin Team</h2>
+              <p>Read-only message stream. Replies are disabled.</p>
             </div>
           </div>
-          {% if not msg.is_read %}
-          <button type="button" class="btn btn-sm btn-neutral" data-mark-read>Mark read</button>
+          <span class="client-chat-head-pill">Unread: <span data-client-unread-count>{{ unread_count }}</span></span>
+        </header>
+
+        <div class="client-chat-body">
+          {% if messages_page.object_list %}
+          <div class="client-chat-list">
+            {% for msg in messages_page.object_list %}
+            <article class="client-chat-row {% if not msg.is_read %}is-unread{% endif %}" data-notification-id="{{ msg.notification_id }}">
+              <div class="client-chat-avatar">
+                <i class="fa-solid fa-user-shield"></i>
+              </div>
+              <div class="client-chat-bubble-wrap">
+                <div class="client-chat-bubble">
+                  <div class="client-chat-meta">
+                    <span class="client-chat-sender">{{ msg.sent_by.get_full_name|default:msg.sent_by.username }}</span>
+                    <span class="client-chat-time">{{ msg.created_at|date:"d M Y, h:i A" }}</span>
+                  </div>
+                  <p class="client-chat-text">{{ msg.message }}</p>
+                  {% if msg.visibility == 'temporary' and msg.expires_at %}
+                  <p class="client-chat-expiry">Visible until {{ msg.expires_at|date:"d M Y, h:i A" }}</p>
+                  {% endif %}
+                </div>
+                <div class="client-chat-actions" data-chat-actions>
+                  {% if not msg.is_read %}
+                  <button type="button" class="btn btn-sm btn-neutral" data-mark-read>Mark read</button>
+                  {% else %}
+                  <span class="client-chat-read-state">Seen</span>
+                  {% endif %}
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="client-chat-empty">
+            <div class="mx-auto mb-3 w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+              <i class="fa-solid fa-envelope-open"></i>
+            </div>
+            <p class="font-semibold text-slate-700">No messages yet</p>
+            <p class="text-sm mt-1">When admins send client messages, they will appear here.</p>
+          </div>
           {% endif %}
         </div>
-        <div class="client-msg-body">{{ msg.message }}</div>
-      </article>
-      {% endfor %}
-    </div>
 
-    {% if messages_page.paginator.num_pages > 1 %}
-    <div class="client-msg-pager">
-      <span class="text-slate-500 text-sm">Page {{ messages_page.number }} of {{ messages_page.paginator.num_pages }}</span>
-      <div class="pager-actions">
-        {% if messages_page.has_previous %}
-        <a href="?page={{ messages_page.previous_page_number }}" class="btn btn-sm btn-neutral">Previous</a>
+        {% if messages_page.paginator.num_pages > 1 %}
+        <footer class="client-chat-footer">
+          <span class="text-slate-500 text-sm">Page {{ messages_page.number }} of {{ messages_page.paginator.num_pages }}</span>
+          <div class="pager-actions">
+            {% if messages_page.has_previous %}
+            <a href="?page={{ messages_page.previous_page_number }}" class="btn btn-sm btn-neutral">Previous</a>
+            {% endif %}
+            {% if messages_page.has_next %}
+            <a href="?page={{ messages_page.next_page_number }}" class="btn btn-sm btn-neutral">Next</a>
+            {% endif %}
+          </div>
+        </footer>
         {% endif %}
-        {% if messages_page.has_next %}
-        <a href="?page={{ messages_page.next_page_number }}" class="btn btn-sm btn-neutral">Next</a>
-        {% endif %}
-      </div>
+      </section>
     </div>
-    {% endif %}
-    {% else %}
-    <div class="client-msg-empty">
-      <div class="mx-auto mb-3 w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-        <i class="fa-solid fa-envelope-open"></i>
-      </div>
-      <p class="font-semibold text-slate-700">No messages yet</p>
-      <p class="text-sm mt-1">When admins send client messages, they will appear here.</p>
-    </div>
-    {% endif %}
   </section>
 </div>
 {% endblock %}
@@ -287,15 +457,23 @@
       var article = buttonEl && buttonEl.closest('article[data-notification-id]');
       if (!article) return;
 
-      var badge = article.querySelector('[data-read-badge]');
-      if (badge) {
-        badge.textContent = 'Read';
-        badge.className = 'inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 text-xs font-semibold';
+      article.classList.remove('is-unread');
+
+      var actionBox = article.querySelector('[data-chat-actions]');
+      if (actionBox) {
+        actionBox.innerHTML = '<span class="client-chat-read-state">Seen</span>';
       }
 
       if (buttonEl) {
         buttonEl.remove();
       }
+
+      var unreadEls = document.querySelectorAll('[data-client-unread-count]');
+      unreadEls.forEach(function(el) {
+        var current = Number(el.textContent || 0);
+        var next = Math.max(0, current - 1);
+        el.textContent = String(next);
+      });
     }).catch(function() {});
   }
 
