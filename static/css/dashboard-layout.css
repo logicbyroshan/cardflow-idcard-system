@@ -510,7 +510,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 18px;
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.2);
     color: #fff;
@@ -522,20 +522,32 @@
 }
 
 .welcome-notif-title {
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 700;
+    line-height: 1.15;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .welcome-notif-msg {
-    font-size: 12px;
+    font-size: 16px;
     opacity: 0.9;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin-top: 1px;
+}
+
+@media (max-width: 900px) {
+    .welcome-notif-title {
+        font-size: 17px;
+    }
+
+    .welcome-notif-msg {
+        font-size: 14px;
+    }
 }
 
 .welcome-notif-actions {

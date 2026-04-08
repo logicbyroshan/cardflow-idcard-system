@@ -63,46 +63,39 @@ document.addEventListener('DOMContentLoaded', function() {
       function renderClientMessageHistory(messages, historyNode) {
         if (!historyNode) return;
         if (!messages || messages.length === 0) {
-          historyNode.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">No messages sent yet.</div>';
+          historyNode.innerHTML = '<div class="group-msg-history-state">No messages sent yet.</div>';
           return;
         }
 
         historyNode.innerHTML = messages.map(function(item) {
-          var visibilityClass = item.visibility === 'temporary'
-            ? 'color:#9a3412;background:#ffedd5;border:1px solid #fed7aa;'
-            : 'color:#166534;background:#dcfce7;border:1px solid #bbf7d0;';
-          var visibilityText = escapeHtmlLocal(item.visibility_display || item.visibility || 'Permanent');
           var expiryHtml = '';
           if (item.visibility === 'temporary' && item.expires_at_display) {
-            expiryHtml = '<span style="font-size:11px;color:#92400e;">Expires: ' + escapeHtmlLocal(item.expires_at_display) + '</span>';
+            expiryHtml = '<div class="group-msg-history-expiry">Temporary message. Expires: ' + escapeHtmlLocal(item.expires_at_display) + '</div>';
           }
-          var activeBadgeHtml = item.notification_active
-            ? '<span style="font-size:11px;color:#166534;">Visible to recipients</span>'
-            : '<span style="font-size:11px;color:#9a3412;">Manually removed from recipients</span>';
+          var statusText = item.notification_active
+            ? 'Visible to recipients'
+            : 'Manually removed from recipients';
+          var rowClass = item.notification_active ? 'group-msg-history-item' : 'group-msg-history-item is-removed';
           var deleteBtnHtml = item.notification_active
-            ? '<button type="button" class="btn btn-sm btn-neutral" data-delete-client-message="' + escapeHtmlLocal(item.id) + '">Manual Delete</button>'
+            ? '<button type="button" class="group-msg-history-delete" title="Delete message" aria-label="Delete message" data-delete-client-message="' + escapeHtmlLocal(item.id) + '"><i class="fa-solid fa-trash"></i></button>'
             : '';
 
           return (
-            '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;">' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">' +
-                '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
-                  '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:2px 8px;">' + escapeHtmlLocal(item.scope_display || item.scope || '-') + '</span>' +
-                  '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;' + visibilityClass + '">' + visibilityText + '</span>' +
+            '<article class="' + rowClass + '">' +
+              '<div class="group-msg-history-top">' +
+                '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap;">' +
+                  '<span class="group-msg-history-title">' + escapeHtmlLocal(item.sent_by_name || 'System') + '</span>' +
+                  '<span class="group-msg-history-time">' + escapeHtmlLocal(item.created_at_display || '-') + '</span>' +
                 '</div>' +
-                '<span style="font-size:11px;color:#64748b;">' + escapeHtmlLocal(item.created_at_display || '-') + '</span>' +
-              '</div>' +
-              '<div style="font-size:13px;line-height:1.5;color:#1e293b;white-space:pre-wrap;">' + escapeHtmlLocal(item.message || '') + '</div>' +
-              '<div style="margin-top:8px;font-size:11px;color:#64748b;display:flex;justify-content:space-between;gap:8px;">' +
-                '<span>By: ' + escapeHtmlLocal(item.sent_by_name || 'System') + '</span>' +
-                '<span>Recipients: ' + escapeHtmlLocal(item.recipient_count || 0) + '</span>' +
-              '</div>' +
-              '<div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
-                activeBadgeHtml +
                 deleteBtnHtml +
               '</div>' +
-              (expiryHtml ? ('<div style="margin-top:4px;">' + expiryHtml + '</div>') : '') +
-            '</div>'
+              '<div class="group-msg-history-text">' + escapeHtmlLocal(item.message || '') + '</div>' +
+              '<div class="group-msg-history-meta">' +
+                '<span>Recipients: ' + escapeHtmlLocal(item.recipient_count || 0) + '</span>' +
+                '<span>' + escapeHtmlLocal(statusText) + '</span>' +
+              '</div>' +
+              expiryHtml +
+            '</article>'
           );
         }).join('');
       }
@@ -137,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       function renderGroupMessageHistoryPlaceholder(messageText) {
         if (!groupMessageHistory) return;
-        groupMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">' + escapeHtmlLocal(messageText || 'Select a client to view history.') + '</div>';
+        groupMessageHistory.innerHTML = '<div class="group-msg-history-state">' + escapeHtmlLocal(messageText || 'Select a client to view history.') + '</div>';
       }
 
       function getVisibleClientById(clientId) {
@@ -172,11 +165,11 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        groupMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</div>';
+        groupMessageHistory.innerHTML = '<div class="group-msg-history-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</div>';
 
         var response = await NS.fetchClientMessages(NS.groupMessageFocusedClientId);
         if (!response || !response.success) {
-          groupMessageHistory.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#ef4444;font-size:13px;">Failed to load history.</div>';
+          groupMessageHistory.innerHTML = '<div class="group-msg-history-state" style="color:#ef4444;">Failed to load history.</div>';
           showToast((response && response.message) || 'Failed to load message history', 'error');
           return;
         }
@@ -193,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
       function renderGroupMessageClientsList() {
         if (!groupMessageClientsList) return;
         if (!NS.groupMessageClients || NS.groupMessageClients.length === 0) {
-          groupMessageClientsList.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">No clients found.</div>';
+          groupMessageClientsList.innerHTML = '<div class="group-msg-history-state">No clients found.</div>';
           renderGroupMessageSelectedCount();
           renderGroupMessageTargetSummary();
           return;
@@ -230,11 +223,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       async function loadGroupMessageClients(queryText) {
         if (!groupMessageClientsList) return;
-        groupMessageClientsList.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading clients...</div>';
+        groupMessageClientsList.innerHTML = '<div class="group-msg-history-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading clients...</div>';
 
         var response = await NS.fetchClientMessageTargets(queryText || '');
         if (!response || !response.success) {
-          groupMessageClientsList.innerHTML = '<div style="text-align:center;padding:18px 10px;color:#ef4444;font-size:13px;">Failed to load clients.</div>';
+          groupMessageClientsList.innerHTML = '<div class="group-msg-history-state" style="color:#ef4444;">Failed to load clients.</div>';
           showToast((response && response.message) || 'Failed to load clients', 'error');
           return;
         }
@@ -559,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (!messageId) return;
 
           deleteBtn.disabled = true;
-          deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Removing...';
+          deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
           var result = await NS.deleteClientMessage(NS.groupMessageFocusedClientId, messageId);
           if (!result || !result.success) {
             showToast((result && result.message) || 'Failed to remove message', 'error');

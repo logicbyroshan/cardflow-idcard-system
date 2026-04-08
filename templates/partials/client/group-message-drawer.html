@@ -68,30 +68,30 @@
   }
 
   .group-msg-panel {
-    border: 1px solid var(--msg-border);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--msg-surface) 90%, #f0f9ff 10%);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 6px 14px rgba(15, 94, 160, 0.08);
+    box-shadow: none;
   }
 
   .group-msg-panel:first-child,
   .group-msg-panel:last-child {
     padding: 0;
-    border-right: 1px solid var(--msg-border);
+    border-right: 0;
   }
 
   .group-msg-panel-head {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--msg-border);
+    padding: 0 0 10px;
+    border-bottom: 0;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 6px;
-    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    background: transparent;
   }
 
   .group-msg-panel-head-right {
@@ -125,13 +125,13 @@
   }
 
   .group-msg-panel-body {
-    padding: 10px;
+    padding: 0;
     flex: 1;
     min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
   .group-msg-controls {
@@ -167,6 +167,7 @@
     display: flex;
     gap: 6px;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .group-msg-search-row .form-input {
@@ -200,16 +201,22 @@
   }
 
   .group-msg-clients-list {
-    border: 1px solid #cfe2f5;
-    border-radius: 12px;
+    border: 0;
+    border-radius: 0;
     overflow: auto;
+    overflow-x: hidden;
     min-height: 0;
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px;
-    background: linear-gradient(180deg, #fbfdff 0%, #f4f9ff 100%);
+    gap: 4px;
+    padding: 0 8px 0 0;
+    background: transparent;
+    direction: rtl;
+  }
+
+  .group-msg-clients-list > * {
+    direction: ltr;
   }
 
   .group-msg-client-row {
@@ -218,27 +225,28 @@
     gap: 8px;
     width: 100%;
     box-sizing: border-box;
-    border: 1px solid #e0edf9;
+    border: 0;
     border-radius: 10px;
-    padding: 9px 10px;
-    background: #ffffff;
+    border-bottom: 1px solid #d8e7f7;
+    padding: 10px 8px;
+    background: transparent;
     cursor: pointer;
     position: relative;
-    transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
+    transition: background-color 0.14s ease, border-color 0.14s ease;
+    direction: ltr;
   }
 
   .group-msg-client-row.selected {
-    background: linear-gradient(90deg, #eaf5ff 0%, #f3fbff 100%);
-    border-color: #78b9f7;
-    box-shadow: 0 0 0 1px rgba(46, 134, 224, 0.18);
-    padding-left: 18px;
-    padding-right: 34px;
+    background: linear-gradient(90deg, #e7f2ff 0%, #eef8ff 100%);
+    border-bottom-color: transparent;
+    padding-left: 14px;
+    padding-right: 14px;
   }
 
   .group-msg-client-row.selected::before {
     content: "";
     position: absolute;
-    left: 7px;
+    left: 3px;
     top: 8px;
     bottom: 8px;
     width: 4px;
@@ -246,40 +254,18 @@
     background: linear-gradient(180deg, #318de6 0%, #35bea8 100%);
   }
 
-  .group-msg-client-row.selected::after {
-    content: "✓";
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: #ffffff;
-    background: linear-gradient(160deg, #2f95ef 0%, #2ebca9 100%);
-    box-shadow: 0 3px 8px rgba(42, 135, 217, 0.35);
-  }
-
   .group-msg-client-row:hover {
-    background: #f6fbff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(37, 124, 205, 0.14);
+    background: #f1f7ff;
   }
 
   .group-msg-client-row.active {
-    border-color: #6fb3f5;
-    box-shadow: 0 0 0 2px rgba(43, 144, 235, 0.24);
+    border-bottom-color: transparent;
+    box-shadow: 0 0 0 2px rgba(43, 144, 235, 0.2);
     background: #eaf5ff;
   }
 
   .group-msg-client-row.selected.active {
-    border-color: #3c9bec;
-    box-shadow: 0 0 0 2px rgba(31, 132, 224, 0.33), 0 5px 13px rgba(37, 124, 205, 0.2);
+    box-shadow: 0 0 0 2px rgba(31, 132, 224, 0.3);
   }
 
   .group-msg-client-meta {
@@ -314,50 +300,53 @@
 
   .group-msg-chat-body {
     flex: 1;
-    border: 1px solid #cfe2f5;
-    border-radius: 12px;
-    background: linear-gradient(180deg, #fcfeff 0%, #f4f9ff 100%);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     min-height: 0;
     max-height: none;
     overflow: auto;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .group-msg-composer {
-    border: 1px solid #cfe2f5;
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 10px;
+    padding: 0 6px 0 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .group-msg-composer {
+    border: 1px solid #b7d5f1;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-top: auto;
+    box-shadow: 0 8px 20px rgba(23, 97, 166, 0.1);
   }
 
   #groupMessageText {
-    border-radius: 10px;
-    border-color: #cfe2f5;
-    background: #fcfeff;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
     resize: vertical;
     min-height: 112px;
+    padding: 0;
+    line-height: 1.5;
   }
 
   #groupMessageText:focus {
-    border-color: #73b6f8;
-    box-shadow: 0 0 0 3px rgba(54, 144, 236, 0.18);
+    border: 0;
+    box-shadow: none;
   }
 
   .group-msg-action-row {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 8px;
     flex-wrap: wrap;
-    border-top: 0;
-    padding-top: 0;
+    border-top: 1px solid #dbe8f6;
+    padding-top: 9px;
   }
 
   .group-msg-action-buttons {
@@ -367,7 +356,7 @@
 
   .group-msg-btn {
     border-radius: 10px !important;
-    min-height: 36px;
+    min-height: 34px;
   }
 
   #sendGroupMessageBtn {
@@ -389,43 +378,122 @@
     flex-wrap: wrap;
   }
 
-  #group-message-drawer .drawer-body,
-  .group-msg-clients-list,
-  .group-msg-chat-body,
-  #groupMessageText {
+  .group-msg-counter {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+  }
+
+  .group-msg-history-state {
+    text-align: center;
+    padding: 18px 12px;
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .group-msg-history-item {
+    border: 0;
+    border-radius: 14px 14px 14px 4px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 68, 120, 0.12);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .group-msg-history-item.is-removed {
+    opacity: 0.82;
+    box-shadow: 0 6px 12px rgba(15, 68, 120, 0.08);
+  }
+
+  .group-msg-history-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .group-msg-history-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f3f67;
+  }
+
+  .group-msg-history-time {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  .group-msg-history-delete {
+    border: 0;
+    border-radius: 999px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fee2e2;
+    color: #b91c1c;
+    cursor: pointer;
+  }
+
+  .group-msg-history-delete:hover {
+    background: #fecaca;
+  }
+
+  .group-msg-history-delete:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  .group-msg-history-text {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #1e293b;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .group-msg-history-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  .group-msg-history-expiry {
+    font-size: 11px;
+    color: #9a3412;
+    font-weight: 700;
+  }
+
+  .group-msg-clients-list {
     scrollbar-width: thin;
     scrollbar-color: #5cb5f6 var(--msg-scroll-track);
   }
 
-  #group-message-drawer .drawer-body::-webkit-scrollbar,
-  .group-msg-clients-list::-webkit-scrollbar,
-  .group-msg-chat-body::-webkit-scrollbar,
-  #groupMessageText::-webkit-scrollbar {
+  .group-msg-clients-list::-webkit-scrollbar {
     width: 7px;
     height: 7px;
   }
 
-  #group-message-drawer .drawer-body::-webkit-scrollbar-track,
-  .group-msg-clients-list::-webkit-scrollbar-track,
-  .group-msg-chat-body::-webkit-scrollbar-track,
-  #groupMessageText::-webkit-scrollbar-track {
+  .group-msg-clients-list::-webkit-scrollbar-track {
     background: var(--msg-scroll-track);
     border-radius: 999px;
   }
 
-  #group-message-drawer .drawer-body::-webkit-scrollbar-thumb,
-  .group-msg-clients-list::-webkit-scrollbar-thumb,
-  .group-msg-chat-body::-webkit-scrollbar-thumb,
-  #groupMessageText::-webkit-scrollbar-thumb {
+  .group-msg-clients-list::-webkit-scrollbar-thumb {
     background: var(--msg-scroll-thumb);
     border-radius: 999px;
     border: 1px solid #eaf4ff;
   }
 
-  #group-message-drawer .drawer-body::-webkit-scrollbar-thumb:hover,
-  .group-msg-clients-list::-webkit-scrollbar-thumb:hover,
-  .group-msg-chat-body::-webkit-scrollbar-thumb:hover,
-  #groupMessageText::-webkit-scrollbar-thumb:hover {
+  .group-msg-clients-list::-webkit-scrollbar-thumb:hover {
     filter: brightness(0.94);
   }
 
@@ -438,7 +506,7 @@
 
     .group-msg-panel:first-child,
     .group-msg-panel:last-child {
-      border-right: 1px solid var(--msg-border);
+      border-right: 0;
     }
 
     .group-msg-panel-head-right {
@@ -482,10 +550,6 @@
     <div class="drawer-body" style="display:flex;flex-direction:column;gap:8px;min-height:0;">
       <div class="group-msg-layout">
         <section class="group-msg-panel">
-          <div class="group-msg-panel-head">
-            <div style="font-size:12px;font-weight:700;color:#334155;">Clients</div>
-            <div id="groupMessageSelectedCount" style="font-size:11px;color:#64748b;">0 selected</div>
-          </div>
           <div class="group-msg-panel-body">
             <div class="group-msg-search-row">
               <input type="text" id="groupMessageClientSearch" class="form-input" placeholder="Search clients...">
@@ -500,7 +564,6 @@
         <section class="group-msg-panel">
           <div class="group-msg-panel-head">
             <div style="display:flex;flex-direction:column;min-width:0;">
-              <div style="font-size:12px;color:#64748b;font-weight:600;">Message Panel</div>
               <div id="groupMessageTargetSummary" style="font-size:13px;color:#0f172a;font-weight:700;">Sending to all clients</div>
             </div>
             <div class="group-msg-panel-head-right">
@@ -548,20 +611,17 @@
           </div>
           <div class="group-msg-panel-body" style="gap:10px;">
             <div id="groupMessageHistory" class="group-msg-chat-body">
-              <div style="text-align:center;padding:18px 10px;color:#64748b;font-size:13px;">Select a client from the left list to view message history.</div>
+              <div class="group-msg-history-state">Select a client from the left list to view message history.</div>
             </div>
 
             <div class="group-msg-composer">
-              <div class="form-group" style="margin:0;">
-                <label class="form-label" for="groupMessageText">Message</label>
-                <textarea class="form-textarea" id="groupMessageText" rows="5" maxlength="2000" placeholder="Type your message..."></textarea>
-                <div id="groupMessageCounter" style="font-size:11px;color:#64748b;text-align:right;">0 / 2000</div>
-              </div>
+              <textarea class="form-textarea" id="groupMessageText" rows="5" maxlength="2000" placeholder="Type your message..."></textarea>
 
               <div class="group-msg-action-row">
+                <div id="groupMessageCounter" class="group-msg-counter">0 / 2000</div>
                 <div class="group-msg-action-buttons">
                   <button type="button" class="btn btn-md btn-neutral group-msg-btn" id="cancelGroupMessageBtn">
-                    <i class="fa-solid fa-xmark"></i> Close
+                    <i class="fa-solid fa-xmark"></i> Cancel
                   </button>
                   <button type="button" class="btn btn-md btn-primary group-msg-btn" id="sendGroupMessageBtn">
                     <i class="fa-solid fa-paper-plane"></i> Send Message
