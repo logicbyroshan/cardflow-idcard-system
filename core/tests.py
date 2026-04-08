@@ -1556,6 +1556,69 @@ class SecurityApiRegressionTests(TestCase):
         self.card_a.refresh_from_db()
         self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
 
+    def test_client_reprint_modal_flag_can_edit_download_card_with_reprint_permission(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'UPDATED FROM REPRINT MODAL'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'UPDATED FROM REPRINT MODAL')
+
+    def test_client_reprint_modal_flag_still_denied_without_reprint_permission(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'SHOULD NOT UPDATE'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_client_download_card_without_modal_flag_remains_locked(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({'field_data': {'NAME': 'SHOULD STILL BLOCK'}}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
 
 class CardHistoryApiTests(TestCase):
     def setUp(self):

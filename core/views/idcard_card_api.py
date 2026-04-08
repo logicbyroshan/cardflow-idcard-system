@@ -47,6 +47,13 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _as_bool(value):
+    """Parse truthy request flag values from JSON/form payloads."""
+    if isinstance(value, bool):
+        return value
+    return str(value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
 @require_http_methods(["POST"])
 @api_require_permission('perm_idcard_edit')
 def api_image_preview_convert(request):
@@ -1117,14 +1124,12 @@ def api_idcard_update(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    # Client/client_staff cannot edit cards in pool/approved/download/reprint.
-    if _is_client_edit_locked(request.user, _card.status):
-        return _client_edit_locked_response()
     try:
         # Parse request into service-friendly args
         if request.content_type and 'multipart/form-data' in request.content_type:
             field_data = json.loads(request.POST.get('field_data', '{}'))
             expected_updated_at = request.POST.get('expected_updated_at', None)
+            reprint_modal_edit = _as_bool(request.POST.get('reprint_modal_edit'))
             # CRITICAL: dict(request.FILES) returns lists (MultiValueDict internals).
             # Use dict comprehension with [] access to get actual file objects.
             image_files = {key: request.FILES[key] for key in request.FILES}
@@ -1133,8 +1138,19 @@ def api_idcard_update(request, card_id):
             data = json.loads(request.body)
             field_data = data.get('field_data')
             expected_updated_at = data.get('expected_updated_at', None)
+            reprint_modal_edit = _as_bool(data.get('reprint_modal_edit'))
             image_files = None
             legacy_photo_file = None
+
+        # Default lock remains in place. Bypass is only for reprint-modal edits
+        # when caller has reprint permission.
+        can_bypass_edit_lock = (
+            reprint_modal_edit
+            and PermissionService.has(request.user, 'perm_idcard_reprint_list')
+            and str(_card.status or '').strip().lower() in ('pool', 'approved', 'download', 'reprint')
+        )
+        if _is_client_edit_locked(request.user, _card.status) and not can_bypass_edit_lock:
+            return _client_edit_locked_response()
 
         result = IDCardService.update_card(
             card_id=card_id,

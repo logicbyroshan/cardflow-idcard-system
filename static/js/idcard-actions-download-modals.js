@@ -962,6 +962,7 @@ function initReprintPickerHandlers() {
     function updateCardInline(cardId, fieldData) {
         var formData = new FormData();
         formData.append('field_data', JSON.stringify(fieldData || {}));
+        formData.append('reprint_modal_edit', '1');
         return ApiClient.upload('/api/card/' + cardId + '/update/', formData)
             .then(function(data) {
                 if (data && data.success) return data.card || null;
@@ -980,6 +981,7 @@ function initReprintPickerHandlers() {
         // Keep the image field present in payload so backend image-field loop runs.
         fieldDataPayload[normalizedFieldName] = null;
         formData.append('field_data', JSON.stringify(fieldDataPayload));
+        formData.append('reprint_modal_edit', '1');
 
         // Backend update service expects multipart file keys as image_<field_name>.
         formData.append('image_' + normalizedFieldName, file);
