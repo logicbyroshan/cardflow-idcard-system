@@ -10,6 +10,7 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
   <link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
   <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
@@ -31,8 +32,15 @@
         <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
           <i class="fa-solid fa-bell"></i> Notifications
         </button>
-        <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
-          <i class="fa-solid fa-file-arrow-down"></i> Download Templates
+        {% endif %}
+        {% if is_super_admin or perm_manage_panel_email %}
+        <button class="panel-tab" data-tab="email-logs" onclick="switchTab('email-logs'); loadEmailLogs();">
+          <i class="fa-solid fa-envelope"></i> Email Management
+        </button>
+        {% endif %}
+        {% if is_super_admin %}
+        <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history'); loadOperationsFeed();">
+          <i class="fa-solid fa-wave-square"></i> Operations Hub
         </button>
         {% endif %}
         {% if is_super_admin or perm_manage_panel_backup %}
@@ -41,28 +49,21 @@
         </button>
         {% endif %}
         {% if is_super_admin %}
-        <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history'); loadOperationsFeed();">
-          <i class="fa-solid fa-wave-square"></i> Operations Hub
-        </button>
-        {% endif %}
-        {% if is_super_admin or perm_manage_panel_email %}
-        <button class="panel-tab" data-tab="email-logs" onclick="switchTab('email-logs'); loadEmailLogs();">
-          <i class="fa-solid fa-envelope"></i> Email Management
-        </button>
-        {% endif %}
-        {% if is_super_admin %}
         <button class="panel-tab" data-tab="server-info" onclick="switchTab('server-info'); initServerInfoTab();">
           <i class="fa-solid fa-server"></i> System &amp; Server
+        </button>
+        <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
+          <i class="fa-solid fa-file-arrow-down"></i> Download Templates
         </button>
         {% endif %}
       </div>
 
       {% if is_super_admin %}{% include 'partials/panel/tab-notifications.html' %}{% endif %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-download-templates.html' %}{% endif %}
-      {% if is_super_admin or perm_manage_panel_backup %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
       {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
+      {% if is_super_admin or perm_manage_panel_backup %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-download-templates.html' %}{% endif %}
 
       {% if is_super_admin %}{% include 'partials/panel/create-notification-modal.html' %}{% endif %}
 

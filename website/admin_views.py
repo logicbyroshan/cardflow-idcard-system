@@ -321,7 +321,36 @@ def clients_page(request):
 def reviews_page(request):
     """Reviews / Testimonials management page."""
     context = _get_base_context(request, 'reviews')
-    context['reviews'] = Testimonial.objects.all().order_by('-created_at')
+
+    reviews_qs = Testimonial.objects.all().order_by('-created_at')
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(reviews_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['reviews'] = page_obj.object_list
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_reviews_count'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/reviews.html', context)
 
 

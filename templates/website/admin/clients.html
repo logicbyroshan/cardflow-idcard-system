@@ -376,7 +376,13 @@
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
             <span class="page-numbers">
-                <span class="page-num active">{{ page_obj.number }}</span>
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <span class="page-num active">{{ num }}</span>
+                    {% else %}
+                    <button class="page-num" type="button" onclick="goClientPage({{ num }})">{{ num }}</button>
+                    {% endif %}
+                {% endfor %}
             </span>
             <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goClientPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
                 <i class="fa-solid fa-chevron-right"></i>

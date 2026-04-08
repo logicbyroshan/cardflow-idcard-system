@@ -121,16 +121,6 @@
                 <i class="fa-solid fa-building"></i> Business
             </a>
             {% endif %}
-            {% if is_super_admin or perm_website_view or perm_manage_website_clients %}
-            <a href="{% url 'website_admin:clients' %}" class="wa-tab {% if active_tab == 'clients' %}active{% endif %}">
-                <i class="fa-solid fa-handshake"></i> Clients
-            </a>
-            {% endif %}
-            {% if is_super_admin or perm_website_view %}
-            <a href="{% url 'website_admin:reviews' %}" class="wa-tab {% if active_tab == 'reviews' %}active{% endif %}">
-                <i class="fa-solid fa-star"></i> Reviews
-            </a>
-            {% endif %}
             {% if is_super_admin or perm_website_view or perm_manage_website_portfolio %}
             <a href="{% url 'website_admin:portfolio' %}" class="wa-tab {% if active_tab == 'portfolio' %}active{% endif %}">
                 <i class="fa-solid fa-images"></i> Portfolio
@@ -139,6 +129,16 @@
             {% if is_super_admin or perm_website_view %}
             <a href="{% url 'website_admin:contacts' %}" class="wa-tab {% if active_tab == 'contacts' %}active{% endif %}">
                 <i class="fa-solid fa-envelope"></i> Messages
+            </a>
+            {% endif %}
+            {% if is_super_admin or perm_website_view or perm_manage_website_clients %}
+            <a href="{% url 'website_admin:clients' %}" class="wa-tab {% if active_tab == 'clients' %}active{% endif %}">
+                <i class="fa-solid fa-handshake"></i> Clients
+            </a>
+            {% endif %}
+            {% if is_super_admin or perm_website_view %}
+            <a href="{% url 'website_admin:reviews' %}" class="wa-tab {% if active_tab == 'reviews' %}active{% endif %}">
+                <i class="fa-solid fa-star"></i> Reviews
             </a>
             {% endif %}
         </div>

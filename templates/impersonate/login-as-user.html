@@ -10,7 +10,14 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
-  .imp-page { padding: 16px 20px; }
+  .imp-page {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
 
   .main.main-scrollable-page {
     grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
@@ -26,10 +33,23 @@
   }
 
   .main.main-scrollable-page > :not(.topbar) {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
-    overflow-y: auto !important;
+    overflow: hidden !important;
     overflow-x: hidden;
     background: var(--color-gray-50, #f8fafc);
+  }
+
+  .imp-sticky-stack {
+    position: sticky;
+    top: 0;
+    z-index: 28;
+    background: var(--color-gray-50, #f8fafc);
+    padding-bottom: 10px;
+    flex-shrink: 0;
   }
 
   .imp-page .action-bar {
@@ -39,6 +59,14 @@
     border-radius: 10px;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
     padding: 7px 10px;
+  }
+
+  .imp-grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 10px;
   }
 
   /* Role filter pills */
@@ -66,7 +94,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 10px;
-    margin-top: 16px;
+    margin-top: 0;
+    padding-bottom: 8px;
   }
   .imp-card {
     display: flex;
@@ -240,49 +269,53 @@
 {% block content %}
 <div class="imp-page pro-feature-page">
 
-  <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
-    <a href="{% url 'login_as_user' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
-      <i class="fa-solid fa-user-secret"></i> Login As User
-    </a>
-    <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
-    </a>
-  </div>
-
-  <!-- Action Bar -->
-  <div class="action-bar">
-    <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
-      <div class="search-box" style="max-width:320px;">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-        <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, or role..." oninput="__impFilter()" autocomplete="off">
-        <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="imp-pills" id="impPills">
-        <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All</button>
-        <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Admin Staff</button>
-        <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client</button>
-        <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Client Staff</button>
-        <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin</button>
-      </div>
+  <div class="imp-sticky-stack">
+    <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+      <a href="{% url 'login_as_user' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
+        <i class="fa-solid fa-user-secret"></i> Login As User
+      </a>
+      <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+        <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+      </a>
     </div>
-    <div class="action-right">
-      <span style="font-size:12px;color:var(--text-muted,#888);" id="impCount"></span>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
+        <div class="search-box" style="max-width:320px;">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, or role..." oninput="__impFilter()" autocomplete="off">
+          <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="imp-pills" id="impPills">
+          <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All</button>
+          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Admin Staff</button>
+          <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client</button>
+          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Client Staff</button>
+          <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin</button>
+        </div>
+      </div>
+      <div class="action-right">
+        <span style="font-size:12px;color:var(--text-muted,#888);" id="impCount"></span>
+      </div>
     </div>
   </div>
 
   <!-- User Grid -->
-  <div id="impGrid" class="imp-grid">
-    <div class="imp-skeleton-grid" aria-hidden="true">
-      {% for _ in "123456" %}
-      <div class="imp-skeleton-card">
-        <div class="imp-skeleton-block imp-skeleton-avatar"></div>
-        <div class="imp-skeleton-main">
-          <div class="imp-skeleton-block imp-skeleton-title"></div>
-          <div class="imp-skeleton-block imp-skeleton-subtitle"></div>
+  <div class="imp-grid-wrap">
+    <div id="impGrid" class="imp-grid">
+      <div class="imp-skeleton-grid" aria-hidden="true">
+        {% for _ in "123456" %}
+        <div class="imp-skeleton-card">
+          <div class="imp-skeleton-block imp-skeleton-avatar"></div>
+          <div class="imp-skeleton-main">
+            <div class="imp-skeleton-block imp-skeleton-title"></div>
+            <div class="imp-skeleton-block imp-skeleton-subtitle"></div>
+          </div>
+          <div class="imp-skeleton-block imp-skeleton-role"></div>
         </div>
-        <div class="imp-skeleton-block imp-skeleton-role"></div>
+        {% endfor %}
       </div>
-      {% endfor %}
     </div>
   </div>
 

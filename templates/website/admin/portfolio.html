@@ -13,7 +13,26 @@
     .portfolio-admin-page {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        gap: 0;
+    }
+
+    .portfolio-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+        padding: 8px 0;
+        flex-shrink: 0;
     }
 
     .portfolio-subtabs {
@@ -24,6 +43,23 @@
         border-radius: 4px;
         background: #fff;
         padding: 6px;
+    }
+
+    .portfolio-toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .portfolio-toolbar-actions-group {
+        display: none;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .portfolio-toolbar-actions-group.active {
+        display: inline-flex;
     }
 
     .portfolio-subtab-btn {
@@ -72,10 +108,15 @@
 
     .portfolio-pane {
         display: none;
+        min-height: 0;
     }
 
     .portfolio-pane.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
     }
 
     .portfolio-items-pane .wa-table thead th,
@@ -239,22 +280,56 @@
     }
 
     .portfolio-fixed-pagination {
-        min-height: calc(100vh - 230px);
         display: flex;
         flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .portfolio-fixed-categories {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
         overflow: hidden;
     }
 
     .portfolio-fixed-pagination .wa-action-bar,
+    .portfolio-fixed-categories .wa-action-bar,
     .portfolio-fixed-pagination .wa-filter-row,
     .portfolio-fixed-pagination .wa-bulk-action-bar {
         flex-shrink: 0;
     }
 
-    .portfolio-fixed-pagination .wa-table-wrap {
+    .portfolio-fixed-pagination .wa-table-wrap,
+    .portfolio-fixed-categories .wa-table-wrap {
         flex: 1;
         min-height: 0;
         overflow: auto;
+    }
+
+    .portfolio-fixed-pagination .wa-table thead,
+    .portfolio-fixed-categories .wa-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    .portfolio-fixed-pagination .wa-table thead th,
+    .portfolio-fixed-categories .wa-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+    }
+
+    .main.wa-page .main-content .portfolio-fixed-pagination .portfolio-pagination-bar {
+        margin-top: auto;
+        position: sticky !important;
+        bottom: 0;
+        z-index: 7;
     }
 
     .portfolio-pagination-bar .pagination-right {
@@ -272,22 +347,53 @@
         padding: 2px 8px;
         border-radius: 4px;
     }
+
+    @media (max-width: 920px) {
+        .portfolio-toolbar {
+            align-items: stretch;
+        }
+
+        .portfolio-toolbar-actions {
+            width: 100%;
+            margin-left: 0;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="wa-page-container portfolio-admin-page">
-    <div class="portfolio-subtabs" id="portfolioSubtabs">
-        <button type="button" class="portfolio-subtab-btn active" data-target="portfolioItemsPane">
-            <i class="fa-solid fa-images"></i>
-            <span>Portfolio Items</span>
-            <span class="wa-count-badge">{{ total_items_count }}</span>
-        </button>
-        <button type="button" class="portfolio-subtab-btn" data-target="portfolioCategoriesPane">
-            <i class="fa-solid fa-layer-group"></i>
-            <span>Categories</span>
-            <span class="wa-count-badge">{{ categories|length }}</span>
-        </button>
+    <div class="portfolio-toolbar">
+        <div class="portfolio-subtabs" id="portfolioSubtabs">
+            <button type="button" class="portfolio-subtab-btn active" data-target="portfolioItemsPane">
+                <i class="fa-solid fa-images"></i>
+                <span>Portfolio Items</span>
+                <span class="wa-count-badge">{{ total_items_count }}</span>
+            </button>
+            <button type="button" class="portfolio-subtab-btn" data-target="portfolioCategoriesPane">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Categories</span>
+                <span class="wa-count-badge">{{ categories|length }}</span>
+            </button>
+        </div>
+
+        <div class="portfolio-toolbar-actions">
+            {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+            <div class="portfolio-toolbar-actions-group active" data-portfolio-actions="portfolioItemsPane">
+                <button class="btn btn-secondary" type="button" onclick="openBulkUploadModal()">
+                    <i class="fa-solid fa-images"></i> Bulk Upload
+                </button>
+                <button class="btn btn-primary" type="button" onclick="openPortfolioModal()">
+                    <i class="fa-solid fa-plus"></i> Add Item
+                </button>
+            </div>
+            <div class="portfolio-toolbar-actions-group" data-portfolio-actions="portfolioCategoriesPane">
+                <button class="btn btn-primary" type="button" onclick="openCategoryModal()">
+                    <i class="fa-solid fa-plus"></i> Add Category
+                </button>
+            </div>
+            {% endif %}
+        </div>
     </div>
 
     <section class="portfolio-pane portfolio-items-pane active" id="portfolioItemsPane">
@@ -296,16 +402,6 @@
                 <div class="wa-action-left">
                     <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
                     <span class="wa-count-badge">{{ total_items_count }} items</span>
-                </div>
-                <div class="wa-action-right">
-                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
-                    <button class="btn btn-secondary" onclick="openBulkUploadModal()">
-                        <i class="fa-solid fa-images"></i> Bulk Upload
-                    </button>
-                    <button class="btn btn-primary" onclick="openPortfolioModal()">
-                        <i class="fa-solid fa-plus"></i> Add Item
-                    </button>
-                    {% endif %}
                 </div>
             </div>
 
@@ -425,7 +521,13 @@
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <span class="page-numbers">
-                        <span class="page-num active">{{ page_obj.number }}</span>
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if num == page_obj.number %}
+                            <span class="page-num active">{{ num }}</span>
+                            {% else %}
+                            <button class="page-num" type="button" onclick="goPortfolioPage({{ num }})">{{ num }}</button>
+                            {% endif %}
+                        {% endfor %}
                     </span>
                     <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goPortfolioPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
                         <i class="fa-solid fa-chevron-right"></i>
@@ -447,18 +549,11 @@
     </section>
 
     <section class="portfolio-pane portfolio-categories-pane" id="portfolioCategoriesPane">
-        <div class="wa-dashboard-section">
+        <div class="wa-dashboard-section portfolio-fixed-categories">
             <div class="wa-action-bar">
                 <div class="wa-action-left">
                     <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-layer-group"></i> Categories</h3>
                     <span class="wa-count-badge">{{ categories|length }} categories</span>
-                </div>
-                <div class="wa-action-right">
-                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
-                    <button class="btn btn-primary" onclick="openCategoryModal()">
-                        <i class="fa-solid fa-plus"></i> Add Category
-                    </button>
-                    {% endif %}
                 </div>
             </div>
 
@@ -736,12 +831,20 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 function switchPortfolioPane(targetId) {
     var tabs = document.querySelectorAll('#portfolioSubtabs .portfolio-subtab-btn');
     var panes = document.querySelectorAll('.portfolio-pane');
+    var actionGroups = document.querySelectorAll('[data-portfolio-actions]');
     tabs.forEach(function(tab) {
         tab.classList.toggle('active', tab.getAttribute('data-target') === targetId);
     });
     panes.forEach(function(pane) {
         pane.classList.toggle('active', pane.id === targetId);
     });
+    actionGroups.forEach(function(group) {
+        group.classList.toggle('active', group.getAttribute('data-portfolio-actions') === targetId);
+    });
+
+    if (targetId !== 'portfolioItemsPane' && typeof clearPortfolioSelection === 'function') {
+        clearPortfolioSelection();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {

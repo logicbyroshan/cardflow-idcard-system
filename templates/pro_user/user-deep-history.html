@@ -28,8 +28,12 @@
   }
 
   .main.main-scrollable-page > :not(.topbar) {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
-    overflow-y: auto !important;
+    overflow: hidden !important;
     overflow-x: hidden;
     background: var(--color-gray-50, #f8fafc);
   }
@@ -38,7 +42,33 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
-  .audit-page { padding: 16px 20px; }
+  .audit-page {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .audit-sticky-stack {
+    position: sticky;
+    top: 0;
+    z-index: 28;
+    background: var(--color-gray-50, #f8fafc);
+    padding-bottom: 10px;
+    flex-shrink: 0;
+  }
+
+  .audit-content-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 10px;
+    padding-bottom: 8px;
+  }
+
   .audit-page .action-bar {
     z-index: 22;
     background: var(--color-white, #ffffff);
@@ -68,7 +98,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 10px;
-    margin-top: 16px;
+    margin-top: 0;
   }
   .audit-user-card {
     display: flex;
@@ -159,7 +189,7 @@
     display: none;
   }
   .audit-history {
-    margin-top: 16px;
+    margin-top: 12px;
     background: var(--audit-surface);
     border: 1px solid var(--audit-border);
     border-radius: 12px;
@@ -281,67 +311,71 @@
 {% block content %}
 <div class="audit-page pro-feature-page">
 
-  <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
-    <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-user-secret"></i> Login As User
-    </a>
-    <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
-      <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
-    </a>
-  </div>
+  <div class="audit-sticky-stack">
+    <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+      <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+        <i class="fa-solid fa-user-secret"></i> Login As User
+      </a>
+      <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
+        <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+      </a>
+    </div>
 
-  <div class="action-bar">
-    <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
-      <div class="search-box" style="max-width:320px;">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-        <input type="text" id="auditSearch" class="search-input" placeholder="Search by name, email, username, role..." oninput="__auditFilter()" autocomplete="off">
+    <div class="action-bar">
+      <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
+        <div class="search-box" style="max-width:320px;">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="auditSearch" class="search-input" placeholder="Search by name, email, username, role..." oninput="__auditFilter()" autocomplete="off">
+        </div>
+        <div class="audit-pills" id="auditPills">
+          <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All</button>
+          <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User</button>
+          <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin</button>
+          <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Admin Staff</button>
+          <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client</button>
+          <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Client Staff</button>
+        </div>
       </div>
-      <div class="audit-pills" id="auditPills">
-        <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All</button>
-        <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User</button>
-        <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin</button>
-        <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Admin Staff</button>
-        <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client</button>
-        <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Client Staff</button>
+      <div class="action-right">
+        <span style="font-size:12px;color:var(--text-muted,#888);" id="auditCount">-</span>
       </div>
     </div>
-    <div class="action-right">
-      <span style="font-size:12px;color:var(--text-muted,#888);" id="auditCount">-</span>
+  </div>
+
+  <div class="audit-content-scroll">
+    <div id="auditUserGrid" class="audit-grid">
+      <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
     </div>
-  </div>
 
-  <div id="auditUserGrid" class="audit-grid">
-    <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
-  </div>
-
-  <div id="auditHistory" class="audit-history" style="display:none;">
-    <div class="audit-history-head">
-      <div>
-        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">User History</div>
-        <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
+    <div id="auditHistory" class="audit-history" style="display:none;">
+      <div class="audit-history-head">
+        <div>
+          <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">User History</div>
+          <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="auditActionFilter" class="form-select form-select-sm" onchange="__auditReloadHistory()">
+            <option value="">All Actions</option>
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="__auditReloadHistory()">
+            <i class="fa-solid fa-rotate-right"></i> Refresh
+          </button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="auditActionFilter" class="form-select form-select-sm" onchange="__auditReloadHistory()">
-          <option value="">All Actions</option>
-        </select>
-        <button type="button" class="btn btn-sm btn-outline-primary" onclick="__auditReloadHistory()">
-          <i class="fa-solid fa-rotate-right"></i> Refresh
+
+      <div class="audit-stat-grid">
+        <div class="audit-stat"><div class="audit-stat-label">Total Events</div><div class="audit-stat-value" id="auditTotalEvents">0</div></div>
+        <div class="audit-stat"><div class="audit-stat-label">Logins</div><div class="audit-stat-value" id="auditLogins">0</div></div>
+        <div class="audit-stat"><div class="audit-stat-label">Downloads</div><div class="audit-stat-value" id="auditDownloads">0</div></div>
+        <div class="audit-stat"><div class="audit-stat-label">Approvals</div><div class="audit-stat-value" id="auditApprovals">0</div></div>
+      </div>
+
+      <div id="auditLogList" class="audit-log-list"></div>
+      <div id="auditLoadMoreWrap" class="audit-load-more-wrap" style="display:none;">
+        <button id="auditLoadMoreBtn" type="button" class="btn btn-sm btn-neutral" onclick="__auditLoadMore()">
+          <i class="fa-solid fa-angle-down"></i> Load More
         </button>
       </div>
-    </div>
-
-    <div class="audit-stat-grid">
-      <div class="audit-stat"><div class="audit-stat-label">Total Events</div><div class="audit-stat-value" id="auditTotalEvents">0</div></div>
-      <div class="audit-stat"><div class="audit-stat-label">Logins</div><div class="audit-stat-value" id="auditLogins">0</div></div>
-      <div class="audit-stat"><div class="audit-stat-label">Downloads</div><div class="audit-stat-value" id="auditDownloads">0</div></div>
-      <div class="audit-stat"><div class="audit-stat-label">Approvals</div><div class="audit-stat-value" id="auditApprovals">0</div></div>
-    </div>
-
-    <div id="auditLogList" class="audit-log-list"></div>
-    <div id="auditLoadMoreWrap" class="audit-load-more-wrap" style="display:none;">
-      <button id="auditLoadMoreBtn" type="button" class="btn btn-sm btn-neutral" onclick="__auditLoadMore()">
-        <i class="fa-solid fa-angle-down"></i> Load More
-      </button>
     </div>
   </div>
 

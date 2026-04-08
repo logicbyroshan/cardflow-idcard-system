@@ -159,6 +159,29 @@ select.wa-status-select:disabled,
   transition: background-color 0.1s ease, color 0.1s ease !important;
 }
 
+.panel-content .custom-dropdown .dropdown-options,
+.panel-content .form-dropdown .dropdown-options,
+.panel-content .filter-dropdown .dropdown-options,
+.panel-content .wa-status-dropdown .dropdown-options,
+.main.wa-page .main-content .custom-dropdown .dropdown-options,
+.main.wa-page .main-content .form-dropdown .dropdown-options,
+.main.wa-page .main-content .filter-dropdown .dropdown-options,
+.main.wa-page .main-content .wa-status-dropdown .dropdown-options {
+  border-radius: 7px !important;
+  margin-top: 4px !important;
+}
+
+.panel-content .dropdown-option,
+.main.wa-page .main-content .dropdown-option {
+  margin: 0 4px !important;
+  border-radius: 4px !important;
+}
+
+.panel-content select option,
+.main.wa-page .main-content select option {
+  padding: 6px 10px;
+}
+
 .dropdown-option:hover {
   background-color: #f8fafc !important;
 }

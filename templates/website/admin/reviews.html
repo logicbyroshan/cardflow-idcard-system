@@ -14,11 +14,23 @@
     .wa-reviews-page {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        gap: 0;
+    }
+
+    .wa-reviews-page .wa-dashboard-section {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
     }
 
     .wa-reviews-page .wa-action-bar {
         border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
     }
 
     .wa-reviews-page .wa-count-badge {
@@ -32,6 +44,9 @@
 
     .wa-reviews-page .wa-table-wrap {
         margin-top: 0;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
     }
 
     .wa-reviews-page .wa-table thead th {
@@ -110,6 +125,36 @@
         box-shadow: none;
     }
 
+    .main.wa-page .main-content .wa-reviews-page .reviews-pagination-bar {
+        margin-top: auto;
+        position: sticky !important;
+        bottom: 0;
+        z-index: 5;
+    }
+
+    .wa-reviews-page .reviews-pagination-bar {
+        margin-top: 0;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
+        flex-shrink: 0;
+    }
+
+    .wa-reviews-page .reviews-pagination-bar .pagination-right {
+        gap: 8px;
+    }
+
+    .wa-reviews-page .reviews-pagination-bar .pagination-right label {
+        font-size: 11px;
+        color: #64748b;
+    }
+
+    .wa-reviews-page #reviewRowsPerPage {
+        min-width: 74px;
+        height: 26px;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
     #reviewModal .wa-modal-close,
     #reviewModal .wa-toggle-label,
     #reviewModal .btn,
@@ -127,7 +172,7 @@
         <div class="wa-action-bar">
             <div class="wa-action-left">
                 <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-star"></i> Reviews & Testimonials</h3>
-                <span class="wa-count-badge">{{ reviews|length }} reviews</span>
+                <span class="wa-count-badge">{{ total_reviews_count }} reviews</span>
             </div>
             <div class="wa-action-right">
                 {% if is_super_admin or perm_website_add %}
@@ -206,6 +251,43 @@
         </tbody>
         </table>
         </div>
+
+        <div class="pagination-bar notif-pagination-bar reviews-pagination-bar">
+            <div class="pagination-left">
+                <span class="pagination-info">Showing {{ page_start }} to {{ page_end }} of {{ total_reviews_count }} reviews</span>
+            </div>
+            <div class="pagination-center">
+                <button class="pagination-btn" type="button" title="First Page" aria-label="First page" onclick="goReviewPage(1)" {% if not page_obj.has_previous %}disabled{% endif %}>
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+                <button class="pagination-btn" type="button" title="Previous Page" aria-label="Previous page" onclick="goReviewPage({{ page_obj.number|add:'-1' }})" {% if not page_obj.has_previous %}disabled{% endif %}>
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span class="page-numbers">
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num == page_obj.number %}
+                        <span class="page-num active">{{ num }}</span>
+                        {% else %}
+                        <button class="page-num" type="button" onclick="goReviewPage({{ num }})">{{ num }}</button>
+                        {% endif %}
+                    {% endfor %}
+                </span>
+                <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goReviewPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button class="pagination-btn" type="button" title="Last Page" aria-label="Last page" onclick="goReviewPage({{ page_obj.paginator.num_pages }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                    <i class="fa-solid fa-angles-right"></i>
+                </button>
+            </div>
+            <div class="pagination-right">
+                <label for="reviewRowsPerPage">Rows per page:</label>
+                <select id="reviewRowsPerPage" class="form-select form-select-sm" onchange="onReviewRowsPerPageChange(this.value)">
+                    {% for size in per_page_options %}
+                    <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -276,4 +358,20 @@
 
 {% block extra_js %}
 <script src="{% static 'js/website-admin/reviews.js' %}?v=134"></script>
+<script>
+function onReviewRowsPerPageChange(value) {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    params.set('per_page', String(value || 25));
+    params.set('page', '1');
+    window.location.search = params.toString();
+}
+
+function goReviewPage(page) {
+    const targetPage = Math.max(1, parseInt(page || 1, 10));
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', String(targetPage));
+    window.location.search = url.searchParams.toString();
+}
+</script>
 {% endblock %}

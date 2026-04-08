@@ -1398,20 +1398,29 @@ td.email-col {
   position: relative;
   width: 100%;
   margin-bottom: 12px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: text;
 }
 
 .confirm-code-boxes {
-  width: 100%;
+  --confirm-code-size: 38px;
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(10, var(--confirm-code-size));
   gap: 6px;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .confirm-code-box {
-  height: 42px;
+  width: var(--confirm-code-size);
+  height: var(--confirm-code-size);
   border: 2px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 9px;
   background: #ffffff;
   color: #0f172a;
   display: flex;
@@ -1463,12 +1472,25 @@ td.email-col {
 
 @media (max-width: 640px) {
   .confirm-code-boxes {
+    --confirm-code-size: 30px;
     gap: 4px;
   }
 
   .confirm-code-box {
-    height: 36px;
-    font-size: 15px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .confirm-code-boxes {
+    --confirm-code-size: 26px;
+    gap: 3px;
+  }
+
+  .confirm-code-box {
+    border-radius: 7px;
+    font-size: 13px;
   }
 }
 
