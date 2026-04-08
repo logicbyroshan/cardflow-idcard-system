@@ -791,3 +791,132 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         payload = response.json()
         self.assertFalse(payload.get('success'))
         self.assertIn('Invalid source filter', payload.get('message', ''))
+
+    def test_operations_feed_marks_only_latest_active_task_cancellable_for_pro_user(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        pro_user = User.objects.create_user(
+            username='panel-pro@test.com',
+            email='panel-pro@test.com',
+            password='pass1234',
+            role='pro_user',
+        )
+
+        older_active = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='processing',
+            progress=1,
+            total=10,
+        )
+        latest_active = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_docx',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+        completed_task = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_excel',
+            status='completed',
+            progress=4,
+            total=4,
+        )
+
+        now = timezone.now()
+        BackgroundTask.objects.filter(pk=older_active.pk).update(created_at=now - timedelta(hours=2))
+        BackgroundTask.objects.filter(pk=latest_active.pk).update(created_at=now - timedelta(minutes=5))
+        BackgroundTask.objects.filter(pk=completed_task.pk).update(created_at=now - timedelta(minutes=2))
+
+        self.client.login(username=pro_user.username, password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {'source': 'tasks', 'limit': 50})
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        background_items = [
+            item for item in payload.get('items', [])
+            if item.get('source_type') == 'background_task'
+        ]
+        self.assertTrue(background_items)
+
+        cancelable_ids = [item.get('task_id') for item in background_items if item.get('can_cancel')]
+        self.assertEqual(cancelable_ids, [latest_active.id])
+
+        by_id = {item.get('task_id'): item for item in background_items}
+        self.assertEqual(by_id[older_active.id].get('can_cancel'), False)
+        self.assertEqual(by_id[completed_task.id].get('can_cancel'), False)
+
+    def test_latest_only_cancel_requires_pro_user(self):
+        task = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='processing',
+            progress=2,
+            total=10,
+        )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/api/task-cancel/{task.id}/',
+            data=json.dumps({'latest_only': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(response.json().get('success'))
+
+    def test_pro_user_latest_only_cancel_allows_only_latest_active_task(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        pro_user = User.objects.create_user(
+            username='panel-pro-cancel@test.com',
+            email='panel-pro-cancel@test.com',
+            password='pass1234',
+            role='pro_user',
+        )
+
+        older_active = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='processing',
+            progress=3,
+            total=10,
+        )
+        latest_active = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_docx',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+
+        now = timezone.now()
+        BackgroundTask.objects.filter(pk=older_active.pk).update(created_at=now - timedelta(hours=1))
+        BackgroundTask.objects.filter(pk=latest_active.pk).update(created_at=now - timedelta(minutes=1))
+
+        self.client.login(username=pro_user.username, password='pass1234')
+
+        wrong_response = self.client.post(
+            f'/panel/api/task-cancel/{older_active.id}/',
+            data=json.dumps({'latest_only': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(wrong_response.status_code, 400)
+        self.assertFalse(wrong_response.json().get('success'))
+
+        ok_response = self.client.post(
+            f'/panel/api/task-cancel/{latest_active.id}/',
+            data=json.dumps({'latest_only': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(ok_response.status_code, 200)
+        self.assertTrue(ok_response.json().get('success'))
+
+        latest_active.refresh_from_db()
+        older_active.refresh_from_db()
+        self.assertEqual(latest_active.status, 'cancelled')
+        self.assertEqual(older_active.status, 'processing')

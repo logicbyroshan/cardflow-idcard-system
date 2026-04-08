@@ -512,6 +512,17 @@ def api_operations_feed(request):
     include_backups = source in ('all', 'tasks', 'task', 'backups', 'backup')
     include_logs = source in ('all', 'logs', 'log', 'activity')
 
+    allow_latest_cancel = PermissionService.is_pro_user(request.user)
+    latest_active_background_task_id = None
+    if allow_latest_cancel:
+        latest_active_background_task_id = (
+            BackgroundTask.objects
+            .filter(status__in=['pending', 'processing'])
+            .order_by('-created_at', '-id')
+            .values_list('id', flat=True)
+            .first()
+        )
+
     active_tasks = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
     pending_tasks = BackgroundTask.objects.filter(status='pending').count()
     completed_24h = BackgroundTask.objects.filter(
@@ -544,16 +555,24 @@ def api_operations_feed(request):
             progress_text = ''
             if task.total and task.total > 0:
                 progress_text = f'Progress {task.progress}/{task.total} ({task.progress_percentage}%)'
+            can_cancel = (
+                allow_latest_cancel
+                and latest_active_background_task_id is not None
+                and task.status in ('pending', 'processing')
+                and task.id == latest_active_background_task_id
+            )
 
             items.append({
                 'source_type': 'background_task',
                 'source_label': 'Background Task',
                 'event_title': task.get_task_type_display(),
                 'event_subtitle': f'Task #{task.id}',
+                'task_id': task.id,
                 'status': task.status,
                 'status_display': task.get_status_display(),
                 'action': '',
                 'action_display': '',
+                'can_cancel': can_cancel,
                 'description': task.error_message or 'Background task event',
                 'target_name': '',
                 'user': user_name,
@@ -594,10 +613,12 @@ def api_operations_feed(request):
                 'source_label': 'Backup Task',
                 'event_title': 'Client Backup',
                 'event_subtitle': f'Backup #{task.id}',
+                'task_id': None,
                 'status': task.status,
                 'status_display': task.get_status_display(),
                 'action': '',
                 'action_display': '',
+                'can_cancel': False,
                 'description': task.current_client or 'Backup pipeline event',
                 'target_name': '',
                 'user': user_name,
@@ -637,10 +658,12 @@ def api_operations_feed(request):
                 'source_label': 'Activity Log',
                 'event_title': action_display_map.get(log.action, log.action),
                 'event_subtitle': log.target_model or '',
+                'task_id': None,
                 'status': '',
                 'status_display': '',
                 'action': log.action,
                 'action_display': action_display_map.get(log.action, log.action),
+                'can_cancel': False,
                 'description': log.description or '',
                 'target_name': log.target_name or '',
                 'user': user_name,

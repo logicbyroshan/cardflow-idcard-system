@@ -363,7 +363,8 @@ class WordTablesMixin:
     def _create_data_tables(self, doc, cards_list, ordered_fields, column_widths,
                             num_cols, Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT,
                             WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, OxmlElement,
-                            qn, Image, ImageOps, class_field_name=None):
+                            qn, Image, ImageOps, class_field_name=None,
+                            progress_callback=None):
         """Create ONE continuous table with all card data.
 
         The table is never split into separate tables, so selecting a
@@ -458,6 +459,15 @@ class WordTablesMixin:
             sr_no += 1
             rows_on_current_page += 1
             prev_class_val = cur_class_val
+
+            if callable(progress_callback):
+                # Keep callback cadence light to avoid excessive DB writes.
+                processed = card_idx + 1
+                if (processed % 10 == 0) or (processed == len(cards_list)):
+                    try:
+                        progress_callback(processed, len(cards_list))
+                    except Exception:
+                        pass
     
     def _style_header_row(self, cells, ordered_fields, column_widths,
                           Cm, Pt, RGBColor, WD_ALIGN_PARAGRAPH, parse_xml, nsdecls,

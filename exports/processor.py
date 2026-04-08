@@ -312,6 +312,24 @@ def process_export_pdf(task):
     font_mode = metadata.get('font_mode', 'auto') or 'auto'
     shorten_titles = bool(metadata.get('shorten_titles', False))
 
+    _last_pdf_progress = 0
+    _pdf_emit_step = max(1, total_cards // 40)
+
+    def _pdf_progress_callback(done, _total):
+        nonlocal _last_pdf_progress
+        if total_cards <= 0:
+            return
+        safe_done = max(0, min(int(done or 0), total_cards))
+        # Keep room for render/write phase by capping row-build progress at ~70%.
+        target = int((safe_done / float(total_cards)) * max(1, int(total_cards * 0.70)))
+        target = max(_last_pdf_progress, min(target, total_cards))
+        if target <= _last_pdf_progress:
+            return
+        if target < total_cards and (target - _last_pdf_progress) < _pdf_emit_step:
+            return
+        _last_pdf_progress = target
+        task.update_progress(target, total_cards)
+
     try:
         # Use existing PDF exporter but save to file
         exporter = PdfExporter()
@@ -321,6 +339,7 @@ def process_export_pdf(task):
             template_id=template_id,
             font_mode=font_mode,
             shorten_titles=shorten_titles,
+            progress_callback=_pdf_progress_callback,
         )
         
         if not result.success:
@@ -338,6 +357,11 @@ def process_export_pdf(task):
         if size_bytes <= 0:
             task.mark_failed("PDF exporter returned empty response")
             return
+
+        pre_complete = max(_last_pdf_progress, int(total_cards * 0.92))
+        if pre_complete < total_cards:
+            _last_pdf_progress = pre_complete
+            task.update_progress(pre_complete, total_cards)
 
         relative_path = os.path.relpath(pdf_path, settings.MEDIA_ROOT)
 
@@ -417,6 +441,24 @@ def process_export_docx(task):
     
     task.update_progress(0, total_cards)
     
+    _last_docx_progress = 0
+    _docx_emit_step = max(1, total_cards // 35)
+
+    def _docx_progress_callback(done, _total):
+        nonlocal _last_docx_progress
+        if total_cards <= 0:
+            return
+        safe_done = max(0, min(int(done or 0), total_cards))
+        # Row rendering dominates DOCX time, so map rows to ~88% progress.
+        target = int((safe_done / float(total_cards)) * max(1, int(total_cards * 0.88)))
+        target = max(_last_docx_progress, min(target, total_cards))
+        if target <= _last_docx_progress:
+            return
+        if target < total_cards and (target - _last_docx_progress) < _docx_emit_step:
+            return
+        _last_docx_progress = target
+        task.update_progress(target, total_cards)
+
     try:
         # Use existing Word exporter
         from core.services.permission_service import PermissionService
@@ -429,6 +471,7 @@ def process_export_docx(task):
             status=status_filter,
             template_id=template_id,
             allow_large=allow_large,
+            progress_callback=_docx_progress_callback,
         )
         
         if not result.success:
@@ -447,6 +490,11 @@ def process_export_docx(task):
         if written <= 0:
             task.mark_failed("DOCX exporter returned empty response")
             return
+
+        pre_complete = max(_last_docx_progress, int(total_cards * 0.96))
+        if pre_complete < total_cards:
+            _last_docx_progress = pre_complete
+            task.update_progress(pre_complete, total_cards)
 
         relative_path = os.path.relpath(docx_path, settings.MEDIA_ROOT)
         
@@ -518,10 +566,31 @@ def process_export_excel(task):
     
     task.update_progress(0, total_cards)
     
+    _last_excel_progress = 0
+    _excel_emit_step = max(1, total_cards // 40)
+
+    def _excel_progress_callback(done, _total):
+        nonlocal _last_excel_progress
+        if total_cards <= 0:
+            return
+        safe_done = max(0, min(int(done or 0), total_cards))
+        target = int((safe_done / float(total_cards)) * max(1, int(total_cards * 0.90)))
+        target = max(_last_excel_progress, min(target, total_cards))
+        if target <= _last_excel_progress:
+            return
+        if target < total_cards and (target - _last_excel_progress) < _excel_emit_step:
+            return
+        _last_excel_progress = target
+        task.update_progress(target, total_cards)
+
     try:
         # Use existing Excel exporter
         exporter = ExcelExporter()
-        result = exporter.export_cards(table, cards_qs)
+        result = exporter.export_cards(
+            table,
+            cards_qs,
+            progress_callback=_excel_progress_callback,
+        )
         
         if not result.success:
             task.mark_failed(result.message)
@@ -538,6 +607,11 @@ def process_export_excel(task):
         if written <= 0:
             task.mark_failed("Excel exporter returned empty response")
             return
+
+        pre_complete = max(_last_excel_progress, int(total_cards * 0.96))
+        if pre_complete < total_cards:
+            _last_excel_progress = pre_complete
+            task.update_progress(pre_complete, total_cards)
 
         relative_path = os.path.relpath(excel_path, settings.MEDIA_ROOT)
         

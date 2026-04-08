@@ -970,9 +970,25 @@ function initReprintPickerHandlers() {
     }
 
     function uploadImageInline(cardId, fieldName, file) {
+        var normalizedFieldName = String(fieldName || '').trim();
+        if (!normalizedFieldName) {
+            return Promise.reject(new Error('Image field is missing'));
+        }
+
         var formData = new FormData();
-        formData.append('field_data', JSON.stringify({}));
-        formData.append(fieldName, file);
+        var fieldDataPayload = {};
+        // Keep the image field present in payload so backend image-field loop runs.
+        fieldDataPayload[normalizedFieldName] = null;
+        formData.append('field_data', JSON.stringify(fieldDataPayload));
+
+        // Backend update service expects multipart file keys as image_<field_name>.
+        formData.append('image_' + normalizedFieldName, file);
+
+        // Backward-compatible fallback for legacy PHOTO handling.
+        if (normalizedFieldName.toUpperCase() === 'PHOTO') {
+            formData.append('photo', file);
+        }
+
         return ApiClient.upload('/api/card/' + cardId + '/update/', formData)
             .then(function(data) {
                 if (data && data.success) return data.card || null;

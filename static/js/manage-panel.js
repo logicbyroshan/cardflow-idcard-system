@@ -1665,6 +1665,71 @@ function _opsStatusCell(item) {
   return _statusBadge(item.status, item.status_display || item.status || 'Unknown');
 }
 
+function _opsCancelAction(item) {
+  const taskId = Number(item?.task_id || 0);
+  if (!item || !item.can_cancel || !Number.isInteger(taskId) || taskId <= 0) {
+    return '';
+  }
+  const btnId = `opsCancelTaskBtn-${taskId}`;
+  return `<div class="ops-row-action"><button type="button" class="btn btn-sm btn-danger ops-cancel-btn" id="${btnId}" onclick="cancelOperationsLatestTask(${taskId})" title="Cancel latest active task"><i class="fa-solid fa-ban"></i> Cancel Task</button></div>`;
+}
+
+window.cancelOperationsLatestTask = async function (taskId) {
+  const parsedTaskId = Number(taskId || 0);
+  if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0) return;
+
+  const ok = await showConfirm({
+    title: 'Cancel Latest Active Task?',
+    text: 'This will stop the latest running background task from Operations Hub.',
+    icon: 'fa-solid fa-ban',
+    confirmLabel: 'Cancel Task',
+    btnClass: 'btn-danger',
+  });
+  if (!ok) return;
+
+  const btn = document.getElementById(`opsCancelTaskBtn-${parsedTaskId}`);
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cancelling';
+  }
+
+  try {
+    const res = await fetch(`/api/task-cancel/${parsedTaskId}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({ latest_only: true }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data?.success) {
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Task cancelled.', 'success');
+      }
+      await loadOperationsFeed(_opsPage);
+      return;
+    }
+
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to cancel task.', 'error');
+    }
+  } catch (err) {
+    console.error('cancelOperationsLatestTask:', err);
+    if (typeof showToast === 'function') {
+      showToast('Network error while cancelling task.', 'error');
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml || '<i class="fa-solid fa-ban"></i> Cancel Task';
+    }
+  }
+};
+
 function renderOperationsTable() {
   const tbody = document.getElementById('opsTableBody');
   if (!tbody) return;
@@ -1691,7 +1756,7 @@ function renderOperationsTable() {
         <div class="ops-event-title">${escHtml(item.event_title || '-')}</div>
         <div class="ops-event-sub">${escHtml(item.event_subtitle || '')}</div>
       </td>
-      <td>${_opsStatusCell(item)}</td>
+      <td>${_opsStatusCell(item)}${_opsCancelAction(item)}</td>
       <td><span class="text-xs font-medium">${escHtml(item.user || 'System')}</span></td>
       <td>
         <div class="ops-detail-main">${escHtml(detailMain || '-')}</div>

@@ -296,6 +296,7 @@ class PdfExporter:
         template_id: int = None,
         font_mode: str = 'auto',
         shorten_titles: bool = False,
+        progress_callback=None,
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -424,7 +425,12 @@ class PdfExporter:
             row_height_cm = round(max_img_h + 0.15, 2) if max_img_h > 0 else 0.8
 
             # Build row data (file:// image URIs for WeasyPrint)
-            rows = self._build_rows(ordered_fields, cards_list, column_configs)
+            rows = self._build_rows(
+                ordered_fields,
+                cards_list,
+                column_configs,
+                progress_callback=progress_callback,
+            )
 
             # Get institution name
             institution_name = "Institution"
@@ -868,6 +874,7 @@ class PdfExporter:
         ordered_fields: List[Dict[str, Any]],
         cards: list,
         column_configs: List[Dict[str, Any]] = None,
+        progress_callback=None,
     ) -> List[List[Dict[str, Any]]]:
         """
         Build row data for the template.
@@ -954,6 +961,12 @@ class PdfExporter:
                 row_cells.append(cell)
 
             rows.append(row_cells)
+
+            if callable(progress_callback) and ((sr_no % 20 == 0) or (sr_no == len(cards))):
+                try:
+                    progress_callback(sr_no, len(cards))
+                except Exception:
+                    pass
 
         return rows
 

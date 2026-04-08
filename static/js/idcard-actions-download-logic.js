@@ -144,6 +144,41 @@ function _getEffectiveExportCount(cardIds) {
     return (cardIds && cardIds.length > 0) ? cardIds.length : totalCards;
 }
 
+function _resolveAsyncExportKind(options, data) {
+    var fromOptions = String((options && options.exportType) || '').trim().toLowerCase();
+    if (fromOptions) return fromOptions;
+
+    var taskType = String((data && data.task_type) || '').trim().toLowerCase();
+    if (!taskType) return 'export';
+    if (taskType.indexOf('docx') !== -1 || taskType.indexOf('doc') !== -1) return 'docx';
+    if (taskType.indexOf('excel') !== -1 || taskType.indexOf('xlsx') !== -1) return 'xlsx';
+    if (taskType.indexOf('zip') !== -1) return 'zip';
+    if (taskType.indexOf('pdf') !== -1) return 'pdf';
+    return 'export';
+}
+
+function _estimateAsyncExportSeconds(exportType, cardCount) {
+    var n = Math.max(1, Number(cardCount || 0));
+    if (exportType === 'docx') return Math.max(50, Math.min(2400, 70 + (n * 0.24)));
+    if (exportType === 'xlsx') return Math.max(20, Math.min(1200, 22 + (n * 0.08)));
+    if (exportType === 'zip') return Math.max(35, Math.min(1800, 38 + (n * 0.13)));
+    if (exportType === 'pdf') return Math.max(35, Math.min(2400, 50 + (n * 0.18)));
+    return Math.max(30, Math.min(1800, 35 + (n * 0.12)));
+}
+
+function _formatEtaLabel(totalSeconds) {
+    var seconds = Math.max(0, Math.round(Number(totalSeconds || 0)));
+    var mins = Math.floor(seconds / 60);
+    var rem = seconds % 60;
+    if (mins >= 60) {
+        var hours = Math.floor(mins / 60);
+        var remMins = mins % 60;
+        return hours + 'h ' + remMins + 'm';
+    }
+    if (mins > 0) return mins + 'm ' + rem + 's';
+    return rem + 's';
+}
+
 /**
  * Start a generic async export task (xlsx/docx/zip) and poll task-status.
  */
@@ -152,6 +187,11 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
     var _asyncCancelled = false;
     var _activeTaskId = null;
     var _cancelRequested = false;
+    var _effectiveCount = _getEffectiveExportCount(cardIds);
+    var _pollOptions = Object.assign({}, options, {
+        exportType: options.exportType || exportType,
+        cardCount: options.cardCount || _effectiveCount
+    });
 
     var cancelFn = function () {
         _asyncCancelled = true;
@@ -219,7 +259,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                     if (typeof showProgressToast === 'function') {
                         showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
                     }
-                    _pollGenericTaskStatus(data.active_task_id, options, function () { return _asyncCancelled; }, cancelFn);
+                    _pollGenericTaskStatus(data.active_task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
                     return;
                 }
 
@@ -227,7 +267,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 return;
             }
             _activeTaskId = data.task_id;
-            _pollGenericTaskStatus(data.task_id, options, function () { return _asyncCancelled; }, cancelFn);
+            _pollGenericTaskStatus(data.task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
         })
         .catch(function (err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -241,7 +281,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 if (typeof showProgressToast === 'function') {
                     showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
                 }
-                _pollGenericTaskStatus(errData.active_task_id, options, function () { return _asyncCancelled; }, cancelFn);
+                _pollGenericTaskStatus(errData.active_task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
                 return;
             }
 
@@ -257,6 +297,12 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
     options = options || {};
     var pollCount = 0;
     var maxPolls = options.maxPolls || 300; // up to 10 minutes at 2s interval
+    var pollStartedAt = Date.now();
+    var displayPct = 5;
+    var lastBackendPct = 0;
+    var lastBackendUpdateAt = pollStartedAt;
+    var exportKind = _resolveAsyncExportKind(options, null);
+    var estimatedTotalSec = _estimateAsyncExportSeconds(exportKind, options.cardCount || 0);
 
     function poll() {
         if (typeof isCancelled === 'function' && isCancelled()) {
@@ -320,12 +366,49 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                     return;
                 }
 
-                var pct = Math.max(5, Math.min(data.progress_percentage || 0, 95));
+                exportKind = _resolveAsyncExportKind(options, data);
+
+                var backendPct = Number(data.progress_percentage || 0);
+                if (!isFinite(backendPct)) backendPct = 0;
+                backendPct = Math.max(0, Math.min(95, backendPct));
+
+                if (backendPct > lastBackendPct + 0.1) {
+                    lastBackendPct = backendPct;
+                    lastBackendUpdateAt = Date.now();
+                }
+
+                var elapsedSec = Math.max(1, (Date.now() - pollStartedAt) / 1000);
+                if (backendPct >= 8) {
+                    var observedTotal = elapsedSec / Math.max(backendPct / 100, 0.08);
+                    estimatedTotalSec = Math.max(estimatedTotalSec, observedTotal);
+                }
+
+                var timeDrivenPct = Math.min(92, (elapsedSec / Math.max(estimatedTotalSec, 1)) * 100);
+                var stalledSec = Math.max(0, (Date.now() - lastBackendUpdateAt) / 1000);
+                var stalledBoost = stalledSec > 8 ? Math.min(10, (stalledSec - 8) * 0.8) : 0;
+
+                var blendedPct = Math.max(
+                    backendPct,
+                    timeDrivenPct,
+                    Math.min(94, backendPct + stalledBoost)
+                );
+                displayPct = Math.max(displayPct, Math.min(95, blendedPct));
+
+                var baseRemaining = Math.max(0, estimatedTotalSec - elapsedSec);
+                if (displayPct >= 10) {
+                    var paceBasedTotal = elapsedSec / (displayPct / 100);
+                    baseRemaining = Math.max(baseRemaining, paceBasedTotal - elapsedSec);
+                }
+                // Show slightly conservative ETA so users have a safe wait window.
+                var bufferedEta = Math.max(5, Math.ceil((baseRemaining * 1.18) + 12));
+
                 var msg = options.processingMessage
-                    ? options.processingMessage(data)
+                    ? options.processingMessage(data, Math.round(displayPct), bufferedEta)
                     : ('Processing export... ' + (data.progress || 0) + '/' + (data.total || '?'));
+                msg = msg + ' | Est. wait: ' + _formatEtaLabel(bufferedEta);
+
                 if (typeof showProgressToast === 'function') {
-                    showProgressToast(msg, pct, cancelFn);
+                    showProgressToast(msg, Math.round(displayPct), cancelFn);
                 }
                 setTimeout(poll, _POLL_INTERVAL);
             })
@@ -368,8 +451,11 @@ function downloadImages(cardIds, renameOptions) {
             failMessage: 'Image export failed',
             cancelLabel: 'Image export',
             fallbackFilename: 'images.zip',
-            processingMessage: function (data) {
-                return data.status_display || ('Preparing image ZIP... ' + (data.progress_percentage || 0) + '%');
+            processingMessage: function (data, displayPct) {
+                var progressText = (data.total && data.total > 0)
+                    ? (data.progress || 0) + '/' + data.total
+                    : (data.progress || 0) + '/?';
+                return (data.status_display || 'Preparing image ZIP...') + ' ' + Math.round(displayPct || 0) + '% (' + progressText + ')';
             }
         });
         return;
@@ -539,8 +625,11 @@ function downloadDocx(cardIds, format, templateId) {
             onComplete: function() {
                 _moveCardsToDownloadIfApproved(cardIds);
             },
-            processingMessage: function (data) {
-                return data.status_display || ('Preparing ' + format.toUpperCase() + '... ' + (data.progress_percentage || 0) + '%');
+            processingMessage: function (data, displayPct) {
+                var progressText = (data.total && data.total > 0)
+                    ? (data.progress || 0) + '/' + data.total
+                    : (data.progress || 0) + '/?';
+                return (data.status_display || ('Preparing ' + format.toUpperCase() + '...')) + ' ' + Math.round(displayPct || 0) + '% (' + progressText + ')';
             }
         });
         return;
@@ -656,8 +745,11 @@ function downloadXlsx(cardIds) {
                 }
                 _moveCardsToDownloadIfApproved(cardIds);
             },
-            processingMessage: function (data) {
-                return data.status_display || ('Preparing Excel... ' + (data.progress_percentage || 0) + '%');
+            processingMessage: function (data, displayPct) {
+                var progressText = (data.total && data.total > 0)
+                    ? (data.progress || 0) + '/' + data.total
+                    : (data.progress || 0) + '/?';
+                return (data.status_display || 'Preparing Excel...') + ' ' + Math.round(displayPct || 0) + '% (' + progressText + ')';
             }
         });
         return;

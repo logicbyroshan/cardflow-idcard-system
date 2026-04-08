@@ -367,7 +367,7 @@ def cancel_task(task_id: int, user=None) -> dict:
     try:
         with transaction.atomic():
             qs = BackgroundTask.objects.select_for_update()
-            if user and getattr(user, 'role', None) == 'super_admin':
+            if user and (getattr(user, 'is_superuser', False) or getattr(user, 'role', None) in ('super_admin', 'pro_user')):
                 task = qs.get(id=task_id)
             elif user:
                 task = qs.get(id=task_id, user=user)

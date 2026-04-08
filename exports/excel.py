@@ -63,7 +63,8 @@ class ExcelExporter:
         table,
         cards: QuerySet,
         uppercase_values: bool = True,
-        status: str = ''
+        status: str = '',
+        progress_callback=None,
     ) -> ExcelExportResult:
         """
         Export cards to Excel format.
@@ -169,6 +170,12 @@ class ExcelExporter:
                     )
                 
                 row_count += 1
+
+                if callable(progress_callback) and ((row_count % 25 == 0) or (row_count == len(sorted_cards))):
+                    try:
+                        progress_callback(row_count, len(sorted_cards))
+                    except Exception:
+                        pass
             
             # Apply column widths
             for col_idx, width in column_widths.items():
