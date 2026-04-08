@@ -107,7 +107,6 @@ def _get_live_active_client_ids_for_dashboard(user):
         Staff.objects.filter(
             user_id__in=active_user_ids,
             staff_type='client_staff',
-            status='active',
             user__is_active=True,
             client_id__isnull=False,
             client__status='active',
@@ -551,9 +550,9 @@ def api_recent_client_updates(request):
         # Show all accessible clients (including inactive) for dashboard recents.
         # Order by most-recently-approved card data, then newest-created client.
         base_qs = Client.objects.all()
-        clients = PermissionService.get_accessible_clients(
+        clients_qs = PermissionService.get_accessible_clients(
             user, base_qs
-        ).annotate(
+        ).values('id', 'name', 'status', 'created_at').annotate(
             latest_approved=Max(
                 'id_card_groups__tables__id_cards__updated_at',
                 filter=Q(id_card_groups__tables__id_cards__status='approved')
@@ -563,12 +562,17 @@ def api_recent_client_updates(request):
             F('created_at').desc(nulls_last=True),
             F('id').desc(),
         )[:limit]
+
+        # Materialize only fields needed by dashboard to keep compatibility with
+        # DBs that may not yet have newer optional Client columns.
+        clients = list(clients_qs)
+        client_ids = [c['id'] for c in clients]
         
         results = []
         
         # Batch-fetch card counts for all clients in 1 query (instead of N)
         card_counts_qs = IDCard.objects.filter(
-            table__group__client__in=clients
+            table__group__client_id__in=client_ids
         ).values('table__group__client_id').annotate(
             pending=Count('id', filter=Q(status='pending')),
             verified=Count('id', filter=Q(status='verified')),
@@ -580,13 +584,13 @@ def api_recent_client_updates(request):
         
         # Batch-fetch first table IDs in 1 query (instead of N)
         first_table_qs = IDCardTable.objects.filter(
-            group__client__in=clients
+            group__client_id__in=client_ids
         ).values('group__client_id').annotate(first_table_id=Min('id'))
         first_table_map = {item['group__client_id']: item['first_table_id'] for item in first_table_qs}
         
         # Batch-fetch all tables with per-table card counts
         tables_qs = IDCardTable.objects.filter(
-            group__client__in=clients
+            group__client_id__in=client_ids
         ).values('id', 'name', 'group__client_id').annotate(
             pending=Count('id_cards', filter=Q(id_cards__status='pending')),
             verified=Count('id_cards', filter=Q(id_cards__status='verified')),
@@ -610,15 +614,17 @@ def api_recent_client_updates(request):
             })
         
         for client in clients:
-            cc = counts_map.get(client.id, {})
+            client_id = client['id']
+            cc = counts_map.get(client_id, {})
+            client_name = client.get('name') or ''
             results.append({
-                'id': client.id,
-                'client_id': client.id,
-                'name': client.name,
-                'status': client.status,
-                'initial': client.name[0].upper() if client.name else 'C',
-                'first_table_id': first_table_map.get(client.id),
-                'tables': tables_map.get(client.id, []),
+                'id': client_id,
+                'client_id': client_id,
+                'name': client_name,
+                'status': client.get('status'),
+                'initial': client_name[0].upper() if client_name else 'C',
+                'first_table_id': first_table_map.get(client_id),
+                'tables': tables_map.get(client_id, []),
                 'pending': cc.get('pending', 0),
                 'verified': cc.get('verified', 0),
                 'approved': cc.get('approved', 0),

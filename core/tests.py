@@ -525,7 +525,7 @@ class PermissionValidationMiddlewareTests(TestCase):
         request.session = {}
         request.content_type = 'application/json'
 
-        with patch('core.models.User.objects.select_related', side_effect=Exception('db locked')):
+        with patch('core.models.User.objects.only', side_effect=Exception('db locked')):
             response = middleware._validate_user_access(request)
 
         self.assertIsNotNone(response)
@@ -538,7 +538,7 @@ class PermissionValidationMiddlewareTests(TestCase):
         request.session = {}
         request.content_type = ''
 
-        with patch('core.models.User.objects.select_related', side_effect=Exception('db locked')):
+        with patch('core.models.User.objects.only', side_effect=Exception('db locked')):
             response = middleware._validate_user_access(request)
 
         self.assertIsNotNone(response)
@@ -766,7 +766,7 @@ class SubdomainRoutingSecurityTests(TestCase):
         middleware(request)
         self.assertFalse(getattr(request, '_is_panel_subdomain', False))
 
-    @override_settings(DEBUG=True)
+    @override_settings(DEBUG=True, ALLOWED_HOSTS=['unknown.local'])
     def test_panel_context_cookie_used_in_debug(self):
         from core.middleware import SubdomainRoutingMiddleware
 
