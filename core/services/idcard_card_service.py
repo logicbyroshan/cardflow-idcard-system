@@ -854,8 +854,25 @@ class IDCardCardService(BaseService):
                 existing_data = card.field_data or {}
                 image_field_names = cls.get_image_field_names(table.fields)
 
-                if field_data:
-                    field_data = cls.uppercase_field_data_selective(field_data, table.fields)
+                # Be tolerant to payload shape/casing differences coming from multipart UI flows.
+                if not isinstance(field_data, dict):
+                    field_data = {}
+
+                has_any_field_data = bool(field_data)
+                normalized_field_data = {
+                    str(k).strip().upper(): v
+                    for k, v in field_data.items()
+                    if isinstance(k, str)
+                }
+                normalized_image_files = {
+                    str(k).strip().upper(): v
+                    for k, v in (image_files or {}).items()
+                    if isinstance(k, str)
+                }
+
+                if has_any_field_data or image_files:
+                    if has_any_field_data:
+                        field_data = cls.uppercase_field_data_selective(field_data, table.fields)
 
                     # Merge text (non-image) fields
                     for key, value in field_data.items():
@@ -866,7 +883,26 @@ class IDCardCardService(BaseService):
                     image_counter = 0
                     for img_field in image_field_names:
                         uploaded_file = image_files.get(f"image_{img_field}") if image_files else None
+
+                        # Fallback: case-insensitive lookup for multipart keys.
+                        if uploaded_file is None and normalized_image_files:
+                            exact_key_upper = f"image_{img_field}".strip().upper()
+                            uploaded_file = normalized_image_files.get(exact_key_upper)
+
+                        # Fallback: scan image_* keys and compare suffix case-insensitively.
+                        if uploaded_file is None and normalized_image_files:
+                            img_field_upper = str(img_field).strip().upper()
+                            for file_key_upper, file_obj in normalized_image_files.items():
+                                if not file_key_upper.startswith('IMAGE_'):
+                                    continue
+                                key_suffix_upper = file_key_upper[6:].strip().upper()
+                                if key_suffix_upper == img_field_upper:
+                                    uploaded_file = file_obj
+                                    break
+
                         new_value = field_data.get(img_field)  # None if not sent
+                        if new_value is None:
+                            new_value = normalized_field_data.get(str(img_field).strip().upper(), None)
 
                         if uploaded_file is not None or new_value is not None:
                             existing_value = existing_data.get(img_field, '')

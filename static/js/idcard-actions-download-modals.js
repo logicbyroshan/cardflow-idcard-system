@@ -1329,7 +1329,8 @@ function initReprintPickerHandlers() {
                     if (typeof showToast === 'function') showToast('Image uploaded', 'success');
                 })
                 .catch(function(err) {
-                    if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Could not upload image', 'error');
+                    var msg = (err && err.data && err.data.message) || (err && err.message) || 'Could not upload image';
+                    if (typeof showToast === 'function') showToast(msg, 'error');
                 })
                 .finally(function() {
                     imageUploadInput.value = '';
