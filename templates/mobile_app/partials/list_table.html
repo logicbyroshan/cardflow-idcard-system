@@ -42,18 +42,16 @@
                                 {% if pslot.url %}
                                 <img src="{{ pslot.url }}"
                                      class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy">
-                                <div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400"
-                                     style="font-size:16px;display:none;">
+                                  <div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400 text-base"
+                                      style="display:none;">
                                     <i class="fa-solid fa-user-astronaut"></i>
                                 </div>
                                 {% elif pslot.has_path %}
-                                <div class="w-full h-full bg-amber-50 text-amber-400 flex items-center justify-center"
-                                     style="font-size:16px;">
+                                  <div class="w-full h-full bg-amber-50 text-amber-400 text-base flex items-center justify-center">
                                     <i class="fa-solid fa-image"></i>
                                 </div>
                                 {% else %}
-                                <div class="w-full h-full bg-gray-100 text-gray-300 flex items-center justify-center"
-                                     style="font-size:16px;">
+                                  <div class="w-full h-full bg-gray-100 text-gray-300 text-base flex items-center justify-center">
                                     <i class="fa-solid fa-user-slash"></i>
                                 </div>
                                 {% endif %}
@@ -65,16 +63,15 @@
                                  style="height:68px;">
                                 <img src="{{ purl }}"
                                      class="js-card-photo w-full h-full object-cover object-top" alt="" loading="lazy">
-                                <div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400"
-                                     style="font-size:16px;display:none;">
+                                  <div class="js-card-photo-fallback w-full h-full bg-amber-50 flex items-center justify-center text-amber-400 text-base"
+                                      style="display:none;">
                                     <i class="fa-solid fa-user-astronaut"></i>
                                 </div>
                             </div>
                         {% endfor %}
                     {% else %}
                     <div class="rounded-xl overflow-hidden w-full {% if student.status == 'pending' %}ring-1 ring-amber-200{% elif student.status == 'verified' %}ring-1 ring-emerald-200{% elif student.status == 'approved' %}ring-1 ring-sky-200{% elif student.status == 'download' %}ring-1 ring-violet-200{% endif %}" style="height:68px;">
-                        <div class="w-full h-full bg-gray-100 text-gray-300 flex items-center justify-center"
-                             style="font-size:16px;">
+                        <div class="w-full h-full bg-gray-100 text-gray-300 text-base flex items-center justify-center">
                             <i class="fa-solid fa-user-slash"></i>
                         </div>
                     </div>

@@ -37,6 +37,29 @@ body {
     --m-border: #cfe3f7;
     --m-text: #1f2d3d;
     --m-muted: #5b6b7b;
+    --m-font-family: "Segoe UI", "Inter", "Noto Sans", sans-serif;
+
+    /* Status palette used across lists/chips/buttons */
+    --st-pending-bg: #fffbeb;
+    --st-pending-border: #fcd34d;
+    --st-pending-text: #b45309;
+
+    --st-verified-bg: #ecfdf5;
+    --st-verified-border: #86efac;
+    --st-verified-text: #047857;
+
+    --st-approved-bg: #eff6ff;
+    --st-approved-border: #93c5fd;
+    --st-approved-text: #1d4ed8;
+
+    --st-download-bg: #f5f3ff;
+    --st-download-border: #c4b5fd;
+    --st-download-text: #6d28d9;
+
+    --st-pool-bg: #fff1f2;
+    --st-pool-border: #fda4af;
+    --st-pool-text: #be123c;
+
     --pwa-topbar-height: 52px;
     --pwa-bottom-nav-height: 58px;
 }
@@ -53,6 +76,22 @@ body {
     --color-brand-dark: var(--m-primary-dark);
     background: var(--m-surface);
     color: var(--m-text);
+    font-family: var(--m-font-family);
+}
+
+#mobile-app,
+#mobile-app button,
+#mobile-app input,
+#mobile-app select,
+#mobile-app textarea {
+    font-family: var(--m-font-family);
+}
+
+#mobile-app i.fa-solid,
+#mobile-app i.fa-regular,
+#mobile-app i.fa-brands {
+    line-height: 1;
+    vertical-align: middle;
 }
 
 /* Vibrant card system for mobile pages (less border, stronger color). */
@@ -158,6 +197,7 @@ body {
 .mobile-status-chip {
     min-height: 26px;
     gap: 4px;
+    border-radius: 8px;
 }
 
 .mobile-status-chip-fixed {
@@ -166,6 +206,52 @@ body {
 
 .mobile-status-tab {
     min-height: 32px;
+}
+
+/* Keep status chips/tabs color-consistent with list status semantics. */
+#mobile-app a.mobile-status-chip[href*='/pending/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/pending/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=pending']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=pending']:not([class*='text-white']) {
+    background: var(--st-pending-bg);
+    border-color: var(--st-pending-border);
+    color: var(--st-pending-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/verified/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/verified/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=verified']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=verified']:not([class*='text-white']) {
+    background: var(--st-verified-bg);
+    border-color: var(--st-verified-border);
+    color: var(--st-verified-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/approved/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/approved/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=approved']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=approved']:not([class*='text-white']) {
+    background: var(--st-approved-bg);
+    border-color: var(--st-approved-border);
+    color: var(--st-approved-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/download/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/download/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=download']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=download']:not([class*='text-white']) {
+    background: var(--st-download-bg);
+    border-color: var(--st-download-border);
+    color: var(--st-download-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/pool/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/pool/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=pool']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=pool']:not([class*='text-white']) {
+    background: var(--st-pool-bg);
+    border-color: var(--st-pool-border);
+    color: var(--st-pool-text);
 }
 
 #mobile-app {
@@ -596,31 +682,36 @@ textarea:focus-visible {
     line-height: 1.6;
 }
 
-.pwa-badge-green {
+.pwa-badge-green,
+.pwa-badge-verified {
     background-color: #ecfdf5;
     color: #059669;
     border: 1px solid #a7f3d0;
 }
 
-.pwa-badge-blue {
+.pwa-badge-blue,
+.pwa-badge-approved {
     background-color: #eff6ff;
     color: #2563eb;
     border: 1px solid #bfdbfe;
 }
 
-.pwa-badge-purple {
+.pwa-badge-purple,
+.pwa-badge-download {
     background-color: #faf5ff;
     color: #7c3aed;
     border: 1px solid #ddd6fe;
 }
 
-.pwa-badge-amber {
+.pwa-badge-amber,
+.pwa-badge-pending {
     background-color: #fffbeb;
     color: #d97706;
     border: 1px solid #fde68a;
 }
 
-.pwa-badge-red {
+.pwa-badge-red,
+.pwa-badge-pool {
     background-color: #fef2f2;
     color: #dc2626;
     border: 1px solid #fecaca;

@@ -146,9 +146,9 @@
                 {% for act in log_activities %}
                 <div class="flex items-center px-3 py-2.5 border-b border-gray-50 last:border-b-0">
                     <div class="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mr-2
-                        {% if act.status == 'verified' %}bg-green-50 text-green-500
-                        {% elif act.status == 'approved' %}bg-blue-50 text-blue-500
-                        {% elif act.status == 'download' %}bg-purple-50 text-purple-500
+                        {% if act.status == 'verified' %}bg-emerald-50 text-emerald-500
+                        {% elif act.status == 'approved' %}bg-sky-50 text-sky-500
+                        {% elif act.status == 'download' %}bg-violet-50 text-violet-500
                         {% elif act.status == 'pending' %}bg-amber-50 text-amber-500
                         {% elif act.status == 'pool' %}bg-red-50 text-red-500
                         {% else %}bg-gray-50 text-gray-400{% endif %}">
@@ -166,11 +166,11 @@
                     </div>
                     <div class="w-[68px] flex justify-center">
                         <span class="pwa-status-badge
-                            {% if act.status == 'verified' %}pwa-badge-green
-                            {% elif act.status == 'approved' %}pwa-badge-blue
-                            {% elif act.status == 'download' %}pwa-badge-purple
-                            {% elif act.status == 'pending' %}pwa-badge-amber
-                            {% elif act.status == 'pool' %}pwa-badge-red
+                            {% if act.status == 'verified' %}pwa-badge-verified
+                            {% elif act.status == 'approved' %}pwa-badge-approved
+                            {% elif act.status == 'download' %}pwa-badge-download
+                            {% elif act.status == 'pending' %}pwa-badge-pending
+                            {% elif act.status == 'pool' %}pwa-badge-pool
                             {% else %}pwa-badge-gray{% endif %}">
                             {{ act.status_display }}
                         </span>
