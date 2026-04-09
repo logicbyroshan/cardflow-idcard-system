@@ -499,8 +499,21 @@
     padding: 0;
 }
 
+.dashboard-card-header.team-overview-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+}
+
+.dashboard-card-header.team-overview-header h3 {
+    margin: 0;
+    font-size: 13px;
+}
+
 .team-overview-panel-body .dashboard-scroll-table-wrapper {
-    border-top: 0;
+    border-top: 1px solid #bfdbfe;
     border-left: 1px solid #bfdbfe;
     border-right: 1px solid #bfdbfe;
     border-bottom: 1px solid #bfdbfe;
@@ -511,11 +524,9 @@
     gap: 8px;
     flex-wrap: nowrap;
     align-items: center;
-    padding: 8px 10px;
+    padding: 0;
     border: 0;
-    border-top: 1px solid #bfdbfe;
-    border-bottom: 1px solid #bfdbfe;
-    background: #f5faff;
+    background: transparent;
 }
 
 .team-overview-toolbar-search {
@@ -530,20 +541,20 @@
 }
 
 .team-overview-toolbar-search .recent-updates-search-input {
-    height: 30px;
+    height: 28px;
+    font-size: 11px;
 }
 
-.team-overview-toolbar .action-btn,
-.team-overview-form-actions .action-btn {
+.team-overview-toolbar .action-btn {
     appearance: none;
     -webkit-appearance: none;
     border: 1px solid #d1d5db;
     background: #ffffff;
     color: #1f2937;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 6px 12px;
+    padding: 5px 10px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -551,29 +562,15 @@
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.team-overview-toolbar .action-btn:hover:not(:disabled),
-.team-overview-form-actions .action-btn:hover:not(:disabled) {
+.team-overview-toolbar .action-btn:hover:not(:disabled) {
     background: #eef2ff;
     border-color: #93c5fd;
     color: #1e3a8a;
 }
 
-.team-overview-toolbar .action-btn:disabled,
-.team-overview-form-actions .action-btn:disabled {
+.team-overview-toolbar .action-btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
-}
-
-.team-overview-form-actions .action-btn-primary {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
-    color: #ffffff;
-}
-
-.team-overview-form-actions .action-btn-primary:hover:not(:disabled) {
-    background: #1e40af;
-    border-color: #1e40af;
-    color: #ffffff;
 }
 
 .team-overview-row {
@@ -668,7 +665,7 @@
 
     .team-overview-toolbar .action-btn {
         font-size: 11px;
-        padding: 6px 10px;
+        padding: 5px 9px;
     }
 }
 

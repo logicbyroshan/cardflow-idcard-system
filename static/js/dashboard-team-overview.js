@@ -31,7 +31,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInputs = Array.from(document.querySelectorAll('[data-team-overview-search]'));
     const primarySearchInput = document.getElementById('teamOverviewSearch');
 
-    const addBtn = document.getElementById('teamOverviewActionAdd');
     const editBtn = document.getElementById('teamOverviewActionEdit');
     const viewStaffBtn = document.getElementById('teamOverviewActionViewStaff');
     const toggleBtn = document.getElementById('teamOverviewActionToggle');
@@ -394,10 +393,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectedKind = selected ? String(selected.kind || scopeKind(state.scope)).toLowerCase() : '';
         const canManageSelected = !!selected && canManageKind(selectedKind);
 
-        if (addBtn) {
-            const addEnabled = canManageKind(scopeKind(state.scope));
-            addBtn.disabled = !addEnabled;
-        }
         if (editBtn) editBtn.disabled = !canManageSelected;
         if (toggleBtn) toggleBtn.disabled = !canManageSelected;
         if (deleteBtn) deleteBtn.disabled = !canManageSelected;
@@ -1270,12 +1265,6 @@ document.addEventListener('DOMContentLoaded', function () {
             await openFormForAdd(targetScope);
         });
     });
-
-    if (addBtn) {
-        addBtn.addEventListener('click', async function () {
-            await openFormForAdd(state.scope);
-        });
-    }
 
     if (editBtn) {
         editBtn.addEventListener('click', async function () {

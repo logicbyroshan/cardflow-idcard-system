@@ -1,9 +1,6 @@
 {% load static %}
 <div class="dashboard-card dashboard-card-blue-accent">
-  <div class="dashboard-card-header updates-header">
-    <h3 id="teamOverviewPanelTitle"><i class="fa-solid fa-users"></i> Team Overview - Clients</h3>
-  </div>
-  <div class="dashboard-card-body team-overview-panel-body">
+  <div class="dashboard-card-header updates-header team-overview-header">
     <div class="team-overview-toolbar">
       <button type="button" class="action-btn" id="teamOverviewActionEdit" disabled>
         <i class="fa-solid fa-pen-to-square"></i>
@@ -29,6 +26,9 @@
         </div>
       </div>
     </div>
+    <h3 id="teamOverviewPanelTitle"><i class="fa-solid fa-users"></i> Team Overview - Clients</h3>
+  </div>
+  <div class="dashboard-card-body team-overview-panel-body">
     <div class="dashboard-scroll-table-wrapper">
       <table class="recent-table dashboard-scroll-table recent-table-5col team-overview-table" aria-label="Team Overview Table">
         <thead>
