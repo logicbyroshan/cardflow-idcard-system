@@ -72,6 +72,24 @@ def _parse_recent_activity_window(raw_window):
     return 48
 
 
+def _format_dashboard_datetime(value):
+    """Return a compact dashboard-friendly datetime string."""
+    if not value:
+        return ''
+    try:
+        return timezone.localtime(value).strftime('%d-%m-%Y %H:%M')
+    except Exception:
+        return ''
+
+
+def _safe_public_email(value):
+    """Hide placeholder service emails from dashboard lists."""
+    email = str(value or '').strip()
+    if email.endswith('@noemail.local'):
+        return ''
+    return email
+
+
 def _get_live_active_client_ids_for_dashboard(user):
     """
     Return client IDs with recent authenticated activity.
@@ -671,6 +689,143 @@ def api_recent_client_updates(request):
         })
     except Exception as e:
         logger.exception('api_recent_client_updates error: %s', e)
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred. Please try again.'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_dashboard_team_overview(request):
+    """API endpoint for dashboard-native Team Overview lists."""
+    try:
+        user = request.user
+        scope = str(request.GET.get('scope') or 'clients').strip().lower()
+        if scope not in ('clients', 'operator', 'assistent'):
+            scope = 'clients'
+
+        query = str(request.GET.get('search') or '').strip()
+        status = str(request.GET.get('status') or '').strip().lower()
+        limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
+
+        is_super_admin = PermissionService.is_super_admin(user)
+        can_manage_clients = bool(is_super_admin or PermissionService.has(user, 'perm_idcard_client_list'))
+        can_manage_staff = bool(is_super_admin)
+        can_manage_client_staff = bool(
+            is_super_admin
+            or PermissionService.has(user, 'perm_manage_client_staff')
+            or PermissionService.has(user, 'perm_idcard_client_list')
+        )
+
+        items = []
+
+        if scope == 'clients':
+            qs = PermissionService.get_accessible_clients(
+                user,
+                Client.objects.select_related('user')
+            ).order_by('-id')
+
+            if query:
+                qs = qs.filter(
+                    Q(name__icontains=query)
+                    | Q(user__email__icontains=query)
+                    | Q(phone__icontains=query)
+                )
+
+            if status in ('active', 'inactive', 'suspended'):
+                qs = qs.filter(status=status)
+
+            for client in qs[:limit]:
+                items.append({
+                    'id': client.id,
+                    'kind': 'client',
+                    'name': client.name or '',
+                    'email': _safe_public_email(getattr(client.user, 'email', '')),
+                    'mobile': client.phone or '',
+                    'status': client.status or 'inactive',
+                    'created_at': _format_dashboard_datetime(client.created_at),
+                    'updated_at': _format_dashboard_datetime(client.updated_at),
+                    'client_id': client.id,
+                    'client_name': client.name or '',
+                })
+
+        elif scope == 'operator':
+            qs = Staff.objects.filter(
+                staff_type='admin_staff'
+            ).select_related('user').order_by('-id')
+
+            if query:
+                qs = qs.filter(
+                    Q(name__icontains=query)
+                    | Q(user__email__icontains=query)
+                    | Q(phone__icontains=query)
+                )
+
+            if status in ('active', 'inactive'):
+                qs = qs.filter(user__is_active=(status == 'active'))
+
+            for staff in qs[:limit]:
+                items.append({
+                    'id': staff.id,
+                    'kind': 'operator',
+                    'name': staff.name or '',
+                    'email': _safe_public_email(getattr(staff.user, 'email', '')),
+                    'mobile': staff.phone or '',
+                    'status': 'active' if getattr(staff.user, 'is_active', False) else 'inactive',
+                    'created_at': _format_dashboard_datetime(staff.created_at),
+                    'updated_at': _format_dashboard_datetime(staff.updated_at),
+                    'client_id': None,
+                    'client_name': '',
+                })
+
+        else:
+            qs = Staff.objects.filter(
+                staff_type='client_staff'
+            ).select_related('user', 'client').order_by('-id')
+
+            if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
+                accessible_ids = PermissionService.get_accessible_client_ids(user)
+                qs = qs.filter(client_id__in=accessible_ids)
+
+            if query:
+                qs = qs.filter(
+                    Q(name__icontains=query)
+                    | Q(user__email__icontains=query)
+                    | Q(phone__icontains=query)
+                    | Q(client__name__icontains=query)
+                )
+
+            if status in ('active', 'inactive'):
+                qs = qs.filter(user__is_active=(status == 'active'))
+
+            for staff in qs[:limit]:
+                items.append({
+                    'id': staff.id,
+                    'kind': 'assistant',
+                    'name': staff.name or '',
+                    'email': _safe_public_email(getattr(staff.user, 'email', '')),
+                    'mobile': staff.phone or '',
+                    'status': 'active' if getattr(staff.user, 'is_active', False) else 'inactive',
+                    'created_at': _format_dashboard_datetime(staff.created_at),
+                    'updated_at': _format_dashboard_datetime(staff.updated_at),
+                    'client_id': staff.client_id,
+                    'client_name': getattr(staff.client, 'name', '') if staff.client_id else '',
+                })
+
+        return JsonResponse({
+            'success': True,
+            'scope': scope,
+            'items': items,
+            'count': len(items),
+            'capabilities': {
+                'can_manage_clients': can_manage_clients,
+                'can_manage_staff': can_manage_staff,
+                'can_manage_client_staff': can_manage_client_staff,
+            },
+        })
+    except Exception as e:
+        logger.exception('api_dashboard_team_overview error: %s', e)
         return JsonResponse({
             'success': False,
             'error': 'An error occurred. Please try again.'

@@ -7,19 +7,19 @@
   <div class="dashboard-card-body">
     <div class="quick-actions">
       {% if is_super_admin or perm_idcard_client_list %}
-      <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn">
+      <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-client">
         <i class="fa-solid fa-user-plus"></i>
         <span>Add New Client</span>
       </a>
       {% endif %}
       {% if is_super_admin %}
-      <a href="{% url 'manage_staff' %}?add=1" class="quick-action-btn">
+      <a href="{% url 'manage_staff' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-operator">
         <i class="fa-solid fa-user-tie"></i>
         <span>Add New Staff</span>
       </a>
       {% endif %}
       {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
-      <a href="{% url 'manage_client_staff' %}?add=1" class="quick-action-btn">
+      <a href="{% url 'manage_client_staff' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-assistent">
         <i class="fa-solid fa-user-gear"></i>
         <span>Add New Assistent</span>
       </a>
@@ -28,18 +28,6 @@
         <i class="fa-solid fa-envelope-open-text"></i>
         <span>Messages</span>
       </a>
-      {% if is_super_admin or perm_idcard_setting_list %}
-      <a href="{% url 'active_clients' %}" class="quick-action-btn">
-        <i class="fa-solid fa-id-card"></i>
-        <span>View ID Cards</span>
-      </a>
-      {% endif %}
-      {% if is_super_admin %}
-      <a href="{% url 'manage_panel' %}" class="quick-action-btn">
-        <i class="fa-solid fa-sliders"></i>
-        <span>Manage Panel</span>
-      </a>
-      {% endif %}
     </div>
   </div>
 </div>

@@ -263,6 +263,13 @@ a.count-badge.pool:hover {
     transition: background 0.15s ease;
 }
 
+button.card-overview-item {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+}
+
 .card-overview-item:hover {
     background: #f0f4f8;
 }
@@ -386,7 +393,12 @@ a.count-badge.pool:hover {
 }
 
 .dashboard-section-tabs .dashboard-tab-item .card-overview-icon {
-    background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+}
+
+.dashboard-side-sticky .card-overview-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #ffffff;
 }
 
@@ -397,5 +409,15 @@ a.count-badge.pool:hover {
 
 .dashboard-tab-item.is-active .card-overview-label,
 .dashboard-tab-item.is-active .card-overview-value {
+    color: #1e3a8a;
+}
+
+.dashboard-team-scope-item.is-active {
+    background: #eef2ff;
+    border-color: #1d4ed8;
+}
+
+.dashboard-team-scope-item.is-active .card-overview-label,
+.dashboard-team-scope-item.is-active .card-overview-value {
     color: #1e3a8a;
 }

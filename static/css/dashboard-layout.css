@@ -317,8 +317,13 @@
 .recent-table thead th.recent-updates-sortable:hover,
 .recent-table thead th.recent-updates-sortable:focus-visible {
     background: rgba(56, 189, 248, 0.16);
-    color: #083344;
+    color: #083344 !important;
     outline: none;
+}
+
+.recent-table thead th.recent-updates-sortable:hover .recent-sort-icon,
+.recent-table thead th.recent-updates-sortable:focus-visible .recent-sort-icon {
+    color: #334155 !important;
 }
 
 .recent-table thead th.recent-updates-sortable.is-sort-active {

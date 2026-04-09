@@ -1,0 +1,137 @@
+{% load static %}
+<div class="dashboard-card">
+  <div class="dashboard-card-header updates-header">
+    <h3 id="teamOverviewPanelTitle"><i class="fa-solid fa-users"></i> Team Overview - Clients</h3>
+    <div class="recent-updates-search-inline">
+      <div class="recent-updates-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="teamOverviewSearch" class="recent-updates-search-input" placeholder="Search name, email, mobile..." aria-label="Search Team Overview" autocomplete="off">
+      </div>
+    </div>
+  </div>
+  <div class="dashboard-card-body">
+    <div class="team-overview-toolbar">
+      <button type="button" class="action-btn" id="teamOverviewActionAdd">
+        <i class="fa-solid fa-plus"></i>
+        Add New
+      </button>
+      <button type="button" class="action-btn" id="teamOverviewActionEdit" disabled>
+        <i class="fa-solid fa-pen-to-square"></i>
+        Edit
+      </button>
+      <button type="button" class="action-btn" id="teamOverviewActionViewStaff" disabled>
+        <i class="fa-solid fa-users-gear"></i>
+        View Staff
+      </button>
+      <button type="button" class="action-btn" id="teamOverviewActionToggle" disabled>
+        <i class="fa-solid fa-toggle-on"></i>
+        Active/Inactive
+      </button>
+      <button type="button" class="action-btn" id="teamOverviewActionDelete" disabled>
+        <i class="fa-solid fa-trash"></i>
+        Delete
+      </button>
+    </div>
+    <div class="dashboard-scroll-table-wrapper">
+      <table class="recent-table dashboard-scroll-table recent-table-5col" aria-label="Team Overview Table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Created At</th>
+            <th>Updated At</th>
+          </tr>
+        </thead>
+        <tbody id="teamOverviewBody">
+          <tr>
+            <td colspan="5" class="muted-row">Loading team overview...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="teamOverviewDrawerOverlay" hidden></div>
+<aside class="side-drawer dashboard-team-drawer" id="teamOverviewDrawer" aria-hidden="true">
+  <div class="drawer-header">
+    <h2 class="drawer-title" id="teamOverviewDrawerTitle">
+      <i class="fa-solid fa-user-pen"></i>
+      Team Entity
+    </h2>
+    <button type="button" class="drawer-close" id="teamOverviewDrawerClose" aria-label="Close team drawer">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <form id="teamOverviewForm" class="team-overview-form">
+      <input type="hidden" id="teamOverviewFormMode" value="add">
+      <input type="hidden" id="teamOverviewFormScope" value="clients">
+      <input type="hidden" id="teamOverviewFormEntityId" value="">
+
+      <div class="field-group">
+        <label for="teamOverviewFormName">Name</label>
+        <input type="text" id="teamOverviewFormName" class="form-input" required>
+      </div>
+
+      <div class="field-group">
+        <label for="teamOverviewFormEmail">Email</label>
+        <input type="email" id="teamOverviewFormEmail" class="form-input" placeholder="Optional">
+      </div>
+
+      <div class="field-group">
+        <label for="teamOverviewFormMobile">Mobile</label>
+        <input type="text" id="teamOverviewFormMobile" class="form-input" required>
+      </div>
+
+      <div class="field-group" id="teamOverviewClientField" hidden>
+        <label for="teamOverviewFormClient">Client</label>
+        <select id="teamOverviewFormClient" class="form-select"></select>
+      </div>
+
+      <div class="field-group" id="teamOverviewAddressField" hidden>
+        <label for="teamOverviewFormAddress">Address</label>
+        <textarea id="teamOverviewFormAddress" class="form-textarea" rows="3"></textarea>
+      </div>
+
+      <div class="field-group">
+        <label for="teamOverviewFormStatus">Status</label>
+        <select id="teamOverviewFormStatus" class="form-select">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+
+      <div class="field-group" id="teamOverviewPasswordField" hidden>
+        <label for="teamOverviewFormPassword">Password</label>
+        <input type="text" id="teamOverviewFormPassword" class="form-input" placeholder="Optional. If empty, mobile may be used.">
+      </div>
+
+      <div class="team-overview-form-actions">
+        <button type="button" class="action-btn" id="teamOverviewFormCancel">Cancel</button>
+        <button type="submit" class="action-btn action-btn-primary" id="teamOverviewFormSave">Save</button>
+      </div>
+    </form>
+
+    <div id="teamOverviewStaffPanel" class="team-overview-staff-panel" hidden>
+      <h4>Client Staff</h4>
+      <div class="dashboard-scroll-table-wrapper">
+        <table class="recent-table recent-table-4col">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Mobile</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="teamOverviewStaffBody">
+            <tr><td colspan="4" class="muted-row">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</aside>

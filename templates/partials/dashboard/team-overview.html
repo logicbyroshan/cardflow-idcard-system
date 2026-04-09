@@ -6,7 +6,7 @@
   </div>
   <div class="dashboard-card-body">
     <div class="cards-overview">
-      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+      <button type="button" class="card-overview-item dashboard-team-scope-item is-active" data-dashboard-team-scope="clients" data-dashboard-target-panel="team-overview" aria-pressed="true">
         <div class="card-overview-left">
           <div class="card-overview-icon clients">
             <i class="fa-solid fa-building"></i>
@@ -14,8 +14,8 @@
           <span class="card-overview-label">Clients</span>
         </div>
         <span class="card-overview-value">{{ total_clients|default:0 }}</span>
-      </a>
-      <a href="{% url 'manage_staff' %}" class="card-overview-item">
+      </button>
+      <button type="button" class="card-overview-item dashboard-team-scope-item" data-dashboard-team-scope="operator" data-dashboard-target-panel="team-overview" aria-pressed="false">
         <div class="card-overview-left">
           <div class="card-overview-icon staff">
             <i class="fa-solid fa-user-tie"></i>
@@ -23,8 +23,8 @@
           <span class="card-overview-label">Operator</span>
         </div>
         <span class="card-overview-value">{{ total_staff|default:0 }}</span>
-      </a>
-      <a href="{% url 'manage_client_staff' %}" class="card-overview-item">
+      </button>
+      <button type="button" class="card-overview-item dashboard-team-scope-item" data-dashboard-team-scope="assistent" data-dashboard-target-panel="team-overview" aria-pressed="false">
         <div class="card-overview-left">
           <div class="card-overview-icon staff">
             <i class="fa-solid fa-user-gear"></i>
@@ -32,7 +32,7 @@
           <span class="card-overview-label">Assistent</span>
         </div>
         <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
-      </a>
+      </button>
       <div class="card-overview-item card-overview-item-static" aria-disabled="true">
         <div class="card-overview-left">
           <div class="card-overview-icon approved">

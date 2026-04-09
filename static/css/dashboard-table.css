@@ -285,8 +285,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: 62px;
     height: 18px;
-    padding: 0 6px;
+    padding: 0 8px;
     border-radius: 4px;
     border: 1px solid transparent;
     font-size: 10px;
@@ -483,6 +484,159 @@
 .recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(2),
 .recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(3),
 .recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(3) { width: 28%; }
+
+.recent-table.recent-table-4col th:nth-child(1),
+.recent-table.recent-table-4col td:nth-child(1) { width: 34%; }
+
+.recent-table.recent-table-4col th:nth-child(2),
+.recent-table.recent-table-4col td:nth-child(2),
+.recent-table.recent-table-4col th:nth-child(3),
+.recent-table.recent-table-4col td:nth-child(3),
+.recent-table.recent-table-4col th:nth-child(4),
+.recent-table.recent-table-4col td:nth-child(4) { width: 22%; }
+
+.team-overview-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-bottom: 0;
+    background: #f8fafc;
+}
+
+.team-overview-toolbar .action-btn,
+.team-overview-form-actions .action-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #1f2937;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.team-overview-toolbar .action-btn:hover:not(:disabled),
+.team-overview-form-actions .action-btn:hover:not(:disabled) {
+    background: #eef2ff;
+    border-color: #93c5fd;
+    color: #1e3a8a;
+}
+
+.team-overview-toolbar .action-btn:disabled,
+.team-overview-form-actions .action-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.team-overview-form-actions .action-btn-primary {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+}
+
+.team-overview-form-actions .action-btn-primary:hover:not(:disabled) {
+    background: #1e40af;
+    border-color: #1e40af;
+    color: #ffffff;
+}
+
+.team-overview-row {
+    cursor: pointer;
+}
+
+.team-overview-row.is-selected td {
+    background: #e0e7ff !important;
+}
+
+.team-overview-row:hover td {
+    background: #eef2ff;
+}
+
+.dashboard-team-drawer {
+    width: 560px;
+    max-width: 96vw;
+}
+
+.team-overview-form {
+    display: grid;
+    gap: 12px;
+}
+
+.team-overview-form .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.team-overview-form .field-group label {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 600;
+}
+
+.team-overview-form .form-input,
+.team-overview-form .form-select,
+.team-overview-form .form-textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #111827;
+    background: #ffffff;
+}
+
+.team-overview-form .form-input:focus,
+.team-overview-form .form-select:focus,
+.team-overview-form .form-textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+}
+
+.team-overview-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.team-overview-staff-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.team-overview-staff-panel h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.dashboard-team-drawer .drawer-body {
+    display: grid;
+    gap: 12px;
+}
+
+@media (max-width: 900px) {
+    .team-overview-toolbar {
+        gap: 6px;
+    }
+
+    .team-overview-toolbar .action-btn,
+    .team-overview-form-actions .action-btn {
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+}
 
 /* ====================
    Reprint History (client dashboard)

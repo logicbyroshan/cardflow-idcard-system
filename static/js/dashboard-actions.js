@@ -1300,7 +1300,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return `
                                     <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="print" data-sort-pending="${safeGenerateList}" data-sort-verified="${safeFinalized}" onclick="toggleScopedExpandRow(this)">
                                         <td>
-                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                         </td>
                                         <td class="text-center"><span class="count-badge pending">${client.generate_list}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
@@ -1345,7 +1345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return `
                                     <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="reprint" data-sort-pending="${safeRequested}" data-sort-verified="${safeConfirmed}" onclick="toggleScopedExpandRow(this)">
                                         <td>
-                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                         </td>
                                         <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
