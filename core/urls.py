@@ -150,6 +150,8 @@ urlpatterns = [
 
     # Client Tutorial (all authenticated users; content is client-oriented)
     path('tutorial/', views.tutorial, name='tutorial'),
+    path('tutorial/personal-guide/', views.tutorial_personal_guide, name='tutorial_personal_guide'),
+    path('tutorial/personal-guide/download/', views.tutorial_personal_guide_download, name='tutorial_personal_guide_download'),
     
     # System Settings
     path('settings/', views.settings, name='settings'),

@@ -5,7 +5,7 @@ Split from base.py for maintainability.
 import logging
 from django.conf import settings as django_settings
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
@@ -41,6 +41,68 @@ from .idcard_helpers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _build_personal_guide_text(share_url):
+    """Build the downloadable plain-text personal guide content."""
+    lines = [
+        "ADARSH ID CARDS - PERSONAL GUIDE (CLIENT OPERATIONS)",
+        "=" * 62,
+        "",
+        "Student Data Check, Corrections ya New Add karne ke liye is panel se login kare:",
+        "https://panel.adarshbhopal.in/",
+        "",
+        "Client section me login kare:",
+        "email id: lvsschool123@gmail.com",
+        "pw: lgosl123",
+        "(aap password ko change bhi kar sakte hain)",
+        "",
+        "Share Link (Admin/Superadmin clients ko bhejne ke liye):",
+        share_url,
+        "",
+        "NEW FEATURES:",
+        "1) Kisi bhi class ya section ka PDF me data download kiya ja sakta hai.",
+        "2) Aap admin hain: kisi bhi class/section ko kisi particular teacher ko check karne ke liye assign kar sakte hain.",
+        "3) Aap teacher ke liye nayi user ID banakar use sub-staff bana sakte hain.",
+        "4) Google Chrome par panel login karne par aap panel app install bhi kar sakte hain.",
+        "5) Checkbox se multiple records ko ek saath verify ya approve kiya ja sakta hai.",
+        "6) Pool List se records ko wapas Pending List me laaya ja sakta hai (Retrieve).",
+        "7) Search/filter use karke specific student records jaldi mil jate hain.",
+        "",
+        "INSTRUCTIONS (STEP BY STEP):",
+        "A) Client section me login karne ke baad Pending List me sabhi data hota hai.",
+        "   - Yahi se data correction kiya jata hai aur new data add kiya ja sakta hai.",
+        "   - Photo change/new upload: photo column me photo ke niche Edit option par click kare,",
+        "     fir Upload Photo par click karke photo upload kare.",
+        "",
+        "B) Pending List me har field me Verify button diya hota hai.",
+        "   - Data correction complete karke Verify kare.",
+        "   - Verify hone ke baad data Verified List me chala jata hai.",
+        "",
+        "C) Verified List me final review karke har record ko Approve kare.",
+        "   - Approve button se record final hota hai.",
+        "   - Bulk action ke liye checkbox se multiple records ek saath approve kar sakte hain.",
+        "",
+        "D) Important Rule:",
+        "   - Data approve hone ke baad normal flow me usme correction nahi kiya ja sakta.",
+        "",
+        "E) Pool List Workflow:",
+        "   - Agar kisi record ko dobara correction ke liye bhejna ho,",
+        "     to Pool List me record select karke Retrieve par click kare.",
+        "   - Record wapas Pending List me shift ho jayega.",
+        "",
+        "F) Daily Best Practice (Recommended):",
+        "   - Day start me Pending backlog clear kare.",
+        "   - Verify aur approve ke beech ek quick final check zarur kare.",
+        "   - Data export/download se pehle class/section filter double-check kare.",
+        "   - Team accounts alag rakhe; ek hi login ko multiple users me share na kare.",
+        "",
+        "G) Support:",
+        "   - Koi bhi doubt ho to 9301199730 par call kijiyega.",
+        "",
+        "Note: Kuch options aapke role/permissions ke hisab se dikhte hain.",
+    ]
+    return "\n".join(lines)
 
 
 # Staff Management
@@ -996,3 +1058,37 @@ def tutorial(request):
         'tutorial_lang': tutorial_lang,
     }
     return render(request, 'tutorial.html', context)
+
+
+@login_required
+def tutorial_personal_guide(request):
+    """Formatted personal guide page for client operations and sharing."""
+    tutorial_lang = str(request.GET.get('lang', 'hi')).strip().lower()
+    if tutorial_lang not in ('en', 'hi'):
+        tutorial_lang = 'hi'
+
+    tutorial_scope = _resolve_tutorial_scope(request.user)
+    personal_guide_share_url = request.build_absolute_uri(reverse('tutorial_personal_guide'))
+
+    context = {
+        'active_page': 'tutorial',
+        'user_role': get_user_role(request.user),
+        'tutorial_scope': tutorial_scope,
+        'tutorial_lang': tutorial_lang,
+        'personal_guide_share_url': personal_guide_share_url,
+        'personal_guide_download_url': reverse('tutorial_personal_guide_download'),
+        'can_share_personal_guide': tutorial_scope == 'admin',
+    }
+    return render(request, 'tutorial-personal-guide.html', context)
+
+
+@login_required
+def tutorial_personal_guide_download(request):
+    """Download Personal Guide as plain text for admin/client sharing."""
+    personal_guide_share_url = request.build_absolute_uri(reverse('tutorial_personal_guide'))
+    response = HttpResponse(
+        _build_personal_guide_text(personal_guide_share_url),
+        content_type='text/plain; charset=utf-8',
+    )
+    response['Content-Disposition'] = 'attachment; filename="adarsh-personal-guide.txt"'
+    return response

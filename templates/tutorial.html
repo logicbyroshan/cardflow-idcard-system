@@ -87,6 +87,10 @@
           <i class="fa-brands fa-youtube"></i>
           {% if tutorial_lang == 'hi' %}वीडियो ट्यूटोरियल देखें{% else %}Watch Video Tutorial{% endif %}
         </a>
+        <a class="btn btn-outline-secondary" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
+          <i class="fa-solid fa-user-check"></i>
+          Personal Guide
+        </a>
         <button class="btn btn-outline-primary" type="button" data-jump-tab="get-started">
           <i class="fa-solid fa-list-check"></i>
           {% if tutorial_lang == 'hi' %}Start वाले स्टेप्स खोलें{% else %}Go to Start Steps{% endif %}
@@ -339,6 +343,10 @@
         <a class="btn btn-primary" href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">
           <i class="fa-brands fa-youtube"></i>
           {% if tutorial_lang == 'hi' %}YouTube पर वीडियो ट्यूटोरियल देखें{% else %}Watch Video Tutorial on YouTube{% endif %}
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
+          <i class="fa-solid fa-user-check"></i>
+          Personal Guide
         </a>
         <button class="btn btn-outline-primary" type="button" data-jump-tab="get-started">
           <i class="fa-solid fa-list-check"></i>

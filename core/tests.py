@@ -378,6 +378,28 @@ class TutorialRoleScopeTests(TestCase):
             'Admin Control Tutorial',
         )
 
+    def test_tutorial_shows_personal_guide_button(self):
+        self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('tutorial_personal_guide'))
+        self.assertContains(response, 'Personal Guide')
+
+    def test_personal_guide_page_is_accessible(self):
+        self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial_personal_guide'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Student Data Check aur Approval ke liye Personal Guide')
+        self.assertContains(response, 'lvsschool123@gmail.com')
+
+    def test_personal_guide_download_returns_text_attachment(self):
+        self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial_personal_guide_download'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response['Content-Type'].startswith('text/plain'))
+        self.assertIn('attachment; filename="adarsh-personal-guide.txt"', response['Content-Disposition'])
+        self.assertIn('Student Data Check, Corrections', response.content.decode('utf-8'))
+
 
 # ── IDCard Model Tests ──
 class IDCardModelTests(TestCase):

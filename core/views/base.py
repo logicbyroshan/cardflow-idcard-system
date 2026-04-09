@@ -65,6 +65,8 @@ from .admin_page_views import (                      # noqa: F401
     api_email_compose_defaults,
     settings,
     tutorial,
+    tutorial_personal_guide,
+    tutorial_personal_guide_download,
 )
 
 # ── Export settings / template APIs ───────────────────────────────────

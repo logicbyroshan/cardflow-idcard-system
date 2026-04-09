@@ -38,6 +38,8 @@ from .base import (
     api_email_compose_defaults,
     settings,
     tutorial,
+    tutorial_personal_guide,
+    tutorial_personal_guide_download,
     api_export_settings_get,
     api_export_settings_update,
     api_export_templates_list,
