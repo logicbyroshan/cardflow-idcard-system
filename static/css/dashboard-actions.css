@@ -17,8 +17,8 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: #fafbfc;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    border: 1px solid #d1d5db;
     border-radius: 0;
     cursor: pointer;
     transition: all 0.2s;
@@ -34,8 +34,8 @@
 }
 
 .quick-action-btn:hover {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-    border-color: rgba(102, 126, 234, 0.3);
+    background: #f8fafc;
+    border-color: #94a3b8;
     transform: none;
 }
 
@@ -47,14 +47,14 @@
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%);
     color: #fff;
 }
 
 .quick-action-btn span {
     font-size: 13px;
     font-weight: 500;
-    color: #2c3e50;
+    color: #1f2937;
 }
 
 /* ====================
@@ -109,10 +109,10 @@
     padding: 8px 12px;
     font-size: 13px;
     font-weight: 500;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid #d1d5db;
     border-radius: 0;
-    background: #fafbfc;
-    color: #2c3e50;
+    background: #ffffff;
+    color: #1f2937;
     cursor: pointer;
     transition: all 0.2s;
     margin-top: -1px;
@@ -132,7 +132,7 @@
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%);
     color: #fff;
     flex-shrink: 0;
 }
@@ -140,12 +140,12 @@
 .bulk-action-btn span {
     font-size: 13px;
     font-weight: 500;
-    color: #2c3e50;
+    color: #1f2937;
 }
 
 .bulk-action-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-    border-color: rgba(102, 126, 234, 0.3);
+    background: #f8fafc;
+    border-color: #94a3b8;
 }
 
 .bulk-action-btn:disabled {

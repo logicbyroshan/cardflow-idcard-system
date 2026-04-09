@@ -5,6 +5,12 @@ window.DashboardPage = window.DashboardPage || {};
 
 // Global: toggle expandable client row
 function toggleClientExpandRow(tr) {
+    var directUrl = tr.getAttribute('data-direct-url');
+    if (directUrl) {
+        window.location.href = directUrl;
+        return;
+    }
+
     var idx = tr.getAttribute('data-idx');
     var subRows = document.querySelectorAll('.expand-group-' + idx);
     if (!subRows.length) return;

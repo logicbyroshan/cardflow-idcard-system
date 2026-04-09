@@ -228,9 +228,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderDashboardClientStatusBadge(status, esc) {
         const normalized = String(status || '').trim().toLowerCase();
-        if (!normalized || normalized === 'active') return '';
-        const stateClass = normalized === 'suspended' ? 'is-suspended' : 'is-inactive';
-        return ` <span class="dashboard-client-status-badge ${stateClass}">${esc(normalized)}</span>`;
+        if (!normalized) return '';
+        let stateClass = 'is-inactive';
+        if (normalized === 'active') {
+            stateClass = 'is-active';
+        } else if (normalized === 'suspended') {
+            stateClass = 'is-suspended';
+        }
+        const displayText = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+        return `<span class="dashboard-client-status-badge ${stateClass}">${esc(displayText)}</span>`;
     }
 
     function applyRecentClientUpdatesSearch() {
@@ -483,7 +489,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
-                            const inactiveBadge = renderDashboardClientStatusBadge(client.status, esc);
+                            const statusBadge = renderDashboardClientStatusBadge(client.status, esc);
+                            const hasSingleTable = tables.length === 1;
+                            const singleTable = hasSingleTable ? tables[0] : null;
                             const clientId = Number(client.client_id);
                             const isLiveActive = Number.isFinite(clientId) && recentClientUpdatesLiveClientIds.has(clientId);
                             const pendingCount = Number(client.pending);
@@ -496,8 +504,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             const safeApproved = Number.isFinite(approvedCount) ? approvedCount : 0;
                             const safeDownloaded = Number.isFinite(downloadedCount) ? downloadedCount : 0;
                             const safePool = Number.isFinite(poolCount) ? poolCount : 0;
-                            // Build sub-rows for each table (same column structure)
-                            const tableSubRows = tables.map(t => `
+                            const clientGroupsUrl = panelUrl('/client/' + client.client_id + '/groups/');
+                            const directUrl = hasSingleTable ? panelUrl('/table/' + singleTable.id + '/cards/') : '';
+                            const clientLinkUrl = hasSingleTable ? directUrl : clientGroupsUrl;
+
+                            // Build sub-rows only for clients with multiple tables.
+                            const tableSubRows = tables.length > 1 ? tables.map(t => `
                                 <tr class="client-sub-row expand-group-${i}" style="display:none">
                                     <td>
                                         <a href="${panelUrl('/table/' + t.id + '/cards/')}" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
@@ -520,12 +532,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     ` : ''}
                                 </tr>
-                            `).join('');
+                            `).join('') : '';
 
                             return `
-                            <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-live-active="${isLiveActive ? '1' : '0'}" data-sort-pending="${safePending}" data-sort-verified="${safeVerified}" data-sort-approved="${safeApproved}" data-sort-downloaded="${safeDownloaded}" data-sort-pool="${safePool}" onclick="toggleClientExpandRow(this)">
+                            <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-live-active="${isLiveActive ? '1' : '0'}" data-sort-pending="${safePending}" data-sort-verified="${safeVerified}" data-sort-approved="${safeApproved}" data-sort-downloaded="${safeDownloaded}" data-sort-pool="${safePool}" ${directUrl ? `data-direct-url="${directUrl}"` : ''} onclick="toggleClientExpandRow(this)">
                                 <td>
-                                    <a href="${panelUrl('/client/' + client.client_id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
+                                    <a href="${clientLinkUrl}" class="client-name-link" onclick="event.stopPropagation()">${statusBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                 </td>
                                 <td class="text-center">
                                     <span class="count-badge pending">${client.pending}</span>

@@ -369,12 +369,33 @@ a.count-badge.pool:hover {
     font-family: inherit;
 }
 
+.dashboard-section-tabs .dashboard-tab-item {
+    background: #ffffff;
+    border-color: #d1d5db;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dashboard-section-tabs .dashboard-tab-item:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.dashboard-section-tabs .dashboard-tab-item .card-overview-label,
+.dashboard-section-tabs .dashboard-tab-item .card-overview-value {
+    color: #1f2937;
+}
+
+.dashboard-section-tabs .dashboard-tab-item .card-overview-icon {
+    background: linear-gradient(135deg, #1d4ed8 0%, #0f172a 100%);
+    color: #ffffff;
+}
+
 .dashboard-tab-item.is-active {
-    background: #ecf3ff;
-    border-color: rgba(59, 130, 246, 0.45);
+    background: #eef2ff;
+    border-color: #1d4ed8;
 }
 
 .dashboard-tab-item.is-active .card-overview-label,
 .dashboard-tab-item.is-active .card-overview-value {
-    color: #1e40af;
+    color: #1e3a8a;
 }

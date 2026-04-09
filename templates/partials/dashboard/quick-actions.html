@@ -24,6 +24,22 @@
         <span>Add New Assistent</span>
       </a>
       {% endif %}
+      <a href="{% url 'notifications_page' %}" class="quick-action-btn">
+        <i class="fa-solid fa-envelope-open-text"></i>
+        <span>Messages</span>
+      </a>
+      {% if is_super_admin or perm_idcard_setting_list %}
+      <a href="{% url 'active_clients' %}" class="quick-action-btn">
+        <i class="fa-solid fa-id-card"></i>
+        <span>View ID Cards</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin %}
+      <a href="{% url 'manage_panel' %}" class="quick-action-btn">
+        <i class="fa-solid fa-sliders"></i>
+        <span>Manage Panel</span>
+      </a>
+      {% endif %}
     </div>
   </div>
 </div>

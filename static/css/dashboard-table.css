@@ -264,6 +264,9 @@
    Client Name Link (clickable in tables)
    ==================== */
 .client-name-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: #374151;
     text-decoration: none;
     font-weight: 600;
@@ -274,11 +277,14 @@
     text-decoration: underline;
 }
 
+.client-name-text {
+    white-space: nowrap;
+}
+
 .dashboard-client-status-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 6px;
     height: 18px;
     padding: 0 6px;
     border-radius: 4px;
@@ -288,6 +294,12 @@
     line-height: 1;
     text-transform: capitalize;
     vertical-align: middle;
+}
+
+.dashboard-client-status-badge.is-active {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
 }
 
 .dashboard-client-status-badge.is-inactive {
