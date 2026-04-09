@@ -147,14 +147,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function resolveDeviceSurface(item) {
+        var surface = String((item && item.device_surface) || '').trim().toLowerCase();
+        if (!surface || surface === 'unknown') {
+            var text = String((item && item.description) || '').toLowerCase();
+            if (/(mobile app|android|iphone|ipad|ipod|\bmobile\b|\bios\b)/.test(text)) {
+                surface = 'mobile';
+            } else if (/(desktop|browser|windows|mac|linux|\bweb\b)/.test(text)) {
+                surface = 'desktop';
+            }
+        }
+
+        if (surface === 'mobile') {
+            return { icon: 'fa-mobile-screen-button', label: 'Mobile' };
+        }
+        if (surface === 'desktop') {
+            return { icon: 'fa-desktop', label: 'Desktop' };
+        }
+
+        var fallbackLabel = String((item && item.device_surface_label) || '').trim() || 'Unknown';
+        var fallbackIcon = String((item && item.device_surface_icon) || '').trim() || 'fa-circle-question';
+        return { icon: fallbackIcon, label: fallbackLabel };
+    }
+
     function renderStaffHistory(staffName, payload) {
         var subtitle = document.getElementById('staffHistorySubtitle');
         var body = document.getElementById('staffHistoryBody');
         if (!body) return;
 
         var activeDevices = Number(payload.active_devices || 0);
+        var surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
+        var activeDesktop = Number(surfaceCounts.desktop || 0);
+        var activeMobile = Number(surfaceCounts.mobile || 0);
         if (subtitle) {
-            subtitle.textContent = (staffName || 'Assistent') + ' - Active devices: ' + activeDevices;
+            subtitle.textContent = (staffName || 'Assistent') + ' - Active devices: ' + activeDevices + ' (Desktop: ' + activeDesktop + ', Mobile: ' + activeMobile + ')';
         }
 
         var events = Array.isArray(payload.events) ? payload.events : [];
@@ -172,6 +198,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var when = escapeHtml(item.created_at || '');
             var ago = escapeHtml(item.time_ago || '');
             var icon = escapeHtml(item.icon_class || 'fa-circle-info');
+            var surfaceMeta = resolveDeviceSurface(item);
+            var deviceChip = '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid ' + escapeHtml(surfaceMeta.icon) + '"></i> ' + escapeHtml(surfaceMeta.label) + '</span>';
 
             var fpChips = '';
             if (fps.length) {
@@ -189,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<div class="card-history-meta">' + ago + '</div>' +
                     '<div class="staff-history-chip-row">' +
                         '<span class="staff-history-chip staff-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
+                        deviceChip +
                         '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ' + ip + '</span>' +
                         '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Active: ' + activeDevices + '</span>' +
                         fpChips +

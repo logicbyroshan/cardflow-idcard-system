@@ -277,6 +277,37 @@
     return d.innerHTML;
   }
 
+  function _deviceSurfaceMeta(log) {
+    var action = String((log && log.action) || '').toLowerCase();
+    var isAuthEvent = action === 'login' || action === 'logout';
+    var surface = String((log && log.device_surface) || '').toLowerCase();
+    if (!surface || surface === 'unknown') {
+      var text = String((log && log.description) || '').toLowerCase();
+      if (/(mobile app|android|iphone|ipad|ipod|\bmobile\b|\bios\b)/.test(text)) {
+        surface = 'mobile';
+      } else if (/(desktop|browser|windows|mac|linux|\bweb\b)/.test(text)) {
+        surface = 'desktop';
+      }
+    }
+
+    if (surface === 'mobile') {
+      return { icon: 'fa-mobile-screen-button', label: 'Mobile' };
+    }
+    if (surface === 'desktop') {
+      return { icon: 'fa-desktop', label: 'Desktop' };
+    }
+
+    var hintLabel = String((log && log.device_hint) || '').trim();
+    if (hintLabel && !isAuthEvent) {
+      return { icon: 'fa-circle-info', label: hintLabel };
+    }
+
+    return {
+      icon: String((log && log.device_surface_icon) || 'fa-circle-question'),
+      label: String((log && log.device_surface_label) || 'Unknown')
+    };
+  }
+
   function _renderHistoryLoading() {
     var h = '';
     for (var i = 0; i < 4; i += 1) {
@@ -355,6 +386,8 @@
               : '<span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-success,#22c55e) 35%, #ffffff 65%);background:var(--color-success-bg,#f0fdf4);color:var(--color-success-dark,#166534);">Performed</span>';
             var ip = l.ip_address ? ('IP: ' + _esc(l.ip_address)) : 'IP: -';
             var target = l.target_name ? ('Target: ' + _esc(l.target_name)) : '';
+            var deviceMeta = _deviceSurfaceMeta(l);
+            var device = '<span><i class="fa-solid ' + _esc(deviceMeta.icon) + '"></i> Device: ' + _esc(deviceMeta.label) + '</span>';
             html += '<div class="audit-log-item">'
               + '<div class="audit-log-icon"><i class="fa-solid ' + _esc(l.icon_class || 'fa-circle-info') + '"></i></div>'
               + '<div class="audit-log-main">'
@@ -365,7 +398,7 @@
               + '<span>' + _esc(l.created_date || '') + ' ' + _esc(l.created_time || '') + '</span>'
               + '<span>' + _esc(l.time_ago || '') + ' ago</span>'
               + '<span>' + ip + '</span>'
-              + '<span>Device: ' + _esc(l.device_hint || 'Activity Record') + '</span>'
+              + device
               + (target ? ('<span>' + target + '</span>') : '')
               + scope
               + '</div>'

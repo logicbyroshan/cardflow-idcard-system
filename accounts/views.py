@@ -669,6 +669,12 @@ class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
         'reprint_status': 'Reprint Workflow',
     }
 
+    DEVICE_SURFACE_ICONS = {
+        'mobile': 'fa-mobile-screen-button',
+        'desktop': 'fa-desktop',
+        'unknown': 'fa-circle-question',
+    }
+
     @staticmethod
     def _infer_device_hint(action, description, ip_address):
         desc = str(description or '').lower()
@@ -689,6 +695,30 @@ class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
         if ip_address:
             return f'IP {ip_address}'
         return 'Activity Record'
+
+    @staticmethod
+    def _infer_device_surface(action, description):
+        desc = f"{action or ''} {description or ''}".lower()
+        if any(token in desc for token in ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')):
+            return 'mobile'
+        if any(token in desc for token in ('desktop web', 'desktop', 'browser', 'windows', 'mac', 'linux', 'web app', 'web')):
+            return 'desktop'
+        return 'unknown'
+
+    @classmethod
+    def _device_surface_meta(cls, action, description):
+        surface = cls._infer_device_surface(action, description)
+        if surface == 'mobile':
+            label = 'Mobile'
+        elif surface == 'desktop':
+            label = 'Desktop'
+        else:
+            label = 'Unknown'
+        return {
+            'device_surface': surface,
+            'device_surface_label': label,
+            'device_surface_icon': cls.DEVICE_SURFACE_ICONS.get(surface, cls.DEVICE_SURFACE_ICONS['unknown']),
+        }
 
     def get(self, request):
         if getattr(request.user, 'role', None) != 'pro_user':
@@ -762,7 +792,7 @@ class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
                 actor_role = getattr(entry.user, 'role', '')
 
             event_dt = localtime(entry.created_at)
-            logs.append({
+            log_item = {
                 'id': entry.pk,
                 'action': entry.action,
                 'action_display': action_dict.get(entry.action, entry.action.replace('_', ' ').title()),
@@ -781,7 +811,9 @@ class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
                 'created_date': event_dt.strftime('%d %b %Y'),
                 'created_time': event_dt.strftime('%I:%M:%S %p'),
                 'scope': 'performed' if entry.user_id == target_user.pk else 'related',
-            })
+            }
+            log_item.update(self._device_surface_meta(entry.action, entry.description))
+            logs.append(log_item)
 
         return JsonResponse({
             'success': True,

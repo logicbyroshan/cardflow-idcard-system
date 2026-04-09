@@ -33,6 +33,39 @@ _SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v3'
 _SERVER_INFO_CACHE_TTL = 86400
 
 
+def _infer_device_surface(action, description):
+    text = f"{action or ''} {description or ''}".lower()
+    mobile_tokens = ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')
+    desktop_tokens = ('desktop web', 'desktop', 'browser', 'windows', 'mac', 'linux', 'web app', 'web')
+
+    if any(token in text for token in mobile_tokens):
+        return 'mobile'
+    if any(token in text for token in desktop_tokens):
+        return 'desktop'
+    return 'unknown'
+
+
+def _device_surface_meta(surface):
+    normalized = str(surface or '').strip().lower()
+    if normalized == 'mobile':
+        return {
+            'device_surface': 'mobile',
+            'device_surface_label': 'Mobile',
+            'device_surface_icon': 'fa-mobile-screen-button',
+        }
+    if normalized == 'desktop':
+        return {
+            'device_surface': 'desktop',
+            'device_surface_label': 'Desktop',
+            'device_surface_icon': 'fa-desktop',
+        }
+    return {
+        'device_surface': 'unknown',
+        'device_surface_label': 'Unknown',
+        'device_surface_icon': 'fa-circle-question',
+    }
+
+
 def _sanitize_log_value(val, max_len=_MAX_LOG_FIELD_LEN):
     if not isinstance(val, str):
         val = str(val) if val is not None else ''
@@ -718,6 +751,7 @@ def api_operations_feed(request):
 
         for log in log_qs[:fetch_cap]:
             user_name = log.user.get_full_name() or log.user.username if log.user else 'System'
+            device_meta = _device_surface_meta(_infer_device_surface(log.action, log.description))
             items.append({
                 'source_type': 'activity_log',
                 'source_label': 'Activity Log',
@@ -740,6 +774,7 @@ def api_operations_feed(request):
                 'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
                 'time_ago': django_timesince(log.created_at, now) + ' ago',
                 'created_at_dt': log.created_at,
+                **device_meta,
             })
 
     items.sort(key=lambda row: row.get('created_at_dt') or now, reverse=True)

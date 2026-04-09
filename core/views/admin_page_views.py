@@ -43,6 +43,97 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_device_surface(value):
+    normalized = str(value or '').strip().lower()
+    if normalized in {'desktop', 'mobile'}:
+        return normalized
+    return 'unknown'
+
+
+def _infer_device_surface(action, description):
+    text = f"{action or ''} {description or ''}".lower()
+    mobile_tokens = ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')
+    desktop_tokens = ('desktop web', 'desktop', 'browser', 'windows', 'mac', 'linux', 'web app', 'web')
+
+    if any(token in text for token in mobile_tokens):
+        return 'mobile'
+    if any(token in text for token in desktop_tokens):
+        return 'desktop'
+    return 'unknown'
+
+
+def _device_surface_meta(surface):
+    normalized = _normalize_device_surface(surface)
+    if normalized == 'mobile':
+        return {
+            'device_surface': 'mobile',
+            'device_surface_label': 'Mobile',
+            'device_surface_icon': 'fa-mobile-screen-button',
+        }
+    if normalized == 'desktop':
+        return {
+            'device_surface': 'desktop',
+            'device_surface_label': 'Desktop',
+            'device_surface_icon': 'fa-desktop',
+        }
+    return {
+        'device_surface': 'unknown',
+        'device_surface_label': 'Unknown',
+        'device_surface_icon': 'fa-circle-question',
+    }
+
+
+def _active_device_snapshot(user_id):
+    if not user_id:
+        return {
+            'fingerprints': [],
+            'surface_counts': {'desktop': 0, 'mobile': 0},
+        }
+
+    ids = {str(user_id)}
+    fingerprints = set()
+    surface_counts = {'desktop': 0, 'mobile': 0}
+
+    for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+
+        user_id_str = str(data.get('_auth_user_id') or '')
+        if user_id_str not in ids:
+            continue
+
+        surface = _normalize_device_surface(data.get('_auth_login_surface'))
+        if surface in surface_counts:
+            surface_counts[surface] += 1
+
+        fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
+        fingerprints.add(fingerprint)
+
+    return {
+        'fingerprints': sorted(fingerprints),
+        'surface_counts': surface_counts,
+    }
+
+
+def _serialize_login_history_event(entry, action_display_map, now):
+    meta = _device_surface_meta(_infer_device_surface(entry.action, entry.description))
+    event = {
+        'id': entry.pk,
+        'action': entry.action,
+        'action_display': action_display_map.get(entry.action, entry.action),
+        'description': entry.description or '',
+        'ip_address': entry.ip_address or '',
+        'icon_class': entry.icon_class,
+        'icon_color': entry.icon_color,
+        'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
+        'time_ago': django_timesince(entry.created_at, now) + ' ago',
+    }
+    event.update(meta)
+    return event
+
+
 def _build_personal_guide_text(share_url):
     """Build the downloadable plain-text personal guide content."""
     lines = [
@@ -444,23 +535,6 @@ def api_client_login_history(request, client_id):
         limit = 80
     limit = min(max(limit, 10), 200)
 
-    def _active_device_fingerprints(user_id):
-        ids = {str(user_id)}
-        fingerprints = set()
-        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
-            try:
-                data = session.get_decoded()
-            except Exception:
-                continue
-
-            user_id_str = str(data.get('_auth_user_id') or '')
-            if user_id_str not in ids:
-                continue
-
-            fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
-            fingerprints.add(fingerprint)
-        return sorted(fingerprints)
-
     logs_qs = (
         ActivityLog.objects
         .filter(user=client.user, action__in=['login', 'logout'])
@@ -469,21 +543,10 @@ def api_client_login_history(request, client_id):
 
     now = timezone.now()
     action_display_map = dict(ActivityLog.ACTION_CHOICES)
-    device_fingerprints = _active_device_fingerprints(client.user_id) if client.user_id else []
+    device_snapshot = _active_device_snapshot(client.user_id)
+    device_fingerprints = device_snapshot.get('fingerprints') or []
 
-    events = []
-    for entry in logs_qs:
-        events.append({
-            'id': entry.pk,
-            'action': entry.action,
-            'action_display': action_display_map.get(entry.action, entry.action),
-            'description': entry.description or '',
-            'ip_address': entry.ip_address or '',
-            'icon_class': entry.icon_class,
-            'icon_color': entry.icon_color,
-            'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
-            'time_ago': django_timesince(entry.created_at, now) + ' ago',
-        })
+    events = [_serialize_login_history_event(entry, action_display_map, now) for entry in logs_qs]
 
     return JsonResponse({
         'success': True,
@@ -493,6 +556,7 @@ def api_client_login_history(request, client_id):
             'status': client.status,
         },
         'active_devices': len(device_fingerprints),
+        'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
         'events': events,
     })
@@ -558,23 +622,6 @@ def api_client_staff_login_history(request, staff_id):
         limit = 80
     limit = min(max(limit, 10), 200)
 
-    def _active_device_fingerprints(user_id):
-        ids = {str(user_id)}
-        fingerprints = set()
-        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
-            try:
-                data = session.get_decoded()
-            except Exception:
-                continue
-
-            user_id_str = str(data.get('_auth_user_id') or '')
-            if user_id_str not in ids:
-                continue
-
-            fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
-            fingerprints.add(fingerprint)
-        return sorted(fingerprints)
-
     logs_qs = (
         ActivityLog.objects
         .filter(user=staff.user, action__in=['login', 'logout'])
@@ -583,21 +630,10 @@ def api_client_staff_login_history(request, staff_id):
 
     now = timezone.now()
     action_display_map = dict(ActivityLog.ACTION_CHOICES)
-    device_fingerprints = _active_device_fingerprints(staff.user_id) if staff.user_id else []
+    device_snapshot = _active_device_snapshot(staff.user_id)
+    device_fingerprints = device_snapshot.get('fingerprints') or []
 
-    events = []
-    for entry in logs_qs:
-        events.append({
-            'id': entry.pk,
-            'action': entry.action,
-            'action_display': action_display_map.get(entry.action, entry.action),
-            'description': entry.description or '',
-            'ip_address': entry.ip_address or '',
-            'icon_class': entry.icon_class,
-            'icon_color': entry.icon_color,
-            'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
-            'time_ago': django_timesince(entry.created_at, now) + ' ago',
-        })
+    events = [_serialize_login_history_event(entry, action_display_map, now) for entry in logs_qs]
 
     staff_name = staff.user.get_full_name() or staff.user.username
     return JsonResponse({
@@ -609,6 +645,7 @@ def api_client_staff_login_history(request, staff_id):
             'client_name': staff.client.name if staff.client_id else '',
         },
         'active_devices': len(device_fingerprints),
+        'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
         'events': events,
     })
@@ -630,23 +667,6 @@ def api_staff_login_history(request, staff_id):
         limit = 80
     limit = min(max(limit, 10), 200)
 
-    def _active_device_fingerprints(user_id):
-        ids = {str(user_id)}
-        fingerprints = set()
-        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
-            try:
-                data = session.get_decoded()
-            except Exception:
-                continue
-
-            user_id_str = str(data.get('_auth_user_id') or '')
-            if user_id_str not in ids:
-                continue
-
-            fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
-            fingerprints.add(fingerprint)
-        return sorted(fingerprints)
-
     logs_qs = (
         ActivityLog.objects
         .filter(user=staff.user, action__in=['login', 'logout'])
@@ -655,21 +675,10 @@ def api_staff_login_history(request, staff_id):
 
     now = timezone.now()
     action_display_map = dict(ActivityLog.ACTION_CHOICES)
-    device_fingerprints = _active_device_fingerprints(staff.user_id) if staff.user_id else []
+    device_snapshot = _active_device_snapshot(staff.user_id)
+    device_fingerprints = device_snapshot.get('fingerprints') or []
 
-    events = []
-    for entry in logs_qs:
-        events.append({
-            'id': entry.pk,
-            'action': entry.action,
-            'action_display': action_display_map.get(entry.action, entry.action),
-            'description': entry.description or '',
-            'ip_address': entry.ip_address or '',
-            'icon_class': entry.icon_class,
-            'icon_color': entry.icon_color,
-            'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
-            'time_ago': django_timesince(entry.created_at, now) + ' ago',
-        })
+    events = [_serialize_login_history_event(entry, action_display_map, now) for entry in logs_qs]
 
     staff_name = staff.user.get_full_name() or staff.user.username
     return JsonResponse({
@@ -680,6 +689,7 @@ def api_staff_login_history(request, staff_id):
             'status': 'active' if staff.user.is_active else 'inactive',
         },
         'active_devices': len(device_fingerprints),
+        'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
         'events': events,
     })

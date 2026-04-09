@@ -1667,6 +1667,31 @@ function _opsStatusCell(item) {
   return _statusBadge(item.status, item.status_display || item.status || 'Unknown');
 }
 
+function _opsDeviceMeta(item) {
+  if (!item || item.source_type !== 'activity_log') return null;
+  const action = String(item.action || '').trim().toLowerCase();
+  const isAuthEvent = action === 'login' || action === 'logout';
+
+  let surface = String(item.device_surface || '').trim().toLowerCase();
+  if (!surface || surface === 'unknown') {
+    const text = String(item.description || '').toLowerCase();
+    if (/(mobile app|android|iphone|ipad|ipod|\bmobile\b|\bios\b)/.test(text)) {
+      surface = 'mobile';
+    } else if (/(desktop|browser|windows|mac|linux|\bweb\b)/.test(text)) {
+      surface = 'desktop';
+    }
+  }
+
+  if (surface === 'mobile') return { icon: 'fa-mobile-screen-button', label: 'Mobile' };
+  if (surface === 'desktop') return { icon: 'fa-desktop', label: 'Desktop' };
+
+  if (!isAuthEvent) return null;
+
+  const fallbackLabel = String(item.device_surface_label || '').trim() || 'Unknown';
+  const fallbackIcon = String(item.device_surface_icon || '').trim() || 'fa-circle-question';
+  return { icon: fallbackIcon, label: fallbackLabel };
+}
+
 function _opsCancelAction(item) {
   const taskId = Number(item?.task_id || 0);
   if (!item || !item.can_cancel || !Number.isInteger(taskId) || taskId <= 0) {
@@ -1745,10 +1770,14 @@ function renderOperationsTable() {
   tbody.innerHTML = operationsFeed.map((item, i) => {
     const detailMain = item.description || item.current_client || item.target_name || '';
     const detailMeta = [];
+    const deviceMeta = _opsDeviceMeta(item);
     if (item.target_name) detailMeta.push(`Target: ${item.target_name}`);
     if (item.progress_text) detailMeta.push(item.progress_text);
     if (item.ip_address) detailMeta.push(`IP: ${item.ip_address}`);
     if (item.error) detailMeta.push(`Error: ${item.error}`);
+    const deviceLine = deviceMeta
+      ? `<div class="ops-detail-meta"><i class="fa-solid ${escHtml(deviceMeta.icon)}"></i> Device: ${escHtml(deviceMeta.label)}</div>`
+      : '';
     const rowNumber = ((_opsPage - 1) * _opsPerPage) + i + 1;
 
     return `<tr>
@@ -1763,6 +1792,7 @@ function renderOperationsTable() {
       <td>
         <div class="ops-detail-main">${escHtml(detailMain || '-')}</div>
         <div class="ops-detail-meta">${escHtml(detailMeta.join(' | '))}</div>
+        ${deviceLine}
       </td>
       <td>
         <span class="notif-time">${escHtml(item.created_at || '')}</span>

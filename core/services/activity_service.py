@@ -171,6 +171,36 @@ class ActivityService:
             # If cache fails, never block logging.
             return True
 
+    @staticmethod
+    def _request_login_surface(request):
+        """Infer login surface for auth logs: desktop or mobile."""
+        if request is None:
+            return 'desktop'
+
+        session = getattr(request, 'session', None)
+        if session is not None:
+            try:
+                surface = str(session.get('_auth_login_surface') or '').strip().lower()
+                if surface in {'desktop', 'mobile'}:
+                    return surface
+                if bool(session.get('mobile_auth_ok')):
+                    return 'mobile'
+            except Exception:
+                pass
+
+        ua = str(getattr(request, 'META', {}).get('HTTP_USER_AGENT', '') or '').lower()
+        mobile_tokens = ('android', 'iphone', 'ipad', 'ipod', 'mobile', 'iemobile', 'opera mini')
+        if any(token in ua for token in mobile_tokens):
+            return 'mobile'
+        return 'desktop'
+
+    @staticmethod
+    def _surface_label(surface):
+        normalized = str(surface or '').strip().lower()
+        if normalized == 'mobile':
+            return 'mobile app'
+        return 'desktop web'
+
     # ── core logging ────────────────────────────────────────
 
     @classmethod
@@ -220,12 +250,14 @@ class ActivityService:
     @classmethod
     def log_login(cls, request, user):
         name = user.get_full_name() or user.username
-        cls.log('login', f'{name} logged in', user=user, request=request)
+        surface = cls._request_login_surface(request)
+        cls.log('login', f'{name} logged in from {cls._surface_label(surface)}', user=user, request=request)
 
     @classmethod
     def log_logout(cls, request, user):
         name = user.get_full_name() or user.username
-        cls.log('logout', f'{name} logged out', user=user, request=request)
+        surface = cls._request_login_surface(request)
+        cls.log('logout', f'{name} logged out from {cls._surface_label(surface)}', user=user, request=request)
 
     @classmethod
     def log_client_create(cls, request, client):
