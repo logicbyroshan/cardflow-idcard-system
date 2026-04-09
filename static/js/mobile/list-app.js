@@ -2316,8 +2316,16 @@ function listApp() {
         cropAndUse() {
             if (!this.cropperInstance) { this.skipCrop(); return; }
             const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
-            const canvas = this.cropperInstance.getCroppedCanvas({ width: 600, height: 800, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+            const canvas = this.cropperInstance.getCroppedCanvas({
+                width: 900,
+                height: 1200,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+                fillColor: '#ffffff',
+            });
+            if (!canvas) { this.skipCrop(); return; }
             canvas.toBlob((blob) => {
+                if (!blob) { this.skipCrop(); return; }
                 const fileName = (this.cropSourceFile && this.cropSourceFile.name) ? this.cropSourceFile.name : 'photo.jpg';
                 const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
                 if (!this.form.imageFiles) this.form.imageFiles = {};
@@ -2331,7 +2339,7 @@ function listApp() {
                 };
                 reader.readAsDataURL(croppedFile);
                 this.closeCropModal();
-            }, 'image/jpeg', 0.92);
+            }, 'image/jpeg', 0.96);
         },
         skipCrop() {
             // Use original file without cropping
