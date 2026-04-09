@@ -12,7 +12,7 @@ from django.utils import timezone
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
 from staff.models import Staff
-from website.models import PortfolioCategory
+from website.models import PortfolioCategory, PortfolioItem
 
 
 User = get_user_model()
@@ -1151,3 +1151,207 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		matched = next((row for row in items if row.get('card_id') == download_card.id), None)
 		self.assertIsNotNone(matched)
 		self.assertEqual(matched.get('photo_url'), '/media/adarshimg/mobile-photo/photo-card.webp')
+
+
+class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
+	def test_desktop_required_page_renders_status_context(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/desktop-required/?status=download')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('status'), 'download')
+
+	def test_profile_page_and_profile_update_api_work_for_mobile_client(self):
+		self._login_mobile_client()
+
+		profile_response = self.client.get('/app/profile/')
+		self.assertEqual(profile_response.status_code, 200)
+		self.assertEqual(profile_response.context.get('user_email'), 'mob-client@test.com')
+
+		update_response = self.client.post(
+			'/app/api/profile/update/',
+			data=json.dumps({'name': 'Updated Mobile User'}),
+			content_type='application/json',
+		)
+		self.assertEqual(update_response.status_code, 200)
+		self.assertTrue(update_response.json().get('success'))
+
+		self.client_user.refresh_from_db()
+		self.assertEqual(self.client_user.first_name, 'Updated')
+		self.assertEqual(self.client_user.last_name, 'Mobile User')
+
+	def test_profile_update_api_rejects_invalid_json(self):
+		self._login_mobile_client()
+		response = self.client.post(
+			'/app/api/profile/update/',
+			data='bad-json',
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json().get('success'))
+
+	def test_search_page_renders_and_honors_table_scope(self):
+		self._login_mobile_super_admin()
+		response = self.client.get(f'/app/search/?q=Student&filter=name&table_id={self.table.id}')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('table_scope_id'), self.table.id)
+		self.assertGreaterEqual(response.context.get('result_count', 0), 1)
+
+	def test_clients_list_requires_admin_and_loads_for_super_admin(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/clients/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get('/app/clients/')
+		self.assertEqual(allowed.status_code, 200)
+		client_ids = [row['id'] for row in allowed.context.get('clients_json', [])]
+		self.assertIn(self.client_profile.id, client_ids)
+
+	def test_client_groups_requires_admin_and_super_admin_can_view(self):
+		self._login_mobile_client()
+		denied = self.client.get(f'/app/clients/{self.client_profile.id}/groups/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get(f'/app/clients/{self.client_profile.id}/groups/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertEqual(allowed.context.get('client').id, self.client_profile.id)
+
+	def test_reprint_lists_requires_permission_and_renders_for_super_admin(self):
+		from reprintcard.models import ReprintRequest
+
+		download_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Reprint Scope', 'ROLL NO': '909'},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			card=download_card,
+			table=self.table,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		self._login_mobile_client()
+		denied = self.client.get(f'/app/reprint/{self.client_profile.id}/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get(f'/app/reprint/{self.client_profile.id}/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertEqual(allowed.context.get('request_total'), 1)
+
+	def test_website_manage_page_requires_permission_and_renders_for_super_admin(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/website/')
+		self.assertEqual(denied.status_code, 403)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get('/app/website/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertIn('categories_json', allowed.context)
+
+	@mock.patch('mobile_app.views.StaffService.create')
+	def test_api_staff_create_for_super_admin_uses_staff_service(self, mock_create):
+		from core.services.base import ServiceResult
+
+		mock_create.return_value = ServiceResult(success=True, message='Staff created', data={'staff': {'id': 321}})
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			'/app/api/staff/create/',
+			data=json.dumps({'first_name': 'Mob', 'last_name': 'Manager', 'email': 'mob-manager@test.com'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		mock_create.assert_called_once()
+		self.assertEqual(mock_create.call_args.kwargs.get('staff_type'), 'admin_staff')
+
+	def test_api_staff_toggle_and_delete_work_for_super_admin(self):
+		managed_user = User.objects.create_user(
+			username='mob-manage-staff@test.com',
+			email='mob-manage-staff@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		managed_staff = Staff.objects.create(
+			user=managed_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+		)
+
+		self._login_mobile_super_admin()
+		toggle_response = self.client.post(f'/app/api/staff/{managed_staff.id}/toggle/')
+		self.assertEqual(toggle_response.status_code, 200)
+		managed_user.refresh_from_db()
+		self.assertFalse(managed_user.is_active)
+
+		delete_response = self.client.post(f'/app/api/staff/{managed_staff.id}/delete/')
+		self.assertEqual(delete_response.status_code, 200)
+		self.assertFalse(User.objects.filter(id=managed_user.id).exists())
+
+	@mock.patch('mobile_app.views.ClientService.get')
+	def test_api_client_detail_for_super_admin_returns_service_payload(self, mock_get):
+		from core.services.base import ServiceResult
+
+		mock_get.return_value = ServiceResult(
+			success=True,
+			message='ok',
+			data={'client': {'id': self.client_profile.id, 'name': self.client_profile.name}},
+		)
+
+		self._login_mobile_super_admin()
+		response = self.client.get(f'/app/api/client/{self.client_profile.id}/')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		self.assertEqual(response.json().get('client', {}).get('id'), self.client_profile.id)
+		mock_get.assert_called_once_with(self.client_profile.id, include_permissions=True)
+
+	@mock.patch('mobile_app.views.ClientService.update')
+	def test_api_client_update_for_super_admin_returns_service_payload(self, mock_update):
+		from core.services.base import ServiceResult
+
+		mock_update.return_value = ServiceResult(
+			success=True,
+			message='updated',
+			data={'client': {'id': self.client_profile.id, 'name': 'Updated Client'}},
+		)
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/client/{self.client_profile.id}/update/',
+			data=json.dumps({'name': 'Updated Client'}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		self.assertEqual(response.json().get('client', {}).get('name'), 'Updated Client')
+		mock_update.assert_called_once_with(self.client_profile.id, {'name': 'Updated Client'})
+
+	def test_api_portfolio_category_items_requires_view_permission_and_returns_items(self):
+		category = PortfolioCategory.objects.create(name='Mobile Category', icon='fas fa-image', is_active=True, order=5)
+		item = PortfolioItem.objects.create(
+			title='Mobile Clip',
+			category=category,
+			item_type='video',
+			video_url='https://example.com/mobile-clip.mp4',
+			is_active=True,
+			order=1,
+		)
+
+		self._login_mobile_client()
+		denied = self.client.get(f'/app/api/website/portfolio/category/{category.id}/items/')
+		self.assertEqual(denied.status_code, 403)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get(f'/app/api/website/portfolio/category/{category.id}/items/?limit=5')
+		self.assertEqual(allowed.status_code, 200)
+		payload = allowed.json()
+		self.assertTrue(payload.get('success'))
+		item_ids = [row['id'] for row in payload.get('items', [])]
+		self.assertIn(item.id, item_ids)
