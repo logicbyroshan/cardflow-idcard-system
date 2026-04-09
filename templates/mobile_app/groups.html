@@ -44,11 +44,10 @@
     <!-- Groups Tab -->
     <div x-show="activeTab === 'groups'" class="px-4 pt-3 space-y-2">
         {% for group in groups %}
-        <div class="m-pop-card m-pop-card-indigo rounded-xl shadow-sm overflow-hidden">
-            <button @click="expandedGroup = expandedGroup === {{ group.id }} ? null : {{ group.id }}"
-                    class="w-full flex items-center justify-between p-4 text-left active:bg-gray-50 transition">
+        <div class="m-pop-card m-pop-card-indigo rounded-lg shadow-sm overflow-hidden">
+            <div class="w-full flex items-center justify-between p-3 text-left">
                 <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center flex-shrink-0">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center flex-shrink-0">
                         <i class="fa-solid fa-folder text-brand-light text-[16px]"></i>
                     </div>
                     <div>
@@ -56,24 +55,23 @@
                         <p class="text-[10px] text-gray-400">{{ group.table_count }} table(s) &middot; {{ group.total_cards }} card(s)</p>
                     </div>
                 </div>
-                <i class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform duration-200"
-                   :class="expandedGroup === {{ group.id }} ? 'rotate-180 text-indigo-400' : ''"></i>
-            </button>
-            <div x-show="expandedGroup === {{ group.id }}" x-transition class="px-4 py-3 border-t border-indigo-100/60">
-                <div class="grid grid-cols-4 gap-2 mb-3">
-                    <div class="text-center p-2.5 bg-amber-200/75 rounded-xl">
+                <span class="text-[9px] font-semibold text-indigo-500 uppercase tracking-wide whitespace-nowrap">Open</span>
+            </div>
+            <div class="px-3 pb-3 pt-2 border-t border-indigo-100/60">
+                <div class="grid grid-cols-4 gap-1.5 mb-2.5">
+                    <div class="text-center p-2 bg-amber-200/75 rounded-lg">
                         <p class="mobile-chip-count text-amber-600">{{ group.pending_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Pending</p>
                     </div>
-                    <div class="text-center p-2.5 bg-emerald-200/75 rounded-xl">
+                    <div class="text-center p-2 bg-emerald-200/75 rounded-lg">
                         <p class="mobile-chip-count text-emerald-600">{{ group.verified_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Verified</p>
                     </div>
-                    <div class="text-center p-2.5 bg-sky-200/75 rounded-xl">
+                    <div class="text-center p-2 bg-sky-200/75 rounded-lg">
                         <p class="mobile-chip-count text-sky-600">{{ group.approved_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Approved</p>
                     </div>
-                    <div class="text-center p-2.5 bg-violet-200/75 rounded-xl">
+                    <div class="text-center p-2 bg-violet-200/75 rounded-lg">
                         <p class="mobile-chip-count text-violet-600">{{ group.download_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Download</p>
                     </div>
@@ -81,11 +79,11 @@
                 <!-- Tables in this group -->
                 {% for table in tables %}
                 {% if table.group_id == group.id %}
-                <div class="py-2.5 px-3 bg-white/95 rounded-lg mb-2 border border-indigo-100/70">
+                <div class="py-2 px-2.5 bg-white/95 rounded-md mb-1.5">
                     <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-table-cells text-indigo-300 text-[10px]"></i>
                         <span class="text-[12px] font-bold text-gray-700 flex-1 truncate">{{ table.name }}</span>
-                        <span class="text-[9px] font-semibold text-gray-500 bg-white/85 px-2 py-0.5 rounded-full">{{ table.total_cards }} cards</span>
+                        <span class="text-[9px] font-semibold text-gray-500 bg-white/85 px-2 py-0.5 rounded whitespace-nowrap">{{ table.total_cards }} cards</span>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                         {% if perm_idcard_pending_list %}
@@ -296,7 +294,6 @@
 function groupsApp() {
     return {
         activeTab: 'groups',
-        expandedGroup: null,
         showFieldModal: false,
         fieldModalOverlayToken: null,
         fieldModalTitle: '',

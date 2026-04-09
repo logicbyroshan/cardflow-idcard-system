@@ -458,6 +458,73 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertIn('permission', response.json().get('message', '').lower())
 		mock_validate.assert_not_called()
 
+	@mock.patch('mobile_app.views.IDCardService.update_card')
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_card_update_accepts_multiple_image_field_upload_keys(self, _mock_validate, mock_update_card):
+		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {'id': self.card.id}})
+
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'mother_photo', 'order': 2},
+			{'name': 'FATHER PHOTO', 'type': 'father_photo', 'order': 3},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{self.card.id}/update/',
+			data={
+				'field_data': json.dumps({'NAME': 'Student One Updated'}),
+				'image_PHOTO': SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+				'image_MOTHER PHOTO': SimpleUploadedFile('mother.jpg', b'mother-bytes', content_type='image/jpeg'),
+				'image_FATHER PHOTO': SimpleUploadedFile('father.jpg', b'father-bytes', content_type='image/jpeg'),
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		mock_update_card.assert_called_once()
+		kwargs = mock_update_card.call_args.kwargs
+		self.assertIn('image_PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_MOTHER PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_FATHER PHOTO', kwargs.get('image_files', {}))
+
+	@mock.patch('mobile_app.views.IDCardService.update_card')
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_card_add_accepts_multiple_image_field_upload_keys(self, _mock_validate, mock_update_card):
+		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {}})
+
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'mother_photo', 'order': 2},
+			{'name': 'FATHER PHOTO', 'type': 'father_photo', 'order': 3},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self._login_mobile_super_admin()
+		before = IDCard.objects.filter(table=self.table).count()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/add/',
+			data={
+				'field_data': json.dumps({'NAME': 'Multi Image Card'}),
+				'image_PHOTO': SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+				'image_MOTHER PHOTO': SimpleUploadedFile('mother.jpg', b'mother-bytes', content_type='image/jpeg'),
+				'image_FATHER PHOTO': SimpleUploadedFile('father.jpg', b'father-bytes', content_type='image/jpeg'),
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		after = IDCard.objects.filter(table=self.table).count()
+		self.assertEqual(after, before + 1)
+		mock_update_card.assert_called_once()
+		kwargs = mock_update_card.call_args.kwargs
+		self.assertIn('image_PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_MOTHER PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_FATHER PHOTO', kwargs.get('image_files', {}))
+
 	def _setup_client_staff_row_scope(self):
 		self.table.fields = [
 			{'name': 'NAME', 'type': 'text', 'order': 0},
@@ -1041,6 +1108,22 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 		response = self.client.get(f'/app/reprint/table/{self.table.id}/?step=request_list&q=alpha')
 		self.assertEqual(response.status_code, 200)
+
+	def test_add_form_sheet_renders_multi_image_field_loop(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'add_form_sheet.html'
+		html = template_path.read_text(encoding='utf-8')
+		self.assertIn('x-for="fieldName in imageFormFields"', html)
+		self.assertIn('@click="if(!viewMode) startImageSelection(fieldName)"', html)
+		self.assertIn('@click="openCropForField(fieldName)"', html)
+
+	def test_home_and_groups_templates_keep_sections_open_by_default(self):
+		base = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app'
+		home_html = (base / 'home.html').read_text(encoding='utf-8')
+		groups_html = (base / 'groups.html').read_text(encoding='utf-8')
+
+		self.assertNotIn('toggle(', home_html)
+		self.assertNotIn('expanded ===', home_html)
+		self.assertNotIn('expandedGroup', groups_html)
 
 	def test_reprint_table_prefers_field_data_photo_url(self):
 		from reprintcard.models import ReprintRequest

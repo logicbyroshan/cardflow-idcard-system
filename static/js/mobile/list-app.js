@@ -91,6 +91,7 @@ function listApp() {
         showCropModal: false,
         cropSourceUrl: null,
         cropSourceFile: null,
+        cropTargetField: null,
         cropperInstance: null,
         viewMode: false,
         editMode: false,
@@ -105,11 +106,14 @@ function listApp() {
         allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
         tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
         dynamicFormFields: [],
+        imageFormFields: [],
+        activeImageField: '',
         tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0, pool: 0 },
         form: {
             dynamicValues: {},
-            photoFile: null,
-            photoPreview: null,
+            imageFiles: {},
+            imagePreviews: {},
+            imageHasPath: {},
         },
 
         init() {
@@ -1479,6 +1483,117 @@ function listApp() {
             return { slots, urls };
         },
 
+        _defaultImageFieldName() {
+            const defs = (this.tableFields || []).filter((f) => this._isPhotoFieldDef(f));
+            if (defs.length) {
+                return String(defs[0].name || 'PHOTO').trim() || 'PHOTO';
+            }
+            return 'PHOTO';
+        },
+
+        _getImageFormFields(sourceFieldData) {
+            const source = sourceFieldData || {};
+            const names = [];
+            const seen = {};
+
+            (this.tableFields || []).forEach((f) => {
+                if (!this._isPhotoFieldDef(f)) return;
+                const n = String(f.name || '').trim();
+                if (!n) return;
+                const lk = this._normalizeLookupKey(n);
+                if (!lk || seen[lk]) return;
+                seen[lk] = true;
+                names.push(n);
+            });
+
+            Object.keys(source).forEach((k) => {
+                const key = String(k || '').trim();
+                if (!key || !this._isImageLikeFieldName(key)) return;
+                const lk = this._normalizeLookupKey(key);
+                if (!lk || seen[lk]) return;
+                seen[lk] = true;
+                names.push(key);
+            });
+
+            if (!names.length) {
+                names.push(this._defaultImageFieldName());
+            }
+
+            return names;
+        },
+
+        _initImageForm(sourceFieldData, sourceCard) {
+            const fd = sourceFieldData || {};
+            const card = sourceCard || {};
+            this.imageFormFields = this._getImageFormFields(fd);
+
+            const imageFiles = {};
+            const imagePreviews = {};
+            const imageHasPath = {};
+
+            this.imageFormFields.forEach((fieldName) => {
+                const rawVal = this._getFieldValue(fd, [fieldName], '');
+                const normalized = this._normalizePhotoPath(rawVal);
+                imageFiles[fieldName] = null;
+                imagePreviews[fieldName] = normalized.url || null;
+                imageHasPath[fieldName] = !!normalized.hasPath;
+            });
+
+            const cardPhotoSlots = Array.isArray(card.photo_slots) ? card.photo_slots : [];
+            if (cardPhotoSlots.length) {
+                this.imageFormFields.forEach((fieldName, idx) => {
+                    const slot = cardPhotoSlots[idx] || null;
+                    if (!slot || !slot.url) return;
+                    imagePreviews[fieldName] = slot.url;
+                    imageHasPath[fieldName] = true;
+                });
+            }
+
+            if (!Object.values(imagePreviews).some(Boolean) && card.photo_url) {
+                const first = this.imageFormFields[0];
+                if (first) {
+                    imagePreviews[first] = card.photo_url;
+                    imageHasPath[first] = true;
+                }
+            }
+
+            this.form.imageFiles = imageFiles;
+            this.form.imagePreviews = imagePreviews;
+            this.form.imageHasPath = imageHasPath;
+
+            if (!this.activeImageField || !this.imageFormFields.includes(this.activeImageField)) {
+                this.activeImageField = this.imageFormFields[0] || this._defaultImageFieldName();
+            }
+        },
+
+        _imagePreview(fieldName) {
+            return (this.form.imagePreviews || {})[fieldName] || null;
+        },
+
+        _imageHasPath(fieldName) {
+            return !!((this.form.imageHasPath || {})[fieldName]);
+        },
+
+        startImageSelection(fieldName) {
+            if (this.viewMode) return;
+            this.activeImageField = fieldName || this.activeImageField || this._defaultImageFieldName();
+            this.showImagePicker = true;
+        },
+
+        openCropForField(fieldName) {
+            if (this.viewMode) return;
+            const target = fieldName || this.activeImageField || this._defaultImageFieldName();
+            const currentPreview = this._imagePreview(target);
+            if (!currentPreview) return;
+
+            this.activeImageField = target;
+            this.cropTargetField = target;
+            this.cropSourceUrl = currentPreview;
+            this.cropSourceFile = null;
+            this.showCropModal = true;
+            this.$nextTick(() => this.initCropper());
+        },
+
         _bumpTabCounts(fromStatus, toStatus, n) {
             const count = Number(n || 0);
             if (!count || count < 1) return;
@@ -1550,7 +1665,12 @@ function listApp() {
         _mapCardDetailToStudent(detail, fallbackId = null) {
             const data = detail || {};
             const fd = data.field_data || {};
-            const photoUrl = data.photo_url || null;
+            const photoMeta = this._buildPhotoSlotsFromCard({
+                field_data: fd,
+                photo_url: data.photo_url || null,
+                photo_urls: Array.isArray(data.photo_urls) ? data.photo_urls : [],
+            });
+            const photoUrl = (photoMeta.urls && photoMeta.urls.length) ? photoMeta.urls[0] : null;
             return {
                 id: Number(data.id || fallbackId || 0),
                 sr_no: 0,
@@ -1562,8 +1682,9 @@ function listApp() {
                 section: String(this._getFieldValue(fd, ['SECTION', 'section'])),
                 dob: String(data.dob || this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'])),
                 photo_url: photoUrl,
-                photo_urls: photoUrl ? [photoUrl] : [],
-                has_photo: !!photoUrl,
+                photo_urls: photoMeta.urls || [],
+                photo_slots: photoMeta.slots || [],
+                has_photo: !!(photoMeta.urls && photoMeta.urls.length),
                 status: String(data.status || LIST_TYPE),
                 field_data: fd,
                 display_fields: this._buildDisplayFieldsFromData(fd),
@@ -2000,8 +2121,7 @@ function listApp() {
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
             this._initDynamicForm(fd, false);
-            this.form.photoFile = null;
-            this.form.photoPreview = (student && student.photo_url) || null;
+            this._initImageForm(fd, student || {});
         },
         async openViewById(cardId) {
             const viewId = Number(cardId);
@@ -2069,25 +2189,29 @@ function listApp() {
         resetForm() {
             this.form = {
                 dynamicValues: {},
-                photoFile: null,
-                photoPreview: null,
+                imageFiles: {},
+                imagePreviews: {},
+                imageHasPath: {},
             };
             this._initDynamicForm({});
+            this._initImageForm({}, {});
             this.showImagePicker = false;
         },
-        openImagePicker() {
+        openImagePicker(fieldName) {
             if (this.viewMode) return;
+            this.activeImageField = fieldName || this.activeImageField || this._defaultImageFieldName();
             this.showImagePicker = !this.showImagePicker;
         },
         takePhoto() {
             if (this.viewMode) return;
-            if (this.editMode && this.editingId) {
+            const hasSingleImageField = (this.imageFormFields || []).length <= 1;
+            if (this.editMode && this.editingId && hasSingleImageField) {
                 // Redirect to full camera.html  same as top-bar camera button
                 sessionStorage.setItem('cam_return_edit', String(this.editingId));
                 sessionStorage.setItem('cam_return_url', window.location.href);
                 window.location.href = '/app/camera/' + TABLE_ID + '/' + this.editingId + '/';
             } else {
-                // Add-new mode: use native camera input (no card_id yet)
+                // Add mode and multi-image edit mode use inline picker for target field.
                 if (this.$refs.cameraInput) this.$refs.cameraInput.click();
                 this.showImagePicker = false;
             }
@@ -2102,6 +2226,7 @@ function listApp() {
             if (!file) return;
             if (!file.type.startsWith('image/')) { this.showToast('Please select an image file', 'error'); return; }
             if (file.size > 10 * 1024 * 1024) { this.showToast('Image must be less than 10MB', 'error'); return; }
+            this.cropTargetField = this.activeImageField || this._defaultImageFieldName();
             this.cropSourceFile = file;
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -2133,21 +2258,38 @@ function listApp() {
         },
         cropAndUse() {
             if (!this.cropperInstance) { this.skipCrop(); return; }
+            const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
             const canvas = this.cropperInstance.getCroppedCanvas({ width: 600, height: 800, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
             canvas.toBlob((blob) => {
                 const fileName = (this.cropSourceFile && this.cropSourceFile.name) ? this.cropSourceFile.name : 'photo.jpg';
                 const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
-                this.form.photoFile = croppedFile;
+                if (!this.form.imageFiles) this.form.imageFiles = {};
+                if (!this.form.imagePreviews) this.form.imagePreviews = {};
+                if (!this.form.imageHasPath) this.form.imageHasPath = {};
+                this.form.imageFiles[targetField] = croppedFile;
                 const reader = new FileReader();
-                reader.onload = (e) => { this.form.photoPreview = e.target.result; };
+                reader.onload = (e) => {
+                    this.form.imagePreviews[targetField] = e.target.result;
+                    this.form.imageHasPath[targetField] = true;
+                };
                 reader.readAsDataURL(croppedFile);
                 this.closeCropModal();
             }, 'image/jpeg', 0.92);
         },
         skipCrop() {
             // Use original file without cropping
-            this.form.photoFile = this.cropSourceFile;
-            this.form.photoPreview = this.cropSourceUrl;
+            const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
+            if (!this.form.imageFiles) this.form.imageFiles = {};
+            if (!this.form.imagePreviews) this.form.imagePreviews = {};
+            if (!this.form.imageHasPath) this.form.imageHasPath = {};
+
+            if (this.cropSourceFile) {
+                this.form.imageFiles[targetField] = this.cropSourceFile;
+            }
+            if (this.cropSourceUrl) {
+                this.form.imagePreviews[targetField] = this.cropSourceUrl;
+                this.form.imageHasPath[targetField] = true;
+            }
             this.closeCropModal();
         },
         closeCropModal() {
@@ -2155,6 +2297,7 @@ function listApp() {
             this.showCropModal = false;
             this.cropSourceUrl = null;
             this.cropSourceFile = null;
+            this.cropTargetField = null;
         },
         async submitAddForm() {
             if (this.viewMode) {
@@ -2195,7 +2338,17 @@ function listApp() {
             }
 
             fd.append('field_data', JSON.stringify(fieldData));
-            if (this.form.photoFile) fd.append('photo', this.form.photoFile);
+            let legacyPhotoFile = null;
+            Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
+                if (!fileObj) return;
+                fd.append('image_' + fieldName, fileObj);
+                if (!legacyPhotoFile && this._isImageLikeFieldName(fieldName)) {
+                    legacyPhotoFile = fileObj;
+                }
+            });
+            if (legacyPhotoFile) {
+                fd.append('photo', legacyPhotoFile);
+            }
             try {
                 var _ac2 = new AbortController();
                 setTimeout(function() { _ac2.abort(); }, 120000);
@@ -2227,6 +2380,21 @@ function listApp() {
                                 if (idx > -1) {
                                     const existing = this.studentsData[idx];
                                     const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
+                                    const fallbackSlots = (this.imageFormFields || []).map((fieldName, slotIdx) => {
+                                        const previewUrl = (this.form.imagePreviews || {})[fieldName]
+                                            || ((existing.photo_slots || [])[slotIdx] || {}).url
+                                            || null;
+                                        const hasPath = !!(
+                                            (this.form.imageHasPath || {})[fieldName]
+                                            || ((existing.photo_slots || [])[slotIdx] || {}).has_path
+                                            || previewUrl
+                                        );
+                                        return {
+                                            url: previewUrl,
+                                            has_path: hasPath,
+                                        };
+                                    });
+                                    const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
                                     const fallbackCard = Object.assign({}, existing, {
                                         name: summary.name,
                                         roll_no: summary.roll_no,
@@ -2235,6 +2403,10 @@ function listApp() {
                                         class_name: summary.class_name,
                                         section: summary.section,
                                         dob: summary.dob,
+                                        photo_url: fallbackUrls.length ? fallbackUrls[0] : existing.photo_url,
+                                        photo_urls: fallbackUrls.length ? fallbackUrls : (existing.photo_urls || []),
+                                        photo_slots: fallbackSlots.length ? fallbackSlots : (existing.photo_slots || []),
+                                        has_photo: fallbackUrls.length ? true : !!(existing.has_photo),
                                         field_data: mergedFieldData,
                                         display_fields: this._buildDisplayFieldsFromData(mergedFieldData),
                                     });
@@ -2243,6 +2415,11 @@ function listApp() {
                             } else if (LIST_TYPE === 'pending' && cardId) {
                                 const fallbackSummary = this._summarizeCardFromFieldData(fieldData);
                                 const fallbackFieldData = Object.assign({}, fieldData);
+                                const fallbackSlots = (this.imageFormFields || []).map((fieldName) => ({
+                                    url: (this.form.imagePreviews || {})[fieldName] || null,
+                                    has_path: !!((this.form.imageHasPath || {})[fieldName]),
+                                }));
+                                const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
                                 const fallbackCard = {
                                     id: Number(cardId),
                                     sr_no: this.studentsData.length + 1,
@@ -2253,9 +2430,10 @@ function listApp() {
                                     class_name: fallbackSummary.class_name,
                                     section: fallbackSummary.section,
                                     dob: fallbackSummary.dob,
-                                    photo_url: this.form.photoPreview || null,
-                                    photo_urls: this.form.photoPreview ? [this.form.photoPreview] : [],
-                                    has_photo: !!this.form.photoPreview,
+                                    photo_url: fallbackUrls.length ? fallbackUrls[0] : null,
+                                    photo_urls: fallbackUrls,
+                                    photo_slots: fallbackSlots,
+                                    has_photo: !!fallbackUrls.length,
                                     status: 'pending',
                                     field_data: fallbackFieldData,
                                     display_fields: this._buildDisplayFieldsFromData(fallbackFieldData),

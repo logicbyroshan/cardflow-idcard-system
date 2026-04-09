@@ -47,7 +47,7 @@ from staff.models import Staff
 from accounts.rate_limit import rate_limit
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
-from core.services import StaffService
+from core.services import StaffService, IDCardService
 from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
@@ -2739,22 +2739,42 @@ def api_card_add(request, table_id):
         if not isinstance(field_data, dict):
             field_data = {}
 
-        # Validate photo BEFORE writing card to DB
-        photo = request.FILES.get('photo')
-        if photo:
-            _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
-            if not _ok:
-                return JsonResponse({'success': False, 'message': _err}, status=400)
+        legacy_photo = request.FILES.get('photo')
+        image_files = {}
+        for file_key in request.FILES:
+            uploaded = request.FILES.get(file_key)
+            if not uploaded:
+                continue
 
-        card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+            key_l = str(file_key).strip().lower()
+            if key_l == 'photo' or key_l.startswith('image_'):
+                _ok, _err, validated_file = _unpack_validate_image_result(_validate_image(uploaded), uploaded)
+                if not _ok:
+                    return JsonResponse({'success': False, 'message': _err}, status=400)
 
-        if photo:
-            import os, uuid
-            ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
-            safe_name = f'{uuid.uuid4().hex}{ext}'
-            card.photo.save(safe_name, photo, save=True)
+                if key_l == 'photo':
+                    legacy_photo = validated_file
+                elif key_l.startswith('image_'):
+                    image_files[file_key] = validated_file
+
+        with transaction.atomic():
+            card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+
+            if image_files or legacy_photo:
+                update_result = IDCardService.update_card(
+                    card_id=card.id,
+                    field_data={},
+                    image_files=image_files,
+                    uploaded_by=request.user,
+                    legacy_photo_file=legacy_photo,
+                    modified_by=getattr(request.user, 'username', '') or None,
+                )
+                if not update_result.success:
+                    raise ValueError(update_result.message or 'Image upload failed')
 
         return JsonResponse({'success': True, 'message': 'Card added successfully', 'card_id': card.id})
+    except ValueError as err:
+        return JsonResponse({'success': False, 'message': str(err)}, status=400)
     except Exception:
         import logging as _log
         _log.getLogger(__name__).exception('Card add error')
@@ -2782,22 +2802,35 @@ def api_card_update(request, table_id, card_id):
         if not isinstance(field_data, dict):
             field_data = {}
 
-        if field_data:
-            existing = card.field_data or {}
-            existing.update(field_data)
-            card.field_data = existing
+        legacy_photo = request.FILES.get('photo')
+        image_files = {}
+        for file_key in request.FILES:
+            uploaded = request.FILES.get(file_key)
+            if not uploaded:
+                continue
 
-        photo = request.FILES.get('photo')
-        if photo:
-            _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
-            if not _ok:
-                return JsonResponse({'success': False, 'message': _err}, status=400)
-            import os, uuid
-            ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
-            safe_name = f'{uuid.uuid4().hex}{ext}'
-            card.photo.save(safe_name, photo, save=False)
+            key_l = str(file_key).strip().lower()
+            if key_l == 'photo' or key_l.startswith('image_'):
+                _ok, _err, validated_file = _unpack_validate_image_result(_validate_image(uploaded), uploaded)
+                if not _ok:
+                    return JsonResponse({'success': False, 'message': _err}, status=400)
 
-        card.save()
+                if key_l == 'photo':
+                    legacy_photo = validated_file
+                elif key_l.startswith('image_'):
+                    image_files[file_key] = validated_file
+
+        update_result = IDCardService.update_card(
+            card_id=card.id,
+            field_data=field_data,
+            image_files=image_files,
+            uploaded_by=request.user,
+            legacy_photo_file=legacy_photo,
+            modified_by=getattr(request.user, 'username', '') or None,
+        )
+        if not update_result.success:
+            return JsonResponse({'success': False, 'message': update_result.message or 'Update failed'}, status=400)
+
         return JsonResponse({'success': True, 'message': 'Card updated successfully'})
     except Exception:
         logger.exception('Card update error')
