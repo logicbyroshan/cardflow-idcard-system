@@ -2,19 +2,9 @@
 <div class="dashboard-card dashboard-card-blue-accent">
   <div class="dashboard-card-header updates-header">
     <h3 id="teamOverviewPanelTitle"><i class="fa-solid fa-users"></i> Team Overview - Clients</h3>
-    <div class="recent-updates-search-inline">
-      <div class="recent-updates-search-box">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="search" id="teamOverviewSearch" class="recent-updates-search-input" data-team-overview-search placeholder="Search name, email, mobile..." aria-label="Search Team Overview" autocomplete="off">
-      </div>
-    </div>
   </div>
   <div class="dashboard-card-body team-overview-panel-body">
     <div class="team-overview-toolbar">
-      <button type="button" class="action-btn" id="teamOverviewActionAdd">
-        <i class="fa-solid fa-plus"></i>
-        Add New
-      </button>
       <button type="button" class="action-btn" id="teamOverviewActionEdit" disabled>
         <i class="fa-solid fa-pen-to-square"></i>
         Edit
@@ -31,9 +21,16 @@
         <i class="fa-solid fa-trash"></i>
         Delete
       </button>
+
+      <div class="team-overview-toolbar-search">
+        <div class="recent-updates-search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="teamOverviewSearch" class="recent-updates-search-input" data-team-overview-search placeholder="Search name, email, mobile..." aria-label="Search Team Overview" autocomplete="off">
+        </div>
+      </div>
     </div>
     <div class="dashboard-scroll-table-wrapper">
-      <table class="recent-table dashboard-scroll-table recent-table-5col" aria-label="Team Overview Table">
+      <table class="recent-table dashboard-scroll-table recent-table-5col team-overview-table" aria-label="Team Overview Table">
         <thead>
           <tr>
             <th>Name</th>
@@ -54,87 +51,143 @@
 </div>
 
 <div class="drawer-overlay" id="teamOverviewDrawerOverlay" hidden></div>
-<aside class="side-drawer dashboard-team-drawer" id="teamOverviewDrawer" aria-hidden="true">
+<aside class="side-drawer" id="teamOverviewDrawer" aria-hidden="true">
   <div class="drawer-header">
     <h2 class="drawer-title" id="teamOverviewDrawerTitle">
-      <i class="fa-solid fa-user-pen"></i>
-      Team Entity
+      <i class="fa-solid fa-user-plus" id="teamOverviewDrawerIcon"></i>
+      <span id="teamOverviewDrawerTitleText">Add Team Member</span>
     </h2>
     <button type="button" class="drawer-close" id="teamOverviewDrawerClose" aria-label="Close team drawer">
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
-  <div class="drawer-body">
-    <form id="teamOverviewForm" class="team-overview-form">
+
+  <form id="teamOverviewForm">
       <input type="hidden" id="teamOverviewFormMode" value="add">
       <input type="hidden" id="teamOverviewFormScope" value="clients">
       <input type="hidden" id="teamOverviewFormEntityId" value="">
+      <input type="hidden" id="teamOverviewFormStatus" value="false">
+      <input type="hidden" id="teamOverviewFormPasswordOption" value="phone">
 
-      <div class="field-group">
-        <label for="teamOverviewFormName">Name</label>
-        <input type="text" id="teamOverviewFormName" class="form-input" required>
+      <div class="drawer-body">
+        <div class="profile-upload-section flex-row items-center gap-4">
+          {% include 'partials/components/user-avatar.html' with role='admin_staff' size='large' %}
+          <span class="text-xs text-gray-500" id="teamOverviewAvatarLabel">Team member avatar</span>
+        </div>
+
+        <div class="form-section" id="teamOverviewAssignmentField" style="display: none;">
+          <h3 class="section-title">
+            <i class="fa-solid fa-building-user"></i>
+            Client Assignment
+          </h3>
+          <div class="form-group">
+            <label class="form-label" id="teamOverviewAssignmentLabel">Assign Clients</label>
+            <div class="client-multiselect" id="teamOverviewClientMultiselect">
+              <div class="client-multiselect-header" id="teamOverviewClientMultiselectToggle">
+                <span class="client-multiselect-placeholder" id="teamOverviewClientMultiselectText">Select clients...</span>
+                <i class="fa-solid fa-chevron-down client-multiselect-arrow"></i>
+              </div>
+              <div class="client-multiselect-dropdown" id="teamOverviewClientMultiselectDropdown" style="display: none;">
+                <div class="client-multiselect-search">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="teamOverviewClientSearchInput" placeholder="Search clients..." autocomplete="off">
+                </div>
+                <div class="client-multiselect-list" id="teamOverviewClientMultiselectList"></div>
+                <div class="client-multiselect-empty" id="teamOverviewClientMultiselectEmpty" style="display: none;">
+                  No clients found
+                </div>
+              </div>
+            </div>
+            <small class="field-hint" id="teamOverviewAssignmentHint">Select one or more clients.</small>
+          </div>
+        </div>
+
+        <div class="form-section" id="teamOverviewInfoSection">
+          <h3 class="section-title" id="teamOverviewInfoSectionTitle">
+            <i class="fa-solid fa-info-circle"></i>
+            Team Information
+          </h3>
+
+          <div class="form-group">
+            <label class="form-label" for="teamOverviewFormName">Name <span class="required">*</span></label>
+            <input type="text" id="teamOverviewFormName" class="form-input" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="teamOverviewFormEmail">Email</label>
+              <input type="email" id="teamOverviewFormEmail" class="form-input" placeholder="Enter email address (optional)">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="teamOverviewFormMobile">Phone</label>
+              <input type="text" id="teamOverviewFormMobile" class="form-input" placeholder="Enter phone number">
+            </div>
+          </div>
+
+          <div class="form-group" id="teamOverviewAddressField" style="display: none; width: 100%;">
+            <label class="form-label" for="teamOverviewFormAddress">Address</label>
+            <textarea id="teamOverviewFormAddress" class="form-textarea" rows="2" placeholder="Enter address (optional)"></textarea>
+          </div>
+
+          <div class="form-row" id="teamOverviewPasswordOptionRow">
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <div class="custom-dropdown form-dropdown" id="teamOverviewStatusDropdown">
+                <button type="button" class="dropdown-toggle" aria-expanded="false">
+                  <span>Inactive</span>
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options">
+                  <div class="dropdown-option" data-value="true">Active</div>
+                  <div class="dropdown-option selected" data-value="false">Inactive</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" id="teamOverviewPasswordOptionField">
+              <label class="form-label">Password Option</label>
+              <div class="custom-dropdown form-dropdown" id="teamOverviewPasswordOptionDropdown">
+                <button type="button" class="dropdown-toggle" aria-expanded="false">
+                  <span>Use Phone Number</span>
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options">
+                  <div class="dropdown-option selected" data-value="phone">Use Phone Number</div>
+                  <div class="dropdown-option" data-value="custom">Custom Password</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" id="teamOverviewPasswordField" style="display: none;">
+            <label class="form-label" for="teamOverviewFormPassword">Password <span class="required">*</span></label>
+            <div style="position: relative;">
+              <input type="password" id="teamOverviewFormPassword" class="form-input" placeholder="Enter custom password" autocomplete="new-password" style="padding-right: 2.5rem;">
+              <button type="button" id="teamOverviewPasswordToggle" aria-label="Toggle password visibility" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#64748b;cursor:pointer;padding:0;line-height:1;z-index:2;">
+                <i class="fa-solid fa-eye" id="teamOverviewPasswordToggleIcon"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section" id="teamOverviewPermissionsField">
+          <div id="teamOverviewPermissionsGrid"></div>
+        </div>
       </div>
 
-      <div class="field-group">
-        <label for="teamOverviewFormEmail">Email</label>
-        <input type="email" id="teamOverviewFormEmail" class="form-input" placeholder="Optional">
+      <div class="drawer-footer">
+        <button type="button" class="btn btn-md btn-neutral" id="teamOverviewFormCancel">
+          <i class="fa-solid fa-xmark"></i>
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-md btn-primary" id="teamOverviewFormSave">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span id="teamOverviewFormSaveText">Save</span>
+        </button>
       </div>
+  </form>
 
-      <div class="field-group">
-        <label for="teamOverviewFormMobile">Mobile</label>
-        <input type="text" id="teamOverviewFormMobile" class="form-input" placeholder="Required when password option is phone">
-      </div>
-
-      <div class="field-group" id="teamOverviewOperatorClientsField" hidden>
-        <label for="teamOverviewFormAssignedClients">Assign Clients</label>
-        <select id="teamOverviewFormAssignedClients" class="form-select" multiple size="6"></select>
-        <small class="field-help">Use Ctrl/Cmd + click to select multiple clients.</small>
-      </div>
-
-      <div class="field-group" id="teamOverviewClientField" hidden>
-        <label for="teamOverviewFormClient">Client</label>
-        <select id="teamOverviewFormClient" class="form-select"></select>
-      </div>
-
-      <div class="field-group" id="teamOverviewAddressField" hidden>
-        <label for="teamOverviewFormAddress">Address</label>
-        <textarea id="teamOverviewFormAddress" class="form-textarea" rows="3"></textarea>
-      </div>
-
-      <div class="field-group">
-        <label for="teamOverviewFormStatus">Status</label>
-        <select id="teamOverviewFormStatus" class="form-select">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-      </div>
-
-      <div class="field-group" id="teamOverviewPasswordOptionField">
-        <label for="teamOverviewFormPasswordOption">Password Option</label>
-        <select id="teamOverviewFormPasswordOption" class="form-select">
-          <option value="phone">Use Phone Number</option>
-          <option value="custom">Custom Password</option>
-        </select>
-      </div>
-
-      <div class="field-group" id="teamOverviewPasswordField" hidden>
-        <label for="teamOverviewFormPassword">Password</label>
-        <input type="text" id="teamOverviewFormPassword" class="form-input" placeholder="Enter custom password">
-      </div>
-
-      <div class="field-group" id="teamOverviewPermissionsField">
-        <label>Permissions</label>
-        <div id="teamOverviewPermissionsGrid" class="team-overview-permissions-grid"></div>
-      </div>
-
-      <div class="team-overview-form-actions">
-        <button type="button" class="action-btn" id="teamOverviewFormCancel">Cancel</button>
-        <button type="submit" class="action-btn action-btn-primary" id="teamOverviewFormSave">Save</button>
-      </div>
-    </form>
-
-    <div id="teamOverviewStaffPanel" class="team-overview-staff-panel" hidden>
-      <h4>Client Staff</h4>
+  <div id="teamOverviewStaffPanel" class="drawer-body team-overview-staff-panel" hidden>
+      <h3 class="section-title"><i class="fa-solid fa-users-gear"></i> Client Staff</h3>
       <div class="dashboard-scroll-table-wrapper">
         <table class="recent-table recent-table-4col">
           <thead>
@@ -150,6 +203,5 @@
           </tbody>
         </table>
       </div>
-    </div>
   </div>
 </aside>

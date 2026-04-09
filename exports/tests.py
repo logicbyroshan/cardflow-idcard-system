@@ -409,6 +409,28 @@ class ExportViewHelperTests(TestCase):
             },
         )
 
+    def test_get_image_rename_options_accepts_selected_image_field(self):
+        from exports.views import _get_image_rename_options_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'rename_options': {
+                    'enabled': True,
+                    'selected_image_field': ' photo ',
+                    'image_name_fields': {
+                        'photo': ['Student Name'],
+                    },
+                }
+            }),
+            content_type='application/json',
+        )
+
+        opts = _get_image_rename_options_from_request(request)
+        self.assertTrue(opts['enabled'])
+        self.assertEqual(opts['selected_image_field'], 'photo')
+        self.assertEqual(opts['image_name_fields'], {'PHOTO': ['Student Name']})
+
     def test_lock_acquire_and_release(self):
         from exports.views import _acquire_export_lock, _release_export_lock
 
@@ -1018,6 +1040,62 @@ class ExportDeepLimitAndRoleTests(TestCase):
             names = zf.namelist()
 
         self.assertTrue(any(name.startswith('PHOTO/Student_A') for name in names), names)
+
+    def test_zip_export_rename_mode_limits_to_selected_image_field(self):
+        from exports.zip import ZipExporter
+        import base64
+        import io
+        import zipfile
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'image', 'order': 2},
+            {'name': 'PHOTO_2', 'type': 'image', 'order': 3},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        card = self.table.id_cards.first()
+        card.field_data = {
+            'NAME': 'Student A',
+            'PHOTO': 'clients_imgs/deep/photo_a.jpg',
+            'PHOTO_2': 'clients_imgs/deep/photo_b.jpg',
+        }
+        card.save(update_fields=['field_data'])
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'selected_image_field': 'PHOTO',
+            'image_name_fields': {
+                'PHOTO': ['NAME'],
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = b'a' * 256
+
+        def _mock_image_path(*args, **kwargs):
+            card_obj = kwargs.get('card') if 'card' in kwargs else (args[0] if len(args) > 0 else None)
+            field_name = kwargs.get('field_name') if 'field_name' in kwargs else (args[1] if len(args) > 1 else '')
+            return (card_obj.field_data or {}).get(field_name, '')
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', side_effect=_mock_image_path):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+
+        self.assertTrue(any(name.startswith('PHOTO/') for name in names), names)
+        self.assertFalse(any(name.startswith('PHOTO_2/') for name in names), names)
 
     def test_pdf_zip_1gb_boundary_and_super_admin_bypass(self):
         from exports.zip import ZipExporter, MAX_BASE64_ZIP_BYTES

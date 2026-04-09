@@ -271,6 +271,7 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
             "rename_options": {
                 "enabled": true,
                 "output_format": "zip" | "pdf_zip",
+                "selected_image_field": "PHOTO",
                 "image_name_fields": {
                     "PHOTO": "Student Name" | ["Student Name", "Class", "Section"],
                     "FATHER_PHOTO": "Father Name" | ["Student Name", "Father Name"],
@@ -328,14 +329,23 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
     if not cleaned_map:
         return None
 
+    selected_image_field = str(rename_options.get('selected_image_field') or '').strip()
+    if len(selected_image_field) > 120:
+        selected_image_field = ''
+
     raw_output_format = str(rename_options.get('output_format', 'zip') or 'zip').strip().lower()
     output_format = 'pdf_zip' if raw_output_format == 'pdf_zip' else 'zip'
 
-    return {
+    cleaned_options = {
         'enabled': True,
         'image_name_fields': cleaned_map,
         'output_format': output_format,
     }
+
+    if selected_image_field:
+        cleaned_options['selected_image_field'] = selected_image_field
+
+    return cleaned_options
 
 
 def _check_export_permission(request, skip_status_check=False):

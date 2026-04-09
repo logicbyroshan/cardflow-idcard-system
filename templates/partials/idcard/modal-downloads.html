@@ -130,7 +130,7 @@
         <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-amber-600 cursor-pointer">
         Rename image files by selected name fields
       </label>
-      <p class="center-modal-note mt-1 mb-0">Optional: applies only to PHOTO, FATHER PHOTO, and MOTHER PHOTO.</p>
+      <p class="center-modal-note mt-1 mb-0">Optional: choose one photo column and build filenames from selected fields.</p>
     </div>
 
     <div id="downloadImgRenamePanel" class="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50" style="display:none;">
@@ -141,22 +141,24 @@
           <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
         </select>
         <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
-        <p class="center-modal-note mt-1 mb-0">For filename combination, select one or more fields. Selected values are joined with an underscore (_).</p>
       </div>
 
-      <div class="grid gap-2">
-        <div id="downloadImgMapPhotoRow">
-          <label class="center-modal-label text-left block mb-1">PHOTO filename fields</label>
-          <select id="downloadImgMapPhoto" class="center-modal-select center-modal-select-multiple" multiple size="6"></select>
-        </div>
-        <div id="downloadImgMapFatherRow">
-          <label class="center-modal-label text-left block mb-1">FATHER PHOTO filename fields</label>
-          <select id="downloadImgMapFather" class="center-modal-select center-modal-select-multiple" multiple size="6"></select>
-        </div>
-        <div id="downloadImgMapMotherRow">
-          <label class="center-modal-label text-left block mb-1">MOTHER PHOTO filename fields</label>
-          <select id="downloadImgMapMother" class="center-modal-select center-modal-select-multiple" multiple size="6"></select>
-        </div>
+      <div class="mb-3">
+        <label class="center-modal-label text-left block mb-1">Image column to download</label>
+        <select id="downloadImgRenameTarget" class="center-modal-select"></select>
+        <p class="center-modal-note mt-1 mb-0">When rename is enabled, only this selected photo column is downloaded.</p>
+      </div>
+
+      <div class="mb-2">
+        <label class="center-modal-label text-left block mb-1">Filename fields</label>
+        <p class="center-modal-note mt-1 mb-2">Click one or more fields. Selected values are joined with underscore (_).</p>
+        <div id="downloadImgNameFieldPicker" class="download-img-field-picker"></div>
+        <div id="downloadImgNameFieldSelected" class="download-img-field-selected mt-2"></div>
+      </div>
+
+      <div class="download-img-preview mt-3">
+        <label class="center-modal-label text-left block mb-1">Filename preview</label>
+        <div id="downloadImgRenamePreview" class="download-img-preview-value">NAME.jpg</div>
       </div>
     </div>
 
@@ -176,6 +178,82 @@
 </div>
 
 <style>
+  .download-img-field-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+    background: #fff7ed;
+  }
+  .download-img-field-chip {
+    border: 1px solid #fbbf24;
+    background: #ffffff;
+    color: #92400e;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .download-img-field-chip:hover {
+    border-color: #f59e0b;
+    background: #fffbeb;
+  }
+  .download-img-field-chip.is-active {
+    border-color: #d97706;
+    background: #f59e0b;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);
+  }
+  .download-img-field-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 24px;
+  }
+  .download-img-selected-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffedd5;
+    color: #9a3412;
+    border: 1px solid #fdba74;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .download-img-selected-remove {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+  }
+  .download-img-selected-empty {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  .download-img-preview {
+    border: 1px dashed #f59e0b;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 10px;
+  }
+  .download-img-preview-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    color: #78350f;
+    word-break: break-word;
+  }
   #reprintPickerModal .reprint-picker-card {
     width: 90vw;
     height: 90vh;

@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const drawer = document.getElementById('teamOverviewDrawer');
     const drawerOverlay = document.getElementById('teamOverviewDrawerOverlay');
-    const drawerTitle = document.getElementById('teamOverviewDrawerTitle');
+    const drawerTitleText = document.getElementById('teamOverviewDrawerTitleText');
+    const drawerIcon = document.getElementById('teamOverviewDrawerIcon');
     const drawerCloseBtn = document.getElementById('teamOverviewDrawerClose');
 
     const form = document.getElementById('teamOverviewForm');
@@ -50,22 +51,39 @@ document.addEventListener('DOMContentLoaded', function () {
     const formName = document.getElementById('teamOverviewFormName');
     const formEmail = document.getElementById('teamOverviewFormEmail');
     const formMobile = document.getElementById('teamOverviewFormMobile');
-    const formClient = document.getElementById('teamOverviewFormClient');
-    const formAssignedClients = document.getElementById('teamOverviewFormAssignedClients');
     const formAddress = document.getElementById('teamOverviewFormAddress');
-    const formStatus = document.getElementById('teamOverviewFormStatus');
-    const formPasswordOption = document.getElementById('teamOverviewFormPasswordOption');
     const formPassword = document.getElementById('teamOverviewFormPassword');
 
-    const clientField = document.getElementById('teamOverviewClientField');
-    const operatorClientsField = document.getElementById('teamOverviewOperatorClientsField');
-    const addressField = document.getElementById('teamOverviewAddressField');
+    const formStatusHidden = document.getElementById('teamOverviewFormStatus');
+    const formPasswordOptionHidden = document.getElementById('teamOverviewFormPasswordOption');
+
+    const statusDropdown = document.getElementById('teamOverviewStatusDropdown');
+    const passwordOptionDropdown = document.getElementById('teamOverviewPasswordOptionDropdown');
     const passwordOptionField = document.getElementById('teamOverviewPasswordOptionField');
+
+    const addressField = document.getElementById('teamOverviewAddressField');
     const passwordField = document.getElementById('teamOverviewPasswordField');
     const permissionsGrid = document.getElementById('teamOverviewPermissionsGrid');
+    const infoSectionTitle = document.getElementById('teamOverviewInfoSectionTitle');
+    const avatarLabel = document.getElementById('teamOverviewAvatarLabel');
+
+    const assignmentField = document.getElementById('teamOverviewAssignmentField');
+    const assignmentLabel = document.getElementById('teamOverviewAssignmentLabel');
+    const assignmentHint = document.getElementById('teamOverviewAssignmentHint');
+    const assignmentContainer = document.getElementById('teamOverviewClientMultiselect');
+    const assignmentToggle = document.getElementById('teamOverviewClientMultiselectToggle');
+    const assignmentDropdown = document.getElementById('teamOverviewClientMultiselectDropdown');
+    const assignmentText = document.getElementById('teamOverviewClientMultiselectText');
+    const assignmentSearchInput = document.getElementById('teamOverviewClientSearchInput');
+    const assignmentList = document.getElementById('teamOverviewClientMultiselectList');
+    const assignmentEmpty = document.getElementById('teamOverviewClientMultiselectEmpty');
+
+    const passwordToggleBtn = document.getElementById('teamOverviewPasswordToggle');
+    const passwordToggleIcon = document.getElementById('teamOverviewPasswordToggleIcon');
 
     const formCancelBtn = document.getElementById('teamOverviewFormCancel');
     const formSaveBtn = document.getElementById('teamOverviewFormSave');
+    const formSaveText = document.getElementById('teamOverviewFormSaveText');
 
     const staffPanel = document.getElementById('teamOverviewStaffPanel');
     const staffBody = document.getElementById('teamOverviewStaffBody');
@@ -80,97 +98,226 @@ document.addEventListener('DOMContentLoaded', function () {
             can_manage_staff: false,
             can_manage_client_staff: false,
         },
+        assignmentCache: {
+            operator: null,
+            assistent: null,
+        },
+        assignment: {
+            scope: 'clients',
+            items: [],
+            selectedIds: new Set(),
+            singleSelect: false,
+            placeholder: 'Select clients...',
+        },
     };
 
-    const PERMISSIONS_BY_SCOPE = {
+    const PERMISSION_LAYOUTS = {
         clients: [
-            'perm_idcard_client_list',
-            'perm_idcard_setting_list',
-            'perm_idcard_setting_add',
-            'perm_idcard_setting_edit',
-            'perm_idcard_setting_delete',
-            'perm_idcard_setting_status',
-            'perm_idcard_pending_list',
-            'perm_idcard_verified_list',
-            'perm_idcard_pool_list',
-            'perm_idcard_approved_list',
-            'perm_idcard_download_list',
-            'perm_reprint_request_list',
-            'perm_confirmed_list',
-            'perm_idcard_add',
-            'perm_idcard_edit',
-            'perm_idcard_delete',
-            'perm_idcard_info',
-            'perm_idcard_approve',
-            'perm_idcard_verify',
-            'perm_idcard_reprint_list',
-            'perm_idcard_updated_at',
-            'perm_idcard_delete_from_pool',
-            'perm_idcard_retrieve',
-            'perm_idcard_bulk_upload',
-            'perm_idcard_bulk_download',
-            'perm_idcard_upgrade_all',
-            'perm_mobile_app',
-            'perm_set_temp_password',
+            {
+                title: 'Group Settings',
+                icon: 'fa-cog',
+                fields: [
+                    ['perm_idcard_setting_add', 'Create Template'],
+                    ['perm_idcard_setting_edit', 'Edit Template'],
+                    ['perm_idcard_setting_list', 'View Template'],
+                    ['perm_idcard_setting_delete', 'Delete Template'],
+                    ['perm_idcard_setting_status', 'Status Template'],
+                ],
+            },
+            {
+                title: 'ID Card Action List',
+                icon: 'fa-list',
+                fields: [
+                    ['perm_idcard_pending_list', 'Pending List'],
+                    ['perm_idcard_verified_list', 'Verified List'],
+                    ['perm_idcard_pool_list', 'Pool List'],
+                    ['perm_idcard_approved_list', 'Approved List'],
+                    ['perm_idcard_download_list', 'Download List'],
+                ],
+            },
+            {
+                title: 'Print & Reprint Lists',
+                icon: 'fa-print',
+                fields: [
+                    ['perm_reprint_request_list', 'Request List (Reprint)'],
+                    ['perm_confirmed_list', 'Confirmed List (Reprint)'],
+                ],
+            },
+            {
+                title: 'Card Actions',
+                icon: 'fa-id-card',
+                fields: [
+                    ['perm_idcard_add', 'Add Card'],
+                    ['perm_idcard_edit', 'Edit Card'],
+                    ['perm_idcard_info', 'View Card Info'],
+                    ['perm_idcard_delete', 'Delete Card'],
+                    ['perm_idcard_approve', 'Approve Card'],
+                    ['perm_idcard_verify', 'Verify Card'],
+                    ['perm_idcard_reprint_list', 'Reprint Cards'],
+                    ['perm_idcard_updated_at', 'Last Updated & Updated By'],
+                    ['perm_idcard_retrieve', 'Retrieve from Pool'],
+                ],
+            },
+            {
+                title: 'Bulk Actions',
+                icon: 'fa-layer-group',
+                fields: [
+                    ['perm_idcard_bulk_upload', 'Bulk Upload (XLSX / ZIP)'],
+                    ['perm_idcard_bulk_download', 'Bulk Download (PDF)'],
+                ],
+            },
+            {
+                title: 'Other Actions',
+                icon: 'fa-ellipsis-vertical',
+                fields: [
+                    ['perm_mobile_app', 'Mobile App Access'],
+                    ['perm_idcard_client_list', 'Manage Client'],
+                    ['perm_set_temp_password', 'Set Temp Password (Staff)'],
+                ],
+            },
         ],
         operator: [
-            'perm_idcard_client_list',
-            'perm_manage_client_staff',
-            'perm_idcard_setting_list',
-            'perm_idcard_setting_add',
-            'perm_idcard_setting_edit',
-            'perm_idcard_setting_delete',
-            'perm_idcard_setting_status',
-            'perm_idcard_group_create',
-            'perm_idcard_group_delete',
-            'perm_idcard_pending_list',
-            'perm_idcard_verified_list',
-            'perm_idcard_pool_list',
-            'perm_idcard_approved_list',
-            'perm_idcard_download_list',
-            'perm_reprint_request_list',
-            'perm_confirmed_list',
-            'perm_print_list',
-            'perm_finalized_list',
-            'perm_idcard_add',
-            'perm_idcard_edit',
-            'perm_idcard_delete',
-            'perm_idcard_info',
-            'perm_idcard_approve',
-            'perm_idcard_verify',
-            'perm_idcard_reprint_list',
-            'perm_idcard_bulk_upload',
-            'perm_idcard_bulk_download',
-            'perm_idcard_bulk_reupload',
-            'perm_idcard_upgrade_all',
-            'perm_idcard_created_at',
-            'perm_idcard_updated_at',
-            'perm_idcard_delete_from_pool',
-            'perm_delete_all_idcard',
-            'perm_idcard_retrieve',
-            'perm_mobile_app',
-            'perm_manage_panel_backup',
-            'perm_manage_panel_email',
-            'perm_manage_website_clients',
-            'perm_manage_website_portfolio',
+            {
+                title: 'Group Settings',
+                icon: 'fa-cog',
+                fields: [
+                    ['perm_idcard_setting_add', 'Create Template'],
+                    ['perm_idcard_setting_edit', 'Edit Template'],
+                    ['perm_idcard_setting_list', 'View Template'],
+                    ['perm_idcard_setting_delete', 'Delete Template'],
+                    ['perm_idcard_setting_status', 'Status Template'],
+                ],
+            },
+            {
+                title: 'ID Card Action List',
+                icon: 'fa-list',
+                fields: [
+                    ['perm_idcard_pending_list', 'Pending List'],
+                    ['perm_idcard_verified_list', 'Verified List'],
+                    ['perm_idcard_pool_list', 'Pool List'],
+                    ['perm_idcard_approved_list', 'Approved List'],
+                    ['perm_idcard_download_list', 'Download List'],
+                ],
+            },
+            {
+                title: 'Print & Reprint Lists',
+                icon: 'fa-print',
+                fields: [
+                    ['perm_reprint_request_list', 'Request List (Reprint)'],
+                    ['perm_confirmed_list', 'Confirmed List (Reprint)'],
+                    ['perm_print_list', 'Generate List (Print Cards)'],
+                    ['perm_finalized_list', 'Finalized List (Print Cards)'],
+                ],
+            },
+            {
+                title: 'Card Actions',
+                icon: 'fa-id-card',
+                fields: [
+                    ['perm_idcard_add', 'Add Card'],
+                    ['perm_idcard_edit', 'Edit Card'],
+                    ['perm_idcard_info', 'View Card Info'],
+                    ['perm_idcard_delete', 'Delete Card'],
+                    ['perm_idcard_approve', 'Approve Card'],
+                    ['perm_idcard_verify', 'Verify Card'],
+                    ['perm_idcard_reprint_list', 'Reprint Cards'],
+                    ['perm_idcard_updated_at', 'Last Updated & Updated By'],
+                    ['perm_idcard_delete_from_pool', 'Permanent Delete from Pool'],
+                    ['perm_idcard_retrieve', 'Retrieve from Download'],
+                ],
+            },
+            {
+                title: 'Bulk Actions',
+                icon: 'fa-layer-group',
+                fields: [
+                    ['perm_idcard_bulk_upload', 'Bulk Upload (XLSX + ZIP Images)'],
+                    ['perm_idcard_bulk_download', 'Bulk Download (All Formats)'],
+                    ['perm_idcard_bulk_reupload', 'Bulk Reupload Images (ZIP)'],
+                    ['perm_idcard_upgrade_all', 'Upgrade All Classes'],
+                ],
+            },
+            {
+                title: 'App & Access',
+                icon: 'fa-mobile-screen',
+                fields: [
+                    ['perm_mobile_app', 'Mobile App Login'],
+                    ['perm_idcard_client_list', 'Manage Client'],
+                    ['perm_manage_client_staff', 'Manage Assistent'],
+                ],
+            },
+            {
+                title: 'Manage Panel',
+                icon: 'fa-sliders',
+                fields: [
+                    ['perm_manage_panel_backup', 'Backup'],
+                    ['perm_manage_panel_email', 'Email Management'],
+                ],
+            },
+            {
+                title: 'Manage Website',
+                icon: 'fa-globe',
+                fields: [
+                    ['perm_manage_website_clients', 'Clients'],
+                    ['perm_manage_website_portfolio', 'Portfolio'],
+                ],
+            },
         ],
         assistent: [
-            'perm_idcard_pending_list',
-            'perm_idcard_verified_list',
-            'perm_idcard_pool_list',
-            'perm_idcard_approved_list',
-            'perm_idcard_download_list',
-            'perm_idcard_bulk_download',
-            'perm_idcard_add',
-            'perm_idcard_edit',
-            'perm_idcard_delete',
-            'perm_idcard_info',
-            'perm_idcard_verify',
-            'perm_idcard_created_at',
-            'perm_idcard_updated_at',
-            'perm_mobile_app',
+            {
+                title: 'ID Card List Tabs',
+                icon: 'fa-list',
+                fields: [
+                    ['perm_idcard_pending_list', 'Pending List'],
+                    ['perm_idcard_verified_list', 'Verified List'],
+                    ['perm_idcard_pool_list', 'Pool List'],
+                    ['perm_idcard_approved_list', 'Approved List'],
+                    ['perm_idcard_download_list', 'Download List'],
+                    ['perm_reprint_request_list', 'Request List (Reprint)'],
+                    ['perm_confirmed_list', 'Confirmed List (Reprint)'],
+                ],
+            },
+            {
+                title: 'Export & Download',
+                icon: 'fa-file-arrow-down',
+                fields: [
+                    ['perm_idcard_bulk_download', 'Download / Export'],
+                ],
+            },
+            {
+                title: 'Card Actions',
+                icon: 'fa-id-card',
+                fields: [
+                    ['perm_idcard_add', 'Add Card'],
+                    ['perm_idcard_edit', 'Edit Card'],
+                    ['perm_idcard_delete', 'Delete Card'],
+                    ['perm_idcard_info', 'View Card Info'],
+                    ['perm_idcard_verify', 'Verify Card'],
+                    ['perm_idcard_reprint_list', 'Reprint Cards'],
+                    ['perm_idcard_updated_at', 'Last Updated & Updated By'],
+                ],
+            },
+            {
+                title: 'App & Access',
+                icon: 'fa-mobile-screen',
+                fields: [
+                    ['perm_mobile_app', 'Mobile App Login'],
+                ],
+            },
         ],
     };
+
+    const PERMISSIONS_BY_SCOPE = Object.fromEntries(
+        Object.keys(PERMISSION_LAYOUTS).map(function (scope) {
+            const allFields = [];
+            (PERMISSION_LAYOUTS[scope] || []).forEach(function (group) {
+                (group.fields || []).forEach(function (entry) {
+                    if (entry && entry[0] && allFields.indexOf(entry[0]) === -1) {
+                        allFields.push(entry[0]);
+                    }
+                });
+            });
+            return [scope, allFields];
+        })
+    );
 
     function showToastSafe(message, type) {
         if (typeof showToast === 'function') {
@@ -183,65 +330,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function normalizeClientIdList(rawValues) {
         if (!Array.isArray(rawValues)) return [];
         return rawValues
-            .map((value) => Number(value))
-            .filter((value) => Number.isFinite(value) && value > 0);
-    }
-
-    function permissionLabel(permissionKey) {
-        return String(permissionKey || '')
-            .replace(/^perm_/, '')
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, (ch) => ch.toUpperCase());
-    }
-
-    function renderPermissionGrid(scope, entity) {
-        if (!permissionsGrid) return;
-
-        const fields = PERMISSIONS_BY_SCOPE[scope] || [];
-        permissionsGrid.innerHTML = fields.map((field) => {
-            const checked = !!(entity && entity[field] === true);
-            const id = 'teamOverviewPerm_' + field;
-            return ''
-                + '<label class="team-overview-perm-item" for="' + esc(id) + '">'
-                + '<input type="checkbox" id="' + esc(id) + '" data-permission-field="' + esc(field) + '"' + (checked ? ' checked' : '') + '>'
-                + '<span>' + esc(permissionLabel(field)) + '</span>'
-                + '</label>';
-        }).join('');
-    }
-
-    function collectPermissionPayload(scope) {
-        const payload = {};
-        const fields = PERMISSIONS_BY_SCOPE[scope] || [];
-        fields.forEach((field) => {
-            const checkbox = document.getElementById('teamOverviewPerm_' + field);
-            if (checkbox) payload[field] = checkbox.checked;
-        });
-        return payload;
-    }
-
-    function getFallbackEntityForEdit(scope, entityId) {
-        const selected = getSelectedItem();
-        if (!selected || Number(selected.id) !== Number(entityId)) return null;
-        return {
-            id: selected.id,
-            name: selected.name || '',
-            email: selected.email || '',
-            phone: selected.mobile || '',
-            mobile: selected.mobile || '',
-            status: selected.status || 'inactive',
-            is_active: String(selected.status || '').toLowerCase() === 'active',
-            client_id: selected.client_id || null,
-            assigned_client_ids: [],
-            address: '',
-        };
-    }
-
-    function syncPasswordOptionVisibility() {
-        if (!passwordField || !formPasswordOption || !formPassword) return;
-        const option = String(formPasswordOption.value || 'phone').toLowerCase();
-        const isCustom = option === 'custom';
-        passwordField.hidden = !isCustom;
-        if (!isCustom) formPassword.value = '';
+            .map(function (value) { return Number(value); })
+            .filter(function (value) { return Number.isFinite(value) && value > 0; });
     }
 
     function normalizeScope(scope) {
@@ -271,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function getSelectedItem() {
         if (!state.selectedId) return null;
-        return state.items.find((item) => Number(item.id) === Number(state.selectedId)) || null;
+        return state.items.find(function (item) { return Number(item.id) === Number(state.selectedId); }) || null;
     }
 
     function canManageKind(kind) {
@@ -292,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateScopeButtons(scope) {
-        scopeButtons.forEach((button) => {
+        scopeButtons.forEach(function (button) {
             const isActive = normalizeScope(button.getAttribute('data-dashboard-team-scope')) === scope;
             button.classList.toggle('is-active', isActive);
             button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
@@ -322,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const normalizedQuery = String(nextQuery || '').trim();
         state.searchQuery = normalizedQuery;
 
-        searchInputs.forEach((input) => {
+        searchInputs.forEach(function (input) {
             if (!input || input === sourceInput) return;
             if (String(input.value || '') !== normalizedQuery) {
                 input.value = normalizedQuery;
@@ -334,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setQuickActionActive(actionToken) {
         const activeToken = String(actionToken || '');
-        quickActionButtons.forEach((button) => {
+        quickActionButtons.forEach(function (button) {
             const token = String(button.getAttribute('data-dashboard-quick-action') || '');
             button.classList.toggle('is-active', !!activeToken && token === activeToken);
         });
@@ -364,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function filteredItems() {
         const query = String(state.searchQuery || '').toLowerCase();
         if (!query) return state.items.slice();
-        return state.items.filter((item) => {
+        return state.items.filter(function (item) {
             const name = String(item.name || '').toLowerCase();
             const email = String(item.email || '').toLowerCase();
             const mobile = String(item.mobile || '').toLowerCase();
@@ -386,16 +476,20 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        tableBody.innerHTML = rows.map((item) => {
+        tableBody.innerHTML = rows.map(function (item) {
             const id = Number(item.id);
             const isSelected = Number(state.selectedId) === id;
             const statusBadge = renderStatusBadge(item.status);
-            const nameLabel = statusBadge + '<span class="client-name-text">' + esc(item.name || '-') + '</span>';
+            const nameLabel = ''
+                + '<div class="team-overview-name-cell">'
+                + statusBadge
+                + '<span class="client-name-text team-overview-name-text">' + esc(item.name || '-') + '</span>'
+                + '</div>';
             return ''
                 + '<tr class="team-overview-row' + (isSelected ? ' is-selected' : '') + '" data-team-row-id="' + id + '">'
                 + '<td>' + nameLabel + '</td>'
                 + '<td>' + esc(item.email || '-') + '</td>'
-                + '<td>' + esc(item.mobile || '-') + '</td>'
+                + '<td class="team-overview-mobile-cell">' + esc(item.mobile || '-') + '</td>'
                 + '<td>' + esc(item.created_at || '-') + '</td>'
                 + '<td>' + esc(item.updated_at || '-') + '</td>'
                 + '</tr>';
@@ -431,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (requestedSelectedId) {
                 state.selectedId = requestedSelectedId;
-            } else if (previousSelection && state.items.some((item) => Number(item.id) === previousSelection)) {
+            } else if (previousSelection && state.items.some(function (item) { return Number(item.id) === previousSelection; })) {
                 state.selectedId = previousSelection;
             } else {
                 state.selectedId = null;
@@ -449,6 +543,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function setDrawerTitle(iconClass, text) {
+        if (drawerIcon) drawerIcon.className = 'fa-solid ' + iconClass;
+        if (drawerTitleText) drawerTitleText.textContent = text;
+    }
+
     function openDrawer() {
         if (!drawer || !drawerOverlay) return;
         drawerOverlay.hidden = false;
@@ -458,89 +557,383 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.classList.add('drawer-open');
     }
 
+    function closeAssignmentDropdown() {
+        if (!assignmentDropdown || !assignmentToggle) return;
+        assignmentDropdown.style.display = 'none';
+        assignmentToggle.classList.remove('open');
+    }
+
+    function closeCustomDropdown(dropdown) {
+        if (dropdown) dropdown.classList.remove('open');
+    }
+
     function closeDrawer() {
         if (!drawer || !drawerOverlay) return;
         drawer.classList.remove('open');
         drawer.setAttribute('aria-hidden', 'true');
         drawerOverlay.classList.remove('active');
+        closeAssignmentDropdown();
+        closeCustomDropdown(statusDropdown);
+        closeCustomDropdown(passwordOptionDropdown);
         window.setTimeout(function () {
             drawerOverlay.hidden = true;
         }, 180);
         document.body.classList.remove('drawer-open');
     }
 
-    function setFormMode(scope, mode) {
-        const normalizedScope = normalizeScope(scope);
-        if (formModeInput) formModeInput.value = mode;
-        if (formScopeInput) formScopeInput.value = normalizedScope;
-
-        if (clientField) clientField.hidden = normalizedScope !== 'assistent';
-        if (operatorClientsField) operatorClientsField.hidden = normalizedScope !== 'operator';
-        if (addressField) addressField.hidden = normalizedScope !== 'clients';
-        if (passwordOptionField) passwordOptionField.hidden = mode !== 'add';
-        if (passwordField) passwordField.hidden = mode !== 'add';
-
-        if (formPasswordOption) {
-            formPasswordOption.value = 'phone';
+    function setDropdownSelection(dropdown, value) {
+        if (!dropdown) return;
+        const options = dropdown.querySelectorAll('.dropdown-option');
+        const toggleLabel = dropdown.querySelector('.dropdown-toggle span');
+        options.forEach(function (option) {
+            option.classList.remove('selected');
+        });
+        const selected = dropdown.querySelector('.dropdown-option[data-value="' + String(value) + '"]');
+        if (selected) {
+            selected.classList.add('selected');
+            if (toggleLabel) toggleLabel.textContent = selected.textContent;
         }
+    }
+
+    function closeOtherCustomDropdowns(currentDropdown) {
+        [statusDropdown, passwordOptionDropdown].forEach(function (dropdown) {
+            if (dropdown && dropdown !== currentDropdown) {
+                dropdown.classList.remove('open');
+            }
+        });
+    }
+
+    function bindCustomDropdown(dropdown, onSelect) {
+        if (!dropdown) return;
+        const toggle = dropdown.querySelector('.dropdown-toggle');
+        const options = dropdown.querySelectorAll('.dropdown-option');
+
+        if (toggle) {
+            toggle.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                closeOtherCustomDropdowns(dropdown);
+                dropdown.classList.toggle('open');
+            });
+        }
+
+        options.forEach(function (option) {
+            option.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const value = String(option.getAttribute('data-value') || '');
+                setDropdownSelection(dropdown, value);
+                dropdown.classList.remove('open');
+                if (typeof onSelect === 'function') {
+                    onSelect(value);
+                }
+            });
+        });
+    }
+
+    function setStatusValue(value) {
+        if (formStatusHidden) formStatusHidden.value = String(value);
+        setDropdownSelection(statusDropdown, String(value));
+    }
+
+    function setPasswordOptionValue(value) {
+        if (formPasswordOptionHidden) formPasswordOptionHidden.value = String(value);
+        setDropdownSelection(passwordOptionDropdown, String(value));
         syncPasswordOptionVisibility();
+    }
 
-        if (formStatus) {
-            const statuses = ['active', 'inactive'];
-            formStatus.innerHTML = statuses
-                .map((status) => '<option value="' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</option>')
-                .join('');
+    function syncPasswordOptionVisibility() {
+        if (!passwordField || !formPasswordOptionHidden || !formModeInput || !formPassword) return;
+        const isAddMode = String(formModeInput.value || 'add') === 'add';
+        const option = String(formPasswordOptionHidden.value || 'phone').toLowerCase();
+        const showCustom = isAddMode && option === 'custom';
+        passwordField.style.display = showCustom ? '' : 'none';
+        formPassword.required = showCustom;
+        if (!showCustom) formPassword.value = '';
+    }
+
+    function normalizeAssignmentItems(clients) {
+        if (!Array.isArray(clients)) return [];
+        return clients
+            .map(function (client) {
+                const id = Number(client && client.id);
+                if (!Number.isFinite(id) || id <= 0) return null;
+                const name = String(client.name || ('Client #' + id)).trim();
+                const isActive = typeof client.is_active === 'boolean'
+                    ? client.is_active
+                    : String(client.status || '').toLowerCase() === 'active';
+                return {
+                    id: id,
+                    name: name || ('Client #' + id),
+                    status: isActive ? 'active' : 'inactive',
+                };
+            })
+            .filter(function (entry) { return !!entry; });
+    }
+
+    async function fetchAssignmentItems(scope) {
+        if (scope !== 'operator' && scope !== 'assistent') return [];
+        const endpoint = scope === 'operator'
+            ? '/api/clients/for-staff-assignment/'
+            : '/api/client-staff/clients/';
+        try {
+            const data = await ApiClient.get(panelUrl(endpoint));
+            if (!data || !data.success || !Array.isArray(data.clients)) return [];
+            return normalizeAssignmentItems(data.clients);
+        } catch (error) {
+            console.error('Failed to fetch assignment clients:', error);
+            return [];
+        }
+    }
+
+    async function ensureAssignmentItems(scope) {
+        if (scope !== 'operator' && scope !== 'assistent') return [];
+        if (Array.isArray(state.assignmentCache[scope])) {
+            return state.assignmentCache[scope];
+        }
+        const items = await fetchAssignmentItems(scope);
+        state.assignmentCache[scope] = items;
+        return items;
+    }
+
+    function updateAssignmentText() {
+        if (!assignmentText) return;
+        const selectedIds = Array.from(state.assignment.selectedIds);
+        if (!selectedIds.length) {
+            assignmentText.textContent = state.assignment.placeholder;
+            assignmentText.classList.remove('has-selection');
+            return;
         }
 
-        renderPermissionGrid(normalizedScope, null);
+        const selectedNames = state.assignment.items
+            .filter(function (item) { return state.assignment.selectedIds.has(item.id); })
+            .map(function (item) { return item.name; });
 
+        if (state.assignment.singleSelect || selectedNames.length <= 2) {
+            assignmentText.textContent = selectedNames.join(', ');
+        } else {
+            assignmentText.textContent = selectedNames.length + ' clients selected';
+        }
+        assignmentText.classList.add('has-selection');
+    }
+
+    function renderAssignmentList(filterText) {
+        if (!assignmentList) return;
+
+        const query = String(filterText || '').trim().toLowerCase();
+        const rows = state.assignment.items
+            .filter(function (item) {
+                if (!query) return true;
+                return item.name.toLowerCase().indexOf(query) !== -1;
+            })
+            .sort(function (a, b) {
+                const aSelected = state.assignment.selectedIds.has(a.id) ? 0 : 1;
+                const bSelected = state.assignment.selectedIds.has(b.id) ? 0 : 1;
+                if (aSelected !== bSelected) return aSelected - bSelected;
+                if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+
+        assignmentList.innerHTML = '';
+        if (!rows.length) {
+            if (assignmentEmpty) assignmentEmpty.style.display = '';
+            return;
+        }
+        if (assignmentEmpty) assignmentEmpty.style.display = 'none';
+
+        rows.forEach(function (item) {
+            const selected = state.assignment.selectedIds.has(item.id);
+            const isInactive = item.status === 'inactive';
+            const node = document.createElement('div');
+            node.className = 'client-multiselect-item'
+                + (selected ? ' selected' : '')
+                + (isInactive ? ' client-inactive' : '');
+
+            const statusBadge = isInactive
+                ? '<span class="client-status-badge inactive">Inactive</span>'
+                : '';
+
+            node.innerHTML = ''
+                + '<input type="checkbox" ' + (selected ? 'checked' : '') + ' data-client-id="' + item.id + '">'
+                + '<span class="client-name">' + esc(item.name) + statusBadge + '</span>';
+
+            node.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (state.assignment.singleSelect) {
+                    state.assignment.selectedIds = new Set([item.id]);
+                    updateAssignmentText();
+                    renderAssignmentList(assignmentSearchInput ? assignmentSearchInput.value : '');
+                    closeAssignmentDropdown();
+                    return;
+                }
+
+                if (state.assignment.selectedIds.has(item.id)) {
+                    state.assignment.selectedIds.delete(item.id);
+                } else {
+                    state.assignment.selectedIds.add(item.id);
+                }
+                updateAssignmentText();
+                renderAssignmentList(assignmentSearchInput ? assignmentSearchInput.value : '');
+            });
+
+            assignmentList.appendChild(node);
+        });
+    }
+
+    function openAssignmentDropdown() {
+        if (!assignmentDropdown || !assignmentToggle) return;
+        assignmentDropdown.style.display = '';
+        assignmentToggle.classList.add('open');
+        if (assignmentSearchInput) {
+            assignmentSearchInput.value = '';
+            assignmentSearchInput.focus();
+        }
+        renderAssignmentList('');
+    }
+
+    function setAssignmentSelected(rawIds) {
+        const normalizedIds = normalizeClientIdList(rawIds || []);
+        let selectedIds = new Set(normalizedIds);
+        if (state.assignment.singleSelect && selectedIds.size > 1) {
+            selectedIds = new Set([normalizedIds[0]]);
+        }
+        state.assignment.selectedIds = selectedIds;
+    }
+
+    function getAssignmentSelectedIds() {
+        return Array.from(state.assignment.selectedIds)
+            .map(function (id) { return Number(id); })
+            .filter(function (id) { return Number.isFinite(id) && id > 0; });
+    }
+
+    async function configureAssignmentField(scope, preselectedIds) {
+        if (!assignmentField) return;
+
+        if (scope === 'clients') {
+            assignmentField.style.display = 'none';
+            state.assignment.scope = scope;
+            state.assignment.items = [];
+            state.assignment.selectedIds = new Set();
+            closeAssignmentDropdown();
+            return;
+        }
+
+        assignmentField.style.display = '';
+        state.assignment.scope = scope;
+        state.assignment.singleSelect = scope === 'assistent';
+        state.assignment.placeholder = state.assignment.singleSelect ? 'Select client...' : 'Select clients...';
+
+        if (assignmentLabel) {
+            assignmentLabel.textContent = state.assignment.singleSelect ? 'Assign Client *' : 'Assign Clients';
+        }
+        if (assignmentHint) {
+            assignmentHint.textContent = state.assignment.singleSelect
+                ? 'Select exactly one client for this staff member.'
+                : 'Select one or more clients this staff can manage.';
+        }
+
+        state.assignment.items = await ensureAssignmentItems(scope);
+        setAssignmentSelected(preselectedIds || []);
+        updateAssignmentText();
+        renderAssignmentList(assignmentSearchInput ? assignmentSearchInput.value : '');
+        closeAssignmentDropdown();
+    }
+
+    function getPermissionGroups(scope) {
+        return PERMISSION_LAYOUTS[scope] || [];
+    }
+
+    function renderPermissionGrid(scope, entity) {
+        if (!permissionsGrid) return;
+
+        const groups = getPermissionGroups(scope);
+        const categories = groups.map(function (group) {
+            const rows = (group.fields || []).map(function (entry) {
+                const field = entry[0];
+                const label = entry[1];
+                const checked = !!(entity && entity[field] === true);
+                const inputId = 'teamOverviewPerm_' + field;
+                return ''
+                    + '<div class="permission-row">'
+                    + '<label class="toggle-switch">'
+                    + '<input type="checkbox" id="' + esc(inputId) + '" data-permission-field="' + esc(field) + '"' + (checked ? ' checked' : '') + '>'
+                    + '<span class="toggle-slider"></span>'
+                    + '</label>'
+                    + '<span class="permission-label">' + esc(label) + '</span>'
+                    + '</div>';
+            }).join('');
+
+            return ''
+                + '<div class="permission-category">'
+                + '<div class="category-title"><i class="fa-solid ' + esc(group.icon || 'fa-cog') + '"></i> ' + esc(group.title || 'Permissions') + '</div>'
+                + '<div class="permissions-grid">' + rows + '</div>'
+                + '</div>';
+        }).join('');
+
+        permissionsGrid.innerHTML = ''
+            + '<div class="permission-header"><i class="fa-solid fa-shield-halved"></i> User Permission</div>'
+            + categories;
+    }
+
+    function collectPermissionPayload(scope) {
+        const payload = {};
+        const fields = PERMISSIONS_BY_SCOPE[scope] || [];
+        fields.forEach(function (field) {
+            const checkbox = document.getElementById('teamOverviewPerm_' + field);
+            if (checkbox) payload[field] = checkbox.checked;
+        });
+        return payload;
+    }
+
+    function getFallbackEntityForEdit(scope, entityId) {
+        const selected = getSelectedItem();
+        if (!selected || Number(selected.id) !== Number(entityId)) return null;
+        return {
+            id: selected.id,
+            name: selected.name || '',
+            email: selected.email || '',
+            phone: selected.mobile || '',
+            mobile: selected.mobile || '',
+            status: selected.status || 'inactive',
+            is_active: String(selected.status || '').toLowerCase() === 'active',
+            client_id: selected.client_id || null,
+            assigned_client_ids: [],
+            address: '',
+        };
+    }
+
+    function resetDrawerPanels() {
         if (staffPanel) staffPanel.hidden = true;
         if (form) form.hidden = false;
     }
 
-    async function populateAssistantClients(selectedClientId) {
-        if (!formClient) return;
+    async function setFormMode(scope, mode, preselectedAssignmentIds) {
+        const normalizedScope = normalizeScope(scope);
+        if (formModeInput) formModeInput.value = mode;
+        if (formScopeInput) formScopeInput.value = normalizedScope;
 
-        formClient.innerHTML = '<option value="">Select Client</option>';
-        try {
-            const data = await ApiClient.get(panelUrl('/api/client-staff/clients/'));
-            if (!data || !data.success || !Array.isArray(data.clients)) return;
-            data.clients.forEach((client) => {
-                const option = document.createElement('option');
-                option.value = String(client.id);
-                option.textContent = client.name || ('Client #' + client.id);
-                if (selectedClientId && Number(client.id) === Number(selectedClientId)) {
-                    option.selected = true;
-                }
-                formClient.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Failed to load assistant clients:', error);
+        if (addressField) addressField.style.display = normalizedScope === 'clients' ? '' : 'none';
+        if (passwordOptionField) passwordOptionField.style.display = mode === 'add' ? '' : 'none';
+
+        if (normalizedScope === 'clients') {
+            if (infoSectionTitle) infoSectionTitle.innerHTML = '<i class="fa-solid fa-info-circle"></i> Client Information';
+            if (avatarLabel) avatarLabel.textContent = 'Client avatar';
+        } else {
+            if (infoSectionTitle) infoSectionTitle.innerHTML = '<i class="fa-solid fa-info-circle"></i> Staff Information';
+            if (avatarLabel) avatarLabel.textContent = 'Staff avatar';
         }
-    }
 
-    async function populateOperatorClients(selectedClientIds) {
-        if (!formAssignedClients) return;
+        setStatusValue('false');
+        setPasswordOptionValue('phone');
+        if (formPassword) formPassword.value = '';
+        syncPasswordOptionVisibility();
 
-        const selectedSet = new Set(normalizeClientIdList(selectedClientIds || []));
-        formAssignedClients.innerHTML = '';
+        renderPermissionGrid(normalizedScope, null);
+        await configureAssignmentField(normalizedScope, preselectedAssignmentIds || []);
 
-        try {
-            const data = await ApiClient.get(panelUrl('/api/clients/for-staff-assignment/'));
-            if (!data || !data.success || !Array.isArray(data.clients)) return;
-
-            data.clients.forEach((client) => {
-                const option = document.createElement('option');
-                option.value = String(client.id);
-                option.textContent = client.name || ('Client #' + client.id);
-                if (selectedSet.has(Number(client.id))) {
-                    option.selected = true;
-                }
-                formAssignedClients.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Failed to load operator clients:', error);
-        }
+        resetDrawerPanels();
     }
 
     function entityDetailsUrl(scope, entityId) {
@@ -575,12 +968,20 @@ document.addEventListener('DOMContentLoaded', function () {
         return data.staff || null;
     }
 
+    function entityIsActive(scope, entity) {
+        if (!entity) return false;
+        if (typeof entity.is_active === 'boolean') return entity.is_active;
+        return String(entity.status || '').toLowerCase() === 'active';
+    }
+
     async function openFormForAdd(scope) {
-        if (!form || !formName || !formEmail || !formMobile || !formEntityIdInput || !formAddress || !formPassword || !formStatus) return;
+        if (!form || !formName || !formEmail || !formMobile || !formEntityIdInput || !formAddress || !formPassword) return;
         const normalizedScope = normalizeScope(scope);
 
-        setFormMode(normalizedScope, 'add');
-        if (drawerTitle) drawerTitle.innerHTML = '<i class="fa-solid fa-user-plus"></i> Add ' + scopeSingularLabel(normalizedScope);
+        await setFormMode(normalizedScope, 'add', []);
+        setDrawerTitle('fa-user-plus', 'Add New ' + scopeSingularLabel(normalizedScope));
+
+        if (formSaveText) formSaveText.textContent = 'Add ' + scopeSingularLabel(normalizedScope);
 
         formEntityIdInput.value = '';
         formName.value = '';
@@ -588,23 +989,13 @@ document.addEventListener('DOMContentLoaded', function () {
         formMobile.value = '';
         formAddress.value = '';
         formPassword.value = '';
-        formStatus.value = 'inactive';
 
-        if (formPasswordOption) formPasswordOption.value = 'phone';
         renderPermissionGrid(normalizedScope, null);
-        syncPasswordOptionVisibility();
-
-        if (normalizedScope === 'assistent') {
-            await populateAssistantClients(null);
-        } else if (normalizedScope === 'operator') {
-            await populateOperatorClients([]);
-        }
-
         openDrawer();
     }
 
     async function openFormForEdit(scope, entityId) {
-        if (!form || !formName || !formEmail || !formMobile || !formEntityIdInput || !formAddress || !formPassword || !formStatus) return;
+        if (!form || !formName || !formEmail || !formMobile || !formEntityIdInput || !formAddress || !formPassword) return;
         const normalizedScope = normalizeScope(scope);
 
         try {
@@ -621,8 +1012,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!entity) entity = getFallbackEntityForEdit(normalizedScope, entityId);
             if (!entity) throw new Error('Missing entity details');
 
-            setFormMode(normalizedScope, 'edit');
-            if (drawerTitle) drawerTitle.innerHTML = '<i class="fa-solid fa-user-pen"></i> Edit ' + scopeSingularLabel(normalizedScope);
+            const assignmentIds = normalizedScope === 'operator'
+                ? (entity.assigned_client_ids || entity.assigned_clients || [])
+                : (normalizedScope === 'assistent' ? [entity.client_id || 0] : []);
+
+            await setFormMode(normalizedScope, 'edit', assignmentIds);
+            setDrawerTitle('fa-pen-to-square', 'Edit ' + scopeSingularLabel(normalizedScope));
+            if (formSaveText) formSaveText.textContent = 'Save Changes';
 
             formEntityIdInput.value = String(entity.id || entityId || '');
             formName.value = entity.name || '';
@@ -630,19 +1026,9 @@ document.addEventListener('DOMContentLoaded', function () {
             formMobile.value = entity.phone || entity.mobile || '';
             formAddress.value = entity.address || '';
             formPassword.value = '';
+
+            setStatusValue(entityIsActive(normalizedScope, entity) ? 'true' : 'false');
             renderPermissionGrid(normalizedScope, entity);
-
-            if (normalizedScope === 'clients') {
-                formStatus.value = String(entity.status || 'active').toLowerCase();
-            } else {
-                formStatus.value = entity.is_active ? 'active' : 'inactive';
-            }
-
-            if (normalizedScope === 'assistent') {
-                await populateAssistantClients(entity.client_id || null);
-            } else if (normalizedScope === 'operator') {
-                await populateOperatorClients(entity.assigned_client_ids || entity.assigned_clients || []);
-            }
 
             openDrawer();
         } catch (error) {
@@ -656,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         form.hidden = true;
         staffPanel.hidden = false;
-        if (drawerTitle) drawerTitle.innerHTML = '<i class="fa-solid fa-users-gear"></i> Staff - ' + esc(clientName || 'Client');
+        setDrawerTitle('fa-users-gear', 'Staff - ' + (clientName || 'Client'));
         staffBody.innerHTML = '<tr><td colspan="4" class="muted-row">Loading staff...</td></tr>';
         openDrawer();
 
@@ -672,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            staffBody.innerHTML = staffRows.map((staff) => {
+            staffBody.innerHTML = staffRows.map(function (staff) {
                 const status = staff.is_active ? 'active' : 'inactive';
                 return ''
                     + '<tr>'
@@ -692,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         if (!form || !formSaveBtn) return;
 
-        const mode = formModeInput ? formModeInput.value : 'add';
+        const mode = formModeInput ? String(formModeInput.value || 'add') : 'add';
         const scope = normalizeScope(formScopeInput ? formScopeInput.value : state.scope);
         const entityId = formEntityIdInput ? Number(formEntityIdInput.value || 0) : 0;
 
@@ -707,19 +1093,20 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const statusValue = formStatus ? String(formStatus.value || 'active').toLowerCase() : 'active';
+        payload.is_active = String(formStatusHidden ? formStatusHidden.value : 'false') === 'true';
+
         if (scope === 'clients') {
-            payload.is_active = statusValue === 'active';
             payload.address = formAddress ? String(formAddress.value || '').trim() : '';
-        } else {
-            payload.is_active = statusValue === 'active';
         }
 
         Object.assign(payload, collectPermissionPayload(scope));
 
         const password = formPassword ? String(formPassword.value || '').trim() : '';
         if (mode === 'add') {
-            const passwordOption = formPasswordOption ? String(formPasswordOption.value || 'phone').toLowerCase() : 'phone';
+            const passwordOption = formPasswordOptionHidden
+                ? String(formPasswordOptionHidden.value || 'phone').toLowerCase()
+                : 'phone';
+
             if (passwordOption === 'custom') {
                 if (!password) {
                     showToastSafe('Custom password is required when phone password is not used.', 'error');
@@ -733,16 +1120,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (scope === 'assistent') {
-            const clientId = formClient ? Number(formClient.value || 0) : 0;
-            if (!clientId) {
+            const selectedClientIds = getAssignmentSelectedIds();
+            if (!selectedClientIds.length) {
                 showToastSafe('Please select a client.', 'error');
                 return;
             }
-            payload.client_id = clientId;
-        } else if (scope === 'operator' && formAssignedClients) {
-            payload.assigned_clients = Array.from(formAssignedClients.selectedOptions || [])
-                .map((option) => Number(option.value || 0))
-                .filter((value) => Number.isFinite(value) && value > 0);
+            payload.client_id = selectedClientIds[0];
+        } else if (scope === 'operator') {
+            payload.assigned_clients = getAssignmentSelectedIds();
         }
 
         const action = mode === 'edit' ? 'update' : 'create';
@@ -752,9 +1137,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const originalText = formSaveBtn.textContent;
+        const defaultButtonText = mode === 'edit' ? 'Save Changes' : ('Add ' + scopeSingularLabel(scope));
+        if (formSaveText && !formSaveText.textContent) formSaveText.textContent = defaultButtonText;
+
+        const originalText = formSaveText ? formSaveText.textContent : defaultButtonText;
         formSaveBtn.disabled = true;
-        formSaveBtn.textContent = mode === 'edit' ? 'Updating...' : 'Creating...';
+        if (formSaveText) formSaveText.textContent = mode === 'edit' ? 'Updating...' : 'Creating...';
 
         try {
             const response = await ApiClient.post(panelUrl(endpoint), payload);
@@ -773,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showToastSafe(error.message || 'Unable to save changes.', 'error');
         } finally {
             formSaveBtn.disabled = false;
-            formSaveBtn.textContent = originalText;
+            if (formSaveText) formSaveText.textContent = originalText || defaultButtonText;
         }
     }
 
@@ -833,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    searchInputs.forEach((input) => {
+    searchInputs.forEach(function (input) {
         input.addEventListener('input', function () {
             setSearchQuery(input.value, input);
         });
@@ -846,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setSearchQuery(initialSearch, null);
     }
 
-    scopeButtons.forEach((button) => {
+    scopeButtons.forEach(function (button) {
         button.addEventListener('click', async function (event) {
             event.preventDefault();
             const scope = normalizeScope(button.getAttribute('data-dashboard-team-scope'));
@@ -860,7 +1248,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    quickActionButtons.forEach((button) => {
+    quickActionButtons.forEach(function (button) {
         button.addEventListener('click', async function (event) {
             const action = String(button.getAttribute('data-dashboard-quick-action') || '');
             const actionToScope = {
@@ -922,9 +1310,50 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', submitForm);
     }
 
-    if (formPasswordOption) {
-        formPasswordOption.addEventListener('change', function () {
-            syncPasswordOptionVisibility();
+    if (assignmentToggle) {
+        assignmentToggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = assignmentDropdown && assignmentDropdown.style.display !== 'none';
+            if (isOpen) {
+                closeAssignmentDropdown();
+            } else {
+                openAssignmentDropdown();
+            }
+        });
+    }
+
+    if (assignmentSearchInput) {
+        assignmentSearchInput.addEventListener('input', function () {
+            renderAssignmentList(assignmentSearchInput.value);
+        });
+        assignmentSearchInput.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+    }
+
+    if (assignmentList) {
+        assignmentList.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+    }
+
+    bindCustomDropdown(statusDropdown, function (value) {
+        setStatusValue(value);
+    });
+
+    bindCustomDropdown(passwordOptionDropdown, function (value) {
+        setPasswordOptionValue(value);
+    });
+
+    if (passwordToggleBtn && formPassword) {
+        passwordToggleBtn.addEventListener('click', function () {
+            const currentType = formPassword.getAttribute('type') || 'password';
+            const nextType = currentType === 'password' ? 'text' : 'password';
+            formPassword.setAttribute('type', nextType);
+            if (passwordToggleIcon) {
+                passwordToggleIcon.className = nextType === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+            }
         });
     }
 
@@ -945,6 +1374,19 @@ document.addEventListener('DOMContentLoaded', function () {
             closeDrawer();
         });
     }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.custom-dropdown')) {
+            closeCustomDropdown(statusDropdown);
+            closeCustomDropdown(passwordOptionDropdown);
+        }
+
+        if (assignmentDropdown && assignmentDropdown.style.display !== 'none') {
+            if (!assignmentContainer || !assignmentContainer.contains(event.target)) {
+                closeAssignmentDropdown();
+            }
+        }
+    });
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && drawer && drawer.classList.contains('open')) {

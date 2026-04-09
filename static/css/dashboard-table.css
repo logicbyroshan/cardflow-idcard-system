@@ -509,12 +509,28 @@
 .team-overview-toolbar {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     padding: 8px 10px;
     border: 0;
     border-top: 1px solid #bfdbfe;
     border-bottom: 1px solid #bfdbfe;
     background: #f5faff;
+}
+
+.team-overview-toolbar-search {
+    margin-left: auto;
+    flex: 0 1 380px;
+    min-width: 220px;
+    max-width: 430px;
+}
+
+.team-overview-toolbar-search .recent-updates-search-box {
+    width: 100%;
+}
+
+.team-overview-toolbar-search .recent-updates-search-input {
+    height: 30px;
 }
 
 .team-overview-toolbar .action-btn,
@@ -572,87 +588,58 @@
     background: #f0f7ff;
 }
 
-.dashboard-team-drawer {
-    width: 700px;
-    max-width: 100vw;
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(1),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(1) {
+    width: 31%;
 }
 
-.team-overview-form {
-    display: grid;
-    gap: 12px;
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(2) {
+    width: 26%;
 }
 
-.team-overview-form .field-group {
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(3) {
+    width: 14ch;
+    min-width: 14ch;
+    max-width: 14ch;
+    text-align: center;
+}
+
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(5) {
+    width: 14%;
+}
+
+.team-overview-name-cell {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.team-overview-form .field-group label {
-    font-size: 12px;
-    color: #374151;
-    font-weight: 600;
-}
-
-.team-overview-form .form-input,
-.team-overview-form .form-select,
-.team-overview-form .form-textarea {
-    width: 100%;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
-    color: #111827;
-    background: #ffffff;
-}
-
-.team-overview-form .form-input:focus,
-.team-overview-form .form-select:focus,
-.team-overview-form .form-textarea:focus {
-    outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
-}
-
-.team-overview-form .field-help {
-    font-size: 11px;
-    color: #6b7280;
-}
-
-.team-overview-form #teamOverviewFormAssignedClients {
-    min-height: 140px;
-}
-
-.team-overview-permissions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 8px;
-    max-height: 240px;
-    overflow-y: auto;
-    padding: 8px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #f9fafb;
-}
-
-.team-overview-perm-item {
-    display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
-    color: #1f2937;
+    min-width: 0;
 }
 
-.team-overview-perm-item input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
+.team-overview-name-cell .dashboard-client-status-badge {
+    flex: 0 0 auto;
 }
 
-.team-overview-form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 4px;
+.team-overview-name-text {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.team-overview-mobile-cell {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .team-overview-staff-panel {
@@ -660,25 +647,26 @@
     gap: 10px;
 }
 
-.team-overview-staff-panel h4 {
+.team-overview-staff-panel h3 {
     margin: 0;
-    font-size: 14px;
-    color: #1f2937;
-    font-weight: 700;
-}
-
-.dashboard-team-drawer .drawer-body {
-    display: grid;
-    gap: 12px;
+    width: fit-content;
 }
 
 @media (max-width: 900px) {
     .team-overview-toolbar {
+        flex-wrap: wrap;
         gap: 6px;
     }
 
-    .team-overview-toolbar .action-btn,
-    .team-overview-form-actions .action-btn {
+    .team-overview-toolbar-search {
+        order: 10;
+        margin-left: 0;
+        flex: 1 1 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .team-overview-toolbar .action-btn {
         font-size: 11px;
         padding: 6px 10px;
     }

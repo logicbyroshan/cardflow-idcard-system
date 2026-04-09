@@ -126,6 +126,30 @@ class ZipExporter:
                     success=False,
                     message='No image fields found in this table!'
                 )
+
+            requested_selected_image = ''
+            if isinstance(rename_options, dict) and rename_options.get('enabled') is True:
+                requested_selected_image = str(rename_options.get('selected_image_field') or '').strip()
+
+            selected_image_field = self._resolve_selected_image_field(rename_options, image_fields)
+            if requested_selected_image and not selected_image_field:
+                return ZipExportResult(
+                    success=False,
+                    message='Selected image column is not available in this table.'
+                )
+
+            if selected_image_field:
+                selected_image_norm = self._normalize_field_key(selected_image_field)
+                image_fields = [
+                    field for field in image_fields
+                    if self._normalize_field_key(str((field or {}).get('name', ''))) == selected_image_norm
+                ]
+
+                if not image_fields:
+                    return ZipExportResult(
+                        success=False,
+                        message='Selected image column is not available in this table.'
+                    )
             
             # Get client name for filename
             client_name = ''
@@ -659,6 +683,28 @@ class ZipExporter:
                 mapping[canonical_image] = resolved_fields
 
         return mapping
+
+    def _resolve_selected_image_field(self, rename_options: Optional[Dict[str, Any]], image_fields: List[Dict[str, Any]]) -> str:
+        """Return a validated selected image field name for rename-mode exports."""
+        if not isinstance(rename_options, dict) or rename_options.get('enabled') is not True:
+            return ''
+
+        raw_selected_field = str(rename_options.get('selected_image_field') or '').strip()
+        if not raw_selected_field:
+            return ''
+
+        normalized_target = self._normalize_field_key(raw_selected_field)
+        if not normalized_target:
+            return ''
+
+        for field in image_fields:
+            field_name = str((field or {}).get('name') or '').strip()
+            if not field_name:
+                continue
+            if self._normalize_field_key(field_name) == normalized_target:
+                return field_name
+
+        return ''
 
     def _get_card_field_value(self, card: Any, field_name: str) -> str:
         """Read a text field from card.field_data using exact then normalized matching."""
