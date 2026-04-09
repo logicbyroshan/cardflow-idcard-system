@@ -322,12 +322,14 @@
 }
 
 .recent-table thead th.recent-updates-sortable.is-sort-active {
-    background: rgba(52, 211, 153, 0.22);
-    color: #064e3b !important;
+    /* Keep the same header gradient look; only text/icon indicate active sort */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffecb3 !important;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
 }
 
 .recent-table thead th.recent-updates-sortable.is-sort-active .recent-sort-icon {
-    color: #064e3b !important;
+    color: #ffd166 !important;
 }
 
 .dashboard-card-header.overview-header {

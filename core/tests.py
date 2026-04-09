@@ -1312,6 +1312,26 @@ class SecurityApiRegressionTests(TestCase):
         self.admin_staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
         self.admin_staff_profile.assigned_clients.add(self.client_a)
 
+    def test_client_role_cannot_access_recent_client_updates_api(self):
+        self.client.force_login(self.client_user_a)
+
+        response = self.client.get(reverse('api_recent_client_updates'))
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success', True))
+        self.assertIn('admin access required', payload.get('message', '').lower())
+
+    def test_client_role_cannot_use_active_client_status_redirect(self):
+        self.client.force_login(self.client_user_a)
+
+        response = self.client.get(
+            reverse('active_client_status_redirect', args=[self.client_a.id, 'pending'])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('login'))
+
     def test_inline_update_field_rejects_unknown_field_name(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
 

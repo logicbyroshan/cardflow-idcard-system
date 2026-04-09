@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
     const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
     const dashboardTabCountPrint = document.getElementById('dashboardTabCountPrint');
+    const isAdminRecentUpdatesContext = !!recentClientUpdatesActiveBadge;
+    const isAdminDashboardContext = isAdminRecentUpdatesContext
+        || !!document.getElementById('printOverviewBody')
+        || !!document.getElementById('reprintOverviewBody');
 
     function setDashboardTabCount(element, value) {
         if (!element) return;
@@ -298,11 +302,11 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    if (recentClientUpdatesSearchInput) {
+    if (isAdminRecentUpdatesContext && recentClientUpdatesSearchInput) {
         recentClientUpdatesSearchInput.addEventListener('input', applyRecentClientUpdatesSearch);
     }
 
-    if (recentClientUpdatesActiveBadge) {
+    if (isAdminRecentUpdatesContext && recentClientUpdatesActiveBadge) {
         recentClientUpdatesActiveBadge.addEventListener('click', function() {
             recentClientUpdatesLiveOnly = !recentClientUpdatesLiveOnly;
             setRecentClientUpdatesLiveFilterUI();
@@ -310,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (recentClientUpdatesSortHeaders.length) {
+    if (isAdminRecentUpdatesContext && recentClientUpdatesSortHeaders.length) {
         recentClientUpdatesSortHeaders.forEach((header) => {
             header.addEventListener('click', function() {
                 const key = header.getAttribute('data-recent-sort-key') || '';
@@ -330,8 +334,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    setRecentClientUpdatesLiveFilterUI();
-    setRecentClientUpdatesSortUI();
+    if (isAdminRecentUpdatesContext) {
+        setRecentClientUpdatesLiveFilterUI();
+        setRecentClientUpdatesSortUI();
+    }
 
     function applyOverviewSearch(scope) {
         const tbody = scope === 'print'
@@ -452,6 +458,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load Recent Client Updates
     // ====================
     function loadRecentClientUpdates() {
+        if (!isAdminRecentUpdatesContext) return;
+
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
         const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
@@ -591,6 +599,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadDashboardCardStats() {
+        if (!isAdminDashboardContext) return;
+
         const pendingEl = document.getElementById('pendingCards');
         const verifiedEl = document.getElementById('verifiedCards');
         const approvedEl = document.getElementById('approvedCards');
@@ -620,6 +630,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Recent Activity (Auto Refresh)
     // ====================
     function loadRecentActivity() {
+        if (!isAdminDashboardContext) return;
+
         const activityList = document.getElementById('recentActivityList');
         if (!activityList) return;
         const timeWindow = (recentActivityTimeFilter && recentActivityTimeFilter.value)
@@ -716,7 +728,7 @@ document.addEventListener('DOMContentLoaded', function() {
         liveRefreshTimer = null;
     }
 
-    if (document.getElementById('recentActivityList') || document.getElementById('pendingCards')) {
+    if (isAdminDashboardContext && (document.getElementById('recentActivityList') || document.getElementById('pendingCards'))) {
         refreshLiveDashboardSections();
         startLiveDashboardRefresh();
         document.addEventListener('visibilitychange', function() {
@@ -1352,5 +1364,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    loadPrintReprintOverview();
+    if (isAdminDashboardContext) {
+        loadPrintReprintOverview();
+    }
 });
