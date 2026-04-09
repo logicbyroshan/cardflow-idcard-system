@@ -203,6 +203,7 @@ def manage_client_staff(request):
 
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
+    client_filter = request.GET.get('client_id', '').strip()
 
     staff_qs = (
         Staff.objects
@@ -214,6 +215,14 @@ def manage_client_staff(request):
     if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
         accessible_ids = PermissionService.get_accessible_client_ids(user)
         staff_qs = staff_qs.filter(client_id__in=accessible_ids)
+
+    client_filter_options = list(
+        Client.objects
+        .filter(id__in=staff_qs.values_list('client_id', flat=True).distinct())
+        .order_by('name')
+        .values('id', 'name')
+    )
+    valid_client_ids = {str(item['id']) for item in client_filter_options}
 
     if search_query:
         staff_qs = staff_qs.filter(
@@ -229,6 +238,12 @@ def manage_client_staff(request):
     elif status_filter == 'inactive':
         staff_qs = staff_qs.filter(user__is_active=False)
 
+    if client_filter:
+        if client_filter in valid_client_ids:
+            staff_qs = staff_qs.filter(client_id=int(client_filter))
+        else:
+            client_filter = ''
+
     paginator = Paginator(staff_qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
@@ -242,6 +257,9 @@ def manage_client_staff(request):
         'per_page_options': PER_PAGE_OPTIONS,
         'search_query': search_query,
         'status_filter': status_filter,
+        'client_filter': client_filter,
+        'client_filter_options': client_filter_options,
+        'show_client_filter': True,
         'can_manage_clients': can_manage_client_staff,
     }
 

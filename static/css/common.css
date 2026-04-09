@@ -1212,6 +1212,28 @@ td.email-col {
   left: 8px !important;
 }
 
+/* ===========================================
+   BULK OPERATION PAGE LOCK
+   Applied only while JS adds body.bulk-operation-active
+   =========================================== */
+body.bulk-operation-active .main,
+body.bulk-operation-active .sidebar {
+  filter: blur(2px);
+  pointer-events: none;
+  user-select: none;
+}
+
+body.bulk-operation-active #blockingOverlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(8, 16, 32, 0.44);
+}
+
+body.bulk-operation-active .alpine-toast-wrapper,
+body.bulk-operation-active #downloadToastContainer {
+  z-index: 13000 !important;
+}
+
 @media (max-width: 640px) {
   .toast {
     right: auto !important;

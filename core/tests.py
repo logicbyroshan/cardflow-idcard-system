@@ -2439,6 +2439,39 @@ class AdminClientStaffManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'staff-table-body')
 
+    def test_manage_client_staff_can_filter_by_client(self):
+        from staff.models import Staff
+
+        user_a = User.objects.create_user(
+            username='client-filter-staff-a@test.com',
+            email='client-filter-staff-a@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Filter',
+            last_name='Staff A',
+        )
+        Staff.objects.create(user=user_a, staff_type='client_staff', client=self.client_a)
+
+        user_b = User.objects.create_user(
+            username='client-filter-staff-b@test.com',
+            email='client-filter-staff-b@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Filter',
+            last_name='Staff B',
+        )
+        Staff.objects.create(user=user_b, staff_type='client_staff', client=self.client_b)
+
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get(
+            f'/panel/manage-client-staff/?client_id={self.client_a.id}',
+            HTTP_HX_REQUEST='true',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Filter Staff A')
+        self.assertNotContains(response, 'Filter Staff B')
+
     def test_dropdown_clients_api_returns_available_clients(self):
         self.client.login(username='client-staff-admin@test.com', password='adminpass1')
         response = self.client.get('/panel/api/client-staff/clients/')

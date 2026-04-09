@@ -39,6 +39,21 @@
     var _queue = [];     // [{ id, options }]  waiting to start
     var _currentOverlayId = null;   // ID of the download currently shown in blocking overlay
     var _overlayStartTime = null;   // Track start time for ETA calculation
+    var _bulkUiLockActive = false;
+
+    function _setBulkUiLock(active) {
+        if (!document || !document.body) return;
+        document.body.classList.toggle('bulk-operation-active', !!active);
+    }
+
+    function _consumeBulkUiLockFlag() {
+        window.IDCardApp = window.IDCardApp || {};
+        if (window.IDCardApp._nextBulkUiLock === true) {
+            window.IDCardApp._nextBulkUiLock = false;
+            return true;
+        }
+        return false;
+    }
 
     // =========================================
     // BLOCKING OVERLAY HELPERS (Enhanced)
@@ -48,6 +63,8 @@
         if (!overlay) return;
         _currentOverlayId = id;
         _overlayStartTime = Date.now();
+        _bulkUiLockActive = _consumeBulkUiLockFlag();
+        if (_bulkUiLockActive) _setBulkUiLock(true);
 
         var content = overlay.querySelector('#blockingOverlayContent');
         var iconEl = overlay.querySelector('#blockingOverlayIconInner');
@@ -187,6 +204,10 @@
         if (overlay) overlay.style.display = 'none';
         _currentOverlayId = null;
         _overlayStartTime = null;
+        if (_bulkUiLockActive) {
+            _setBulkUiLock(false);
+            _bulkUiLockActive = false;
+        }
     }
 
     // =========================================
@@ -1037,6 +1058,8 @@
             var overlay = document.getElementById('blockingOverlay');
             if (!overlay) return;
             _currentOverlayId = 'upload-' + Date.now();
+            _bulkUiLockActive = true;
+            _setBulkUiLock(true);
             var msgEl = overlay.querySelector('#blockingOverlayMessage');
             var barEl = overlay.querySelector('#blockingOverlayBar');
             var cancelBtn = overlay.querySelector('#blockingOverlayCancelBtn');
@@ -1063,6 +1086,10 @@
             var overlay = document.getElementById('blockingOverlay');
             if (overlay) overlay.style.display = 'none';
             _currentOverlayId = null;
+            if (_bulkUiLockActive) {
+                _setBulkUiLock(false);
+                _bulkUiLockActive = false;
+            }
         }
     };
 

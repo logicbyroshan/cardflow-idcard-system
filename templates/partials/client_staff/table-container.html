@@ -17,14 +17,14 @@
         {% if page_obj and page_obj.paginator.num_pages > 1 %}
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
-                hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+            hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if client_filter %}&client_id={{ client_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
                 title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
-                hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+            hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if client_filter %}&client_id={{ client_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
@@ -37,7 +37,7 @@
                 <span class="page-ellipsis">...</span>
                 {% else %}
                 <button class="page-num"
-                        hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+                    hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if client_filter %}&client_id={{ client_filter }}{% endif %}&per_page={{ per_page }}"
                         hx-target="#staff-table-container"
                         hx-swap="innerHTML">{{ p }}</button>
                 {% endif %}
@@ -45,14 +45,14 @@
         </span>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
-                hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+                hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if client_filter %}&client_id={{ client_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}
                 title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
-                hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+                hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if client_filter %}&client_id={{ client_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#staff-table-container"
                 hx-swap="innerHTML"
                 {% endif %}

@@ -1384,6 +1384,11 @@ function closeDownloadImgModal() {
     currentDownloadType = null;
 }
 
+function markNextBulkUiLock() {
+    window.IDCardApp = window.IDCardApp || {};
+    window.IDCardApp._nextBulkUiLock = true;
+}
+
 function initDownloadImagesHandlers() {
     const downloadImgBtnIds = ['downloadImgBtn', 'downloadImgBtnV', 'downloadImgBtnP', 'downloadImgBtnA', 'downloadImgBtnD'];
 
@@ -1417,6 +1422,7 @@ function initDownloadImagesHandlers() {
         const selectedCardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
         const renameOptions = _dlGetImageRenameOptionsFromModal();
         closeDownloadImgModal();
+        markNextBulkUiLock();
         window.IDCardApp.downloadImages(selectedCardIds, renameOptions);
     });
 }
@@ -1495,6 +1501,7 @@ function initDownloadDocxHandlers() {
     document.getElementById('downloadDocxConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
+        markNextBulkUiLock();
         window.IDCardApp.downloadDocx(pendingDocxDownloadIds, pendingDocxFormat, templateId);
     });
 
@@ -1572,6 +1579,7 @@ function initDownloadXlsxHandlers() {
     document.getElementById('downloadXlsxClose')?.addEventListener('click', closeDownloadXlsxModal);
     document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function() {
         closeDownloadXlsxModal();
+        markNextBulkUiLock();
         window.IDCardApp.downloadXlsx(pendingDownloadCardIds);
     });
 }
@@ -1659,6 +1667,7 @@ function initDownloadPdfHandlers() {
         var shortenCb = document.getElementById('downloadPdfShortenTitles');
         var shortenTitles = shortenCb ? shortenCb.checked : false;
         closeDownloadPdfModal();
+        markNextBulkUiLock();
         window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles);
     });
 

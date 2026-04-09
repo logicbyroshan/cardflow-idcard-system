@@ -220,6 +220,46 @@
         dropdown.dataset.dropdownBound = '1';
       }
 
+      function initClientFilterDropdown() {
+        var dropdown = document.getElementById('client-dropdown');
+        var toggle = document.getElementById('clientToggle');
+        var options = document.getElementById('clientOptions');
+        var selectedText = document.getElementById('clientSelectedText');
+
+        if (!dropdown || !toggle || !options || dropdown.dataset.dropdownBound === '1') return;
+
+        function syncSelectedText() {
+          if (!selectedText) return;
+          var active = options.querySelector('.dropdown-option.selected');
+          if (active) selectedText.textContent = active.textContent.trim();
+        }
+
+        toggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          dropdown.classList.toggle('open');
+        });
+
+        options.addEventListener('click', function(e) {
+          var option = e.target.closest('.dropdown-option');
+          if (!option) return;
+
+          options.querySelectorAll('.dropdown-option').forEach(function(item) {
+            item.classList.remove('selected');
+          });
+          option.classList.add('selected');
+
+          if (selectedText) selectedText.textContent = option.textContent.trim();
+          dropdown.classList.remove('open');
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+
+        syncSelectedText();
+        dropdown.dataset.dropdownBound = '1';
+      }
+
       function initRowsDropdownDelegation() {
         if (document.body.dataset.rowsDropdownBound === '1') return;
 
@@ -260,13 +300,17 @@
       }
 
       initStatusFilterDropdown();
+      initClientFilterDropdown();
       initRowsDropdownDelegation();
 
       initHTMXFilters({
         baseUrl: '{% url "manage_client_staff" %}',
         target: '#staff-table-container',
         searchInputId: 'searchInput',
-        filters: [{ name: 'status', optionsId: 'statusOptions' }]
+        filters: [
+          { name: 'status', optionsId: 'statusOptions' },
+          { name: 'client_id', optionsId: 'clientOptions' }
+        ]
       });
     });
   </script>

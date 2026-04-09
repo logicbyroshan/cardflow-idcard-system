@@ -179,6 +179,20 @@ function _formatEtaLabel(totalSeconds) {
     return rem + 's';
 }
 
+function _consumeNextBulkUiLockFlag() {
+    window.IDCardApp = window.IDCardApp || {};
+    if (window.IDCardApp._nextBulkUiLock === true) {
+        window.IDCardApp._nextBulkUiLock = false;
+        return true;
+    }
+    return false;
+}
+
+function _setBulkUiLock(active) {
+    if (!document || !document.body) return;
+    document.body.classList.toggle('bulk-operation-active', !!active);
+}
+
 /**
  * Start a generic async export task (xlsx/docx/zip) and poll task-status.
  */
@@ -187,14 +201,26 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
     var _asyncCancelled = false;
     var _activeTaskId = null;
     var _cancelRequested = false;
+    var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
+
+    function _releaseBulkUiLock() {
+        if (!_bulkUiLockActive) return;
+        _setBulkUiLock(false);
+        _bulkUiLockActive = false;
+    }
+
+    if (_bulkUiLockActive) _setBulkUiLock(true);
+
     var _effectiveCount = _getEffectiveExportCount(cardIds);
     var _pollOptions = Object.assign({}, options, {
         exportType: options.exportType || exportType,
-        cardCount: options.cardCount || _effectiveCount
+        cardCount: options.cardCount || _effectiveCount,
+        onFinalize: _releaseBulkUiLock
     });
 
     var cancelFn = function () {
         _asyncCancelled = true;
+        _releaseBulkUiLock();
         if (_activeTaskId && !_cancelRequested) {
             _cancelRequested = true;
             fetch('/api/task-cancel/' + _activeTaskId + '/', {
@@ -264,6 +290,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
                 }
 
                 if (typeof showToast === 'function') showToast((data && data.message) || 'Failed to start export task', false);
+                _releaseBulkUiLock();
                 return;
             }
             _activeTaskId = data.task_id;
@@ -287,6 +314,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
 
             if (typeof showToast === 'function') showToast(errMessage, false);
             console.error('Async export start error:', err);
+            _releaseBulkUiLock();
         });
 }
 
@@ -303,10 +331,20 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
     var lastBackendUpdateAt = pollStartedAt;
     var exportKind = _resolveAsyncExportKind(options, null);
     var estimatedTotalSec = _estimateAsyncExportSeconds(exportKind, options.cardCount || 0);
+    var finalized = false;
+
+    function finalizeOnce() {
+        if (finalized) return;
+        finalized = true;
+        if (typeof options.onFinalize === 'function') {
+            try { options.onFinalize(); } catch (e) { console.error(e); }
+        }
+    }
 
     function poll() {
         if (typeof isCancelled === 'function' && isCancelled()) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
+            finalizeOnce();
             return;
         }
 
@@ -314,6 +352,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
         if (pollCount > maxPolls) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast(options.timeoutMessage || 'Export timed out. Please try again with fewer cards.', false);
+            finalizeOnce();
             return;
         }
 
@@ -327,6 +366,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                 if (!data || !data.success) {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Export task not found', false);
+                    finalizeOnce();
                     return;
                 }
 
@@ -334,6 +374,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                     if (!data.download_url) {
                         if (typeof hideProgressToast === 'function') hideProgressToast();
                         if (typeof showToast === 'function') showToast('Export completed but download link is missing', false);
+                        finalizeOnce();
                         return;
                     }
 
@@ -356,6 +397,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                         if (typeof options.onComplete === 'function') {
                             try { options.onComplete(); } catch (e) { console.error(e); }
                         }
+                        finalizeOnce();
                     }, 400);
                     return;
                 }
@@ -363,6 +405,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                 if (data.status === 'failed' || data.status === 'cancelled') {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast(data.error_message || options.failMessage || 'Export failed', false);
+                    finalizeOnce();
                     return;
                 }
 
@@ -920,9 +963,19 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
 function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles) {
     // Cancellation flag for the polling loop
     var _pdfAsyncCancelled = false;
+    var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
+
+    function _releaseBulkUiLock() {
+        if (!_bulkUiLockActive) return;
+        _setBulkUiLock(false);
+        _bulkUiLockActive = false;
+    }
+
+    if (_bulkUiLockActive) _setBulkUiLock(true);
 
     var cancelFn = function () {
         _pdfAsyncCancelled = true;
+        _releaseBulkUiLock();
         if (typeof showToast === 'function') showToast('PDF export cancelled', 'info');
     };
 
@@ -945,15 +998,17 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
                 if (!data.success) {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
+                    _releaseBulkUiLock();
                     return;
                 }
                 // Start polling for completion
-                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn);
+                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, _releaseBulkUiLock);
             })
             .catch(function(err) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast('Failed to start PDF export. Please try again.', false);
                 console.error('Async PDF start error:', err);
+                _releaseBulkUiLock();
             });
     } else {
         // Fallback: use fetch
@@ -970,14 +1025,16 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
             if (!data.success) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
+                _releaseBulkUiLock();
                 return;
             }
-            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn);
+            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, _releaseBulkUiLock);
         })
         .catch(function(err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast('Failed to start PDF export. Please try again.', false);
             console.error('Async PDF start error:', err);
+            _releaseBulkUiLock();
         });
     }
 }
@@ -990,17 +1047,27 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
  * @param {Function} isCancelled - returns true if user cancelled
  * @param {Function} cancelFn - passed to showProgressToast for cancel button
  */
-function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
+function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize) {
     var pollCount = 0;
     var maxPolls = 300; // 300 * 2s = 10 minutes max
     var _pollStartTime = Date.now();
     // Estimate processing time: ~0.3s per card for PDF, min 10s, max 300s
     var _estSeconds = Math.max(10, Math.min(300, (cardCount || 100) * 0.3));
+    var finalized = false;
+
+    function finalizeOnce() {
+        if (finalized) return;
+        finalized = true;
+        if (typeof onFinalize === 'function') {
+            try { onFinalize(); } catch (e) { console.error(e); }
+        }
+    }
 
     function poll() {
         // Check if user cancelled
         if (typeof isCancelled === 'function' && isCancelled()) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
+            finalizeOnce();
             return;
         }
 
@@ -1008,6 +1075,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
         if (pollCount > maxPolls) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast('PDF generation timed out. Please try again with fewer cards.', false);
+            finalizeOnce();
             return;
         }
 
@@ -1021,6 +1089,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
             if (!data.success) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'Export task not found', false);
+                finalizeOnce();
                 return;
             }
 
@@ -1048,10 +1117,12 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
                             : 'PDF file downloaded successfully!';
                         showDownloadComplete(doneMessage);
                     }
+                    finalizeOnce();
                 }, 500);
             } else if (data.state === 'failed') {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'PDF generation failed', false);
+                finalizeOnce();
             } else {
                 // Still processing  compute display progress
                 var serverPct = data.progress || 0;
