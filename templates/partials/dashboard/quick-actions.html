@@ -24,10 +24,12 @@
         <span>Add New Assistent</span>
       </a>
       {% endif %}
-      <a href="{% url 'notifications_page' %}" class="quick-action-btn">
-        <i class="fa-solid fa-envelope-open-text"></i>
+      {% if is_super_admin or perm_idcard_client_list %}
+      <button type="button" class="quick-action-btn" data-dashboard-quick-action="open-client-message">
+        <i class="fa-solid fa-paper-plane"></i>
         <span>Messages</span>
-      </a>
+      </button>
+      {% endif %}
     </div>
   </div>
 </div>
