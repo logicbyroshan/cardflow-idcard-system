@@ -390,7 +390,7 @@ class TutorialRoleScopeTests(TestCase):
         response = self.client.get(reverse('tutorial_personal_guide'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Student Data Check aur Approval ke liye Personal Guide')
-        self.assertContains(response, 'lvsschool123@gmail.com')
+        self.assertContains(response, 'client.demo@example.com')
 
     def test_personal_guide_download_returns_text_attachment(self):
         self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
@@ -399,6 +399,13 @@ class TutorialRoleScopeTests(TestCase):
         self.assertTrue(response['Content-Type'].startswith('text/plain'))
         self.assertIn('attachment; filename="adarsh-personal-guide.txt"', response['Content-Disposition'])
         self.assertIn('Student Data Check, Corrections', response.content.decode('utf-8'))
+
+    def test_hinglish_mode_has_no_devanagari_script(self):
+        self.assertTrue(self.client.login(username='tutorial-client@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial') + '?lang=hi')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        self.assertNotRegex(html, r'[\u0900-\u097F]')
 
 
 # ── IDCard Model Tests ──

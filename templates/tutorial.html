@@ -3,10 +3,10 @@
 
 {% block title %}
   {% if tutorial_lang == 'hi' %}
-    {% if tutorial_scope == 'client_staff' %}क्लाइंट स्टाफ ट्यूटोरियल - Adarsh ID Cards
-    {% elif tutorial_scope == 'admin_staff' %}एडमिन स्टाफ ट्यूटोरियल - Adarsh ID Cards
-    {% elif tutorial_scope == 'admin' %}एडमिन ट्यूटोरियल - Adarsh ID Cards
-    {% else %}क्लाइंट ट्यूटोरियल - Adarsh ID Cards
+    {% if tutorial_scope == 'client_staff' %}Client Staff Tutorial - Adarsh ID Cards
+    {% elif tutorial_scope == 'admin_staff' %}Admin Staff Tutorial - Adarsh ID Cards
+    {% elif tutorial_scope == 'admin' %}Admin Tutorial - Adarsh ID Cards
+    {% else %}Client Tutorial - Adarsh ID Cards
     {% endif %}
   {% else %}
     {% if tutorial_scope == 'client_staff' %}Assistent Tutorial - Adarsh ID Cards
@@ -34,7 +34,7 @@
   <a href="{% url 'client:dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
   {% endif %}
   <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-  <span class="breadcrumb-item active">{% if tutorial_lang == 'hi' %}ट्यूटोरियल{% else %}Tutorial{% endif %}</span>
+  <span class="breadcrumb-item active">{% if tutorial_lang == 'hi' %}Tutorial{% else %}Tutorial{% endif %}</span>
 {% endblock %}
 
 {% block content %}
@@ -43,8 +43,8 @@
   <section class="tutorial-hero">
     <div class="tutorial-hero-content">
       {% if tutorial_scope == 'client_staff' %}
-      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}क्लाइंट स्टाफ गाइड{% else %}Assistent Guide{% endif %}</p>
-      <h1>{% if tutorial_lang == 'hi' %}क्लाइंट स्टाफ ऑपरेशन ट्यूटोरियल{% else %}Assistent Operations Tutorial{% endif %}</h1>
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}Client Staff Guide{% else %}Assistent Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}Client Staff Operations Tutorial{% else %}Assistent Operations Tutorial{% endif %}</h1>
       <p>
         {% if tutorial_lang == 'hi' %}
         Aapke liye sirf wahi steps: data upload/cleanup, pending se verified workflow, aur timely handover.
@@ -53,8 +53,8 @@
         {% endif %}
       </p>
       {% elif tutorial_scope == 'admin_staff' %}
-      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}एडमिन स्टाफ गाइड{% else %}Operator Guide{% endif %}</p>
-      <h1>{% if tutorial_lang == 'hi' %}एडमिन स्टाफ सपोर्ट ट्यूटोरियल{% else %}Operator Support Tutorial{% endif %}</h1>
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}Admin Staff Guide{% else %}Operator Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}Admin Staff Support Tutorial{% else %}Operator Support Tutorial{% endif %}</h1>
       <p>
         {% if tutorial_lang == 'hi' %}
         Assigned clients ko support karne ke liye focused guide: queue monitoring, issue escalation, aur permission-safe actions.
@@ -63,8 +63,8 @@
         {% endif %}
       </p>
       {% else %}
-      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}एडमिन गाइड{% else %}Admin Guide{% endif %}</p>
-      <h1>{% if tutorial_lang == 'hi' %}एडमिन कंट्रोल ट्यूटोरियल{% else %}Admin Control Tutorial{% endif %}</h1>
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}Admin Guide{% else %}Admin Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}Admin Control Tutorial{% else %}Admin Control Tutorial{% endif %}</h1>
       <p>
         {% if tutorial_lang == 'hi' %}
         System-level admin perspective: governance, team controls, platform health, and exception handling.
@@ -81,11 +81,11 @@
           data-toggle-lang="{% if tutorial_lang == 'hi' %}en{% else %}hi{% endif %}"
         >
           <i class="fa-solid fa-language"></i>
-          {% if tutorial_lang == 'hi' %}View In English{% else %}हिंदी में देखें{% endif %}
+          {% if tutorial_lang == 'hi' %}View In English{% else %}Hinglish me dekhen{% endif %}
         </button>
         <a class="btn btn-primary" href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">
           <i class="fa-brands fa-youtube"></i>
-          {% if tutorial_lang == 'hi' %}वीडियो ट्यूटोरियल देखें{% else %}Watch Video Tutorial{% endif %}
+          {% if tutorial_lang == 'hi' %}Video Tutorial dekhen{% else %}Watch Video Tutorial{% endif %}
         </a>
         <a class="btn btn-outline-secondary" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
           <i class="fa-solid fa-user-check"></i>
@@ -93,7 +93,7 @@
         </a>
         <button class="btn btn-outline-primary" type="button" data-jump-tab="get-started">
           <i class="fa-solid fa-list-check"></i>
-          {% if tutorial_lang == 'hi' %}Start वाले स्टेप्स खोलें{% else %}Go to Start Steps{% endif %}
+          {% if tutorial_lang == 'hi' %}Start wale steps kholo{% else %}Go to Start Steps{% endif %}
         </button>
       </div>
     </div>
@@ -102,7 +102,7 @@
         <div class="tutorial-video-icon">
           <i class="fa-brands fa-youtube"></i>
         </div>
-        <h3>{% if tutorial_lang == 'hi' %}रोल-फोकस्ड शुरुआत{% else %}Role-Focused Start{% endif %}</h3>
+        <h3>{% if tutorial_lang == 'hi' %}Role-focused shuruaat{% else %}Role-Focused Start{% endif %}</h3>
         <p>
           {% if tutorial_lang == 'hi' %}
           Is page me sirf aapke role ke relevant steps hain. Daily checklist follow karke process clean rakho.
@@ -115,17 +115,17 @@
   </section>
 
   <section class="tutorial-tabs-shell">
-    <div class="tutorial-tabs" role="tablist" aria-label="{% if tutorial_lang == 'hi' %}ट्यूटोरियल नेविगेशन टैब्स{% else %}Tutorial navigation tabs{% endif %}">
-      <button type="button" class="tutorial-tab-btn is-active" data-tab="get-started" role="tab" aria-selected="true">{% if tutorial_lang == 'hi' %}शुरुआत{% else %}Getting Started{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="workflow" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}दैनिक फ़्लो{% else %}Daily Flow{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="team" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}कंट्रोल्स{% else %}Controls{% endif %}</button>
+    <div class="tutorial-tabs" role="tablist" aria-label="{% if tutorial_lang == 'hi' %}Tutorial navigation tabs{% else %}Tutorial navigation tabs{% endif %}">
+      <button type="button" class="tutorial-tab-btn is-active" data-tab="get-started" role="tab" aria-selected="true">{% if tutorial_lang == 'hi' %}Shuruaat{% else %}Getting Started{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="workflow" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Daily Flow{% else %}Daily Flow{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="team" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Controls{% else %}Controls{% endif %}</button>
     </div>
 
     <div class="tutorial-panels">
       <section class="tutorial-panel is-active" data-panel="get-started" role="tabpanel">
         {% if tutorial_scope == 'client_staff' %}
           {% if tutorial_lang == 'hi' %}
-          <h2>क्लाइंट स्टाफ के लिए फोकस्ड शुरुआत</h2>
+          <h2>Client Staff ke liye focused shuruaat</h2>
           <div class="quick-grid">
             <article><span>1</span><p>Assigned table select karo aur required columns validate karo.</p></article>
             <article><span>2</span><p>Upload se pehle data format aur photo naming check karo.</p></article>
@@ -145,7 +145,7 @@
           {% endif %}
         {% elif tutorial_scope == 'admin_staff' %}
           {% if tutorial_lang == 'hi' %}
-          <h2>एडमिन स्टाफ के लिए शुरुआत</h2>
+          <h2>Admin Staff ke liye shuruaat</h2>
           <div class="quick-grid">
             <article><span>1</span><p>Assigned clients ki daily queue open karke blockers identify karo.</p></article>
             <article><span>2</span><p>High-priority tables ko first response do.</p></article>
@@ -165,7 +165,7 @@
           {% endif %}
         {% else %}
           {% if tutorial_lang == 'hi' %}
-          <h2>एडमिन कंट्रोल शुरुआत</h2>
+          <h2>Admin Control shuruaat</h2>
           <div class="quick-grid">
             <article><span>1</span><p>Daily platform health, pending load, aur team status review karo.</p></article>
             <article><span>2</span><p>Approval bottlenecks aur SLA risk tables identify karo.</p></article>
@@ -189,9 +189,9 @@
       <section class="tutorial-panel" data-panel="workflow" role="tabpanel" hidden>
         {% if tutorial_scope == 'client_staff' %}
           {% if tutorial_lang == 'hi' %}
-          <h2>दैनिक क्लाइंट स्टाफ वर्कफ़्लो</h2>
+          <h2>Daily Client Staff workflow</h2>
           <table class="tutorial-table">
-            <thead><tr><th>Step</th><th>क्या करना है</th><th>Done Check</th></tr></thead>
+            <thead><tr><th>Step</th><th>Kya karna hai</th><th>Done Check</th></tr></thead>
             <tbody>
               <tr><td>Start</td><td>Assigned tables aur pending backlog review karo.</td><td>Backlog clear plan set</td></tr>
               <tr><td>Processing</td><td>Upload + validation + pending fixes complete karo.</td><td>Zero critical error rows</td></tr>
@@ -211,9 +211,9 @@
           {% endif %}
         {% elif tutorial_scope == 'admin_staff' %}
           {% if tutorial_lang == 'hi' %}
-          <h2>दैनिक एडमिन स्टाफ वर्कफ़्लो</h2>
+          <h2>Daily Admin Staff workflow</h2>
           <table class="tutorial-table">
-            <thead><tr><th>Window</th><th>काम</th><th>Measure</th></tr></thead>
+            <thead><tr><th>Window</th><th>Kaam</th><th>Measure</th></tr></thead>
             <tbody>
               <tr><td>Morning</td><td>Assigned client queues + blockers triage.</td><td>Top priority items tagged</td></tr>
               <tr><td>Midday</td><td>Follow-up on escalations and delayed approvals.</td><td>All escalations updated</td></tr>
@@ -233,7 +233,7 @@
           {% endif %}
         {% else %}
           {% if tutorial_lang == 'hi' %}
-          <h2>दैनिक एडमिन वर्कफ़्लो</h2>
+          <h2>Daily Admin workflow</h2>
           <table class="tutorial-table">
             <thead><tr><th>Window</th><th>Admin Focus</th><th>Outcome</th></tr></thead>
             <tbody>
@@ -259,7 +259,7 @@
       <section class="tutorial-panel" data-panel="team" role="tabpanel" hidden>
         {% if tutorial_scope == 'client_staff' %}
           {% if tutorial_lang == 'hi' %}
-          <h2>क्लाइंट स्टाफ कंट्रोल्स</h2>
+          <h2>Client Staff controls</h2>
           <div class="daily-checklist">
             <label><input type="checkbox"> Sirf assigned tables par kaam karo.</label>
             <label><input type="checkbox"> Approval ya permission changes bina authority ke mat karo.</label>
@@ -277,7 +277,7 @@
           {% endif %}
         {% elif tutorial_scope == 'admin_staff' %}
           {% if tutorial_lang == 'hi' %}
-          <h2>एडमिन स्टाफ कंट्रोल्स</h2>
+          <h2>Admin Staff controls</h2>
           <div class="daily-checklist">
             <label><input type="checkbox"> Client assignment scope ke bahar action na lo.</label>
             <label><input type="checkbox"> Escalation notes me evidence links include karo.</label>
@@ -295,7 +295,7 @@
           {% endif %}
         {% else %}
           {% if tutorial_lang == 'hi' %}
-          <h2>एडमिन कंट्रोल्स और गवर्नेंस</h2>
+          <h2>Admin controls aur governance</h2>
           <div class="daily-checklist">
             <label><input type="checkbox"> Daily anomaly scan and exception closure review.</label>
             <label><input type="checkbox"> Critical permission changes ko dual-check process me rakho.</label>
@@ -318,8 +318,8 @@
   {% else %}
   <section class="tutorial-hero">
     <div class="tutorial-hero-content">
-      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}क्लाइंट गाइड{% else %}Client Guide{% endif %}</p>
-      <h1>{% if tutorial_lang == 'hi' %}क्लाइंट ऑपरेशन्स ट्यूटोरियल{% else %}Client Operations Tutorial{% endif %}</h1>
+      <p class="tutorial-kicker">{% if tutorial_lang == 'hi' %}Client Guide{% else %}Client Guide{% endif %}</p>
+      <h1>{% if tutorial_lang == 'hi' %}Client Operations Tutorial{% else %}Client Operations Tutorial{% endif %}</h1>
       {% if tutorial_lang == 'hi' %}
       <p>
         Ye page aapka simple daily guide hai. Isme upload se lekar check, approve,
@@ -338,11 +338,11 @@
           data-toggle-lang="{% if tutorial_lang == 'hi' %}en{% else %}hi{% endif %}"
         >
           <i class="fa-solid fa-language"></i>
-          {% if tutorial_lang == 'hi' %}View In English{% else %}हिंदी में देखें{% endif %}
+          {% if tutorial_lang == 'hi' %}View In English{% else %}Hinglish me dekhen{% endif %}
         </button>
         <a class="btn btn-primary" href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">
           <i class="fa-brands fa-youtube"></i>
-          {% if tutorial_lang == 'hi' %}YouTube पर वीडियो ट्यूटोरियल देखें{% else %}Watch Video Tutorial on YouTube{% endif %}
+          {% if tutorial_lang == 'hi' %}YouTube par video tutorial dekhen{% else %}Watch Video Tutorial on YouTube{% endif %}
         </a>
         <a class="btn btn-outline-secondary" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
           <i class="fa-solid fa-user-check"></i>
@@ -350,7 +350,7 @@
         </a>
         <button class="btn btn-outline-primary" type="button" data-jump-tab="get-started">
           <i class="fa-solid fa-list-check"></i>
-          {% if tutorial_lang == 'hi' %}Start वाले स्टेप्स खोलें{% else %}Go to Start Steps{% endif %}
+          {% if tutorial_lang == 'hi' %}Start wale steps kholo{% else %}Go to Start Steps{% endif %}
         </button>
       </div>
     </div>
@@ -359,27 +359,27 @@
         <div class="tutorial-video-icon">
           <i class="fa-brands fa-youtube"></i>
         </div>
-        <h3>{% if tutorial_lang == 'hi' %}यहां से शुरू करें{% else %}Start Here{% endif %}</h3>
+        <h3>{% if tutorial_lang == 'hi' %}Yahan se shuru karein{% else %}Start Here{% endif %}</h3>
         <p>{% if tutorial_lang == 'hi' %}Video ek baar dekh lo, fir daily kaam me is page ko checklist ki tarah use karo.{% else %}Watch the video once, then use this page as your daily checklist.{% endif %}</p>
-        <a href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">{% if tutorial_lang == 'hi' %}YouTube video खोलें{% else %}Open YouTube Video{% endif %}</a>
+        <a href="{{ tutorial_video_url }}" target="_blank" rel="noopener noreferrer">{% if tutorial_lang == 'hi' %}YouTube video kholo{% else %}Open YouTube Video{% endif %}</a>
       </div>
     </div>
   </section>
 
   <section class="tutorial-tabs-shell">
-    <div class="tutorial-tabs" role="tablist" aria-label="{% if tutorial_lang == 'hi' %}ट्यूटोरियल नेविगेशन टैब्स{% else %}Tutorial navigation tabs{% endif %}">
-      <button type="button" class="tutorial-tab-btn is-active" data-tab="get-started" role="tab" aria-selected="true">{% if tutorial_lang == 'hi' %}शुरुआत{% else %}Getting Started{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="workflow" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}दैनिक वर्कफ़्लो{% else %}Daily Workflow{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="quality" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}क्वालिटी और अप्रूवल{% else %}Quality & Approval{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="exports" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}एक्सपोर्ट और रीप्रिंट{% else %}Exports & Reprint{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="team" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}टीम और सुरक्षा{% else %}Team & Security{% endif %}</button>
-      <button type="button" class="tutorial-tab-btn" data-tab="support" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}समस्या समाधान{% else %}Troubleshooting{% endif %}</button>
+    <div class="tutorial-tabs" role="tablist" aria-label="{% if tutorial_lang == 'hi' %}Tutorial navigation tabs{% else %}Tutorial navigation tabs{% endif %}">
+      <button type="button" class="tutorial-tab-btn is-active" data-tab="get-started" role="tab" aria-selected="true">{% if tutorial_lang == 'hi' %}Shuruaat{% else %}Getting Started{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="workflow" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Daily Workflow{% else %}Daily Workflow{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="quality" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Quality aur approval{% else %}Quality & Approval{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="exports" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Export aur reprint{% else %}Exports & Reprint{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="team" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Team aur security{% else %}Team & Security{% endif %}</button>
+      <button type="button" class="tutorial-tab-btn" data-tab="support" role="tab" aria-selected="false">{% if tutorial_lang == 'hi' %}Samasya samadhan{% else %}Troubleshooting{% endif %}</button>
     </div>
 
     <div class="tutorial-panels">
       <section class="tutorial-panel is-active" data-panel="get-started" role="tabpanel">
         {% if tutorial_lang == 'hi' %}
-        <h2>8 आसान स्टेप्स में शुरुआत</h2>
+        <h2>8 aasan steps me shuruaat</h2>
         <div class="quick-grid">
           <article><span>1</span><p>Dashboard login karke header me client name check karo.</p></article>
           <article><span>2</span><p>ID Card Group me sahi class ya batch table select karo.</p></article>
@@ -391,7 +391,7 @@
           <article><span>8</span><p>Daily activity aur notifications monitor karo.</p></article>
         </div>
 
-        <h3>क्लाइंट रोल्स और एक्सेस</h3>
+        <h3>Client roles aur access</h3>
         <p>
           Usually ek Client Admin hota hai aur zarurat ke hisab se Assistent users hote hain.
           Client Admin final control rakhta hai. Staff ke liye alag login rakho.
@@ -400,7 +400,7 @@
           <strong>Important:</strong> ek account ko multiple logon me share mat karo.
         </div>
 
-        <h3>पहली बार ऑनबोर्डिंग</h3>
+        <h3>Pehli baar onboarding</h3>
         <ol>
           <li>Upload, Review aur Approval ke owners fix karo.</li>
           <li>Group/table naming ka ek standard decide karo.</li>
@@ -445,7 +445,7 @@
 
       <section class="tutorial-panel" data-panel="workflow" role="tabpanel" hidden>
         {% if tutorial_lang == 'hi' %}
-        <h2>दैनिक वर्कफ़्लो</h2>
+        <h2>Daily workflow</h2>
         <p>
           Dashboard aapka control center hai. Status count dekh kar decide karo team ko kis kaam par focus karna hai.
         </p>
@@ -455,7 +455,7 @@
           <li>Notifications ko action item ki tarah treat karo.</li>
         </ul>
 
-        <h3>Groups और Tables रणनीति</h3>
+        <h3>Groups aur tables strategy</h3>
         <ol>
           <li>Group ko session ya cycle ke hisab se banao.</li>
           <li>Table naming pattern fix rakho (example: SchoolCode-Class-Section-Session-BatchNo).</li>
@@ -463,13 +463,13 @@
           <li>Har table ka owner fix karo.</li>
         </ol>
 
-        <h3>डेटा और इमेज अपलोड स्टैंडर्ड</h3>
+        <h3>Data aur image upload standard</h3>
         <table class="tutorial-table">
           <thead>
             <tr>
-              <th>आइटम</th>
-              <th>न्यूनतम स्टैंडर्ड</th>
-              <th>क्यों जरूरी है</th>
+              <th>Item</th>
+              <th>Minimum standard</th>
+              <th>Kyon zaroori hai</th>
             </tr>
           </thead>
           <tbody>
@@ -484,7 +484,7 @@
               <td>Baad me correction ka load kam hota hai</td>
             </tr>
             <tr>
-              <td>Class और Section</td>
+              <td>Class aur Section</td>
               <td>Sab rows me same format rakho</td>
               <td>Filter aur export accurate rehta hai</td>
             </tr>
@@ -551,13 +551,13 @@
 
       <section class="tutorial-panel" data-panel="quality" role="tabpanel" hidden>
         {% if tutorial_lang == 'hi' %}
-        <h2>Status Flow और Approval Check</h2>
+        <h2>Status flow aur approval check</h2>
         <table class="tutorial-table">
           <thead>
             <tr>
-              <th>स्टेटस</th>
-              <th>उद्देश्य</th>
-              <th>जिम्मेदार</th>
+              <th>Status</th>
+              <th>Uddeshya</th>
+              <th>Zimmedar</th>
             </tr>
           </thead>
           <tbody>
@@ -579,7 +579,7 @@
             <tr>
               <td>Downloaded</td>
               <td>Delivery tracking stage</td>
-              <td>Client Admin या Operator</td>
+              <td>Client Admin ya Operator</td>
             </tr>
           </tbody>
         </table>
@@ -588,7 +588,7 @@
           Jaldi me Pending se direct Approved mat karo. Isse reprint load badhta hai.
         </div>
 
-        <h3>Approve करने से पहले चेकलिस्ट</h3>
+        <h3>Approve karne se pehle checklist</h3>
         <ul>
           <li>Name, class aur section source data se match kare.</li>
           <li>Photo clear, centered aur sahi student ka ho.</li>
@@ -649,8 +649,8 @@
 
       <section class="tutorial-panel" data-panel="exports" role="tabpanel" hidden>
         {% if tutorial_lang == 'hi' %}
-        <h2>एक्सपोर्ट, डिलीवरी और रीप्रिंट हैंडलिंग</h2>
-        <h3>Export और Delivery प्रोटोकॉल</h3>
+        <h2>Export, delivery aur reprint handling</h2>
+        <h3>Export aur delivery protocol</h3>
         <ol>
           <li>Delivery stage ke hisab se Approved ya Download filter lagao.</li>
           <li>Required format me export karo, same button baar-baar mat click karo.</li>
@@ -659,7 +659,7 @@
           <li>Export files ko standard naam se archive karo.</li>
         </ol>
 
-        <h3>रीप्रिंट और Exception Handling</h3>
+        <h3>Reprint aur exception handling</h3>
         <ul>
           <li>Reprint sirf genuine correction case me karo.</li>
           <li>Har reprint ka reason note karo.</li>
@@ -697,13 +697,13 @@
 
       <section class="tutorial-panel" data-panel="team" role="tabpanel" hidden>
         {% if tutorial_lang == 'hi' %}
-        <h2>टीम ऑपरेशन और सुरक्षा</h2>
-        <h3>सुझाया गया Role Matrix</h3>
+        <h2>Team operation aur suraksha</h2>
+        <h3>Sujhaya gaya role matrix</h3>
         <table class="tutorial-table">
           <thead>
             <tr>
-              <th>रोल</th>
-              <th>मुख्य कार्य</th>
+              <th>Role</th>
+              <th>Mukhya kaam</th>
               <th>Approval Rights</th>
             </tr>
           </thead>
@@ -726,7 +726,7 @@
           </tbody>
         </table>
 
-        <h3>सुरक्षा के बेसिक नियम</h3>
+        <h3>Suraksha ke basic rules</h3>
         <ul>
           <li>Password kabhi bhi chat app me share mat karo.</li>
           <li>Inactive staff ko turant disable karo.</li>
@@ -775,7 +775,7 @@
 
       <section class="tutorial-panel" data-panel="support" role="tabpanel" hidden>
         {% if tutorial_lang == 'hi' %}
-        <h2>समस्या समाधान और चेकलिस्ट</h2>
+        <h2>Samasya samadhan aur checklist</h2>
         <div class="faq-grid">
           <article>
             <h4>Photo student se mismatch</h4>
@@ -803,7 +803,7 @@
           </article>
         </div>
 
-        <h3>Daily और Weekly Checklist</h3>
+        <h3>Daily aur weekly checklist</h3>
         <div class="daily-checklist">
           <label><input type="checkbox"> Upload, review aur approval owners confirm karo.</label>
           <label><input type="checkbox"> Kal ke pending issues pehle clear karo.</label>
