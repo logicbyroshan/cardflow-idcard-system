@@ -32,6 +32,7 @@ class StaffService(BaseService):
     PERMISSION_FIELDS = [
         # ID Card Client List
         'perm_idcard_client_list',
+        'perm_manage_client_staff',
         # ID Card Settings
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 
         'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 

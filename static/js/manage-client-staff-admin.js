@@ -745,6 +745,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('add') === '1' && addStaffBtn) {
+        addStaffBtn.click();
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     if (editStaffBtn) {
         editStaffBtn.addEventListener('click', async function() {
             if (!NS.selectedStaffId) return;

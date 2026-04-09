@@ -73,6 +73,7 @@ class Staff(models.Model):
     
     # ID Card Client List Permission
     perm_idcard_client_list = models.BooleanField(default=False)
+    perm_manage_client_staff = models.BooleanField(default=False)
     
     # ID Card Setting Permissions
     perm_idcard_setting_list = models.BooleanField(default=False)

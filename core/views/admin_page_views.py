@@ -181,10 +181,14 @@ def manage_staff(request):
 def manage_client_staff(request):
     """View to manage client staff globally  supports HTMX partial responses."""
     user = request.user
-    can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
-    if PermissionService.is_admin_staff(user) and not can_manage_clients:
+    can_manage_client_staff = (
+        PermissionService.is_super_admin(user)
+        or PermissionService.has(user, 'perm_idcard_client_list')
+        or PermissionService.has(user, 'perm_manage_client_staff')
+    )
+    if PermissionService.is_admin_staff(user) and not can_manage_client_staff:
         if is_htmx(request):
-            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+            return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
         return redirect(reverse('admin_staff_dashboard'))
 
     DEFAULT_PER_PAGE = 25
@@ -206,6 +210,10 @@ def manage_client_staff(request):
         .select_related('user', 'client')
         .order_by('-id')
     )
+
+    if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
+        accessible_ids = PermissionService.get_accessible_client_ids(user)
+        staff_qs = staff_qs.filter(client_id__in=accessible_ids)
 
     if search_query:
         staff_qs = staff_qs.filter(
@@ -234,7 +242,7 @@ def manage_client_staff(request):
         'per_page_options': PER_PAGE_OPTIONS,
         'search_query': search_query,
         'status_filter': status_filter,
-        'can_manage_clients': can_manage_clients,
+        'can_manage_clients': can_manage_client_staff,
     }
 
     if is_htmx(request):
@@ -509,12 +517,13 @@ def active_client_status_redirect(request, client_id, status):
 @require_http_methods(['GET'])
 def api_client_staff_login_history(request, staff_id):
     """Return login/logout timeline for a single client staff user."""
-    can_manage_clients = (
+    can_manage_client_staff = (
         PermissionService.is_super_admin(request.user)
         or PermissionService.has(request.user, 'perm_idcard_client_list')
+        or PermissionService.has(request.user, 'perm_manage_client_staff')
     )
-    if PermissionService.is_admin_staff(request.user) and not can_manage_clients:
-        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+    if PermissionService.is_admin_staff(request.user) and not can_manage_client_staff:
+        return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
 
     staff = get_object_or_404(
         Staff.objects.select_related('user', 'client'),

@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     NS.permissionFields = [
         // Client
         'perm-idcard-client-list',
+        'perm-manage-client-staff',
         // Settings
         'perm-idcard-setting-list', 'perm-idcard-setting-add', 'perm-idcard-setting-edit',
         'perm-idcard-setting-delete', 'perm-idcard-setting-status',

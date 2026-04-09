@@ -80,9 +80,23 @@ def _has_manage_client_page_permission(user):
     return PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
 
 
+def _has_manage_client_staff_page_permission(user):
+    """Return True when user can use Manage Assistent operations."""
+    return (
+        PermissionService.is_super_admin(user)
+        or PermissionService.has(user, 'perm_idcard_client_list')
+        or PermissionService.has(user, 'perm_manage_client_staff')
+    )
+
+
 def _manage_client_permission_denied_response():
     """Standard deny payload for missing Manage Client permission."""
     return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+
+
+def _manage_client_staff_permission_denied_response():
+    """Standard deny payload for missing Manage Assistent permission."""
+    return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
 
 
 def _serialize_admin_client_staff(staff_obj, include_permissions=True):
@@ -434,8 +448,8 @@ def api_client_set_temp_password(request, client_id):
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='admin_client_staff_clients')
 def api_admin_client_staff_clients(request):
     """List clients that can be assigned to client staff from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     clients_qs = Client.objects.select_related('user').order_by('name')
     if PermissionService.is_admin_staff(request.user) and not PermissionService.has(request.user, 'perm_idcard_client_list'):
@@ -461,8 +475,8 @@ def api_admin_client_staff_clients(request):
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='admin_client_staff_get')
 def api_admin_client_staff_get(request, staff_id):
     """Get details for a client staff member from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
     if denied_response:
@@ -479,8 +493,8 @@ def api_admin_client_staff_get(request, staff_id):
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='admin_client_staff_create')
 def api_admin_client_staff_create(request):
     """Create a client staff member from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     try:
         payload = json.loads(request.body)
@@ -527,8 +541,8 @@ def api_admin_client_staff_create(request):
 @rate_limit(max_requests=15, window_seconds=60, key_prefix='admin_client_staff_update')
 def api_admin_client_staff_update(request, staff_id):
     """Update a client staff member from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
     if denied_response:
@@ -567,8 +581,8 @@ def api_admin_client_staff_update(request, staff_id):
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='admin_client_staff_delete')
 def api_admin_client_staff_delete(request, staff_id):
     """Delete a client staff member from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
     if denied_response:
@@ -583,8 +597,8 @@ def api_admin_client_staff_delete(request, staff_id):
 @rate_limit(max_requests=20, window_seconds=60, key_prefix='admin_client_staff_toggle')
 def api_admin_client_staff_toggle_status(request, staff_id):
     """Toggle active/inactive status for a client staff member from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
     if denied_response:
@@ -599,8 +613,8 @@ def api_admin_client_staff_toggle_status(request, staff_id):
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='admin_client_staff_temp_pw')
 def api_admin_client_staff_set_temp_password(request, staff_id):
     """Set temporary password for a client staff member from admin pages."""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
+    if not _has_manage_client_staff_page_permission(request.user):
+        return _manage_client_staff_permission_denied_response()
 
     staff_obj, denied_response = _get_admin_manageable_client_staff(request.user, staff_id)
     if denied_response:

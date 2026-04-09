@@ -42,6 +42,10 @@ class PermissionService:
         'perm_idcard_client_list',
     ]
 
+    ADMIN_USER_MANAGEMENT_PERMISSIONS = [
+        'perm_manage_client_staff',
+    ]
+
     IDCARD_SETTING_PERMISSIONS = [
         'perm_idcard_setting_list', 'perm_idcard_setting_add',
         'perm_idcard_setting_edit', 'perm_idcard_setting_delete',
@@ -93,6 +97,7 @@ class PermissionService:
     # All known perm keys (computed once at class-load time)
     ALL_PERMISSION_KEYS: List[str] = (
         IDCARD_CLIENT_PERMISSIONS
+        + ADMIN_USER_MANAGEMENT_PERMISSIONS
         + IDCARD_SETTING_PERMISSIONS
         + IDCARD_LIST_PERMISSIONS
         + IDCARD_ACTION_PERMISSIONS
@@ -133,6 +138,7 @@ class PermissionService:
         'perm_manage_panel_email',
         'perm_manage_website_clients',
         'perm_manage_website_portfolio',
+        'perm_manage_client_staff',
     }
 
     # Sensitive permissions that client_staff can never hold, even if present on Staff model.
