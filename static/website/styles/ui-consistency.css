@@ -106,7 +106,7 @@ h6 {
     font-weight: 600;
     line-height: 1.2;
     letter-spacing: 0.01em;
-    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
 
 .portfolio-filters .filter-tab i,
@@ -137,8 +137,16 @@ h6 {
 .extra-categories-bar .extra-category-tag:hover,
 .extra-categories-bar .extra-category-tag.active,
 .more-categories .mini-category:hover {
-    transform: none;
-    box-shadow: 0 8px 20px rgba(16, 15, 87, 0.12);
+    transform: translateY(-0.5px);
+    box-shadow: 0 3px 10px rgba(16, 15, 87, 0.10);
+}
+
+.portfolio-filters .filter-tab:active,
+.filter-tabs .filter-tab:active,
+.extra-categories-bar .extra-category-tag:active,
+.more-categories .mini-category:active {
+    transform: translateY(-0.5px);
+    box-shadow: 0 2px 8px rgba(16, 15, 87, 0.09);
 }
 
 .extra-categories-bar .extra-category-tag:hover,
