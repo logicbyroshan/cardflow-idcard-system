@@ -498,6 +498,11 @@ class ActivityService:
             actor = cls._get_actor_display(entry, user, hide_admin_names)
             actor_role = getattr(entry.user, 'role', '') if entry.user else ''
             client_context = cls._resolve_activity_client_context(entry)
+            description = entry.description
+
+            if entry.action == 'password_reset' and entry.user and getattr(entry.user, 'email', ''):
+                # Ensure dashboard recent activity always shows full email for reset actions.
+                description = f'Password reset completed for {entry.user.email}'
 
             raw_results.append({
                 'id': entry.pk,
@@ -505,7 +510,7 @@ class ActivityService:
                 'actor': actor,
                 'actor_role': actor_role,
                 'action': entry.action,
-                'description': entry.description,
+                'description': description,
                 'target_model': entry.target_model,
                 'target_id': entry.target_id,
                 'target_name': entry.target_name,

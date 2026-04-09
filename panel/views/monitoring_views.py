@@ -631,6 +631,17 @@ def api_operations_feed(request):
     ).count()
 
     action_display_map = dict(ActivityLog.ACTION_CHOICES)
+
+    def _card_status_summary_text(raw_description):
+        """Normalize noisy per-card status logs into a stable summary line."""
+        summary = str(raw_description or '').strip()
+        if not summary:
+            return 'Card status changed'
+        summary = re.sub(r'\s*\|\s*Target:\s*Card\s*#.*$', '', summary, flags=re.IGNORECASE)
+        summary = re.sub(r'\s*Target:\s*Card\s*#.*$', '', summary, flags=re.IGNORECASE)
+        summary = summary.strip(' |')
+        return summary or 'Card status changed'
+
     items = []
 
     if include_background:
@@ -749,21 +760,55 @@ def api_operations_feed(request):
             )
             log_qs = log_qs.filter(base_search_q)
 
+        log_items = []
+        card_status_groups = {}
+
         for log in log_qs[:fetch_cap]:
             user_name = log.user.get_full_name() or log.user.username if log.user else 'System'
-            device_meta = _device_surface_meta(_infer_device_surface(log.action, log.description))
-            items.append({
+
+            description = log.description or ''
+            if log.action == 'password_reset' and log.user and getattr(log.user, 'email', ''):
+                # Show full recipient email in recent activity for password reset actions.
+                description = f'Password reset completed for {log.user.email}'
+
+            device_meta = _device_surface_meta(_infer_device_surface(log.action, description))
+
+            if log.action == 'card_status':
+                summary_desc = _card_status_summary_text(description)
+                minute_bucket = log.created_at.replace(second=0, microsecond=0)
+                group_key = (log.user_id or 0, minute_bucket, summary_desc.lower())
+                existing_idx = card_status_groups.get(group_key)
+                if existing_idx is not None:
+                    grouped = log_items[existing_idx]
+                    grouped['_group_count'] = int(grouped.get('_group_count') or 1) + 1
+                    count = grouped['_group_count']
+                    grouped['event_title'] = f'{count} cards status changed'
+                    grouped['action_display'] = f'{count} cards status changed'
+                    grouped['description'] = f'{summary_desc} ({count} cards)'
+                    grouped['target_name'] = ''
+                    continue
+
+                card_status_groups[group_key] = len(log_items)
+                event_title = action_display_map.get(log.action, log.action)
+                action_display = event_title
+                row_description = summary_desc
+            else:
+                event_title = action_display_map.get(log.action, log.action)
+                action_display = event_title
+                row_description = description
+
+            log_items.append({
                 'source_type': 'activity_log',
                 'source_label': 'Activity Log',
-                'event_title': action_display_map.get(log.action, log.action),
+                'event_title': event_title,
                 'event_subtitle': log.target_model or '',
                 'task_id': None,
                 'status': '',
                 'status_display': '',
                 'action': log.action,
-                'action_display': action_display_map.get(log.action, log.action),
+                'action_display': action_display,
                 'can_cancel': False,
-                'description': log.description or '',
+                'description': row_description,
                 'target_name': log.target_name or '',
                 'user': user_name,
                 'ip_address': log.ip_address or '',
@@ -774,8 +819,11 @@ def api_operations_feed(request):
                 'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
                 'time_ago': django_timesince(log.created_at, now) + ' ago',
                 'created_at_dt': log.created_at,
+                '_group_count': 1,
                 **device_meta,
             })
+
+        items.extend(log_items)
 
     items.sort(key=lambda row: row.get('created_at_dt') or now, reverse=True)
     total = len(items)
@@ -788,6 +836,7 @@ def api_operations_feed(request):
 
     for row in paged_items:
         row.pop('created_at_dt', None)
+        row.pop('_group_count', None)
 
     return JsonResponse({
         'success': True,

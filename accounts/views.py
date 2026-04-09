@@ -477,7 +477,7 @@ class ResetPasswordAPIView(View):
 
             if result.get('success'):
                 user = User.objects.filter(email__iexact=email).first()
-                masked_email = _mask_login_identifier(email)
+                full_email = (email or '').strip()
                 target_name = ''
                 target_id = None
                 if user:
@@ -485,7 +485,7 @@ class ResetPasswordAPIView(View):
                     target_id = user.pk
                 ActivityService.log(
                     'password_reset',
-                    f'Password reset completed for {masked_email}',
+                    f'Password reset completed for {full_email}',
                     user=user,
                     request=request,
                     target_model='User',
