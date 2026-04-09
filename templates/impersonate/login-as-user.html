@@ -311,6 +311,69 @@
     border-radius: 9999px;
     flex-shrink: 0;
   }
+
+  .imp-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    margin-top: 8px;
+    padding: 10px 2px 10px;
+    font-size: 12px;
+    color: var(--text-secondary, #666);
+    flex-wrap: wrap;
+  }
+  .imp-pager-info {
+    color: var(--text-secondary, #666);
+    white-space: nowrap;
+  }
+  .imp-pager-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .imp-pager-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--text-secondary, #374151);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .imp-pager-btn:hover:not(:disabled) {
+    border-color: var(--primary, #667eea);
+    color: var(--primary, #667eea);
+  }
+  .imp-pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .imp-pager-page {
+    min-width: 90px;
+    text-align: center;
+    color: var(--text-primary, #2c3e50);
+    font-weight: 600;
+  }
+  .imp-pager-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .imp-pager-size select {
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--text-primary, #2c3e50);
+  }
 </style>
 {% endblock %}
 
@@ -377,6 +440,24 @@
         {% endfor %}
       </div>
     </div>
+    <div id="impPager" class="imp-pager" style="display:none;">
+      <div id="impPagerInfo" class="imp-pager-info">Showing 0-0 of 0</div>
+      <div class="imp-pager-controls">
+        <button type="button" id="impPagerFirst" class="imp-pager-btn" onclick="__impGoPage('first')" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button type="button" id="impPagerPrev" class="imp-pager-btn" onclick="__impGoPage('prev')" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="impPagerPage" class="imp-pager-page">Page 1/1</span>
+        <button type="button" id="impPagerNext" class="imp-pager-btn" onclick="__impGoPage('next')" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button type="button" id="impPagerLast" class="imp-pager-btn" onclick="__impGoPage('last')" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+      </div>
+      <div class="imp-pager-size">
+        <label for="impPerPage">Rows</label>
+        <select id="impPerPage" onchange="__impSetPerPage(this.value)">
+          <option value="12">12</option>
+          <option value="24" selected>24</option>
+          <option value="48">48</option>
+        </select>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -386,6 +467,9 @@
 <script>
 (function() {
   var _users = [], _role = 'all', _text = '';
+  var _filteredUsers = [];
+  var _page = 1;
+  var _perPage = 24;
   var COLORS = { super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
   var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
 
@@ -408,6 +492,42 @@
     });
   }
 
+  function _togglePager(show) {
+    var pager = document.getElementById('impPager');
+    if (pager) pager.style.display = show ? '' : 'none';
+  }
+
+  function _renderPager(total) {
+    if (total <= 0) {
+      _togglePager(false);
+      return;
+    }
+
+    _togglePager(true);
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+
+    var start = ((_page - 1) * _perPage) + 1;
+    var end = Math.min(total, _page * _perPage);
+
+    var info = document.getElementById('impPagerInfo');
+    if (info) info.textContent = 'Showing ' + start + '-' + end + ' of ' + total;
+
+    var pageLabel = document.getElementById('impPagerPage');
+    if (pageLabel) pageLabel.textContent = 'Page ' + _page + '/' + totalPages;
+
+    var firstBtn = document.getElementById('impPagerFirst');
+    var prevBtn = document.getElementById('impPagerPrev');
+    var nextBtn = document.getElementById('impPagerNext');
+    var lastBtn = document.getElementById('impPagerLast');
+
+    if (firstBtn) firstBtn.disabled = _page <= 1;
+    if (prevBtn) prevBtn.disabled = _page <= 1;
+    if (nextBtn) nextBtn.disabled = _page >= totalPages;
+    if (lastBtn) lastBtn.disabled = _page >= totalPages;
+  }
+
   // Load users on page load
   _load();
 
@@ -426,7 +546,7 @@
   }
 
   function _render() {
-    var f = _users.filter(function(u) {
+    _filteredUsers = _users.filter(function(u) {
       if (_role !== 'all' && u.role !== _role) return false;
       if (_text) {
         var q = _text.toLowerCase();
@@ -437,10 +557,23 @@
       }
       return true;
     });
-    document.getElementById('impCount').textContent = f.length + ' user' + (f.length !== 1 ? 's' : '');
-    if (!f.length) { document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-users-slash"></i>No users found</div>'; return; }
+
+    var total = _filteredUsers.length;
+    document.getElementById('impCount').textContent = total + ' user' + (total !== 1 ? 's' : '');
+    if (!total) {
+      _togglePager(false);
+      document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-users-slash"></i>No users found</div>';
+      return;
+    }
+
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+    var startIndex = (_page - 1) * _perPage;
+    var pageUsers = _filteredUsers.slice(startIndex, startIndex + _perPage);
+
     var h = '';
-    f.forEach(function(u) {
+    pageUsers.forEach(function(u) {
       var nameText = String(u.name || 'User');
       var init = (nameText[0] || '?').toUpperCase();
       var inactiveBadge = u.is_active === false ? '<span class="imp-inactive-tag">Inactive</span>' : '';
@@ -455,15 +588,33 @@
         + '</div>';
     });
     document.getElementById('impGrid').innerHTML = h;
+      _renderPager(total);
   }
 
   function _esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-  window.__impFilter = function() { _text = document.getElementById('impSearch').value; _render(); };
+  window.__impFilter = function() { _text = document.getElementById('impSearch').value; _page = 1; _render(); };
   window.__impSetRole = function(r, btn) {
     _role = r;
+    _page = 1;
     document.querySelectorAll('.imp-pill').forEach(function(p) { p.classList.remove('active'); });
     btn.classList.add('active');
+    _render();
+  };
+  window.__impSetPerPage = function(v) {
+    var next = parseInt(v, 10);
+    if (!Number.isFinite(next) || next <= 0) return;
+    _perPage = next;
+    _page = 1;
+    _render();
+  };
+  window.__impGoPage = function(direction) {
+    var total = _filteredUsers.length;
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (direction === 'first') _page = 1;
+    else if (direction === 'prev') _page = Math.max(1, _page - 1);
+    else if (direction === 'next') _page = Math.min(totalPages, _page + 1);
+    else if (direction === 'last') _page = totalPages;
     _render();
   };
   window.__impStart = function(uid) {

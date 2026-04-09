@@ -29,8 +29,8 @@ logger = logging.getLogger('core.views')
 
 _MAX_REPORTS_PER_MIN = 10
 _MAX_LOG_FIELD_LEN = 500
-_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v2'
-_SERVER_INFO_CACHE_TTL = 300
+_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v3'
+_SERVER_INFO_CACHE_TTL = 86400
 
 
 def _sanitize_log_value(val, max_len=_MAX_LOG_FIELD_LEN):
@@ -230,6 +230,71 @@ def _other_usage_breakdown(base_dir: Path, other_total_bytes: int, project_total
 
     parts.sort(key=lambda x: x['size_bytes'], reverse=True)
     return parts
+
+
+def _size_for_label(path_usage_raw, label):
+    for item in path_usage_raw:
+        if item.get('name') == label:
+            return int(item.get('size_bytes') or 0)
+    return 0
+
+
+def _sum_existing_dirs(paths):
+    total = 0
+    seen = set()
+    for path_obj in paths:
+        try:
+            resolved = path_obj.resolve()
+        except Exception:
+            resolved = path_obj
+
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if not path_obj.exists() or not path_obj.is_dir():
+            continue
+        try:
+            total += _dir_size_fast(path_obj)
+        except Exception:
+            continue
+    return int(total)
+
+
+def _media_video_usage_bytes(media_roots):
+    video_exts = {
+        '.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv',
+        '.mpeg', '.mpg', '.3gp', '.flv', '.ts', '.m2ts',
+    }
+    total = 0
+
+    for root in media_roots:
+        if not root.exists() or not root.is_dir():
+            continue
+
+        stack = [str(root)]
+        while stack:
+            current = stack.pop()
+            try:
+                with os.scandir(current) as entries:
+                    for entry in entries:
+                        try:
+                            if entry.is_symlink():
+                                continue
+                            if entry.is_dir(follow_symlinks=False):
+                                stack.append(entry.path)
+                                continue
+                            if not entry.is_file(follow_symlinks=False):
+                                continue
+                            if Path(entry.name).suffix.lower() in video_exts:
+                                total += int(entry.stat(follow_symlinks=False).st_size)
+                        except (FileNotFoundError, PermissionError, OSError):
+                            continue
+            except (FileNotFoundError, PermissionError, OSError):
+                continue
+
+    return int(total)
 
 
 def _database_storage_snapshot(base_dir):
@@ -789,6 +854,26 @@ def api_server_info_snapshot(request):
 
     db_info = _database_storage_snapshot(base_dir)
     db_size_bytes = int(db_info.get('size_bytes') or 0)
+    website_db_size_bytes = db_size_bytes
+    db_backend = str(settings.DATABASES.get('default', {}).get('ENGINE', '')).lower()
+    if ('postgresql' in db_backend or 'postgres' in db_backend) and db_info.get('status') == 'ok':
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT COALESCE(
+                        SUM(pg_total_relation_size(to_regclass(format('%I.%I', schemaname, relname)))),
+                        0
+                    )
+                    FROM pg_stat_user_tables
+                    WHERE relname LIKE 'website_%'
+                    """
+                )
+                row = cursor.fetchone()
+            website_db_size_bytes = int(row[0]) if row and row[0] is not None else 0
+        except Exception:
+            logger.exception('Website app DB size estimate failed')
+            website_db_size_bytes = db_size_bytes
 
     disk_used_nonfree = int(disk.used)
     known_used_bytes = max(project_root_size + db_size_bytes, 0)
@@ -822,6 +907,110 @@ def api_server_info_snapshot(request):
         item['pct_of_total_disk'] = round((item['size_bytes'] / disk.total) * 100, 2) if disk.total > 0 else 0
 
     usage_breakdown.sort(key=lambda x: x['size_bytes'], reverse=True)
+
+    media_size_bytes = _size_for_label(path_usage_raw, 'media') + _size_for_label(path_usage_raw, 'mediafiles')
+    logs_size_bytes = _size_for_label(path_usage_raw, 'logs') + _size_for_label(path_usage_raw, 'Face Cropper/logs')
+    support_explicit_bytes = (
+        _size_for_label(path_usage_raw, '.git')
+        + _size_for_label(path_usage_raw, 'logs')
+        + _size_for_label(path_usage_raw, 'Face Cropper/build')
+        + _size_for_label(path_usage_raw, 'Face Cropper/installer')
+        + _size_for_label(path_usage_raw, 'Face Cropper/logs')
+    )
+
+    dependency_bytes = _sum_existing_dirs([
+        base_dir / 'venv',
+        base_dir / '.venv',
+        base_dir / 'env',
+        base_dir / 'node_modules',
+        base_dir / 'Face Cropper' / 'venv',
+        base_dir / 'Face Cropper' / '.venv',
+        base_dir / 'Face Cropper' / 'node_modules',
+    ])
+
+    core_project_bytes = max(project_root_size - media_size_bytes - dependency_bytes, 0)
+    support_bytes = min(max(support_explicit_bytes, 0), core_project_bytes)
+    project_files_without_media_bytes = max(core_project_bytes - support_bytes, 0)
+    media_video_bytes = _media_video_usage_bytes([
+        base_dir / 'media',
+        base_dir / 'mediafiles',
+    ])
+
+    system_usage_details = [
+        {
+            'name': 'OS Usage',
+            'size_bytes': int(other_system_used),
+            'size_human': _format_bytes(other_system_used),
+            'pct_of_used_disk': round((other_system_used / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Machine storage outside this project',
+        },
+        {
+            'name': 'Project Dependencies Usage',
+            'size_bytes': int(dependency_bytes),
+            'size_human': _format_bytes(dependency_bytes),
+            'pct_of_used_disk': round((dependency_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'venv and installed dependency folders',
+        },
+        {
+            'name': 'Project Files Usage',
+            'size_bytes': int(project_files_without_media_bytes),
+            'size_human': _format_bytes(project_files_without_media_bytes),
+            'pct_of_used_disk': round((project_files_without_media_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Project files excluding images and videos',
+        },
+        {
+            'name': 'Project Support Usage',
+            'size_bytes': int(support_bytes),
+            'size_human': _format_bytes(support_bytes),
+            'pct_of_used_disk': round((support_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Git, logs, build and installer support files',
+        },
+        {
+            'name': 'Project Total Usage',
+            'size_bytes': int(project_root_size),
+            'size_human': _format_bytes(project_root_size),
+            'pct_of_used_disk': round((project_root_size / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Entire repository footprint',
+        },
+    ]
+
+    panel_usage_details = [
+        {
+            'name': 'Data Usage',
+            'size_bytes': int(db_size_bytes),
+            'size_human': _format_bytes(db_size_bytes),
+            'pct_of_project': round((db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Overall database size (Postgres/SQLite)',
+        },
+        {
+            'name': 'Images Size',
+            'size_bytes': int(media_size_bytes),
+            'size_human': _format_bytes(media_size_bytes),
+            'pct_of_project': round((media_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Media and mediafiles storage',
+        },
+        {
+            'name': 'Logs Size',
+            'size_bytes': int(logs_size_bytes),
+            'size_human': _format_bytes(logs_size_bytes),
+            'pct_of_project': round((logs_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Application and service logs',
+        },
+        {
+            'name': 'Website App DB',
+            'size_bytes': int(website_db_size_bytes),
+            'size_human': _format_bytes(website_db_size_bytes),
+            'pct_of_project': round((website_db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Website app tables footprint',
+        },
+        {
+            'name': 'Videos in Images',
+            'size_bytes': int(media_video_bytes),
+            'size_human': _format_bytes(media_video_bytes),
+            'pct_of_project': round((media_video_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Video files inside media folders',
+        },
+    ]
 
     other_breakdown = _other_usage_breakdown(
         base_dir=base_dir,
@@ -860,6 +1049,8 @@ def api_server_info_snapshot(request):
         'database': db_info,
         'usage_breakdown': usage_breakdown,
         'other_usage_breakdown': other_breakdown,
+        'system_usage_details': system_usage_details,
+        'panel_usage_details': panel_usage_details,
         'path_usage': path_usage,
     }
 

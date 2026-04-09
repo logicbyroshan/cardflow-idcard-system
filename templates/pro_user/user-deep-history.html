@@ -145,6 +145,68 @@
     gap: 10px;
     margin-top: 0;
   }
+  .audit-users-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--audit-border);
+    margin-top: 10px;
+    padding: 10px 2px 8px;
+    font-size: 12px;
+    color: var(--audit-muted);
+    flex-wrap: wrap;
+  }
+  .audit-users-pager-info {
+    color: var(--audit-muted);
+    white-space: nowrap;
+  }
+  .audit-users-pager-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .audit-users-pager-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--audit-border);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--audit-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .audit-users-pager-btn:hover:not(:disabled) {
+    border-color: var(--primary, #667eea);
+    color: var(--primary, #667eea);
+  }
+  .audit-users-pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .audit-users-pager-page {
+    min-width: 90px;
+    text-align: center;
+    color: var(--audit-text);
+    font-weight: 600;
+  }
+  .audit-users-pager-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .audit-users-pager-size select {
+    border: 1px solid var(--audit-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--audit-text);
+  }
   .audit-user-card {
     display: flex;
     align-items: center;
@@ -393,6 +455,24 @@
     <div id="auditUserGrid" class="audit-grid">
       <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
     </div>
+    <div id="auditUsersPager" class="audit-users-pager" style="display:none;">
+      <div id="auditUsersPagerInfo" class="audit-users-pager-info">Showing 0-0 of 0</div>
+      <div class="audit-users-pager-controls">
+        <button type="button" id="auditUsersPagerFirst" class="audit-users-pager-btn" onclick="__auditUsersGoPage('first')" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button type="button" id="auditUsersPagerPrev" class="audit-users-pager-btn" onclick="__auditUsersGoPage('prev')" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="auditUsersPagerPage" class="audit-users-pager-page">Page 1/1</span>
+        <button type="button" id="auditUsersPagerNext" class="audit-users-pager-btn" onclick="__auditUsersGoPage('next')" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button type="button" id="auditUsersPagerLast" class="audit-users-pager-btn" onclick="__auditUsersGoPage('last')" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+      </div>
+      <div class="audit-users-pager-size">
+        <label for="auditUsersPerPage">Rows</label>
+        <select id="auditUsersPerPage" onchange="__auditUsersSetPerPage(this.value)">
+          <option value="12">12</option>
+          <option value="24" selected>24</option>
+          <option value="48">48</option>
+        </select>
+      </div>
+    </div>
 
     <div id="auditHistory" class="audit-history" style="display:none;">
       <div class="audit-history-head">
@@ -433,8 +513,11 @@
 <script>
 (function() {
   var _users = [];
+  var _filteredUsers = [];
   var _role = 'all';
   var _text = '';
+  var _usersPage = 1;
+  var _usersPerPage = 24;
   var _selectedUser = null;
   var _historyOffset = 0;
   var _historyLimit = 50;
@@ -490,6 +573,42 @@
     });
   }
 
+  function _toggleUsersPager(show) {
+    var pager = document.getElementById('auditUsersPager');
+    if (pager) pager.style.display = show ? '' : 'none';
+  }
+
+  function _renderUsersPager(total) {
+    if (total <= 0) {
+      _toggleUsersPager(false);
+      return;
+    }
+
+    _toggleUsersPager(true);
+    var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
+    if (_usersPage > totalPages) _usersPage = totalPages;
+    if (_usersPage < 1) _usersPage = 1;
+
+    var start = ((_usersPage - 1) * _usersPerPage) + 1;
+    var end = Math.min(total, _usersPage * _usersPerPage);
+
+    var info = document.getElementById('auditUsersPagerInfo');
+    if (info) info.textContent = 'Showing ' + start + '-' + end + ' of ' + total;
+
+    var pageLabel = document.getElementById('auditUsersPagerPage');
+    if (pageLabel) pageLabel.textContent = 'Page ' + _usersPage + '/' + totalPages;
+
+    var firstBtn = document.getElementById('auditUsersPagerFirst');
+    var prevBtn = document.getElementById('auditUsersPagerPrev');
+    var nextBtn = document.getElementById('auditUsersPagerNext');
+    var lastBtn = document.getElementById('auditUsersPagerLast');
+
+    if (firstBtn) firstBtn.disabled = _usersPage <= 1;
+    if (prevBtn) prevBtn.disabled = _usersPage <= 1;
+    if (nextBtn) nextBtn.disabled = _usersPage >= totalPages;
+    if (lastBtn) lastBtn.disabled = _usersPage >= totalPages;
+  }
+
   function _detailPageUrl(userId) {
     return '/panel/pro-user/activity-logs/' + encodeURIComponent(String(userId)) + '/';
   }
@@ -530,18 +649,20 @@
 
   window.__auditFilter = function() {
     _text = document.getElementById('auditSearch').value || '';
+    _usersPage = 1;
     __auditRenderUsers();
   };
 
   window.__auditSetRole = function(role, btn) {
     _role = role;
+    _usersPage = 1;
     document.querySelectorAll('.audit-pill').forEach(function(p) { p.classList.remove('active'); });
     if (btn) btn.classList.add('active');
     __auditRenderUsers();
   };
 
   window.__auditRenderUsers = function() {
-    var list = _users.filter(function(u) {
+    _filteredUsers = _users.filter(function(u) {
       if (_role !== 'all' && u.role !== _role) return false;
       if (_text) {
         var q = _text.toLowerCase();
@@ -553,15 +674,24 @@
       }
       return true;
     });
-    document.getElementById('auditCount').textContent = list.length + ' user' + (list.length === 1 ? '' : 's');
 
-    if (!list.length) {
+    var total = _filteredUsers.length;
+    document.getElementById('auditCount').textContent = total + ' user' + (total === 1 ? '' : 's');
+
+    if (!total) {
+      _toggleUsersPager(false);
       document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-users-slash"></i><div>No users found</div></div>';
       return;
     }
 
+    var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
+    if (_usersPage > totalPages) _usersPage = totalPages;
+    if (_usersPage < 1) _usersPage = 1;
+    var startIndex = (_usersPage - 1) * _usersPerPage;
+    var pageUsers = _filteredUsers.slice(startIndex, startIndex + _usersPerPage);
+
     var html = '';
-    list.forEach(function(u) {
+    pageUsers.forEach(function(u) {
       var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
       var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
       var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-danger,#ef4444) 28%, #ffffff 72%);color:var(--color-danger-dark,#b91c1c);background:var(--color-danger-bg,#fef2f2);">Inactive</span>';
@@ -580,6 +710,25 @@
         + '</div>';
     });
     document.getElementById('auditUserGrid').innerHTML = html;
+    _renderUsersPager(total);
+  };
+
+  window.__auditUsersSetPerPage = function(v) {
+    var next = parseInt(v, 10);
+    if (!Number.isFinite(next) || next <= 0) return;
+    _usersPerPage = next;
+    _usersPage = 1;
+    __auditRenderUsers();
+  };
+
+  window.__auditUsersGoPage = function(direction) {
+    var total = _filteredUsers.length;
+    var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
+    if (direction === 'first') _usersPage = 1;
+    else if (direction === 'prev') _usersPage = Math.max(1, _usersPage - 1);
+    else if (direction === 'next') _usersPage = Math.min(totalPages, _usersPage + 1);
+    else if (direction === 'last') _usersPage = totalPages;
+    __auditRenderUsers();
   };
 
   function _renderHistoryLoading() {

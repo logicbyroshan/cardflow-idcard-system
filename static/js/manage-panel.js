@@ -22,6 +22,8 @@ let _domainStatusLoading = false;
 let _domainToggleBusy = false;
 let _domainEmailBusy = false;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
+const SERVER_INFO_LOCAL_CACHE_KEY = 'managePanel:serverInfoSnapshot:v2';
+const SERVER_INFO_LOCAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 function _isPageReloadNavigation() {
   try {
@@ -2557,6 +2559,56 @@ const SERVER_INFO_DYNAMIC_VALUE_IDS = [
   'serverDbStatus',
 ];
 
+function _readServerInfoLocalCache() {
+  try {
+    const raw = localStorage.getItem(SERVER_INFO_LOCAL_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed && parsed.saved_at ? parsed.saved_at : 0);
+    const snapshot = parsed && parsed.snapshot ? parsed.snapshot : null;
+    if (!savedAt || !snapshot || typeof snapshot !== 'object') {
+      localStorage.removeItem(SERVER_INFO_LOCAL_CACHE_KEY);
+      return null;
+    }
+    if ((Date.now() - savedAt) > SERVER_INFO_LOCAL_CACHE_TTL_MS) {
+      localStorage.removeItem(SERVER_INFO_LOCAL_CACHE_KEY);
+      return null;
+    }
+    return snapshot;
+  } catch (e) {
+    return null;
+  }
+}
+
+function _saveServerInfoLocalCache(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return;
+  try {
+    localStorage.setItem(SERVER_INFO_LOCAL_CACHE_KEY, JSON.stringify({
+      saved_at: Date.now(),
+      snapshot,
+    }));
+  } catch (e) {
+    // localStorage may be unavailable in strict privacy mode
+  }
+}
+
+function _syncServerInfoButtons() {
+  const fetchBtn = document.getElementById('serverInfoFetchBtn');
+  const refreshBtn = document.getElementById('serverInfoRefreshBtn');
+
+  if (fetchBtn) {
+    fetchBtn.disabled = false;
+    fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';
+    fetchBtn.style.display = serverInfoSnapshot ? 'none' : '';
+  }
+
+  if (refreshBtn) {
+    refreshBtn.disabled = false;
+    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh Latest';
+    refreshBtn.style.display = serverInfoSnapshot ? '' : 'none';
+  }
+}
+
 function buildServerInfoListSkeleton(sectionLabel) {
   const safeLabel = escHtml(sectionLabel || 'Loading');
   return (
@@ -2613,8 +2665,8 @@ function setServerInfoLoadingState(isLoading, options) {
   });
 
   if (isLoading) {
-    if (rows) rows.innerHTML = buildServerInfoListSkeleton('Loading project folder breakdown');
-    if (otherRows) otherRows.innerHTML = buildServerInfoListSkeleton('Loading other system details');
+    if (rows) rows.innerHTML = buildServerInfoListSkeleton('Loading panel usage details');
+    if (otherRows) otherRows.innerHTML = buildServerInfoListSkeleton('Loading system usage details');
   }
 }
 
@@ -2623,15 +2675,26 @@ function initServerInfoTab() {
   const otherRows = document.getElementById('serverOtherBreakdownRows');
   if (!rows || !otherRows) return;
 
+  if (!serverInfoSnapshot) {
+    const cachedSnapshot = _readServerInfoLocalCache();
+    if (cachedSnapshot) {
+      serverInfoSnapshot = cachedSnapshot;
+      serverInfoHasFetched = true;
+    }
+  }
+
   if (serverInfoSnapshot) {
-    renderServerInfo(serverInfoSnapshot);
+    renderServerInfo(serverInfoSnapshot, true);
+    _syncServerInfoButtons();
     return;
   }
 
   if (!serverInfoHasFetched) {
     rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
-    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details not loaded</p><span>Fetch snapshot to see where "Other System" is likely used.</span></div>`;
+    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>System usage details not loaded</p><span>Fetch snapshot to load system usage categories.</span></div>`;
   }
+
+  _syncServerInfoButtons();
 }
 
 async function loadServerInfo(forceRefresh) {
@@ -2641,6 +2704,17 @@ async function loadServerInfo(forceRefresh) {
   const refreshBtn = document.getElementById('serverInfoRefreshBtn');
   const rows = document.getElementById('serverInfoPathRows');
   if (!rows) return;
+
+  if (!forceRefresh && !serverInfoSnapshot) {
+    const cachedSnapshot = _readServerInfoLocalCache();
+    if (cachedSnapshot) {
+      serverInfoSnapshot = cachedSnapshot;
+      serverInfoHasFetched = true;
+      renderServerInfo(serverInfoSnapshot, true);
+      _syncServerInfoButtons();
+      return;
+    }
+  }
 
   serverInfoLoading = true;
   serverInfoHasFetched = true;
@@ -2673,6 +2747,7 @@ async function loadServerInfo(forceRefresh) {
     }
 
     serverInfoSnapshot = data.snapshot;
+    _saveServerInfoLocalCache(serverInfoSnapshot);
     renderServerInfo(serverInfoSnapshot, data.cached === true);
     loadedSuccessfully = true;
   } catch (err) {
@@ -2691,23 +2766,15 @@ async function loadServerInfo(forceRefresh) {
       }
     }
 
-    if (fetchBtn) {
-      fetchBtn.disabled = false;
-      fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';
-      fetchBtn.style.display = serverInfoSnapshot ? 'none' : '';
-    }
-    if (refreshBtn) {
-      refreshBtn.disabled = false;
-      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh Latest';
-      refreshBtn.style.display = serverInfoSnapshot ? '' : 'none';
-    }
+    _syncServerInfoButtons();
   }
 }
 
 function renderServerInfo(snapshot, fromCache) {
   const storage = snapshot.storage || {};
   const database = snapshot.database || {};
-  const otherUsageBreakdown = Array.isArray(snapshot.other_usage_breakdown) ? snapshot.other_usage_breakdown : [];
+  const systemUsageDetails = Array.isArray(snapshot.system_usage_details) ? snapshot.system_usage_details : [];
+  const panelUsageDetails = Array.isArray(snapshot.panel_usage_details) ? snapshot.panel_usage_details : [];
   const memory = snapshot.memory || {};
   const cpu = snapshot.cpu || {};
   const rows = document.getElementById('serverInfoPathRows');
@@ -2743,41 +2810,40 @@ function renderServerInfo(snapshot, fromCache) {
 
   const updatedEl = document.getElementById('serverInfoLastUpdated');
   if (updatedEl) {
-    const cacheText = fromCache ? ' (cached)' : '';
+    const cacheText = fromCache ? ' (cached up to 24h)' : '';
     updatedEl.textContent = `Last fetched: ${snapshot.fetched_at_human || '-'}${cacheText}`;
   }
 
-  const pathUsage = Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [];
-  if (!otherUsageBreakdown.length) {
-    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details unavailable</p><span>No extra system-level detail could be estimated.</span></div>`;
+  if (!systemUsageDetails.length) {
+    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>System usage details unavailable</p><span>No system usage categories could be estimated.</span></div>`;
   } else {
-    otherRows.innerHTML = otherUsageBreakdown.map(item => {
-      const pctOther = Number(item.pct_of_other || 0);
+    otherRows.innerHTML = systemUsageDetails.map(item => {
+      const pctValue = Number(item.pct_of_used_disk || 0);
       return `<div class="server-path-row">
         <div class="server-path-main">
           <div class="server-path-name">${escHtml(item.name || '')}</div>
           <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
         </div>
-        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctOther))}%;"></div></div>
-        <div class="server-path-meta">${pctOther.toFixed(1)}% of Other System usage</div>
+        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctValue))}%;"></div></div>
+        <div class="server-path-meta">${pctValue.toFixed(1)}% of used disk${item.meta ? ` | ${escHtml(item.meta)}` : ''}</div>
       </div>`;
     }).join('');
   }
 
-  if (!pathUsage.length) {
-    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-folder-open"></i><p>No tracked folders found</p><span>Tracked folders are missing or empty on this server.</span></div>`;
+  if (!panelUsageDetails.length) {
+    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-folder-open"></i><p>Panel usage details unavailable</p><span>No panel usage breakdown could be estimated.</span></div>`;
     return;
   }
 
-  rows.innerHTML = pathUsage.map(item => {
-    const pctTracked = Number(item.pct_of_tracked || 0);
+  rows.innerHTML = panelUsageDetails.map(item => {
+    const pctProject = Number(item.pct_of_project || 0);
     return `<div class="server-path-row">
       <div class="server-path-main">
         <div class="server-path-name">${escHtml(item.name || '')}</div>
         <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
       </div>
-      <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctTracked))}%;"></div></div>
-      <div class="server-path-meta">${pctTracked.toFixed(1)}% of tracked storage</div>
+      <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctProject))}%;"></div></div>
+      <div class="server-path-meta">${pctProject.toFixed(1)}% of project usage${item.meta ? ` | ${escHtml(item.meta)}` : ''}</div>
     </div>`;
   }).join('');
 
