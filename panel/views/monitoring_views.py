@@ -1015,11 +1015,6 @@ def api_server_info_snapshot(request):
     core_project_bytes = max(project_root_size - media_size_bytes - dependency_bytes, 0)
     support_bytes = min(max(support_explicit_bytes, 0), core_project_bytes)
     project_files_without_media_bytes = max(core_project_bytes - support_bytes, 0)
-    media_video_bytes = _media_video_usage_bytes([
-        base_dir / 'media',
-        base_dir / 'mediafiles',
-    ])
-
     system_usage_details = [
         {
             'name': 'OS Usage',
@@ -1049,32 +1044,25 @@ def api_server_info_snapshot(request):
             'pct_of_used_disk': round((support_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
             'meta': 'Git, logs, build and installer support files',
         },
-        {
-            'name': 'Project Total Usage',
-            'size_bytes': int(project_root_size),
-            'size_human': _format_bytes(project_root_size),
-            'pct_of_used_disk': round((project_root_size / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
-            'meta': 'Entire repository footprint',
-        },
     ]
 
     panel_usage_details = [
         {
-            'name': 'Data Usage',
-            'size_bytes': int(db_size_bytes),
-            'size_human': _format_bytes(db_size_bytes),
-            'pct_of_project': round((db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
-            'meta': 'Overall database size (Postgres/SQLite)',
-        },
-        {
-            'name': 'Images Size',
+            'name': 'Images Usage',
             'size_bytes': int(media_size_bytes),
             'size_human': _format_bytes(media_size_bytes),
             'pct_of_project': round((media_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
             'meta': 'Media and mediafiles storage',
         },
         {
-            'name': 'Logs Size',
+            'name': 'Database Usage',
+            'size_bytes': int(db_size_bytes),
+            'size_human': _format_bytes(db_size_bytes),
+            'pct_of_project': round((db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Overall database size (Postgres/SQLite)',
+        },
+        {
+            'name': 'Logs Usage',
             'size_bytes': int(logs_size_bytes),
             'size_human': _format_bytes(logs_size_bytes),
             'pct_of_project': round((logs_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
@@ -1086,13 +1074,6 @@ def api_server_info_snapshot(request):
             'size_human': _format_bytes(website_db_size_bytes),
             'pct_of_project': round((website_db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
             'meta': 'Website app tables footprint',
-        },
-        {
-            'name': 'Videos in Images',
-            'size_bytes': int(media_video_bytes),
-            'size_human': _format_bytes(media_video_bytes),
-            'pct_of_project': round((media_video_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
-            'meta': 'Video files inside media folders',
         },
     ]
 
