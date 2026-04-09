@@ -723,58 +723,83 @@ def api_dashboard_team_overview(request):
         if scope == 'clients':
             qs = PermissionService.get_accessible_clients(
                 user,
-                Client.objects.select_related('user')
-            ).order_by('-id')
+                Client.objects.all()
+            )
 
             if query:
                 qs = qs.filter(
                     Q(name__icontains=query)
                     | Q(user__email__icontains=query)
-                    | Q(phone__icontains=query)
+                    | Q(user__phone__icontains=query)
                 )
 
             if status in ('active', 'inactive', 'suspended'):
                 qs = qs.filter(status=status)
 
-            for client in qs[:limit]:
+            rows = qs.values(
+                'id',
+                'name',
+                'status',
+                'created_at',
+                'updated_at',
+                'user__email',
+                'user__phone',
+            ).order_by('-id')[:limit]
+
+            for row in rows:
                 items.append({
-                    'id': client.id,
+                    'id': row['id'],
                     'kind': 'client',
-                    'name': client.name or '',
-                    'email': _safe_public_email(getattr(client.user, 'email', '')),
-                    'mobile': client.phone or '',
-                    'status': client.status or 'inactive',
-                    'created_at': _format_dashboard_datetime(client.created_at),
-                    'updated_at': _format_dashboard_datetime(client.updated_at),
-                    'client_id': client.id,
-                    'client_name': client.name or '',
+                    'name': row.get('name') or '',
+                    'email': _safe_public_email(row.get('user__email') or ''),
+                    'mobile': row.get('user__phone') or '',
+                    'status': row.get('status') or 'inactive',
+                    'created_at': _format_dashboard_datetime(row.get('created_at')),
+                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
+                    'client_id': row['id'],
+                    'client_name': row.get('name') or '',
                 })
 
         elif scope == 'operator':
             qs = Staff.objects.filter(
                 staff_type='admin_staff'
-            ).select_related('user').order_by('-id')
+            )
 
             if query:
                 qs = qs.filter(
-                    Q(name__icontains=query)
+                    Q(user__first_name__icontains=query)
+                    | Q(user__last_name__icontains=query)
                     | Q(user__email__icontains=query)
-                    | Q(phone__icontains=query)
+                    | Q(user__phone__icontains=query)
                 )
 
             if status in ('active', 'inactive'):
                 qs = qs.filter(user__is_active=(status == 'active'))
 
-            for staff in qs[:limit]:
+            rows = qs.values(
+                'id',
+                'created_at',
+                'updated_at',
+                'user__email',
+                'user__first_name',
+                'user__last_name',
+                'user__username',
+                'user__phone',
+                'user__is_active',
+            ).order_by('-id')[:limit]
+
+            for row in rows:
+                full_name = f"{(row.get('user__first_name') or '').strip()} {(row.get('user__last_name') or '').strip()}".strip()
+                display_name = full_name or (row.get('user__username') or '') or (row.get('user__email') or '')
                 items.append({
-                    'id': staff.id,
+                    'id': row['id'],
                     'kind': 'operator',
-                    'name': staff.name or '',
-                    'email': _safe_public_email(getattr(staff.user, 'email', '')),
-                    'mobile': staff.phone or '',
-                    'status': 'active' if getattr(staff.user, 'is_active', False) else 'inactive',
-                    'created_at': _format_dashboard_datetime(staff.created_at),
-                    'updated_at': _format_dashboard_datetime(staff.updated_at),
+                    'name': display_name,
+                    'email': _safe_public_email(row.get('user__email') or ''),
+                    'mobile': row.get('user__phone') or '',
+                    'status': 'active' if row.get('user__is_active') else 'inactive',
+                    'created_at': _format_dashboard_datetime(row.get('created_at')),
+                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
                     'client_id': None,
                     'client_name': '',
                 })
@@ -782,7 +807,7 @@ def api_dashboard_team_overview(request):
         else:
             qs = Staff.objects.filter(
                 staff_type='client_staff'
-            ).select_related('user', 'client').order_by('-id')
+            )
 
             if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
                 accessible_ids = PermissionService.get_accessible_client_ids(user)
@@ -790,27 +815,44 @@ def api_dashboard_team_overview(request):
 
             if query:
                 qs = qs.filter(
-                    Q(name__icontains=query)
+                    Q(user__first_name__icontains=query)
+                    | Q(user__last_name__icontains=query)
                     | Q(user__email__icontains=query)
-                    | Q(phone__icontains=query)
+                    | Q(user__phone__icontains=query)
                     | Q(client__name__icontains=query)
                 )
 
             if status in ('active', 'inactive'):
                 qs = qs.filter(user__is_active=(status == 'active'))
 
-            for staff in qs[:limit]:
+            rows = qs.values(
+                'id',
+                'created_at',
+                'updated_at',
+                'client_id',
+                'client__name',
+                'user__email',
+                'user__first_name',
+                'user__last_name',
+                'user__username',
+                'user__phone',
+                'user__is_active',
+            ).order_by('-id')[:limit]
+
+            for row in rows:
+                full_name = f"{(row.get('user__first_name') or '').strip()} {(row.get('user__last_name') or '').strip()}".strip()
+                display_name = full_name or (row.get('user__username') or '') or (row.get('user__email') or '')
                 items.append({
-                    'id': staff.id,
+                    'id': row['id'],
                     'kind': 'assistant',
-                    'name': staff.name or '',
-                    'email': _safe_public_email(getattr(staff.user, 'email', '')),
-                    'mobile': staff.phone or '',
-                    'status': 'active' if getattr(staff.user, 'is_active', False) else 'inactive',
-                    'created_at': _format_dashboard_datetime(staff.created_at),
-                    'updated_at': _format_dashboard_datetime(staff.updated_at),
-                    'client_id': staff.client_id,
-                    'client_name': getattr(staff.client, 'name', '') if staff.client_id else '',
+                    'name': display_name,
+                    'email': _safe_public_email(row.get('user__email') or ''),
+                    'mobile': row.get('user__phone') or '',
+                    'status': 'active' if row.get('user__is_active') else 'inactive',
+                    'created_at': _format_dashboard_datetime(row.get('created_at')),
+                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
+                    'client_id': row.get('client_id'),
+                    'client_name': row.get('client__name') or '',
                 })
 
         return JsonResponse({

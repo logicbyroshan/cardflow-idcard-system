@@ -495,13 +495,24 @@
 .recent-table.recent-table-4col th:nth-child(4),
 .recent-table.recent-table-4col td:nth-child(4) { width: 22%; }
 
+.team-overview-panel-body {
+    padding: 0;
+}
+
+.team-overview-panel-body .dashboard-scroll-table-wrapper {
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+}
+
 .team-overview-toolbar {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    padding: 8px 12px;
-    border: 1px solid #e5e7eb;
-    border-bottom: 0;
+    padding: 8px 10px;
+    border: 0;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
     background: #f8fafc;
 }
 
@@ -561,8 +572,8 @@
 }
 
 .dashboard-team-drawer {
-    width: 560px;
-    max-width: 96vw;
+    width: 700px;
+    max-width: 100vw;
 }
 
 .team-overview-form {

@@ -292,9 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (passwordField) passwordField.hidden = mode !== 'add';
 
         if (formStatus) {
-            const statuses = normalizedScope === 'clients'
-                ? ['active', 'inactive', 'suspended']
-                : ['active', 'inactive'];
+            const statuses = ['active', 'inactive'];
             formStatus.innerHTML = statuses
                 .map((status) => '<option value="' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</option>')
                 .join('');
@@ -470,14 +468,14 @@ document.addEventListener('DOMContentLoaded', function () {
             phone: formMobile ? String(formMobile.value || '').trim() : '',
         };
 
-        if (!payload.name || !payload.phone) {
-            showToastSafe('Name and mobile are required.', 'error');
+        if (!payload.name) {
+            showToastSafe('Name is required.', 'error');
             return;
         }
 
         const statusValue = formStatus ? String(formStatus.value || 'active').toLowerCase() : 'active';
         if (scope === 'clients') {
-            payload.status = statusValue;
+            payload.is_active = statusValue === 'active';
             payload.address = formAddress ? String(formAddress.value || '').trim() : '';
         } else {
             payload.is_active = statusValue === 'active';
@@ -485,6 +483,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const password = formPassword ? String(formPassword.value || '').trim() : '';
         if (password) payload.password = password;
+
+        if (mode === 'add' && !payload.phone && !password) {
+            showToastSafe('Mobile is required when custom password is empty.', 'error');
+            return;
+        }
 
         if (scope === 'assistent') {
             const clientId = formClient ? Number(formClient.value || 0) : 0;
