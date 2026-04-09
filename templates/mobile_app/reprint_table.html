@@ -23,7 +23,7 @@
     </div>
 
     <div class="px-4 pt-3">
-        <div class="flex bg-white rounded-xl shadow-sm border border-gray-100 p-1">
+        <div class="flex bg-white rounded-xl shadow-sm p-1">
             {% if can_reprint_request_list %}
             <a href="{% url 'mobile_app:reprint_table' table_id=table.id %}?step=request_list{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
                     class="flex-1 mobile-status-tab py-2 text-[11px] font-semibold rounded-lg transition-all text-center whitespace-nowrap inline-flex items-center justify-center gap-1"
@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <div class="px-2 py-1.5 bg-white border-b border-gray-200 mt-2">
+    <div class="px-4 py-1.5 bg-white/95 mt-2">
         <form method="get" class="relative flex items-center gap-1.5">
             <input type="hidden" name="step" value="{{ active_step }}">
             <div class="relative flex-1">
@@ -79,7 +79,7 @@
     </div>
     {% endif %}
 
-    <div class="p-3 pt-2 space-y-2">
+    <div class="px-4 pt-2 pb-3 space-y-2">
         {% for item in items %}
         <div class="m-pop-card rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
             <div class="flex gap-3 p-3">

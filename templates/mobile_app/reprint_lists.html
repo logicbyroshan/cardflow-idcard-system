@@ -21,7 +21,7 @@
     </div>
 
     <div class="px-4 pt-3">
-        <div class="flex bg-white rounded-xl shadow-sm border border-gray-100 p-1">
+        <div class="flex bg-white rounded-xl shadow-sm p-1">
             {% if can_reprint_request_list %}
             <a href="{% url 'mobile_app:reprint_lists' client_id=client.id %}?step=request_list"
                     class="flex-1 mobile-status-tab py-2 text-[11px] font-semibold rounded-lg transition-all text-center whitespace-nowrap inline-flex items-center justify-center gap-1"
@@ -63,7 +63,7 @@
             <div class="mt-2.5 pt-2.5 border-t border-gray-100 grid {% if can_reprint_request_list and can_reprint_confirmed_list %}grid-cols-2{% else %}grid-cols-1{% endif %} gap-1.5">
                 {% if can_reprint_request_list %}
                 <a href="{% url 'mobile_app:reprint_table' table_id=t.id %}?step=request_list"
-                         class="inline-flex mobile-status-chip items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 active:scale-[0.98] transition">
+                         class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 active:scale-[0.98] transition">
                     <span class="mobile-tab-label text-amber-700">Request</span>
                     <span class="inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded-md mobile-chip-count {% if t.requested > 0 %}text-amber-700 bg-amber-100 border border-amber-200{% else %}text-gray-500 bg-gray-100 border border-gray-200{% endif %}">{{ t.requested|default:0 }}</span>
                 </a>
@@ -71,7 +71,7 @@
 
                 {% if can_reprint_confirmed_list %}
                 <a href="{% url 'mobile_app:reprint_table' table_id=t.id %}?step=confirmed"
-                   class="inline-flex mobile-status-chip items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 active:scale-[0.98] transition">
+                   class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 active:scale-[0.98] transition">
                     <span class="mobile-tab-label text-blue-700">Confirmed</span>
                     <span class="inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded-md mobile-chip-count {% if t.confirmed > 0 %}text-blue-700 bg-blue-100 border border-blue-200{% else %}text-gray-500 bg-gray-100 border border-gray-200{% endif %}">{{ t.confirmed|default:0 }}</span>
                 </a>

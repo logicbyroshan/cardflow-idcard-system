@@ -151,13 +151,17 @@ body {
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     display: inline-block;
-    min-width: 2ch;
+    min-width: 4ch;
     text-align: center;
 }
 
 .mobile-status-chip {
     min-height: 26px;
     gap: 4px;
+}
+
+.mobile-status-chip-fixed {
+    min-width: 104px;
 }
 
 .mobile-status-tab {
