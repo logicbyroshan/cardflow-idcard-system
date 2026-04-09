@@ -356,13 +356,15 @@ def _get_class_section_branch_field_names(table):
     return class_field, section_field, branch_field
 
 
-def _apply_client_staff_row_scope(qs, user, table):
+def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     """Apply client_staff-specific row-level scope to an IDCard queryset.
 
     Scope rules:
     - assigned_groups restrict table/group visibility (empty = all groups)
     - allowed_classes/allowed_sections/allowed_branches restrict rows when the
       corresponding field exists in the table
+        - when status_filter='pool', row-level class/section/branch scope is
+            intentionally bypassed so pool visibility is shared across client_staff.
     """
     if not PermissionService.is_client_staff(user):
         return qs
@@ -373,6 +375,9 @@ def _apply_client_staff_row_scope(qs, user, table):
 
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
+
+    if str(status_filter or '').strip().lower() == 'pool':
+        return qs
 
     allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
 
@@ -523,7 +528,7 @@ def _check_client_scope_by_card(user, card_id):
 # can only VIEW — no edit, delete, status change, or image reupload.
 
 _CLIENT_READONLY_STATUSES = frozenset({'approved', 'download', 'reprint'})
-_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool', 'approved', 'download', 'reprint'})
+_CLIENT_EDIT_LOCK_STATUSES = frozenset({'approved', 'download', 'reprint'})
 
 def _client_readonly_response():
     """Fresh 403 response for each request."""
@@ -538,9 +543,9 @@ def _is_client_readonly(user, card_status):
 
 
 def _client_edit_locked_response():
-    """Fresh 403 response for pool/readonly edit operations."""
+    """Fresh 403 response for readonly edit operations."""
     return JsonResponse(
-        {'success': False, 'message': 'Cards in pool / approved / download status cannot be edited by client users.'},
+        {'success': False, 'message': 'Cards in approved / download / reprint status cannot be edited by client users.'},
         status=403,
     )
 

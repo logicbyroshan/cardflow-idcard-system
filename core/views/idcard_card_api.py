@@ -47,6 +47,12 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 
+_POOL_RETRIEVE_SCOPE_MESSAGE = (
+    'This card is outside your assigned class/section scope. '
+    'Change it to your assigned class/section first, then retrieve from pool.'
+)
+
+
 def _as_bool(value):
     """Parse truthy request flag values from JSON/form payloads."""
     if isinstance(value, bool):
@@ -99,6 +105,17 @@ def api_image_preview_convert(request):
 
 def _is_card_in_client_staff_scope(user, card):
     """Return True when the given card is visible under client_staff scope."""
+    scoped_qs = _apply_client_staff_row_scope(
+        IDCard.objects.filter(id=card.id, table_id=card.table_id),
+        user,
+        card.table,
+        status_filter=card.status,
+    )
+    return scoped_qs.exists()
+
+
+def _is_card_in_client_staff_assignment_scope(user, card):
+    """Return True when card matches strict client_staff assignment filters."""
     scoped_qs = _apply_client_staff_row_scope(
         IDCard.objects.filter(id=card.id, table_id=card.table_id),
         user,
@@ -264,6 +281,17 @@ def api_idcard_list(request, table_id):
                 scoped_counts[st] = ct
                 scoped_counts['total'] += ct
 
+        if PermissionService.is_client_staff(request.user):
+            scoped_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+            scoped_counts['total'] = (
+                scoped_counts.get('pending', 0)
+                + scoped_counts.get('verified', 0)
+                + scoped_counts.get('pool', 0)
+                + scoped_counts.get('approved', 0)
+                + scoped_counts.get('download', 0)
+                + scoped_counts.get('reprint', 0)
+            )
+
         return JsonResponse({
             'success': True,
             'cards': scoped_payload.get('results', []),
@@ -405,7 +433,7 @@ def api_idcard_cards_json(request, table_id):
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)
 
-    qs = _apply_client_staff_row_scope(qs, request.user, table)
+    qs = _apply_client_staff_row_scope(qs, request.user, table, status_filter=status_filter)
 
     # Search & filter on field_data JSON
     search = request.GET.get('search', '').strip()
@@ -682,6 +710,7 @@ def api_idcard_all_ids(request, table_id):
                 IDCard.objects.filter(table=table),
                 request.user,
                 table,
+                status_filter=status_filter,
             ).values_list('id', flat=True)
         )
         card_ids = [cid for cid in (result.data or {}).get('card_ids', []) if cid in scoped_ids]
@@ -733,7 +762,7 @@ def api_idcard_filter_options(request, table_id):
         return JsonResponse(cached)
 
     qs = IDCard.objects.filter(table=table)
-    qs = _apply_client_staff_row_scope(qs, request.user, table)
+    qs = _apply_client_staff_row_scope(qs, request.user, table, status_filter=status_filter)
     # NOTE: Removed status filter — filter options should show ALL values
     # across the entire table, not just the current status view.
 
@@ -1252,7 +1281,7 @@ def api_idcard_update_field(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    # Client/client_staff cannot edit cards in pool/approved/download/reprint.
+    # Client/client_staff cannot edit cards in approved/download/reprint.
     if _is_client_edit_locked(request.user, _card.status):
         return _client_edit_locked_response()
     try:
@@ -1319,6 +1348,14 @@ def api_idcard_change_status(request, card_id):
         data = json.loads(request.body)
         new_status = data.get('status')
 
+        if (
+            PermissionService.is_client_staff(request.user)
+            and str(card.status or '').strip().lower() == 'pool'
+            and str(new_status or '').strip().lower() == 'pending'
+            and not _is_card_in_client_staff_assignment_scope(request.user, card)
+        ):
+            return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=403)
+
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.transition(card, new_status, user=request.user, request=request)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
@@ -1350,6 +1387,17 @@ def api_idcard_bulk_status(request, table_id):
 
         forbidden_ids = _forbidden_card_ids_for_client_staff(request.user, _tbl, card_ids)
         if forbidden_ids:
+            if str(new_status or '').strip().lower() == 'pending':
+                has_pool_mismatch = IDCard.objects.filter(
+                    table=_tbl,
+                    id__in=forbidden_ids,
+                    status='pool',
+                ).exists()
+                if has_pool_mismatch:
+                    return JsonResponse({
+                        'success': False,
+                        'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
+                    }, status=403)
             return JsonResponse({
                 'success': False,
                 'message': 'Some selected cards are outside your assigned scope.',
@@ -1595,6 +1643,16 @@ def api_table_status_counts(request, table_id):
                 if st in status_counts:
                     status_counts[st] = ct
                     status_counts['total'] += ct
+
+            status_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+            status_counts['total'] = (
+                status_counts.get('pending', 0)
+                + status_counts.get('verified', 0)
+                + status_counts.get('pool', 0)
+                + status_counts.get('approved', 0)
+                + status_counts.get('download', 0)
+                + status_counts.get('reprint', 0)
+            )
         else:
             status_counts = IDCardService.get_status_counts(table)
         

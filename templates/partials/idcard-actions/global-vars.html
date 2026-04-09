@@ -21,7 +21,7 @@
   };
   // Client / client_staff edit lock statuses for row/cell edit controls.
   var IS_CLIENT_USER = {{ is_client|yesno:"true,false" }} || {{ is_client_staff|yesno:"true,false" }};
-  var CLIENT_READONLY_STATUSES = ['pool', 'approved', 'download', 'reprint'];
+  var CLIENT_READONLY_STATUSES = ['approved', 'download', 'reprint'];
   var REPRINT_MODAL_ENDPOINTS = {
     list: '{% url "reprintcard:api_reprint_list" table.id %}',
     requestCreate: '{% url "reprintcard:api_reprint_request_create" table.id %}',

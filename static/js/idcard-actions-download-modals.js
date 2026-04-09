@@ -1004,7 +1004,7 @@ function initReprintPickerHandlers() {
         var currentStatus = String(typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '').toLowerCase();
         var lockedStatuses = Array.isArray(window.CLIENT_READONLY_STATUSES)
             ? window.CLIENT_READONLY_STATUSES.map(function(v) { return String(v || '').toLowerCase(); })
-            : ['pool', 'approved', 'download', 'reprint'];
+            : ['approved', 'download', 'reprint'];
 
         return lockedStatuses.indexOf(currentStatus) !== -1;
     }

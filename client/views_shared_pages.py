@@ -86,11 +86,18 @@ def client_idcard_group(request):
                 }
                 table.pending_count = counts_by_status.get('pending', 0)
                 table.verified_count = counts_by_status.get('verified', 0)
-                table.pool_count = counts_by_status.get('pool', 0)
+                table.pool_count = IDCard.objects.filter(table=table, status='pool').count()
                 table.approved_count = counts_by_status.get('approved', 0)
                 table.download_count = counts_by_status.get('download', 0)
                 table.reprint_count = counts_by_status.get('reprint', 0)
-                table.total_cards = sum(counts_by_status.values())
+                table.total_cards = (
+                    table.pending_count
+                    + table.verified_count
+                    + table.pool_count
+                    + table.approved_count
+                    + table.download_count
+                    + table.reprint_count
+                )
                 scoped_tables.append(table)
 
             tables = scoped_tables

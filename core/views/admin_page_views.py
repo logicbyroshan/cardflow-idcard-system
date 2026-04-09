@@ -753,7 +753,13 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         id_cards_query = id_cards_query.filter(status=status_filter)
 
     # Enforce client_staff data partitioning by group/class/section/branch.
-    id_cards_query = _apply_client_staff_row_scope(id_cards_query, request.user, table)
+    # Pool list is intentionally unscoped for class/section/branch visibility.
+    id_cards_query = _apply_client_staff_row_scope(
+        id_cards_query,
+        request.user,
+        table,
+        status_filter=status_filter,
+    )
 
     # ── Search ──
     if search_query:
@@ -823,6 +829,16 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
             if st in status_counts:
                 status_counts[st] = ct
                 status_counts['total'] += ct
+
+        status_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+        status_counts['total'] = (
+            status_counts.get('pending', 0)
+            + status_counts.get('verified', 0)
+            + status_counts.get('pool', 0)
+            + status_counts.get('approved', 0)
+            + status_counts.get('download', 0)
+            + status_counts.get('reprint', 0)
+        )
 
         reprint_counts = {
             'request_list': ReprintRequest.objects.filter(
