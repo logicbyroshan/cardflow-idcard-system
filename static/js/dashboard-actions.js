@@ -636,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!activityList) return;
         const timeWindow = (recentActivityTimeFilter && recentActivityTimeFilter.value)
             ? recentActivityTimeFilter.value
-            : 'all';
+            : '48';
 
         const esc = typeof escapeHtml === 'function'
             ? escapeHtml

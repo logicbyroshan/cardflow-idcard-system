@@ -121,7 +121,7 @@
                             <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]">
                                 <i class="fa-solid fa-users"></i>
                             </span>
-                            <span class="text-[11px] font-semibold text-gray-700">Staff</span>
+                            <span class="text-[11px] font-semibold text-gray-700">Manage Staff</span>
                         </a>
                         {% else %}
                         <a href="{% url 'mobile_app:profile' %}"
@@ -167,7 +167,6 @@
                         </div>
                         <div>
                             <h2 class="text-[12px] font-black text-gray-800 uppercase tracking-wide">My Groups</h2>
-                            <p class="text-[10px] text-gray-400 leading-tight">Group-wise pending and verified counts</p>
                         </div>
                     </div>
                     <a href="{% url 'mobile_app:groups_overview' %}"
@@ -344,8 +343,7 @@
                     {% endif %}
                 </div>
                 {% endif %}
-
-                <div class="mt-2 h-[2px] rounded-full bg-gradient-to-r from-indigo-200 via-slate-200 to-blue-200"></div>
+                </div>
 
                 <!-- REPRINT UPDATES -->
                 <div class="mt-2 rounded-2xl bg-gradient-to-br from-cyan-50 via-white to-blue-50 border border-cyan-200 shadow-[0_12px_24px_rgba(14,116,144,0.14)] p-1.5">
@@ -357,15 +355,14 @@
                             </div>
                             <div>
                                 <h2 class="text-[12px] font-black text-gray-800 uppercase tracking-wide">Reprint</h2>
-                                <p class="text-[10px] text-gray-400 leading-tight">Request and confirmed list summary</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100/90 border border-amber-200 text-amber-800 text-[10px] font-bold shadow-sm">
-                                Req. {{ reprint_request_total|default:0 }}
+                        <div class="flex items-center gap-1.5 flex-nowrap shrink-0">
+                            <span class="inline-flex items-center justify-center whitespace-nowrap min-w-[58px] h-7 gap-1 px-2.5 rounded-lg bg-amber-100/90 border border-amber-200 text-amber-800 text-[10px] font-bold leading-none shadow-sm">
+                                Req {{ reprint_request_total|default:0 }}
                             </span>
-                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-100/90 border border-blue-200 text-blue-800 text-[10px] font-bold shadow-sm">
-                                Conf. {{ reprint_confirmed_total|default:0 }}
+                            <span class="inline-flex items-center justify-center whitespace-nowrap min-w-[58px] h-7 gap-1 px-2.5 rounded-lg bg-blue-100/90 border border-blue-200 text-blue-800 text-[10px] font-bold leading-none shadow-sm">
+                                Conf {{ reprint_confirmed_total|default:0 }}
                             </span>
                         </div>
                     </div>
@@ -470,8 +467,6 @@
                         <p class="text-[11px] font-medium text-gray-400">No recent request activity</p>
                     </div>
                     {% endif %}
-
-                </div>
 
                 </div>
 

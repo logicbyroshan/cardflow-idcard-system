@@ -1041,3 +1041,30 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 		response = self.client.get(f'/app/reprint/table/{self.table.id}/?step=request_list&q=alpha')
 		self.assertEqual(response.status_code, 200)
+
+	def test_reprint_table_prefers_field_data_photo_url(self):
+		from reprintcard.models import ReprintRequest
+
+		self._login_mobile_super_admin()
+		download_card = IDCard.objects.create(
+			table=self.table,
+			field_data={
+				'NAME': 'Photo Card',
+				'PHOTO': 'adarshimg/mobile-photo/photo-card.webp',
+			},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			card=download_card,
+			table=self.table,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		response = self.client.get(f'/app/reprint/table/{self.table.id}/?step=request_list')
+		self.assertEqual(response.status_code, 200)
+		items = response.context.get('items', [])
+		self.assertTrue(items)
+		matched = next((row for row in items if row.get('card_id') == download_card.id), None)
+		self.assertIsNotNone(matched)
+		self.assertEqual(matched.get('photo_url'), '/media/adarshimg/mobile-photo/photo-card.webp')

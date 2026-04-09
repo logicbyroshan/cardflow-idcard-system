@@ -1273,6 +1273,19 @@ class DashboardAndLogsHardeningTests(TestCase):
         self.assertEqual(_parse_dashboard_limit('-5'), 1)
         self.assertEqual(_parse_dashboard_limit('bad'), 500)
 
+    def test_recent_activity_window_parser_defaults_to_two_days(self):
+        from core.views.dashboard_views import _parse_recent_activity_window
+
+        self.assertEqual(_parse_recent_activity_window(None), 48)
+        self.assertEqual(_parse_recent_activity_window(''), 48)
+        self.assertEqual(_parse_recent_activity_window('all'), 48)
+        self.assertEqual(_parse_recent_activity_window('48'), 48)
+        self.assertEqual(_parse_recent_activity_window('2d'), 48)
+        self.assertEqual(_parse_recent_activity_window('24'), 24)
+        self.assertEqual(_parse_recent_activity_window('12'), 12)
+        self.assertEqual(_parse_recent_activity_window('1'), 1)
+        self.assertEqual(_parse_recent_activity_window('unexpected-token'), 48)
+
     def test_activity_logs_handles_invalid_limit_offset(self):
         from core.models import ActivityLog
 

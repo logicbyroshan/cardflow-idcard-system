@@ -59,15 +59,17 @@ def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
 
 
 def _parse_recent_activity_window(raw_window):
-    """Parse recent activity time window query; None means all history."""
-    token = str(raw_window or 'all').strip().lower()
+    """Parse recent activity time window query; defaults to last 48 hours."""
+    token = str(raw_window or '48').strip().lower()
+    if token in ('all', '48', '48h', '48hr', '48hour', '2d', '2day', '2days', 'last_2d', 'last2d', 'last_48h', 'last48h'):
+        return 48
     if token in ('1', '1h', '1hr', '1hour', 'last_1h', 'last1h'):
         return 1
     if token in ('12', '12h', '12hr', '12hour', 'last_12h', 'last12h'):
         return 12
     if token in ('24', '24h', '24hr', '24hour', 'last_24h', 'last24h'):
         return 24
-    return None
+    return 48
 
 
 def _get_live_active_client_ids_for_dashboard(user):
@@ -484,7 +486,7 @@ def dashboard(request):
 
     recent_activities = _enrich_recent_activities_for_dashboard(
         request.user,
-        _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX, hours=None),
+        _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX, hours=48),
     )
 
     context.update({
@@ -495,7 +497,7 @@ def dashboard(request):
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
         'admin_count': admin_stats.get('total', 0),
-        # Default dashboard feed is full recent history (subject to API limit).
+        # Default dashboard feed shows last 48 hours (max API limit entries).
         'recent_activities': recent_activities,
     })
     return render(request, 'index.html', context)
@@ -944,7 +946,7 @@ def api_recent_activity(request):
             default=ACTIVITY_FEED_MAX,
             max_limit=ACTIVITY_FEED_MAX,
         )
-        hours = _parse_recent_activity_window(request.GET.get('window', 'all'))
+        hours = _parse_recent_activity_window(request.GET.get('window', '48'))
         activities = _enrich_recent_activities_for_dashboard(
             request.user,
             _get_dashboard_recent_activities(user=request.user, limit=limit, hours=hours),
