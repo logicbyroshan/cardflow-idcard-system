@@ -1403,18 +1403,62 @@ function listApp() {
         _normalizePhotoPath(raw) {
             const v = String(raw || '').trim();
             if (!v) return { url: null, hasPath: false };
-            const low = v.toLowerCase();
-            const exts = ['.jpg', '.jpeg', '.png', '.webp'];
-            if (v.startsWith('/') || v.startsWith('http://') || v.startsWith('https://')) {
+
+            if (/^data:image\//i.test(v)) {
                 return { url: v, hasPath: true };
             }
-            if (low.includes('adarshimg/') || exts.some((ext) => low.endsWith(ext))) {
-                return { url: (window.MEDIA_URL || '/media/') + v, hasPath: true };
+
+            const lowRaw = v.toLowerCase();
+            if (lowRaw === 'not_found' || lowRaw.startsWith('pending:')) {
+                return { url: null, hasPath: true };
             }
-            if (v.includes('/') || v.includes('\\')) {
-                return { url: (window.MEDIA_URL || '/media/') + v.replace(/^[/\\]+/, ''), hasPath: true };
+
+            if (v.startsWith('http://') || v.startsWith('https://')) {
+                return { url: v, hasPath: true };
             }
-            return { url: null, hasPath: false };
+
+            const mediaBase = window.MEDIA_URL || '/media/';
+            const normalized = v.replace(/\\/g, '/');
+            const lower = normalized.toLowerCase();
+
+            const mediaMarker = '/media/';
+            const mediaIdx = lower.lastIndexOf(mediaMarker);
+            if (mediaIdx !== -1) {
+                const rel = normalized.slice(mediaIdx + mediaMarker.length).replace(/^\/+/, '');
+                return rel ? { url: mediaBase + rel, hasPath: true } : { url: null, hasPath: true };
+            }
+
+            if (normalized.startsWith('/')) {
+                return { url: normalized, hasPath: true };
+            }
+
+            const mediaRoots = [
+                'adarshimg/',
+                'card_media/',
+                'clients_imgs/',
+                'clients_imgs_cropped/',
+                'clients_imgs_failed/',
+                'staff_imgs/',
+                'images/',
+            ];
+            for (let i = 0; i < mediaRoots.length; i += 1) {
+                const root = mediaRoots[i];
+                const marker = '/' + root;
+                const idx = lower.indexOf(marker);
+                if (idx !== -1) {
+                    return { url: mediaBase + normalized.slice(idx + 1).replace(/^\/+/, ''), hasPath: true };
+                }
+                if (lower.startsWith(root)) {
+                    return { url: mediaBase + normalized.replace(/^\/+/, ''), hasPath: true };
+                }
+            }
+
+            const exts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.heif', '.hei'];
+            if (exts.some((ext) => lower.endsWith(ext)) || normalized.includes('/')) {
+                return { url: mediaBase + normalized.replace(/^\/+/, ''), hasPath: true };
+            }
+
+            return { url: null, hasPath: true };
         },
 
         _buildPhotoSlotsFromCard(card) {
@@ -1541,19 +1585,32 @@ function listApp() {
 
             const cardPhotoSlots = Array.isArray(card.photo_slots) ? card.photo_slots : [];
             if (cardPhotoSlots.length) {
+                const slotsByField = {};
+                cardPhotoSlots.forEach((slot) => {
+                    if (!slot) return;
+                    const slotField = slot.field_name || slot.field || slot.name || '';
+                    const key = this._normalizeLookupKey(slotField);
+                    if (key && !slotsByField[key]) {
+                        slotsByField[key] = slot;
+                    }
+                });
+
                 this.imageFormFields.forEach((fieldName, idx) => {
-                    const slot = cardPhotoSlots[idx] || null;
-                    if (!slot || !slot.url) return;
-                    imagePreviews[fieldName] = slot.url;
-                    imageHasPath[fieldName] = true;
+                    const key = this._normalizeLookupKey(fieldName);
+                    const slot = (key && slotsByField[key]) || cardPhotoSlots[idx] || null;
+                    if (!slot) return;
+                    const normalizedSlot = this._normalizePhotoPath(slot.url || '');
+                    imagePreviews[fieldName] = normalizedSlot.url || null;
+                    imageHasPath[fieldName] = normalizedSlot.hasPath || !!slot.has_path;
                 });
             }
 
             if (!Object.values(imagePreviews).some(Boolean) && card.photo_url) {
+                const normalizedPrimary = this._normalizePhotoPath(card.photo_url);
                 const first = this.imageFormFields[0];
                 if (first) {
-                    imagePreviews[first] = card.photo_url;
-                    imageHasPath[first] = true;
+                    imagePreviews[first] = normalizedPrimary.url;
+                    imageHasPath[first] = normalizedPrimary.hasPath;
                 }
             }
 

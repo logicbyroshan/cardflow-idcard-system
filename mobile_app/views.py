@@ -1735,14 +1735,52 @@ def card_list(request, table_id, status):
         _raw = raw_val.strip()
         if not _raw:
             return None, False
+
+        _media_base = settings.MEDIA_URL if str(settings.MEDIA_URL).endswith('/') else f"{settings.MEDIA_URL}/"
         _low = _raw.lower()
-        if _raw.startswith('/') or _raw.startswith('http://') or _raw.startswith('https://'):
+
+        if _low.startswith('data:image/'):
             return _raw, True
-        if 'adarshimg/' in _low or _low.endswith(photo_exts):
-            return settings.MEDIA_URL + _raw, True
-        if '/' in _raw or '\\' in _raw:
-            return settings.MEDIA_URL + _raw.lstrip('/\\'), True
-        return None, False
+
+        if _low == 'not_found' or _low.startswith('pending:'):
+            return None, True
+
+        if _raw.startswith('http://') or _raw.startswith('https://'):
+            return _raw, True
+
+        _norm = _raw.replace('\\', '/')
+        _norm_low = _norm.lower()
+
+        _marker = '/media/'
+        _idx = _norm_low.rfind(_marker)
+        if _idx != -1:
+            _rel = _norm[_idx + len(_marker):].lstrip('/')
+            return (_media_base + _rel, True) if _rel else (None, True)
+
+        if _norm.startswith('/'):
+            return _norm, True
+
+        _media_roots = (
+            'adarshimg/',
+            'card_media/',
+            'clients_imgs/',
+            'clients_imgs_cropped/',
+            'clients_imgs_failed/',
+            'staff_imgs/',
+            'images/',
+        )
+        for _root in _media_roots:
+            _root_marker = '/' + _root
+            _root_idx = _norm_low.find(_root_marker)
+            if _root_idx != -1:
+                return _media_base + _norm[_root_idx + 1:].lstrip('/'), True
+            if _norm_low.startswith(_root):
+                return _media_base + _norm.lstrip('/'), True
+
+        if _norm_low.endswith(photo_exts) or '/' in _norm:
+            return _media_base + _norm.lstrip('/'), True
+
+        return None, True
 
     def _extract_photo_slots(fd, primary_photo_url, field_defs):
         _fd = fd or {}

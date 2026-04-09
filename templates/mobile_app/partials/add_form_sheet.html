@@ -64,12 +64,16 @@
 
                 <div class="grid grid-cols-3 gap-2">
                     <template x-for="fieldName in imageFormFields" :key="'img-slot-' + fieldName">
-                        <div class="space-y-1.5">
-                            <p class="text-[9px] font-semibold text-gray-500 truncate" :title="_fieldLabel(fieldName)" x-text="_fieldLabel(fieldName)"></p>
-                            <div class="relative h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden shadow-sm"
+                        <div class="flex flex-col gap-1.5">
+                            <p class="h-4 text-[9px] font-semibold text-gray-500 truncate flex items-center" :title="_fieldLabel(fieldName)" x-text="_fieldLabel(fieldName)"></p>
+                            <div class="relative h-24 w-full rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden shadow-sm"
                                  @click="if(!viewMode) startImageSelection(fieldName)">
                                 <template x-if="_imagePreview(fieldName)">
-                                    <img :src="_imagePreview(fieldName)" class="absolute inset-0 w-full h-full object-cover rounded-xl">
+                                    <img
+                                        :src="_imagePreview(fieldName)"
+                                        class="absolute inset-0 w-full h-full object-cover rounded-xl"
+                                        @error="if (imageFormState && imageFormState[fieldName]) { imageFormState[fieldName].preview = null; imageFormState[fieldName].has_path = true; imageFormState[fieldName].existing = null; }"
+                                    >
                                 </template>
                                 <template x-if="!_imagePreview(fieldName)">
                                     <div class="flex flex-col items-center gap-1">
@@ -86,12 +90,14 @@
                                     </div>
                                 </template>
                             </div>
-                            <button type="button"
-                                    x-show="!viewMode && _imagePreview(fieldName)"
-                                    @click="openCropForField(fieldName)"
-                                    class="w-full h-7 rounded-lg text-[9px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 hover:bg-brand-light/20 active:scale-95 transition-all">
-                                Crop / Adjust
-                            </button>
+                            <div class="h-7">
+                                <button type="button"
+                                        x-show="!viewMode && _imagePreview(fieldName)"
+                                        @click="openCropForField(fieldName)"
+                                        class="w-full h-7 rounded-lg text-[9px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 hover:bg-brand-light/20 active:scale-95 transition-all">
+                                    Crop / Adjust
+                                </button>
+                            </div>
                         </div>
                     </template>
                 </div>
