@@ -272,9 +272,9 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
                 "enabled": true,
                 "output_format": "zip" | "pdf_zip",
                 "image_name_fields": {
-                    "PHOTO": "Student Name",
-                    "FATHER_PHOTO": "Father Name",
-                    "MOTHER_PHOTO": "Mother Name"
+                    "PHOTO": "Student Name" | ["Student Name", "Class", "Section"],
+                    "FATHER_PHOTO": "Father Name" | ["Student Name", "Father Name"],
+                    "MOTHER_PHOTO": "Mother Name" | ["Student Name", "Mother Name"]
                 }
             }
         }
@@ -296,13 +296,32 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
     if not isinstance(raw_map, dict):
         return None
 
-    cleaned_map: Dict[str, str] = {}
+    cleaned_map: Dict[str, Any] = {}
     for key, value in raw_map.items():
         k = str(key or '').strip().upper()
-        v = str(value or '').strip()
-        if not k or not v:
+        if not k:
             continue
-        if len(k) > 60 or len(v) > 120:
+        if len(k) > 60:
+            continue
+
+        if isinstance(value, (list, tuple)):
+            values = []
+            seen = set()
+            for item in value:
+                v = str(item or '').strip()
+                if not v or len(v) > 120:
+                    continue
+                v_norm = v.lower()
+                if v_norm in seen:
+                    continue
+                seen.add(v_norm)
+                values.append(v)
+            if values:
+                cleaned_map[k] = values
+            continue
+
+        v = str(value or '').strip()
+        if not v or len(v) > 120:
             continue
         cleaned_map[k] = v
 

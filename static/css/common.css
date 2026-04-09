@@ -742,6 +742,19 @@ body[style*="overflow:hidden"] {
   border-color: #8b5cf6;
 }
 
+.center-modal-select.center-modal-select-multiple {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  background-image: none;
+  min-height: 132px;
+  height: auto;
+  padding: 8px 10px;
+}
+
+.center-modal-select.center-modal-select-multiple option {
+  padding: 4px 6px;
+}
+
 .center-modal-note {
   color: #9ca3af;
   font-size: 15px;

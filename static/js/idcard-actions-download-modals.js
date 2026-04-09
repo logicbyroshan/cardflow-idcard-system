@@ -79,26 +79,32 @@ function _dlFindFieldNameByHint(textFields, hints) {
     return '';
 }
 
-function _dlPopulateRenameSelect(selectEl, textFields, preferredName) {
+function _dlPopulateRenameSelect(selectEl, textFields, preferredNames) {
     if (!selectEl) return;
     selectEl.innerHTML = '';
-    const noneOpt = document.createElement('option');
-    noneOpt.value = '';
-    noneOpt.textContent = 'Do not rename';
-    selectEl.appendChild(noneOpt);
+
+    const preferredSet = new Set(
+        (Array.isArray(preferredNames) ? preferredNames : [preferredNames])
+            .map(function(name) { return String(name || '').trim(); })
+            .filter(Boolean)
+    );
 
     textFields.forEach(function(field) {
         const option = document.createElement('option');
         option.value = field.name;
         option.textContent = field.name;
+        if (preferredSet.has(field.name)) {
+            option.selected = true;
+        }
         selectEl.appendChild(option);
     });
+}
 
-    if (preferredName && textFields.some(function(field) { return field.name === preferredName; })) {
-        selectEl.value = preferredName;
-    } else {
-        selectEl.value = '';
-    }
+function _dlGetSelectedRenameFields(selectEl) {
+    if (!selectEl) return [];
+    return Array.from(selectEl.selectedOptions || [])
+        .map(function(option) { return String(option.value || '').trim(); })
+        .filter(Boolean);
 }
 
 function _dlResolveRenameableImageKey(field) {
@@ -170,17 +176,17 @@ function _dlInitializeImageRenamePanel() {
     const motherNameField = _dlFindFieldNameByHint(textFields, ['mothername', 'mname', 'mother']);
 
     if (_dlAvailableRenameImageKeys.PHOTO) {
-        _dlPopulateRenameSelect(photoSelect, textFields, nameField);
+        _dlPopulateRenameSelect(photoSelect, textFields, [nameField]);
     } else {
         photoSelect.innerHTML = '';
     }
     if (_dlAvailableRenameImageKeys.FATHER_PHOTO) {
-        _dlPopulateRenameSelect(fatherSelect, textFields, fatherNameField);
+        _dlPopulateRenameSelect(fatherSelect, textFields, [fatherNameField]);
     } else {
         fatherSelect.innerHTML = '';
     }
     if (_dlAvailableRenameImageKeys.MOTHER_PHOTO) {
-        _dlPopulateRenameSelect(motherSelect, textFields, motherNameField);
+        _dlPopulateRenameSelect(motherSelect, textFields, [motherNameField]);
     } else {
         motherSelect.innerHTML = '';
     }
@@ -208,13 +214,13 @@ function _dlGetImageRenameOptionsFromModal() {
     if (!toggleEl || !toggleEl.checked) return null;
 
     const imageNameFields = {};
-    const photoField = photoSelect ? String(photoSelect.value || '').trim() : '';
-    const fatherField = fatherSelect ? String(fatherSelect.value || '').trim() : '';
-    const motherField = motherSelect ? String(motherSelect.value || '').trim() : '';
+    const photoFields = _dlGetSelectedRenameFields(photoSelect);
+    const fatherFields = _dlGetSelectedRenameFields(fatherSelect);
+    const motherFields = _dlGetSelectedRenameFields(motherSelect);
 
-    if (_dlAvailableRenameImageKeys.PHOTO && photoField) imageNameFields.PHOTO = photoField;
-    if (_dlAvailableRenameImageKeys.FATHER_PHOTO && fatherField) imageNameFields.FATHER_PHOTO = fatherField;
-    if (_dlAvailableRenameImageKeys.MOTHER_PHOTO && motherField) imageNameFields.MOTHER_PHOTO = motherField;
+    if (_dlAvailableRenameImageKeys.PHOTO && photoFields.length) imageNameFields.PHOTO = photoFields;
+    if (_dlAvailableRenameImageKeys.FATHER_PHOTO && fatherFields.length) imageNameFields.FATHER_PHOTO = fatherFields;
+    if (_dlAvailableRenameImageKeys.MOTHER_PHOTO && motherFields.length) imageNameFields.MOTHER_PHOTO = motherFields;
 
     if (!Object.keys(imageNameFields).length) return null;
 

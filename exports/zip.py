@@ -168,7 +168,7 @@ class ZipExporter:
                         field_type = field_info.get('type', '')
                         folder_name = self._get_readable_field_name(field_name)
                         canonical_key = self._canonical_image_key(field_name, field_type)
-                        rename_source_field = image_name_mapping.get(canonical_key, '')
+                        rename_source_fields = image_name_mapping.get(canonical_key, [])
                         used_names = {}
                         field_count = 0
                         
@@ -191,7 +191,7 @@ class ZipExporter:
                                         download_filename = self._build_download_filename(
                                             img_path=img_path,
                                             card=card,
-                                            rename_source_field=rename_source_field,
+                                            rename_source_fields=rename_source_fields,
                                             used_names=used_names,
                                         )
                                         
@@ -272,7 +272,7 @@ class ZipExporter:
         table,
         cards: QuerySet,
         image_fields: List[Dict[str, Any]],
-        image_name_mapping: Dict[str, str],
+        image_name_mapping: Dict[str, List[str]],
         clean_client_name: str,
         clean_table_name: str,
         status: str,
@@ -612,7 +612,7 @@ class ZipExporter:
             return 'PHOTO'
         return ''
 
-    def _resolve_image_name_mapping(self, rename_options: Optional[Dict[str, Any]], table_fields: List[Dict[str, Any]]) -> Dict[str, str]:
+    def _resolve_image_name_mapping(self, rename_options: Optional[Dict[str, Any]], table_fields: List[Dict[str, Any]]) -> Dict[str, List[str]]:
         """Validate and resolve requested image->name-field mapping against table fields."""
         if not isinstance(rename_options, dict) or rename_options.get('enabled') is not True:
             return {}
@@ -630,15 +630,33 @@ class ZipExporter:
                 continue
             valid_text_fields[self._normalize_field_key(field_name)] = field_name
 
-        mapping: Dict[str, str] = {}
-        for raw_image_key, raw_text_field_name in raw_map.items():
+        mapping: Dict[str, List[str]] = {}
+        for raw_image_key, raw_text_field_names in raw_map.items():
             canonical_image = self._canonical_image_key(str(raw_image_key), '')
             if canonical_image not in self.RENAMEABLE_IMAGE_KEYS:
                 continue
-            normalized_text_key = self._normalize_field_key(str(raw_text_field_name))
-            resolved_text_field = valid_text_fields.get(normalized_text_key)
-            if resolved_text_field:
-                mapping[canonical_image] = resolved_text_field
+
+            values_to_resolve = []
+            if isinstance(raw_text_field_names, (list, tuple)):
+                values_to_resolve = list(raw_text_field_names)
+            else:
+                values_to_resolve = [raw_text_field_names]
+
+            resolved_fields = []
+            seen = set()
+            for raw_text_field_name in values_to_resolve:
+                normalized_text_key = self._normalize_field_key(str(raw_text_field_name))
+                resolved_text_field = valid_text_fields.get(normalized_text_key)
+                if not resolved_text_field:
+                    continue
+                dedupe_key = resolved_text_field.lower()
+                if dedupe_key in seen:
+                    continue
+                seen.add(dedupe_key)
+                resolved_fields.append(resolved_text_field)
+
+            if resolved_fields:
+                mapping[canonical_image] = resolved_fields
 
         return mapping
 
@@ -658,7 +676,7 @@ class ZipExporter:
                 return str(value).strip()
         return ''
 
-    def _build_download_filename(self, img_path: str, card: Any, rename_source_field: str, used_names: Dict[str, int]) -> str:
+    def _build_download_filename(self, img_path: str, card: Any, rename_source_fields: List[str], used_names: Dict[str, int]) -> str:
         """Build collision-safe filename, optionally renamed from selected card field."""
         base_name = os.path.basename(img_path)
         _, ext = os.path.splitext(base_name)
@@ -666,10 +684,21 @@ class ZipExporter:
             ext = '.jpg'
 
         target_base = ''
-        if rename_source_field:
-            name_value = self._get_card_field_value(card, rename_source_field)
-            if name_value:
-                target_base = f"{clean_filename(name_value)}{ext.lower()}"
+        if rename_source_fields:
+            values = []
+            for source_field in rename_source_fields:
+                name_value = self._get_card_field_value(card, source_field)
+                if not name_value:
+                    continue
+                clean_value = clean_filename(name_value)
+                if clean_value:
+                    values.append(clean_value)
+
+            if values:
+                base_stem = '_'.join(values)
+                if len(base_stem) > 180:
+                    base_stem = base_stem[:180].rstrip('._')
+                target_base = f"{base_stem}{ext.lower()}"
 
         if not target_base:
             target_base = base_name

@@ -381,6 +381,34 @@ class ExportViewHelperTests(TestCase):
         self.assertTrue(opts['enabled'])
         self.assertEqual(opts['image_name_fields'], {'PHOTO': 'Student Name'})
 
+    def test_get_image_rename_options_accepts_field_combinations(self):
+        from exports.views import _get_image_rename_options_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'rename_options': {
+                    'enabled': True,
+                    'image_name_fields': {
+                        ' photo ': [' Student Name ', ' Class ', '', 'student name'],
+                        'father_photo': ['Father Name', None],
+                        'x': [],
+                    },
+                }
+            }),
+            content_type='application/json',
+        )
+
+        opts = _get_image_rename_options_from_request(request)
+        self.assertTrue(opts['enabled'])
+        self.assertEqual(
+            opts['image_name_fields'],
+            {
+                'PHOTO': ['Student Name', 'Class'],
+                'FATHER_PHOTO': ['Father Name'],
+            },
+        )
+
     def test_lock_acquire_and_release(self):
         from exports.views import _acquire_export_lock, _release_export_lock
 
@@ -586,6 +614,31 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         self.assertTrue(response.json()['success'])
         rename_opts = mocked_export.call_args.kwargs['rename_options']
         self.assertEqual(rename_opts['image_name_fields'], {'PHOTO': 'Name'})
+
+    def test_images_export_passes_field_combination_rename_options(self):
+        self.client.login(username='exadmin@test.com', password='adminpass1')
+
+        fake_zip_result = object()
+        with mock.patch('exports.views.ExportService.export_images', return_value=fake_zip_result) as mocked_export:
+            with mock.patch('exports.views.zip_result_to_dict', return_value={'success': True, 'zip_files': []}):
+                response = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({
+                        'card_ids': [1],
+                        'rename_options': {
+                            'enabled': True,
+                            'image_name_fields': {
+                                'photo': ['Name', 'Father'],
+                            },
+                        },
+                    }),
+                    content_type='application/json',
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        rename_opts = mocked_export.call_args.kwargs['rename_options']
+        self.assertEqual(rename_opts['image_name_fields'], {'PHOTO': ['Name', 'Father']})
 
     def test_images_export_large_inline_falls_back_to_disk_urls(self):
         from staff.models import Staff
@@ -931,6 +984,40 @@ class ExportDeepLimitAndRoleTests(TestCase):
         self.assertFalse(over_limit_blocked.success)
         self.assertIn('1 GB inline ZIP limit', over_limit_blocked.message)
         self.assertTrue(super_admin_ok.success)
+
+    def test_zip_export_uses_combined_rename_fields_for_filename(self):
+        from exports.zip import ZipExporter
+        import base64
+        import io
+        import zipfile
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'image_name_fields': {
+                'PHOTO': ['NAME', 'UNKNOWN_FIELD'],
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = b'a' * 256
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/original_photo.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+
+        self.assertTrue(any(name.startswith('PHOTO/Student_A') for name in names), names)
 
     def test_pdf_zip_1gb_boundary_and_super_admin_bypass(self):
         from exports.zip import ZipExporter, MAX_BASE64_ZIP_BYTES

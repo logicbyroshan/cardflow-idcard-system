@@ -141,20 +141,21 @@
           <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
         </select>
         <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
+        <p class="center-modal-note mt-1 mb-0">For filename combination, select one or more fields. Selected values are joined with an underscore (_).</p>
       </div>
 
       <div class="grid gap-2">
         <div id="downloadImgMapPhotoRow">
-          <label class="center-modal-label text-left block mb-1">PHOTO filename from</label>
-          <select id="downloadImgMapPhoto" class="center-modal-select"></select>
+          <label class="center-modal-label text-left block mb-1">PHOTO filename fields</label>
+          <select id="downloadImgMapPhoto" class="center-modal-select center-modal-select-multiple" multiple size="6"></select>
         </div>
         <div id="downloadImgMapFatherRow">
-          <label class="center-modal-label text-left block mb-1">FATHER PHOTO filename from</label>
-          <select id="downloadImgMapFather" class="center-modal-select"></select>
+          <label class="center-modal-label text-left block mb-1">FATHER PHOTO filename fields</label>
+          <select id="downloadImgMapFather" class="center-modal-select center-modal-select-multiple" multiple size="6"></select>
         </div>
         <div id="downloadImgMapMotherRow">
-          <label class="center-modal-label text-left block mb-1">MOTHER PHOTO filename from</label>
-          <select id="downloadImgMapMother" class="center-modal-select"></select>
+          <label class="center-modal-label text-left block mb-1">MOTHER PHOTO filename fields</label>
+          <select id="downloadImgMapMother" class="center-modal-select center-modal-select-multiple" multiple size="6"></select>
         </div>
       </div>
     </div>
