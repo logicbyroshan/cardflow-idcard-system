@@ -367,6 +367,11 @@ def active_clients(request):
             filter=Q(id_card_groups__tables__id_cards__status='pool'),
             distinct=True,
         ),
+        reprint_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='reprint'),
+            distinct=True,
+        ),
     ).order_by('-id')
     
     if search_query:
@@ -473,7 +478,7 @@ def api_client_login_history(request, client_id):
 def active_client_status_redirect(request, client_id, status):
     """Open a client's most relevant table for the requested status."""
     normalized_status = (status or '').strip().lower()
-    allowed_statuses = ('pending', 'verified', 'approved', 'download', 'pool')
+    allowed_statuses = ('pending', 'verified', 'approved', 'download', 'pool', 'reprint')
 
     client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
 

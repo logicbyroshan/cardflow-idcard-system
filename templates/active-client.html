@@ -46,20 +46,15 @@
     }
 
     .active-client-stats-row {
-      display: flex;
-      flex-wrap: nowrap;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       align-items: center;
-      justify-content: center;
+      justify-items: stretch;
       gap: 6px;
-      white-space: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
+      width: 364px;
+      max-width: 100%;
+      margin: 0 auto;
       padding: 2px 0;
-      scrollbar-width: none;
-    }
-
-    .active-client-stats-row::-webkit-scrollbar {
-      display: none;
     }
 
     .active-client-stats-row .count-badge {
@@ -68,9 +63,9 @@
       justify-content: space-between;
       gap: 4px;
       height: 22px;
-      width: 122px;
-      min-width: 122px;
-      max-width: 122px;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
       padding: 0 8px;
       border-radius: 0;
       border: 1px solid transparent;
@@ -79,7 +74,6 @@
       font-variant-numeric: tabular-nums;
       text-decoration: none;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
-      flex: 0 0 auto;
     }
 
     .active-client-stats-row a.count-badge:hover {
@@ -118,6 +112,12 @@
       border-color: #fca5a5;
     }
 
+    .active-client-stats-row .count-badge.reprint {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fcd34d;
+    }
+
     .active-client-stats-row .stat-label {
       font-weight: 600;
       white-space: nowrap;
@@ -141,12 +141,19 @@
 
     @media (max-width: 1280px) {
       .active-client-stats-row {
-        justify-content: flex-start;
+        width: 340px;
       }
 
       .active-client-stats-row .count-badge {
         font-size: 10px;
         padding: 0 7px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .active-client-stats-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 238px;
       }
     }
   </style>

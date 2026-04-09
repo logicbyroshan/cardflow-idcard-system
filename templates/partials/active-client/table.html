@@ -59,6 +59,10 @@ Contains: Table displaying active clients with groups info
                             <span class="stat-label">Pool</span>
                             <span class="stat-value">{{ client.pool_count|default:0 }}</span>
                         </a>
+                        <a href="{% url 'active_client_status_redirect' client.id 'reprint' %}" class="count-badge reprint" title="Open Reprint list">
+                            <span class="stat-label">Reprint</span>
+                            <span class="stat-value">{{ client.reprint_count|default:0 }}</span>
+                        </a>
                     </div>
                 </td>
             </tr>
