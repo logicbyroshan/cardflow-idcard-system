@@ -1,0 +1,184 @@
+/* ===== Website UI Consistency Layer ===== */
+
+:root {
+    --wa-font-base: 'Segoe UI', 'Inter', 'Roboto', 'Noto Sans', sans-serif;
+    --wa-brand-900: #100f57;
+    --wa-brand-700: #1a1980;
+    --wa-brand-500: #0a92dd;
+    --wa-brand-400: #3db5ef;
+    --wa-text-900: #1a3653;
+    --wa-text-700: #34526d;
+    --wa-text-500: #5f758a;
+    --wa-surface: #ffffff;
+    --wa-surface-soft: #f6f9fc;
+    --wa-border: #d8e4f0;
+    --wa-radius-sm: 10px;
+    --wa-radius-md: 12px;
+    --wa-radius-lg: 14px;
+    --wa-radius-xl: 16px;
+    --wa-chip-radius: 12px;
+    --wa-card-radius: 14px;
+}
+
+body {
+    font-family: var(--wa-font-base);
+    color: var(--wa-text-900);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--wa-text-900);
+    letter-spacing: -0.01em;
+}
+
+.section-header p,
+.hero-subtitle,
+.video-info p,
+.testimonial-content p,
+.policy-content p,
+.feature-card p,
+.promise-card p,
+.trust-card p {
+    color: var(--wa-text-500);
+}
+
+/* Panel-like control geometry across website pages. */
+.btn,
+.btn-cta,
+.btn-gradient,
+.btn-outline,
+.btn-login,
+.form-btn,
+.explore-btn,
+.nav-btn-group .btn-login {
+    border-radius: var(--wa-radius-lg) !important;
+}
+
+.hero-badge,
+.section-badge,
+.hero-text .tagline,
+.review-badge,
+.rating-badge {
+    border-radius: var(--wa-radius-md) !important;
+}
+
+.feature-card,
+.promise-card,
+.trust-card,
+.testimonial-card,
+.testimonials-card,
+.work-item,
+.portfolio-item,
+.video-card,
+.bento-card,
+.contact-form-side,
+.info-box,
+.write-review-card,
+.category-card,
+.policy-card,
+.article-card,
+.faq-item,
+.faq-question,
+.faq-answer,
+.common-card {
+    border-radius: var(--wa-card-radius) !important;
+}
+
+.logo-box,
+.pwa-phone-mockup,
+.modal-content,
+.video-modal-content {
+    border-radius: var(--wa-radius-xl) !important;
+}
+
+/* Keep tag and filter controls visually stable; no hover jump. */
+.portfolio-filters .filter-tab,
+.filter-tabs .filter-tab,
+.extra-categories-bar .extra-category-tag,
+.more-categories .mini-category {
+    min-height: 38px;
+    border-radius: var(--wa-chip-radius);
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.portfolio-filters .filter-tab i,
+.filter-tabs .filter-tab i,
+.extra-categories-bar .extra-category-tag i,
+.more-categories .mini-category i {
+    font-size: 0.82rem;
+    line-height: 1;
+}
+
+.extra-categories-bar .extra-category-tag,
+.more-categories .mini-category {
+    border: 1.5px solid var(--wa-border);
+    background: var(--wa-surface-soft);
+    color: var(--wa-text-700);
+}
+
+.portfolio-filters .filter-tab,
+.filter-tabs .filter-tab {
+    border-radius: var(--wa-chip-radius) !important;
+    font-weight: 600;
+}
+
+.portfolio-filters .filter-tab:hover,
+.filter-tabs .filter-tab:hover,
+.portfolio-filters .filter-tab.active,
+.filter-tabs .filter-tab.active,
+.extra-categories-bar .extra-category-tag:hover,
+.extra-categories-bar .extra-category-tag.active,
+.more-categories .mini-category:hover {
+    transform: none;
+    box-shadow: 0 8px 20px rgba(16, 15, 87, 0.12);
+}
+
+.extra-categories-bar .extra-category-tag:hover,
+.extra-categories-bar .extra-category-tag.active,
+.more-categories .mini-category:hover {
+    border-color: var(--wa-brand-500);
+    color: var(--wa-brand-900);
+    background: #eef8fe;
+}
+
+.portfolio-filters .filter-tab.active,
+.filter-tabs .filter-tab.active {
+    background: linear-gradient(135deg, var(--wa-brand-500), var(--wa-brand-700));
+    border-color: transparent;
+    color: #ffffff;
+}
+
+.feature-icon,
+.promise-icon,
+.trust-icon,
+.policy-icon,
+.article-icon {
+    color: var(--wa-brand-500);
+}
+
+@media (max-width: 767px) {
+    .portfolio-filters .filter-tab,
+    .filter-tabs .filter-tab,
+    .extra-categories-bar .extra-category-tag,
+    .more-categories .mini-category {
+        min-height: 34px;
+        font-size: 0.82rem;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .portfolio-filters .filter-tab i,
+    .filter-tabs .filter-tab i,
+    .extra-categories-bar .extra-category-tag i,
+    .more-categories .mini-category i {
+        font-size: 0.78rem;
+    }
+}

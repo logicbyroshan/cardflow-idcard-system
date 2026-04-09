@@ -1,7 +1,8 @@
 /* ===== Responsive CSS for Adarsh ID Cards Website ===== */
 /* Breakpoints:
    - Desktop Large: 1280px and above (default styles in style.css)
-   - Desktop Small: 1000px to 1279px (same layout, reduced sizes)
+    - Desktop Locked: 1180px to 1399px (same layout, proportional scaling)
+    - Desktop Small: 1000px to 1179px (same layout, reduced sizes)
    - Tablet: 768px to 999px (hamburger menu, collapsed cards)
    - Mobile: below 768px (mobile app-like experience)
 */
@@ -107,8 +108,8 @@ h2 {
     transition: all 0.3s ease;
 }
 
-/* Fluid typography for smoother scaling */
-@media (max-width: 1400px) and (min-width: 1000px) {
+/* Fluid typography for smoother scaling in desktop lock range */
+@media (max-width: 1400px) and (min-width: 1180px) {
     .hero-text h1 {
         font-size: clamp(3rem, 3.5vw, 4rem);
     }
@@ -123,10 +124,87 @@ h2 {
 }
 
 /* ============================================
-   DESKTOP SMALL (1000px - 1279px)
+   DESKTOP LOCKED (1180px - 1399px)
+   Keep layout identical to large desktop; only scale sizes.
+============================================ */
+@media (max-width: 1399px) and (min-width: 1180px) {
+    html {
+        font-size: clamp(14px, 1.15vw, 16px);
+    }
+
+    .container {
+        padding: 0 clamp(24px, 2.4vw, 36px);
+    }
+
+    .navbar-content {
+        gap: 18px;
+    }
+
+    .logo {
+        font-size: clamp(1.25rem, 1.05vw, 1.45rem);
+        gap: clamp(8px, 0.8vw, 10px);
+    }
+
+    .logo-box {
+        width: clamp(48px, 4vw, 54px);
+        height: clamp(48px, 4vw, 54px);
+    }
+
+    .logo-img {
+        width: clamp(44px, 3.6vw, 50px);
+        height: clamp(44px, 3.6vw, 50px);
+    }
+
+    .logo-text {
+        font-size: clamp(1.05rem, 1.05vw, 1.25rem);
+    }
+
+    .nav-links {
+        gap: clamp(1rem, 1.5vw, 1.9rem);
+    }
+
+    .nav-links a {
+        font-size: clamp(0.88rem, 0.82vw, 0.98rem);
+    }
+
+    .btn-cta {
+        padding: clamp(10px, 0.85vw, 12px) clamp(20px, 1.8vw, 28px) !important;
+        font-size: clamp(0.84rem, 0.8vw, 0.95rem);
+        white-space: nowrap;
+    }
+
+    .hero-inner {
+        max-width: clamp(900px, 82vw, 1100px);
+    }
+
+    .hero-text .tagline {
+        font-size: clamp(0.84rem, 0.72vw, 0.95rem);
+    }
+
+    .hero-text p {
+        font-size: clamp(0.98rem, 0.95vw, 1.15rem);
+    }
+
+    .slide-card {
+        max-width: min(1000px, calc(100vw - 120px));
+        aspect-ratio: 16/9;
+    }
+
+    .btn {
+        font-size: clamp(0.88rem, 0.8vw, 0.98rem);
+    }
+
+    .work-item {
+        width: clamp(240px, 20vw, 280px);
+        height: clamp(185px, 15vw, 220px);
+    }
+}
+
+/* ============================================
+    DESKTOP SMALL (1000px - 1179px)
    Same layout, reduced font sizes and gaps
 ============================================ */
-@media (max-width: 1279px) and (min-width: 1000px) {
+@media (max-width: 1179px) and (min-width: 1000px) {
     .container {
         max-width: 960px;
         padding: 0 15px;
@@ -367,12 +445,12 @@ h2 {
 }
 
 /* ============================================
-   HERO SLIDER GAP FIX (1000px - 1300px)
+    HERO SLIDER GAP FIX (1000px - 1179px)
    Pushes the slider card far enough below the
    hero buttons so there is always clear space.
    Overrides the -180px set in the block above.
 ============================================ */
-@media (max-width: 1300px) and (min-width: 1000px) {
+@media (max-width: 1179px) and (min-width: 1000px) {
     .hero-card-wrapper {
         bottom: -300px;
     }
@@ -384,10 +462,10 @@ h2 {
 }
 
 /* ============================================
-   DESKTOP MEDIUM (1100px - 1199px)
+    DESKTOP MEDIUM (1100px - 1179px)
    Intermediate size for even smoother transition
 ============================================ */
-@media (max-width: 1199px) and (min-width: 1100px) {
+@media (max-width: 1179px) and (min-width: 1100px) {
     .slide-card {
         max-width: 920px;
         max-height: none;
