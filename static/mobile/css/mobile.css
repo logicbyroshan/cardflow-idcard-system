@@ -310,6 +310,10 @@ textarea:focus-visible {
     height: var(--pwa-topbar-height);
 }
 
+.pwa-brand-title {
+    color: #1f2937;
+}
+
 .pwa-bottom-nav-spacer {
     height: calc(var(--pwa-bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
 }
@@ -1373,6 +1377,11 @@ body.pwa-v2 .pwa-topbar,
 body.pwa-v2 .pwa-topbar-inner {
     background: linear-gradient(130deg, #2f80ed 0%, #3f8ffd 46%, #1f5fcf 100%) !important;
     box-shadow: 0 10px 26px rgba(31, 95, 207, 0.3);
+}
+
+body.pwa-v2 .pwa-brand-title {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
 /* High-contrast header controls: avoid low-contrast white icons on light glass */

@@ -349,11 +349,11 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 flex-nowrap shrink-0">
-                            <span class="inline-flex items-center justify-center whitespace-nowrap min-w-[58px] h-7 gap-1 px-2.5 rounded-md bg-amber-100/90 border border-amber-200 text-amber-800 text-[10px] font-bold leading-none shadow-sm">
-                                Req {{ reprint_request_total|default:0 }}
+                            <span class="inline-flex items-center justify-center whitespace-nowrap min-w-[94px] h-7 gap-1 px-2.5 rounded-md bg-sky-100/90 border border-sky-200 text-sky-800 text-[10px] font-bold leading-none shadow-sm">
+                                Request {{ reprint_request_total|default:0 }}
                             </span>
-                            <span class="inline-flex items-center justify-center whitespace-nowrap min-w-[58px] h-7 gap-1 px-2.5 rounded-md bg-blue-100/90 border border-blue-200 text-blue-800 text-[10px] font-bold leading-none shadow-sm">
-                                Conf {{ reprint_confirmed_total|default:0 }}
+                            <span class="inline-flex items-center justify-center whitespace-nowrap min-w-[104px] h-7 gap-1 px-2.5 rounded-md bg-indigo-100/90 border border-indigo-200 text-indigo-800 text-[10px] font-bold leading-none shadow-sm">
+                                Confirmed {{ reprint_confirmed_total|default:0 }}
                             </span>
                         </div>
                     </div>
@@ -367,8 +367,8 @@
                                 {% if is_super_admin or is_admin_staff %}Client / Table{% else %}Group / Table{% endif %}
                             </div>
                             <div class="w-1/2 grid grid-cols-2">
-                                <div class="text-center py-1.5 text-[8px] font-bold text-amber-500 uppercase tracking-wider">Req.</div>
-                                <div class="text-center py-1.5 text-[8px] font-bold text-blue-500 uppercase tracking-wider">Conf.</div>
+                                <div class="text-center py-1.5 text-[8px] font-bold text-sky-600 uppercase tracking-wider">Request</div>
+                                <div class="text-center py-1.5 text-[8px] font-bold text-indigo-600 uppercase tracking-wider">Confirmed</div>
                             </div>
                         </div>
 
