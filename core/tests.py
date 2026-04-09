@@ -1297,7 +1297,7 @@ class SecurityApiRegressionTests(TestCase):
         self.client_user_a, self.client_a = _create_client_user('sec-client-a@test.com', 'clientpass1')
         self.client_user_b, self.client_b = _create_client_user('sec-client-b@test.com', 'clientpass1')
 
-        _group_a, self.table_a = _create_table(self.client_a, fields=[
+        self.group_a, self.table_a = _create_table(self.client_a, fields=[
             {'name': 'NAME', 'type': 'text', 'order': 1},
             {'name': 'CLASS', 'type': 'class', 'order': 2},
         ])
@@ -1331,6 +1331,22 @@ class SecurityApiRegressionTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('login'))
+
+    def test_client_role_cannot_create_table_from_xlsx_api(self):
+        self.client_a.perm_idcard_setting_add = True
+        self.client_a.save(update_fields=['perm_idcard_setting_add'])
+
+        self.client.force_login(self.client_user_a)
+
+        response = self.client.post(
+            reverse('api_create_table_from_xlsx', args=[self.group_a.id]),
+            {'file': SimpleUploadedFile('sample.csv', b'NAME,CLASS\nALICE,10\n', content_type='text/csv')},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success', True))
+        self.assertIn('not available for client accounts', payload.get('message', '').lower())
 
     def test_inline_update_field_rejects_unknown_field_name(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')

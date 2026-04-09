@@ -85,6 +85,16 @@
     </a>
 
     <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon pool">
+        <i class="fa-solid fa-box-archive"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-pool">0</div>
+        <div class="stat-label">Pool Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
       <div class="stat-icon total">
         <i class="fa-solid fa-layer-group"></i>
       </div>
@@ -265,7 +275,7 @@ function setStatValue(id, value) {
 }
 
 function clearAllStatSkeletons() {
-  ['stat-total', 'stat-pending', 'stat-verified', 'stat-approved', 'stat-download'].forEach(function(id) {
+  ['stat-total', 'stat-pending', 'stat-verified', 'stat-approved', 'stat-download', 'stat-pool'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('stat-value-skeleton');
   });
@@ -279,11 +289,12 @@ async function loadDashboardData() {
 
     if (data.success) {
       const stats = data.data.card_counts;
-      setStatValue('stat-total', stats.total);
+      setStatValue('stat-total', data.data.total_cards);
       setStatValue('stat-pending', stats.pending);
       setStatValue('stat-verified', stats.verified);
       setStatValue('stat-approved', stats.approved);
       setStatValue('stat-download', stats.download);
+      setStatValue('stat-pool', stats.pool);
 
       // Render recent activity
       const actList = document.getElementById('recentActivityList');
