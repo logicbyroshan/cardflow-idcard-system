@@ -497,6 +497,10 @@
 
 .team-overview-panel-body {
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .dashboard-card-header.team-overview-header {
@@ -514,6 +518,10 @@
 }
 
 .team-overview-panel-body .dashboard-scroll-table-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
     border-top: 1px solid #bfdbfe;
     border-left: 1px solid #bfdbfe;
     border-right: 1px solid #bfdbfe;
@@ -645,6 +653,13 @@
 .team-overview-staff-panel {
     display: grid;
     gap: 10px;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.team-overview-staff-panel .dashboard-scroll-table-wrapper {
+    overflow-y: auto;
+    overflow-x: auto;
 }
 
 .team-overview-staff-panel h3 {
