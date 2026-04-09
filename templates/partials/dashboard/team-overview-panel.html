@@ -82,7 +82,13 @@
 
       <div class="field-group">
         <label for="teamOverviewFormMobile">Mobile</label>
-        <input type="text" id="teamOverviewFormMobile" class="form-input" placeholder="Required if no custom password">
+        <input type="text" id="teamOverviewFormMobile" class="form-input" placeholder="Required when password option is phone">
+      </div>
+
+      <div class="field-group" id="teamOverviewOperatorClientsField" hidden>
+        <label for="teamOverviewFormAssignedClients">Assign Clients</label>
+        <select id="teamOverviewFormAssignedClients" class="form-select" multiple size="6"></select>
+        <small class="field-help">Use Ctrl/Cmd + click to select multiple clients.</small>
       </div>
 
       <div class="field-group" id="teamOverviewClientField" hidden>
@@ -103,9 +109,22 @@
         </select>
       </div>
 
+      <div class="field-group" id="teamOverviewPasswordOptionField">
+        <label for="teamOverviewFormPasswordOption">Password Option</label>
+        <select id="teamOverviewFormPasswordOption" class="form-select">
+          <option value="phone">Use Phone Number</option>
+          <option value="custom">Custom Password</option>
+        </select>
+      </div>
+
       <div class="field-group" id="teamOverviewPasswordField" hidden>
         <label for="teamOverviewFormPassword">Password</label>
-        <input type="text" id="teamOverviewFormPassword" class="form-input" placeholder="Optional. If empty, mobile may be used.">
+        <input type="text" id="teamOverviewFormPassword" class="form-input" placeholder="Enter custom password">
+      </div>
+
+      <div class="field-group" id="teamOverviewPermissionsField">
+        <label>Permissions</label>
+        <div id="teamOverviewPermissionsGrid" class="team-overview-permissions-grid"></div>
       </div>
 
       <div class="team-overview-form-actions">

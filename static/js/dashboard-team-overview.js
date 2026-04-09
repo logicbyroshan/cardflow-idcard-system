@@ -50,13 +50,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const formEmail = document.getElementById('teamOverviewFormEmail');
     const formMobile = document.getElementById('teamOverviewFormMobile');
     const formClient = document.getElementById('teamOverviewFormClient');
+    const formAssignedClients = document.getElementById('teamOverviewFormAssignedClients');
     const formAddress = document.getElementById('teamOverviewFormAddress');
     const formStatus = document.getElementById('teamOverviewFormStatus');
+    const formPasswordOption = document.getElementById('teamOverviewFormPasswordOption');
     const formPassword = document.getElementById('teamOverviewFormPassword');
 
     const clientField = document.getElementById('teamOverviewClientField');
+    const operatorClientsField = document.getElementById('teamOverviewOperatorClientsField');
     const addressField = document.getElementById('teamOverviewAddressField');
+    const passwordOptionField = document.getElementById('teamOverviewPasswordOptionField');
     const passwordField = document.getElementById('teamOverviewPasswordField');
+    const permissionsGrid = document.getElementById('teamOverviewPermissionsGrid');
 
     const formCancelBtn = document.getElementById('teamOverviewFormCancel');
     const formSaveBtn = document.getElementById('teamOverviewFormSave');
@@ -75,12 +80,166 @@ document.addEventListener('DOMContentLoaded', function () {
         },
     };
 
+    const PERMISSIONS_BY_SCOPE = {
+        clients: [
+            'perm_idcard_client_list',
+            'perm_idcard_setting_list',
+            'perm_idcard_setting_add',
+            'perm_idcard_setting_edit',
+            'perm_idcard_setting_delete',
+            'perm_idcard_setting_status',
+            'perm_idcard_pending_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+            'perm_reprint_request_list',
+            'perm_confirmed_list',
+            'perm_idcard_add',
+            'perm_idcard_edit',
+            'perm_idcard_delete',
+            'perm_idcard_info',
+            'perm_idcard_approve',
+            'perm_idcard_verify',
+            'perm_idcard_reprint_list',
+            'perm_idcard_updated_at',
+            'perm_idcard_delete_from_pool',
+            'perm_idcard_retrieve',
+            'perm_idcard_bulk_upload',
+            'perm_idcard_bulk_download',
+            'perm_idcard_upgrade_all',
+            'perm_mobile_app',
+            'perm_set_temp_password',
+        ],
+        operator: [
+            'perm_idcard_client_list',
+            'perm_manage_client_staff',
+            'perm_idcard_setting_list',
+            'perm_idcard_setting_add',
+            'perm_idcard_setting_edit',
+            'perm_idcard_setting_delete',
+            'perm_idcard_setting_status',
+            'perm_idcard_group_create',
+            'perm_idcard_group_delete',
+            'perm_idcard_pending_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+            'perm_reprint_request_list',
+            'perm_confirmed_list',
+            'perm_print_list',
+            'perm_finalized_list',
+            'perm_idcard_add',
+            'perm_idcard_edit',
+            'perm_idcard_delete',
+            'perm_idcard_info',
+            'perm_idcard_approve',
+            'perm_idcard_verify',
+            'perm_idcard_reprint_list',
+            'perm_idcard_bulk_upload',
+            'perm_idcard_bulk_download',
+            'perm_idcard_bulk_reupload',
+            'perm_idcard_upgrade_all',
+            'perm_idcard_created_at',
+            'perm_idcard_updated_at',
+            'perm_idcard_delete_from_pool',
+            'perm_delete_all_idcard',
+            'perm_idcard_retrieve',
+            'perm_mobile_app',
+            'perm_manage_panel_backup',
+            'perm_manage_panel_email',
+            'perm_manage_website_clients',
+            'perm_manage_website_portfolio',
+        ],
+        assistent: [
+            'perm_idcard_pending_list',
+            'perm_idcard_verified_list',
+            'perm_idcard_pool_list',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+            'perm_idcard_bulk_download',
+            'perm_idcard_add',
+            'perm_idcard_edit',
+            'perm_idcard_delete',
+            'perm_idcard_info',
+            'perm_idcard_verify',
+            'perm_idcard_created_at',
+            'perm_idcard_updated_at',
+            'perm_mobile_app',
+        ],
+    };
+
     function showToastSafe(message, type) {
         if (typeof showToast === 'function') {
             showToast(message, type || 'info');
             return;
         }
         if (message) window.alert(message);
+    }
+
+    function normalizeClientIdList(rawValues) {
+        if (!Array.isArray(rawValues)) return [];
+        return rawValues
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0);
+    }
+
+    function permissionLabel(permissionKey) {
+        return String(permissionKey || '')
+            .replace(/^perm_/, '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (ch) => ch.toUpperCase());
+    }
+
+    function renderPermissionGrid(scope, entity) {
+        if (!permissionsGrid) return;
+
+        const fields = PERMISSIONS_BY_SCOPE[scope] || [];
+        permissionsGrid.innerHTML = fields.map((field) => {
+            const checked = !!(entity && entity[field] === true);
+            const id = 'teamOverviewPerm_' + field;
+            return ''
+                + '<label class="team-overview-perm-item" for="' + esc(id) + '">'
+                + '<input type="checkbox" id="' + esc(id) + '" data-permission-field="' + esc(field) + '"' + (checked ? ' checked' : '') + '>'
+                + '<span>' + esc(permissionLabel(field)) + '</span>'
+                + '</label>';
+        }).join('');
+    }
+
+    function collectPermissionPayload(scope) {
+        const payload = {};
+        const fields = PERMISSIONS_BY_SCOPE[scope] || [];
+        fields.forEach((field) => {
+            const checkbox = document.getElementById('teamOverviewPerm_' + field);
+            if (checkbox) payload[field] = checkbox.checked;
+        });
+        return payload;
+    }
+
+    function getFallbackEntityForEdit(scope, entityId) {
+        const selected = getSelectedItem();
+        if (!selected || Number(selected.id) !== Number(entityId)) return null;
+        return {
+            id: selected.id,
+            name: selected.name || '',
+            email: selected.email || '',
+            phone: selected.mobile || '',
+            mobile: selected.mobile || '',
+            status: selected.status || 'inactive',
+            is_active: String(selected.status || '').toLowerCase() === 'active',
+            client_id: selected.client_id || null,
+            assigned_client_ids: [],
+            address: '',
+        };
+    }
+
+    function syncPasswordOptionVisibility() {
+        if (!passwordField || !formPasswordOption || !formPassword) return;
+        const option = String(formPasswordOption.value || 'phone').toLowerCase();
+        const isCustom = option === 'custom';
+        passwordField.hidden = !isCustom;
+        if (!isCustom) formPassword.value = '';
     }
 
     function normalizeScope(scope) {
@@ -288,8 +447,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (formScopeInput) formScopeInput.value = normalizedScope;
 
         if (clientField) clientField.hidden = normalizedScope !== 'assistent';
+        if (operatorClientsField) operatorClientsField.hidden = normalizedScope !== 'operator';
         if (addressField) addressField.hidden = normalizedScope !== 'clients';
+        if (passwordOptionField) passwordOptionField.hidden = mode !== 'add';
         if (passwordField) passwordField.hidden = mode !== 'add';
+
+        if (formPasswordOption) {
+            formPasswordOption.value = 'phone';
+        }
+        syncPasswordOptionVisibility();
 
         if (formStatus) {
             const statuses = ['active', 'inactive'];
@@ -297,6 +463,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map((status) => '<option value="' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</option>')
                 .join('');
         }
+
+        renderPermissionGrid(normalizedScope, null);
 
         if (staffPanel) staffPanel.hidden = true;
         if (form) form.hidden = false;
@@ -320,6 +488,30 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } catch (error) {
             console.error('Failed to load assistant clients:', error);
+        }
+    }
+
+    async function populateOperatorClients(selectedClientIds) {
+        if (!formAssignedClients) return;
+
+        const selectedSet = new Set(normalizeClientIdList(selectedClientIds || []));
+        formAssignedClients.innerHTML = '';
+
+        try {
+            const data = await ApiClient.get(panelUrl('/api/clients/for-staff-assignment/'));
+            if (!data || !data.success || !Array.isArray(data.clients)) return;
+
+            data.clients.forEach((client) => {
+                const option = document.createElement('option');
+                option.value = String(client.id);
+                option.textContent = client.name || ('Client #' + client.id);
+                if (selectedSet.has(Number(client.id))) {
+                    option.selected = true;
+                }
+                formAssignedClients.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to load operator clients:', error);
         }
     }
 
@@ -368,10 +560,16 @@ document.addEventListener('DOMContentLoaded', function () {
         formMobile.value = '';
         formAddress.value = '';
         formPassword.value = '';
-        formStatus.value = 'active';
+        formStatus.value = 'inactive';
+
+        if (formPasswordOption) formPasswordOption.value = 'phone';
+        renderPermissionGrid(normalizedScope, null);
+        syncPasswordOptionVisibility();
 
         if (normalizedScope === 'assistent') {
             await populateAssistantClients(null);
+        } else if (normalizedScope === 'operator') {
+            await populateOperatorClients([]);
         }
 
         openDrawer();
@@ -382,12 +580,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const normalizedScope = normalizeScope(scope);
 
         try {
-            const data = await ApiClient.get(panelUrl(entityDetailsUrl(normalizedScope, entityId)));
-            if (!data || !data.success) {
-                throw new Error((data && data.error) || 'Failed to load details');
+            let entity = null;
+            try {
+                const data = await ApiClient.get(panelUrl(entityDetailsUrl(normalizedScope, entityId)));
+                if (data && data.success) {
+                    entity = entityFromResponse(normalizedScope, data);
+                }
+            } catch (loadError) {
+                console.warn('Detail endpoint failed, using row fallback:', loadError);
             }
 
-            const entity = entityFromResponse(normalizedScope, data);
+            if (!entity) entity = getFallbackEntityForEdit(normalizedScope, entityId);
             if (!entity) throw new Error('Missing entity details');
 
             setFormMode(normalizedScope, 'edit');
@@ -399,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formMobile.value = entity.phone || entity.mobile || '';
             formAddress.value = entity.address || '';
             formPassword.value = '';
+            renderPermissionGrid(normalizedScope, entity);
 
             if (normalizedScope === 'clients') {
                 formStatus.value = String(entity.status || 'active').toLowerCase();
@@ -408,6 +612,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (normalizedScope === 'assistent') {
                 await populateAssistantClients(entity.client_id || null);
+            } else if (normalizedScope === 'operator') {
+                await populateOperatorClients(entity.assigned_client_ids || entity.assigned_clients || []);
             }
 
             openDrawer();
@@ -481,12 +687,21 @@ document.addEventListener('DOMContentLoaded', function () {
             payload.is_active = statusValue === 'active';
         }
 
-        const password = formPassword ? String(formPassword.value || '').trim() : '';
-        if (password) payload.password = password;
+        Object.assign(payload, collectPermissionPayload(scope));
 
-        if (mode === 'add' && !payload.phone && !password) {
-            showToastSafe('Mobile is required when custom password is empty.', 'error');
-            return;
+        const password = formPassword ? String(formPassword.value || '').trim() : '';
+        if (mode === 'add') {
+            const passwordOption = formPasswordOption ? String(formPasswordOption.value || 'phone').toLowerCase() : 'phone';
+            if (passwordOption === 'custom') {
+                if (!password) {
+                    showToastSafe('Custom password is required when phone password is not used.', 'error');
+                    return;
+                }
+                payload.password = password;
+            } else if (!payload.phone) {
+                showToastSafe('Phone is required when using phone number as password.', 'error');
+                return;
+            }
         }
 
         if (scope === 'assistent') {
@@ -496,6 +711,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             payload.client_id = clientId;
+        } else if (scope === 'operator' && formAssignedClients) {
+            payload.assigned_clients = Array.from(formAssignedClients.selectedOptions || [])
+                .map((option) => Number(option.value || 0))
+                .filter((value) => Number.isFinite(value) && value > 0);
         }
 
         const action = mode === 'edit' ? 'update' : 'create';
@@ -664,6 +883,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (form) {
         form.addEventListener('submit', submitForm);
+    }
+
+    if (formPasswordOption) {
+        formPasswordOption.addEventListener('change', function () {
+            syncPasswordOptionVisibility();
+        });
     }
 
     if (formCancelBtn) {
