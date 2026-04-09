@@ -501,8 +501,9 @@
 
 .team-overview-panel-body .dashboard-scroll-table-wrapper {
     border-top: 0;
-    border-left: 0;
-    border-right: 0;
+    border-left: 1px solid #bfdbfe;
+    border-right: 1px solid #bfdbfe;
+    border-bottom: 1px solid #bfdbfe;
 }
 
 .team-overview-toolbar {
@@ -511,9 +512,9 @@
     flex-wrap: wrap;
     padding: 8px 10px;
     border: 0;
-    border-top: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f8fafc;
+    border-top: 1px solid #bfdbfe;
+    border-bottom: 1px solid #bfdbfe;
+    background: #f5faff;
 }
 
 .team-overview-toolbar .action-btn,
@@ -564,11 +565,11 @@
 }
 
 .team-overview-row.is-selected td {
-    background: #e0e7ff !important;
+    background: #e7f1ff !important;
 }
 
 .team-overview-row:hover td {
-    background: #eef2ff;
+    background: #f0f7ff;
 }
 
 .dashboard-team-drawer {

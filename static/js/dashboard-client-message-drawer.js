@@ -284,6 +284,13 @@
         quickActionButtons.forEach(function (button) {
             button.addEventListener('click', function (event) {
                 event.preventDefault();
+                if (window.DashboardPage && typeof window.DashboardPage.setQuickActionActive === 'function') {
+                    window.DashboardPage.setQuickActionActive('open-client-message');
+                } else {
+                    quickActionButtons.forEach(function (node) {
+                        node.classList.add('is-active');
+                    });
+                }
                 openDrawer();
             });
         });

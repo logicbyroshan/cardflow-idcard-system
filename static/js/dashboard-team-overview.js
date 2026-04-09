@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const panelTitle = document.getElementById('teamOverviewPanelTitle');
     const tableBody = document.getElementById('teamOverviewBody');
-    const searchInput = document.getElementById('teamOverviewSearch');
+    const searchInputs = Array.from(document.querySelectorAll('[data-team-overview-search]'));
+    const primarySearchInput = document.getElementById('teamOverviewSearch');
 
     const addBtn = document.getElementById('teamOverviewActionAdd');
     const editBtn = document.getElementById('teamOverviewActionEdit');
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
         scope: 'clients',
         items: [],
         selectedId: null,
+        searchQuery: '',
         capabilities: {
             can_manage_clients: false,
             can_manage_staff: false,
@@ -316,6 +318,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function setSearchQuery(nextQuery, sourceInput) {
+        const normalizedQuery = String(nextQuery || '').trim();
+        state.searchQuery = normalizedQuery;
+
+        searchInputs.forEach((input) => {
+            if (!input || input === sourceInput) return;
+            if (String(input.value || '') !== normalizedQuery) {
+                input.value = normalizedQuery;
+            }
+        });
+
+        renderRows();
+    }
+
+    function setQuickActionActive(actionToken) {
+        const activeToken = String(actionToken || '');
+        quickActionButtons.forEach((button) => {
+            const token = String(button.getAttribute('data-dashboard-quick-action') || '');
+            button.classList.toggle('is-active', !!activeToken && token === activeToken);
+        });
+    }
+
+    if (window.DashboardPage && typeof window.DashboardPage === 'object') {
+        window.DashboardPage.setQuickActionActive = setQuickActionActive;
+    }
+
     function setPanelLoading() {
         if (!tableBody) return;
         const rows = [];
@@ -334,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function filteredItems() {
-        const query = searchInput ? String(searchInput.value || '').trim().toLowerCase() : '';
+        const query = String(state.searchQuery || '').toLowerCase();
         if (!query) return state.items.slice();
         return state.items.filter((item) => {
             const name = String(item.name || '').toLowerCase();
@@ -805,16 +833,24 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            renderRows();
+    searchInputs.forEach((input) => {
+        input.addEventListener('input', function () {
+            setSearchQuery(input.value, input);
         });
+    });
+
+    if (searchInputs.length) {
+        const initialSearch = primarySearchInput
+            ? primarySearchInput.value
+            : (searchInputs[0] ? searchInputs[0].value : '');
+        setSearchQuery(initialSearch, null);
     }
 
     scopeButtons.forEach((button) => {
         button.addEventListener('click', async function (event) {
             event.preventDefault();
             const scope = normalizeScope(button.getAttribute('data-dashboard-team-scope'));
+            setQuickActionActive('');
 
             if (window.DashboardPage && typeof window.DashboardPage.activateDashboardPanel === 'function') {
                 window.DashboardPage.activateDashboardPanel('team-overview');
@@ -836,6 +872,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!targetScope) return;
 
             event.preventDefault();
+            setQuickActionActive(action);
 
             if (window.DashboardPage && typeof window.DashboardPage.activateDashboardPanel === 'function') {
                 window.DashboardPage.activateDashboardPanel('team-overview');

@@ -18,7 +18,7 @@
     gap: 8px;
     padding: 8px 12px;
     background: #ffffff;
-    border: 1px solid #d1d5db;
+    border: 1px solid #bfdbfe;
     border-radius: 0;
     cursor: pointer;
     transition: all 0.2s;
@@ -34,9 +34,23 @@
 }
 
 .quick-action-btn:hover {
-    background: #f8fafc;
-    border-color: #94a3b8;
+    background: #edf5ff;
+    border-color: #60a5fa;
     transform: none;
+}
+
+.quick-action-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+
+.quick-action-btn.is-active {
+    background: #e7f1ff;
+    border-color: #1d4ed8;
+}
+
+.quick-action-btn.is-active span {
+    color: #1e3a8a;
 }
 
 .quick-action-btn i {
