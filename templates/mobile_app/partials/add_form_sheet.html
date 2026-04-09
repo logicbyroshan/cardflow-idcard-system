@@ -56,51 +56,62 @@
         <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
             <!-- Photo Section -->
-            <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col items-center gap-3">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest self-start">Student Photo</p>
-                <div class="relative w-24 h-32 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-brand-light hover:bg-brand-light/5 transition-all group overflow-hidden shadow-sm"
-                     @click="if(!viewMode) openImagePicker()">
+            <div class="rounded-2xl p-4 border border-slate-200 bg-gradient-to-br from-slate-50 to-white space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Student Photo</p>
+                    <span class="text-[9px] font-semibold px-2 py-1 rounded-full border"
+                          :class="form.photoPreview ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
+                          x-text="form.photoPreview ? 'Preview Ready' : 'No Photo Selected'"></span>
+                </div>
+
+                <div class="relative w-full max-w-[280px] mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 shadow-sm transition-all"
+                     :class="form.photoPreview ? 'border-emerald-300 bg-slate-900' : 'border-dashed border-slate-300 bg-slate-100'"
+                     @click="if(!viewMode) pickFromGallery()">
                     <template x-if="form.photoPreview">
-                        <img :src="form.photoPreview" class="absolute inset-0 w-full h-full object-cover rounded-2xl">
+                        <img :src="form.photoPreview" class="absolute inset-0 w-full h-full object-contain bg-slate-900">
                     </template>
+
                     <template x-if="!form.photoPreview">
-                        <div class="flex flex-col items-center gap-2">
-                            <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center">
-                                <i class="fa-solid fa-camera text-xl text-indigo-300 group-hover:text-brand-light transition"></i>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
+                            <div class="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center">
+                                <i class="fa-solid fa-camera text-2xl text-slate-400"></i>
                             </div>
-                            <span class="text-[9px] text-gray-400 font-semibold">Tap to add photo</span>
+                            <p class="text-[11px] font-semibold text-slate-600">Tap to add photo</p>
+                            <p class="text-[10px] text-slate-400">Clear preview appears here instantly</p>
                         </div>
                     </template>
+
                     <template x-if="form.photoPreview && !viewMode">
-                        <div class="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-xl bg-brand-light text-white flex items-center justify-center text-[11px] shadow">
-                            <i class="fa-solid fa-camera"></i>
+                        <div class="absolute inset-x-0 bottom-0 px-3 py-2 text-[10px] font-semibold text-white bg-gradient-to-t from-black/65 to-transparent">
+                            Tap to replace photo
                         </div>
                     </template>
                 </div>
-                <!-- Re-crop button (visible when photo is set) -->
-                <div class="flex items-center gap-2" x-show="!viewMode">
-                    <button x-show="form.photoPreview" @click="cropSourceUrl = form.photoPreview; cropSourceFile = null; showCropModal = true; $nextTick(() => initCropper())"
-                            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 rounded-xl hover:bg-brand-light/20 active:scale-95 transition-all">
+
+                <div class="grid grid-cols-2 gap-2" x-show="!viewMode">
+                    <button @click="takePhoto()" type="button"
+                            class="flex items-center justify-center gap-2 py-2.5 px-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-700 text-[11px] font-bold active:scale-[0.98] transition-all">
+                        <i class="fa-solid fa-camera"></i>
+                        Camera
+                    </button>
+                    <button @click="pickFromGallery()" type="button"
+                            class="flex items-center justify-center gap-2 py-2.5 px-3 bg-violet-50 border border-violet-200 rounded-xl text-violet-700 text-[11px] font-bold active:scale-[0.98] transition-all">
+                        <i class="fa-solid fa-images"></i>
+                        Gallery
+                    </button>
+                </div>
+
+                <div class="flex justify-center" x-show="!viewMode && form.photoPreview">
+                    <button @click="cropSourceUrl = form.photoPreview; cropSourceFile = null; showCropModal = true; $nextTick(() => initCropper())"
+                            type="button"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 rounded-xl active:scale-[0.98] transition-all">
                         <i class="fa-solid fa-crop-simple"></i>
                         Crop / Adjust
                     </button>
                 </div>
-                <p class="text-[10px] text-gray-400 text-center" x-text="viewMode ? 'Photo preview' : 'Tap photo to change  Crop to adjust'"></p>
-            </div>
 
-            <!-- Image Picker -->
-            <div x-show="showImagePicker && !viewMode" x-transition class="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100">
-                <p class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-2.5">Choose Photo Source</p>
-                <div class="grid grid-cols-2 gap-2">
-                    <button @click="takePhoto()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 hover:bg-blue-50 active:scale-95 transition-all">
-                        <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center"><i class="fa-solid fa-camera text-blue-500 text-lg"></i></div>
-                        <span class="text-[10px] font-bold text-gray-600">Camera</span>
-                    </button>
-                    <button @click="pickFromGallery()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-purple-200 hover:bg-purple-50 active:scale-95 transition-all">
-                        <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center"><i class="fa-solid fa-images text-purple-500 text-lg"></i></div>
-                        <span class="text-[10px] font-bold text-gray-600">Gallery</span>
-                    </button>
-                </div>
+                <p class="text-[10px] text-slate-500 text-center"
+                   x-text="viewMode ? 'Photo preview' : (form.photoPreview ? 'Photo selected. You can replace or crop again.' : 'Use Camera or Gallery to upload a clear photo')"></p>
             </div>
 
             <input type="file" x-ref="cameraInput" accept="image/*" capture="environment" class="hidden" @change="handleImageSelected($event)">
