@@ -189,6 +189,10 @@ function _consumeNextBulkUiLockFlag() {
 }
 
 function _setBulkUiLock(active) {
+    if (window.IDCardApp && typeof window.IDCardApp.applyBulkUiLock === 'function') {
+        window.IDCardApp.applyBulkUiLock(!!active);
+        return;
+    }
     if (!document || !document.body) return;
     document.body.classList.toggle('bulk-operation-active', !!active);
 }
@@ -202,6 +206,7 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
     var _activeTaskId = null;
     var _cancelRequested = false;
     var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
+    if (options.lockUi !== false) _bulkUiLockActive = true;
 
     function _releaseBulkUiLock() {
         if (!_bulkUiLockActive) return;
@@ -510,6 +515,7 @@ function downloadImages(cardIds, renameOptions) {
             name: isPdfZipMode ? 'Images PDF ZIP' : 'Images ZIP',
             url: `/api/table/${tableId}/cards/download-images/`,
             body: requestBody,
+            lockUi: true,
             onComplete: function() {
                 // Image export: do NOT move cards to download list
             },
@@ -684,6 +690,7 @@ function downloadDocx(cardIds, format, templateId) {
             name: format.toUpperCase() + ' Document',
             url: `/api/table/${tableId}/cards/download-docx/`,
             body: Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters()),
+            lockUi: true,
             fallbackExt: format,
             completeMessage: 'Document downloaded successfully!',
             onComplete: function() {
@@ -804,6 +811,7 @@ function downloadXlsx(cardIds) {
             name: 'Excel Spreadsheet',
             url: `/api/table/${tableId}/cards/download-xlsx/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
+            lockUi: true,
             fallbackExt: 'xlsx',
             completeMessage: 'Excel file downloaded successfully!',
             onComplete: function() {
@@ -940,6 +948,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
             name: 'PDF Document',
             url: `/api/table/${tableId}/cards/download-pdf/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles }, _getActiveFilters()),
+            lockUi: true,
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
             onComplete: function() {
@@ -964,6 +973,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
     // Cancellation flag for the polling loop
     var _pdfAsyncCancelled = false;
     var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
+    _bulkUiLockActive = true;
 
     function _releaseBulkUiLock() {
         if (!_bulkUiLockActive) return;

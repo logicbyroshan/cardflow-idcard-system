@@ -142,40 +142,6 @@
         }
       }
 
-      function setupGoBackHandlers() {
-        if (NS._goBackInit) return;
-        NS._goBackInit = true;
-
-        function goBack() {
-          var referrer = document.referrer;
-          if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
-            window.location.href = referrer;
-          } else {
-            {% if is_client or is_client_staff %}
-            window.location.href = '{% url "client:idcard_group" %}';
-            {% else %}
-            window.location.href = '{% url "idcard_group" client.id %}';
-            {% endif %}
-          }
-        }
-
-        document.addEventListener('click', function(e) {
-          if (e.target.closest('#goBackBtn')) {
-            e.preventDefault();
-            goBack();
-          }
-        });
-
-        document.addEventListener('keydown', function(e) {
-          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-            var tag = (e.target.tagName || '').toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-            e.preventDefault();
-            goBack();
-          }
-        });
-      }
-
       function swapMainShellNoReload(urlLike) {
         var url = (urlLike instanceof URL) ? urlLike : new URL(String(urlLike || BASE_URL), window.location.origin);
         var currentMain = document.querySelector('main.idcard-actions-page');
@@ -294,7 +260,6 @@
       }
 
       document.addEventListener('DOMContentLoaded', function() {
-        setupGoBackHandlers();
         setupNoReloadStatusTabs();
         setupNoReloadSearchResultNav();
         initPageBindings();

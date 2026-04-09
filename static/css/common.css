@@ -1229,6 +1229,15 @@ td.email-col {
    BULK OPERATION PAGE LOCK
    Applied only while JS adds body.bulk-operation-active
    =========================================== */
+body.bulk-operation-active {
+  overflow: hidden;
+}
+
+body.bulk-operation-active > *:not(#blockingOverlay):not(.alpine-toast-wrapper):not(#downloadToastContainer) {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 body.bulk-operation-active .main,
 body.bulk-operation-active .sidebar {
   filter: blur(2px);
@@ -1245,6 +1254,11 @@ body.bulk-operation-active #blockingOverlay {
 body.bulk-operation-active .alpine-toast-wrapper,
 body.bulk-operation-active #downloadToastContainer {
   z-index: 13000 !important;
+}
+
+body.bulk-operation-active #blockingOverlay,
+body.bulk-operation-active #blockingOverlay * {
+  pointer-events: auto;
 }
 
 @media (max-width: 640px) {
@@ -1546,6 +1560,61 @@ body.bulk-operation-active #downloadToastContainer {
 /* ===========================================
    DOWNLOAD MODAL — Enhanced Blocking Overlay
    =========================================== */
+
+.blocking-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 16, 32, 0.65);
+}
+
+.blocking-overlay-content {
+  width: min(560px, calc(100vw - 32px));
+  background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.56);
+}
+
+.blocking-overlay-progress {
+  width: 100%;
+  height: 10px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.blocking-overlay-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #60a5fa, #818cf8);
+  transition: width 0.35s ease;
+}
+
+.blocking-overlay-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.68);
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.blocking-overlay-cancel:hover {
+  background: rgba(51, 65, 85, 0.86);
+  border-color: rgba(148, 163, 184, 0.55);
+}
 
 /* Icon container with state-based colors */
 .blocking-overlay-icon {

@@ -274,7 +274,7 @@
 }
 .client-name-link:hover {
     color: #667eea;
-    text-decoration: underline;
+    text-decoration: none;
 }
 
 .client-name-text {

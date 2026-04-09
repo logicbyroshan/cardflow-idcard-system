@@ -245,17 +245,6 @@
 .action-bar .btn.btn-danger-zone:hover:not(:disabled) {
     background: #991b1b;
 }
-/* Go Back button — subtle dark style with arrow */
-.action-bar .btn.btn-back {
-    background: #1e293b;
-    color: #fff !important;
-    border: none;
-    padding: 4px 10px;
-    gap: 4px;
-}
-.action-bar .btn.btn-back:hover {
-    background: #0f172a;
-}
 .action-bar .btn:not(.btn-danger-zone):disabled {
     opacity: 1;
     background: #d1d5db !important;

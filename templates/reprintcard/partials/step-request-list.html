@@ -5,12 +5,6 @@
 <!-- Action Bar -->
 <div class="action-bar action-buttons-bar" id="requestListActionBar">
     <div class="action-buttons-group flex items-center gap-[2px] flex-wrap">
-        <!-- Back Button -->
-        <button class="btn action-btn btn-back" id="requestListBackBtn" title="Go back (Ctrl+B)">
-            <i class="fa-solid fa-arrow-left"></i>
-            <span class="btn-text">Back</span>
-        </button>
-        <div class="action-divider"></div>
         {% if not is_client and not is_client_staff %}
         <button class="btn action-btn btn-blue" id="requestEditBtn" disabled title="Edit selected card details">
             <i class="fa-solid fa-pen"></i>
