@@ -175,6 +175,19 @@ class MobileAppBaseTestCase(TestCase):
 		session.save()
 		return session.session_key
 
+	def _enable_mobile_photo_edit_for_all_roles(self):
+		"""Ensure every test role can open camera/upload flows on the same table."""
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.save(update_fields=['perm_idcard_edit'])
+
+		self.client_staff_profile.perm_idcard_edit = True
+		self.client_staff_profile.save(update_fields=['perm_idcard_edit'])
+		self.client_staff_profile.assigned_groups.set([self.group])
+
+		self.admin_staff_profile.perm_idcard_edit = True
+		self.admin_staff_profile.save(update_fields=['perm_idcard_edit'])
+		self.admin_staff_profile.assigned_clients.set([self.client_profile])
+
 
 class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 	def test_manifest_endpoint_returns_pwa_payload(self):
@@ -468,6 +481,88 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertFalse(response.json()['success'])
 		self.assertIn('permission', response.json().get('message', '').lower())
 		mock_validate.assert_not_called()
+
+	@mock.patch('mobile_app.views.ThumbnailService.ensure_thumbnail_exists')
+	@mock.patch('mobile_app.views.ImageService.process_image_field')
+	def test_upload_photo_normalizes_png_to_jpg_before_storage(self, mock_process_image, _mock_thumb):
+		from io import BytesIO
+		from PIL import Image
+
+		captured = {}
+
+		def _capture_uploaded_file(**kwargs):
+			uploaded = kwargs.get('uploaded_file')
+			captured['name'] = getattr(uploaded, 'name', '')
+			captured['content_type'] = getattr(uploaded, 'content_type', '')
+			captured['size'] = getattr(uploaded, 'size', 0)
+			return mock.Mock(success=True, message='ok', data={'final_value': 'adarshimg/TST/student.jpg'})
+
+		mock_process_image.side_effect = _capture_uploaded_file
+
+		self._login_mobile_super_admin()
+		buf = BytesIO()
+		Image.new('RGB', (1600, 1200), color='orange').save(buf, format='PNG')
+		photo = SimpleUploadedFile('iphone-photo.png', buf.getvalue(), content_type='image/png')
+
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		self.assertTrue(captured.get('name', '').lower().endswith('.jpg'))
+		self.assertEqual(captured.get('content_type'), 'image/jpeg')
+		self.assertGreater(captured.get('size', 0), 0)
+
+	def test_camera_ui_is_consistent_across_mobile_roles(self):
+		self._enable_mobile_photo_edit_for_all_roles()
+
+		role_logins = [
+			('super_admin', self._login_mobile_super_admin),
+			('pro_user', self._login_mobile_pro_user),
+			('admin_staff', self._login_mobile_admin_staff),
+			('client', self._login_mobile_client),
+			('client_staff', self._login_mobile_client_staff),
+		]
+		markers = [
+			'x-data="cameraApp()"',
+			'Capture Photo',
+			'new Cropper(',
+			'@click="applyCrop()"',
+			'@click="savePhoto()"',
+		]
+
+		baseline = None
+		for role_name, login_fn in role_logins:
+			self.client.logout()
+			login_fn()
+			response = self.client.get(f'/app/camera/{self.table.id}/')
+			self.assertEqual(response.status_code, 200, msg=f'{role_name} camera view should load')
+			content = response.content.decode('utf-8')
+
+			presence = {marker: (marker in content) for marker in markers}
+			if baseline is None:
+				baseline = presence
+			else:
+				self.assertEqual(presence, baseline, msg=f'camera UI markers mismatch for {role_name}')
+
+	def test_profile_update_button_is_visible_for_mobile_roles(self):
+		self._enable_mobile_photo_edit_for_all_roles()
+
+		role_logins = [
+			self._login_mobile_super_admin,
+			self._login_mobile_pro_user,
+			self._login_mobile_admin_staff,
+			self._login_mobile_client,
+			self._login_mobile_client_staff,
+		]
+		for login_fn in role_logins:
+			self.client.logout()
+			login_fn()
+			response = self.client.get('/app/profile/')
+			self.assertEqual(response.status_code, 200)
+			self.assertIn('Update App', response.content.decode('utf-8'))
 
 	@mock.patch('mobile_app.views.IDCardService.update_card')
 	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))

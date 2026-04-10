@@ -644,7 +644,7 @@ _ALLOWED_IMAGE_TYPES = frozenset({
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
 })
 _ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.hei'})
-_MAX_IMAGE_SIZE = 15 * 1024 * 1024  # 15 MB
+_MAX_IMAGE_SIZE = 40 * 1024 * 1024  # 40 MB raw input; normalized output is compressed JPEG
 
 def _validate_image(photo):
     """Return (ok, message, normalized_upload) for an uploaded file."""

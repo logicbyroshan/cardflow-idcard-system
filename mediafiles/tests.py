@@ -139,6 +139,30 @@ class ImageServiceBasicTests(TestCase):
 
 
 class UploadNormalizationTests(TestCase):
+
+    def test_normalize_image_bytes_for_storage_compresses_large_phone_photo(self):
+        from io import BytesIO
+        from PIL import Image
+        from mediafiles.utils import normalize_image_bytes_for_storage
+
+        noise = Image.effect_noise((4200, 3200), 100).convert('RGB')
+        buf = BytesIO()
+        # Keep source intentionally large to exercise adaptive compression path.
+        noise.save(buf, format='PNG', compress_level=0)
+        source_bytes = buf.getvalue()
+
+        normalized_bytes, normalized_ext, error = normalize_image_bytes_for_storage(
+            source_bytes,
+            suggested_ext='.png',
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(normalized_ext, '.jpg')
+        self.assertLess(len(normalized_bytes), len(source_bytes))
+
+        with Image.open(BytesIO(normalized_bytes)) as out_img:
+            self.assertLessEqual(max(out_img.size), 2400)
+
     def test_normalize_uploaded_image_converts_png_to_jpg(self):
         from io import BytesIO
         from PIL import Image
