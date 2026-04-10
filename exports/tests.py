@@ -760,10 +760,10 @@ class ExportApiIntegrationAdvancedTests(TestCase):
     def test_pdf_async_starts_background_task(self):
         self.client.login(username='exadmin@test.com', password='adminpass1')
 
-        with mock.patch('exports.tasks.BackgroundExportManager.start_pdf_export', return_value='task123'):
+        with mock.patch('exports.tasks.BackgroundExportManager.start_pdf_export', return_value='task123') as mocked_start:
             response = self.client.post(
                 f'/panel/exports/pdf-async/{self.table.id}/',
-                data=json.dumps({'card_ids': [1, 2, 3]}),
+                data=json.dumps({'card_ids': [1, 2, 3], 'break_mode': 'class_section'}),
                 content_type='application/json',
             )
 
@@ -771,6 +771,7 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         payload = response.json()
         self.assertTrue(payload['success'])
         self.assertEqual(payload['task_id'], 'task123')
+        self.assertEqual(mocked_start.call_args.kwargs.get('break_mode'), 'class_section')
 
     def test_download_all_lock_contention_returns_429(self):
         self.client.login(username='exadmin@test.com', password='adminpass1')
@@ -1332,6 +1333,94 @@ class ColumnSpecAliasCoverageTests(SimpleTestCase):
         from exports.column_spec import classify_column
 
         self.assertEqual(classify_column('GEN DER'), 'gender')
+
+
+class PdfPaginationGroupingTests(SimpleTestCase):
+    def test_group_rows_breaks_on_class_and_section_changes(self):
+        from exports.pdf import PdfExporter
+
+        exporter = PdfExporter()
+        rows = [
+            [{'content': 'row1'}],
+            [{'content': 'row2'}],
+            [{'content': 'row3'}],
+            [{'content': 'row4'}],
+        ]
+        cards = [
+            type('Card', (), {'field_data': {'CLASS': '10', 'SECTION': 'A'}})(),
+            type('Card', (), {'field_data': {'CLASS': '10', 'SECTION': 'A'}})(),
+            type('Card', (), {'field_data': {'CLASS': '10', 'SECTION': 'B'}})(),
+            type('Card', (), {'field_data': {'CLASS': '11', 'SECTION': 'A'}})(),
+        ]
+
+        pages = exporter._group_rows_into_pages(
+            rows=rows,
+            cards_list=cards,
+            class_field_name='CLASS',
+            section_field_name='SECTION',
+            records_per_page=6,
+        )
+
+        self.assertEqual(
+            [[row[0]['content'] for row in page] for page in pages],
+            [['row1', 'row2'], ['row3'], ['row4']],
+        )
+
+    def test_group_rows_breaks_on_section_when_class_missing(self):
+        from exports.pdf import PdfExporter
+
+        exporter = PdfExporter()
+        rows = [
+            [{'content': 'row1'}],
+            [{'content': 'row2'}],
+            [{'content': 'row3'}],
+        ]
+        cards = [
+            type('Card', (), {'field_data': {'SECTION': 'A'}})(),
+            type('Card', (), {'field_data': {'SECTION': 'A'}})(),
+            type('Card', (), {'field_data': {'SECTION': 'B'}})(),
+        ]
+
+        pages = exporter._group_rows_into_pages(
+            rows=rows,
+            cards_list=cards,
+            class_field_name=None,
+            section_field_name='SECTION',
+            records_per_page=6,
+        )
+
+        self.assertEqual(
+            [[row[0]['content'] for row in page] for page in pages],
+            [['row1', 'row2'], ['row3']],
+        )
+
+    def test_group_rows_class_only_does_not_break_on_section_change(self):
+        from exports.pdf import PdfExporter
+
+        exporter = PdfExporter()
+        rows = [
+            [{'content': 'row1'}],
+            [{'content': 'row2'}],
+            [{'content': 'row3'}],
+        ]
+        cards = [
+            type('Card', (), {'field_data': {'CLASS': '10', 'SECTION': 'A'}})(),
+            type('Card', (), {'field_data': {'CLASS': '10', 'SECTION': 'B'}})(),
+            type('Card', (), {'field_data': {'CLASS': '10', 'SECTION': 'C'}})(),
+        ]
+
+        pages = exporter._group_rows_into_pages(
+            rows=rows,
+            cards_list=cards,
+            class_field_name='CLASS',
+            section_field_name=None,
+            records_per_page=6,
+        )
+
+        self.assertEqual(
+            [[row[0]['content'] for row in page] for page in pages],
+            [['row1', 'row2', 'row3']],
+        )
 
 
 class WordLayoutTuningTests(SimpleTestCase):

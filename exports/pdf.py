@@ -37,6 +37,7 @@ from .utils import (
     is_valid_image_path,
     sort_cards_for_export,
     get_class_field_name,
+    get_section_field_name,
     stream_file_response,
 )
 
@@ -296,6 +297,7 @@ class PdfExporter:
         template_id: int = None,
         font_mode: str = 'auto',
         shorten_titles: bool = False,
+        break_mode: str = 'class_only',
         progress_callback=None,
     ) -> PdfExportResult:
         """
@@ -310,6 +312,7 @@ class PdfExporter:
                        'auto' uses normal for ≤15 cols, compact for >15
             shorten_titles: When True, long column headings are replaced with
                             short abbreviations (e.g. "Date Of Birth" → "DOB").
+            break_mode: 'class_only' or 'class_section' page grouping mode.
 
         Returns:
             PdfExportResult with HttpResponse if successful
@@ -456,8 +459,20 @@ class PdfExporter:
 
             # Group rows into pages (fixed 6 rows per page, class-break aware)
             class_field_name = get_class_field_name(table.fields)
+            resolved_break_mode = str(break_mode or 'class_only').strip().lower()
+            if resolved_break_mode not in ('class_only', 'class_section'):
+                resolved_break_mode = 'class_only'
+            section_field_name = (
+                get_section_field_name(table.fields)
+                if resolved_break_mode == 'class_section'
+                else None
+            )
             pages = self._group_rows_into_pages(
-                rows, cards_list, class_field_name, records_per_page=6
+                rows,
+                cards_list,
+                class_field_name,
+                section_field_name,
+                records_per_page=6,
             )
 
             # Build font dir path for @font-face in CSS
@@ -976,6 +991,7 @@ class PdfExporter:
         rows: List[List[Dict[str, Any]]],
         cards_list: list,
         class_field_name: Optional[str],
+        section_field_name: Optional[str],
         records_per_page: int = 6,
     ) -> List[List[List[Dict[str, Any]]]]:
         """
@@ -983,12 +999,13 @@ class PdfExporter:
 
         Rules:
           1. Max *records_per_page* rows per page.
-          2. When the CLASS value changes → force new page.
+          2. When CLASS or SECTION value changes -> force new page.
 
         Args:
             rows:             Flat list of row data (one per card)
             cards_list:       Matching list of card instances
             class_field_name: Name of the CLASS field, or None
+            section_field_name: Name of the SECTION field, or None
             records_per_page: Fixed rows per page
 
         Returns:
@@ -999,7 +1016,7 @@ class PdfExporter:
 
         pages: List[List[List[Dict[str, Any]]]] = []
         current_page: List[List[Dict[str, Any]]] = []
-        prev_class_val = None
+        prev_group_key = None
 
         for idx, row in enumerate(rows):
             card = cards_list[idx]
@@ -1008,6 +1025,11 @@ class PdfExporter:
                 str(fd.get(class_field_name, '') or '').strip().upper()
                 if class_field_name else None
             )
+            cur_section_val = (
+                str(fd.get(section_field_name, '') or '').strip().upper()
+                if section_field_name else None
+            )
+            cur_group_key = (cur_class_val, cur_section_val)
 
             # Check if we need a new page
             need_new_page = False
@@ -1015,7 +1037,7 @@ class PdfExporter:
                 need_new_page = False  # first row always goes to first page
             elif len(current_page) >= records_per_page:
                 need_new_page = True
-            elif class_field_name and prev_class_val is not None and cur_class_val != prev_class_val:
+            elif prev_group_key is not None and cur_group_key != prev_group_key:
                 need_new_page = True
 
             if need_new_page and current_page:
@@ -1023,7 +1045,7 @@ class PdfExporter:
                 current_page = []
 
             current_page.append(row)
-            prev_class_val = cur_class_val
+            prev_group_key = cur_group_key
 
         # Don't forget the last page
         if current_page:

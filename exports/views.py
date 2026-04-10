@@ -881,6 +881,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
+    break_mode = 'class_only'
     if _is_json_request(request):
         data = _get_json_body(request) or {}
         tpl_val = data.get('template_id', '')
@@ -890,6 +891,9 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
             except (ValueError, TypeError):
                 pass
         shorten_titles = bool(data.get('shorten_titles', False))
+        requested_break_mode = str(data.get('break_mode') or '').strip().lower()
+        if requested_break_mode in ('class_only', 'class_section'):
+            break_mode = requested_break_mode
     
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf')
@@ -897,7 +901,15 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many PDF exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
-        result = service.export_pdf(table_id, card_ids, status=_get_status_from_request(request), template_id=template_id, font_mode=font_mode, shorten_titles=shorten_titles)
+        result = service.export_pdf(
+            table_id,
+            card_ids,
+            status=_get_status_from_request(request),
+            template_id=template_id,
+            font_mode=font_mode,
+            shorten_titles=shorten_titles,
+            break_mode=break_mode,
+        )
         
         if not result.success:
             _log_export_failure(request, 'pdf', result.message, table_id=table_id)
@@ -961,6 +973,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
+    break_mode = 'class_only'
     if _is_json_request(request):
         data = _get_json_body(request) or {}
         tpl_val = data.get('template_id', '')
@@ -970,6 +983,9 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
             except (ValueError, TypeError):
                 pass
         shorten_titles = bool(data.get('shorten_titles', False))
+        requested_break_mode = str(data.get('break_mode') or '').strip().lower()
+        if requested_break_mode in ('class_only', 'class_section'):
+            break_mode = requested_break_mode
     
     from .tasks import BackgroundExportManager
     
@@ -981,6 +997,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
         template_id=template_id,
         font_mode=font_mode,
         shorten_titles=shorten_titles,
+        break_mode=break_mode,
     )
     
     logger.info("Export PDF (async): user=%s table=%d cards=%d task=%s",

@@ -918,10 +918,11 @@ var _ASYNC_EXPORT_THRESHOLD = 500;
  */
 var _POLL_INTERVAL = 2000;
 
-function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
+function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
     templateId = templateId || '';
     fontMode = fontMode || 'auto';
     shortenTitles = !!shortenTitles;
+    breakMode = (breakMode === 'class_section') ? 'class_section' : 'class_only';
     
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
@@ -938,7 +939,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
 
     // Use async export for large datasets to avoid Cloudflare timeout
     if (effectiveCount >= _ASYNC_PDF_THRESHOLD) {
-        _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles);
+        _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode);
         return;
     }
 
@@ -947,7 +948,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
         window.DownloadManager.start({
             name: 'PDF Document',
             url: `/api/table/${tableId}/cards/download-pdf/`,
-            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles }, _getActiveFilters()),
+            body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles, break_mode: breakMode }, _getActiveFilters()),
             lockUi: true,
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
@@ -962,14 +963,14 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
     }
 
     // Legacy fallback for small exports
-    _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles);
+    _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode);
 }
 
 /**
  * Async PDF export: starts background generation + polls for completion.
  * Used for large datasets (500+ cards) to avoid Cloudflare's ~100s timeout.
  */
-function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles) {
+function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode) {
     // Cancellation flag for the polling loop
     var _pdfAsyncCancelled = false;
     var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
@@ -998,7 +999,8 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
         status: _getCurrentStatus(),
         template_id: templateId || '',
         font_mode: fontMode || 'auto',
-        shorten_titles: !!shortenTitles
+        shorten_titles: !!shortenTitles,
+        break_mode: (breakMode === 'class_section') ? 'class_section' : 'class_only'
     }, _getActiveFilters());
 
     // Start async export
@@ -1164,7 +1166,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
 /**
  * Legacy synchronous PDF download (for small exports without DownloadManager).
  */
-function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles) {
+function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode) {
     const xhr = new XMLHttpRequest();
     var cancelFn = function () { xhr.abort(); if (typeof showToast === 'function') showToast('PDF download cancelled', 'info'); };
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1, cancelFn);
@@ -1224,7 +1226,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
         if (typeof showToast === 'function') showToast('PDF download timed out. Try selecting fewer cards.', false);
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto', shorten_titles: !!shortenTitles }, _getActiveFilters())));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto', shorten_titles: !!shortenTitles, break_mode: (breakMode === 'class_section') ? 'class_section' : 'class_only' }, _getActiveFilters())));
 }
 
 /**

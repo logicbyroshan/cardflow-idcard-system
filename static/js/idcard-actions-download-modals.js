@@ -2284,7 +2284,7 @@ function openDownloadPdfModal(cardIds) {
 
     if (!downloadPdfModal) {
         // Fallback: download directly if modal not found
-        window.IDCardApp.downloadPdf(cardIds, '', 'auto');
+        window.IDCardApp.downloadPdf(cardIds, '', 'auto', false, 'class_only');
         return;
     }
 
@@ -2323,6 +2323,9 @@ function closeDownloadPdfModal() {
     // Reset shorten-titles checkbox for next open
     var shortenCb = document.getElementById('downloadPdfShortenTitles');
     if (shortenCb) shortenCb.checked = false;
+    // Reset break-mode checkbox for next open (default: class only)
+    var breakModeCb = document.getElementById('downloadPdfBreakClassSection');
+    if (breakModeCb) breakModeCb.checked = false;
 }
 
 function initDownloadPdfHandlers() {
@@ -2353,9 +2356,12 @@ function initDownloadPdfHandlers() {
         // Read shorten-titles checkbox
         var shortenCb = document.getElementById('downloadPdfShortenTitles');
         var shortenTitles = shortenCb ? shortenCb.checked : false;
+        // Read break-mode checkbox
+        var breakModeCb = document.getElementById('downloadPdfBreakClassSection');
+        var breakMode = (breakModeCb && breakModeCb.checked) ? 'class_section' : 'class_only';
         closeDownloadPdfModal();
         markNextBulkUiLock();
-        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles);
+        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles, breakMode);
     });
 
     // Close on backdrop click removed  modal does not close on outside click

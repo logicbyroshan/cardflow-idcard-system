@@ -438,6 +438,24 @@ def get_class_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Option
     return _find_field_name(field_names, _CLASS_PATTERNS)
 
 
+def get_section_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Optional[str]:
+    """
+    Return the SECTION field name from a table's field config, or None.
+
+    Used by exporters that need section-based grouping/page breaks.
+
+    Args:
+        table_fields: The table.fields list (list of dicts with 'name' key)
+
+    Returns:
+        Matched SECTION field name (original casing) or None
+    """
+    if not table_fields:
+        return None
+    field_names = [f.get('name', '') for f in table_fields]
+    return _find_field_name(field_names, _SECTION_PATTERNS)
+
+
 # =============================================================================
 # CHUNKED STREAMING DOWNLOAD
 # =============================================================================
