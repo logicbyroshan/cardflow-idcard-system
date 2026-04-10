@@ -24,6 +24,16 @@
                 <div class="card-overview-value" id="dashboardTabCountRecentUpdates">0</div>
             </button>
 
+            <button type="button" class="card-overview-item dashboard-tab-item" data-dashboard-tab="team-overview" aria-pressed="false">
+                <div class="card-overview-left">
+                    <div class="card-overview-icon staff">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="card-overview-label">Team Overview</div>
+                </div>
+                <div class="card-overview-value" id="dashboardTabCountTeamOverview">0</div>
+            </button>
+
             {% if is_super_admin or is_admin_staff %}
             <button type="button" class="card-overview-item dashboard-tab-item" data-dashboard-tab="reprint" aria-pressed="false">
                 <div class="card-overview-left">

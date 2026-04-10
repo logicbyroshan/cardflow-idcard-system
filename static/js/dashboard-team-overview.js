@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const scopeButtons = Array.from(document.querySelectorAll('[data-dashboard-team-scope]'));
     const quickActionButtons = Array.from(document.querySelectorAll('[data-dashboard-quick-action]'));
+    const dashboardTabButtons = Array.from(document.querySelectorAll('[data-dashboard-tab]'));
+    const dashboardTabCountTeamOverview = document.getElementById('dashboardTabCountTeamOverview');
 
     const panelTitle = document.getElementById('teamOverviewPanelTitle');
     const tableBody = document.getElementById('teamOverviewBody');
@@ -381,11 +383,25 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateScopeButtons(scope) {
+        const teamOverviewPanel = document.querySelector('[data-dashboard-panel="team-overview"]');
+        const isPanelActive = !!(teamOverviewPanel && teamOverviewPanel.classList.contains('is-active'));
         scopeButtons.forEach(function (button) {
-            const isActive = normalizeScope(button.getAttribute('data-dashboard-team-scope')) === scope;
+            const isActive = isPanelActive && normalizeScope(button.getAttribute('data-dashboard-team-scope')) === scope;
             button.classList.toggle('is-active', isActive);
             button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
+    }
+
+    async function showCenteredConfirm(options) {
+        if (typeof showConfirm === 'function') {
+            try {
+                return !!(await showConfirm(options || {}));
+            } catch (_error) {
+                // Fall through to native confirm fallback.
+            }
+        }
+        const fallbackText = (options && (options.text || options.title)) || 'Are you sure?';
+        return window.confirm(fallbackText);
     }
 
     function applyToolbarState() {
@@ -517,6 +533,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             state.items = Array.isArray(data.items) ? data.items : [];
             state.capabilities = data.capabilities || state.capabilities;
+            if (dashboardTabCountTeamOverview) {
+                dashboardTabCountTeamOverview.textContent = String(state.items.length || 0);
+            }
 
             if (requestedSelectedId) {
                 state.selectedId = requestedSelectedId;
@@ -1168,6 +1187,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const endpoint = entityActionUrl(scope, 'toggle', selected.id);
         if (!endpoint) return;
 
+        const isCurrentlyActive = String(selected.status || '').toLowerCase() === 'active';
+        const targetLabel = isCurrentlyActive ? 'inactive' : 'active';
+        const selectedName = String(selected.name || scopeSingularLabel(scope));
+        const confirmed = await showCenteredConfirm({
+            title: (isCurrentlyActive ? 'Set Inactive?' : 'Set Active?'),
+            text: 'Change ' + selectedName + ' status to ' + targetLabel + '?',
+            icon: isCurrentlyActive ? 'fa-solid fa-toggle-off' : 'fa-solid fa-toggle-on',
+            confirmLabel: isCurrentlyActive ? 'Set Inactive' : 'Set Active',
+            cancelLabel: 'Cancel',
+            btnClass: isCurrentlyActive ? 'btn-danger' : 'btn-primary',
+            hideWarning: true,
+        });
+        if (!confirmed) return;
+
         try {
             const response = await ApiClient.post(panelUrl(endpoint));
             if (!response || !response.success) {
@@ -1190,7 +1223,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!endpoint) return;
 
         const name = String(selected.name || 'this record');
-        const confirmed = window.confirm('Delete ' + name + '? This action cannot be undone.');
+        const entityLabel = scopeSingularLabel(scope).toLowerCase();
+        const confirmed = await showCenteredConfirm({
+            title: 'Delete ' + scopeSingularLabel(scope) + '?',
+            text: 'Delete ' + name + '? This action cannot be undone.',
+            icon: 'fa-solid fa-trash',
+            confirmLabel: 'Delete',
+            cancelLabel: 'Cancel',
+            btnClass: 'btn-danger',
+            warnings: [
+                'This will permanently remove the selected ' + entityLabel + '.',
+                'This action cannot be undone.'
+            ],
+        });
         if (!confirmed) return;
 
         try {
@@ -1240,6 +1285,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             await loadScope(scope, { keepSelection: false });
+        });
+    });
+
+    dashboardTabButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            window.setTimeout(function () {
+                updateScopeButtons(state.scope);
+                const panel = document.querySelector('[data-dashboard-panel="team-overview"]');
+                const isPanelActive = !!(panel && panel.classList.contains('is-active'));
+                if (!isPanelActive) {
+                    setQuickActionActive('');
+                }
+            }, 0);
         });
     });
 
