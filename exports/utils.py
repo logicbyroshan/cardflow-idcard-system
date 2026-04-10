@@ -381,7 +381,7 @@ def is_valid_image_path(path: Optional[str]) -> bool:
 
 # Field name patterns used to detect sort-relevant columns
 _CLASS_PATTERNS = ['CLASS']
-_SECTION_PATTERNS = ['SECTION', 'SEC']
+_SECTION_PATTERNS = ['SECTION', 'SEC', 'SECT', 'DIVISION', 'DIV']
 _NAME_PATTERNS = ['NAME', 'STUDENT', 'EMPNAME', 'STUDENT NAME', 'EMP NAME']
 
 
@@ -417,6 +417,31 @@ def _find_field_name(field_names: List[str], patterns: List[str]) -> Optional[st
     return None
 
 
+def _find_field_name_by_type(
+    table_fields: Optional[List[Dict[str, Any]]],
+    target_types: List[str],
+) -> Optional[str]:
+    """
+    Return first field name whose configured field type matches target types.
+
+    Args:
+        table_fields: Table field configuration list
+        target_types: Allowed lowercase field types (e.g. ['class'])
+
+    Returns:
+        Field name if found, else None
+    """
+    if not table_fields:
+        return None
+    target_set = {str(t).strip().lower() for t in target_types if t}
+    for field in table_fields:
+        field_type = str((field or {}).get('type', '')).strip().lower()
+        field_name = str((field or {}).get('name', '')).strip()
+        if field_name and field_type in target_set:
+            return field_name
+    return None
+
+
 # sort_cards_for_export is defined below after SortedCardList (Class → Section → Name)
 
 
@@ -432,6 +457,9 @@ def get_class_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Option
     Returns:
         Matched CLASS field name (original casing) or None
     """
+    by_type = _find_field_name_by_type(table_fields, ['class'])
+    if by_type:
+        return by_type
     if not table_fields:
         return None
     field_names = [f.get('name', '') for f in table_fields]
@@ -450,6 +478,9 @@ def get_section_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Opti
     Returns:
         Matched SECTION field name (original casing) or None
     """
+    by_type = _find_field_name_by_type(table_fields, ['section'])
+    if by_type:
+        return by_type
     if not table_fields:
         return None
     field_names = [f.get('name', '') for f in table_fields]

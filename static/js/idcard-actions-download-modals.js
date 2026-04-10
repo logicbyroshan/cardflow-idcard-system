@@ -44,6 +44,7 @@ let _dlImageRenameState = {
     generateSectionField: '',
     generateCustomDate: ''
 };
+let _dlImageWizardStep = 1;
 
 // Modal DOM references (set in initDownloadModals)
 let downloadPdfModal = null;
@@ -264,13 +265,114 @@ function _dlSetActiveImageMode(mode) {
     if (renameToggleEl) renameToggleEl.checked = mode === 'rename';
     if (generateToggleEl) generateToggleEl.checked = mode === 'generate';
     _dlImageRenameState.mode = mode;
+
+    if (!mode) {
+        _dlImageWizardStep = 1;
+    } else if (_dlImageWizardStep < 2) {
+        _dlImageWizardStep = 2;
+    }
+
     _dlSyncModeUi();
+}
+
+function _dlGetImageWizardMaxStep() {
+    const mode = _dlGetActiveImageMode();
+    return mode ? 4 : 1;
+}
+
+function _dlSetImageWizardStep(step) {
+    const parsed = parseInt(String(step || 1), 10);
+    _dlImageWizardStep = Number.isFinite(parsed) ? parsed : 1;
+    _dlImageWizardStep = Math.max(1, Math.min(_dlImageWizardStep, _dlGetImageWizardMaxStep()));
+    _dlSyncImageWizardUi();
+}
+
+function _dlValidateImageWizardStep(step) {
+    const mode = _dlGetActiveImageMode();
+
+    if (step === 1 && !mode) {
+        return 'Please choose Rename or Generate mode.';
+    }
+
+    if (step === 2) {
+        const selectedImageField = String(_dlImageRenameState.selectedImageField || '').trim();
+        if (!selectedImageField) {
+            return 'Please select one image column to download.';
+        }
+    }
+
+    if (step === 3) {
+        if (mode === 'rename' && !_dlImageRenameState.selectedNameFields.length) {
+            return 'Please select at least one filename field.';
+        }
+
+        if (mode === 'generate') {
+            const options = _dlGetImageRenameOptionsFromModal();
+            if (options && options.__error) {
+                return options.__error;
+            }
+        }
+    }
+
+    return '';
+}
+
+function _dlSyncImageWizardUi() {
+    const step1El = document.getElementById('downloadImgWizardStep1');
+    const step2El = document.getElementById('downloadImgWizardStep2');
+    const renameStepEl = document.getElementById('downloadImgRenameFieldsSection');
+    const generateStepEl = document.getElementById('downloadImgWizardStep3Generate');
+    const previewStepEl = document.getElementById('downloadImgWizardStep4');
+    const stepLabelEl = document.getElementById('downloadImgWizardStepLabel');
+    const backBtn = document.getElementById('downloadImgWizardBack');
+    const nextBtn = document.getElementById('downloadImgWizardNext');
+    const confirmBtn = document.getElementById('downloadImgConfirm');
+    const chips = document.querySelectorAll('[data-dl-wizard-chip]');
+
+    const mode = _dlGetActiveImageMode();
+    const maxStep = _dlGetImageWizardMaxStep();
+
+    if (_dlImageWizardStep > maxStep) _dlImageWizardStep = maxStep;
+    if (_dlImageWizardStep < 1) _dlImageWizardStep = 1;
+
+    if (step1El) step1El.style.display = _dlImageWizardStep === 1 ? 'block' : 'none';
+    if (step2El) step2El.style.display = (mode && _dlImageWizardStep === 2) ? 'block' : 'none';
+    if (renameStepEl) renameStepEl.style.display = (mode === 'rename' && _dlImageWizardStep === 3) ? 'block' : 'none';
+    if (generateStepEl) generateStepEl.style.display = (mode === 'generate' && _dlImageWizardStep === 3) ? 'block' : 'none';
+    if (previewStepEl) previewStepEl.style.display = (mode && _dlImageWizardStep === 4) ? 'block' : 'none';
+
+    chips.forEach(function(chip) {
+        const rawStep = chip.getAttribute('data-dl-wizard-chip');
+        const stepNum = parseInt(String(rawStep || ''), 10);
+        if (!Number.isFinite(stepNum)) return;
+
+        chip.classList.toggle('is-active', stepNum === _dlImageWizardStep);
+        chip.classList.toggle('is-complete', stepNum < _dlImageWizardStep && stepNum <= maxStep);
+        chip.classList.toggle('is-disabled', stepNum > maxStep);
+    });
+
+    if (stepLabelEl) {
+        stepLabelEl.textContent = 'Step ' + _dlImageWizardStep + ' of ' + maxStep;
+    }
+
+    if (backBtn) {
+        backBtn.disabled = _dlImageWizardStep <= 1;
+    }
+
+    if (nextBtn) {
+        nextBtn.disabled = _dlImageWizardStep >= maxStep;
+        nextBtn.textContent = (_dlImageWizardStep === maxStep - 1) ? 'Preview' : 'Next';
+    }
+
+    if (confirmBtn) {
+        confirmBtn.disabled = !(mode && _dlImageWizardStep === maxStep);
+    }
 }
 
 function _dlSyncModeUi() {
     const panelEl = document.getElementById('downloadImgRenamePanel');
-    const generatePanelEl = document.getElementById('downloadImgGeneratePanel');
-    const renameFieldsSectionEl = document.getElementById('downloadImgRenameFieldsSection');
+    const renameToggleEl = document.getElementById('downloadImgRenameToggle');
+    const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
     const helpTextEl = document.getElementById('downloadImgFieldHelpText');
     const formatSelect = document.getElementById('downloadImgFormatSelect');
     const compressToggleEl = document.getElementById('downloadImgCompressToggle');
@@ -279,9 +381,8 @@ function _dlSyncModeUi() {
     const mode = _dlGetActiveImageMode();
     _dlImageRenameState.mode = mode;
 
-    if (panelEl) panelEl.style.display = mode ? 'block' : 'none';
-    if (generatePanelEl) generatePanelEl.style.display = mode === 'generate' ? 'block' : 'none';
-    if (renameFieldsSectionEl) renameFieldsSectionEl.style.display = mode === 'rename' ? 'block' : 'none';
+    const hasRenameData = !((renameToggleEl && renameToggleEl.disabled) && (generateToggleEl && generateToggleEl.disabled));
+    if (panelEl) panelEl.style.display = hasRenameData ? 'block' : 'none';
 
     if (helpTextEl) {
         helpTextEl.textContent = mode === 'generate'
@@ -307,6 +408,7 @@ function _dlSyncModeUi() {
     _dlSyncGenerateFieldUi();
 
     _dlUpdateRenamePreview();
+    _dlSyncImageWizardUi();
 }
 
 function _dlSanitizePreviewPart(value) {
@@ -596,6 +698,70 @@ function _dlBindRenamePanelEvents() {
     }
 }
 
+function _dlBindImageWizardControls() {
+    const backBtn = document.getElementById('downloadImgWizardBack');
+    const nextBtn = document.getElementById('downloadImgWizardNext');
+    const chips = document.querySelectorAll('[data-dl-wizard-chip]');
+
+    if (backBtn && backBtn.dataset.bound !== '1') {
+        backBtn.addEventListener('click', function() {
+            _dlSetImageWizardStep(_dlImageWizardStep - 1);
+        });
+        backBtn.dataset.bound = '1';
+    }
+
+    if (nextBtn && nextBtn.dataset.bound !== '1') {
+        nextBtn.addEventListener('click', function() {
+            const maxStep = _dlGetImageWizardMaxStep();
+            if (_dlImageWizardStep >= maxStep) return;
+
+            const validationError = _dlValidateImageWizardStep(_dlImageWizardStep);
+            if (validationError) {
+                if (typeof showToast === 'function') {
+                    showToast(validationError, 'warning');
+                }
+                return;
+            }
+
+            _dlSetImageWizardStep(_dlImageWizardStep + 1);
+        });
+        nextBtn.dataset.bound = '1';
+    }
+
+    chips.forEach(function(chip) {
+        if (chip.dataset.bound === '1') return;
+
+        chip.addEventListener('click', function() {
+            const maxStep = _dlGetImageWizardMaxStep();
+            const raw = chip.getAttribute('data-dl-wizard-chip');
+            let targetStep = parseInt(String(raw || ''), 10);
+            if (!Number.isFinite(targetStep)) return;
+            targetStep = Math.max(1, Math.min(targetStep, maxStep));
+
+            if (targetStep <= _dlImageWizardStep) {
+                _dlSetImageWizardStep(targetStep);
+                return;
+            }
+
+            let cursor = _dlImageWizardStep;
+            while (cursor < targetStep) {
+                const validationError = _dlValidateImageWizardStep(cursor);
+                if (validationError) {
+                    if (typeof showToast === 'function') {
+                        showToast(validationError, 'warning');
+                    }
+                    return;
+                }
+                cursor += 1;
+            }
+
+            _dlSetImageWizardStep(targetStep);
+        });
+
+        chip.dataset.bound = '1';
+    });
+}
+
 function _dlInitializeImageRenamePanel() {
     const renameToggleEl = document.getElementById('downloadImgRenameToggle');
     const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
@@ -618,6 +784,7 @@ function _dlInitializeImageRenamePanel() {
     if (!hasRenameData) {
         renameToggleEl.checked = false;
         generateToggleEl.checked = false;
+        _dlImageWizardStep = 1;
         panelEl.style.display = 'none';
         _dlImageRenameState.selectedImageField = '';
         _dlSetSelectedNameFields([]);
@@ -679,7 +846,15 @@ function _dlInitializeImageRenamePanel() {
         : [defaultNameField || _dlImageRenameState.textFields[0].name];
 
     _dlBindRenamePanelEvents();
+    _dlBindImageWizardControls();
     _dlSetSelectedNameFields(selectedNameFields);
+
+    if (!_dlGetActiveImageMode()) {
+        _dlImageWizardStep = 1;
+    } else if (_dlImageWizardStep < 2) {
+        _dlImageWizardStep = 2;
+    }
+
     _dlSyncModeUi();
 }
 
@@ -709,6 +884,7 @@ function _dlResetImageRenameControls() {
     _dlImageRenameState.generateClassField = '';
     _dlImageRenameState.generateSectionField = '';
     _dlImageRenameState.generateCustomDate = '';
+    _dlImageWizardStep = 1;
 
     if (renameToggleEl) renameToggleEl.checked = false;
     if (generateToggleEl) generateToggleEl.checked = false;
@@ -2008,6 +2184,7 @@ function openDownloadImgModal(cardIds) {
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
 
     _dlResetImageRenameControls();
+    _dlSetImageWizardStep(1);
 
     downloadImgModal.style.display = 'flex';
 }
@@ -2048,6 +2225,7 @@ function initDownloadImagesHandlers() {
     // Modal button handlers
     document.getElementById('downloadImgCancel')?.addEventListener('click', closeDownloadImgModal);
     document.getElementById('downloadImgClose')?.addEventListener('click', closeDownloadImgModal);
+    _dlBindImageWizardControls();
 
     const renameToggleEl = document.getElementById('downloadImgRenameToggle');
     const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
@@ -2058,13 +2236,16 @@ function initDownloadImagesHandlers() {
                 if (generateToggleEl) generateToggleEl.checked = false;
                 _dlSetActiveImageMode('rename');
                 _dlInitializeImageRenamePanel();
+                _dlSetImageWizardStep(2);
                 return;
             }
 
             if (generateToggleEl && generateToggleEl.checked) {
                 _dlSetActiveImageMode('generate');
+                _dlSetImageWizardStep(2);
             } else {
                 _dlSetActiveImageMode('');
+                _dlSetImageWizardStep(1);
             }
             _dlInitializeImageRenamePanel();
         });
@@ -2077,13 +2258,16 @@ function initDownloadImagesHandlers() {
                 if (renameToggleEl) renameToggleEl.checked = false;
                 _dlSetActiveImageMode('generate');
                 _dlInitializeImageRenamePanel();
+                _dlSetImageWizardStep(2);
                 return;
             }
 
             if (renameToggleEl && renameToggleEl.checked) {
                 _dlSetActiveImageMode('rename');
+                _dlSetImageWizardStep(2);
             } else {
                 _dlSetActiveImageMode('');
+                _dlSetImageWizardStep(1);
             }
             _dlInitializeImageRenamePanel();
         });
@@ -2091,6 +2275,22 @@ function initDownloadImagesHandlers() {
     }
 
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
+        const maxStep = _dlGetImageWizardMaxStep();
+        if (_dlImageWizardStep < maxStep) {
+            if (typeof showToast === 'function') {
+                showToast('Please complete all steps before downloading.', 'warning');
+            }
+            return;
+        }
+
+        const validationError = _dlValidateImageWizardStep(Math.max(1, maxStep - 1));
+        if (validationError) {
+            if (typeof showToast === 'function') {
+                showToast(validationError, 'warning');
+            }
+            return;
+        }
+
         const selectedCardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
         const renameOptions = _dlGetImageRenameOptionsFromModal();
 
@@ -2278,13 +2478,49 @@ function initDownloadXlsxHandlers() {
 let pendingPdfCardIds = [];
 let selectedPdfTemplate = 'default';
 
+function setPdfBreakModeSelection(mode) {
+    var breakSectionCb = document.getElementById('downloadPdfBreakClassSection');
+    var breakClassOnlyCb = document.getElementById('downloadPdfBreakClassOnly');
+    var resolved = (mode === 'class_only') ? 'class_only' : 'class_section';
+
+    if (breakSectionCb) breakSectionCb.checked = (resolved === 'class_section');
+    if (breakClassOnlyCb) breakClassOnlyCb.checked = (resolved === 'class_only');
+}
+
+function readPdfBreakModeSelection() {
+    var breakClassOnlyCb = document.getElementById('downloadPdfBreakClassOnly');
+    return (breakClassOnlyCb && breakClassOnlyCb.checked) ? 'class_only' : 'class_section';
+}
+
+function bindPdfBreakModeCheckboxes() {
+    var breakSectionCb = document.getElementById('downloadPdfBreakClassSection');
+    var breakClassOnlyCb = document.getElementById('downloadPdfBreakClassOnly');
+    if (!breakSectionCb || !breakClassOnlyCb) return;
+
+    breakSectionCb.addEventListener('change', function() {
+        if (breakSectionCb.checked) {
+            breakClassOnlyCb.checked = false;
+        } else if (!breakClassOnlyCb.checked) {
+            breakSectionCb.checked = true;
+        }
+    });
+
+    breakClassOnlyCb.addEventListener('change', function() {
+        if (breakClassOnlyCb.checked) {
+            breakSectionCb.checked = false;
+        } else if (!breakSectionCb.checked) {
+            breakClassOnlyCb.checked = true;
+        }
+    });
+}
+
 function openDownloadPdfModal(cardIds) {
     pendingPdfCardIds = cardIds;
     downloadPdfModal = document.getElementById('downloadPdfModal');
 
     if (!downloadPdfModal) {
         // Fallback: download directly if modal not found
-        window.IDCardApp.downloadPdf(cardIds, '', 'auto', false, 'class_only');
+        window.IDCardApp.downloadPdf(cardIds, '', 'auto', false, 'class_section');
         return;
     }
 
@@ -2309,6 +2545,9 @@ function openDownloadPdfModal(cardIds) {
         denseWarning.style.display = 'none';
     }
 
+    // Default break mode for each open: class + section
+    setPdfBreakModeSelection('class_section');
+
     // Load templates dynamically (from init sub-module)
     if (window.IDCardApp._loadExportTemplates) window.IDCardApp._loadExportTemplates(false);
 
@@ -2323,9 +2562,8 @@ function closeDownloadPdfModal() {
     // Reset shorten-titles checkbox for next open
     var shortenCb = document.getElementById('downloadPdfShortenTitles');
     if (shortenCb) shortenCb.checked = false;
-    // Reset break-mode checkbox for next open (default: class only)
-    var breakModeCb = document.getElementById('downloadPdfBreakClassSection');
-    if (breakModeCb) breakModeCb.checked = false;
+    // Reset break-mode checkboxes for next open (default: class + section)
+    setPdfBreakModeSelection('class_section');
 }
 
 function initDownloadPdfHandlers() {
@@ -2356,13 +2594,15 @@ function initDownloadPdfHandlers() {
         // Read shorten-titles checkbox
         var shortenCb = document.getElementById('downloadPdfShortenTitles');
         var shortenTitles = shortenCb ? shortenCb.checked : false;
-        // Read break-mode checkbox
-        var breakModeCb = document.getElementById('downloadPdfBreakClassSection');
-        var breakMode = (breakModeCb && breakModeCb.checked) ? 'class_section' : 'class_only';
+        // Read break-mode checkboxes
+        var breakMode = readPdfBreakModeSelection();
+        var cardIdsToDownload = Array.isArray(pendingPdfCardIds) ? pendingPdfCardIds.slice() : [];
         closeDownloadPdfModal();
         markNextBulkUiLock();
-        window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles, breakMode);
+        window.IDCardApp.downloadPdf(cardIdsToDownload, templateId, fontMode, shortenTitles, breakMode);
     });
+
+    bindPdfBreakModeCheckboxes();
 
     // Close on backdrop click removed  modal does not close on outside click
     downloadPdfModal = document.getElementById('downloadPdfModal');

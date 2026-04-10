@@ -247,20 +247,6 @@ a.count-badge.pool:hover {
     gap: 0;
 }
 
-.team-overview-search-inline {
-    margin-bottom: 10px;
-}
-
-.team-overview-search-inline .recent-updates-search-input {
-    height: 30px;
-    border-color: #bfdbfe;
-}
-
-.team-overview-search-inline .recent-updates-search-input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
 .card-overview-item {
     display: flex;
     align-items: center;

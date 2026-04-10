@@ -301,7 +301,7 @@ class ExportService:
         template_id: Optional[int] = None,
         font_mode: str = 'auto',
         shorten_titles: bool = False,
-        break_mode: str = 'class_only',
+        break_mode: str = 'class_section',
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -313,7 +313,7 @@ class ExportService:
             template_id: Optional ExportTemplate ID for footer instructions
             font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
             shorten_titles: Replace long column headings with short abbreviations
-            break_mode: 'class_only' | 'class_section' page grouping mode
+            break_mode: 'class_section' | 'class_only' page grouping mode
             
         Returns:
             PdfExportResult with HttpResponse if successful

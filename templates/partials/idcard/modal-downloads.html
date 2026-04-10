@@ -26,22 +26,29 @@
       <p class="text-xs text-amber-700 mb-0">Auto-fit is enabled. Font size, column widths and wrapping will be adjusted automatically for dense tables.</p>
     </div>
 
-    <!-- Shorten Column Titles option -->
-    <div class="mt-3 mb-1 flex items-center gap-2">
-      <input type="checkbox" id="downloadPdfShortenTitles"
-             class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-      <label for="downloadPdfShortenTitles" class="text-sm text-gray-700 cursor-pointer select-none">
-        Shorten Column Titles
-        <span class="text-xs text-gray-500 ml-1">(e.g. Date Of Birth -> DOB, Mobile No -> Mob.)</span>
+    <div class="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Column Options</p>
+      <label for="downloadPdfShortenTitles" class="flex items-start gap-2 cursor-pointer select-none">
+        <input type="checkbox" id="downloadPdfShortenTitles"
+               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        <span class="text-sm text-gray-700">
+          Shorten Column Titles
+          <span class="text-xs text-gray-500 ml-1">(e.g. Date Of Birth -> DOB, Mobile No -> Mob.)</span>
+        </span>
       </label>
     </div>
 
-    <div class="mt-2 mb-1 flex items-center gap-2">
-      <input type="checkbox" id="downloadPdfBreakClassSection"
-             class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-      <label for="downloadPdfBreakClassSection" class="text-sm text-gray-700 cursor-pointer select-none">
-        Break Pages By Class + Section
-        <span class="text-xs text-gray-500 ml-1">(unchecked: break by Class only)</span>
+    <div class="mt-3 mb-1 p-3 rounded-lg bg-indigo-50 border border-indigo-200">
+      <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-2">Page Break Options</p>
+      <label for="downloadPdfBreakClassSection" class="flex items-start gap-2 cursor-pointer select-none mb-2">
+        <input type="checkbox" id="downloadPdfBreakClassSection" checked
+               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        <span class="text-sm text-gray-700">Break Pages By Class + Section</span>
+      </label>
+      <label for="downloadPdfBreakClassOnly" class="flex items-start gap-2 cursor-pointer select-none">
+        <input type="checkbox" id="downloadPdfBreakClassOnly"
+               class="mt-0.5 w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        <span class="text-sm text-gray-700">Break Pages By Class Only</span>
       </label>
     </div>
     
@@ -147,114 +154,149 @@
         <strong id="downloadImgCardCount">0</strong>
       </div>
     </div>
-    <p class="center-modal-note mt-0 download-img-intro-note">Download images as ZIP or PDF ZIP. Pick a mode, then configure options below.</p>
-
-    <div class="mt-3 mb-2 text-left download-img-toggle-group">
-      <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
-        <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-        Rename Image By Fields
-      </label>
-      <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
-        <input type="checkbox" id="downloadImgGenerateByFieldToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-        Generate Image by Field Name
-      </label>
-    </div>
-    <p class="download-img-mode-helper mt-1 mb-0">Choose one mode and select one photo column plus field values below.</p>
+    <p class="center-modal-note mt-0 download-img-intro-note">Download images as ZIP or PDF ZIP. Configure the export in guided steps.</p>
 
     <div id="downloadImgRenamePanel" class="download-img-main-panel mt-2 p-3 rounded-lg border border-purple-200 bg-purple-50" style="display:none;">
-      <div class="download-img-section-heading">Step 1: Base Export Settings</div>
-      <div class="download-img-option-row mb-3">
-        <div class="download-img-option-col download-img-option-card">
-          <label class="center-modal-label text-left block mb-1">Download format</label>
-          <select id="downloadImgFormatSelect" class="center-modal-select">
-            <option value="zip">ZIP (images)</option>
-            <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
-          </select>
-          <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
+      <div class="download-img-wizard-progress" id="downloadImgWizardProgress">
+        <div class="download-img-wizard-chip is-active" data-dl-wizard-chip="1">
+          <span class="download-img-wizard-chip-index">1</span>
+          <span class="download-img-wizard-chip-label">Mode</span>
         </div>
-
-        <div class="download-img-option-col download-img-option-card">
-          <label class="center-modal-label text-left block mb-1">Image column to download</label>
-          <select id="downloadImgRenameTarget" class="center-modal-select"></select>
-          <p class="center-modal-note mt-1 mb-0">When rename is enabled, only this selected photo column is downloaded.</p>
+        <div class="download-img-wizard-chip" data-dl-wizard-chip="2">
+          <span class="download-img-wizard-chip-index">2</span>
+          <span class="download-img-wizard-chip-label">Base</span>
         </div>
-      </div>
-
-      <div id="downloadImgGeneratePanel" class="download-img-generate-panel mb-3" style="display:none;">
-        <div class="download-img-section-heading is-generate">Step 2: Generate Layout</div>
-        <p class="center-modal-note mt-0 mb-2">Generate mode creates a white background photo card with fixed print sizes, centered image, and text below the photo.</p>
-
-        <div class="download-img-size-row mb-2">
-          <span class="download-img-size-label">Generated card size</span>
-          <label class="download-img-generate-checkbox-label">
-            <input type="checkbox" id="downloadImgGenerateSizeSmall" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-            23 mm x 34 mm
-          </label>
-          <label class="download-img-generate-checkbox-label">
-            <input type="checkbox" id="downloadImgGenerateSizeLarge" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-            37 mm x 53 mm
-          </label>
+        <div class="download-img-wizard-chip" data-dl-wizard-chip="3">
+          <span class="download-img-wizard-chip-index">3</span>
+          <span class="download-img-wizard-chip-label">Details</span>
         </div>
-
-        <div class="download-img-generate-field-row mb-2">
-          <label class="center-modal-label text-left block mb-1">Name field</label>
-          <select id="downloadImgGenerateNameField" class="center-modal-select"></select>
-          <p class="center-modal-note mt-1 mb-0">If auto-detected name field is not correct, select the correct column.</p>
-        </div>
-
-        <div class="download-img-size-row mb-2">
-          <span class="download-img-size-label">Second line</span>
-          <label class="download-img-generate-checkbox-label">
-            <input type="checkbox" id="downloadImgGenerateDetailClassOnly" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-            Class
-          </label>
-          <label class="download-img-generate-checkbox-label">
-            <input type="checkbox" id="downloadImgGenerateDetailClassSection" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-            Class + "Section"
-          </label>
-          <label class="download-img-generate-checkbox-label">
-            <input type="checkbox" id="downloadImgGenerateDetailCustomDate" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-            Custom Date
-          </label>
-        </div>
-
-        <div id="downloadImgGenerateClassWrap" class="download-img-generate-field-row mb-2">
-          <label class="center-modal-label text-left block mb-1">Class field</label>
-          <select id="downloadImgGenerateClassField" class="center-modal-select"></select>
-        </div>
-
-        <div id="downloadImgGenerateSectionWrap" class="download-img-generate-field-row mb-2" style="display:none;">
-          <label class="center-modal-label text-left block mb-1">Section field</label>
-          <select id="downloadImgGenerateSectionField" class="center-modal-select"></select>
-        </div>
-
-        <div id="downloadImgGenerateCustomDateWrap" class="download-img-generate-field-row mb-2" style="display:none;">
-          <label for="downloadImgGenerateCustomDate" class="center-modal-label text-left block mb-1">Custom Date</label>
-          <input type="text" id="downloadImgGenerateCustomDate" class="download-img-generate-input" maxlength="40" placeholder="e.g. 10-04-2026">
-        </div>
-
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-          <input type="checkbox" id="downloadImgCompressToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
-          Compress generated image to target size
-        </label>
-        <div id="downloadImgCompressTargetWrap" class="download-img-compress-target mt-2" style="display:none;">
-          <label for="downloadImgCompressTargetKb" class="center-modal-label text-left block mb-1">Target size (KB)</label>
-          <input type="number" id="downloadImgCompressTargetKb" class="download-img-kb-input" min="10" max="200" step="1" value="40">
-          <p class="center-modal-note mt-1 mb-0">Range: 10 to 200 KB. Dimensions stay fixed; compression reduces quality only.</p>
+        <div class="download-img-wizard-chip" data-dl-wizard-chip="4">
+          <span class="download-img-wizard-chip-index">4</span>
+          <span class="download-img-wizard-chip-label">Preview</span>
         </div>
       </div>
 
-      <div id="downloadImgRenameFieldsSection" class="mb-2">
-        <div class="download-img-section-heading">Step 2: Rename Settings</div>
+      <div id="downloadImgWizardStep1" class="download-img-wizard-step">
+        <div class="download-img-section-heading">Step 1: Choose Mode</div>
+        <div class="mb-2 text-left download-img-toggle-group">
+          <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
+            <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            Rename Image By Fields
+          </label>
+          <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
+            <input type="checkbox" id="downloadImgGenerateByFieldToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            Generate Image by Field Name
+          </label>
+        </div>
+        <p class="download-img-mode-helper mt-1 mb-0">Choose one mode. Use Next to continue to base settings.</p>
+      </div>
+
+      <div id="downloadImgWizardStep2" class="download-img-wizard-step" style="display:none;">
+        <div class="download-img-section-heading">Step 2: Base Export Settings</div>
+        <div class="download-img-option-row mb-0">
+          <div class="download-img-option-col download-img-option-card">
+            <label class="center-modal-label text-left block mb-1">Download format</label>
+            <select id="downloadImgFormatSelect" class="center-modal-select">
+              <option value="zip">ZIP (images)</option>
+              <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
+            </select>
+            <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
+          </div>
+
+          <div class="download-img-option-col download-img-option-card">
+            <label class="center-modal-label text-left block mb-1">Image column to download</label>
+            <select id="downloadImgRenameTarget" class="center-modal-select"></select>
+            <p class="center-modal-note mt-1 mb-0">Rename and Generate both use this selected photo column as source.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="downloadImgRenameFieldsSection" class="download-img-wizard-step mb-2" style="display:none;">
+        <div class="download-img-section-heading">Step 3: Rename Settings</div>
         <label class="center-modal-label text-left block mb-1">Filename fields (Rename mode)</label>
-        <p class="center-modal-note mt-1 mb-2" id="downloadImgFieldHelpText">Click one or more fields. In rename mode values are joined with underscore (_). In generate mode first is Name and rest are detail lines.</p>
+        <p class="center-modal-note mt-1 mb-2" id="downloadImgFieldHelpText">Click one or more fields. Selected values are joined with underscore (_).</p>
         <div id="downloadImgNameFieldPicker" class="download-img-field-picker"></div>
         <div id="downloadImgNameFieldSelected" class="download-img-field-selected mt-2"></div>
       </div>
 
-      <div class="download-img-preview mt-3">
-        <div class="download-img-section-heading is-preview">Filename Preview</div>
-        <div id="downloadImgRenamePreview" class="download-img-preview-value">NAME.jpg</div>
+      <div id="downloadImgWizardStep3Generate" class="download-img-wizard-step mb-2" style="display:none;">
+        <div class="download-img-section-heading is-generate">Step 3: Generate Layout</div>
+        <p class="center-modal-note mt-0 mb-2">Generate mode creates a white background photo card with fixed print sizes, centered image, and text below the photo.</p>
+
+        <div id="downloadImgGeneratePanel" class="download-img-generate-panel">
+          <div class="download-img-size-row mb-2">
+            <span class="download-img-size-label">Generated card size</span>
+            <label class="download-img-generate-checkbox-label">
+              <input type="checkbox" id="downloadImgGenerateSizeSmall" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+              23 mm x 34 mm
+            </label>
+            <label class="download-img-generate-checkbox-label">
+              <input type="checkbox" id="downloadImgGenerateSizeLarge" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+              37 mm x 53 mm
+            </label>
+          </div>
+
+          <div class="download-img-generate-field-row mb-2">
+            <label class="center-modal-label text-left block mb-1">Name field</label>
+            <select id="downloadImgGenerateNameField" class="center-modal-select"></select>
+            <p class="center-modal-note mt-1 mb-0">If auto-detected name field is not correct, select the correct column.</p>
+          </div>
+
+          <div class="download-img-size-row mb-2">
+            <span class="download-img-size-label">Second line</span>
+            <label class="download-img-generate-checkbox-label">
+              <input type="checkbox" id="downloadImgGenerateDetailClassOnly" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+              Class
+            </label>
+            <label class="download-img-generate-checkbox-label">
+              <input type="checkbox" id="downloadImgGenerateDetailClassSection" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+              Class + Section
+            </label>
+            <label class="download-img-generate-checkbox-label">
+              <input type="checkbox" id="downloadImgGenerateDetailCustomDate" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+              Custom Date
+            </label>
+          </div>
+
+          <div id="downloadImgGenerateClassWrap" class="download-img-generate-field-row mb-2">
+            <label class="center-modal-label text-left block mb-1">Class field</label>
+            <select id="downloadImgGenerateClassField" class="center-modal-select"></select>
+          </div>
+
+          <div id="downloadImgGenerateSectionWrap" class="download-img-generate-field-row mb-2" style="display:none;">
+            <label class="center-modal-label text-left block mb-1">Section field</label>
+            <select id="downloadImgGenerateSectionField" class="center-modal-select"></select>
+          </div>
+
+          <div id="downloadImgGenerateCustomDateWrap" class="download-img-generate-field-row mb-2" style="display:none;">
+            <label for="downloadImgGenerateCustomDate" class="center-modal-label text-left block mb-1">Custom Date</label>
+            <input type="text" id="downloadImgGenerateCustomDate" class="download-img-generate-input" maxlength="40" placeholder="e.g. 10-04-2026">
+          </div>
+
+          <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+            <input type="checkbox" id="downloadImgCompressToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            Compress generated image to target size
+          </label>
+          <div id="downloadImgCompressTargetWrap" class="download-img-compress-target mt-2" style="display:none;">
+            <label for="downloadImgCompressTargetKb" class="center-modal-label text-left block mb-1">Target size (KB)</label>
+            <input type="number" id="downloadImgCompressTargetKb" class="download-img-kb-input" min="10" max="200" step="1" value="40">
+            <p class="center-modal-note mt-1 mb-0">Range: 10 to 200 KB. Dimensions stay fixed; compression reduces quality only.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="downloadImgWizardStep4" class="download-img-wizard-step" style="display:none;">
+        <div class="download-img-section-heading is-preview">Step 4: Filename Preview</div>
+        <p class="center-modal-note mt-0 mb-1">Review the output naming pattern before download.</p>
+        <div class="download-img-preview mt-2">
+          <div id="downloadImgRenamePreview" class="download-img-preview-value">NAME.jpg</div>
+        </div>
+      </div>
+
+      <div class="download-img-wizard-nav">
+        <button type="button" id="downloadImgWizardBack" class="download-img-wizard-nav-btn">Back</button>
+        <span id="downloadImgWizardStepLabel" class="download-img-wizard-step-label">Step 1 of 1</span>
+        <button type="button" id="downloadImgWizardNext" class="download-img-wizard-nav-btn is-primary">Next</button>
       </div>
     </div>
 
@@ -362,6 +404,105 @@
   .download-img-mode-helper {
     font-size: 12px;
     color: #6b21a8;
+  }
+  .download-img-wizard-progress {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .download-img-wizard-chip {
+    border: 1px solid #d8b4fe;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 7px 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    transition: all 0.15s ease;
+  }
+  .download-img-wizard-chip.is-active {
+    border-color: #7c3aed;
+    background: #ede9fe;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.16);
+  }
+  .download-img-wizard-chip.is-complete {
+    border-color: #a78bfa;
+    background: #f5f3ff;
+  }
+  .download-img-wizard-chip.is-disabled {
+    opacity: 0.6;
+  }
+  .download-img-wizard-chip-index {
+    width: 19px;
+    height: 19px;
+    border-radius: 999px;
+    border: 1px solid #a78bfa;
+    color: #6d28d9;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+    background: #faf5ff;
+  }
+  .download-img-wizard-chip-label {
+    color: #5b21b6;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .download-img-wizard-step {
+    border: 1px solid #ddd6fe;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 10px;
+  }
+  .download-img-wizard-nav {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .download-img-wizard-nav-btn {
+    border: 1px solid #c4b5fd;
+    background: #ffffff;
+    color: #5b21b6;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .download-img-wizard-nav-btn:hover:not(:disabled) {
+    border-color: #8b5cf6;
+    background: #f5f3ff;
+  }
+  .download-img-wizard-nav-btn.is-primary {
+    border-color: #7c3aed;
+    background: #7c3aed;
+    color: #ffffff;
+  }
+  .download-img-wizard-nav-btn.is-primary:hover:not(:disabled) {
+    background: #6d28d9;
+    border-color: #6d28d9;
+  }
+  .download-img-wizard-nav-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .download-img-wizard-step-label {
+    font-size: 12px;
+    color: #5b21b6;
+    font-weight: 700;
+    white-space: nowrap;
   }
   .download-img-main-panel {
     border-color: #ddd6fe;
@@ -565,6 +706,17 @@
     }
     .download-img-summary {
       grid-template-columns: 1fr;
+    }
+    .download-img-wizard-progress {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .download-img-wizard-nav {
+      flex-wrap: wrap;
+    }
+    .download-img-wizard-step-label {
+      order: 3;
+      width: 100%;
+      text-align: center;
     }
     .download-img-toggle-group {
       grid-template-columns: 1fr;

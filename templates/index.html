@@ -48,10 +48,6 @@
               {% include 'partials/dashboard/recent-activity.html' %}
             </section>
 
-            <section class="dashboard-snap-panel" data-dashboard-panel="team-overview">
-              {% include 'partials/dashboard/team-overview-panel.html' %}
-            </section>
-
             {% if is_super_admin or is_admin_staff %}
             <section class="dashboard-snap-panel" data-dashboard-panel="reprint">
               {% include 'partials/dashboard/reprint-overview-card.html' %}
@@ -66,7 +62,6 @@
           <aside class="dashboard-side-column">
             <div class="dashboard-side-sticky">
               {% include 'partials/dashboard/section-tabs.html' %}
-              {% include 'partials/dashboard/team-overview.html' %}
               {% include 'partials/dashboard/quick-actions.html' %}
             </div>
           </aside>
@@ -87,7 +82,6 @@
 
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/dashboard.min.js' %}"></script>
-  <script defer src="{% static 'js/dashboard-team-overview.js' %}"></script>
   <script defer src="{% static 'js/dashboard-client-message-drawer.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
   {% include 'partials/dashboard/welcome-notification-js.html' %}

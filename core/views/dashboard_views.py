@@ -72,24 +72,6 @@ def _parse_recent_activity_window(raw_window):
     return 48
 
 
-def _format_dashboard_datetime(value):
-    """Return a compact dashboard-friendly datetime string."""
-    if not value:
-        return ''
-    try:
-        return timezone.localtime(value).strftime('%d-%m-%Y %H:%M')
-    except Exception:
-        return ''
-
-
-def _safe_public_email(value):
-    """Hide placeholder service emails from dashboard lists."""
-    email = str(value or '').strip()
-    if email.endswith('@noemail.local'):
-        return ''
-    return email
-
-
 def _get_live_active_client_ids_for_dashboard(user):
     """
     Return client IDs with recent authenticated activity.
@@ -460,47 +442,6 @@ def dashboard(request):
         'downloaded_cards': card_stats['downloaded'],
         'pool_cards': card_stats.get('pool', 0),
     }
-    # Consolidate count queries with aggregate (cached 60s)
-    client_cache_key = f'dashboard_client_stats{cache_suffix}'
-    client_stats = cache.get(client_cache_key)
-    if client_stats is None:
-        client_qs = Client.objects.all()
-        if is_scoped:
-            client_qs = client_qs.filter(id__in=accessible_ids)
-        client_stats = client_qs.aggregate(
-            total=Count('id'),
-            active=Count('id', filter=Q(status='active')),
-        )
-        cache.set(client_cache_key, client_stats, 60)
-
-    staff_cache_key = f'dashboard_staff_stats{cache_suffix}'
-    staff_stats = cache.get(staff_cache_key)
-    if staff_stats is None:
-        # Team Overview "Total/Active Staff" should represent admin staff only.
-        staff_qs = Staff.objects.filter(staff_type='admin_staff')
-        staff_stats = staff_qs.aggregate(
-            total=Count('id'),
-            active=Count('id', filter=Q(user__is_active=True)),
-        )
-        cache.set(staff_cache_key, staff_stats, 60)
-
-    cs_cache_key = f'dashboard_cs_stats{cache_suffix}'
-    cs_stats = cache.get(cs_cache_key)
-    if cs_stats is None:
-        cs_qs = Staff.objects.filter(staff_type='client_staff')
-        if is_scoped:
-            cs_qs = cs_qs.filter(client_id__in=accessible_ids)
-        cs_stats = cs_qs.aggregate(
-            total=Count('id'),
-            active=Count('id', filter=Q(user__is_active=True)),
-        )
-        cache.set(cs_cache_key, cs_stats, 60)
-
-    admin_cache_key = f'dashboard_admin_stats{cache_suffix}'
-    admin_stats = cache.get(admin_cache_key)
-    if admin_stats is None:
-        admin_stats = User.objects.filter(role='super_admin').aggregate(total=Count('id'))
-        cache.set(admin_cache_key, admin_stats, 60)
 
     recent_activities = _enrich_recent_activities_for_dashboard(
         request.user,
@@ -508,13 +449,6 @@ def dashboard(request):
     )
 
     context.update({
-        'total_clients': client_stats['total'],
-        'active_clients': client_stats['active'],
-        'total_staff': staff_stats['total'],
-        'active_staff': staff_stats['active'],
-        'client_staff_count': cs_stats['total'],
-        'active_client_staff_count': cs_stats['active'],
-        'admin_count': admin_stats.get('total', 0),
         # Default dashboard feed shows last 48 hours (max API limit entries).
         'recent_activities': recent_activities,
     })
@@ -689,185 +623,6 @@ def api_recent_client_updates(request):
         })
     except Exception as e:
         logger.exception('api_recent_client_updates error: %s', e)
-        return JsonResponse({
-            'success': False,
-            'error': 'An error occurred. Please try again.'
-        }, status=500)
-
-
-@require_http_methods(["GET"])
-@api_require_any_admin
-def api_dashboard_team_overview(request):
-    """API endpoint for dashboard-native Team Overview lists."""
-    try:
-        user = request.user
-        scope = str(request.GET.get('scope') or 'clients').strip().lower()
-        if scope not in ('clients', 'operator', 'assistent'):
-            scope = 'clients'
-
-        query = str(request.GET.get('search') or '').strip()
-        status = str(request.GET.get('status') or '').strip().lower()
-        limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
-
-        is_super_admin = PermissionService.is_super_admin(user)
-        can_manage_clients = bool(is_super_admin or PermissionService.has(user, 'perm_idcard_client_list'))
-        can_manage_staff = bool(is_super_admin)
-        can_manage_client_staff = bool(
-            is_super_admin
-            or PermissionService.has(user, 'perm_manage_client_staff')
-            or PermissionService.has(user, 'perm_idcard_client_list')
-        )
-
-        items = []
-
-        if scope == 'clients':
-            qs = PermissionService.get_accessible_clients(
-                user,
-                Client.objects.all()
-            )
-
-            if query:
-                qs = qs.filter(
-                    Q(name__icontains=query)
-                    | Q(user__email__icontains=query)
-                    | Q(user__phone__icontains=query)
-                )
-
-            if status in ('active', 'inactive', 'suspended'):
-                qs = qs.filter(status=status)
-
-            rows = qs.values(
-                'id',
-                'name',
-                'status',
-                'created_at',
-                'updated_at',
-                'user__email',
-                'user__phone',
-            ).order_by('-id')[:limit]
-
-            for row in rows:
-                items.append({
-                    'id': row['id'],
-                    'kind': 'client',
-                    'name': row.get('name') or '',
-                    'email': _safe_public_email(row.get('user__email') or ''),
-                    'mobile': row.get('user__phone') or '',
-                    'status': row.get('status') or 'inactive',
-                    'created_at': _format_dashboard_datetime(row.get('created_at')),
-                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
-                    'client_id': row['id'],
-                    'client_name': row.get('name') or '',
-                })
-
-        elif scope == 'operator':
-            qs = Staff.objects.filter(
-                staff_type='admin_staff'
-            )
-
-            if query:
-                qs = qs.filter(
-                    Q(user__first_name__icontains=query)
-                    | Q(user__last_name__icontains=query)
-                    | Q(user__email__icontains=query)
-                    | Q(user__phone__icontains=query)
-                )
-
-            if status in ('active', 'inactive'):
-                qs = qs.filter(user__is_active=(status == 'active'))
-
-            rows = qs.values(
-                'id',
-                'created_at',
-                'updated_at',
-                'user__email',
-                'user__first_name',
-                'user__last_name',
-                'user__username',
-                'user__phone',
-                'user__is_active',
-            ).order_by('-id')[:limit]
-
-            for row in rows:
-                full_name = f"{(row.get('user__first_name') or '').strip()} {(row.get('user__last_name') or '').strip()}".strip()
-                display_name = full_name or (row.get('user__username') or '') or (row.get('user__email') or '')
-                items.append({
-                    'id': row['id'],
-                    'kind': 'operator',
-                    'name': display_name,
-                    'email': _safe_public_email(row.get('user__email') or ''),
-                    'mobile': row.get('user__phone') or '',
-                    'status': 'active' if row.get('user__is_active') else 'inactive',
-                    'created_at': _format_dashboard_datetime(row.get('created_at')),
-                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
-                    'client_id': None,
-                    'client_name': '',
-                })
-
-        else:
-            qs = Staff.objects.filter(
-                staff_type='client_staff'
-            )
-
-            if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
-                accessible_ids = PermissionService.get_accessible_client_ids(user)
-                qs = qs.filter(client_id__in=accessible_ids)
-
-            if query:
-                qs = qs.filter(
-                    Q(user__first_name__icontains=query)
-                    | Q(user__last_name__icontains=query)
-                    | Q(user__email__icontains=query)
-                    | Q(user__phone__icontains=query)
-                    | Q(client__name__icontains=query)
-                )
-
-            if status in ('active', 'inactive'):
-                qs = qs.filter(user__is_active=(status == 'active'))
-
-            rows = qs.values(
-                'id',
-                'created_at',
-                'updated_at',
-                'client_id',
-                'client__name',
-                'user__email',
-                'user__first_name',
-                'user__last_name',
-                'user__username',
-                'user__phone',
-                'user__is_active',
-            ).order_by('-id')[:limit]
-
-            for row in rows:
-                full_name = f"{(row.get('user__first_name') or '').strip()} {(row.get('user__last_name') or '').strip()}".strip()
-                display_name = full_name or (row.get('user__username') or '') or (row.get('user__email') or '')
-                items.append({
-                    'id': row['id'],
-                    'kind': 'assistant',
-                    'name': display_name,
-                    'email': _safe_public_email(row.get('user__email') or ''),
-                    'mobile': row.get('user__phone') or '',
-                    'status': 'active' if row.get('user__is_active') else 'inactive',
-                    'created_at': _format_dashboard_datetime(row.get('created_at')),
-                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
-                    'client_id': row.get('client_id'),
-                    'client_name': row.get('client__name') or '',
-                })
-
-        return JsonResponse({
-            'success': True,
-            'scope': scope,
-            'items': items,
-            'count': len(items),
-            'capabilities': {
-                'can_manage_clients': can_manage_clients,
-                'can_manage_staff': can_manage_staff,
-                'can_manage_client_staff': can_manage_client_staff,
-            },
-        })
-    except Exception as e:
-        logger.exception('api_dashboard_team_overview error: %s', e)
         return JsonResponse({
             'success': False,
             'error': 'An error occurred. Please try again.'

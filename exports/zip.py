@@ -95,9 +95,9 @@ class ZipExporter:
     RENAMEABLE_IMAGE_KEYS = {'PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'}
 
     GENERATED_DPI = 300
-    GENERATED_FONT_DPI = 96
     PT_PER_MM = 72.0 / 25.4
     PX_PER_MM = GENERATED_DPI / 25.4
+    PHOTO_BORDER_PT = 0.75
     GENERATED_SIZE_PRESETS = {
         'size_23x34': {
             'canvas_mm': (23.0, 34.0),
@@ -1022,7 +1022,8 @@ class ZipExporter:
             pt_value = float(pt_value)
         except (TypeError, ValueError):
             pt_value = 0.0
-        return max(1, int(round(pt_value * self.GENERATED_FONT_DPI / 72.0)))
+        # Use output DPI so point sizes match print tools like CorelDRAW.
+        return max(1, int(round(pt_value * self.GENERATED_DPI / 72.0)))
 
     def _resolve_generate_layout(self, generate_options: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         opts = generate_options if isinstance(generate_options, dict) else {}
@@ -1060,6 +1061,7 @@ class ZipExporter:
             'padding_px': padding_px,
             'gap_below_photo_px': gap_below_photo_px,
             'line_gap_px': line_gap_px,
+            'photo_border_px': max(1, self._pt_to_px(self.PHOTO_BORDER_PT)),
             'name_font_px': self._pt_to_px(preset['name_font_pt']),
             'detail_font_px': self._pt_to_px(preset['detail_font_pt']),
         }
@@ -1126,7 +1128,8 @@ class ZipExporter:
         text_height = self._text_height(draw, clean_text, font)
         text_width = self._text_width(draw, clean_text, font)
         if text_width <= float(max_width):
-            draw.text((x, y), clean_text, fill=self.GENERATED_TEXT_COLOR, font=font)
+            draw_x = int(round(x + max(0.0, (float(max_width) - float(text_width)) / 2.0)))
+            draw.text((draw_x, y), clean_text, fill=self.GENERATED_TEXT_COLOR, font=font)
             return text_height
 
         target_width = max(1, int(max_width))
@@ -1139,7 +1142,8 @@ class ZipExporter:
 
         resample = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
         squeezed = text_layer.resize((target_width, source_height), resample=resample)
-        canvas.paste(squeezed, (int(x), int(y)), squeezed)
+        draw_x = int(round(x + max(0.0, (float(max_width) - float(target_width)) / 2.0)))
+        canvas.paste(squeezed, (draw_x, int(y)), squeezed)
         return text_height
 
     def _resolve_name_font_for_generate(
@@ -1190,6 +1194,7 @@ class ZipExporter:
                 padding_px = layout['padding_px']
                 gap_below_photo_px = layout['gap_below_photo_px']
                 line_gap_px = layout['line_gap_px']
+                photo_border_px = max(1, int(layout.get('photo_border_px', 1)))
 
                 canvas = Image.new('RGB', (canvas_width, canvas_height), (255, 255, 255))
                 resample_filter = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
@@ -1197,8 +1202,20 @@ class ZipExporter:
                 canvas.paste(fitted, (photo_x, photo_y))
 
                 draw = ImageDraw.Draw(canvas)
-                text_left = padding_px
-                text_right = canvas_width - padding_px
+                # Draw border around only the photo area (not around white canvas).
+                draw.rectangle(
+                    [
+                        photo_x,
+                        photo_y,
+                        photo_x + max(0, photo_width - 1),
+                        photo_y + max(0, photo_height - 1),
+                    ],
+                    outline=self.GENERATED_TEXT_COLOR,
+                    width=photo_border_px,
+                )
+
+                text_left = photo_x
+                text_right = photo_x + photo_width
                 max_text_width = max(40, text_right - text_left)
 
                 name_field = str(generate_options.get('name_field') or '').strip()
@@ -1251,7 +1268,9 @@ class ZipExporter:
                         cursor_y += line_gap_draw_px
 
                 if detail_text:
-                    draw.text((text_left, cursor_y), detail_text, fill=self.GENERATED_TEXT_COLOR, font=detail_font)
+                    detail_width = self._text_width(draw, detail_text, detail_font)
+                    detail_x = int(round(text_left + max(0.0, (float(max_text_width) - float(detail_width)) / 2.0)))
+                    draw.text((detail_x, cursor_y), detail_text, fill=self.GENERATED_TEXT_COLOR, font=detail_font)
 
                 compress_enabled = generate_options.get('compress_enabled') is True
                 target_size_kb = int(generate_options.get('target_size_kb', 40) or 40)

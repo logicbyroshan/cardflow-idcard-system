@@ -311,9 +311,9 @@ def process_export_pdf(task):
     template_id = metadata.get('template_id')
     font_mode = metadata.get('font_mode', 'auto') or 'auto'
     shorten_titles = bool(metadata.get('shorten_titles', False))
-    break_mode = str(metadata.get('break_mode') or 'class_only').strip().lower()
+    break_mode = str(metadata.get('break_mode') or 'class_section').strip().lower()
     if break_mode not in ('class_only', 'class_section'):
-        break_mode = 'class_only'
+        break_mode = 'class_section'
 
     _last_pdf_progress = 0
     _pdf_emit_step = max(1, total_cards // 40)

@@ -1422,6 +1422,44 @@ class PdfPaginationGroupingTests(SimpleTestCase):
             [['row1', 'row2', 'row3']],
         )
 
+    def test_group_rows_breaks_with_case_variant_field_keys(self):
+        from exports.pdf import PdfExporter
+
+        exporter = PdfExporter()
+        rows = [
+            [{'content': 'row1'}],
+            [{'content': 'row2'}],
+        ]
+        cards = [
+            type('Card', (), {'field_data': {'CLASS': 'IV', 'SECTION': 'D'}})(),
+            type('Card', (), {'field_data': {'CLASS': 'IV', 'SECTION': 'E'}})(),
+        ]
+
+        pages = exporter._group_rows_into_pages(
+            rows=rows,
+            cards_list=cards,
+            class_field_name='Class',
+            section_field_name='Section',
+            records_per_page=6,
+        )
+
+        self.assertEqual(
+            [[row[0]['content'] for row in page] for page in pages],
+            [['row1'], ['row2']],
+        )
+
+
+class ExportFieldDetectionTests(SimpleTestCase):
+    def test_get_section_field_name_prefers_section_type(self):
+        from exports.utils import get_section_field_name
+
+        table_fields = [
+            {'name': 'Class', 'type': 'class'},
+            {'name': 'Division', 'type': 'section'},
+        ]
+
+        self.assertEqual(get_section_field_name(table_fields), 'Division')
+
 
 class WordLayoutTuningTests(SimpleTestCase):
     def test_dense_width_allocator_keeps_table_inside_page(self):

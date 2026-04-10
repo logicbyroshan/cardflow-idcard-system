@@ -41,9 +41,6 @@ urlpatterns = [
     # Recent Client Updates API
     path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),
 
-    # Dashboard Team Overview API
-    path('api/dashboard/team-overview/', views.api_dashboard_team_overview, name='api_dashboard_team_overview'),
-    
     # Print & Reprint Overview API (dashboard)
     path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
     

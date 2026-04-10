@@ -297,7 +297,7 @@ class PdfExporter:
         template_id: int = None,
         font_mode: str = 'auto',
         shorten_titles: bool = False,
-        break_mode: str = 'class_only',
+        break_mode: str = 'class_section',
         progress_callback=None,
     ) -> PdfExportResult:
         """
@@ -459,9 +459,9 @@ class PdfExporter:
 
             # Group rows into pages (fixed 6 rows per page, class-break aware)
             class_field_name = get_class_field_name(table.fields)
-            resolved_break_mode = str(break_mode or 'class_only').strip().lower()
+            resolved_break_mode = str(break_mode or 'class_section').strip().lower()
             if resolved_break_mode not in ('class_only', 'class_section'):
-                resolved_break_mode = 'class_only'
+                resolved_break_mode = 'class_section'
             section_field_name = (
                 get_section_field_name(table.fields)
                 if resolved_break_mode == 'class_section'
@@ -985,6 +985,31 @@ class PdfExporter:
 
         return rows
 
+    @staticmethod
+    def _get_card_field_value(field_data: Dict[str, Any], field_name: Optional[str]) -> str:
+        """
+        Read a card field value using exact key first, then normalized-key fallback.
+
+        This guards against case/spacing variations such as "SECTION" vs "Section".
+        """
+        if not field_name or not isinstance(field_data, dict):
+            return ''
+
+        direct = field_data.get(field_name)
+        if direct not in (None, ''):
+            return str(direct).strip()
+
+        target_key = ''.join(ch for ch in str(field_name).upper() if ch.isalnum())
+        if not target_key:
+            return ''
+
+        for key, value in field_data.items():
+            normalized_key = ''.join(ch for ch in str(key).upper() if ch.isalnum())
+            if normalized_key == target_key and value not in (None, ''):
+                return str(value).strip()
+
+        return ''
+
 
     def _group_rows_into_pages(
         self,
@@ -1022,11 +1047,11 @@ class PdfExporter:
             card = cards_list[idx]
             fd = card.field_data or {}
             cur_class_val = (
-                str(fd.get(class_field_name, '') or '').strip().upper()
+                self._get_card_field_value(fd, class_field_name).upper()
                 if class_field_name else None
             )
             cur_section_val = (
-                str(fd.get(section_field_name, '') or '').strip().upper()
+                self._get_card_field_value(fd, section_field_name).upper()
                 if section_field_name else None
             )
             cur_group_key = (cur_class_val, cur_section_val)

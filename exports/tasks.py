@@ -95,7 +95,7 @@ class BackgroundExportManager:
         template_id: int = None,
         font_mode: str = 'auto',
         shorten_titles: bool = False,
-        break_mode: str = 'class_only',
+        break_mode: str = 'class_section',
     ) -> str:
         """
         Enqueue a PDF export and return a task_id string.
@@ -114,7 +114,7 @@ class BackgroundExportManager:
             'template_id': template_id,
             'font_mode': font_mode or 'auto',
             'shorten_titles': bool(shorten_titles),
-            'break_mode': 'class_section' if str(break_mode or '').strip().lower() == 'class_section' else 'class_only',
+            'break_mode': 'class_only' if str(break_mode or '').strip().lower() == 'class_only' else 'class_section',
         }
 
         task, error = BackgroundTask.create_if_no_active(

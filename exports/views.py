@@ -881,7 +881,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
-    break_mode = 'class_only'
+    break_mode = 'class_section'
     if _is_json_request(request):
         data = _get_json_body(request) or {}
         tpl_val = data.get('template_id', '')
@@ -973,7 +973,7 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
-    break_mode = 'class_only'
+    break_mode = 'class_section'
     if _is_json_request(request):
         data = _get_json_body(request) or {}
         tpl_val = data.get('template_id', '')

@@ -922,7 +922,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
     templateId = templateId || '';
     fontMode = fontMode || 'auto';
     shortenTitles = !!shortenTitles;
-    breakMode = (breakMode === 'class_section') ? 'class_section' : 'class_only';
+    breakMode = (breakMode === 'class_only') ? 'class_only' : 'class_section';
     
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
@@ -1000,7 +1000,7 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
         template_id: templateId || '',
         font_mode: fontMode || 'auto',
         shorten_titles: !!shortenTitles,
-        break_mode: (breakMode === 'class_section') ? 'class_section' : 'class_only'
+        break_mode: (breakMode === 'class_only') ? 'class_only' : 'class_section'
     }, _getActiveFilters());
 
     // Start async export
@@ -1226,7 +1226,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
         if (typeof showToast === 'function') showToast('PDF download timed out. Try selecting fewer cards.', false);
     };
     
-    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto', shorten_titles: !!shortenTitles, break_mode: (breakMode === 'class_section') ? 'class_section' : 'class_only' }, _getActiveFilters())));
+    xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto', shorten_titles: !!shortenTitles, break_mode: (breakMode === 'class_only') ? 'class_only' : 'class_section' }, _getActiveFilters())));
 }
 
 /**

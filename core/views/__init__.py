@@ -12,7 +12,6 @@ from .base import (
     api_global_search,
     api_dashboard_card_stats,
     api_recent_client_updates,
-    api_dashboard_team_overview,
     api_print_reprint_overview,
     api_recent_activity,
     api_health,
