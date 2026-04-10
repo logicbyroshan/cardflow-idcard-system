@@ -1201,6 +1201,14 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertNotIn('class="mobile-chip-label">A</span>', html)
 		self.assertNotIn('class="mobile-chip-label">D</span>', html)
 
+	def test_clients_list_form_includes_download_image_mode_permissions(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'clients_list.html'
+		html = template_path.read_text(encoding='utf-8')
+		self.assertIn('perm_idcard_download_image_rename_mode', html)
+		self.assertIn('perm_idcard_download_image_generate_mode', html)
+		self.assertIn('Download Images: Rename Mode', html)
+		self.assertIn('Download Images: Generate Mode', html)
+
 	def test_website_upload_requires_website_edit_permission(self):
 		self._login_mobile_client()
 		response = self.client.post('/app/api/website/portfolio/upload/', data={})
@@ -1475,6 +1483,44 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertTrue(response.json().get('success'))
 		self.assertEqual(response.json().get('client', {}).get('id'), self.client_profile.id)
 		mock_get.assert_called_once_with(self.client_profile.id, include_permissions=True)
+
+	@mock.patch('mobile_app.views.ClientService.get')
+	def test_api_client_detail_for_admin_staff_manager_returns_service_payload(self, mock_get):
+		from core.services.base import ServiceResult
+
+		mock_get.return_value = ServiceResult(
+			success=True,
+			message='ok',
+			data={'client': {'id': self.client_profile.id, 'name': self.client_profile.name}},
+		)
+
+		self._login_mobile_admin_staff_manager()
+		response = self.client.get(f'/app/api/client/{self.client_profile.id}/')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		self.assertEqual(response.json().get('client', {}).get('id'), self.client_profile.id)
+		mock_get.assert_called_once_with(self.client_profile.id, include_permissions=True)
+
+	@mock.patch('mobile_app.views.ClientService.get')
+	def test_api_client_detail_for_admin_staff_manager_denies_out_of_scope_client(self, mock_get):
+		other_user = User.objects.create_user(
+			username='mob-out-scope-client@test.com',
+			email='mob-out-scope-client@test.com',
+			password='pass1234',
+			role='client',
+		)
+		other_client = Client.objects.create(
+			user=other_user,
+			name='Out Scope Client',
+			status='active',
+			perm_mobile_app=True,
+		)
+
+		self._login_mobile_admin_staff_manager()
+		response = self.client.get(f'/app/api/client/{other_client.id}/')
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json().get('success'))
+		mock_get.assert_not_called()
 
 	@mock.patch('mobile_app.views.ClientService.update')
 	def test_api_client_update_for_super_admin_returns_service_payload(self, mock_update):

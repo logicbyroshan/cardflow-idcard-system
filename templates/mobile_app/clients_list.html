@@ -365,6 +365,7 @@ const CLIENT_PERMISSION_KEYS = [
     'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
     'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
     'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+    'perm_idcard_download_image_rename_mode', 'perm_idcard_download_image_generate_mode',
     'perm_mobile_app', 'perm_set_temp_password',
 ];
 
@@ -442,6 +443,8 @@ function clientsApp() {
                 items: [
                     { key: 'perm_idcard_bulk_upload', label: 'Bulk Upload (XLSX / ZIP)' },
                     { key: 'perm_idcard_bulk_download', label: 'Bulk Download (PDF)' },
+                    { key: 'perm_idcard_download_image_rename_mode', label: 'Download Images: Rename Mode' },
+                    { key: 'perm_idcard_download_image_generate_mode', label: 'Download Images: Generate Mode' },
                 ],
             },
             {

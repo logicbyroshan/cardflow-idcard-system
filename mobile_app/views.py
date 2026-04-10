@@ -3791,9 +3791,13 @@ def api_client_tables(request, client_id):
 @require_mobile_client
 @require_http_methods(['GET'])
 def api_client_detail(request, client_id):
-    """Fetch client details for edit form (super_admin only)."""
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can edit clients'}, status=403)
+    """Fetch client details for edit form (super_admin/pro_user or scoped admin_staff manager)."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+    if PermissionService.is_admin_staff(request.user) and not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
     result = ClientService.get(client_id, include_permissions=True)
     if not result.success:
