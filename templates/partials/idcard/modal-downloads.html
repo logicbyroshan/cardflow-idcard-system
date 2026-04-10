@@ -52,7 +52,7 @@
 </div>
 
 <!-- Download XLSX Modal -->
-<div id="downloadXlsxModal" class="center-modal-overlay center-modal-theme-green" style="display:none;">
+<div id="downloadXlsxModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -64,6 +64,13 @@
     <p class="center-modal-subtitle">List: <strong id="downloadXlsxListName"></strong></p>
     <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadXlsxCardCount">0</strong></p>
     <p class="center-modal-note mt-0">Export all card data to an Excel spreadsheet.</p>
+    <div class="download-xlsx-option-card">
+      <label class="download-xlsx-option-label" for="downloadXlsxIncludeImages">
+        <input type="checkbox" id="downloadXlsxIncludeImages" class="download-xlsx-option-checkbox">
+        <span>Also download images ZIP</span>
+      </label>
+      <p class="download-xlsx-option-note">Use this when you want XLSX and image ZIP in one action.</p>
+    </div>
     <div id="downloadXlsxProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">
         <div id="downloadXlsxBar" class="center-modal-progress-bar"></div>
@@ -80,7 +87,7 @@
 </div>
 
 <!-- Download Word Modal -->
-<div id="downloadDocxModal" class="center-modal-overlay center-modal-theme-blue" style="display:none;">
+<div id="downloadDocxModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -112,7 +119,7 @@
 </div>
 
 <!-- Download Images Modal -->
-<div id="downloadImgModal" class="center-modal-overlay center-modal-theme-amber" style="display:none;">
+<div id="downloadImgModal" class="center-modal-overlay center-modal-theme-purple" style="display:none;">
   <div class="center-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
@@ -121,43 +128,123 @@
     </div>
     <!-- Body -->
     <div class="center-modal-body-area">
-    <p class="center-modal-subtitle">List: <strong id="downloadImgListName"></strong></p>
-    <p class="center-modal-subtitle mb-4">Cards: <strong id="downloadImgCardCount">0</strong></p>
-    <p class="center-modal-note mt-0">Download all images as a ZIP file.</p>
-
-    <div class="mt-3 mb-2 text-left">
-      <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-        <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-amber-600 cursor-pointer">
-        Rename image files by selected name fields
-      </label>
-      <p class="center-modal-note mt-1 mb-0">Optional: choose one photo column and build filenames from selected fields.</p>
+    <div class="download-img-summary">
+      <div class="download-img-summary-item">
+        <span class="download-img-summary-label">List</span>
+        <strong id="downloadImgListName"></strong>
+      </div>
+      <div class="download-img-summary-item">
+        <span class="download-img-summary-label">Cards</span>
+        <strong id="downloadImgCardCount">0</strong>
+      </div>
     </div>
+    <p class="center-modal-note mt-0 download-img-intro-note">Download images as ZIP or PDF ZIP. Pick a mode, then configure options below.</p>
 
-    <div id="downloadImgRenamePanel" class="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50" style="display:none;">
-      <div class="mb-3">
-        <label class="center-modal-label text-left block mb-1">Download format</label>
-        <select id="downloadImgFormatSelect" class="center-modal-select">
-          <option value="zip">ZIP (images)</option>
-          <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
-        </select>
-        <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
+    <div class="mt-3 mb-2 text-left download-img-toggle-group">
+      <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
+        <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        Rename Image By Fields
+      </label>
+      <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
+        <input type="checkbox" id="downloadImgGenerateByFieldToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+        Generate Image by Field Name
+      </label>
+    </div>
+    <p class="download-img-mode-helper mt-1 mb-0">Choose one mode and select one photo column plus field values below.</p>
+
+    <div id="downloadImgRenamePanel" class="download-img-main-panel mt-2 p-3 rounded-lg border border-purple-200 bg-purple-50" style="display:none;">
+      <div class="download-img-section-heading">Step 1: Base Export Settings</div>
+      <div class="download-img-option-row mb-3">
+        <div class="download-img-option-col download-img-option-card">
+          <label class="center-modal-label text-left block mb-1">Download format</label>
+          <select id="downloadImgFormatSelect" class="center-modal-select">
+            <option value="zip">ZIP (images)</option>
+            <option value="pdf_zip">ZIP (PDF per selected photo column)</option>
+          </select>
+          <p class="center-modal-note mt-1 mb-0">PDF mode creates one PDF per selected column. Each page contains one photo.</p>
+        </div>
+
+        <div class="download-img-option-col download-img-option-card">
+          <label class="center-modal-label text-left block mb-1">Image column to download</label>
+          <select id="downloadImgRenameTarget" class="center-modal-select"></select>
+          <p class="center-modal-note mt-1 mb-0">When rename is enabled, only this selected photo column is downloaded.</p>
+        </div>
       </div>
 
-      <div class="mb-3">
-        <label class="center-modal-label text-left block mb-1">Image column to download</label>
-        <select id="downloadImgRenameTarget" class="center-modal-select"></select>
-        <p class="center-modal-note mt-1 mb-0">When rename is enabled, only this selected photo column is downloaded.</p>
+      <div id="downloadImgGeneratePanel" class="download-img-generate-panel mb-3" style="display:none;">
+        <div class="download-img-section-heading is-generate">Step 2: Generate Layout</div>
+        <p class="center-modal-note mt-0 mb-2">Generate mode creates a white background photo card with fixed print sizes, centered image, and text below the photo.</p>
+
+        <div class="download-img-size-row mb-2">
+          <span class="download-img-size-label">Generated card size</span>
+          <label class="download-img-generate-checkbox-label">
+            <input type="checkbox" id="downloadImgGenerateSizeSmall" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            23 mm x 34 mm
+          </label>
+          <label class="download-img-generate-checkbox-label">
+            <input type="checkbox" id="downloadImgGenerateSizeLarge" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            37 mm x 53 mm
+          </label>
+        </div>
+
+        <div class="download-img-generate-field-row mb-2">
+          <label class="center-modal-label text-left block mb-1">Name field</label>
+          <select id="downloadImgGenerateNameField" class="center-modal-select"></select>
+          <p class="center-modal-note mt-1 mb-0">If auto-detected name field is not correct, select the correct column.</p>
+        </div>
+
+        <div class="download-img-size-row mb-2">
+          <span class="download-img-size-label">Second line</span>
+          <label class="download-img-generate-checkbox-label">
+            <input type="checkbox" id="downloadImgGenerateDetailClassOnly" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            Class
+          </label>
+          <label class="download-img-generate-checkbox-label">
+            <input type="checkbox" id="downloadImgGenerateDetailClassSection" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            Class + "Section"
+          </label>
+          <label class="download-img-generate-checkbox-label">
+            <input type="checkbox" id="downloadImgGenerateDetailCustomDate" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+            Custom Date
+          </label>
+        </div>
+
+        <div id="downloadImgGenerateClassWrap" class="download-img-generate-field-row mb-2">
+          <label class="center-modal-label text-left block mb-1">Class field</label>
+          <select id="downloadImgGenerateClassField" class="center-modal-select"></select>
+        </div>
+
+        <div id="downloadImgGenerateSectionWrap" class="download-img-generate-field-row mb-2" style="display:none;">
+          <label class="center-modal-label text-left block mb-1">Section field</label>
+          <select id="downloadImgGenerateSectionField" class="center-modal-select"></select>
+        </div>
+
+        <div id="downloadImgGenerateCustomDateWrap" class="download-img-generate-field-row mb-2" style="display:none;">
+          <label for="downloadImgGenerateCustomDate" class="center-modal-label text-left block mb-1">Custom Date</label>
+          <input type="text" id="downloadImgGenerateCustomDate" class="download-img-generate-input" maxlength="40" placeholder="e.g. 10-04-2026">
+        </div>
+
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+          <input type="checkbox" id="downloadImgCompressToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
+          Compress generated image to target size
+        </label>
+        <div id="downloadImgCompressTargetWrap" class="download-img-compress-target mt-2" style="display:none;">
+          <label for="downloadImgCompressTargetKb" class="center-modal-label text-left block mb-1">Target size (KB)</label>
+          <input type="number" id="downloadImgCompressTargetKb" class="download-img-kb-input" min="10" max="200" step="1" value="40">
+          <p class="center-modal-note mt-1 mb-0">Range: 10 to 200 KB. Dimensions stay fixed; compression reduces quality only.</p>
+        </div>
       </div>
 
-      <div class="mb-2">
-        <label class="center-modal-label text-left block mb-1">Filename fields</label>
-        <p class="center-modal-note mt-1 mb-2">Click one or more fields. Selected values are joined with underscore (_).</p>
+      <div id="downloadImgRenameFieldsSection" class="mb-2">
+        <div class="download-img-section-heading">Step 2: Rename Settings</div>
+        <label class="center-modal-label text-left block mb-1">Filename fields (Rename mode)</label>
+        <p class="center-modal-note mt-1 mb-2" id="downloadImgFieldHelpText">Click one or more fields. In rename mode values are joined with underscore (_). In generate mode first is Name and rest are detail lines.</p>
         <div id="downloadImgNameFieldPicker" class="download-img-field-picker"></div>
         <div id="downloadImgNameFieldSelected" class="download-img-field-selected mt-2"></div>
       </div>
 
       <div class="download-img-preview mt-3">
-        <label class="center-modal-label text-left block mb-1">Filename preview</label>
+        <div class="download-img-section-heading is-preview">Filename Preview</div>
         <div id="downloadImgRenamePreview" class="download-img-preview-value">NAME.jpg</div>
       </div>
     </div>
@@ -178,6 +265,209 @@
 </div>
 
 <style>
+  .download-xlsx-option-card {
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+    padding: 10px 12px;
+    margin: 10px 0 12px;
+  }
+  .download-xlsx-option-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #4c1d95;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+  .download-xlsx-option-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #7c3aed;
+    cursor: pointer;
+  }
+  .download-xlsx-option-note {
+    margin: 6px 0 0;
+    font-size: 11px;
+    line-height: 1.35;
+    color: #6b21a8;
+  }
+  .download-img-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .download-img-summary-item {
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .download-img-summary-label {
+    font-size: 11px;
+    line-height: 1;
+    color: #6d28d9;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+  }
+  .download-img-summary-item strong {
+    font-size: 14px;
+    line-height: 1.25;
+    color: #3b0764;
+    font-weight: 700;
+  }
+  .download-img-intro-note {
+    color: #5b21b6;
+    margin-bottom: 0;
+  }
+  .download-img-toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+  .download-img-toggle-label {
+    min-height: 40px;
+  }
+  .download-img-mode-pill {
+    border: 1px solid #d8b4fe;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 8px 10px;
+    color: #4c1d95;
+    font-weight: 600;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .download-img-mode-pill:hover {
+    border-color: #a78bfa;
+    background: #faf5ff;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.08);
+  }
+  .download-img-mode-helper {
+    font-size: 12px;
+    color: #6b21a8;
+  }
+  .download-img-main-panel {
+    border-color: #ddd6fe;
+    background: linear-gradient(180deg, #faf5ff 0%, #f5f3ff 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  .download-img-section-heading {
+    margin: 0 0 10px;
+    font-size: 11px;
+    line-height: 1;
+    color: #6d28d9;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+  .download-img-section-heading.is-generate {
+    margin-bottom: 8px;
+  }
+  .download-img-section-heading.is-preview {
+    margin-bottom: 8px;
+  }
+  .download-img-option-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .download-img-option-card {
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 10px;
+  }
+  .download-img-option-card .center-modal-note {
+    font-size: 11px;
+    color: #6b21a8;
+  }
+  .download-img-generate-panel {
+    border: 1px dashed #a78bfa;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fdf4ff 0%, #faf5ff 100%);
+    padding: 12px;
+  }
+  .download-img-size-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 8px 10px;
+  }
+  .download-img-size-label {
+    font-size: 11px;
+    color: #6d28d9;
+    min-width: 130px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .download-img-generate-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #5b21b6;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    padding: 2px 0;
+  }
+  .download-img-generate-field-row {
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 9px 10px;
+  }
+  .download-img-generate-field-row .center-modal-select {
+    margin-bottom: 0;
+  }
+  .download-img-generate-input {
+    width: 100%;
+    border: 1px solid #c4b5fd;
+    border-radius: 8px;
+    background: #fff;
+    color: #5b21b6;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  .download-img-generate-input:focus {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
+  }
+  .download-img-compress-target {
+    max-width: 260px;
+  }
+  .download-img-kb-input {
+    width: 100%;
+    border: 1px solid #c4b5fd;
+    border-radius: 8px;
+    background: #fff;
+    color: #5b21b6;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  .download-img-kb-input:focus {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
+  }
+  .download-img-option-col .center-modal-select {
+    margin-bottom: 0;
+  }
   .download-img-field-picker {
     display: flex;
     flex-wrap: wrap;
@@ -185,14 +475,14 @@
     max-height: 180px;
     overflow-y: auto;
     padding: 8px;
-    border: 1px solid #f59e0b;
+    border: 1px solid #8b5cf6;
     border-radius: 10px;
-    background: #fff7ed;
+    background: #ffffff;
   }
   .download-img-field-chip {
-    border: 1px solid #fbbf24;
+    border: 1px solid #c4b5fd;
     background: #ffffff;
-    color: #92400e;
+    color: #5b21b6;
     border-radius: 999px;
     padding: 5px 10px;
     font-size: 12px;
@@ -202,28 +492,29 @@
     user-select: none;
   }
   .download-img-field-chip:hover {
-    border-color: #f59e0b;
-    background: #fffbeb;
+    border-color: #8b5cf6;
+    background: #ede9fe;
   }
   .download-img-field-chip.is-active {
-    border-color: #d97706;
-    background: #f59e0b;
+    border-color: #7c3aed;
+    background: #8b5cf6;
     color: #ffffff;
-    box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.25);
   }
   .download-img-field-selected {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     min-height: 24px;
+    padding-top: 2px;
   }
   .download-img-selected-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #ffedd5;
-    color: #9a3412;
-    border: 1px solid #fdba74;
+    background: #ede9fe;
+    color: #5b21b6;
+    border: 1px solid #c4b5fd;
     border-radius: 999px;
     padding: 4px 10px;
     font-size: 12px;
@@ -243,16 +534,38 @@
     color: #9ca3af;
   }
   .download-img-preview {
-    border: 1px dashed #f59e0b;
+    border: 1px solid #c4b5fd;
     border-radius: 10px;
-    background: #ffffff;
+    background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
     padding: 10px;
   }
   .download-img-preview-value {
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 8px 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     font-size: 12px;
-    color: #78350f;
+    color: #5b21b6;
     word-break: break-word;
+  }
+  @media (max-width: 768px) {
+    .download-xlsx-option-card {
+      padding: 10px;
+      margin-top: 8px;
+    }
+    .download-img-summary {
+      grid-template-columns: 1fr;
+    }
+    .download-img-toggle-group {
+      grid-template-columns: 1fr;
+    }
+    .download-img-option-row {
+      grid-template-columns: 1fr;
+    }
+    .download-img-size-label {
+      min-width: 100%;
+    }
   }
   #reprintPickerModal .reprint-picker-card {
     width: 90vw;

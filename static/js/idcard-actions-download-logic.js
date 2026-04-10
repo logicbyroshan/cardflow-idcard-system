@@ -772,7 +772,9 @@ function downloadDocx(cardIds, format, templateId) {
 // Uses DownloadManager for blob-based response
 // ==========================================
 
-function downloadXlsx(cardIds) {
+function downloadXlsx(cardIds, options) {
+    options = options || {};
+    const includeImagesZip = !!options.includeImagesZip;
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -790,7 +792,7 @@ function downloadXlsx(cardIds) {
             cancelLabel: 'Excel export',
             fallbackFilename: 'export.xlsx',
             onComplete: function() {
-                if (_getCurrentStatus() === 'approved') {
+                if (includeImagesZip) {
                     downloadImages(cardIds);
                 }
                 _moveCardsToDownloadIfApproved(cardIds);
@@ -815,8 +817,7 @@ function downloadXlsx(cardIds) {
             fallbackExt: 'xlsx',
             completeMessage: 'Excel file downloaded successfully!',
             onComplete: function() {
-                // From Approved: also trigger separate ZIP photo download, then move to Download list
-                if (_getCurrentStatus() === 'approved') {
+                if (includeImagesZip) {
                     downloadImages(cardIds);
                 }
                 _moveCardsToDownloadIfApproved(cardIds);
@@ -863,8 +864,7 @@ function downloadXlsx(cardIds) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Excel file downloaded successfully!');
-            // From Approved: also trigger separate ZIP photo download, then move to Download list
-            if (_getCurrentStatus() === 'approved') {
+            if (includeImagesZip) {
                 downloadImages(cardIds);
             }
             _moveCardsToDownloadIfApproved(cardIds);

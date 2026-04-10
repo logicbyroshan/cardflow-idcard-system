@@ -431,6 +431,52 @@ class ExportViewHelperTests(TestCase):
         self.assertEqual(opts['selected_image_field'], 'photo')
         self.assertEqual(opts['image_name_fields'], {'PHOTO': ['Student Name']})
 
+    def test_get_image_rename_options_supports_generate_mode_and_compression(self):
+        from exports.views import _get_image_rename_options_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'rename_options': {
+                    'enabled': True,
+                    'mode': 'generate',
+                    'output_format': 'pdf_zip',
+                    'selected_image_field': ' photo ',
+                    'image_name_fields': {
+                        'photo': [' Student Name ', ' Class ', 'Section'],
+                    },
+                    'generate_options': {
+                        'enabled': True,
+                        'name_field': ' Student Name ',
+                        'detail_fields': ['Class', 'Section', 'Class', ''],
+                        'max_detail_lines': 9,
+                        'compress_enabled': True,
+                        'target_size_kb': 999,
+                    },
+                }
+            }),
+            content_type='application/json',
+        )
+
+        opts = _get_image_rename_options_from_request(request)
+        self.assertTrue(opts['enabled'])
+        self.assertEqual(opts['mode'], 'generate')
+        self.assertEqual(opts['output_format'], 'pdf_zip')
+        self.assertEqual(opts['selected_image_field'], 'photo')
+        self.assertEqual(opts['image_name_fields'], {'PHOTO': ['Student Name', 'Class', 'Section']})
+
+        gen_opts = opts.get('generate_options') or {}
+        self.assertTrue(gen_opts.get('enabled'))
+        self.assertEqual(gen_opts.get('name_field'), 'Student Name')
+        self.assertEqual(gen_opts.get('detail_fields'), ['Class', 'Section'])
+        self.assertEqual(gen_opts.get('max_detail_lines'), 1)
+        self.assertEqual(gen_opts.get('detail_mode'), 'class_section')
+        self.assertEqual(gen_opts.get('class_field'), 'Class')
+        self.assertEqual(gen_opts.get('section_field'), 'Section')
+        self.assertEqual(gen_opts.get('size_preset'), 'size_23x34')
+        self.assertTrue(gen_opts.get('compress_enabled'))
+        self.assertEqual(gen_opts.get('target_size_kb'), 200)
+
     def test_lock_acquire_and_release(self):
         from exports.views import _acquire_export_lock, _release_export_lock
 
@@ -1096,6 +1142,153 @@ class ExportDeepLimitAndRoleTests(TestCase):
 
         self.assertTrue(any(name.startswith('PHOTO/') for name in names), names)
         self.assertFalse(any(name.startswith('PHOTO_2/') for name in names), names)
+
+    def test_zip_export_generate_mode_builds_compressed_passport_images(self):
+        from exports.zip import ZipExporter
+        from PIL import Image
+        import base64
+        import io
+        import zipfile
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'text', 'order': 2},
+            {'name': 'SECTION', 'type': 'text', 'order': 3},
+            {'name': 'PHOTO', 'type': 'image', 'order': 4},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        card = self.table.id_cards.first()
+        card.field_data = {
+            'NAME': 'Student A',
+            'CLASS': '10',
+            'SECTION': 'A',
+            'PHOTO': 'clients_imgs/deep/photo_a.jpg',
+        }
+        card.save(update_fields=['field_data'])
+
+        img_buf = io.BytesIO()
+        Image.new('RGB', (900, 1200), (88, 112, 158)).save(img_buf, format='JPEG', quality=92)
+        valid_jpg_bytes = img_buf.getvalue()
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'mode': 'generate',
+            'output_format': 'zip',
+            'selected_image_field': 'PHOTO',
+            'image_name_fields': {
+                'PHOTO': ['NAME', 'CLASS', 'SECTION'],
+            },
+            'generate_options': {
+                'enabled': True,
+                'size_preset': 'size_23x34',
+                'name_field': 'NAME',
+                'detail_mode': 'class_section',
+                'class_field': 'CLASS',
+                'section_field': 'SECTION',
+                'detail_fields': ['CLASS', 'SECTION'],
+                'max_detail_lines': 1,
+                'compress_enabled': True,
+                'target_size_kb': 40,
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = valid_jpg_bytes
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/photo_a.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+            self.assertTrue(any(name.startswith('PHOTO/Student_A') and name.lower().endswith('.jpg') for name in names), names)
+
+            generated_name = next(name for name in names if name.startswith('PHOTO/Student_A'))
+            generated_payload = zf.read(generated_name)
+            self.assertLessEqual(len(generated_payload), 40 * 1024)
+
+        with Image.open(io.BytesIO(generated_payload)) as generated_image:
+            self.assertEqual(generated_image.size, (272, 402))
+
+    def test_pdf_zip_generate_mode_exports_generated_pages(self):
+        from exports.zip import ZipExporter
+        from PIL import Image
+        import base64
+        import io
+        import zipfile
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'text', 'order': 2},
+            {'name': 'SECTION', 'type': 'text', 'order': 3},
+            {'name': 'PHOTO', 'type': 'image', 'order': 4},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        self.card.field_data = {
+            'NAME': 'Student A',
+            'CLASS': '10',
+            'SECTION': 'A',
+            'PHOTO': 'clients_imgs/deep/photo_a.jpg',
+        }
+        self.card.save(update_fields=['field_data'])
+
+        img_buf = io.BytesIO()
+        Image.new('RGB', (900, 1200), (88, 112, 158)).save(img_buf, format='JPEG', quality=92)
+        valid_jpg_bytes = img_buf.getvalue()
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'mode': 'generate',
+            'output_format': 'pdf_zip',
+            'selected_image_field': 'PHOTO',
+            'image_name_fields': {
+                'PHOTO': ['NAME', 'CLASS', 'SECTION'],
+            },
+            'generate_options': {
+                'enabled': True,
+                'size_preset': 'size_37x53',
+                'name_field': 'NAME',
+                'detail_mode': 'class_section',
+                'class_field': 'CLASS',
+                'section_field': 'SECTION',
+                'compress_enabled': False,
+                'target_size_kb': 120,
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = valid_jpg_bytes
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/photo_a.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+            self.assertTrue(any(name.lower().endswith('.pdf') for name in names), names)
+            pdf_name = next(name for name in names if name.lower().endswith('.pdf'))
+            pdf_payload = zf.read(pdf_name)
+            self.assertGreater(len(pdf_payload), 500)
 
     def test_pdf_zip_1gb_boundary_and_super_admin_bypass(self):
         from exports.zip import ZipExporter, MAX_BASE64_ZIP_BYTES

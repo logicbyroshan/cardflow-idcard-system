@@ -3,7 +3,7 @@ Tests for core app.
 Covers: User model, IDCard/IDCardTable/IDCardGroup models, middleware,
 permissions, workflow transitions, bulk upload service, global search.
 """
-from django.test import TestCase, RequestFactory, override_settings
+from django.test import TestCase, SimpleTestCase, RequestFactory, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -110,6 +110,34 @@ class AlpineRuntimeTemplateGuardTests(TestCase):
         self.assertIn('js/alpine-state', default_html)
         self.assertNotIn('js/alpine-state', mobile_html)
         self.assertIn('js/vendor/alpine-mobile.min', mobile_html)
+
+
+class XlsxZipDualDownloadWiringTests(SimpleTestCase):
+    def _repo_root(self):
+        return Path(__file__).resolve().parent.parent
+
+    def test_xlsx_modal_has_include_images_checkbox(self):
+        template_path = self._repo_root() / 'templates' / 'partials' / 'idcard' / 'modal-downloads.html'
+        content = template_path.read_text(encoding='utf-8')
+
+        self.assertIn('id="downloadXlsxIncludeImages"', content)
+        self.assertIn('Also download images ZIP', content)
+
+    def test_xlsx_modal_handler_passes_include_images_flag(self):
+        modal_js_path = self._repo_root() / 'static' / 'js' / 'idcard-actions-download-modals.js'
+        content = modal_js_path.read_text(encoding='utf-8')
+
+        self.assertIn('const includeImagesZip = !!(includeImagesEl && includeImagesEl.checked);', content)
+        self.assertIn('window.IDCardApp.downloadXlsx(cardIds, { includeImagesZip: includeImagesZip });', content)
+
+    def test_xlsx_download_logic_gates_zip_with_flag(self):
+        logic_js_path = self._repo_root() / 'static' / 'js' / 'idcard-actions-download-logic.js'
+        content = logic_js_path.read_text(encoding='utf-8')
+
+        self.assertIn('function downloadXlsx(cardIds, options)', content)
+        self.assertIn('const includeImagesZip = !!options.includeImagesZip;', content)
+        self.assertGreaterEqual(content.count('if (includeImagesZip) {'), 3)
+        self.assertIn('downloadImages(cardIds);', content)
 
 
 class HeaderHumanizeFilterTests(TestCase):

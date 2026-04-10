@@ -270,12 +270,22 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
         {
             "rename_options": {
                 "enabled": true,
+                "mode": "rename" | "generate",
                 "output_format": "zip" | "pdf_zip",
                 "selected_image_field": "PHOTO",
                 "image_name_fields": {
                     "PHOTO": "Student Name" | ["Student Name", "Class", "Section"],
                     "FATHER_PHOTO": "Father Name" | ["Student Name", "Father Name"],
                     "MOTHER_PHOTO": "Mother Name" | ["Student Name", "Mother Name"]
+                },
+                "generate_options": {
+                    "enabled": true,
+                    "name_field": "Student Name",
+                    "detail_fields": ["Class", "Section"],
+                    "max_detail_lines": 2,
+                    "compress_enabled": true,
+                    "target_size_kb": 40,
+                    "maintain_dimensions": true
                 }
             }
         }
@@ -336,14 +346,125 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
     raw_output_format = str(rename_options.get('output_format', 'zip') or 'zip').strip().lower()
     output_format = 'pdf_zip' if raw_output_format == 'pdf_zip' else 'zip'
 
+    raw_mode = str(rename_options.get('mode', 'rename') or 'rename').strip().lower()
+    mode = 'generate' if raw_mode == 'generate' else 'rename'
+
     cleaned_options = {
         'enabled': True,
         'image_name_fields': cleaned_map,
         'output_format': output_format,
+        'mode': mode,
     }
 
     if selected_image_field:
         cleaned_options['selected_image_field'] = selected_image_field
+
+    if mode == 'generate':
+        raw_generate_options = rename_options.get('generate_options')
+        if not isinstance(raw_generate_options, dict):
+            raw_generate_options = {}
+
+        name_field = str(raw_generate_options.get('name_field') or '').strip()
+        if len(name_field) > 120:
+            name_field = ''
+
+        raw_detail_fields = raw_generate_options.get('detail_fields')
+        if not isinstance(raw_detail_fields, (list, tuple)):
+            raw_detail_fields = []
+
+        detail_fields = []
+        seen_details = set()
+        for item in raw_detail_fields:
+            value = str(item or '').strip()
+            if not value or len(value) > 120:
+                continue
+            key = value.lower()
+            if key in seen_details:
+                continue
+            seen_details.add(key)
+            detail_fields.append(value)
+
+        # Fallback: derive name/details from image_name_fields mapping when
+        # explicit generate_options are not provided.
+        if not name_field:
+            mapping_values = []
+            for mapped in cleaned_map.values():
+                if isinstance(mapped, list):
+                    mapping_values = mapped
+                    break
+                if isinstance(mapped, str):
+                    mapping_values = [mapped]
+                    break
+            if mapping_values:
+                name_field = mapping_values[0]
+                if not detail_fields:
+                    detail_fields = mapping_values[1:]
+
+        class_field = str(raw_generate_options.get('class_field') or '').strip()
+        if len(class_field) > 120:
+            class_field = ''
+
+        section_field = str(raw_generate_options.get('section_field') or '').strip()
+        if len(section_field) > 120:
+            section_field = ''
+
+        custom_date = str(raw_generate_options.get('custom_date') or '').strip()
+        if len(custom_date) > 40:
+            custom_date = custom_date[:40]
+
+        raw_size_preset = str(raw_generate_options.get('size_preset', 'size_23x34') or 'size_23x34').strip().lower()
+        size_preset = 'size_37x53' if raw_size_preset in ('size_37x53', '37x53', 'large') else 'size_23x34'
+
+        if not class_field and detail_fields:
+            class_field = detail_fields[0]
+        if not section_field and len(detail_fields) > 1:
+            section_field = detail_fields[1]
+
+        raw_detail_mode = str(raw_generate_options.get('detail_mode') or '').strip().lower()
+        if raw_detail_mode not in ('class_only', 'class_section', 'custom_date'):
+            if custom_date:
+                raw_detail_mode = 'custom_date'
+            elif class_field and section_field:
+                raw_detail_mode = 'class_section'
+            else:
+                raw_detail_mode = 'class_only'
+        detail_mode = raw_detail_mode
+
+        resolved_detail_fields = []
+        if detail_mode == 'class_section':
+            if class_field:
+                resolved_detail_fields.append(class_field)
+            if section_field and section_field.lower() != str(class_field or '').lower():
+                resolved_detail_fields.append(section_field)
+        elif detail_mode == 'class_only':
+            if class_field:
+                resolved_detail_fields.append(class_field)
+
+        max_detail_lines = 1
+
+        compress_enabled = raw_generate_options.get('compress_enabled') is True
+
+        raw_target_kb = raw_generate_options.get('target_size_kb', 40)
+        try:
+            target_size_kb = int(raw_target_kb)
+        except (TypeError, ValueError):
+            target_size_kb = 40
+        target_size_kb = max(10, min(200, target_size_kb))
+
+        cleaned_options['generate_options'] = {
+            'enabled': True,
+            'name_field': name_field,
+            'detail_fields': resolved_detail_fields,
+            'max_detail_lines': max_detail_lines,
+            'detail_mode': detail_mode,
+            'class_field': class_field,
+            'section_field': section_field,
+            'custom_date': custom_date,
+            'size_preset': size_preset,
+            'compress_enabled': compress_enabled,
+            'target_size_kb': target_size_kb,
+            'maintain_dimensions': True,
+        }
 
     return cleaned_options
 
@@ -992,6 +1113,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         too_large_inline = (
             not is_super_admin
             and not is_pdf_zip_mode
+            and not rename_options
             and not result.success
             and (
                 'too large for inline' in str(result.message or '').lower()
