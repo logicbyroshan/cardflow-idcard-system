@@ -57,6 +57,11 @@ urlpatterns = [
     path('api/search/', views.api_search, name='api_search'),
     path('api/server-info/', views.api_server_info, name='api_server_info'),
 
+    # Pro user impersonation APIs (mobile surface)
+    path('api/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
+    path('api/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
+    path('api/impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
+
     # Client Management APIs
     path('api/client/create/', views.api_client_create, name='api_client_create'),
     path('api/client/<int:client_id>/', views.api_client_detail, name='api_client_detail'),

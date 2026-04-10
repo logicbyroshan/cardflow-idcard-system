@@ -307,15 +307,35 @@ function cameraApp() {
             }
             this.uploading = true;
             try {
-                const blob = await new Promise(r => this.$refs.canvas.toBlob(r, 'image/jpeg', 0.9));
+                const blob = await new Promise((resolve, reject) => {
+                    this.$refs.canvas.toBlob((b) => {
+                        if (b) {
+                            resolve(b);
+                            return;
+                        }
+                        reject(new Error('Unable to prepare image. Please retake photo.'));
+                    }, 'image/jpeg', 0.9);
+                });
                 const fd = new FormData();
                 fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
-                fd.append('card_id', this.selectedCardId);
+                fd.append('card_id', String(this.selectedCardId));
                 const csrf = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
                 const res = await fetch('/app/api/table/' + this.tableId + '/upload-photo/', {
                     method: 'POST', headers: { 'X-CSRFToken': csrf }, body: fd
                 });
-                const data = await res.json();
+                const raw = await res.text();
+                let data = {};
+                try {
+                    data = raw ? JSON.parse(raw) : {};
+                } catch (parseErr) {
+                    data = {
+                        success: false,
+                        message: res.status === 401
+                            ? 'Session expired. Please login again.'
+                            : 'Server returned an invalid response. Please try again.'
+                    };
+                }
+
                 if (data.success) {
                     this.showMsg('Photo uploaded successfully!', 'success');
                     this.photoTaken = false;
@@ -326,9 +346,12 @@ function cameraApp() {
                     /* Navigate back after brief delay */
                     setTimeout(() => { this.goBack(); }, 900);
                 } else {
-                    this.showMsg(data.message || 'Upload failed', 'error');
+                    const msg = data.message || (res.ok ? 'Upload failed' : ('Upload failed (' + res.status + ')'));
+                    this.showMsg(msg, 'error');
                 }
-            } catch (e) { this.showMsg('Network error', 'error'); }
+            } catch (e) {
+                this.showMsg(e && e.message ? e.message : 'Network error', 'error');
+            }
             this.uploading = false;
         },
 

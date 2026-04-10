@@ -879,8 +879,8 @@ def pwa_service_worker(request):
     from django.http import HttpResponse
     sw_content = """\
 /* Adarsh ID Cards — PWA Service Worker */
-const APP_CACHE = 'adarsh-app-v4';
-const STATIC_CACHE = 'adarsh-static-v4';
+const APP_CACHE = 'adarsh-app-v5';
+const STATIC_CACHE = 'adarsh-static-v5';
 const SHELL = ['/app/login/', '/app/manifest.json'];
 const STATIC_ASSETS = [
     '/static/css/tailwind.css',
@@ -931,6 +931,12 @@ self.addEventListener('activate', function(e) {
         })
     );
     self.clients.claim();
+});
+
+self.addEventListener('message', function(event) {
+    if (event && event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });
 
 self.addEventListener('fetch', function(e) {
@@ -3587,6 +3593,102 @@ def api_server_info(request):
         'disk': disk,
     }
     return JsonResponse({'success': True, 'data': data})
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_impersonate_users(request):
+    """Return pro-user impersonation targets filtered to mobile-eligible users."""
+    from accounts.services_impersonate import ImpersonateService
+    from django.contrib.auth import get_user_model
+
+    if not ImpersonateService.can_impersonate(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    users = ImpersonateService.get_impersonation_targets(request)
+    if not users:
+        return JsonResponse({'success': True, 'users': []})
+
+    user_ids = [int(item.get('id')) for item in users if str(item.get('id', '')).isdigit()]
+    mobile_allowed_ids = set()
+    if user_ids:
+        UserModel = get_user_model()
+        for target in UserModel.objects.filter(id__in=user_ids):
+            if PermissionService.has(target, 'perm_mobile_app'):
+                mobile_allowed_ids.add(target.id)
+
+    filtered = []
+    for item in users:
+        try:
+            item_id = int(item.get('id') or 0)
+        except (TypeError, ValueError):
+            continue
+        if item_id in mobile_allowed_ids:
+            filtered.append(item)
+    return JsonResponse({'success': True, 'users': filtered})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_impersonate_start(request):
+    """Start impersonation from mobile and keep the session on the mobile surface."""
+    from accounts.services_impersonate import ImpersonateService
+    from django.contrib.auth import get_user_model
+
+    if not ImpersonateService.can_impersonate(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    raw_user_id = payload.get('user_id')
+    try:
+        target_user_id = int(raw_user_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
+
+    UserModel = get_user_model()
+    target = UserModel.objects.filter(pk=target_user_id).first()
+    if not target:
+        return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
+
+    valid_mobile_roles = {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}
+    if getattr(target, 'role', '') not in valid_mobile_roles:
+        return JsonResponse({'success': False, 'message': 'Target user cannot access the mobile app.'}, status=400)
+
+    if not PermissionService.has(target, 'perm_mobile_app'):
+        return JsonResponse({'success': False, 'message': 'Target user has no mobile app access.'}, status=400)
+
+    result = ImpersonateService.start(request, target_user_id)
+    if not result.get('success'):
+        return JsonResponse(result, status=403)
+
+    request.session['mobile_auth_ok'] = True
+    request.session['_auth_login_surface'] = 'mobile'
+    request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
+    request.session['selected_role'] = getattr(target, 'role', '')
+    result['redirect_url'] = '/app/'
+    return JsonResponse(result)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_impersonate_stop(request):
+    """Stop impersonation from mobile and return to pro user on mobile surface."""
+    from accounts.services_impersonate import ImpersonateService
+
+    result = ImpersonateService.stop(request)
+    if not result.get('success'):
+        return JsonResponse(result, status=400)
+
+    request.session['mobile_auth_ok'] = True
+    request.session['_auth_login_surface'] = 'mobile'
+    request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
+    request.session['selected_role'] = getattr(request.user, 'role', '')
+    result['redirect_url'] = '/app/'
+    return JsonResponse(result)
 
 
 # ─── Client Management APIs ────────────────────────────────────────────────────

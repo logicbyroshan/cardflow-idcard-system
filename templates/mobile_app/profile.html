@@ -123,8 +123,13 @@
         </div>
     </div>
 
-    <!-- Logout -->
-    <div class="px-4 pb-8">
+    <!-- App Update + Logout -->
+    <div class="px-4 pb-8 space-y-2.5">
+        <button type="button"
+                onclick="return window.mobileUpdateApp(event);"
+                class="flex items-center justify-center gap-2 w-full py-3.5 text-[13px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-2xl hover:bg-blue-100 active:scale-[0.98] transition-all">
+            <i class="fa-solid fa-rotate"></i>Update App
+        </button>
         <a href="/panel/auth/logout/" onclick="return window.mobileLogout(event);"
            class="flex items-center justify-center gap-2 w-full py-3.5 text-[13px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 active:scale-[0.98] transition-all">
             <i class="fa-solid fa-right-from-bracket"></i>Sign Out

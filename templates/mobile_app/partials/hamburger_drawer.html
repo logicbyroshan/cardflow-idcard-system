@@ -271,6 +271,47 @@
                     </div>
                     <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
                 </a>
+                <button type="button"
+                        @click="close(); window.mobileUpdateApp($event)"
+                        class="pwa-drawer-item w-full text-left">
+                    <span class="pwa-drawer-icon-wrap bg-blue-50 text-blue-600">
+                        <i class="fa-solid fa-rotate"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Update App</span>
+                        <span class="pwa-drawer-item-sub">Refresh to latest version</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </button>
+
+                {% if is_pro_user %}
+                <button type="button"
+                        @click="openImpersonation()"
+                        class="pwa-drawer-item w-full text-left">
+                    <span class="pwa-drawer-icon-wrap bg-violet-50 text-violet-600">
+                        <i class="fa-solid fa-user-secret"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Login As User</span>
+                        <span class="pwa-drawer-item-sub">Pro-only mobile impersonation</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </button>
+                {% if is_impersonating %}
+                <button type="button"
+                        @click="stopImpersonation()"
+                        class="pwa-drawer-item w-full text-left">
+                    <span class="pwa-drawer-icon-wrap bg-amber-50 text-amber-600">
+                        <i class="fa-solid fa-user-check"></i>
+                    </span>
+                    <div class="pwa-drawer-item-text">
+                        <span class="pwa-drawer-item-title">Stop Login As</span>
+                        <span class="pwa-drawer-item-sub">Return to {{ impersonation_original_name|default:'Pro User' }}</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
+                </button>
+                {% endif %}
+                {% endif %}
             </div>
 
             <!-- Divider -->
@@ -293,6 +334,71 @@
 
         </div><!-- /scrollable body -->
     </div><!-- /drawer panel -->
+
+    <!-- Pro User Login-As Modal -->
+    <div x-show="impersonationOpen"
+         x-transition
+         class="fixed inset-0 z-[230] bg-black/45 backdrop-blur-[2px] flex items-center justify-center px-4"
+         style="display:none;">
+        <div class="w-full max-w-[390px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col"
+             data-mobile-overlay-root>
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-[13px] font-bold text-gray-800">Login As User</p>
+                    <p class="text-[10px] text-gray-500">Pro-only mobile impersonation</p>
+                </div>
+                <button type="button" @click="closeImpersonation()"
+                        class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 active:bg-gray-200">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <div class="px-4 py-3 border-b border-gray-100">
+                <input type="text"
+                       x-model="impersonationSearch"
+                       placeholder="Search by name, email, role"
+                       class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-[12px] text-gray-700 focus:outline-none focus:border-brand-light">
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-3 py-2">
+                <template x-if="impersonationLoading">
+                    <div class="py-10 text-center text-gray-500 text-[12px]">
+                        <i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Loading users...
+                    </div>
+                </template>
+
+                <template x-if="!impersonationLoading && impersonationError">
+                    <div class="py-10 text-center text-red-500 text-[12px]" x-text="impersonationError"></div>
+                </template>
+
+                <template x-if="!impersonationLoading && !impersonationError && filteredImpersonationUsers().length === 0">
+                    <div class="py-10 text-center text-gray-500 text-[12px]">No matching users found.</div>
+                </template>
+
+                <div class="space-y-2" x-show="!impersonationLoading && !impersonationError">
+                    <template x-for="entry in filteredImpersonationUsers()" :key="entry.id">
+                        <button type="button"
+                                @click="startImpersonation(entry.id)"
+                                :disabled="impersonationWorking"
+                                class="w-full text-left px-3 py-2.5 rounded-xl border border-gray-200 bg-white active:bg-gray-50 transition">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="text-[12px] font-semibold text-gray-800 truncate" x-text="entry.name"></p>
+                                    <p class="text-[10px] text-gray-500 truncate" x-text="entry.email || '-' "></p>
+                                </div>
+                                <span class="text-[9px] px-2 py-1 rounded-lg bg-gray-100 text-gray-600" x-text="entry.role_display || entry.role"></span>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate" x-text="entry.client_name || 'No client' "></p>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <div class="px-4 py-2.5 border-t border-gray-100 text-[10px] text-gray-500 bg-gray-50">
+                Audit logs are recorded for all impersonation actions.
+            </div>
+        </div>
+    </div>
 </div><!-- /drawer root -->
 
 <script>
@@ -300,6 +406,32 @@ function hamburgerDrawer() {
     return {
         isOpen: false,
         overlayToken: null,
+        impersonationOpen: false,
+        impersonationOverlayToken: null,
+        impersonationLoading: false,
+        impersonationWorking: false,
+        impersonationLoaded: false,
+        impersonationError: '',
+        impersonationUsers: [],
+        impersonationSearch: '',
+
+        csrfToken() {
+            var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
+            return m && m[1] ? decodeURIComponent(m[1]) : '';
+        },
+
+        filteredImpersonationUsers() {
+            var q = String(this.impersonationSearch || '').trim().toLowerCase();
+            if (!q) return this.impersonationUsers;
+            return this.impersonationUsers.filter(function(entry) {
+                var name = String(entry.name || '').toLowerCase();
+                var email = String(entry.email || '').toLowerCase();
+                var role = String(entry.role_display || entry.role || '').toLowerCase();
+                var client = String(entry.client_name || '').toLowerCase();
+                return name.indexOf(q) >= 0 || email.indexOf(q) >= 0 || role.indexOf(q) >= 0 || client.indexOf(q) >= 0;
+            });
+        },
+
         open() {
             if (this.isOpen) return;
             this.isOpen = true;
@@ -316,7 +448,103 @@ function hamburgerDrawer() {
                 window.mobileOverlay.close(this.overlayToken, { fromPopstate: !!opts.fromBack });
                 this.overlayToken = null;
             }
-        }
+        },
+
+        openImpersonation() {
+            this.close();
+            this.impersonationOpen = true;
+            this.impersonationError = '';
+            if (window.mobileOverlay && !this.impersonationOverlayToken) {
+                this.impersonationOverlayToken = window.mobileOverlay.open(() => {
+                    this.closeImpersonation({ fromBack: true });
+                });
+            }
+            this.loadImpersonationUsers();
+        },
+
+        closeImpersonation(options) {
+            var opts = options || {};
+            this.impersonationOpen = false;
+            this.impersonationError = '';
+            this.impersonationSearch = '';
+            if (window.mobileOverlay && this.impersonationOverlayToken) {
+                window.mobileOverlay.close(this.impersonationOverlayToken, { fromPopstate: !!opts.fromBack });
+                this.impersonationOverlayToken = null;
+            }
+        },
+
+        async loadImpersonationUsers() {
+            if (this.impersonationLoading || this.impersonationLoaded) return;
+            this.impersonationLoading = true;
+            this.impersonationError = '';
+            try {
+                const res = await fetch('/app/api/impersonate/users/', {
+                    headers: { 'X-CSRFToken': this.csrfToken() },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    this.impersonationError = data.message || 'Failed to load users';
+                    return;
+                }
+                this.impersonationUsers = Array.isArray(data.users) ? data.users : [];
+                this.impersonationLoaded = true;
+            } catch (err) {
+                this.impersonationError = 'Network error while loading users';
+            } finally {
+                this.impersonationLoading = false;
+            }
+        },
+
+        async startImpersonation(userId) {
+            if (this.impersonationWorking) return;
+            this.impersonationWorking = true;
+            this.impersonationError = '';
+            try {
+                const res = await fetch('/app/api/impersonate/start/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.csrfToken(),
+                    },
+                    body: JSON.stringify({ user_id: userId }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    this.impersonationError = data.message || 'Failed to login as selected user';
+                    return;
+                }
+                window.location.href = data.redirect_url || '/app/';
+            } catch (err) {
+                this.impersonationError = 'Network error while starting impersonation';
+            } finally {
+                this.impersonationWorking = false;
+            }
+        },
+
+        async stopImpersonation() {
+            if (this.impersonationWorking) return;
+            this.impersonationWorking = true;
+            try {
+                const res = await fetch('/app/api/impersonate/stop/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.csrfToken(),
+                    },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    this.impersonationError = data.message || 'Failed to stop impersonation';
+                    return;
+                }
+                window.location.href = data.redirect_url || '/app/';
+            } catch (err) {
+                this.impersonationError = 'Network error while stopping impersonation';
+            } finally {
+                this.impersonationWorking = false;
+            }
+        },
     };
 }
 </script>

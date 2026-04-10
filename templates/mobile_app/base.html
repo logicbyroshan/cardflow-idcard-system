@@ -177,6 +177,24 @@
         </div>
     </div>
 
+    <div id="mobile-update-screen"
+         class="hidden fixed inset-0 bg-white z-[10060] flex items-center justify-center px-6"
+         aria-hidden="true">
+        <div class="w-full max-w-[360px] text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                <i class="fa-solid fa-rotate text-xl"></i>
+            </div>
+            <p class="text-[16px] font-bold text-gray-800">Updating App</p>
+            <p id="mobile-update-message" class="text-[11px] text-gray-500 mt-1">Preparing update...</p>
+            <div class="mt-5 w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div id="mobile-update-progress"
+                     class="h-full bg-gradient-to-r from-brand-light to-brand-dark rounded-full transition-all duration-300"
+                     style="width:0%;"></div>
+            </div>
+            <p id="mobile-update-percent" class="text-[11px] text-gray-500 mt-2">0%</p>
+        </div>
+    </div>
+
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
     <script>
@@ -205,6 +223,105 @@
         form.submit();
         return false;
     };
+
+    (function setupMobileAppUpdateFlow() {
+        var updateScreen = document.getElementById('mobile-update-screen');
+        var updateMessage = document.getElementById('mobile-update-message');
+        var updateProgress = document.getElementById('mobile-update-progress');
+        var updatePercent = document.getElementById('mobile-update-percent');
+        var inProgress = false;
+
+        function setUpdateProgress(percent, message) {
+            var safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+            if (updateProgress) updateProgress.style.width = safePercent + '%';
+            if (updatePercent) updatePercent.textContent = Math.round(safePercent) + '%';
+            if (message && updateMessage) updateMessage.textContent = message;
+        }
+
+        async function activateWaitingWorker(registration) {
+            if (!registration || !registration.waiting) return;
+            try {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } catch (err) {
+                return;
+            }
+
+            await new Promise(function(resolve) {
+                var done = false;
+                function finish() {
+                    if (done) return;
+                    done = true;
+                    try {
+                        navigator.serviceWorker.removeEventListener('controllerchange', finish);
+                    } catch (err) {}
+                    resolve();
+                }
+                try {
+                    navigator.serviceWorker.addEventListener('controllerchange', finish);
+                } catch (err) {
+                    finish();
+                    return;
+                }
+                setTimeout(finish, 1200);
+            });
+        }
+
+        window.mobileUpdateApp = async function mobileUpdateApp(event) {
+            if (event) event.preventDefault();
+            if (inProgress) return false;
+            inProgress = true;
+
+            if (updateScreen) {
+                updateScreen.classList.remove('hidden');
+                updateScreen.setAttribute('aria-hidden', 'false');
+            }
+
+            try {
+                setUpdateProgress(8, 'Checking for latest files...');
+
+                var registrations = [];
+                if ('serviceWorker' in navigator) {
+                    registrations = await navigator.serviceWorker.getRegistrations();
+                    for (var i = 0; i < registrations.length; i++) {
+                        try {
+                            await registrations[i].update();
+                            await activateWaitingWorker(registrations[i]);
+                        } catch (err) {}
+                    }
+                }
+
+                setUpdateProgress(42, 'Clearing cached assets...');
+                if ('caches' in window) {
+                    var keys = await caches.keys();
+                    var total = keys.length || 1;
+                    for (var k = 0; k < keys.length; k++) {
+                        try { await caches.delete(keys[k]); } catch (err) {}
+                        setUpdateProgress(42 + ((k + 1) / total) * 28, 'Clearing cached assets...');
+                    }
+                }
+
+                setUpdateProgress(78, 'Refreshing service worker...');
+                if (registrations.length) {
+                    for (var r = 0; r < registrations.length; r++) {
+                        try { await registrations[r].unregister(); } catch (err) {}
+                    }
+                }
+
+                setUpdateProgress(94, 'Opening latest app...');
+                var nextUrl = '/app/?updated=' + Date.now();
+                setTimeout(function() {
+                    window.location.replace(nextUrl);
+                }, 450);
+            } catch (err) {
+                setUpdateProgress(100, 'Update failed. Reloading...');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 700);
+            }
+
+            return false;
+        };
+    })();
 
     (function setupMobileOverlayManager() {
         var overlayStack = [];

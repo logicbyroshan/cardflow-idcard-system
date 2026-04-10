@@ -30,6 +30,13 @@ class MobileAppBaseTestCase(TestCase):
 			role='super_admin',
 		)
 
+		self.pro_user = User.objects.create_user(
+			username='mob-pro@test.com',
+			email='mob-pro@test.com',
+			password='pass1234',
+			role='pro_user',
+		)
+
 		self.client_user = User.objects.create_user(
 			username='mob-client@test.com',
 			email='mob-client@test.com',
@@ -129,6 +136,10 @@ class MobileAppBaseTestCase(TestCase):
 
 	def _login_mobile_super_admin(self):
 		self.client.login(username='mob-super@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_pro_user(self):
+		self.client.login(username='mob-pro@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
 
 	def _login_mobile_client(self):
@@ -689,6 +700,64 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 
 
 class MobileAppManagementApiTests(MobileAppBaseTestCase):
+	def test_mobile_impersonation_users_requires_pro_user(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/impersonate/users/')
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	def test_mobile_impersonation_start_and_stop_keeps_mobile_session(self):
+		self._login_mobile_pro_user()
+
+		start = self.client.post(
+			'/app/api/impersonate/start/',
+			data=json.dumps({'user_id': self.client_user.id}),
+			content_type='application/json',
+		)
+		self.assertEqual(start.status_code, 200)
+		self.assertTrue(start.json()['success'])
+		self.assertEqual(start.json().get('redirect_url'), '/app/')
+		self.assertTrue(self.client.session.get('mobile_auth_ok'))
+		self.assertTrue(self.client.session.get('_pro_original_user_id'))
+
+		home = self.client.get('/app/')
+		self.assertEqual(home.status_code, 200)
+
+		stop = self.client.post(
+			'/app/api/impersonate/stop/',
+			data=json.dumps({}),
+			content_type='application/json',
+		)
+		self.assertEqual(stop.status_code, 200)
+		self.assertTrue(stop.json()['success'])
+		self.assertEqual(stop.json().get('redirect_url'), '/app/')
+		self.assertTrue(self.client.session.get('mobile_auth_ok'))
+		self.assertFalse(self.client.session.get('_pro_original_user_id'))
+
+	def test_mobile_impersonation_start_rejects_target_without_mobile_access(self):
+		target_user = User.objects.create_user(
+			username='mob-no-mobile@test.com',
+			email='mob-no-mobile@test.com',
+			password='pass1234',
+			role='client',
+		)
+		Client.objects.create(
+			user=target_user,
+			name='No Mobile Access Client',
+			status='active',
+			perm_mobile_app=False,
+		)
+
+		self._login_mobile_pro_user()
+		response = self.client.post(
+			'/app/api/impersonate/start/',
+			data=json.dumps({'user_id': target_user.id}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('mobile app access', response.json().get('message', '').lower())
+
 	def test_server_info_requires_super_admin(self):
 		self._login_mobile_client()
 		denied = self.client.get('/app/api/server-info/')
