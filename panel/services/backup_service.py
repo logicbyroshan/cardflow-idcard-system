@@ -180,8 +180,8 @@ def _process_backup(task_id: int):
             task.error_message = str(exc)[:2000]
             task.completed_at = timezone.now()
             task.save(update_fields=['status', 'error_message', 'completed_at'])
-        except Exception:
-            pass
+        except Exception as persist_err:
+            logger.warning("Backup #%d failed and status persistence also failed: %s", task_id, persist_err)
 
     finally:
         if previously_active_ids:

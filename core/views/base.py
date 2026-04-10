@@ -32,8 +32,12 @@ from .base_helpers import (                          # noqa: F401
 from .dashboard_views import (                       # noqa: F401
     adarsh_cropper,
     login_as_user_page,
+    pro_user_activity_logs_page,
+    pro_user_activity_logs_detail_page,
     dashboard,
+    api_dashboard_card_stats,
     api_recent_client_updates,
+    api_dashboard_team_overview,
     api_print_reprint_overview,
     api_recent_activity,
     api_global_search,
@@ -42,8 +46,13 @@ from .dashboard_views import (                       # noqa: F401
 # ── Admin page views ──────────────────────────────────────────────────
 from .admin_page_views import (                      # noqa: F401
     manage_staff,
+    manage_client_staff,
     manage_clients,
     active_clients,
+    active_client_status_redirect,
+    api_staff_login_history,
+    api_client_login_history,
+    api_client_staff_login_history,
     idcard_group,
     build_idcard_actions_context,
     idcard_actions,
@@ -57,6 +66,8 @@ from .admin_page_views import (                      # noqa: F401
     api_email_compose_defaults,
     settings,
     tutorial,
+    tutorial_personal_guide,
+    tutorial_personal_guide_download,
 )
 
 # ── Export settings / template APIs ───────────────────────────────────

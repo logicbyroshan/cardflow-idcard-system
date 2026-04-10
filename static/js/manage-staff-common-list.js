@@ -190,7 +190,8 @@ window.initStaffPage = function (cfg) {
     var rowsSelText   = document.getElementById('rowsSelectedText');
 
     var currentPage  = 1;
-    var rowsPerPage  = 10;
+    var rowsPerPage  = parseInt((rowsSelText && rowsSelText.textContent) || '25', 10);
+    if (!rowsPerPage || rowsPerPage < 1) rowsPerPage = 25;
     var allRows      = [];
     var filteredRows = [];
 

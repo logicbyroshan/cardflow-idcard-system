@@ -1,10 +1,12 @@
 """
 Client Dashboard Service — aggregated statistics for the client dashboard.
 """
+import logging
+
 from django.utils.timezone import localtime
 from django.db.models import Count, Q, Prefetch
 
-from core.models import ActivityLog
+from core.services.activity_service import ActivityService
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
@@ -13,6 +15,8 @@ from core.services.permission_service import PermissionService
 
 from .services_access import ClientAccessService
 from .services_card import ClientCardService
+
+logger = logging.getLogger(__name__)
 
 
 class ClientDashboardService(BaseService):
@@ -56,6 +60,45 @@ class ClientDashboardService(BaseService):
                 return group_ids
 
         return list(staff.assigned_groups.values_list('id', flat=True))
+
+    @staticmethod
+    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
+        logger.exception('ClientDashboardService.%s failed: %s', action, exc)
+        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
+
+    @staticmethod
+    def _to_dashboard_photo_url(raw_path: str) -> str:
+        value = str(raw_path or '').strip()
+        if not value:
+            return ''
+
+        value = value.replace('\\', '/')
+        while '//' in value:
+            value = value.replace('//', '/')
+
+        lower = value.lower()
+        if lower.startswith('http://') or lower.startswith('https://'):
+            return value
+        if lower.startswith('/media/'):
+            return value
+        if lower.startswith('/mediafiles/'):
+            return '/media/' + value.lstrip('/')
+        if lower.startswith('media/') or lower.startswith('mediafiles/'):
+            if lower.startswith('media/'):
+                return '/' + value
+            return '/media/' + value
+
+        mediafiles_marker = '/mediafiles/'
+        media_marker = '/media/'
+        mediafiles_idx = lower.find(mediafiles_marker)
+        if mediafiles_idx >= 0:
+            return '/media/mediafiles/' + value[mediafiles_idx + len(mediafiles_marker):].lstrip('/')
+
+        media_idx = lower.find(media_marker)
+        if media_idx >= 0:
+            return '/media/' + value[media_idx + len(media_marker):].lstrip('/')
+
+        return '/media/' + value.lstrip('/')
 
     @classmethod
     def _get_accessible_tables_qs(cls, user, client):
@@ -127,13 +170,18 @@ class ClientDashboardService(BaseService):
                 for item in status_counts:
                     if item['status'] in counts:
                         counts[item['status']] = item['count']
+
+            table_meta = tables.aggregate(
+                table_count=Count('id'),
+                group_count=Count('group_id', distinct=True),
+            )
             
             # Total cards - exclude 'pool' status
             total_cards = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
             
             # Get group count and table count (scoped for client_staff)
-            group_count = tables.values('group_id').distinct().count()
-            table_count = tables.count()
+            group_count = int(table_meta.get('group_count') or 0)
+            table_count = int(table_meta.get('table_count') or 0)
             
             # Get staff count (client_staff under this client)
             staff_count = Staff.objects.filter(
@@ -141,37 +189,8 @@ class ClientDashboardService(BaseService):
                 staff_type='client_staff'
             ).count()
             
-            # Recent activity — only show actions performed by client/client_staff of this org.
-            # Never expose admin or admin_staff actions to client-side users.
-            from django.contrib.auth import get_user_model
-            UserModel = get_user_model()
-            # Collect all user PKs belonging to this client org
-            org_user_ids = list(
-                UserModel.objects.filter(
-                    Q(role='client', client_profile=client) |
-                    Q(role='client_staff', staff_profile__client=client)
-                ).values_list('pk', flat=True)
-            )
-            from django.utils.timesince import timesince
-            from django.utils import timezone as tz
-            now = tz.now()
-            logs = (
-                ActivityLog.objects
-                .filter(user_id__in=org_user_ids)
-                .select_related('user')
-                .order_by('-created_at')[:6]
-            )
-            recent_activity = []
-            for log in logs:
-                icon_class, icon_color = ActivityLog.ACTION_ICONS.get(
-                    log.action, ('fa-circle-info', 'edit')
-                )
-                recent_activity.append({
-                    'description': log.description,
-                    'time_ago': timesince(log.created_at, now),
-                    'icon_class': icon_class,
-                    'icon_color': icon_color,
-                })
+            # Use centralized role-aware activity feed so legacy per-card logs are merged.
+            recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
             
             return ServiceResult(
                 success=True,
@@ -192,7 +211,7 @@ class ClientDashboardService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_dashboard_data', e)
     
     @classmethod
     def get_groups_with_counts(cls, user) -> ServiceResult:
@@ -226,8 +245,9 @@ class ClientDashboardService(BaseService):
                         table,
                         IDCard.objects.filter(table=table),
                     )
-                    table_card_counts[table.id] = scoped_qs.count()
-                    for row in scoped_qs.values('status').annotate(count=Count('id')):
+                    status_rows = list(scoped_qs.values('status').annotate(count=Count('id')))
+                    table_card_counts[table.id] = sum(int(row.get('count', 0) or 0) for row in status_rows)
+                    for row in status_rows:
                         gid = table.group_id
                         if gid not in group_counts_map:
                             group_counts_map[gid] = {}
@@ -281,7 +301,7 @@ class ClientDashboardService(BaseService):
             return ServiceResult(success=True, data={'groups': groups_data})
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_groups_with_counts', e)
 
     @classmethod
     def get_reprint_stats(cls, user, client=None) -> ServiceResult:
@@ -290,7 +310,7 @@ class ClientDashboardService(BaseService):
         
         Returns:
         - total_cards: Total ID cards across all tables
-        - reprint_count: Total reprint requests (confirmed + downloaded)
+        - reprint_count: Total reprint requests (requested + confirmed + downloaded)
         - recent_reprints: Last 10 reprint requests with card details
         """
         try:
@@ -301,20 +321,29 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            tables = IDCardTable.objects.filter(group__client=client, is_active=True).only('id')
+            tables = IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+            ).only('id')
 
             total_cards = IDCard.objects.filter(table__in=tables).count()
 
-            # Reprint counts (confirmed + downloaded = all processed reprints)
+            # Reprint counts for dashboard visibility.
             reprint_qs = ReprintRequest.objects.filter(table__in=tables)
-            reprint_confirmed = reprint_qs.filter(status='confirmed').count()
-            reprint_downloaded = reprint_qs.filter(status='downloaded').count()
-            reprint_total = reprint_confirmed + reprint_downloaded
+            status_counts = reprint_qs.aggregate(
+                requested=Count('id', filter=Q(status='requested')),
+                confirmed=Count('id', filter=Q(status='confirmed')),
+                downloaded=Count('id', filter=Q(status='downloaded')),
+            )
+            reprint_requested = status_counts.get('requested', 0) or 0
+            reprint_confirmed = status_counts.get('confirmed', 0) or 0
+            reprint_downloaded = status_counts.get('downloaded', 0) or 0
+            reprint_total = reprint_requested + reprint_confirmed + reprint_downloaded
 
             # Recent reprints (latest 10)
             recent_qs = (
                 reprint_qs
-                .filter(status__in=['confirmed', 'downloaded'])
+                .filter(status__in=['requested', 'confirmed', 'downloaded'])
                 .select_related('card', 'table', 'requested_by')
                 .only(
                     'id', 'card_id', 'table_id', 'status', 'reason', 'created_at',
@@ -357,13 +386,14 @@ class ClientDashboardService(BaseService):
                 data={
                     'total_cards': total_cards,
                     'reprint_total': reprint_total,
+                    'reprint_requested': reprint_requested,
                     'reprint_confirmed': reprint_confirmed,
                     'reprint_downloaded': reprint_downloaded,
                     'recent_reprints': recent_reprints,
                 },
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_reprint_stats', e)
 
     @classmethod
     def get_reprint_history(cls, user, client=None, limit=50) -> ServiceResult:
@@ -380,7 +410,10 @@ class ClientDashboardService(BaseService):
             if not client:
                 return ServiceResult(success=False, message='Client profile not found')
 
-            tables = IDCardTable.objects.filter(group__client=client, is_active=True).only('id', 'fields')
+            tables = IDCardTable.objects.filter(
+                group__client=client,
+                deleted_by_client=False,
+            ).only('id', 'fields')
 
             reprint_qs = (
                 ReprintRequest.objects.filter(table__in=tables)
@@ -398,33 +431,148 @@ class ClientDashboardService(BaseService):
             for t in tables:
                 table_fields_map[t.id] = t.fields or []
 
+            def _norm_key(value):
+                return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
+
+            def _field_value_for_name(field_data, field_name):
+                if not isinstance(field_data, dict):
+                    return ''
+
+                if field_name in field_data:
+                    return field_data.get(field_name, '')
+
+                target_upper = str(field_name or '').upper().strip()
+                if target_upper:
+                    for k, v in field_data.items():
+                        if str(k or '').upper().strip() == target_upper:
+                            return v
+
+                target_norm = _norm_key(field_name)
+                if target_norm:
+                    for k, v in field_data.items():
+                        if _norm_key(k) == target_norm:
+                            return v
+
+                return ''
+
+            def _looks_like_image_field(field_type, field_name):
+                ft = str(field_type or '').strip().lower()
+                fn = str(field_name or '').strip().lower()
+                if ft in ('image', 'photo', 'file'):
+                    return True
+                if 'designation' in fn:
+                    return False
+                return (
+                    ('image' in ft) or ('photo' in ft) or ('file' in ft) or ('upload' in ft) or
+                    ('photo' in fn) or ('image' in fn) or ('picture' in fn) or ('pic' in fn) or
+                    ('signature' in fn) or ('barcode' in fn) or ('qr' in fn)
+                )
+
+            def _resolve_photo_url(card, field_data, field_name):
+                if not isinstance(field_data, dict):
+                    return ''
+
+                ordered_candidates = []
+                seen = set()
+
+                def _push_candidate(name):
+                    key = str(name or '').strip()
+                    if not key:
+                        return
+                    marker = key.upper()
+                    if marker in seen:
+                        return
+                    seen.add(marker)
+                    ordered_candidates.append(key)
+
+                _push_candidate(field_name)
+
+                matched_key = None
+                target_norm = _norm_key(field_name)
+                if target_norm:
+                    for k in field_data.keys():
+                        if _norm_key(k) == target_norm:
+                            matched_key = str(k)
+                            break
+                _push_candidate(matched_key)
+
+                for key in ordered_candidates:
+                    try:
+                        img_path = ImageService.get_image_path_for_export(
+                            card,
+                            key,
+                            prefer_thumbnail=True,
+                            fallback_to_field_data=True,
+                        )
+                        if img_path:
+                            return cls._to_dashboard_photo_url(img_path)
+                    except Exception:
+                        logger.warning('Reprint history image resolution failed card_id=%s field=%s', getattr(card, 'id', None), key)
+
+                    raw_val = _field_value_for_name(field_data, key)
+                    raw_text = str(raw_val or '').strip()
+                    if raw_text and raw_text != 'NOT_FOUND' and not raw_text.startswith('PENDING:'):
+                        return cls._to_dashboard_photo_url(raw_text)
+
+                return ''
+
             items = []
             total_count = ReprintRequest.objects.filter(table__in=tables).count()
 
             for rr in reprint_qs:
-                fd = rr.card.field_data or {}
-                fields = table_fields_map.get(rr.table_id, [])
+                try:
+                    fd = rr.card.field_data if isinstance(rr.card.field_data, dict) else {}
+                except Exception:
+                    fd = {}
+
+                raw_fields = table_fields_map.get(rr.table_id, [])
+                if isinstance(raw_fields, list):
+                    fields = [f for f in raw_fields if isinstance(f, dict)]
+                elif isinstance(raw_fields, dict):
+                    fields = [raw_fields]
+                else:
+                    fields = []
 
                 # Collect first few text field values for display
                 detail_parts = []
                 photo_url = ''
                 for f in fields:
-                    fn = f.get('name', '')
-                    ft = f.get('type', 'text')
-                    val = fd.get(fn, '')
-                    if ft in ('image', 'photo') or fn.upper() in ('PHOTO', 'F PHOTO', 'M PHOTO', 'SIGN', 'SIGN.', 'SIGNATURE', 'FATHER PHOTO', 'MOTHER PHOTO'):
+                    fn = str(f.get('name', '') or '')
+                    ft = str(f.get('type', 'text') or 'text')
+                    val = _field_value_for_name(fd, fn)
+                    if _looks_like_image_field(ft, fn):
                         if not photo_url:
-                            img_path = ImageService.get_image_path_for_card(
-                                card=rr.card, field_name=fn,
-                                fallback_to_field_data=True, prefer_thumbnail=True
-                            )
-                            if img_path:
-                                photo_url = f'/media/{img_path}'
+                            photo_url = _resolve_photo_url(rr.card, fd, fn)
                         continue
-                    if val and isinstance(val, str) and not val.startswith(('PENDING:', '/')):
-                        detail_parts.append(val)
+                    val_text = str(val or '').strip()
+                    if val_text and not val_text.startswith(('PENDING:', '/')):
+                        detail_parts.append(val_text)
                     if len(detail_parts) >= 4:
                         break
+
+                if not photo_url and isinstance(fd, dict):
+                    key_by_upper = {str(k or '').strip().upper(): k for k in fd.keys()}
+                    for fallback_name in (
+                        'PHOTO', 'STUDENT PHOTO', 'IMAGE', 'PICTURE', 'PIC',
+                        'F PHOTO', 'M PHOTO', 'FATHER PHOTO', 'MOTHER PHOTO',
+                        'SIGN', 'SIGN.', 'SIGNATURE',
+                    ):
+                        source_key = key_by_upper.get(fallback_name) or fallback_name
+                        photo_url = _resolve_photo_url(rr.card, fd, source_key)
+                        if photo_url:
+                            break
+
+                if not photo_url and isinstance(fd, dict):
+                    for candidate_key, candidate_val in fd.items():
+                        candidate_name = str(candidate_key or '')
+                        if not cls.is_image_field_by_name(candidate_name):
+                            continue
+                        candidate_text = str(candidate_val or '').strip()
+                        if not candidate_text or candidate_text == 'NOT_FOUND' or candidate_text.startswith('PENDING:'):
+                            continue
+                        photo_url = cls._to_dashboard_photo_url(candidate_text)
+                        if photo_url:
+                            break
 
                 req_by = rr.requested_by
                 items.append({
@@ -448,4 +596,4 @@ class ClientDashboardService(BaseService):
                 },
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_reprint_history', e)

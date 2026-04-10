@@ -6,7 +6,7 @@
        x-show="activeModal === 'dashReupload'" x-transition.scale.origin.center>
     <div class="modal-header">
       <h3><i class="fa-solid fa-upload"></i> Reupload Images</h3>
-      <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
+      <button type="button" class="modal-close" @click="closeModal" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
@@ -28,7 +28,7 @@
     </div>
     <div class="modal-footer">
       <button id="dashReuploadCancel" class="btn btn-md btn-neutral" type="button"
-              @click="closeModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+              @click="closeModal"><i class="fa-solid fa-xmark"></i> Cancel</button>
       <button id="dashReuploadConfirm" class="btn btn-md btn-primary" type="button" disabled><i class="fa-solid fa-upload"></i> Upload &amp; Match</button>
     </div>
   </div>

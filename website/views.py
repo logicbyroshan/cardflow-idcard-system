@@ -8,11 +8,12 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.conf import settings as _s
-from django.db.models import Avg, Case, When, Value, IntegerField
+from django.db.models import Avg, Case, When, Value, IntegerField, Q
 import logging
 
 from accounts.rate_limit import rate_limit
 from .services import TestimonialService, ContactSubmissionService
+from client.models import Client as PanelClient
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,6 @@ from .models import (
     HeroImage,
     PortfolioCategory,
     PortfolioItem, 
-    TrustedClient, 
     Testimonial, 
     ContactSubmission,
     FAQ,
@@ -38,6 +38,28 @@ HOME_TESTIMONIALS_LIMIT = 5
 CATEGORY_IMAGES_LIMIT = 10
 REELS_INITIAL_LIMIT = 10
 BUSINESS_CACHE_TTL = 300  # 5 minutes
+
+# Public bento overrides.
+# Removed from bento: school-stationery, office-stationery
+# Added to bento: certificates, marksheets, mugs, t-shirts
+BENTO_FORCE_INCLUDE_SLUGS = [
+    'certificates',
+    'marksheets',
+    'mugs',
+    't-shirts',
+]
+BENTO_FORCE_EXCLUDE_SLUGS = [
+    'school-stationery',
+    'office-stationery',
+]
+BENTO_PREFERRED_ORDER = [
+    'id-cards',
+    'lanyards',
+    'badges',
+    'student-diaries',
+    'pamphlets',
+    *BENTO_FORCE_INCLUDE_SLUGS,
+]
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -79,7 +101,12 @@ def home(request):
     if home_sections is None:
         home_sections = {
             'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
-            'trusted_clients': list(TrustedClient.objects.filter(is_active=True).order_by('order')),
+            'trusted_clients': list(
+                PanelClient.objects.filter(website_is_visible=True)
+                .exclude(website_logo__isnull=True)
+                .exclude(website_logo='')
+                .order_by('website_display_order', 'name', 'id')
+            ),
             'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
             'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]),
             'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
@@ -163,11 +190,24 @@ def our_work(request):
     total_reels = reels_qs.count()
     reels = reels_qs[:REELS_INITIAL_LIMIT]
     
+    bento_order_case = Case(
+        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(BENTO_PREFERRED_ORDER)],
+        default=Value(len(BENTO_PREFERRED_ORDER)),
+        output_field=IntegerField(),
+    )
+    bento_categories = categories.filter(
+        (Q(is_bento=True) & ~Q(slug__in=BENTO_FORCE_EXCLUDE_SLUGS))
+        | Q(slug__in=BENTO_FORCE_INCLUDE_SLUGS)
+    ).annotate(
+        _bento_rank=bento_order_case
+    ).distinct().order_by('_bento_rank', 'order', 'name')
+    extra_categories = categories.exclude(id__in=bento_categories.values('id'))
+
     context.update({
         'portfolio_items': items,
         'categories': categories,
-        'bento_categories': categories.filter(is_bento=True),
-        'extra_categories': categories.filter(is_bento=False),
+        'bento_categories': bento_categories,
+        'extra_categories': extra_categories,
         'category_images': category_images,
         'category_items': category_items,
         'portfolio_reels': portfolio_reels,

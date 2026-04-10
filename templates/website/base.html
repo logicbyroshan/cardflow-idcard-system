@@ -32,12 +32,14 @@
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     
     <!-- CSS Files -->
-    <link rel="stylesheet" href="{% static 'website/styles/style.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/style.css' %}?v=146">
     <link rel="stylesheet" href="{% static 'website/styles/page-common.css' %}">
-    <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/responsive.css' %}?v=146">
     <link rel="stylesheet" href="{% static 'website/styles/page-common-responsive.css' %}">
 
     {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
+    <link rel="stylesheet" href="{% static 'website/styles/ui-consistency.css' %}?v=146">
 
     <!-- Structured Data (Organization + LocalBusiness)  -  Public website only -->
     <script type="application/ld+json">
@@ -139,7 +141,12 @@
             <div class="footer-content">
                 <!-- About Section -->
                 <div class="footer-section">
-                    <h4>Adarsh ID Cards</h4>
+                    <div class="footer-brand" aria-label="Brand identity">
+                        <span class="footer-brand-logo-box" aria-hidden="true">
+                            <img src="{% static 'website/images/adarsh.png' %}" alt="" class="footer-brand-logo-img">
+                        </span>
+                        <span class="footer-brand-name">{{ site_name }}</span>
+                    </div>
                     <p>Your trusted partner for professional ID card solutions with 20+ years of excellence.</p>
                     <div class="social-links">
                         <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
@@ -174,12 +181,12 @@
                 <div class="footer-section">
                     <h4>Our Expertise</h4>
                     <ul>
-                        <li>School ID Cards</li>
-                        <li>Staff Identity Cards</li>
-                        <li>Digital Lanyards</li>
-                        <li>Printed Marksheets</li>
-                        <li>Certificate Design</li>
-                        <li>RFID Integration</li>
+                        <li><a href="{% url 'website:our_work' %}#expertise=school-id-cards">School ID Cards</a></li>
+                        <li><a href="{% url 'website:our_work' %}#expertise=staff-identity-cards">Staff Identity Cards</a></li>
+                        <li><a href="{% url 'website:our_work' %}#expertise=digital-lanyards">Digital Lanyards</a></li>
+                        <li><a href="{% url 'website:our_work' %}#expertise=printed-marksheets">Printed Marksheets</a></li>
+                        <li><a href="{% url 'website:our_work' %}#expertise=certificate-design">Certificate Design</a></li>
+                        <li><a href="{% url 'website:our_work' %}#expertise=rfid-integration">RFID Integration</a></li>
                     </ul>
                 </div>
 
@@ -188,7 +195,7 @@
                     <h4>Our Location</h4>
                     <div class="footer-map-container">
                         <iframe 
-                            src="https://www.google.com/maps?q={{ business.address|default:'Adarsh ID Cards Bhopal'|urlencode }}&t=&z=15&ie=UTF8&iwloc=&output=embed" 
+                            src="https://maps.google.com/maps?q={{ business.address|default:'Adarsh ID Cards Bhopal'|urlencode }}&t=&z=15&ie=UTF8&iwloc=&output=embed" 
                             width="100%" 
                             height="185" 
                             style="border:0; border-radius: 8px;" 

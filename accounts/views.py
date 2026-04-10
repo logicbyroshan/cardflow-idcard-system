@@ -13,8 +13,14 @@ from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from django.contrib.auth import login, logout
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import timezone
+from django.utils.timezone import localtime
+from django.utils.timesince import timesince
+from django.db.models import Q, Count, Max
+from core.models import ActivityLog
 from core.services.activity_service import ActivityService
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -23,6 +29,7 @@ from .services import AuthService, OTPService, RoleService, DASHBOARD_URLS
 from .rate_limit import rate_limit, _get_client_ip
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 def _mask_login_identifier(identifier):
@@ -54,9 +61,9 @@ class LoginPageView(View):
     def get(self, request):
         # If user is already authenticated, redirect to dashboard
         if request.user.is_authenticated:
-            # Respect ?next= param (e.g. from PWA → login redirect)
+            # Respect ?next= param (e.g. from PWA ÔåÆ login redirect)
             next_url = request.GET.get('next', '')
-            # S7: use Django's safe-redirect helper — blocks //evil.com, /\evil.com, etc.
+            # S7: use Django's safe-redirect helper ÔÇö blocks //evil.com, /\evil.com, etc.
             if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
                 return redirect(next_url)
             redirect_url = AuthService.get_dashboard_url(request.user)
@@ -74,25 +81,29 @@ class LogoutView(View):
     """Handle user logout. Only POST allowed to prevent CSRF logout attacks."""
     
     def get(self, request):
-        # GET requests redirect to login — do NOT perform logout on GET
+        # GET requests redirect to login ÔÇö do NOT perform logout on GET
         # (prevents CSRF logout via <img src="/logout/"> attacks)
         return redirect('accounts:login')
     
     def post(self, request):
         from .services_impersonate import ImpersonateService
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
         # If this session is impersonating, stopping logout returns control to Pro User.
         if request.user.is_authenticated and ImpersonateService.is_impersonating(request):
             result = ImpersonateService.stop(request)
             if result.get('success'):
-                return redirect(result.get('redirect_url') or '/panel/')
+                redirect_url = result.get('redirect_url') or '/panel/'
+                if is_ajax:
+                    return JsonResponse({'success': True, 'redirect': redirect_url})
+                return redirect(redirect_url)
 
         if request.user.is_authenticated:
             # Pro User cannot logout the final active session.
             if getattr(request.user, 'role', '') == 'pro_user':
                 active_sessions = AuthService.count_active_sessions_for_user(request.user.id, stop_after=2)
                 if active_sessions <= 1:
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    if is_ajax:
                         return JsonResponse({
                             'success': False,
                             'message': 'Pro User must remain logged in on at least one active session.'
@@ -103,17 +114,20 @@ class LogoutView(View):
         logout(request)
         # Respect ?next= or POST body next (e.g. from PWA logout)
         next_url = request.POST.get('next', '') or request.GET.get('next', '')
-        # S7: use Django's safe-redirect helper — blocks //evil.com, /\evil.com, etc.
+        # S7: use Django's safe-redirect helper ÔÇö blocks //evil.com, /\evil.com, etc.
         if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
             login_url = reverse('accounts:login') + '?next=' + next_url
+            if is_ajax:
+                return JsonResponse({'success': True, 'redirect': login_url})
             return redirect(login_url)
         # Redirect to the main website landing page if configured,
         # otherwise fall back to the login page
         from django.conf import settings
         website_url = getattr(settings, 'WEBSITE_URL', '')
-        if website_url:
-            return redirect(website_url)
-        return redirect('accounts:login')
+        target_url = website_url or '/'
+        if is_ajax:
+            return JsonResponse({'success': True, 'redirect': target_url})
+        return redirect(target_url)
 
 
 # =============================================================================
@@ -149,28 +163,28 @@ class BaseDashboardView(LoginRequiredMixin, View):
 
 
 class OwnerDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/."""
+    """DEPRECATED ÔÇö redirects to /panel/."""
     allowed_roles = ['super_admin', 'pro_user']
     def get(self, request):
         return redirect('/panel/')
 
 
 class StaffDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/."""
+    """DEPRECATED ÔÇö redirects to /panel/."""
     allowed_roles = ['admin_staff']
     def get(self, request):
         return redirect('/panel/')
 
 
 class ClientAdminDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/client/dashboard/."""
+    """DEPRECATED ÔÇö redirects to /panel/client/dashboard/."""
     allowed_roles = ['client']
     def get(self, request):
         return redirect('/panel/client/dashboard/')
 
 
 class ClientStaffDashboardView(BaseDashboardView):
-    """DEPRECATED — redirects to /panel/client/dashboard/."""
+    """DEPRECATED ÔÇö redirects to /panel/client/dashboard/."""
     allowed_roles = ['client_staff']
     def get(self, request):
         return redirect('/panel/client/dashboard/')
@@ -191,7 +205,6 @@ class CheckEmailAPIView(View):
         try:
             data = json.loads(request.body)
             identifier = data.get('email', '').strip()
-            role = data.get('role')
             
             if not identifier:
                 return JsonResponse({
@@ -199,7 +212,7 @@ class CheckEmailAPIView(View):
                     'message': 'Email or username is required'
                 }, status=400)
             
-            result = AuthService.check_user_exists(identifier, role)
+            result = AuthService.check_user_exists(identifier)
             
             return JsonResponse({
                 'success': result.get('exists', True),
@@ -237,7 +250,6 @@ class LoginAPIView(View):
             data = json.loads(request.body)
             identifier = data.get('email', '').strip()
             password = data.get('password', '')
-            role = data.get('role')
             
             if not identifier or not password:
                 return JsonResponse({
@@ -245,44 +257,48 @@ class LoginAPIView(View):
                     'message': 'Email/username and password are required'
                 }, status=400)
             
-            result = AuthService.authenticate_user(identifier, password, role)
+            result = AuthService.authenticate_user(identifier, password)
             
             if result['success']:
                 user = result['user']
+                resolved_role = getattr(user, 'role', '')
                 browser_fingerprint = AuthService.browser_fingerprint_from_request(request)
                 current_session_key = ''
                 if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
                     current_session_key = request.session.session_key or ''
 
-                max_sessions = AuthService.max_concurrent_sessions()
+                surface_limits = AuthService.role_surface_limits(user)
+                max_desktop_sessions = int(surface_limits.get('desktop', 1) or 1)
                 session_inspection = AuthService.inspect_active_sessions_for_user(
                     user.id,
                     browser_fingerprint=browser_fingerprint,
                     exclude_session_key=current_session_key,
-                    stop_after=max_sessions + 1,
+                    stop_after=max_desktop_sessions + 1,
                 )
-                active_sessions = int(session_inspection.get('count', 0) or 0)
+                surface_counts = session_inspection.get('surface_counts') or {}
+                active_sessions = int(surface_counts.get('desktop', 0) or 0)
                 has_different_browser_session = bool(session_inspection.get('has_different_browser'))
-                if active_sessions >= max_sessions:
+                if active_sessions >= max_desktop_sessions:
                     logger.warning(
-                        "Login blocked by session limit: user=%s role=%s ip=%s active_sessions=%s limit=%s",
+                        "Login blocked by desktop session limit: user=%s role=%s ip=%s active_desktop_sessions=%s desktop_limit=%s",
                         _mask_login_identifier(identifier),
-                        role,
+                        resolved_role,
                         client_ip,
                         active_sessions,
-                        max_sessions,
+                        max_desktop_sessions,
                     )
                     return JsonResponse({
                         'success': False,
-                        'message': f'Maximum {max_sessions} active logins are allowed for this account. Please logout from another browser and try again.'
+                        'message': f'Maximum {max_desktop_sessions} active desktop login(s) are allowed for this account. Please logout from another desktop/browser and try again.'
                     })
 
                 # Log the user in
                 login(request, user)
                 
-                # Store selected role in session for reference
-                request.session['selected_role'] = role
+                # Store actual role resolved from user identity (email/username)
+                request.session['selected_role'] = resolved_role
                 request.session['_auth_browser_fp'] = browser_fingerprint
+                request.session['_auth_login_surface'] = 'desktop'
                 
                 # Log activity
                 if user.role in ('client', 'client_staff') and has_different_browser_session:
@@ -296,13 +312,13 @@ class LoginAPIView(View):
                     logger.warning(
                         "Concurrent cross-browser login detected: user=%s role=%s ip=%s active_sessions=%s",
                         _mask_login_identifier(identifier),
-                        role,
+                        resolved_role,
                         client_ip,
                         active_sessions,
                     )
                 else:
                     ActivityService.log_login(request, user)
-                logger.info("Login success: user=%s role=%s ip=%s", _mask_login_identifier(identifier), role, client_ip)
+                logger.info("Login success: user=%s role=%s ip=%s", _mask_login_identifier(identifier), resolved_role, client_ip)
                 
                 return JsonResponse({
                     'success': True,
@@ -313,7 +329,7 @@ class LoginAPIView(View):
                 logger.warning(
                     "Login failed: identifier=%s role=%s ip=%s reason=%s",
                     _mask_login_identifier(identifier),
-                    role,
+                    'inferred',
                     client_ip,
                     result['message'],
                 )
@@ -458,6 +474,24 @@ class ResetPasswordAPIView(View):
                 }, status=400)
             
             result = OTPService.reset_password(email, reset_token, new_password)
+
+            if result.get('success'):
+                user = User.objects.filter(email__iexact=email).first()
+                full_email = (email or '').strip()
+                target_name = ''
+                target_id = None
+                if user:
+                    target_name = user.get_full_name() or user.username
+                    target_id = user.pk
+                ActivityService.log(
+                    'password_reset',
+                    f'Password reset completed for {full_email}',
+                    user=user,
+                    request=request,
+                    target_model='User',
+                    target_id=target_id,
+                    target_name=target_name,
+                )
             
             return JsonResponse({
                 'success': result['success'],
@@ -496,7 +530,6 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
     """
     POST /api/auth/impersonate/start/
     Body: { "user_id": <int> }
-    Pro User only — starts impersonating the target user.
     """
     login_url = '/panel/auth/login/'
 
@@ -505,12 +538,22 @@ class ImpersonateStartAPIView(LoginRequiredMixin, View):
         if getattr(request.user, 'role', None) != 'pro_user':
             return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
         try:
+            actor_user = request.user
             data = json.loads(request.body)
             target_user_id = data.get('user_id')
             if not target_user_id:
                 return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
 
             result = ImpersonateService.start(request, int(target_user_id))
+            if result.get('success'):
+                ActivityService.log(
+                    'impersonate_start',
+                    f"Impersonation started for user_id={int(target_user_id)}",
+                    user=actor_user,
+                    request=request,
+                    target_model='User',
+                    target_id=int(target_user_id),
+                )
             status = 200 if result['success'] else 403
             return JsonResponse(result, status=status)
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -531,6 +574,13 @@ class ImpersonateStopAPIView(LoginRequiredMixin, View):
         from .services_impersonate import ImpersonateService
         try:
             result = ImpersonateService.stop(request)
+            if result.get('success'):
+                ActivityService.log(
+                    'impersonate_stop',
+                    'Impersonation stopped',
+                    user=request.user,
+                    request=request,
+                )
             status = 200 if result['success'] else 400
             return JsonResponse(result, status=status)
         except Exception as e:
@@ -552,3 +602,256 @@ class ImpersonateListAPIView(LoginRequiredMixin, View):
 
         users = ImpersonateService.get_impersonation_targets(request)
         return JsonResponse({'success': True, 'users': users})
+
+
+# =============================================================================
+# PRO USER AUDIT VIEWS (Pro User only)
+# =============================================================================
+
+class ProUserAuditUsersAPIView(LoginRequiredMixin, View):
+    """GET /api/auth/user-audit/users/ - list users available for deep history audit."""
+    login_url = '/panel/auth/login/'
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        search = str(request.GET.get('search', '') or '').strip()
+        role_filter = str(request.GET.get('role', '') or '').strip()
+        users_qs = User.objects.select_related('client_profile', 'staff_profile__client').all().order_by('role', 'first_name', 'username')
+
+        if role_filter and role_filter in {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}:
+            users_qs = users_qs.filter(role=role_filter)
+        if search:
+            users_qs = users_qs.filter(
+                Q(username__icontains=search)
+                | Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        users = []
+        for entry in users_qs[:300]:
+            client_name = ''
+            if entry.role == 'client':
+                client_profile = getattr(entry, 'client_profile', None)
+                client_name = getattr(client_profile, 'name', '') or ''
+            elif entry.role == 'client_staff':
+                staff_profile = getattr(entry, 'staff_profile', None)
+                client_name = getattr(getattr(staff_profile, 'client', None), 'name', '') or ''
+
+            users.append({
+                'id': entry.pk,
+                'name': entry.get_full_name() or entry.username,
+                'username': entry.username,
+                'email': entry.email or '',
+                'role': entry.role,
+                'role_display': dict(User.ROLE_CHOICES).get(entry.role, entry.role),
+                'is_active': bool(entry.is_active),
+                'last_login': entry.last_login.isoformat() if entry.last_login else None,
+                'client_name': client_name,
+            })
+
+        return JsonResponse({'success': True, 'users': users})
+
+
+class ProUserAuditHistoryAPIView(LoginRequiredMixin, View):
+    """GET /api/auth/user-audit/history/ - deep history for a selected user."""
+    login_url = '/panel/auth/login/'
+
+    ACTION_DEVICE_HINTS = {
+        'login': 'Login Session',
+        'logout': 'Logout Session',
+        'password_reset': 'Credential Update',
+        'card_bulk_download': 'Bulk Download',
+        'card_bulk_status': 'Bulk Workflow',
+        'card_status': 'Card Workflow',
+        'reprint_status': 'Reprint Workflow',
+    }
+
+    DEVICE_SURFACE_ICONS = {
+        'mobile': 'fa-mobile-screen-button',
+        'desktop': 'fa-desktop',
+        'unknown': 'fa-circle-question',
+    }
+
+    @staticmethod
+    def _infer_device_hint(action, description, ip_address):
+        desc = str(description or '').lower()
+        if 'android' in desc:
+            return 'Android Device'
+        if 'iphone' in desc or 'ios' in desc:
+            return 'iOS Device'
+        if 'windows' in desc:
+            return 'Windows Desktop'
+        if 'mac' in desc:
+            return 'Mac Desktop'
+        if 'linux' in desc:
+            return 'Linux Desktop'
+        if 'browser' in desc:
+            return 'Web Browser'
+        if action in ProUserAuditHistoryAPIView.ACTION_DEVICE_HINTS:
+            return ProUserAuditHistoryAPIView.ACTION_DEVICE_HINTS[action]
+        if ip_address:
+            return f'IP {ip_address}'
+        return 'Activity Record'
+
+    @staticmethod
+    def _infer_device_surface(action, description):
+        desc = f"{action or ''} {description or ''}".lower()
+        if any(token in desc for token in ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')):
+            return 'mobile'
+        if any(token in desc for token in ('desktop web', 'desktop', 'browser', 'windows', 'mac', 'linux', 'web app', 'web')):
+            return 'desktop'
+        return 'unknown'
+
+    @classmethod
+    def _device_surface_meta(cls, action, description):
+        surface = cls._infer_device_surface(action, description)
+        if surface == 'mobile':
+            label = 'Mobile'
+        elif surface == 'desktop':
+            label = 'Desktop'
+        else:
+            label = 'Unknown'
+        return {
+            'device_surface': surface,
+            'device_surface_label': label,
+            'device_surface_icon': cls.DEVICE_SURFACE_ICONS.get(surface, cls.DEVICE_SURFACE_ICONS['unknown']),
+        }
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        try:
+            target_user_id = int(request.GET.get('user_id', '0'))
+        except (TypeError, ValueError):
+            target_user_id = 0
+        if target_user_id <= 0:
+            return JsonResponse({'success': False, 'message': 'user_id is required.'}, status=400)
+
+        try:
+            limit = int(request.GET.get('limit', '80'))
+        except (TypeError, ValueError):
+            limit = 80
+        limit = min(max(limit, 1), 200)
+
+        try:
+            offset = int(request.GET.get('offset', '0'))
+        except (TypeError, ValueError):
+            offset = 0
+        offset = max(offset, 0)
+
+        action_filter = str(request.GET.get('action', '') or '').strip()
+        search = str(request.GET.get('search', '') or '').strip()
+
+        target_user = User.objects.filter(pk=target_user_id).first()
+        if not target_user:
+            return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
+
+        activity_qs = ActivityLog.objects.select_related('user').filter(
+            Q(user_id=target_user.pk)
+            | Q(target_model='User', target_id=target_user.pk)
+        )
+
+        if action_filter:
+            activity_qs = activity_qs.filter(action=action_filter)
+        if search:
+            activity_qs = activity_qs.filter(
+                Q(description__icontains=search)
+                | Q(target_name__icontains=search)
+                | Q(action__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+            )
+
+        total = activity_qs.count()
+        entries = activity_qs.order_by('-created_at')[offset:offset + limit]
+
+        summary = activity_qs.aggregate(
+            total_events=Count('id'),
+            login_count=Count('id', filter=Q(action='login')),
+            download_count=Count('id', filter=Q(action='card_bulk_download')),
+            approve_count=Count(
+                'id',
+                filter=Q(action__in=['card_status', 'card_bulk_status'], description__icontains='approved')
+            ),
+            latest_event_at=Max('created_at'),
+        )
+
+        action_dict = dict(ActivityLog.ACTION_CHOICES)
+        now = timezone.now()
+        logs = []
+        for entry in entries:
+            actor_name = ''
+            actor_role = ''
+            if entry.user:
+                actor_name = entry.user.get_full_name() or entry.user.username
+                actor_role = getattr(entry.user, 'role', '')
+
+            event_dt = localtime(entry.created_at)
+            log_item = {
+                'id': entry.pk,
+                'action': entry.action,
+                'action_display': action_dict.get(entry.action, entry.action.replace('_', ' ').title()),
+                'description': entry.description,
+                'target_name': entry.target_name or '',
+                'target_model': entry.target_model or '',
+                'target_id': entry.target_id,
+                'actor_name': actor_name,
+                'actor_role': actor_role,
+                'ip_address': entry.ip_address or '',
+                'device_hint': self._infer_device_hint(entry.action, entry.description, entry.ip_address),
+                'icon_class': entry.icon_class,
+                'icon_color': entry.icon_color,
+                'time_ago': timesince(entry.created_at, now),
+                'created_at': entry.created_at.isoformat(),
+                'created_date': event_dt.strftime('%d %b %Y'),
+                'created_time': event_dt.strftime('%I:%M:%S %p'),
+                'scope': 'performed' if entry.user_id == target_user.pk else 'related',
+            }
+            log_item.update(self._device_surface_meta(entry.action, entry.description))
+            logs.append(log_item)
+
+        return JsonResponse({
+            'success': True,
+            'user': {
+                'id': target_user.pk,
+                'name': target_user.get_full_name() or target_user.username,
+                'username': target_user.username,
+                'email': target_user.email or '',
+                'role': target_user.role,
+                'role_display': dict(User.ROLE_CHOICES).get(target_user.role, target_user.role),
+                'is_active': bool(target_user.is_active),
+                'last_login': target_user.last_login.isoformat() if target_user.last_login else None,
+            },
+            'summary': {
+                'total_events': int(summary.get('total_events') or 0),
+                'login_count': int(summary.get('login_count') or 0),
+                'download_count': int(summary.get('download_count') or 0),
+                'approve_count': int(summary.get('approve_count') or 0),
+                'latest_event_at': summary.get('latest_event_at').isoformat() if summary.get('latest_event_at') else None,
+            },
+            'logs': logs,
+            'total': total,
+            'offset': offset,
+            'limit': limit,
+            'has_more': (offset + limit) < total,
+        })
+
+
+class ProUserAuditActionsAPIView(LoginRequiredMixin, View):
+    """GET /api/auth/user-audit/actions/ - supported action filters."""
+    login_url = '/panel/auth/login/'
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'pro_user':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+        actions = [
+            {'value': key, 'label': label}
+            for key, label in ActivityLog.ACTION_CHOICES
+        ]
+        return JsonResponse({'success': True, 'actions': actions})

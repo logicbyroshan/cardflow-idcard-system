@@ -73,6 +73,7 @@ class Staff(models.Model):
     
     # ID Card Client List Permission
     perm_idcard_client_list = models.BooleanField(default=False)
+    perm_manage_client_staff = models.BooleanField(default=False)
     
     # ID Card Setting Permissions
     perm_idcard_setting_list = models.BooleanField(default=False)
@@ -116,6 +117,14 @@ class Staff(models.Model):
     
     # Mobile App (PWA) Permission
     perm_mobile_app = models.BooleanField(default=False, help_text='Allow access to mobile PWA app')
+
+    # Manage Panel Permissions (admin staff)
+    perm_manage_panel_backup = models.BooleanField(default=False)
+    perm_manage_panel_email = models.BooleanField(default=False)
+
+    # Manage Website Section Permissions (admin staff)
+    perm_manage_website_clients = models.BooleanField(default=False)
+    perm_manage_website_portfolio = models.BooleanField(default=False)
     
     # Website Management Permissions
     perm_website_view = models.BooleanField(default=False)

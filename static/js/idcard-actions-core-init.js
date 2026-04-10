@@ -63,7 +63,7 @@ function initDropdowns() {
     setupDropdown('filterDropdown');
     setupDropdown('rowsDropdown');
     setupDropdown('sortDropdown');
-    // classFilterDropdown and sectionFilterDropdown are handled by initFilterHandlers()
+    // class/section/course/branch filter dropdowns are handled by initFilterHandlers()
     // in idcard-actions-search.js (with event delegation for dynamic options)
     
     // Close dropdowns when clicking outside

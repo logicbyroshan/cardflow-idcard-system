@@ -85,7 +85,7 @@ function updatePaginationInfoEndless(totalLoaded) {
     if (paginationInfo) {
         const totalCount = _ts.lazyLoadState.totalCount || totalLoaded;
         const hasMore = _ts.lazyLoadState.hasMore;
-        const hasFilter = IDCardApp.currentClassFilter || IDCardApp.currentSectionFilter || _ts.searchQuery;
+        const hasFilter = IDCardApp.currentClassFilter || IDCardApp.currentSectionFilter || IDCardApp.currentCourseFilter || IDCardApp.currentBranchFilter || _ts.searchQuery;
         
         if (hasMore) {
             paginationInfo.innerHTML = `Showing <strong>1-${totalLoaded}</strong> of <strong>${totalLoaded}</strong> loaded (${totalCount} total)`;
@@ -101,18 +101,23 @@ function updatePaginationInfoEndless(totalLoaded) {
 }
 
 function updatePageNumbersForEndless(totalLoaded) {
-    // Use cached visible count (updated in renderTable / applyFilters) for O(1)
-    const visibleCount = (_ts._cachedVisibleCount != null ? _ts._cachedVisibleCount : totalLoaded) || totalLoaded;
-    const totalPages = Math.ceil(visibleCount / _ts.rowsPerPage) || 1;
+    // Use server total immediately so users can jump pages before all rows are loaded.
+    // Fallback to visible rows only if server total is unavailable.
+    const loadedCount = Number(_ts.lazyLoadState.loadedCount || 0);
+    const fallbackVisible = Number((_ts._cachedVisibleCount != null ? _ts._cachedVisibleCount : totalLoaded) || totalLoaded || loadedCount || 0);
+    const serverTotal = Number(_ts.lazyLoadState.totalCount || 0);
+    const effectiveTotal = serverTotal > 0 ? serverTotal : fallbackVisible;
+    const totalPages = Math.ceil(effectiveTotal / _ts.rowsPerPage) || 1;
     
     const tableContainer = document.querySelector('.idcard-table');
     let virtualPage = 1;
-    if (tableContainer && visibleCount > 0) {
+    if (tableContainer && fallbackVisible > 0) {
         // Calculate virtual page from approximate first visible row index
-        const avgRowHeight = tableContainer.scrollHeight / (visibleCount || 1);
+        const avgRowHeight = tableContainer.scrollHeight / (fallbackVisible || 1);
         const firstVisibleRowIndex = Math.floor(tableContainer.scrollTop / (avgRowHeight || 1));
         virtualPage = Math.min(totalPages, Math.max(1, Math.floor(firstVisibleRowIndex / _ts.rowsPerPage) + 1));
     }
+    _ts.currentPage = virtualPage;
     
     const pageNumbersContainer = document.querySelector('.page-numbers');
     if (pageNumbersContainer) {
@@ -213,20 +218,8 @@ function updateLazyLoadPaginationInfo() {
 // PAGINATION NAVIGATION
 // ==========================================
 
-function jumpToPage(page) {
-    const rowsPerPageValue = _ts.rowsPerPage;
-    const targetRowIndex = (page - 1) * rowsPerPageValue;
-    
-    if (targetRowIndex >= _ts.filteredRows.length && _ts.lazyLoadState.hasMore) {
-        _ts.endlessScrollMode = false;
-        _ts.currentPage = page;
-        goToPage(page);
-        return;
-    }
-    
-    if (_ts.filteredRows[targetRowIndex]) {
-        _ts.filteredRows[targetRowIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+async function jumpToPage(page) {
+    await goToPage(page);
 }
 
 async function goToPage(page) {
@@ -269,6 +262,7 @@ function goToFirstPage() {
         if (tableContainer) {
             tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
         }
+        _ts.currentPage = 1;
     } else {
         goToPage(1);
     }
@@ -276,14 +270,7 @@ function goToFirstPage() {
 
 function goToPrevPage() {
     if (_ts.endlessScrollMode) {
-        const tableContainer = document.querySelector('.idcard-table');
-        if (tableContainer) {
-            const visibleRows = _ts.filteredRows.filter(r => r.style.display !== 'none');
-            const totalRows = visibleRows.length || 1;
-            const avgRowHeight = tableContainer.scrollHeight / totalRows;
-            const jumpPx = avgRowHeight * _ts.rowsPerPage;
-            tableContainer.scrollBy({ top: -jumpPx, behavior: 'smooth' });
-        }
+        goToPage(Math.max(1, (_ts.currentPage || 1) - 1));
     } else {
         goToPage(_ts.currentPage - 1);
     }
@@ -291,14 +278,9 @@ function goToPrevPage() {
 
 function goToNextPage() {
     if (_ts.endlessScrollMode) {
-        const tableContainer = document.querySelector('.idcard-table');
-        if (tableContainer) {
-            const visibleRows = _ts.filteredRows.filter(r => r.style.display !== 'none');
-            const totalRows = visibleRows.length || 1;
-            const avgRowHeight = tableContainer.scrollHeight / totalRows;
-            const jumpPx = avgRowHeight * _ts.rowsPerPage;
-            tableContainer.scrollBy({ top: jumpPx, behavior: 'smooth' });
-        }
+        const totalForPaging = Number(_ts.lazyLoadState.totalCount || _ts.filteredRows.length || 0);
+        const totalPages = Math.ceil(totalForPaging / _ts.rowsPerPage) || 1;
+        goToPage(Math.min(totalPages, (_ts.currentPage || 1) + 1));
     } else {
         goToPage(_ts.currentPage + 1);
     }

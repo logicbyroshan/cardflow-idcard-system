@@ -1,17 +1,17 @@
 <!-- === EMAIL MANAGEMENT TAB === -->
-<div class="panel-tab-content panel-tab-full-height" id="tab-email-logs">
+<div class="panel-tab-content panel-tab-full-height email-panel-theme" id="tab-email-logs">
 
   <!-- Actions / Filter bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <select id="emailStatusFilter" class="form-select-sm" onchange="loadEmailLogs()">
+      <select id="emailStatusFilter" class="form-select form-select-sm" onchange="loadEmailLogs()">
         <option value="">All Statuses</option>
         <option value="on_hold">On Hold</option>
         <option value="pending">Pending</option>
         <option value="sent">Sent</option>
         <option value="failed">Failed</option>
       </select>
-      <select id="emailTypeFilter" class="form-select-sm" onchange="loadEmailLogs()">
+      <select id="emailTypeFilter" class="form-select form-select-sm" onchange="loadEmailLogs()">
         <option value="">All Types</option>
         <option value="welcome">Welcome / Activation</option>
         <option value="temp_password">Temp Password</option>
@@ -45,15 +45,24 @@
   <!-- Email Logs Table -->
   <div class="notif-table-wrap">
     <table class="notif-table" id="emailLogsTable">
+      <colgroup>
+        <col style="width: 5%;">
+        <col style="width: 18%;">
+        <col style="width: 22%;">
+        <col style="width: 15%;">
+        <col style="width: 11%;">
+        <col style="width: 13%;">
+        <col style="width: 16%;">
+      </colgroup>
       <thead>
         <tr>
-          <th scope="col" style="width:5%">#</th>
-          <th scope="col" style="width:18%">Recipient</th>
-          <th scope="col" style="width:22%">Email Address</th>
-          <th scope="col" style="width:15%">Type</th>
-          <th scope="col" style="width:11%">Status</th>
-          <th scope="col" style="width:13%">Created</th>
-          <th scope="col" style="width:16%">Action</th>
+          <th scope="col">#</th>
+          <th scope="col">Recipient</th>
+          <th scope="col">Email Address</th>
+          <th scope="col">Type</th>
+          <th scope="col">Status</th>
+          <th scope="col">Created</th>
+          <th scope="col">Action</th>
         </tr>
       </thead>
       <tbody id="emailLogsBody">
@@ -71,18 +80,35 @@
   </div>
 
   <!-- Pagination -->
-  <div class="notif-pagination-bar">
+  <div class="pagination-bar notif-pagination-bar">
     <div class="pagination-left">
       <span class="pagination-info" id="emailLogCountLabel"></span>
     </div>
     <div class="pagination-center">
+      <button class="pagination-btn" id="emailFirstBtn" onclick="emailSetPage(1)" disabled title="First Page" aria-label="First page">
+        <i class="fa-solid fa-angles-left"></i>
+      </button>
       <button class="pagination-btn" id="emailPrevBtn" onclick="emailLogPage(-1)" disabled>
         <i class="fa-solid fa-chevron-left"></i>
       </button>
-      <span id="emailPageLabel" style="font-size:12px; color:#64748b; padding:0 6px;"></span>
+      <span class="page-numbers" id="emailPageNumbers">
+        <button class="page-num active">1</button>
+      </span>
       <button class="pagination-btn" id="emailNextBtn" onclick="emailLogPage(1)" disabled>
         <i class="fa-solid fa-chevron-right"></i>
       </button>
+      <button class="pagination-btn" id="emailLastBtn" onclick="emailSetPage(-1)" disabled title="Last Page" aria-label="Last page">
+        <i class="fa-solid fa-angles-right"></i>
+      </button>
+    </div>
+    <div class="pagination-right">
+      <label for="emailRowsPerPage">Rows per page:</label>
+      <select id="emailRowsPerPage" class="form-select form-select-sm" onchange="onEmailRowsPerPageChange(this.value)">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
     </div>
   </div>
 
@@ -103,46 +129,52 @@
         <input type="hidden" id="emailComposeLogId" value="">
         <input type="hidden" id="emailComposeBodyHtml" value="">
 
-        <div class="email-template-preview-wrap">
-          <div class="email-template-preview-head">
-            <span class="email-template-preview-title">Live Email Preview</span>
-            <span class="email-template-preview-subtitle">This is exactly how the receiver will see the email design</span>
+        <div class="email-compose-layout">
+          <div class="email-compose-left">
+            <div class="panel-form-row">
+              <div>
+                <label class="panel-form-label">Recipient Name</label>
+                <input type="text" class="panel-form-input" id="emailComposeRecipientName" maxlength="200" placeholder="Recipient name">
+              </div>
+              <div>
+                <label class="panel-form-label">Recipient Email *</label>
+                <input type="email" class="panel-form-input" id="emailComposeRecipientEmail" required maxlength="254" placeholder="user@example.com">
+              </div>
+            </div>
+
+            <div class="panel-form-row">
+              <div>
+                <label class="panel-form-label">Email Type</label>
+                <select class="form-select panel-form-select form-select-sm" id="emailComposeType">
+                  <option value="system">System / Custom</option>
+                  <option value="welcome">Welcome / Activation</option>
+                  <option value="temp_password">Temp Password</option>
+                  <option value="password_change">Password Change Notice</option>
+                  <option value="otp_reset">Password Reset OTP</option>
+                </select>
+              </div>
+              <div>
+                <label class="panel-form-label">Subject *</label>
+                <input type="text" class="panel-form-input" id="emailComposeSubject" required maxlength="300" placeholder="Email subject">
+              </div>
+            </div>
+
+            <label class="panel-form-label">Message Body *</label>
+            <textarea class="panel-form-input" id="emailComposeBodyText" rows="14" required placeholder="Write your email here..."></textarea>
           </div>
-          <div class="email-template-preview-frame">
-            <div id="emailComposePreview" class="email-template-preview-content"></div>
+
+          <div class="email-compose-right">
+            <div class="email-template-preview-wrap">
+              <div class="email-template-preview-head">
+                <span class="email-template-preview-title">Live Email Preview</span>
+                <span class="email-template-preview-subtitle">This is exactly how the receiver will see the email design</span>
+              </div>
+              <div class="email-template-preview-frame">
+                <div id="emailComposePreview" class="email-template-preview-content"></div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div class="panel-form-row">
-          <div>
-            <label class="panel-form-label">Recipient Name</label>
-            <input type="text" class="panel-form-input" id="emailComposeRecipientName" maxlength="200" placeholder="Recipient name">
-          </div>
-          <div>
-            <label class="panel-form-label">Recipient Email *</label>
-            <input type="email" class="panel-form-input" id="emailComposeRecipientEmail" required maxlength="254" placeholder="user@example.com">
-          </div>
-        </div>
-
-        <div class="panel-form-row">
-          <div>
-            <label class="panel-form-label">Email Type</label>
-            <select class="panel-form-select form-select-sm" id="emailComposeType">
-              <option value="system">System / Custom</option>
-              <option value="welcome">Welcome / Activation</option>
-              <option value="temp_password">Temp Password</option>
-              <option value="password_change">Password Change Notice</option>
-              <option value="otp_reset">Password Reset OTP</option>
-            </select>
-          </div>
-          <div>
-            <label class="panel-form-label">Subject *</label>
-            <input type="text" class="panel-form-input" id="emailComposeSubject" required maxlength="300" placeholder="Email subject">
-          </div>
-        </div>
-
-        <label class="panel-form-label">Message Body *</label>
-        <textarea class="panel-form-input" id="emailComposeBodyText" rows="10" required placeholder="Write your email here..."></textarea>
       </form>
     </div>
 

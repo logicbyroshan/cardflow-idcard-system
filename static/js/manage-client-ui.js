@@ -13,8 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
       NS.selectedRow = null;
       NS.selectedProfileFile = null; // Kept for API compatibility
 
-      // Super Admin flag for client staff management
+      // Capability flags for manage-clients actions
       NS.isSuperAdmin = window.isSuperAdmin || false;
+      NS.canManageClients = window.canManageClients || NS.isSuperAdmin;
 
       // ==================== ELEMENTS ====================
       var clientDrawer = document.getElementById('client-drawer');
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var drawerTitle = document.getElementById('drawerTitleText');
       var drawerIcon = document.getElementById('drawerIcon');
       var submitBtn = document.getElementById('submitClientBtn');
+      var clientDrawerAvatar = document.getElementById('clientDrawerAvatar');
       
       var viewModal = document.getElementById('view-modal');
       var deleteModal = document.getElementById('delete-modal');
@@ -40,6 +42,16 @@ document.addEventListener('DOMContentLoaded', function() {
       var tbody = table.querySelector('tbody');
 
       // Phase 1: Profile photo upload removed - using avatar placeholder
+
+      function renderClientDrawerAvatar(name, logoUrl) {
+        if (!clientDrawerAvatar) return;
+        if (logoUrl) {
+          var safeName = String(name || 'Client').replace(/"/g, '&quot;');
+          clientDrawerAvatar.innerHTML = '<img src="' + logoUrl + '" alt="' + safeName + '" style="width:56px;height:56px;object-fit:contain;border-radius:10px;border:1px solid #e2e8f0;background:#fff;padding:4px;">';
+          return;
+        }
+        clientDrawerAvatar.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client user-avatar-placeholder--lg"><i class="fa-solid fa-building"></i></div>';
+      }
 
       // ==================== FORM STATUS DROPDOWN ====================
       var clientStatusDropdown = document.getElementById('clientStatusDropdown');
@@ -227,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // ==================== ROW DOUBLE-CLICK NAVIGATION ====================
         clientTableContainer.addEventListener('dblclick', function(e) {
+          if (e.target.closest('.client-message-btn')) return;
           var row = e.target.closest('tr');
           if (row && row.dataset.clientId) {
             window.location.href = '/client/' + row.dataset.clientId + '/settings/';
@@ -257,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         NS.setClientStatusDropdown('false'); // Default Inactive for new clients
         NS.setClientPasswordOption('phone'); // Reset password option to phone
         setClientPasswordHidden();
+        renderClientDrawerAvatar('', '');
         
         // Phase 1: Photo upload removed - using avatar placeholder
         
@@ -300,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('clientPhone').value = clientData.phone || '';
             document.getElementById('clientAddress').value = clientData.address || '';
             NS.setClientStatusDropdown(clientData.status === 'active' ? 'true' : 'false');
+            renderClientDrawerAvatar(clientData.name || '', clientData.photo_url || '');
             
             // Phase 1: Photo upload removed - using avatar placeholder
             
@@ -367,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm_idcard_updated_at': 'Last Updated & Updated By',
             'perm_idcard_retrieve': 'Retrieve from Pool',
             'perm_idcard_upgrade_all': 'Batch Class Upgrade',
-            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Staff'
+            'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Client'
           };
           var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
           NS.permissionFields.forEach(function(field) {

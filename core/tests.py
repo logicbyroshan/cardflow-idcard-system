@@ -3,17 +3,24 @@ Tests for core app.
 Covers: User model, IDCard/IDCardTable/IDCardGroup models, middleware,
 permissions, workflow transitions, bulk upload service, global search.
 """
-from django.test import TestCase, RequestFactory, override_settings
+from django.test import TestCase, SimpleTestCase, RequestFactory, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import timezone
 from unittest.mock import patch
+from datetime import timedelta
+from pathlib import Path
 import json
 import os
 import tempfile
 import io
 import zipfile
+import hmac
+import time
 
 User = get_user_model()
 
@@ -54,6 +61,246 @@ def _create_card(table, field_data=None, status='pending'):
     return IDCard.objects.create(table=table, field_data=field_data, status=status)
 
 
+class AlpineRuntimeTemplateGuardTests(TestCase):
+    def test_templates_do_not_embed_alpine_runtime_tags(self):
+        templates_root = Path(__file__).resolve().parent.parent / 'templates'
+        allowed_direct_file = (templates_root / 'partials' / 'common' / 'alpine-loader.html').resolve()
+        forbidden_tokens = (
+            "js/alpine-state.js",
+            "js/vendor/alpine.min.js",
+            "js/vendor/alpine-mobile.min.js",
+        )
+
+        offenders = []
+        for template_path in templates_root.rglob('*.html'):
+            if template_path.resolve() == allowed_direct_file:
+                continue
+            content = template_path.read_text(encoding='utf-8')
+            if any(token in content for token in forbidden_tokens):
+                offenders.append(str(template_path.relative_to(templates_root)).replace('\\', '/'))
+
+        self.assertFalse(
+            offenders,
+            "Templates must use shared Alpine loader include instead of direct runtime tags: "
+            + ', '.join(offenders),
+        )
+
+    def test_core_entry_templates_use_alpine_loader_partial(self):
+        templates_root = Path(__file__).resolve().parent.parent / 'templates'
+        required_templates = [
+            'base.html',
+            'client/base.html',
+            'website/admin/base.html',
+            'mobile_app/base.html',
+            'partials/idcard-actions/head-assets.html',
+        ]
+
+        for rel_path in required_templates:
+            content = (templates_root / rel_path).read_text(encoding='utf-8')
+            self.assertIn(
+                "partials/common/alpine-loader.html",
+                content,
+                f"Missing shared Alpine loader include in {rel_path}",
+            )
+
+    def test_alpine_loader_respects_include_state_flag(self):
+        default_html = render_to_string('partials/common/alpine-loader.html')
+        mobile_html = render_to_string('partials/common/alpine-loader.html', {'include_state': False})
+
+        self.assertIn('js/alpine-state', default_html)
+        self.assertNotIn('js/alpine-state', mobile_html)
+        self.assertIn('js/vendor/alpine-mobile.min', mobile_html)
+
+
+class XlsxZipDualDownloadWiringTests(SimpleTestCase):
+    def _repo_root(self):
+        return Path(__file__).resolve().parent.parent
+
+    def test_xlsx_modal_has_include_images_checkbox(self):
+        template_path = self._repo_root() / 'templates' / 'partials' / 'idcard' / 'modal-downloads.html'
+        content = template_path.read_text(encoding='utf-8')
+
+        self.assertIn('id="downloadXlsxIncludeImages"', content)
+        self.assertIn('Also download images ZIP', content)
+
+    def test_xlsx_modal_handler_passes_include_images_flag(self):
+        modal_js_path = self._repo_root() / 'static' / 'js' / 'idcard-actions-download-modals.js'
+        content = modal_js_path.read_text(encoding='utf-8')
+
+        self.assertIn('const includeImagesZip = !!(includeImagesEl && includeImagesEl.checked);', content)
+        self.assertIn('window.IDCardApp.downloadXlsx(cardIds, { includeImagesZip: includeImagesZip });', content)
+
+    def test_xlsx_download_logic_gates_zip_with_flag(self):
+        logic_js_path = self._repo_root() / 'static' / 'js' / 'idcard-actions-download-logic.js'
+        content = logic_js_path.read_text(encoding='utf-8')
+
+        self.assertIn('function downloadXlsx(cardIds, options)', content)
+        self.assertIn('const includeImagesZip = !!options.includeImagesZip;', content)
+        self.assertGreaterEqual(content.count('if (includeImagesZip) {'), 3)
+        self.assertIn('downloadImages(cardIds);', content)
+
+
+class HeaderHumanizeFilterTests(TestCase):
+    def test_uid_stays_unsplit(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('UID'), 'UID')
+
+    def test_uid_prefix_with_known_suffix_splits_cleanly(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('UIDNO'), 'UID NO')
+
+    def test_other_known_acronym_prefix_with_suffix_splits_cleanly(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('UDISECODE'), 'UDISE CODE')
+
+    def test_unknown_prefix_keeps_acronym_together(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('XYZNAME'), 'XYZ NAME')
+
+    def test_existing_humanize_behavior_remains(self):
+        from core.templatetags.custom_filters import humanize_header
+        self.assertEqual(humanize_header('STUDENTNAME'), 'STUDENT NAME')
+
+
+class CropperWebhookSecurityTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    def _timestamped_signature(self, secret, timestamp, body_bytes):
+        signed_payload = timestamp.encode('utf-8') + b'.' + body_bytes
+        return 'sha256=' + hmac.digest(secret.encode(), signed_payload, 'sha256').hex()
+
+    def test_verify_webhook_accepts_timestamped_hmac(self):
+        from core.views import cropper_api
+
+        body = json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}).encode('utf-8')
+        timestamp = str(int(time.time()))
+        signature = self._timestamped_signature('test-secret', timestamp, body)
+
+        request = self.factory.post(
+            '/api/cropper/release-webhook/',
+            data=body,
+            content_type='application/json',
+            HTTP_X_HUB_SIGNATURE_256=signature,
+            HTTP_X_WEBHOOK_TIMESTAMP=timestamp,
+            HTTP_X_WEBHOOK_NONCE='nonce-1',
+        )
+
+        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
+             patch.object(cropper_api, 'WEBHOOK_MAX_AGE_SECONDS', 300), \
+             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
+            self.assertTrue(cropper_api._verify_webhook(request))
+
+    def test_verify_webhook_rejects_stale_timestamp(self):
+        from core.views import cropper_api
+
+        body = json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}).encode('utf-8')
+        stale_timestamp = str(int(time.time()) - 1200)
+        signature = self._timestamped_signature('test-secret', stale_timestamp, body)
+
+        request = self.factory.post(
+            '/api/cropper/release-webhook/',
+            data=body,
+            content_type='application/json',
+            HTTP_X_HUB_SIGNATURE_256=signature,
+            HTTP_X_WEBHOOK_TIMESTAMP=stale_timestamp,
+            HTTP_X_WEBHOOK_NONCE='nonce-stale',
+        )
+
+        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
+             patch.object(cropper_api, 'WEBHOOK_MAX_AGE_SECONDS', 300), \
+             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
+            self.assertFalse(cropper_api._verify_webhook(request))
+
+    def test_verify_webhook_rejects_legacy_secret_when_disabled(self):
+        from core.views import cropper_api
+
+        request = self.factory.post(
+            '/api/cropper/release-webhook/',
+            data=json.dumps({'version': '3.0.1', 'download_url': 'https://example.test/file.exe'}),
+            content_type='application/json',
+            HTTP_X_WEBHOOK_SECRET='test-secret',
+        )
+
+        with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
+             patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
+            self.assertFalse(cropper_api._verify_webhook(request))
+
+
+class EmailProductShowcaseSelectionTests(TestCase):
+    def _create_item(self, title, category, *, featured=False, order=0):
+        from website.models import PortfolioItem
+
+        return PortfolioItem.objects.create(
+            title=title,
+            category=category,
+            is_featured=featured,
+            is_active=True,
+            item_type='video',
+            image=f'images/Products/{title.lower().replace(" ", "-")}.jpg',
+            order=order,
+        )
+
+    def test_showcase_prefers_one_from_each_category(self):
+        from website.models import PortfolioCategory
+        from core.utils.email_utils import get_email_product_showcase
+
+        cat_a = PortfolioCategory.objects.create(name='ID Cards', order=1)
+        cat_b = PortfolioCategory.objects.create(name='Lanyards', order=2)
+        cat_c = PortfolioCategory.objects.create(name='Certificates', order=3)
+
+        # Dominant category has more featured products, but showcase should stay diverse.
+        self._create_item('A Featured 1', cat_a, featured=True, order=0)
+        self._create_item('A Featured 2', cat_a, featured=True, order=1)
+        self._create_item('B Item', cat_b, featured=False, order=0)
+        self._create_item('C Item', cat_c, featured=False, order=0)
+
+        showcase = get_email_product_showcase(limit=3)
+        categories = {item['category'] for item in showcase}
+
+        self.assertEqual(len(showcase), 3)
+        self.assertSetEqual(categories, {'ID Cards', 'Lanyards', 'Certificates'})
+
+    def test_showcase_uses_unique_categories_when_limit_is_smaller(self):
+        from website.models import PortfolioCategory
+        from core.utils.email_utils import get_email_product_showcase
+
+        cat_a = PortfolioCategory.objects.create(name='ID Cards', order=1)
+        cat_b = PortfolioCategory.objects.create(name='Lanyards', order=2)
+        cat_c = PortfolioCategory.objects.create(name='Certificates', order=3)
+
+        self._create_item('A Item', cat_a, featured=True, order=0)
+        self._create_item('B Item', cat_b, featured=False, order=0)
+        self._create_item('C Item', cat_c, featured=False, order=0)
+
+        showcase = get_email_product_showcase(limit=2)
+        categories = [item['category'] for item in showcase]
+
+        self.assertEqual(len(showcase), 2)
+        self.assertEqual(len(set(categories)), 2)
+
+    def test_showcase_fills_remaining_slots_after_category_pass(self):
+        from website.models import PortfolioCategory
+        from core.utils.email_utils import get_email_product_showcase
+
+        cat_a = PortfolioCategory.objects.create(name='ID Cards', order=1)
+        cat_b = PortfolioCategory.objects.create(name='Lanyards', order=2)
+
+        self._create_item('A Featured', cat_a, featured=True, order=0)
+        self._create_item('B Primary', cat_b, featured=False, order=0)
+        self._create_item('A Extra', cat_a, featured=False, order=1)
+
+        showcase = get_email_product_showcase(limit=3)
+        titles = [item['title'] for item in showcase]
+
+        self.assertEqual(len(showcase), 3)
+        self.assertIn('A Extra', titles)
+
+
 # ── User Model Tests ──
 class UserModelTests(TestCase):
     def test_create_user_default_role(self):
@@ -80,6 +327,113 @@ class UserModelTests(TestCase):
         user.save()
         user.refresh_from_db()
         self.assertEqual(user.role, 'super_admin')
+
+
+class TutorialRoleScopeTests(TestCase):
+    def setUp(self):
+        self.client_user, self.client_profile = _create_client_user(
+            'tutorial-client@test.com',
+            'testpass123',
+        )
+        owner_user, owner_client = _create_client_user(
+            'tutorial-client-owner@test.com',
+            'testpass123',
+        )
+        del owner_user
+
+        self.client_staff_user = User.objects.create_user(
+            username='tutorial-client-staff@test.com',
+            email='tutorial-client-staff@test.com',
+            password='testpass123',
+            role='client_staff',
+        )
+        from staff.models import Staff
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=owner_client,
+        )
+
+        self.admin_staff_user = User.objects.create_user(
+            username='tutorial-admin-staff@test.com',
+            email='tutorial-admin-staff@test.com',
+            password='testpass123',
+            role='admin_staff',
+        )
+        Staff.objects.create(
+            user=self.admin_staff_user,
+            staff_type='admin_staff',
+        )
+        self.admin_user = User.objects.create_superuser(
+            username='tutorial-admin@test.com',
+            email='tutorial-admin@test.com',
+            password='testpass123',
+        )
+
+    def _assert_role_tutorial(self, username, expected_scope, expected_text):
+        self.assertTrue(self.client.login(username=username, password='testpass123'))
+        response = self.client.get(reverse('tutorial'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['tutorial_scope'], expected_scope)
+        self.assertContains(response, expected_text)
+        self.client.logout()
+
+    def test_client_sees_client_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-client@test.com',
+            'client',
+            'Client Operations Tutorial',
+        )
+
+    def test_client_staff_sees_client_staff_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-client-staff@test.com',
+            'client_staff',
+            'Assistent Operations Tutorial',
+        )
+
+    def test_admin_staff_sees_admin_staff_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-admin-staff@test.com',
+            'admin_staff',
+            'Operator Support Tutorial',
+        )
+
+    def test_admin_sees_admin_tutorial(self):
+        self._assert_role_tutorial(
+            'tutorial-admin@test.com',
+            'admin',
+            'Admin Control Tutorial',
+        )
+
+    def test_tutorial_shows_personal_guide_button(self):
+        self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('tutorial_personal_guide'))
+        self.assertContains(response, 'Personal Guide')
+
+    def test_personal_guide_page_is_accessible(self):
+        self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial_personal_guide'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Student Data Check aur Approval ke liye Personal Guide')
+        self.assertContains(response, 'client@example.com')
+
+    def test_personal_guide_download_returns_text_attachment(self):
+        self.assertTrue(self.client.login(username='tutorial-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial_personal_guide_download'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response['Content-Type'].startswith('text/plain'))
+        self.assertIn('attachment; filename="adarsh-personal-guide.txt"', response['Content-Disposition'])
+        self.assertIn('Student Data Check, Corrections', response.content.decode('utf-8'))
+
+    def test_hinglish_mode_has_no_devanagari_script(self):
+        self.assertTrue(self.client.login(username='tutorial-client@test.com', password='testpass123'))
+        response = self.client.get(reverse('tutorial') + '?lang=hi')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        self.assertNotRegex(html, r'[\u0900-\u097F]')
 
 
 # ── IDCard Model Tests ──
@@ -228,7 +582,7 @@ class PermissionValidationMiddlewareTests(TestCase):
         request.session = {}
         request.content_type = 'application/json'
 
-        with patch('core.models.User.objects.select_related', side_effect=Exception('db locked')):
+        with patch('core.models.User.objects.only', side_effect=Exception('db locked')):
             response = middleware._validate_user_access(request)
 
         self.assertIsNotNone(response)
@@ -241,12 +595,57 @@ class PermissionValidationMiddlewareTests(TestCase):
         request.session = {}
         request.content_type = ''
 
-        with patch('core.models.User.objects.select_related', side_effect=Exception('db locked')):
+        with patch('core.models.User.objects.only', side_effect=Exception('db locked')):
             response = middleware._validate_user_access(request)
 
         self.assertIsNotNone(response)
         self.assertEqual(response.status_code, 302)
         self.assertIn('/panel/inactive/', response['Location'])
+
+
+class LegacyStaffApiJsonShapeTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('legacy-staff-admin@test.com', 'adminpass1')
+        self.staff_user = User.objects.create_user(
+            username='legacy-staff-user@test.com',
+            email='legacy-staff-user@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.staff_profile = Staff.objects.create(user=self.staff_user, staff_type='admin_staff')
+        self.client.login(username='legacy-staff-admin@test.com', password='adminpass1')
+
+    def test_staff_create_rejects_non_object_json_payload(self):
+        response = self.client.post(
+            '/panel/api/staff/create/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
+
+    def test_staff_update_rejects_non_object_json_payload(self):
+        response = self.client.put(
+            f'/panel/api/staff/{self.staff_profile.id}/update/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
+
+    def test_staff_temp_password_rejects_non_object_json_payload(self):
+        response = self.client.post(
+            f'/panel/api/staff/{self.staff_profile.id}/set-temp-password/',
+            data='[]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
 
 
 class ThreadedEmailCallbackRetryTests(TestCase):
@@ -424,7 +823,7 @@ class SubdomainRoutingSecurityTests(TestCase):
         middleware(request)
         self.assertFalse(getattr(request, '_is_panel_subdomain', False))
 
-    @override_settings(DEBUG=True)
+    @override_settings(DEBUG=True, ALLOWED_HOSTS=['unknown.local'])
     def test_panel_context_cookie_used_in_debug(self):
         from core.middleware import SubdomainRoutingMiddleware
 
@@ -819,12 +1218,101 @@ class EnginePathScopeTests(TestCase):
 
 
 class DashboardAndLogsHardeningTests(TestCase):
+    def test_dashboard_team_counts_separate_admin_staff_and_client_staff(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        cache.clear()
+
+        admin = _create_super_admin('dashboard-counts-admin@test.com', 'adminpass1')
+
+        client_owner_a = User.objects.create_user(
+            username='dashboard-client-owner-a@test.com',
+            email='dashboard-client-owner-a@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_owner_b = User.objects.create_user(
+            username='dashboard-client-owner-b@test.com',
+            email='dashboard-client-owner-b@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_a = Client.objects.create(user=client_owner_a, name='Dashboard Client A', status='active')
+        Client.objects.create(user=client_owner_b, name='Dashboard Client B', status='inactive')
+
+        admin_staff_active = User.objects.create_user(
+            username='dashboard-admin-staff-active@test.com',
+            email='dashboard-admin-staff-active@test.com',
+            password='pass1234',
+            role='admin_staff',
+            is_active=True,
+        )
+        admin_staff_inactive = User.objects.create_user(
+            username='dashboard-admin-staff-inactive@test.com',
+            email='dashboard-admin-staff-inactive@test.com',
+            password='pass1234',
+            role='admin_staff',
+            is_active=False,
+        )
+        Staff.objects.create(user=admin_staff_active, staff_type='admin_staff')
+        Staff.objects.create(user=admin_staff_inactive, staff_type='admin_staff')
+
+        client_staff_active_a = User.objects.create_user(
+            username='dashboard-client-staff-active-a@test.com',
+            email='dashboard-client-staff-active-a@test.com',
+            password='pass1234',
+            role='client_staff',
+            is_active=True,
+        )
+        client_staff_inactive_a = User.objects.create_user(
+            username='dashboard-client-staff-inactive-a@test.com',
+            email='dashboard-client-staff-inactive-a@test.com',
+            password='pass1234',
+            role='client_staff',
+            is_active=False,
+        )
+        client_staff_active_b = User.objects.create_user(
+            username='dashboard-client-staff-active-b@test.com',
+            email='dashboard-client-staff-active-b@test.com',
+            password='pass1234',
+            role='client_staff',
+            is_active=True,
+        )
+        Staff.objects.create(user=client_staff_active_a, staff_type='client_staff', client=client_a)
+        Staff.objects.create(user=client_staff_inactive_a, staff_type='client_staff', client=client_a)
+        Staff.objects.create(user=client_staff_active_b, staff_type='client_staff', client=client_a)
+
+        self.client.force_login(admin)
+        response = self.client.get('/panel/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['total_clients'], 2)
+        self.assertEqual(response.context['active_clients'], 1)
+        self.assertEqual(response.context['total_staff'], 2)
+        self.assertEqual(response.context['active_staff'], 1)
+        self.assertEqual(response.context['client_staff_count'], 3)
+        self.assertEqual(response.context['active_client_staff_count'], 2)
+
     def test_dashboard_limit_parser_clamps_values(self):
         from core.views.dashboard_views import _parse_dashboard_limit
 
         self.assertEqual(_parse_dashboard_limit('99999'), 500)
         self.assertEqual(_parse_dashboard_limit('-5'), 1)
         self.assertEqual(_parse_dashboard_limit('bad'), 500)
+
+    def test_recent_activity_window_parser_defaults_to_two_days(self):
+        from core.views.dashboard_views import _parse_recent_activity_window
+
+        self.assertEqual(_parse_recent_activity_window(None), 48)
+        self.assertEqual(_parse_recent_activity_window(''), 48)
+        self.assertEqual(_parse_recent_activity_window('all'), 48)
+        self.assertEqual(_parse_recent_activity_window('48'), 48)
+        self.assertEqual(_parse_recent_activity_window('2d'), 48)
+        self.assertEqual(_parse_recent_activity_window('24'), 24)
+        self.assertEqual(_parse_recent_activity_window('12'), 12)
+        self.assertEqual(_parse_recent_activity_window('1'), 1)
+        self.assertEqual(_parse_recent_activity_window('unexpected-token'), 48)
 
     def test_activity_logs_handles_invalid_limit_offset(self):
         from core.models import ActivityLog
@@ -850,7 +1338,7 @@ class SecurityApiRegressionTests(TestCase):
         self.client_user_a, self.client_a = _create_client_user('sec-client-a@test.com', 'clientpass1')
         self.client_user_b, self.client_b = _create_client_user('sec-client-b@test.com', 'clientpass1')
 
-        _group_a, self.table_a = _create_table(self.client_a, fields=[
+        self.group_a, self.table_a = _create_table(self.client_a, fields=[
             {'name': 'NAME', 'type': 'text', 'order': 1},
             {'name': 'CLASS', 'type': 'class', 'order': 2},
         ])
@@ -862,8 +1350,44 @@ class SecurityApiRegressionTests(TestCase):
             password='pass1234',
             role='admin_staff',
         )
-        staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
-        staff_profile.assigned_clients.add(self.client_a)
+        self.admin_staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
+        self.admin_staff_profile.assigned_clients.add(self.client_a)
+
+    def test_client_role_cannot_access_recent_client_updates_api(self):
+        self.client.force_login(self.client_user_a)
+
+        response = self.client.get(reverse('api_recent_client_updates'))
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success', True))
+        self.assertIn('admin access required', payload.get('message', '').lower())
+
+    def test_client_role_cannot_use_active_client_status_redirect(self):
+        self.client.force_login(self.client_user_a)
+
+        response = self.client.get(
+            reverse('active_client_status_redirect', args=[self.client_a.id, 'pending'])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('login'))
+
+    def test_client_role_cannot_create_table_from_xlsx_api(self):
+        self.client_a.perm_idcard_setting_add = True
+        self.client_a.save(update_fields=['perm_idcard_setting_add'])
+
+        self.client.force_login(self.client_user_a)
+
+        response = self.client.post(
+            reverse('api_create_table_from_xlsx', args=[self.group_a.id]),
+            {'file': SimpleUploadedFile('sample.csv', b'NAME,CLASS\nALICE,10\n', content_type='text/csv')},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success', True))
+        self.assertIn('not available for client accounts', payload.get('message', '').lower())
 
     def test_inline_update_field_rejects_unknown_field_name(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
@@ -882,7 +1406,9 @@ class SecurityApiRegressionTests(TestCase):
         self.card_a.refresh_from_db()
         self.assertNotIn('__HACK__', self.card_a.field_data)
 
-    def test_client_toggle_status_blocks_unassigned_admin_staff(self):
+    def test_client_toggle_status_allows_manage_client_admin_staff_for_unassigned_client(self):
+        self.admin_staff_profile.perm_idcard_client_list = True
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
         self.client.login(username='sec-admin-staff@test.com', password='pass1234')
 
         response = self.client.post(
@@ -891,8 +1417,67 @@ class SecurityApiRegressionTests(TestCase):
             content_type='application/json',
         )
 
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+
+    def test_admin_staff_without_manage_client_permission_cannot_create_client(self):
+        self.client.login(username='sec-admin-staff@test.com', password='pass1234')
+        response = self.client.post(
+            '/panel/api/client/create/',
+            data=json.dumps({'name': 'Blocked Client', 'phone': '9999999999'}),
+            content_type='application/json',
+        )
+
         self.assertEqual(response.status_code, 403)
-        self.assertIn('Access denied', response.json().get('message', ''))
+        self.assertIn('manage client permission required', response.json().get('message', '').lower())
+
+    def test_admin_staff_with_manage_client_permission_can_manage_client_crud(self):
+        from client.models import Client
+
+        self.admin_staff_profile.perm_idcard_client_list = True
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
+        self.client.login(username='sec-admin-staff@test.com', password='pass1234')
+
+        create_resp = self.client.post(
+            '/panel/api/client/create/',
+            data=json.dumps({
+                'name': 'Staff Created Client',
+                'phone': '8888888888',
+                'perm_idcard_edit': True,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(create_resp.status_code, 200)
+        create_payload = create_resp.json()
+        self.assertTrue(create_payload.get('success'))
+        new_client_id = create_payload.get('client', {}).get('id')
+        self.assertTrue(new_client_id)
+
+        self.admin_staff_profile.refresh_from_db()
+        self.assertTrue(self.admin_staff_profile.assigned_clients.filter(id=new_client_id).exists())
+
+        update_resp = self.client.post(
+            f'/panel/api/client/{new_client_id}/update/',
+            data=json.dumps({
+                'name': 'Staff Updated Client',
+                'perm_idcard_delete': True,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(update_resp.status_code, 200)
+        self.assertTrue(update_resp.json().get('success'))
+
+        get_resp = self.client.get(f'/panel/api/client/{new_client_id}/')
+        self.assertEqual(get_resp.status_code, 200)
+        get_payload = get_resp.json()
+        self.assertTrue(get_payload.get('success'))
+        self.assertEqual(get_payload.get('client', {}).get('name'), 'Staff Updated Client')
+        self.assertTrue(get_payload.get('client', {}).get('perm_idcard_delete'))
+
+        delete_resp = self.client.post(f'/panel/api/client/{new_client_id}/delete/', data=json.dumps({}), content_type='application/json')
+        self.assertEqual(delete_resp.status_code, 200)
+        self.assertTrue(delete_resp.json().get('success'))
+        self.assertFalse(Client.objects.filter(id=new_client_id).exists())
 
     def test_delete_all_confirmation_locks_after_five_failed_attempts(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')
@@ -1040,6 +1625,248 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(payload['card']['modified_by'], self.client_a.name)
         self.assertNotEqual(payload['card']['modified_by'], self.client_user_a.username)
         self.assertIsNotNone(payload['card']['updated_at'])
+
+    def test_client_can_edit_pool_card_via_update_api(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.save(update_fields=['perm_idcard_edit'])
+        self.card_a.status = 'pool'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({'field_data': {'NAME': 'SHOULD NOT UPDATE'}}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'SHOULD NOT UPDATE')
+
+    def test_client_can_inline_edit_pool_card(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.save(update_fields=['perm_idcard_edit'])
+        self.card_a.status = 'pool'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update-field/',
+            data=json.dumps({'field': 'NAME', 'value': 'SHOULD NOT UPDATE'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'SHOULD NOT UPDATE')
+
+    def test_client_reprint_modal_flag_can_edit_download_card_with_reprint_permission(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'UPDATED FROM REPRINT MODAL'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'UPDATED FROM REPRINT MODAL')
+
+    def test_client_reprint_modal_flag_still_denied_without_reprint_permission(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = False
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({
+                'field_data': {'NAME': 'SHOULD NOT UPDATE'},
+                'reprint_modal_edit': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_client_download_card_without_modal_flag_remains_locked(self):
+        self.client_a.perm_idcard_edit = True
+        self.client_a.perm_idcard_reprint_list = True
+        self.client_a.save(update_fields=['perm_idcard_edit', 'perm_idcard_reprint_list'])
+        self.card_a.status = 'download'
+        self.card_a.save(update_fields=['status'])
+
+        self.client.login(username='sec-client-a@test.com', password='clientpass1')
+        response = self.client.post(
+            f'/panel/api/card/{self.card_a.id}/update/',
+            data=json.dumps({'field_data': {'NAME': 'SHOULD STILL BLOCK'}}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('cannot be edited', response.json().get('message', '').lower())
+        self.card_a.refresh_from_db()
+        self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+
+class CardHistoryApiTests(TestCase):
+    def setUp(self):
+        from core.models import ActivityLog
+
+        self.admin = _create_super_admin('card-history-admin@test.com', 'adminpass1')
+        self.client_user_a, self.client_a = _create_client_user('card-history-client-a@test.com', 'clientpass1')
+        self.client_user_b, self.client_b = _create_client_user('card-history-client-b@test.com', 'clientpass1')
+        _group, self.table_a = _create_table(self.client_a)
+        self.card_a = _create_card(self.table_a, field_data={'NAME': 'History Card', 'CLASS': '10'})
+
+        ActivityLog.objects.create(
+            user=self.admin,
+            action='card_status',
+            description='Card moved from Pending to Verified',
+            target_model='IDCard',
+            target_id=self.card_a.id,
+            target_name=f'Card #{self.card_a.id}',
+        )
+        ActivityLog.objects.create(
+            user=self.admin,
+            action='card_update',
+            description='Field "NAME" updated',
+            target_model='IDCard',
+            target_id=self.card_a.id,
+            target_name=f'Card #{self.card_a.id}',
+        )
+
+    def test_history_api_returns_card_events(self):
+        self.client.login(username='card-history-admin@test.com', password='adminpass1')
+
+        response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['card_id'], self.card_a.id)
+        self.assertGreaterEqual(len(payload['events']), 2)
+        self.assertIn('what', payload['events'][0])
+        self.assertIn('who', payload['events'][0])
+        self.assertIn('when', payload['events'][0])
+
+    def test_history_api_denies_outside_client_scope(self):
+        self.client.login(username='card-history-client-b@test.com', password='clientpass1')
+
+        response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_history_api_hides_admin_events_for_client_viewer(self):
+        self.client.login(username='card-history-client-a@test.com', password='clientpass1')
+
+        response = self.client.get(f'/panel/api/card/{self.card_a.id}/history/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        what_values = [event.get('what', '') for event in payload.get('events', [])]
+        who_values = [event.get('who', '') for event in payload.get('events', [])]
+
+        self.assertNotIn('Card moved from Pending to Verified', what_values)
+        self.assertNotIn('Field "NAME" updated', what_values)
+        self.assertNotIn(self.admin.get_full_name() or self.admin.username, who_values)
+
+
+class ActivityFeedIsolationTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+        from core.models import ActivityLog
+
+        self.admin = _create_super_admin('activity-admin@test.com', 'adminpass1')
+        self.client_user, self.client_obj = _create_client_user('activity-client@test.com', 'clientpass1')
+
+        self.client_staff_user = User.objects.create_user(
+            username='activity-client-staff@test.com',
+            email='activity-client-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        # Admin-side activity for the same client domain should never leak to client feeds.
+        ActivityLog.objects.create(
+            user=self.admin,
+            action='staff_create',
+            description='Admin created client staff account',
+            target_model='Staff',
+            target_id=999,
+            target_name='Admin-created staff',
+        )
+        ActivityLog.objects.create(
+            user=None,
+            action='staff_update',
+            description='System user-management sync',
+            target_model='Staff',
+            target_id=998,
+            target_name='System sync',
+        )
+
+        # Legit client-org activities that should remain visible to the client user.
+        ActivityLog.objects.create(
+            user=self.client_user,
+            action='card_update',
+            description='Client updated card details',
+            target_model='IDCard',
+            target_id=101,
+            target_name='Card #101',
+        )
+        ActivityLog.objects.create(
+            user=self.client_staff_user,
+            action='card_status',
+            description='1 card verified',
+            target_model='IDCard',
+            target_id=102,
+            target_name='Card #102',
+        )
+
+    def test_client_recent_activity_excludes_admin_user_management_entries(self):
+        from core.services.activity_service import ActivityService
+
+        rows = ActivityService.get_recent(limit=20, hours=None, user=self.client_user)
+        descriptions = [row.get('description', '') for row in rows]
+        actors = [row.get('actor', '') for row in rows]
+
+        self.assertIn('Client updated card details', descriptions)
+        self.assertIn('1 card verified', descriptions)
+        self.assertNotIn('Admin created client staff account', descriptions)
+        self.assertNotIn('System user-management sync', descriptions)
+        self.assertNotIn(self.admin.get_full_name() or self.admin.username, actors)
+
+    def test_client_staff_recent_activity_is_self_only(self):
+        from core.services.activity_service import ActivityService
+
+        rows = ActivityService.get_recent(limit=20, hours=None, user=self.client_staff_user)
+        descriptions = [row.get('description', '') for row in rows]
+
+        self.assertIn('1 card verified', descriptions)
+        self.assertNotIn('Client updated card details', descriptions)
+        self.assertNotIn('Admin created client staff account', descriptions)
+        self.assertNotIn('System user-management sync', descriptions)
 
 
 class ReuploadDirectTaskFlowTests(TestCase):
@@ -1329,3 +2156,407 @@ class ReuploadDirectTaskFlowTests(TestCase):
             self.card.field_data.get('PHOTO'),
             'adarshimg/22_121314.jpg',
         )
+
+
+class ClientMessageApiTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('msg-super@test.com', 'adminpass1')
+        self.client_user, self.client_obj = _create_client_user('msg-client@test.com', 'clientpass1')
+
+        self.client_staff_user = User.objects.create_user(
+            username='msg-client-staff@test.com',
+            email='msg-client-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        self.admin_staff = User.objects.create_user(
+            username='msg-admin-staff@test.com',
+            email='msg-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff,
+            staff_type='admin_staff',
+            perm_idcard_client_list=True,
+        )
+
+    def test_send_client_message_client_only_creates_history_and_notification(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Hello client', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        self.assertEqual(row.scope, 'client_only')
+        self.assertEqual(row.recipient_count, 1)
+        self.assertIsNotNone(row.notification_id)
+        self.assertEqual(row.notification.target, 'selected')
+        self.assertEqual(list(row.notification.target_users.values_list('id', flat=True)), [self.client_user.id])
+
+    def test_send_client_message_client_and_staff_includes_staff_recipients(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Hello all', 'scope': 'client_and_staff'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        target_ids = set(row.notification.target_users.values_list('id', flat=True))
+        self.assertEqual(target_ids, {self.client_user.id, self.client_staff_user.id})
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertTrue(history_payload.get('success'))
+        self.assertEqual(len(history_payload.get('messages', [])), 1)
+        self.assertEqual(history_payload['messages'][0]['scope'], 'client_and_staff')
+
+    def test_admin_staff_without_manage_client_permission_is_denied(self):
+        self.admin_staff_profile.perm_idcard_client_list = False
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
+        self.client.login(username='msg-admin-staff@test.com', password='pass1234')
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 403)
+
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Blocked', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 403)
+
+    def test_client_strip_endpoint_returns_unread_then_hides_after_mark_read(self):
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Please read this', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        self.client.login(username='msg-client@test.com', password='clientpass1')
+        strip_response = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_response.status_code, 200)
+        strip_payload = strip_response.json()
+        self.assertTrue(strip_payload.get('success'))
+        self.assertEqual(len(strip_payload.get('items', [])), 1)
+
+        notification_id = strip_payload['items'][0]['notification_id']
+        mark_response = self.client.post(f'/panel/api/notifications/{notification_id}/read/')
+        self.assertEqual(mark_response.status_code, 200)
+
+        strip_after = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_after.status_code, 200)
+        self.assertEqual(len(strip_after.json().get('items', [])), 0)
+
+    def test_send_temporary_client_message_sets_expiry(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({
+                'message': 'Temporary client alert',
+                'scope': 'client_only',
+                'visibility': 'temporary',
+                'temporary_duration': '6h',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        self.assertEqual(row.visibility, 'temporary')
+        self.assertIsNotNone(row.expires_at)
+        self.assertGreater(row.expires_at, timezone.now())
+
+    def test_expired_temporary_message_hidden_for_client_but_visible_in_admin_history(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({
+                'message': 'Temporary message that expires',
+                'scope': 'client_only',
+                'visibility': 'temporary',
+                'temporary_duration': '6h',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        row.expires_at = timezone.now() - timedelta(minutes=1)
+        row.save(update_fields=['expires_at'])
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertEqual(len(history_payload.get('messages', [])), 1)
+
+        self.client.login(username='msg-client@test.com', password='clientpass1')
+        strip_response = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_response.status_code, 200)
+        strip_payload = strip_response.json()
+        self.assertEqual(len(strip_payload.get('items', [])), 0)
+    def test_group_send_to_selected_clients(self):
+        from core.models import ClientMessage
+        from staff.models import Staff
+
+        user2, client2 = _create_client_user('msg-client-2@test.com', 'clientpass2')
+        staff2_user = User.objects.create_user(
+            username='msg-client-2-staff@test.com',
+            email='msg-client-2-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(user=staff2_user, staff_type='client_staff', client=client2)
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client/messages/group-send/',
+            data=json.dumps({
+                'message': 'Selected group message',
+                'scope': 'client_and_staff',
+                'target_mode': 'selected',
+                'client_ids': [self.client_obj.id],
+                'visibility': 'permanent',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('sent_count'), 1)
+
+        self.assertEqual(ClientMessage.objects.filter(client=self.client_obj).count(), 1)
+        self.assertEqual(ClientMessage.objects.filter(client=client2).count(), 0)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+        target_ids = set(row.notification.target_users.values_list('id', flat=True))
+        self.assertEqual(target_ids, {self.client_user.id, self.client_staff_user.id})
+        self.assertNotIn(user2.id, target_ids)
+
+    def test_group_send_to_all_clients(self):
+        from core.models import ClientMessage
+
+        _user2, client2 = _create_client_user('msg-client-all@test.com', 'clientpass2')
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client/messages/group-send/',
+            data=json.dumps({
+                'message': 'Send to all clients',
+                'scope': 'client_only',
+                'target_mode': 'all',
+                'visibility': 'temporary',
+                'temporary_duration': '12h',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('sent_count'), 2)
+
+        self.assertEqual(ClientMessage.objects.filter(client=self.client_obj).count(), 1)
+        self.assertEqual(ClientMessage.objects.filter(client=client2).count(), 1)
+
+    def test_targets_endpoint_returns_clients(self):
+        _user2, _client2 = _create_client_user('msg-targets@test.com', 'clientpass2')
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/client/messages/targets/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertGreaterEqual(len(payload.get('clients', [])), 2)
+
+    def test_manual_delete_hides_from_client_strip_but_keeps_admin_history(self):
+        from core.models import ClientMessage
+
+        self.client.login(username='msg-super@test.com', password='adminpass1')
+        send_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/send/',
+            data=json.dumps({'message': 'Manual remove me', 'scope': 'client_only'}),
+            content_type='application/json',
+        )
+        self.assertEqual(send_response.status_code, 200)
+
+        row = ClientMessage.objects.get(client=self.client_obj)
+
+        delete_response = self.client.post(
+            f'/panel/api/client/{self.client_obj.id}/messages/{row.id}/delete/',
+            data=json.dumps({}),
+            content_type='application/json',
+        )
+        self.assertEqual(delete_response.status_code, 200)
+
+        history_response = self.client.get(f'/panel/api/client/{self.client_obj.id}/messages/')
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertEqual(len(history_payload.get('messages', [])), 1)
+        self.assertFalse(history_payload['messages'][0].get('notification_active'))
+
+        self.client.login(username='msg-client@test.com', password='clientpass1')
+        strip_response = self.client.get('/panel/api/notifications/client-messages/unread/')
+        self.assertEqual(strip_response.status_code, 200)
+        strip_payload = strip_response.json()
+        self.assertEqual(len(strip_payload.get('items', [])), 0)
+
+
+class AdminClientStaffManagementTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('client-staff-admin@test.com', 'adminpass1')
+
+        _owner_a, self.client_a = _create_client_user('client-staff-owner-a@test.com', 'clientpass1')
+        _owner_b, self.client_b = _create_client_user('client-staff-owner-b@test.com', 'clientpass1')
+
+        for client in (self.client_a, self.client_b):
+            client.perm_idcard_pending_list = True
+            client.perm_idcard_add = True
+            client.perm_mobile_app = True
+            client.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_add', 'perm_mobile_app'])
+
+        self.admin_staff = User.objects.create_user(
+            username='client-staff-admin-staff@test.com',
+            email='client-staff-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff,
+            staff_type='admin_staff',
+            perm_idcard_client_list=True,
+        )
+
+    def test_manage_client_staff_htmx_partial_loads_for_super_admin(self):
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/manage-client-staff/', HTTP_HX_REQUEST='true')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'staff-table-body')
+
+    def test_manage_client_staff_can_filter_by_client(self):
+        from staff.models import Staff
+
+        user_a = User.objects.create_user(
+            username='client-filter-staff-a@test.com',
+            email='client-filter-staff-a@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Filter',
+            last_name='Staff A',
+        )
+        Staff.objects.create(user=user_a, staff_type='client_staff', client=self.client_a)
+
+        user_b = User.objects.create_user(
+            username='client-filter-staff-b@test.com',
+            email='client-filter-staff-b@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Filter',
+            last_name='Staff B',
+        )
+        Staff.objects.create(user=user_b, staff_type='client_staff', client=self.client_b)
+
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get(
+            f'/panel/manage-client-staff/?client_id={self.client_a.id}',
+            HTTP_HX_REQUEST='true',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Filter Staff A')
+        self.assertNotContains(response, 'Filter Staff B')
+
+    def test_dropdown_clients_api_returns_available_clients(self):
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get('/panel/api/client-staff/clients/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        returned_ids = {item['id'] for item in payload.get('clients', [])}
+        self.assertIn(self.client_a.id, returned_ids)
+        self.assertIn(self.client_b.id, returned_ids)
+
+    def test_create_client_staff_saves_selected_client_and_permissions(self):
+        from staff.models import Staff
+
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.post(
+            '/panel/api/client-staff/create/',
+            data=json.dumps({
+                'name': 'Admin Added Client Staff',
+                'email': 'added-client-staff@test.com',
+                'phone': '9999999999',
+                'address': 'Admin side add flow',
+                'client_id': self.client_a.id,
+                'is_active': True,
+                'perm_idcard_pending_list': True,
+                'perm_idcard_add': True,
+                'perm_mobile_app': True,
+                'perm_idcard_approve': True,
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        created_staff_id = ((payload.get('staff') or {}).get('id'))
+        self.assertIsNotNone(created_staff_id)
+
+        staff_obj = Staff.objects.select_related('client', 'user').get(id=created_staff_id)
+        self.assertEqual(staff_obj.staff_type, 'client_staff')
+        self.assertEqual(staff_obj.client_id, self.client_a.id)
+        self.assertEqual(staff_obj.user.first_name, 'Admin')
+        self.assertEqual(staff_obj.user.last_name, 'Added Client Staff')
+        self.assertTrue(staff_obj.perm_idcard_pending_list)
+        self.assertTrue(staff_obj.perm_idcard_add)
+        self.assertTrue(staff_obj.perm_mobile_app)
+        self.assertFalse(staff_obj.perm_idcard_approve)
+
+    def test_admin_staff_without_manage_client_permission_is_denied(self):
+        self.admin_staff_profile.perm_idcard_client_list = False
+        self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='client-staff-admin-staff@test.com', password='pass1234')
+
+        page_response = self.client.get('/panel/manage-client-staff/')
+        self.assertEqual(page_response.status_code, 302)
+
+        api_response = self.client.get('/panel/api/client-staff/clients/')
+        self.assertEqual(api_response.status_code, 403)

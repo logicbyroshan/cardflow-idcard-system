@@ -15,15 +15,14 @@
   <!-- Core CSS bundle (fonts + common + global-search) -->
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   {% block extra_css %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   {% block extra_head %}{% endblock %}
   
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js - Lightweight reactive UI framework -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body {% block body_class %}{% endblock %} x-data="layoutState()" x-init="init()">
+<body {% block body_class %}{% endblock %} x-data="layoutState" x-init="init">
 
   <!-- Impersonation Banner (Pro User) -->
   {% include 'partials/impersonate-bar.html' %}
@@ -39,8 +38,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
           {% block breadcrumb %}
@@ -69,10 +68,10 @@
   {% block modals %}{% endblock %}
 
   <!-- Alpine Toast Container -->
-  <div class="alpine-toast-wrapper" x-show="toastQueue.length > 0" role="status" aria-live="polite">
+  <div class="alpine-toast-wrapper" x-show="hasToasts" role="status" aria-live="polite">
     <template x-for="toast in toastQueue" :key="toast.id">
-      <div class="alpine-toast" :class="getToastClass(toast.type)" x-transition>
-        <i :class="getToastIcon(toast.type)"></i>
+      <div class="alpine-toast" :class="toast.toastClass" x-transition>
+        <i :class="toast.toastIcon"></i>
         <span x-text="toast.message"></span>
       </div>
     </template>
@@ -152,8 +151,8 @@
   }
   </script>
 
-  <!-- Impersonate Modal (Pro User) -->
-  {% include 'partials/impersonate-modal.html' %}
+    <!-- Impersonate Modal (Pro User) -->
+    {% include 'partials/impersonate-modal.html' %}
 
   <!-- Page-specific variables (rendered before page JS) -->
   {% block page_vars %}{% endblock %}

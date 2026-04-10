@@ -6,6 +6,7 @@ All methods are classmethods/staticmethods following the project convention.
 """
 
 import logging
+import ipaddress
 import re
 
 from django.conf import settings
@@ -31,6 +32,10 @@ class ActivityService:
         r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
         re.IGNORECASE,
     )
+    CARD_ACTIVITY_MOVE_RE = re.compile(
+        r'^(?:(?P<count>\d+)\s+)?cards?\s+moved\s+from\s+(?P<from>[^\n]+?)\s+to\s+(?P<to>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
+        re.IGNORECASE,
+    )
     EXPORT_LABELS = {
         'export_zip': 'IMAGES',
         'export_pdf': 'PDF',
@@ -48,22 +53,105 @@ class ActivityService:
     # ── helpers ──────────────────────────────────────────────
 
     @staticmethod
+    def _normalize_ip(raw_value):
+        """Normalize an IP value (strip ports/quotes) and validate it."""
+        if not raw_value:
+            return None
+
+        value = str(raw_value).strip().strip('"').strip("'")
+        if not value:
+            return None
+
+        # RFC 7239 may wrap IPv6 values in brackets, e.g. [2001:db8::1]:443
+        if value.startswith('[') and ']' in value:
+            value = value[1:value.index(']')]
+
+        # Strip :port from IPv4-style values.
+        if value.count(':') == 1 and '.' in value:
+            maybe_ip, _sep, _port = value.partition(':')
+            value = maybe_ip
+
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError:
+            return None
+
+    @classmethod
+    def _extract_first_forwarded_ip(cls, forwarded_header):
+        """Extract first valid client IP from RFC 7239 Forwarded header."""
+        if not forwarded_header:
+            return None
+
+        for entry in str(forwarded_header).split(','):
+            for part in entry.split(';'):
+                token = part.strip()
+                if not token.lower().startswith('for='):
+                    continue
+
+                ip_part = token.split('=', 1)[1].strip().strip('"').strip("'")
+                # RFC 7239 allows obfuscated identifiers; skip those.
+                if ip_part.startswith('_'):
+                    continue
+                normalized = cls._normalize_ip(ip_part)
+                if normalized:
+                    return normalized
+        return None
+
+    @staticmethod
+    def _is_internal_ip(ip_value):
+        """Return True for proxy/private/loopback style addresses."""
+        try:
+            parsed = ipaddress.ip_address(ip_value)
+        except ValueError:
+            return False
+
+        return bool(
+            parsed.is_private
+            or parsed.is_loopback
+            or parsed.is_link_local
+            or parsed.is_reserved
+        )
+
+    @staticmethod
     def _get_ip(request):
         """Extract client IP from request, handling proxies."""
         if request is None:
             return None
 
+        remote_addr = ActivityService._normalize_ip(request.META.get('REMOTE_ADDR'))
+        x_real_ip = ActivityService._normalize_ip(request.META.get('HTTP_X_REAL_IP'))
+        forwarded_ip = ActivityService._extract_first_forwarded_ip(request.META.get('HTTP_FORWARDED'))
+
+        xff_raw = request.META.get('HTTP_X_FORWARDED_FOR')
+        xff_ips = []
+        if xff_raw:
+            xff_ips = [
+                ip
+                for ip in (ActivityService._normalize_ip(part) for part in str(xff_raw).split(','))
+                if ip
+            ]
+
         trust_xff = bool(getattr(settings, 'RATE_LIMIT_TRUST_X_FORWARDED_FOR', False))
         if trust_xff:
-            xff = request.META.get('HTTP_X_FORWARDED_FOR')
-            if xff:
-                parts = [p.strip() for p in xff.split(',') if p.strip()]
-                if len(parts) >= 2:
-                    return parts[-2]
-                if parts:
-                    return parts[0]
+            if xff_ips:
+                return xff_ips[0]
+            if x_real_ip:
+                return x_real_ip
+            if forwarded_ip:
+                return forwarded_ip
+            return remote_addr
 
-        return request.META.get('REMOTE_ADDR')
+        # Safe fallback for reverse-proxy setups where REMOTE_ADDR is internal.
+        if remote_addr and not ActivityService._is_internal_ip(remote_addr):
+            return remote_addr
+        if x_real_ip:
+            return x_real_ip
+        if xff_ips:
+            return xff_ips[0]
+        if forwarded_ip:
+            return forwarded_ip
+
+        return remote_addr
 
     @classmethod
     def _should_log_single_card_status(cls, request, action_label, client_name=''):
@@ -82,6 +170,36 @@ class ActivityService:
         except Exception:
             # If cache fails, never block logging.
             return True
+
+    @staticmethod
+    def _request_login_surface(request):
+        """Infer login surface for auth logs: desktop or mobile."""
+        if request is None:
+            return 'desktop'
+
+        session = getattr(request, 'session', None)
+        if session is not None:
+            try:
+                surface = str(session.get('_auth_login_surface') or '').strip().lower()
+                if surface in {'desktop', 'mobile'}:
+                    return surface
+                if bool(session.get('mobile_auth_ok')):
+                    return 'mobile'
+            except Exception:
+                pass
+
+        ua = str(getattr(request, 'META', {}).get('HTTP_USER_AGENT', '') or '').lower()
+        mobile_tokens = ('android', 'iphone', 'ipad', 'ipod', 'mobile', 'iemobile', 'opera mini')
+        if any(token in ua for token in mobile_tokens):
+            return 'mobile'
+        return 'desktop'
+
+    @staticmethod
+    def _surface_label(surface):
+        normalized = str(surface or '').strip().lower()
+        if normalized == 'mobile':
+            return 'mobile app'
+        return 'desktop web'
 
     # ── core logging ────────────────────────────────────────
 
@@ -132,12 +250,14 @@ class ActivityService:
     @classmethod
     def log_login(cls, request, user):
         name = user.get_full_name() or user.username
-        cls.log('login', f'{name} logged in', user=user, request=request)
+        surface = cls._request_login_surface(request)
+        cls.log('login', f'{name} logged in from {cls._surface_label(surface)}', user=user, request=request)
 
     @classmethod
     def log_logout(cls, request, user):
         name = user.get_full_name() or user.username
-        cls.log('logout', f'{name} logged out', user=user, request=request)
+        surface = cls._request_login_surface(request)
+        cls.log('logout', f'{name} logged out from {cls._surface_label(surface)}', user=user, request=request)
 
     @classmethod
     def log_client_create(cls, request, client):
@@ -354,15 +474,12 @@ class ActivityService:
             List of dicts ready for template rendering.
         """
         now = timezone.now()
-        cutoff = now - timezone.timedelta(hours=hours)
-        
-        # Base queryset
-        qs = (
-            ActivityLog.objects
-            .filter(created_at__gte=cutoff)
-            .select_related('user')
-            .order_by('-created_at')
-        )
+
+        # Base queryset (no time filter when hours is None)
+        qs = ActivityLog.objects.select_related('user', 'user__client_profile', 'user__staff_profile__client').order_by('-created_at')
+        if hours is not None:
+            cutoff = now - timezone.timedelta(hours=hours)
+            qs = qs.filter(created_at__gte=cutoff)
         
         # Apply role-based filtering
         if user and user.is_authenticated:
@@ -379,13 +496,25 @@ class ActivityService:
         raw_results = []
         for entry in qs[:fetch_limit]:
             actor = cls._get_actor_display(entry, user, hide_admin_names)
+            actor_role = getattr(entry.user, 'role', '') if entry.user else ''
+            client_context = cls._resolve_activity_client_context(entry)
+            description = entry.description
+
+            if entry.action == 'password_reset' and entry.user and getattr(entry.user, 'email', ''):
+                # Ensure dashboard recent activity always shows full email for reset actions.
+                description = f'Password reset completed for {entry.user.email}'
 
             raw_results.append({
                 'id': entry.pk,
                 'user_id': entry.user_id,
                 'actor': actor,
+                'actor_role': actor_role,
                 'action': entry.action,
-                'description': entry.description,
+                'description': description,
+                'target_model': entry.target_model,
+                'target_id': entry.target_id,
+                'target_name': entry.target_name,
+                'client_context': client_context,
                 'icon_class': entry.icon_class,
                 'icon_color': entry.icon_color,
                 'created_at_dt': entry.created_at,
@@ -395,17 +524,138 @@ class ActivityService:
 
         results = []
         for item in merged_results[:limit]:
+            created_at_dt = item['created_at_dt']
             results.append({
                 'id': item['id'],
                 'actor': item['actor'],
+                'actor_role': item.get('actor_role', ''),
                 'action': item['action'],
                 'description': item['description'],
+                'display_text': cls._build_activity_display_text(item),
+                'target_model': item.get('target_model', ''),
+                'target_id': item.get('target_id'),
+                'target_name': item.get('target_name', ''),
+                'client_context': item.get('client_context', ''),
                 'icon_class': item['icon_class'],
                 'icon_color': item['icon_color'],
-                'time_ago': timesince(item['created_at_dt'], now),
-                'created_at': item['created_at_dt'].isoformat(),
+                'time_ago': timesince(created_at_dt, now),
+                'created_at': created_at_dt.isoformat(),
+                'created_at_display': timezone.localtime(created_at_dt).strftime('%d-%m-%Y %H:%M'),
             })
         return results
+
+    @classmethod
+    def _build_activity_display_text(cls, item):
+        """Build richer activity chip text without mutating canonical description."""
+        text = str(item.get('description') or '').strip() or 'Activity update'
+        action = str(item.get('action') or '').strip().lower()
+        actor = str(item.get('actor') or '').strip()
+        actor_role = str(item.get('actor_role') or '').strip().lower()
+        target_name = str(item.get('target_name') or '').strip()
+        client_context = str(item.get('client_context') or '').strip()
+        actor_descriptor = cls._format_actor_descriptor(actor, actor_role, client_context)
+
+        if action.startswith('staff_') and target_name and target_name.lower() not in text.lower():
+            text = f'{text} (Staff: {target_name})'
+
+        if action.startswith('client_') and target_name and target_name.lower() not in text.lower():
+            text = f'{text} (Client: {target_name})'
+
+        if action in ('login', 'logout'):
+            if actor_descriptor != 'System':
+                verb = 'logged in' if action == 'login' else 'logged out'
+                return f'{actor_descriptor} {verb}'
+            return text
+
+        if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
+            text = f'{actor_descriptor}: {text}'
+
+        if client_context and client_context.lower() not in text.lower() and actor_role not in ('client', 'client_staff'):
+            text = f'{text} | Client: {client_context}'
+
+        return text
+
+    @classmethod
+    def _format_actor_descriptor(cls, actor, actor_role, client_context=''):
+        """Return actor label with role context for richer dashboard activity chips."""
+        actor_name = str(actor or '').strip()
+        role = str(actor_role or '').strip().lower()
+        client_name = str(client_context or '').strip()
+
+        if not actor_name or actor_name == 'System':
+            return 'System'
+
+        if role == 'super_admin':
+            return f'Admin "{actor_name}"'
+        if role == 'admin_staff':
+            return f'Operator "{actor_name}"'
+        if role == 'client':
+            return f'Client "{actor_name}"'
+        if role == 'client_staff':
+            if client_name:
+                return f'Assistent "{actor_name}" for "{client_name}"'
+            return f'Assistent "{actor_name}"'
+        if role == 'pro_user':
+            return f'Pro User "{actor_name}"'
+
+        return actor_name
+
+    @staticmethod
+    def _format_activity_role(role):
+        """Return compact human labels for activity role hints."""
+        labels = {
+            'super_admin': 'Super Admin',
+            'admin_staff': 'Admin Staff',
+            'client': 'Client',
+            'client_staff': 'Client Staff',
+            'pro_user': 'Pro User',
+        }
+        return labels.get(str(role or '').strip().lower(), '')
+
+    @classmethod
+    def _resolve_activity_client_context(cls, entry):
+        """Best-effort client label for activity chips (staff/client/login actions)."""
+        target_model = str(getattr(entry, 'target_model', '') or '').strip().lower()
+        target_name = str(getattr(entry, 'target_name', '') or '').strip()
+
+        if target_model == 'client' and target_name:
+            return target_name
+
+        user = getattr(entry, 'user', None)
+        if user:
+            if user.role == 'client':
+                client_profile = getattr(user, 'client_profile', None)
+                if client_profile and client_profile.name:
+                    return client_profile.name
+            if user.role == 'client_staff':
+                staff_profile = getattr(user, 'staff_profile', None)
+                client = getattr(staff_profile, 'client', None) if staff_profile else None
+                if client and client.name:
+                    return client.name
+
+        if target_model != 'staff':
+            return ''
+
+        target_id = getattr(entry, 'target_id', None)
+        if not target_id:
+            return ''
+
+        try:
+            from staff.models import Staff
+
+            staff_obj = (
+                Staff.objects
+                .select_related('client')
+                .only('id', 'client__name')
+                .filter(id=target_id)
+                .first()
+            )
+            if staff_obj and staff_obj.client and staff_obj.client.name:
+                return staff_obj.client.name
+        except Exception:
+            return ''
+
+        return ''
 
     @classmethod
     def _parse_card_activity_description(cls, description):
@@ -413,17 +663,40 @@ class ActivityService:
         if not description:
             return None
 
-        match = cls.CARD_ACTIVITY_DESCRIPTION_RE.match(str(description).strip())
-        if not match:
+        desc_text = str(description).strip()
+
+        match = cls.CARD_ACTIVITY_DESCRIPTION_RE.match(desc_text)
+        if match:
+            try:
+                count = int(match.group('count'))
+            except (TypeError, ValueError):
+                return None
+
+            status = str(match.group('status') or '').strip().lower()
+            client = str(match.group('client') or '').strip()
+            if not status:
+                return None
+            return count, status, client
+
+        # Backward-compat for older activity text format:
+        # "Card moved from Pending to In Pool for <client>"
+        move_match = cls.CARD_ACTIVITY_MOVE_RE.match(desc_text)
+        if not move_match:
             return None
 
         try:
-            count = int(match.group('count'))
+            count = int(move_match.group('count') or 1)
         except (TypeError, ValueError):
             return None
 
-        status = str(match.group('status') or '').strip().lower()
-        client = str(match.group('client') or '').strip()
+        from_label = str(move_match.group('from') or '').strip()
+        to_label = str(move_match.group('to') or '').strip()
+        client = str(move_match.group('client') or '').strip()
+
+        if not from_label or not to_label:
+            return None
+
+        status = f'moved from {from_label} to {to_label}'.lower()
         if not status:
             return None
         return count, status, client
@@ -526,20 +799,12 @@ class ActivityService:
         if user.role == 'client':
             client = getattr(user, 'client_profile', None)
             if client:
-                # Collect all user PKs that belong to this client org
-                from core.models import User as UserModel
-                org_user_ids = set()
-                org_user_ids.add(user.pk)  # the client user themselves
-                # Add all client_staff belonging to this client
-                staff_user_ids = list(
-                    UserModel.objects.filter(
-                        role='client_staff',
-                        staff_profile__client_id=client.id,
-                    ).values_list('pk', flat=True)
+                # Keep this as a single SQL query by filtering through joins,
+                # instead of first fetching staff user IDs in a separate query.
+                return queryset.filter(
+                    Q(user_id=user.pk) |
+                    Q(user__role='client_staff', user__staff_profile__client_id=client.id)
                 )
-                org_user_ids.update(staff_user_ids)
-                
-                return queryset.filter(user_id__in=org_user_ids)
             return queryset.none()
         
         # Client staff: see ONLY their own activities

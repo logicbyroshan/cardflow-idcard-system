@@ -103,7 +103,7 @@ async function loadStaff() {
           <td colspan="7">
             <div class="empty-state">
               <i class="fa-solid fa-users-gear"></i>
-              <p>No admin staff yet. Click "Add Admin Staff" to create one.</p>
+              <p>No operator yet. Click "Add Operator" to create one.</p>
             </div>
           </td>
         </tr>
@@ -154,14 +154,18 @@ async function loadStaff() {
 
 // Open create modal
 function openCreateModal() {
-  document.getElementById('modalTitle').textContent = 'Add Admin Staff';
+  document.getElementById('modalTitle').textContent = 'Add Operator';
   document.getElementById('submitBtn').textContent = 'Create Staff';
   document.getElementById('staffId').value = '';
   document.getElementById('staffForm').reset();
   document.getElementById('email').removeAttribute('disabled');
   document.querySelectorAll('input[name="permissions"]').forEach(cb => cb.checked = false);
   document.querySelectorAll('input[name="clients"]').forEach(cb => cb.checked = false);
-  document.getElementById('staffModal').classList.add('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('staffModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('staffModal').classList.add('show');
+  }
 }
 
 // Edit staff
@@ -171,7 +175,7 @@ async function editStaff(id) {
     
     if (data.success) {
       const staff = data.staff;
-      document.getElementById('modalTitle').textContent = 'Edit Admin Staff';
+      document.getElementById('modalTitle').textContent = 'Edit Operator';
       document.getElementById('submitBtn').textContent = 'Update Staff';
       document.getElementById('staffId').value = staff.id;
       document.getElementById('firstName').value = staff.first_name;
@@ -193,7 +197,11 @@ async function editStaff(id) {
         cb.checked = clientIds.includes(parseInt(cb.value));
       });
       
-      document.getElementById('staffModal').classList.add('show');
+      if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+        window.AdarshModalBridge.open('staffModal', { overlayClass: 'show' });
+      } else {
+        document.getElementById('staffModal').classList.add('show');
+      }
     }
   } catch (error) {
     console.error('Error loading staff details:', error);
@@ -203,7 +211,11 @@ async function editStaff(id) {
 
 // Close modal
 function closeModal() {
-  document.getElementById('staffModal').classList.remove('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('staffModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('staffModal').classList.remove('show');
+  }
 }
 
 // Handle form submit
@@ -273,11 +285,19 @@ function openConfirmModal(title, message, action) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMessage').textContent = message;
   confirmAction = action;
-  document.getElementById('confirmModal').classList.add('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('confirmModal', { overlayClass: 'show', focusSelector: '#confirmActionBtn' });
+  } else {
+    document.getElementById('confirmModal').classList.add('show');
+  }
 }
 
 function closeConfirmModal() {
-  document.getElementById('confirmModal').classList.remove('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('confirmModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('confirmModal').classList.remove('show');
+  }
   confirmAction = null;
 }
 
@@ -289,7 +309,7 @@ function executeConfirmAction() {
 // Confirm delete
 function confirmDelete(id, name) {
   openConfirmModal(
-    'Delete Admin Staff',
+    'Delete Operator',
     `Are you sure you want to delete "${name}"? This cannot be undone.`,
     async () => {
       try {

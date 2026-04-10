@@ -3,54 +3,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Load profile data on page load
     loadProfile();
-    
-    // ===== Avatar Upload =====
-    const avatarUpload = document.getElementById('avatarUpload');
-    const profileAvatar = document.getElementById('profileAvatar');
-
-    if (avatarUpload) {
-        avatarUpload.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // Validate file type
-                const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-                if (!allowedTypes.includes(file.type)) {
-                    showToast('Invalid file type. Please use JPEG, PNG, GIF, or WebP.', 'warning');
-                    return;
-                }
-                
-                // Validate file size (5MB max)
-                if (file.size > 5 * 1024 * 1024) {
-                    showToast('File size too large. Maximum 5MB allowed.', 'warning');
-                    return;
-                }
-                
-                // Upload to server
-                const formData = new FormData();
-                formData.append('profile_image', file);
-                
-                try {
-                    const data = await ApiClient.upload('/api/profile/upload-image/', formData);
-                    
-                    if (data.success) {
-                        // Update avatar displays
-                        if (profileAvatar) profileAvatar.src = data.image_url;
-                        
-                        // Update sidebar avatar if exists
-                        const sidebarAvatar = document.querySelector('.sidebar-user img, .user-avatar img');
-                        if (sidebarAvatar) sidebarAvatar.src = data.image_url;
-                        
-                        showToast('Profile picture updated!', 'success');
-                    } else {
-                        showToast(data.message || 'Failed to upload image', 'error');
-                    }
-                } catch (error) {
-                    console.error('Upload error:', error);
-                    showToast('Failed to upload image', 'error');
-                }
-            }
-        });
-    }
 
     // ===== Password Toggle =====
     const passwordToggles = document.querySelectorAll('.password-toggle');
@@ -178,14 +130,45 @@ document.addEventListener('DOMContentLoaded', function() {
         logoutBtn.addEventListener('click', async function() {
             var ok = await showConfirm({ title: 'Logout?', text: 'Are you sure you want to logout?', icon: 'fa-solid fa-right-from-bracket', confirmLabel: 'Logout', btnClass: 'btn-danger', hideWarning: true });
             if (ok) {
-                // Must use POST for logout (GET is ignored for CSRF safety)
+                const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                logoutBtn.disabled = true;
+                try {
+                    const response = await fetch('/panel/auth/logout/', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: '{}'
+                    });
+
+                    let data = {};
+                    try {
+                        data = await response.json();
+                    } catch (parseError) {
+                        data = {};
+                    }
+
+                    if (response.ok && data.success !== false) {
+                        window.location.href = data.redirect || '/';
+                        return;
+                    }
+
+                    showToast(data.message || 'Unable to logout right now. Retrying...', 'warning');
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+
+                // Fallback form-submit keeps logout reliable if AJAX fails.
                 var form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/auth/logout/';
+                form.action = '/panel/auth/logout/';
                 var csrfInput = document.createElement('input');
                 csrfInput.type = 'hidden';
                 csrfInput.name = 'csrfmiddlewaretoken';
-                csrfInput.value = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                csrfInput.value = csrfToken;
                 form.appendChild(csrfInput);
                 document.body.appendChild(form);
                 form.submit();
@@ -230,14 +213,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     profileEmail.appendChild(document.createTextNode(' ' + (profile.email || '')));
                 }
                 if (memberSinceEl) memberSinceEl.textContent = profile.member_since;
-                
-                // Update avatar if exists
-                if (profile.profile_image) {
-                    const profileAvatar = document.getElementById('profileAvatar');
-                    if (profileAvatar) profileAvatar.src = profile.profile_image;
-                    
-                    const sidebarAvatar = document.querySelector('.sidebar-user img, .user-avatar img');
-                    if (sidebarAvatar) sidebarAvatar.src = profile.profile_image;
+
+                const securitySettings = profile.security_settings || {};
+                const twoFactorToggleEl = document.getElementById('twoFactorToggle');
+                const loginNotifyToggleEl = document.getElementById('loginNotifyToggle');
+                const sessionTimeoutEl = document.getElementById('sessionTimeout');
+
+                if (twoFactorToggleEl && typeof securitySettings.two_factor_enabled === 'boolean') {
+                    twoFactorToggleEl.checked = securitySettings.two_factor_enabled;
+                }
+                if (loginNotifyToggleEl && typeof securitySettings.login_notifications_enabled === 'boolean') {
+                    loginNotifyToggleEl.checked = securitySettings.login_notifications_enabled;
+                }
+                if (sessionTimeoutEl && securitySettings.session_timeout_minutes !== undefined && securitySettings.session_timeout_minutes !== null) {
+                    sessionTimeoutEl.value = String(securitySettings.session_timeout_minutes);
+                    sessionTimeoutEl.dataset.previous = sessionTimeoutEl.value;
                 }
             }
         } catch (error) {
@@ -254,235 +244,79 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginNotifyToggle = document.getElementById('loginNotifyToggle');
     const sessionTimeout = document.getElementById('sessionTimeout');
 
+    function getSessionTimeoutMessage(value) {
+        if (value === '0') {
+            return 'Session timeout disabled';
+        }
+        if (value === '10080') {
+            return 'Session timeout set to 7 days';
+        }
+        if (value === '60') {
+            return 'Session timeout set to 1 hour';
+        }
+        if (value === '120') {
+            return 'Session timeout set to 2 hours';
+        }
+        return `Session timeout set to ${value} minutes`;
+    }
+
+    async function saveSecuritySettings(payload, successMessage) {
+        try {
+            const data = await ApiClient.post('/api/profile/security-settings/update/', payload);
+            if (!data.success) {
+                showToast(data.message || 'Failed to update security settings', 'error');
+                return false;
+            }
+            showToast(successMessage, 'success');
+            return true;
+        } catch (error) {
+            console.error('Security settings update error:', error);
+            showToast('Failed to update security settings', 'error');
+            return false;
+        }
+    }
+
     if (twoFactorToggle) {
-        twoFactorToggle.addEventListener('change', function() {
-            if (this.checked) {
-                showToast('Two-Factor Authentication enabled!', 'success');
-            } else {
-                showToast('Two-Factor Authentication disabled', 'success');
+        twoFactorToggle.addEventListener('change', async function() {
+            const nextValue = this.checked;
+            const ok = await saveSecuritySettings(
+                { two_factor_enabled: nextValue },
+                nextValue ? 'Two-Factor Authentication enabled!' : 'Two-Factor Authentication disabled'
+            );
+            if (!ok) {
+                this.checked = !nextValue;
             }
         });
     }
 
     if (loginNotifyToggle) {
-        loginNotifyToggle.addEventListener('change', function() {
-            if (this.checked) {
-                showToast('Login notifications enabled!', 'success');
-            } else {
-                showToast('Login notifications disabled', 'success');
+        loginNotifyToggle.addEventListener('change', async function() {
+            const nextValue = this.checked;
+            const ok = await saveSecuritySettings(
+                { login_notifications_enabled: nextValue },
+                nextValue ? 'Login notifications enabled!' : 'Login notifications disabled'
+            );
+            if (!ok) {
+                this.checked = !nextValue;
             }
         });
     }
 
     if (sessionTimeout) {
-        sessionTimeout.addEventListener('change', function() {
+        sessionTimeout.dataset.previous = sessionTimeout.value;
+        sessionTimeout.addEventListener('change', async function() {
             const value = this.value;
-            let message = '';
-            
-            if (value === '0') {
-                message = 'Session timeout disabled';
-            } else if (value === '60') {
-                message = 'Session timeout set to 1 hour';
-            } else if (value === '120') {
-                message = 'Session timeout set to 2 hours';
+            const previousValue = this.dataset.previous || '10080';
+            const ok = await saveSecuritySettings(
+                { session_timeout_minutes: parseInt(value, 10) },
+                getSessionTimeoutMessage(value)
+            );
+            if (ok) {
+                this.dataset.previous = value;
             } else {
-                message = `Session timeout set to ${value} minutes`;
-            }
-            
-            showToast(message, 'success');
-        });
-    }
-
-    // ===== Export Document Settings =====
-    const exportSettingsForm = document.getElementById('exportSettingsForm');
-    if (exportSettingsForm) {
-        exportSettingsForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const saveBtn = exportSettingsForm.querySelector('.save-btn');
-            const statusSpan = document.getElementById('exportSettingsStatus');
-            
-            const noteLine = document.getElementById('exportNoteLine').value.trim();
-            const copyrightLine = document.getElementById('exportCopyrightLine').value.trim();
-            
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Saving...';
-            }
-            if (statusSpan) statusSpan.textContent = '';
-            
-            try {
-                const data = await ApiClient.post('/api/export-settings/update/', {
-                    export_note_line: noteLine,
-                    export_copyright_line: copyrightLine
-                });
-                
-                if (data.success) {
-                    showToast('Export settings saved successfully!', 'success');
-                    if (statusSpan) {
-                        statusSpan.textContent = ' Saved';
-                        statusSpan.style.color = 'var(--success-color, #28a745)';
-                        setTimeout(() => { statusSpan.textContent = ''; }, 3000);
-                    }
-                } else {
-                    showToast(data.message || 'Failed to save export settings', 'error');
-                    if (statusSpan) {
-                        statusSpan.textContent = ' Failed';
-                        statusSpan.style.color = 'var(--danger-color, #dc3545)';
-                    }
-                }
-            } catch (err) {
-                console.error('Export settings save error:', err);
-                showToast('Network error saving export settings', 'error');
-                if (statusSpan) {
-                    statusSpan.textContent = ' Error';
-                    statusSpan.style.color = 'var(--danger-color, #dc3545)';
-                }
-            } finally {
-                if (saveBtn) {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = 'Save Export Settings';
-                }
+                this.value = previousValue;
             }
         });
     }
 
-    // ===== Export Templates Management =====
-    const tplListEl = document.getElementById('exportTemplateList');
-    const addTplForm = document.getElementById('addExportTemplateForm');
-
-    async function loadExportTemplates() {
-        if (!tplListEl) return;
-        try {
-            const data = await ApiClient.get('/api/export-templates/');
-            if (data.success) {
-                renderTemplateList(data.templates);
-            } else {
-                tplListEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">Failed to load templates.</p>';
-            }
-        } catch (err) {
-            console.error('Load templates error:', err);
-            tplListEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">Network error loading templates.</p>';
-        }
-    }
-
-    function renderTemplateList(templates) {
-        if (!templates || templates.length === 0) {
-            tplListEl.innerHTML = '<p style="color:#94a3b8;font-size:13px;margin:0;">No templates created yet. Add one below.</p>';
-            return;
-        }
-        let html = '';
-        templates.forEach(function(tpl) {
-            const defaultBadge = tpl.is_default ? '<span style="background:#8b5cf6;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;">Default</span>' : '';
-            html += '<div id="tpl-row-' + tpl.id + '" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;background:#fff;">';
-            html += '  <div style="flex:1;min-width:0;">';
-            html += '    <div style="font-weight:600;font-size:13px;color:#1e293b;">' + escapeHtml(tpl.name) + defaultBadge + '</div>';
-            html += '    <div style="font-size:12px;color:#64748b;margin-top:4px;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(tpl.instructions).substring(0, 200) + (tpl.instructions.length > 200 ? '...' : '') + '</div>';
-            html += '  </div>';
-            html += '  <div style="display:flex;gap:6px;flex-shrink:0;">';
-            html += '    <button onclick="editExportTemplate(' + tpl.id + ')" class="btn btn-sm" style="font-size:11px;padding:4px 10px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer;" title="Edit"><i class="fa-solid fa-pen"></i></button>';
-            html += '    <button onclick="deleteExportTemplate(' + tpl.id + ',\'' + escapeHtml(tpl.name).replace(/'/g, "\\'") + '\')" class="btn btn-sm" style="font-size:11px;padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;" title="Delete"><i class="fa-solid fa-trash"></i></button>';
-            html += '  </div>';
-            html += '</div>';
-        });
-        tplListEl.innerHTML = html;
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    // Add template
-    if (addTplForm) {
-        addTplForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const name = document.getElementById('newTplName').value.trim();
-            const instructions = document.getElementById('newTplInstructions').value.trim();
-            const isDefault = document.getElementById('newTplDefault').checked;
-
-            if (!name || !instructions) {
-                showToast('Please fill in template name and instructions', 'error');
-                return;
-            }
-
-            try {
-                const data = await ApiClient.post('/api/export-templates/create/', {
-                    name: name,
-                    instructions: instructions,
-                    is_default: isDefault
-                });
-                if (data.success) {
-                    showToast('Template created successfully!', 'success');
-                    document.getElementById('newTplName').value = '';
-                    document.getElementById('newTplInstructions').value = '';
-                    document.getElementById('newTplDefault').checked = false;
-                    loadExportTemplates();
-                } else {
-                    showToast(data.message || 'Failed to create template', 'error');
-                }
-            } catch (err) {
-                console.error('Create template error:', err);
-                showToast('Network error creating template', 'error');
-            }
-        });
-    }
-
-    // Edit template (inline prompt)
-    window.editExportTemplate = async function(id) {
-        const row = document.getElementById('tpl-row-' + id);
-        if (!row) return;
-
-        // Fetch current data
-        let tplData;
-        try {
-            const data = await ApiClient.get('/api/export-templates/');
-            if (data.success) {
-                tplData = data.templates.find(function(t) { return t.id === id; });
-            }
-        } catch (err) { return; }
-        if (!tplData) return;
-
-        const newName = prompt('Template Name:', tplData.name);
-        if (newName === null) return;
-        const newInstructions = prompt('Footer Instructions:', tplData.instructions);
-        if (newInstructions === null) return;
-
-        try {
-            const data = await ApiClient.post('/api/export-templates/' + id + '/update/', {
-                name: newName.trim(),
-                instructions: newInstructions.trim()
-            });
-            if (data.success) {
-                showToast('Template updated!', 'success');
-                loadExportTemplates();
-            } else {
-                showToast(data.message || 'Failed to update template', 'error');
-            }
-        } catch (err) {
-            console.error('Update template error:', err);
-            showToast('Network error updating template', 'error');
-        }
-    };
-
-    // Delete template
-    window.deleteExportTemplate = async function(id, name) {
-        var ok = await showConfirm({ title: 'Delete Template?', text: 'Delete template "' + name + '"?', icon: 'fa-solid fa-trash', confirmLabel: 'Delete', hideWarning: true });
-        if (!ok) return;
-        try {
-            const data = await ApiClient.post('/api/export-templates/' + id + '/delete/');
-            if (data.success) {
-                showToast('Template deleted', 'success');
-                loadExportTemplates();
-            } else {
-                showToast(data.message || 'Failed to delete template', 'error');
-            }
-        } catch (err) {
-            console.error('Delete template error:', err);
-            showToast('Network error deleting template', 'error');
-        }
-    };
-
-    // Load on page init
-    loadExportTemplates();
 });

@@ -3,7 +3,7 @@ ID Card Card API — card CRUD, status changes, search, and filters.
 
 Contains:
 - api_idcard_list, api_idcard_cards_json, api_idcard_all_ids, api_idcard_filter_options
-- api_idcard_create, api_idcard_get, api_idcard_update, api_idcard_delete
+- api_idcard_create, api_idcard_get, api_idcard_history, api_idcard_update, api_idcard_delete
 - api_idcard_update_field, api_idcard_change_status
 - api_idcard_bulk_status, api_idcard_bulk_delete
 - api_generate_delete_code, api_generate_upgrade_code, api_upgrade_all_classes
@@ -32,17 +32,32 @@ from .idcard_helpers import (
     _check_client_scope_by_table,
     _check_client_scope_by_card,
     _assigned_group_ids_for_access,
-    _get_class_section_field_names,
+    _get_class_section_course_branch_field_names,
     _build_class_filter_q,
     invalidate_class_variant_cache,
     invalidate_filter_options_cache,
     _is_client_readonly,
     _client_readonly_response,
+    _is_client_edit_locked,
+    _client_edit_locked_response,
     _apply_client_staff_row_scope,
 )
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+
+_POOL_RETRIEVE_SCOPE_MESSAGE = (
+    'This card is outside your assigned class/section scope. '
+    'Change it to your assigned class/section first, then retrieve from pool.'
+)
+
+
+def _as_bool(value):
+    """Parse truthy request flag values from JSON/form payloads."""
+    if isinstance(value, bool):
+        return value
+    return str(value or '').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 @require_http_methods(["POST"])
@@ -94,6 +109,17 @@ def _is_card_in_client_staff_scope(user, card):
         IDCard.objects.filter(id=card.id, table_id=card.table_id),
         user,
         card.table,
+        status_filter=card.status,
+    )
+    return scoped_qs.exists()
+
+
+def _is_card_in_client_staff_assignment_scope(user, card):
+    """Return True when card matches strict client_staff assignment filters."""
+    scoped_qs = _apply_client_staff_row_scope(
+        IDCard.objects.filter(id=card.id, table_id=card.table_id),
+        user,
+        card.table,
     )
     return scoped_qs.exists()
 
@@ -122,7 +148,16 @@ def _forbidden_card_ids_for_client_staff(user, table, card_ids):
 
 def _filter_options_cache_key(user, table_id):
     """Build a cache key for filter-options that is safe for scoped users."""
-    base = f'filter_options:{table_id}'
+    from django.core.cache import cache as django_cache
+
+    version_key = f'filter_options_version:{table_id}'
+    version = django_cache.get(version_key, 1)
+    try:
+        version = int(version)
+    except Exception:
+        version = 1
+
+    base = f'filter_options:{table_id}:v{version}'
     if not PermissionService.is_client_staff(user):
         return base
 
@@ -196,6 +231,8 @@ def api_idcard_list(request, table_id):
         search  - full-text search on field_data
         class   - exact class filter on field_data
         section - exact section filter on field_data
+        course  - exact course filter on field_data
+        branch  - exact branch filter on field_data
         sort    - sort order: sr-asc, sr-desc, name-asc, name-desc, date-new, date-old
         image_column    - image field name for image sort filter
         image_condition - complete, pending, or incomplete
@@ -244,6 +281,17 @@ def api_idcard_list(request, table_id):
                 scoped_counts[st] = ct
                 scoped_counts['total'] += ct
 
+        if PermissionService.is_client_staff(request.user):
+            scoped_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+            scoped_counts['total'] = (
+                scoped_counts.get('pending', 0)
+                + scoped_counts.get('verified', 0)
+                + scoped_counts.get('pool', 0)
+                + scoped_counts.get('approved', 0)
+                + scoped_counts.get('download', 0)
+                + scoped_counts.get('reprint', 0)
+            )
+
         return JsonResponse({
             'success': True,
             'cards': scoped_payload.get('results', []),
@@ -266,6 +314,8 @@ def api_idcard_list(request, table_id):
     search = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
     sort_order = request.GET.get('sort', 'sr-asc').strip()
     image_column = request.GET.get('image_column', '').strip()
     image_condition = request.GET.get('image_condition', '').strip()
@@ -274,7 +324,11 @@ def api_idcard_list(request, table_id):
 
     result = IDCardService.list_cards(
         table_id, status_filter, offset, limit,
-        search=search, class_filter=class_filter, section_filter=section_filter,
+        search=search,
+        class_filter=class_filter,
+        section_filter=section_filter,
+        course_filter=course_filter,
+        branch_filter=branch_filter,
         sort_order=sort_order, image_column=image_column, image_condition=image_condition,
         from_date=from_date, to_date=to_date,
     )
@@ -296,6 +350,8 @@ def api_idcard_cards_json(request, table_id):
         search   – full-text search on field_data
         class    – class filter on field_data
         section  – section filter on field_data
+        course   – course filter on field_data
+        branch   – branch filter on field_data
         from     – datetime lower bound (download status only)
         to       – datetime upper bound (download status only)
 
@@ -377,24 +433,44 @@ def api_idcard_cards_json(request, table_id):
     if status_filter and status_filter in IDCardService.VALID_STATUSES:
         qs = qs.filter(status=status_filter)
 
-    qs = _apply_client_staff_row_scope(qs, request.user, table)
+    qs = _apply_client_staff_row_scope(qs, request.user, table, status_filter=status_filter)
 
     # Search & filter on field_data JSON
     search = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
     if search:
         qs = IDCardService._apply_search_filter(qs, search, table=table)
 
-    # Class/section filter with canonical normalization
-    if class_filter or section_filter:
+    # Class/section/course/branch filters
+    if class_filter or section_filter or course_filter or branch_filter:
         from django.db.models.fields.json import KeyTextTransform
-        class_field_name, section_field_name = _get_class_section_field_names(table)
+        class_field_name, section_field_name, course_field_name, branch_field_name = (
+            _get_class_section_course_branch_field_names(table)
+        )
         if class_filter and class_field_name:
             qs = _build_class_filter_q(qs, class_filter, class_field_name)
         if section_filter and section_field_name:
             qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data'))
             qs = qs.filter(_sec__iexact=section_filter)
+        if course_filter and course_field_name:
+            qs = IDCardService._apply_compact_text_filter(
+                qs,
+                course_filter,
+                course_field_name,
+                table_id=table_id,
+                alias='_course_cmp',
+            )
+        if branch_filter and branch_field_name:
+            qs = IDCardService._apply_compact_text_filter(
+                qs,
+                branch_filter,
+                branch_field_name,
+                table_id=table_id,
+                alias='_branch_cmp',
+            )
 
     # Server-side image filter (column + condition)
     image_column = request.GET.get('image_column', '').strip()
@@ -595,7 +671,7 @@ def api_idcard_cards_json(request, table_id):
 @api_require_any_authenticated
 def api_idcard_all_ids(request, table_id):
     """API endpoint to get all card IDs for a table (for Select All functionality).
-    Supports search, class, and section filter params so Select All respects active filters."""
+    Supports search/class/section/course/branch params so Select All respects active filters."""
     table, err = _check_client_scope_by_table(request.user, table_id)
     if err: return err
     status_filter = request.GET.get('status', None)
@@ -610,6 +686,8 @@ def api_idcard_all_ids(request, table_id):
     search = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
     from_date = request.GET.get('from', '').strip()
     to_date = request.GET.get('to', '').strip()
     image_column = request.GET.get('image_column', '').strip()
@@ -617,7 +695,11 @@ def api_idcard_all_ids(request, table_id):
     
     result = IDCardService.get_all_card_ids(
         table_id, status_filter,
-        search=search, class_filter=class_filter, section_filter=section_filter,
+        search=search,
+        class_filter=class_filter,
+        section_filter=section_filter,
+        course_filter=course_filter,
+        branch_filter=branch_filter,
         from_date=from_date, to_date=to_date,
         image_column=image_column, image_condition=image_condition,
     )
@@ -628,6 +710,7 @@ def api_idcard_all_ids(request, table_id):
                 IDCard.objects.filter(table=table),
                 request.user,
                 table,
+                status_filter=status_filter,
             ).values_list('id', flat=True)
         )
         card_ids = [cid for cid in (result.data or {}).get('card_ids', []) if cid in scoped_ids]
@@ -641,7 +724,7 @@ def api_idcard_all_ids(request, table_id):
 @require_http_methods(["GET"])
 @api_require_any_authenticated
 def api_idcard_filter_options(request, table_id):
-    """Return distinct class/section values for filter dropdowns.
+    """Return distinct class/section/course/branch values for filter dropdowns.
 
     Groups class variants by their canonical form (normalize_class_value).
     E.g. 'KG-I', 'KGI', 'KG1', 'kgI' all map to canonical 'KG1' and show
@@ -652,13 +735,15 @@ def api_idcard_filter_options(request, table_id):
     Response shape:
         class_values:   [{value: "KG1", display: "KG-I"}, ...]
         section_values: ["A", "B", ...]
+        course_values:  ["BSC", "BCA", ...]
+        branch_values:  ["CS", "ME", ...]
     """
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
     from django.db.models import CharField, Count
     from django.core.cache import cache as django_cache
     from core.utils.field_utils import (
-        CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value,
+        CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value, normalize_compact_text_value,
     )
     from collections import defaultdict
 
@@ -677,16 +762,24 @@ def api_idcard_filter_options(request, table_id):
         return JsonResponse(cached)
 
     qs = IDCard.objects.filter(table=table)
-    qs = _apply_client_staff_row_scope(qs, request.user, table)
+    qs = _apply_client_staff_row_scope(qs, request.user, table, status_filter=status_filter)
     # NOTE: Removed status filter — filter options should show ALL values
     # across the entire table, not just the current status view.
 
-    class_field_name, section_field_name = _get_class_section_field_names(table)
+    class_field_name, section_field_name, course_field_name, branch_field_name = (
+        _get_class_section_course_branch_field_names(table)
+    )
 
     class_values = []
     section_values = []
+    course_values = []
+    branch_values = []
+    course_display_map = {}
+    branch_display_map = {}
     class_to_sections = {}
     section_to_classes = {}
+    course_to_branches = {}
+    branch_to_courses = {}
 
     if class_field_name:
         # Get distinct raw values WITH counts
@@ -731,6 +824,50 @@ def api_idcard_filter_options(request, table_id):
             ],
         )
 
+    if course_field_name:
+        raw_with_counts = (
+            qs.annotate(_coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()))
+            .exclude(_coursev__isnull=True).exclude(_coursev='')
+            .order_by()
+            .values('_coursev')
+            .annotate(cnt=Count('id'))
+        )
+
+        grouped = {}
+        for entry in raw_with_counts:
+            raw = str(entry['_coursev']).strip()
+            normalized = normalize_compact_text_value(raw)
+            if not normalized:
+                continue
+            prev = grouped.get(normalized)
+            if prev is None or entry['cnt'] > prev[1]:
+                grouped[normalized] = (raw, entry['cnt'])
+
+        course_display_map = {normalized: data[0] for normalized, data in grouped.items()}
+        course_values = sorted(course_display_map.values(), key=lambda x: x.lower())
+
+    if branch_field_name:
+        raw_with_counts = (
+            qs.annotate(_branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()))
+            .exclude(_branchv__isnull=True).exclude(_branchv='')
+            .order_by()
+            .values('_branchv')
+            .annotate(cnt=Count('id'))
+        )
+
+        grouped = {}
+        for entry in raw_with_counts:
+            raw = str(entry['_branchv']).strip()
+            normalized = normalize_compact_text_value(raw)
+            if not normalized:
+                continue
+            prev = grouped.get(normalized)
+            if prev is None or entry['cnt'] > prev[1]:
+                grouped[normalized] = (raw, entry['cnt'])
+
+        branch_display_map = {normalized: data[0] for normalized, data in grouped.items()}
+        branch_values = sorted(branch_display_map.values(), key=lambda x: x.lower())
+
     if class_field_name and section_field_name:
         pair_rows = (
             qs.annotate(
@@ -765,14 +902,65 @@ def api_idcard_filter_options(request, table_id):
             for sec, classes in section_class_sets.items()
         }
 
+    if course_field_name and branch_field_name:
+        pair_rows = (
+            qs.annotate(
+                _coursev=Cast(KeyTextTransform(course_field_name, 'field_data'), CharField()),
+                _branchv=Cast(KeyTextTransform(branch_field_name, 'field_data'), CharField()),
+            )
+            .exclude(_coursev__isnull=True).exclude(_coursev='')
+            .exclude(_branchv__isnull=True).exclude(_branchv='')
+            .order_by()
+            .values_list('_coursev', '_branchv')
+            .distinct()
+        )
+
+        course_branch_sets = defaultdict(set)
+        branch_course_sets = defaultdict(set)
+        for raw_course, raw_branch in pair_rows:
+            course_text = str(raw_course).strip()
+            branch_text = str(raw_branch).strip()
+            course_norm = normalize_compact_text_value(course_text)
+            branch_norm = normalize_compact_text_value(branch_text)
+            if not course_norm or not branch_norm:
+                continue
+            if course_norm not in course_display_map:
+                course_display_map[course_norm] = course_text
+            if branch_norm not in branch_display_map:
+                branch_display_map[branch_norm] = branch_text
+
+            course_branch_sets[course_norm].add(branch_norm)
+            branch_course_sets[branch_norm].add(course_norm)
+
+        course_to_branches = {
+            course_display_map.get(course, course): sorted(
+                [branch_display_map.get(branch, branch) for branch in branches],
+                key=lambda x: x.lower(),
+            )
+            for course, branches in course_branch_sets.items()
+        }
+        branch_to_courses = {
+            branch_display_map.get(branch, branch): sorted(
+                [course_display_map.get(course, course) for course in courses],
+                key=lambda x: x.lower(),
+            )
+            for branch, courses in branch_course_sets.items()
+        }
+
     result = {
         'success': True,
         'class_values': class_values,
         'section_values': list(section_values),
+        'course_values': list(course_values),
+        'branch_values': list(branch_values),
         'class_to_sections': class_to_sections,
         'section_to_classes': section_to_classes,
+        'course_to_branches': course_to_branches,
+        'branch_to_courses': branch_to_courses,
         'class_field': class_field_name,
         'section_field': section_field_name,
+        'course_field': course_field_name,
+        'branch_field': branch_field_name,
     }
     
     # Cache for 30 seconds
@@ -813,6 +1001,21 @@ def api_idcard_create(request, table_id):
         )
 
         if result.success:
+            try:
+                created_card = (result.data or {}).get('card') or {}
+                created_card_id = created_card.get('id')
+                if created_card_id:
+                    ActivityService.log(
+                        'card_create',
+                        'ID card created',
+                        user=request.user if request.user.is_authenticated else None,
+                        request=request,
+                        target_model='IDCard',
+                        target_id=created_card_id,
+                        target_name=f'Card #{created_card_id}',
+                    )
+            except Exception:
+                pass
             return JsonResponse({
                 'success': True,
                 'message': result.message,
@@ -854,6 +1057,90 @@ def api_idcard_get(request, card_id):
     return JsonResponse({'success': False, 'message': result.message}, status=400)
 
 
+@require_http_methods(["GET"])
+@api_require_any_authenticated
+def api_idcard_history(request, card_id):
+    """Return per-card timeline entries for the action-list history drawer."""
+    from django.utils.timezone import localtime
+    from core.models import ActivityLog
+
+    card, err = _check_client_scope_by_card(request.user, card_id)
+    if err:
+        return err
+    if not _is_card_in_client_staff_scope(request.user, card):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    history_qs = (
+        ActivityLog.objects
+        .filter(target_model='IDCard', target_id=card.id)
+        .select_related('user')
+        .order_by('-created_at')[:80]
+    )
+
+    is_client_viewer = PermissionService.is_client_role(request.user)
+    role_map = {}
+    if is_client_viewer:
+        usernames = {
+            entry.user.username
+            for entry in history_qs
+            if entry.user and entry.user.username
+        }
+        if usernames:
+            from core.models import User as _User
+            role_map = {
+                username: role
+                for username, role in _User.objects.filter(username__in=usernames).values_list('username', 'role')
+            }
+
+    events = []
+    for entry in history_qs:
+        actor = entry.user
+        actor_name = ''
+        if actor:
+            actor_name = actor.get_full_name() or actor.username
+        else:
+            actor_name = 'System'
+
+        if is_client_viewer:
+            actor_role = role_map.get(getattr(actor, 'username', ''), '') if actor else ''
+            if actor and actor_role not in ('client', 'client_staff'):
+                continue
+            actor_name = _client_modifier_display_name(card.table)
+
+        when_dt = localtime(entry.created_at)
+        events.append({
+            'id': entry.id,
+            'action': entry.get_action_display(),
+            'what': entry.description,
+            'who': actor_name,
+            'when': when_dt.strftime('%d-%b-%Y %H:%M'),
+            'when_iso': entry.created_at.isoformat(),
+        })
+
+    if not events:
+        snapshot_dt = card.status_changed_at or card.updated_at or card.created_at
+        snapshot_when = localtime(snapshot_dt) if snapshot_dt else None
+        fallback_actor = (card.modified_by or '').strip() or 'System'
+        if is_client_viewer and fallback_actor not in ('System',):
+            fallback_actor = _client_modifier_display_name(card.table)
+        events.append({
+            'id': f'snapshot-{card.id}',
+            'action': 'Status Snapshot',
+            'what': f'Current status: {card.get_status_display()}',
+            'who': fallback_actor,
+            'when': snapshot_when.strftime('%d-%b-%Y %H:%M') if snapshot_when else '',
+            'when_iso': snapshot_dt.isoformat() if snapshot_dt else '',
+        })
+
+    return JsonResponse({
+        'success': True,
+        'card_id': card.id,
+        'card_status': card.status,
+        'card_status_display': card.get_status_display(),
+        'events': events,
+    })
+
+
 @require_http_methods(["POST", "PUT"])
 @api_require_permission('perm_idcard_edit')
 def api_idcard_update(request, card_id):
@@ -866,14 +1153,12 @@ def api_idcard_update(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    # Client/client_staff cannot edit cards in approved/download/reprint
-    if _is_client_readonly(request.user, _card.status):
-        return _client_readonly_response()
     try:
         # Parse request into service-friendly args
         if request.content_type and 'multipart/form-data' in request.content_type:
             field_data = json.loads(request.POST.get('field_data', '{}'))
             expected_updated_at = request.POST.get('expected_updated_at', None)
+            reprint_modal_edit = _as_bool(request.POST.get('reprint_modal_edit'))
             # CRITICAL: dict(request.FILES) returns lists (MultiValueDict internals).
             # Use dict comprehension with [] access to get actual file objects.
             image_files = {key: request.FILES[key] for key in request.FILES}
@@ -882,8 +1167,19 @@ def api_idcard_update(request, card_id):
             data = json.loads(request.body)
             field_data = data.get('field_data')
             expected_updated_at = data.get('expected_updated_at', None)
+            reprint_modal_edit = _as_bool(data.get('reprint_modal_edit'))
             image_files = None
             legacy_photo_file = None
+
+        # Default lock remains in place. Bypass is only for reprint-modal edits
+        # when caller has reprint permission.
+        can_bypass_edit_lock = (
+            reprint_modal_edit
+            and PermissionService.has(request.user, 'perm_idcard_reprint_list')
+            and str(_card.status or '').strip().lower() in ('pool', 'approved', 'download', 'reprint')
+        )
+        if _is_client_edit_locked(request.user, _card.status) and not can_bypass_edit_lock:
+            return _client_edit_locked_response()
 
         result = IDCardService.update_card(
             card_id=card_id,
@@ -897,6 +1193,18 @@ def api_idcard_update(request, card_id):
 
         if result.success:
             card_data = result.data['card']
+            try:
+                ActivityService.log(
+                    'card_update',
+                    'ID card updated',
+                    user=request.user if request.user.is_authenticated else None,
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
+            except Exception:
+                pass
             response_card = {
                 'id': card_data['id'],
                 'field_data': card_data['field_data'],
@@ -973,9 +1281,9 @@ def api_idcard_update_field(request, card_id):
     if err: return err
     if not _is_card_in_client_staff_scope(request.user, _card):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    # Client/client_staff cannot edit cards in approved/download/reprint
-    if _is_client_readonly(request.user, _card.status):
-        return _client_readonly_response()
+    # Client/client_staff cannot edit cards in approved/download/reprint.
+    if _is_client_edit_locked(request.user, _card.status):
+        return _client_edit_locked_response()
     try:
         data = json.loads(request.body)
         field = data.get('field')
@@ -988,13 +1296,32 @@ def api_idcard_update_field(request, card_id):
 
         if result.success and field:
             try:
-                class_field_name, section_field_name = _get_class_section_field_names(_card.table)
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    _get_class_section_course_branch_field_names(_card.table)
+                )
                 normalized_field = str(field).strip().lower()
                 if class_field_name and normalized_field == str(class_field_name).strip().lower():
                     invalidate_class_variant_cache(_card.table_id)
                     invalidate_filter_options_cache(_card.table_id)
                 elif section_field_name and normalized_field == str(section_field_name).strip().lower():
                     invalidate_filter_options_cache(_card.table_id)
+                elif course_field_name and normalized_field == str(course_field_name).strip().lower():
+                    invalidate_filter_options_cache(_card.table_id)
+                elif branch_field_name and normalized_field == str(branch_field_name).strip().lower():
+                    invalidate_filter_options_cache(_card.table_id)
+            except Exception:
+                pass
+
+            try:
+                ActivityService.log(
+                    'card_update',
+                    f'Field "{field}" updated',
+                    user=request.user if request.user.is_authenticated else None,
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
             except Exception:
                 pass
 
@@ -1020,6 +1347,14 @@ def api_idcard_change_status(request, card_id):
     try:
         data = json.loads(request.body)
         new_status = data.get('status')
+
+        if (
+            PermissionService.is_client_staff(request.user)
+            and str(card.status or '').strip().lower() == 'pool'
+            and str(new_status or '').strip().lower() == 'pending'
+            and not _is_card_in_client_staff_assignment_scope(request.user, card)
+        ):
+            return JsonResponse({'success': False, 'message': _POOL_RETRIEVE_SCOPE_MESSAGE}, status=403)
 
         from idcards.services_workflow import WorkflowService
         result = WorkflowService.transition(card, new_status, user=request.user, request=request)
@@ -1052,6 +1387,17 @@ def api_idcard_bulk_status(request, table_id):
 
         forbidden_ids = _forbidden_card_ids_for_client_staff(request.user, _tbl, card_ids)
         if forbidden_ids:
+            if str(new_status or '').strip().lower() == 'pending':
+                has_pool_mismatch = IDCard.objects.filter(
+                    table=_tbl,
+                    id__in=forbidden_ids,
+                    status='pool',
+                ).exists()
+                if has_pool_mismatch:
+                    return JsonResponse({
+                        'success': False,
+                        'message': _POOL_RETRIEVE_SCOPE_MESSAGE,
+                    }, status=403)
             return JsonResponse({
                 'success': False,
                 'message': 'Some selected cards are outside your assigned scope.',
@@ -1234,6 +1580,12 @@ def api_upgrade_all_classes(request, table_id):
         if not result.success:
             return JsonResponse({'success': False, 'message': result.message}, status=400)
 
+        try:
+            invalidate_class_variant_cache(table_id)
+            invalidate_filter_options_cache(table_id)
+        except Exception:
+            pass
+
         if result.data.get('upgraded', 0) > 0:
             ActivityService.log_bulk_upgrade(
                 request, result.data['upgraded'], result.data.get('client_name', '')
@@ -1291,6 +1643,16 @@ def api_table_status_counts(request, table_id):
                 if st in status_counts:
                     status_counts[st] = ct
                     status_counts['total'] += ct
+
+            status_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+            status_counts['total'] = (
+                status_counts.get('pending', 0)
+                + status_counts.get('verified', 0)
+                + status_counts.get('pool', 0)
+                + status_counts.get('approved', 0)
+                + status_counts.get('download', 0)
+                + status_counts.get('reprint', 0)
+            )
         else:
             status_counts = IDCardService.get_status_counts(table)
         

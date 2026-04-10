@@ -82,6 +82,54 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       };
 
+      NS.fetchClientMessages = async function(clientId) {
+        try {
+          return await ApiClient.get('/api/client/' + clientId + '/messages/');
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.sendClientMessage = async function(clientId, payload) {
+        try {
+          return await ApiClient.post('/api/client/' + clientId + '/messages/send/', payload);
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.deleteClientMessage = async function(clientId, messageId) {
+        try {
+          return await ApiClient.post('/api/client/' + clientId + '/messages/' + messageId + '/delete/', {});
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.fetchClientMessageTargets = async function(queryText) {
+        var query = encodeURIComponent((queryText || '').trim());
+        var url = '/api/client/messages/targets/?limit=800';
+        if (query) url += '&q=' + query;
+        try {
+          return await ApiClient.get(url);
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
+      NS.sendClientGroupMessage = async function(payload) {
+        try {
+          return await ApiClient.post('/api/client/messages/group-send/', payload);
+        } catch (error) {
+          if (error && error.data && typeof error.data === 'object') return error.data;
+          return { success: false, message: error && error.message ? error.message : 'Network error. Please try again.' };
+        }
+      };
+
       // ==================== TEMP PASSWORD FUNCTIONS ====================
       var tempPwVerificationCode = '';
       var tempPwTargetType = ''; // 'client' or 'staff'
@@ -114,29 +162,45 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('tempPwStep2').style.display = 'none';
         document.getElementById('tempPwVerifyCode').textContent = tempPwVerificationCode;
         document.getElementById('tempPwCodeInput').value = '';
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes('');
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
         document.getElementById('tempPwCodeError').style.display = 'none';
         document.getElementById('tempPwNewPassword').value = '';
         document.getElementById('tempPwError').style.display = 'none';
         document.getElementById('tempPwUserName').textContent = tempPwTargetName;
 
-        modal.style.display = 'flex';
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+          window.AdarshModalBridge.open('temp-password-modal', { overlayClass: 'show' });
+        } else {
+          modal.style.display = 'flex';
+        }
       };
 
       window.closeTempPasswordModal = function() {
-        document.getElementById('temp-password-modal').style.display = 'none';
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+          window.AdarshModalBridge.close('temp-password-modal', { overlayClass: 'show' });
+        } else {
+          document.getElementById('temp-password-modal').style.display = 'none';
+        }
         tempPwVerificationCode = '';
         tempPwTargetId = null;
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
       };
 
       window.verifyTempPwCode = function() {
-        var input = document.getElementById('tempPwCodeInput').value.trim();
+        var codeInputEl = document.getElementById('tempPwCodeInput');
+        var input = (codeInputEl ? codeInputEl.value : '').replace(/\D/g, '').slice(0, 10);
+        if (codeInputEl) codeInputEl.value = input;
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes(input);
         var errEl = document.getElementById('tempPwCodeError');
         if (input === tempPwVerificationCode) {
+          if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('is-valid');
           errEl.style.display = 'none';
           document.getElementById('tempPwStep1').style.display = 'none';
           document.getElementById('tempPwStep2').style.display = '';
           document.getElementById('tempPwNewPassword').focus();
         } else {
+          if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState(input.length === 10 ? 'is-invalid' : '');
           errEl.style.display = '';
         }
       };

@@ -29,7 +29,21 @@ function _getStatusLabel() {
 
 let pendingDownloadCardIds = [];
 let currentDownloadType = null; // 'pdf', 'xlsx', 'img'
-let _dlAvailableRenameImageKeys = {};
+let _dlImageRenameState = {
+    imageFields: [],
+    textFields: [],
+    selectedImageField: '',
+    selectedNameFields: [],
+    mode: '',
+    compressEnabled: false,
+    targetSizeKb: 40,
+    generateSizePreset: 'size_23x34',
+    generateNameField: '',
+    generateDetailMode: 'class_only',
+    generateClassField: '',
+    generateSectionField: '',
+    generateCustomDate: ''
+};
 
 // Modal DOM references (set in initDownloadModals)
 let downloadPdfModal = null;
@@ -56,6 +70,45 @@ function _dlLooksImageField(field) {
            name.indexOf('qr') !== -1;
 }
 
+function _dlLooksRenameTargetImageField(field) {
+    const type = String((field && field.type) || '').toLowerCase();
+    const name = String((field && field.name) || '').toLowerCase();
+
+    if (type === 'photo' || type === 'image' || type === 'father_photo' || type === 'mother_photo') {
+        return true;
+    }
+
+    if (type === 'signature' || type === 'qr_code' || type === 'barcode') {
+        return false;
+    }
+
+    return name.indexOf('photo') !== -1 ||
+           name.indexOf('image') !== -1 ||
+           name.indexOf('picture') !== -1;
+}
+
+function _dlGetRenameTargetImageFields() {
+    const fields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
+    const uniqueByNormalizedName = {};
+
+    fields.forEach(function(field) {
+        const name = String((field && field.name) || '').trim();
+        if (!name) return;
+        if (!_dlLooksRenameTargetImageField(field)) return;
+
+        const normalized = _dlNormalizeFieldKey(name);
+        if (!normalized || uniqueByNormalizedName[normalized]) return;
+        uniqueByNormalizedName[normalized] = {
+            name: name,
+            type: String((field && field.type) || '').trim()
+        };
+    });
+
+    return Object.keys(uniqueByNormalizedName).map(function(key) {
+        return uniqueByNormalizedName[key];
+    });
+}
+
 function _dlGetTextFields() {
     const fields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
     return fields.filter(function(field) {
@@ -79,153 +132,736 @@ function _dlFindFieldNameByHint(textFields, hints) {
     return '';
 }
 
-function _dlPopulateRenameSelect(selectEl, textFields, preferredName) {
+function _dlPopulateRenameTargetSelect(selectEl, imageFields, preferredFieldName) {
     if (!selectEl) return;
     selectEl.innerHTML = '';
-    const noneOpt = document.createElement('option');
-    noneOpt.value = '';
-    noneOpt.textContent = 'Do not rename';
-    selectEl.appendChild(noneOpt);
 
-    textFields.forEach(function(field) {
+    imageFields.forEach(function(field) {
         const option = document.createElement('option');
         option.value = field.name;
         option.textContent = field.name;
+        if (field.name === preferredFieldName) option.selected = true;
+        selectEl.appendChild(option);
+    });
+}
+
+function _dlClampTargetSizeKb(value) {
+    const parsed = parseInt(String(value || '').trim(), 10);
+    if (!Number.isFinite(parsed)) return 40;
+    return Math.max(10, Math.min(200, parsed));
+}
+
+function _dlPopulateTextFieldSelect(selectEl, textFields, preferredFieldName, emptyOptionLabel) {
+    if (!selectEl) return;
+
+    const preferred = String(preferredFieldName || '').trim();
+    const normalizedPreferred = _dlNormalizeFieldKey(preferred);
+    selectEl.innerHTML = '';
+
+    if (emptyOptionLabel) {
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = String(emptyOptionLabel);
+        selectEl.appendChild(emptyOption);
+    }
+
+    let selectedValue = '';
+    (textFields || []).forEach(function(field) {
+        const option = document.createElement('option');
+        const name = String((field && field.name) || '').trim();
+        if (!name) return;
+
+        option.value = name;
+        option.textContent = name;
+        if (normalizedPreferred && _dlNormalizeFieldKey(name) === normalizedPreferred) {
+            option.selected = true;
+            selectedValue = name;
+        }
         selectEl.appendChild(option);
     });
 
-    if (preferredName && textFields.some(function(field) { return field.name === preferredName; })) {
-        selectEl.value = preferredName;
-    } else {
-        selectEl.value = '';
+    if (!selectedValue && !emptyOptionLabel && selectEl.options.length > 0) {
+        selectEl.options[0].selected = true;
+        selectedValue = String(selectEl.options[0].value || '').trim();
+    }
+
+    if (!selectedValue && emptyOptionLabel && selectEl.options.length > 0) {
+        selectEl.options[0].selected = true;
     }
 }
 
-function _dlResolveRenameableImageKey(field) {
-    const typeNorm = _dlNormalizeFieldKey((field && field.type) || '');
-    const nameRaw = String((field && field.name) || '').toUpperCase();
-    const nameNorm = _dlNormalizeFieldKey(nameRaw);
+function _dlGetGenerateSizePreset() {
+    const smallEl = document.getElementById('downloadImgGenerateSizeSmall');
+    const largeEl = document.getElementById('downloadImgGenerateSizeLarge');
 
-    if (typeNorm === 'MOTHERPHOTO' || (nameRaw.indexOf('MOTHER') !== -1 && nameRaw.indexOf('PHOTO') !== -1)) {
-        return 'MOTHER_PHOTO';
-    }
-    if (typeNorm === 'FATHERPHOTO' || (nameRaw.indexOf('FATHER') !== -1 && nameRaw.indexOf('PHOTO') !== -1)) {
-        return 'FATHER_PHOTO';
-    }
-    if (typeNorm === 'PHOTO' || typeNorm === 'IMAGE' || nameNorm.indexOf('PHOTO') !== -1) {
-        return 'PHOTO';
-    }
+    if (largeEl && largeEl.checked) return 'size_37x53';
+    if (smallEl && smallEl.checked) return 'size_23x34';
+    return _dlImageRenameState.generateSizePreset || 'size_23x34';
+}
+
+function _dlSetGenerateSizePreset(preset) {
+    const normalized = preset === 'size_37x53' ? 'size_37x53' : 'size_23x34';
+    const smallEl = document.getElementById('downloadImgGenerateSizeSmall');
+    const largeEl = document.getElementById('downloadImgGenerateSizeLarge');
+
+    if (smallEl) smallEl.checked = normalized === 'size_23x34';
+    if (largeEl) largeEl.checked = normalized === 'size_37x53';
+    _dlImageRenameState.generateSizePreset = normalized;
+}
+
+function _dlGetGenerateDetailMode() {
+    const classOnlyEl = document.getElementById('downloadImgGenerateDetailClassOnly');
+    const classSectionEl = document.getElementById('downloadImgGenerateDetailClassSection');
+    const customDateEl = document.getElementById('downloadImgGenerateDetailCustomDate');
+
+    if (customDateEl && customDateEl.checked) return 'custom_date';
+    if (classSectionEl && classSectionEl.checked) return 'class_section';
+    if (classOnlyEl && classOnlyEl.checked) return 'class_only';
+    return _dlImageRenameState.generateDetailMode || 'class_only';
+}
+
+function _dlSetGenerateDetailMode(mode) {
+    const normalized = mode === 'custom_date' || mode === 'class_section' ? mode : 'class_only';
+    const classOnlyEl = document.getElementById('downloadImgGenerateDetailClassOnly');
+    const classSectionEl = document.getElementById('downloadImgGenerateDetailClassSection');
+    const customDateEl = document.getElementById('downloadImgGenerateDetailCustomDate');
+
+    if (classOnlyEl) classOnlyEl.checked = normalized === 'class_only';
+    if (classSectionEl) classSectionEl.checked = normalized === 'class_section';
+    if (customDateEl) customDateEl.checked = normalized === 'custom_date';
+
+    _dlImageRenameState.generateDetailMode = normalized;
+}
+
+function _dlSyncGenerateFieldUi() {
+    const mode = _dlGetActiveImageMode();
+    const classWrapEl = document.getElementById('downloadImgGenerateClassWrap');
+    const sectionWrapEl = document.getElementById('downloadImgGenerateSectionWrap');
+    const customDateWrapEl = document.getElementById('downloadImgGenerateCustomDateWrap');
+
+    const detailMode = _dlGetGenerateDetailMode();
+    _dlImageRenameState.generateDetailMode = detailMode;
+    _dlImageRenameState.generateSizePreset = _dlGetGenerateSizePreset();
+
+    const isGenerateMode = mode === 'generate';
+    if (classWrapEl) classWrapEl.style.display = (isGenerateMode && detailMode !== 'custom_date') ? 'block' : 'none';
+    if (sectionWrapEl) sectionWrapEl.style.display = (isGenerateMode && detailMode === 'class_section') ? 'block' : 'none';
+    if (customDateWrapEl) customDateWrapEl.style.display = (isGenerateMode && detailMode === 'custom_date') ? 'block' : 'none';
+}
+
+function _dlGetActiveImageMode() {
+    const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
+    const renameToggleEl = document.getElementById('downloadImgRenameToggle');
+    if (generateToggleEl && generateToggleEl.checked) return 'generate';
+    if (renameToggleEl && renameToggleEl.checked) return 'rename';
     return '';
 }
 
-function _dlGetAvailableRenameImageKeys() {
-    const fields = Array.isArray(window.TABLE_FIELDS) ? window.TABLE_FIELDS : [];
-    const available = {
-        PHOTO: false,
-        FATHER_PHOTO: false,
-        MOTHER_PHOTO: false,
-    };
+function _dlSetActiveImageMode(mode) {
+    const renameToggleEl = document.getElementById('downloadImgRenameToggle');
+    const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
 
-    fields.forEach(function(field) {
-        if (!_dlLooksImageField(field)) return;
-        const key = _dlResolveRenameableImageKey(field);
-        if (key && Object.prototype.hasOwnProperty.call(available, key)) {
-            available[key] = true;
-        }
-    });
-
-    return available;
+    if (renameToggleEl) renameToggleEl.checked = mode === 'rename';
+    if (generateToggleEl) generateToggleEl.checked = mode === 'generate';
+    _dlImageRenameState.mode = mode;
+    _dlSyncModeUi();
 }
 
-function _dlInitializeImageRenamePanel() {
-    const toggleEl = document.getElementById('downloadImgRenameToggle');
+function _dlSyncModeUi() {
     const panelEl = document.getElementById('downloadImgRenamePanel');
-    const photoSelect = document.getElementById('downloadImgMapPhoto');
-    const fatherSelect = document.getElementById('downloadImgMapFather');
-    const motherSelect = document.getElementById('downloadImgMapMother');
-    const photoRow = document.getElementById('downloadImgMapPhotoRow');
-    const fatherRow = document.getElementById('downloadImgMapFatherRow');
-    const motherRow = document.getElementById('downloadImgMapMotherRow');
+    const generatePanelEl = document.getElementById('downloadImgGeneratePanel');
+    const renameFieldsSectionEl = document.getElementById('downloadImgRenameFieldsSection');
+    const helpTextEl = document.getElementById('downloadImgFieldHelpText');
+    const formatSelect = document.getElementById('downloadImgFormatSelect');
+    const compressToggleEl = document.getElementById('downloadImgCompressToggle');
+    const compressTargetWrapEl = document.getElementById('downloadImgCompressTargetWrap');
 
-    if (!toggleEl || !panelEl || !photoSelect || !fatherSelect || !motherSelect) return;
+    const mode = _dlGetActiveImageMode();
+    _dlImageRenameState.mode = mode;
 
-    _dlAvailableRenameImageKeys = _dlGetAvailableRenameImageKeys();
+    if (panelEl) panelEl.style.display = mode ? 'block' : 'none';
+    if (generatePanelEl) generatePanelEl.style.display = mode === 'generate' ? 'block' : 'none';
+    if (renameFieldsSectionEl) renameFieldsSectionEl.style.display = mode === 'rename' ? 'block' : 'none';
 
-    const hasAnyRenameableImage = !!(_dlAvailableRenameImageKeys.PHOTO || _dlAvailableRenameImageKeys.FATHER_PHOTO || _dlAvailableRenameImageKeys.MOTHER_PHOTO);
+    if (helpTextEl) {
+        helpTextEl.textContent = mode === 'generate'
+            ? 'Generate mode: select Name field, card size, and Class/Class+Section/Custom Date.'
+            : 'Click one or more fields. Selected values are joined with underscore (_).';
+    }
 
-    if (photoRow) photoRow.style.display = _dlAvailableRenameImageKeys.PHOTO ? '' : 'none';
-    if (fatherRow) fatherRow.style.display = _dlAvailableRenameImageKeys.FATHER_PHOTO ? '' : 'none';
-    if (motherRow) motherRow.style.display = _dlAvailableRenameImageKeys.MOTHER_PHOTO ? '' : 'none';
+    if (mode !== 'generate') {
+        _dlImageRenameState.compressEnabled = false;
+        if (compressToggleEl) compressToggleEl.checked = false;
+    } else {
+        _dlImageRenameState.compressEnabled = !!(compressToggleEl && compressToggleEl.checked);
+    }
 
-    toggleEl.disabled = !hasAnyRenameableImage;
-    if (!hasAnyRenameableImage) {
-        toggleEl.checked = false;
-        panelEl.style.display = 'none';
+    if (compressTargetWrapEl) {
+        compressTargetWrapEl.style.display = (mode === 'generate' && _dlImageRenameState.compressEnabled) ? 'block' : 'none';
+    }
+
+    if (formatSelect && !String(formatSelect.value || '').trim()) {
+        formatSelect.value = 'zip';
+    }
+
+    _dlSyncGenerateFieldUi();
+
+    _dlUpdateRenamePreview();
+}
+
+function _dlSanitizePreviewPart(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    return text
+        .replace(/\s+/g, '_')
+        .replace(/[^A-Za-z0-9._-]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 60);
+}
+
+function _dlRenderSelectedNameFieldChips() {
+    const selectedWrap = document.getElementById('downloadImgNameFieldSelected');
+    if (!selectedWrap) return;
+
+    selectedWrap.innerHTML = '';
+    if (!_dlImageRenameState.selectedNameFields.length) {
+        const empty = document.createElement('span');
+        empty.className = 'download-img-selected-empty';
+        empty.textContent = 'No filename fields selected.';
+        selectedWrap.appendChild(empty);
         return;
     }
 
-    const textFields = _dlGetTextFields();
-    const nameField = _dlFindFieldNameByHint(textFields, ['studentname', 'name', 'empname']);
-    const fatherNameField = _dlFindFieldNameByHint(textFields, ['fathername', 'fname', 'father']);
-    const motherNameField = _dlFindFieldNameByHint(textFields, ['mothername', 'mname', 'mother']);
+    _dlImageRenameState.selectedNameFields.forEach(function(fieldName) {
+        const chip = document.createElement('span');
+        chip.className = 'download-img-selected-chip';
 
-    if (_dlAvailableRenameImageKeys.PHOTO) {
-        _dlPopulateRenameSelect(photoSelect, textFields, nameField);
-    } else {
-        photoSelect.innerHTML = '';
-    }
-    if (_dlAvailableRenameImageKeys.FATHER_PHOTO) {
-        _dlPopulateRenameSelect(fatherSelect, textFields, fatherNameField);
-    } else {
-        fatherSelect.innerHTML = '';
-    }
-    if (_dlAvailableRenameImageKeys.MOTHER_PHOTO) {
-        _dlPopulateRenameSelect(motherSelect, textFields, motherNameField);
-    } else {
-        motherSelect.innerHTML = '';
+        const textNode = document.createElement('span');
+        textNode.textContent = fieldName;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'download-img-selected-remove';
+        removeBtn.setAttribute('aria-label', 'Remove field');
+        removeBtn.setAttribute('data-dl-selected-remove', fieldName);
+        removeBtn.textContent = 'x';
+
+        chip.appendChild(textNode);
+        chip.appendChild(removeBtn);
+        selectedWrap.appendChild(chip);
+    });
+}
+
+function _dlRenderNameFieldPicker() {
+    const picker = document.getElementById('downloadImgNameFieldPicker');
+    if (!picker) return;
+
+    picker.innerHTML = '';
+    if (!_dlImageRenameState.textFields.length) {
+        const none = document.createElement('span');
+        none.className = 'download-img-selected-empty';
+        none.textContent = 'No text fields available for filename.';
+        picker.appendChild(none);
+        return;
     }
 
-    panelEl.style.display = toggleEl.checked ? 'block' : 'none';
+    const activeSet = new Set(_dlImageRenameState.selectedNameFields);
+    _dlImageRenameState.textFields.forEach(function(field) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'download-img-field-chip';
+        if (activeSet.has(field.name)) {
+            button.classList.add('is-active');
+        }
+        button.setAttribute('data-dl-field-chip', field.name);
+        button.textContent = field.name;
+        picker.appendChild(button);
+    });
+}
+
+function _dlUpdateRenamePreview() {
+    const previewEl = document.getElementById('downloadImgRenamePreview');
+    const formatSelect = document.getElementById('downloadImgFormatSelect');
+    if (!previewEl) return;
+
+    const mode = _dlGetActiveImageMode();
+    const ext = formatSelect && String(formatSelect.value || '').trim() === 'pdf_zip' ? '.pdf' : '.jpg';
+    const stemParts = _dlImageRenameState.selectedNameFields
+        .map(_dlSanitizePreviewPart)
+        .filter(Boolean);
+    const stem = stemParts.length ? stemParts.join('_') : 'NAME';
+    const selectedImageField = _dlImageRenameState.selectedImageField || 'PHOTO';
+    if (mode === 'generate') {
+        const nameField = _dlSanitizePreviewPart(_dlImageRenameState.generateNameField || 'NAME');
+        const sizeTag = _dlGetGenerateSizePreset() === 'size_37x53' ? '37x53' : '23x34';
+        previewEl.textContent = selectedImageField + ' -> GENERATED_' + (nameField || 'NAME') + '_' + sizeTag + ext;
+        return;
+    }
+    previewEl.textContent = selectedImageField + ' -> ' + stem + ext;
+}
+
+function _dlSetSelectedNameFields(fields) {
+    const validSet = new Set(_dlImageRenameState.textFields.map(function(field) { return field.name; }));
+    const seen = new Set();
+    _dlImageRenameState.selectedNameFields = (fields || [])
+        .map(function(value) { return String(value || '').trim(); })
+        .filter(function(value) {
+            if (!value || !validSet.has(value)) return false;
+            const key = value.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+    _dlRenderNameFieldPicker();
+    _dlRenderSelectedNameFieldChips();
+    _dlUpdateRenamePreview();
+}
+
+function _dlBindRenamePanelEvents() {
+    const targetSelect = document.getElementById('downloadImgRenameTarget');
+    const picker = document.getElementById('downloadImgNameFieldPicker');
+    const selectedWrap = document.getElementById('downloadImgNameFieldSelected');
+    const formatSelect = document.getElementById('downloadImgFormatSelect');
+    const compressToggleEl = document.getElementById('downloadImgCompressToggle');
+    const compressTargetInputEl = document.getElementById('downloadImgCompressTargetKb');
+    const sizeSmallEl = document.getElementById('downloadImgGenerateSizeSmall');
+    const sizeLargeEl = document.getElementById('downloadImgGenerateSizeLarge');
+    const generateNameFieldEl = document.getElementById('downloadImgGenerateNameField');
+    const detailClassOnlyEl = document.getElementById('downloadImgGenerateDetailClassOnly');
+    const detailClassSectionEl = document.getElementById('downloadImgGenerateDetailClassSection');
+    const detailCustomDateEl = document.getElementById('downloadImgGenerateDetailCustomDate');
+    const generateClassFieldEl = document.getElementById('downloadImgGenerateClassField');
+    const generateSectionFieldEl = document.getElementById('downloadImgGenerateSectionField');
+    const generateCustomDateEl = document.getElementById('downloadImgGenerateCustomDate');
+
+    if (targetSelect && targetSelect.dataset.bound !== '1') {
+        targetSelect.addEventListener('change', function() {
+            _dlImageRenameState.selectedImageField = String(this.value || '').trim();
+            _dlUpdateRenamePreview();
+        });
+        targetSelect.dataset.bound = '1';
+    }
+
+    if (picker && picker.dataset.bound !== '1') {
+        picker.addEventListener('click', function(event) {
+            const eventTarget = event.target instanceof Element ? event.target : null;
+            if (!eventTarget) return;
+            const chip = eventTarget.closest('[data-dl-field-chip]');
+            if (!chip) return;
+
+            const fieldName = String(chip.getAttribute('data-dl-field-chip') || '').trim();
+            if (!fieldName) return;
+
+            const current = _dlImageRenameState.selectedNameFields.slice();
+            const idx = current.indexOf(fieldName);
+            if (idx >= 0) {
+                current.splice(idx, 1);
+            } else {
+                current.push(fieldName);
+            }
+            _dlSetSelectedNameFields(current);
+        });
+        picker.dataset.bound = '1';
+    }
+
+    if (selectedWrap && selectedWrap.dataset.bound !== '1') {
+        selectedWrap.addEventListener('click', function(event) {
+            const eventTarget = event.target instanceof Element ? event.target : null;
+            if (!eventTarget) return;
+            const removeBtn = eventTarget.closest('[data-dl-selected-remove]');
+            if (!removeBtn) return;
+            const fieldName = String(removeBtn.getAttribute('data-dl-selected-remove') || '').trim();
+            if (!fieldName) return;
+
+            _dlSetSelectedNameFields(_dlImageRenameState.selectedNameFields.filter(function(item) {
+                return item !== fieldName;
+            }));
+        });
+        selectedWrap.dataset.bound = '1';
+    }
+
+    if (formatSelect && formatSelect.dataset.bound !== '1') {
+        formatSelect.addEventListener('change', _dlSyncModeUi);
+        formatSelect.dataset.bound = '1';
+    }
+
+    if (sizeSmallEl && sizeSmallEl.dataset.bound !== '1') {
+        sizeSmallEl.addEventListener('change', function() {
+            if (this.checked) {
+                _dlSetGenerateSizePreset('size_23x34');
+            } else if (!(sizeLargeEl && sizeLargeEl.checked)) {
+                _dlSetGenerateSizePreset('size_23x34');
+            }
+            _dlSyncModeUi();
+        });
+        sizeSmallEl.dataset.bound = '1';
+    }
+
+    if (sizeLargeEl && sizeLargeEl.dataset.bound !== '1') {
+        sizeLargeEl.addEventListener('change', function() {
+            if (this.checked) {
+                _dlSetGenerateSizePreset('size_37x53');
+            } else if (!(sizeSmallEl && sizeSmallEl.checked)) {
+                _dlSetGenerateSizePreset('size_23x34');
+            }
+            _dlSyncModeUi();
+        });
+        sizeLargeEl.dataset.bound = '1';
+    }
+
+    if (generateNameFieldEl && generateNameFieldEl.dataset.bound !== '1') {
+        generateNameFieldEl.addEventListener('change', function() {
+            _dlImageRenameState.generateNameField = String(this.value || '').trim();
+            _dlUpdateRenamePreview();
+        });
+        generateNameFieldEl.dataset.bound = '1';
+    }
+
+    if (generateClassFieldEl && generateClassFieldEl.dataset.bound !== '1') {
+        generateClassFieldEl.addEventListener('change', function() {
+            _dlImageRenameState.generateClassField = String(this.value || '').trim();
+        });
+        generateClassFieldEl.dataset.bound = '1';
+    }
+
+    if (generateSectionFieldEl && generateSectionFieldEl.dataset.bound !== '1') {
+        generateSectionFieldEl.addEventListener('change', function() {
+            _dlImageRenameState.generateSectionField = String(this.value || '').trim();
+        });
+        generateSectionFieldEl.dataset.bound = '1';
+    }
+
+    if (generateCustomDateEl && generateCustomDateEl.dataset.bound !== '1') {
+        generateCustomDateEl.addEventListener('input', function() {
+            _dlImageRenameState.generateCustomDate = String(this.value || '').trim().slice(0, 40);
+        });
+        generateCustomDateEl.dataset.bound = '1';
+    }
+
+    if (detailClassOnlyEl && detailClassOnlyEl.dataset.bound !== '1') {
+        detailClassOnlyEl.addEventListener('change', function() {
+            if (this.checked) {
+                _dlSetGenerateDetailMode('class_only');
+            } else if (!(detailClassSectionEl && detailClassSectionEl.checked) && !(detailCustomDateEl && detailCustomDateEl.checked)) {
+                _dlSetGenerateDetailMode('class_only');
+            }
+            _dlSyncModeUi();
+        });
+        detailClassOnlyEl.dataset.bound = '1';
+    }
+
+    if (detailClassSectionEl && detailClassSectionEl.dataset.bound !== '1') {
+        detailClassSectionEl.addEventListener('change', function() {
+            if (this.checked) {
+                _dlSetGenerateDetailMode('class_section');
+            } else if (!(detailClassOnlyEl && detailClassOnlyEl.checked) && !(detailCustomDateEl && detailCustomDateEl.checked)) {
+                _dlSetGenerateDetailMode('class_only');
+            }
+            _dlSyncModeUi();
+        });
+        detailClassSectionEl.dataset.bound = '1';
+    }
+
+    if (detailCustomDateEl && detailCustomDateEl.dataset.bound !== '1') {
+        detailCustomDateEl.addEventListener('change', function() {
+            if (this.checked) {
+                _dlSetGenerateDetailMode('custom_date');
+            } else if (!(detailClassOnlyEl && detailClassOnlyEl.checked) && !(detailClassSectionEl && detailClassSectionEl.checked)) {
+                _dlSetGenerateDetailMode('class_only');
+            }
+            _dlSyncModeUi();
+        });
+        detailCustomDateEl.dataset.bound = '1';
+    }
+
+    if (compressToggleEl && compressToggleEl.dataset.bound !== '1') {
+        compressToggleEl.addEventListener('change', function() {
+            _dlImageRenameState.compressEnabled = !!this.checked;
+            _dlSyncModeUi();
+        });
+        compressToggleEl.dataset.bound = '1';
+    }
+
+    if (compressTargetInputEl && compressTargetInputEl.dataset.bound !== '1') {
+        const clampTargetSize = function() {
+            const value = _dlClampTargetSizeKb(compressTargetInputEl.value);
+            _dlImageRenameState.targetSizeKb = value;
+            compressTargetInputEl.value = String(value);
+        };
+        compressTargetInputEl.addEventListener('change', clampTargetSize);
+        compressTargetInputEl.addEventListener('blur', clampTargetSize);
+        compressTargetInputEl.dataset.bound = '1';
+    }
+}
+
+function _dlInitializeImageRenamePanel() {
+    const renameToggleEl = document.getElementById('downloadImgRenameToggle');
+    const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
+    const panelEl = document.getElementById('downloadImgRenamePanel');
+    const targetSelect = document.getElementById('downloadImgRenameTarget');
+    const generateNameFieldEl = document.getElementById('downloadImgGenerateNameField');
+    const generateClassFieldEl = document.getElementById('downloadImgGenerateClassField');
+    const generateSectionFieldEl = document.getElementById('downloadImgGenerateSectionField');
+    const generateCustomDateEl = document.getElementById('downloadImgGenerateCustomDate');
+
+    if (!renameToggleEl || !generateToggleEl || !panelEl || !targetSelect) return;
+
+    _dlImageRenameState.imageFields = _dlGetRenameTargetImageFields();
+    _dlImageRenameState.textFields = _dlGetTextFields();
+
+    const hasRenameData = _dlImageRenameState.imageFields.length > 0 && _dlImageRenameState.textFields.length > 0;
+    renameToggleEl.disabled = !hasRenameData;
+    generateToggleEl.disabled = !hasRenameData;
+
+    if (!hasRenameData) {
+        renameToggleEl.checked = false;
+        generateToggleEl.checked = false;
+        panelEl.style.display = 'none';
+        _dlImageRenameState.selectedImageField = '';
+        _dlSetSelectedNameFields([]);
+        _dlSyncModeUi();
+        return;
+    }
+
+    const currentSelectedImage = _dlImageRenameState.selectedImageField;
+    const preferredImageField = _dlImageRenameState.imageFields.some(function(field) {
+        return field.name === currentSelectedImage;
+    }) ? currentSelectedImage : _dlImageRenameState.imageFields[0].name;
+
+    _dlImageRenameState.selectedImageField = preferredImageField;
+    _dlPopulateRenameTargetSelect(targetSelect, _dlImageRenameState.imageFields, preferredImageField);
+
+    const validTextSet = new Set(_dlImageRenameState.textFields.map(function(field) {
+        return String(field.name || '').trim();
+    }).filter(Boolean));
+
+    const defaultNameField = _dlFindFieldNameByHint(_dlImageRenameState.textFields, ['studentname', 'name', 'custname', 'customername', 'empname']);
+    const defaultClassField = _dlFindFieldNameByHint(_dlImageRenameState.textFields, ['class', 'std', 'grade']);
+    const defaultSectionField = _dlFindFieldNameByHint(_dlImageRenameState.textFields, ['section', 'sec', 'division']);
+
+    if (!validTextSet.has(_dlImageRenameState.generateNameField)) {
+        _dlImageRenameState.generateNameField = defaultNameField || _dlImageRenameState.textFields[0].name;
+    }
+    if (!validTextSet.has(_dlImageRenameState.generateClassField)) {
+        _dlImageRenameState.generateClassField = defaultClassField || _dlImageRenameState.textFields[0].name;
+    }
+    if (_dlImageRenameState.generateSectionField && !validTextSet.has(_dlImageRenameState.generateSectionField)) {
+        _dlImageRenameState.generateSectionField = '';
+    }
+    if (!_dlImageRenameState.generateSectionField && defaultSectionField && validTextSet.has(defaultSectionField)) {
+        _dlImageRenameState.generateSectionField = defaultSectionField;
+    }
+
+    if (_dlImageRenameState.generateDetailMode !== 'class_only' && _dlImageRenameState.generateDetailMode !== 'class_section' && _dlImageRenameState.generateDetailMode !== 'custom_date') {
+        _dlImageRenameState.generateDetailMode = 'class_only';
+    }
+
+    if (_dlImageRenameState.generateSizePreset !== 'size_37x53') {
+        _dlImageRenameState.generateSizePreset = 'size_23x34';
+    }
+
+    _dlSetGenerateSizePreset(_dlImageRenameState.generateSizePreset);
+    _dlSetGenerateDetailMode(_dlImageRenameState.generateDetailMode);
+
+    _dlPopulateTextFieldSelect(generateNameFieldEl, _dlImageRenameState.textFields, _dlImageRenameState.generateNameField);
+    _dlPopulateTextFieldSelect(generateClassFieldEl, _dlImageRenameState.textFields, _dlImageRenameState.generateClassField);
+    _dlPopulateTextFieldSelect(generateSectionFieldEl, _dlImageRenameState.textFields, _dlImageRenameState.generateSectionField, 'Select section field');
+
+    if (generateNameFieldEl) _dlImageRenameState.generateNameField = String(generateNameFieldEl.value || '').trim();
+    if (generateClassFieldEl) _dlImageRenameState.generateClassField = String(generateClassFieldEl.value || '').trim();
+    if (generateSectionFieldEl) _dlImageRenameState.generateSectionField = String(generateSectionFieldEl.value || '').trim();
+    if (generateCustomDateEl) generateCustomDateEl.value = _dlImageRenameState.generateCustomDate || '';
+
+    const selectedNameFields = _dlImageRenameState.selectedNameFields.length
+        ? _dlImageRenameState.selectedNameFields
+        : [defaultNameField || _dlImageRenameState.textFields[0].name];
+
+    _dlBindRenamePanelEvents();
+    _dlSetSelectedNameFields(selectedNameFields);
+    _dlSyncModeUi();
 }
 
 function _dlResetImageRenameControls() {
-    const toggleEl = document.getElementById('downloadImgRenameToggle');
+    const renameToggleEl = document.getElementById('downloadImgRenameToggle');
+    const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
     const panelEl = document.getElementById('downloadImgRenamePanel');
     const formatSelect = document.getElementById('downloadImgFormatSelect');
-    if (toggleEl) toggleEl.checked = false;
+    const compressToggleEl = document.getElementById('downloadImgCompressToggle');
+    const compressTargetInputEl = document.getElementById('downloadImgCompressTargetKb');
+    const compressTargetWrapEl = document.getElementById('downloadImgCompressTargetWrap');
+    const sizeSmallEl = document.getElementById('downloadImgGenerateSizeSmall');
+    const sizeLargeEl = document.getElementById('downloadImgGenerateSizeLarge');
+    const detailClassOnlyEl = document.getElementById('downloadImgGenerateDetailClassOnly');
+    const detailClassSectionEl = document.getElementById('downloadImgGenerateDetailClassSection');
+    const detailCustomDateEl = document.getElementById('downloadImgGenerateDetailCustomDate');
+    const generateCustomDateEl = document.getElementById('downloadImgGenerateCustomDate');
+
+    _dlImageRenameState.selectedImageField = '';
+    _dlImageRenameState.selectedNameFields = [];
+    _dlImageRenameState.mode = '';
+    _dlImageRenameState.compressEnabled = false;
+    _dlImageRenameState.targetSizeKb = 40;
+    _dlImageRenameState.generateSizePreset = 'size_23x34';
+    _dlImageRenameState.generateNameField = '';
+    _dlImageRenameState.generateDetailMode = 'class_only';
+    _dlImageRenameState.generateClassField = '';
+    _dlImageRenameState.generateSectionField = '';
+    _dlImageRenameState.generateCustomDate = '';
+
+    if (renameToggleEl) renameToggleEl.checked = false;
+    if (generateToggleEl) generateToggleEl.checked = false;
     if (panelEl) panelEl.style.display = 'none';
     if (formatSelect) formatSelect.value = 'zip';
+    if (compressToggleEl) compressToggleEl.checked = false;
+    if (compressTargetWrapEl) compressTargetWrapEl.style.display = 'none';
+    if (compressTargetInputEl) compressTargetInputEl.value = '40';
+    if (sizeSmallEl) sizeSmallEl.checked = true;
+    if (sizeLargeEl) sizeLargeEl.checked = false;
+    if (detailClassOnlyEl) detailClassOnlyEl.checked = true;
+    if (detailClassSectionEl) detailClassSectionEl.checked = false;
+    if (detailCustomDateEl) detailCustomDateEl.checked = false;
+    if (generateCustomDateEl) generateCustomDateEl.value = '';
+
     _dlInitializeImageRenamePanel();
 }
 
 function _dlGetImageRenameOptionsFromModal() {
-    const toggleEl = document.getElementById('downloadImgRenameToggle');
-    const photoSelect = document.getElementById('downloadImgMapPhoto');
-    const fatherSelect = document.getElementById('downloadImgMapFather');
-    const motherSelect = document.getElementById('downloadImgMapMother');
+    const mode = _dlGetActiveImageMode();
     const formatSelect = document.getElementById('downloadImgFormatSelect');
+    const compressToggleEl = document.getElementById('downloadImgCompressToggle');
+    const compressTargetInputEl = document.getElementById('downloadImgCompressTargetKb');
+    const generateNameFieldEl = document.getElementById('downloadImgGenerateNameField');
+    const generateClassFieldEl = document.getElementById('downloadImgGenerateClassField');
+    const generateSectionFieldEl = document.getElementById('downloadImgGenerateSectionField');
+    const generateCustomDateEl = document.getElementById('downloadImgGenerateCustomDate');
 
-    if (!toggleEl || !toggleEl.checked) return null;
+    if (!mode) return null;
 
-    const imageNameFields = {};
-    const photoField = photoSelect ? String(photoSelect.value || '').trim() : '';
-    const fatherField = fatherSelect ? String(fatherSelect.value || '').trim() : '';
-    const motherField = motherSelect ? String(motherSelect.value || '').trim() : '';
-
-    if (_dlAvailableRenameImageKeys.PHOTO && photoField) imageNameFields.PHOTO = photoField;
-    if (_dlAvailableRenameImageKeys.FATHER_PHOTO && fatherField) imageNameFields.FATHER_PHOTO = fatherField;
-    if (_dlAvailableRenameImageKeys.MOTHER_PHOTO && motherField) imageNameFields.MOTHER_PHOTO = motherField;
-
-    if (!Object.keys(imageNameFields).length) return null;
+    const selectedImageField = String(_dlImageRenameState.selectedImageField || '').trim();
+    if (!selectedImageField) {
+        return {
+            __error: 'Please select one image column to download.'
+        };
+    }
 
     const selectedFormat = formatSelect ? String(formatSelect.value || '').trim() : 'zip';
     const outputFormat = selectedFormat === 'pdf_zip' ? 'pdf_zip' : 'zip';
 
-    return {
+    const options = {
         enabled: true,
-        image_name_fields: imageNameFields,
+        mode: mode,
+        selected_image_field: selectedImageField,
         output_format: outputFormat
     };
+
+    if (mode === 'generate') {
+        const nameField = String(
+            generateNameFieldEl
+                ? generateNameFieldEl.value
+                : _dlImageRenameState.generateNameField
+        ).trim();
+        if (!nameField) {
+            return {
+                __error: 'Please select at least one field for name.'
+            };
+        }
+
+        const detailMode = _dlGetGenerateDetailMode();
+        const classField = String(
+            generateClassFieldEl
+                ? generateClassFieldEl.value
+                : _dlImageRenameState.generateClassField
+        ).trim();
+        const sectionField = String(
+            generateSectionFieldEl
+                ? generateSectionFieldEl.value
+                : _dlImageRenameState.generateSectionField
+        ).trim();
+        const customDate = String(
+            generateCustomDateEl
+                ? generateCustomDateEl.value
+                : _dlImageRenameState.generateCustomDate
+        ).trim().slice(0, 40);
+
+        if (detailMode !== 'custom_date' && !classField) {
+            return {
+                __error: 'Please select class field.'
+            };
+        }
+        if (detailMode === 'class_section' && !sectionField) {
+            return {
+                __error: 'Please select section field.'
+            };
+        }
+        if (detailMode === 'custom_date' && !customDate) {
+            return {
+                __error: 'Please enter custom date.'
+            };
+        }
+
+        const detailFields = [];
+        if (detailMode === 'class_only' || detailMode === 'class_section') {
+            if (classField && detailFields.indexOf(classField) === -1) detailFields.push(classField);
+        }
+        if (detailMode === 'class_section') {
+            if (sectionField && detailFields.indexOf(sectionField) === -1) detailFields.push(sectionField);
+        }
+
+        const imageNameFields = {};
+        imageNameFields[selectedImageField] = [nameField].concat(detailFields);
+        options.image_name_fields = imageNameFields;
+
+        _dlImageRenameState.generateNameField = nameField;
+        _dlImageRenameState.generateClassField = classField;
+        _dlImageRenameState.generateSectionField = sectionField;
+        _dlImageRenameState.generateCustomDate = customDate;
+        _dlImageRenameState.generateDetailMode = detailMode;
+        _dlImageRenameState.generateSizePreset = _dlGetGenerateSizePreset();
+
+        const compressEnabled = !!(compressToggleEl && compressToggleEl.checked);
+        const targetSizeKb = _dlClampTargetSizeKb(
+            compressTargetInputEl
+                ? compressTargetInputEl.value
+                : _dlImageRenameState.targetSizeKb
+        );
+        _dlImageRenameState.targetSizeKb = targetSizeKb;
+        if (compressTargetInputEl) compressTargetInputEl.value = String(targetSizeKb);
+
+        options.generate_options = {
+            enabled: true,
+            name_field: nameField,
+            detail_fields: detailFields,
+            max_detail_lines: 1,
+            detail_mode: detailMode,
+            class_field: classField,
+            section_field: sectionField,
+            custom_date: customDate,
+            size_preset: _dlImageRenameState.generateSizePreset,
+            compress_enabled: compressEnabled,
+            target_size_kb: targetSizeKb,
+            maintain_dimensions: true
+        };
+
+        return options;
+    }
+
+    const selectedNameFields = (_dlImageRenameState.selectedNameFields || [])
+        .map(function(value) { return String(value || '').trim(); })
+        .filter(Boolean);
+
+    if (!selectedNameFields.length) {
+        return {
+            __error: 'Please select at least one field.'
+        };
+    }
+
+    const imageNameFields = {};
+    imageNameFields[selectedImageField] = selectedNameFields;
+    options.image_name_fields = imageNameFields;
+
+    return options;
 }
 
 // ==========================================
@@ -309,32 +945,75 @@ function initReprintPickerHandlers() {
         }
 
         value = value.replace(/\\/g, '/');
+        value = value.replace(/\/{2,}/g, '/');
 
-        // If path contains /media/ anywhere (including absolute FS paths), keep only the media-relative part.
+        // If path contains /media/ or /mediafiles/ anywhere (including absolute FS paths),
+        // keep only the marker-relative part.
         var lower = value.toLowerCase();
-        var marker = '/media/';
-        var markerIndex = lower.indexOf(marker);
-        if (markerIndex !== -1) {
-            value = value.slice(markerIndex + marker.length);
+        var mediaMarker = '/media/';
+        var mediafilesMarker = '/mediafiles/';
+        var markerIndexMediafiles = lower.indexOf(mediafilesMarker);
+        if (markerIndexMediafiles !== -1) {
+            value = value.slice(markerIndexMediafiles + mediafilesMarker.length);
+            value = 'mediafiles/' + value;
+        } else {
+            var markerIndexMedia = lower.indexOf(mediaMarker);
+            if (markerIndexMedia !== -1) {
+                value = value.slice(markerIndexMedia + mediaMarker.length);
+                value = 'media/' + value;
+            }
         }
 
         value = value.replace(/^\/+/, '');
-        if (value.toLowerCase().indexOf('media/') === 0) {
-            value = value.slice(6);
-        }
+        value = value.replace(/\/{2,}/g, '/');
         return value;
     }
 
     function toMediaUrl(rawPath) {
-        var normalized = normalizeMediaPath(rawPath);
+        var original = String(rawPath || '').trim();
+        if (!original || original === 'NOT_FOUND' || original.indexOf('PENDING:') === 0) return '';
+        if (/^https?:\/\//i.test(original)) return original;
+
+        var normalized = normalizeMediaPath(original);
         if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+
+        normalized = normalized.replace(/^\/+/, '');
+        var lower = normalized.toLowerCase();
+
+        // Django serves uploads via /media/<path>; map both legacy "media/"
+        // and new "mediafiles/" relative values under that route.
+        if (lower.indexOf('media/') === 0) {
+            normalized = normalized.slice('media/'.length);
+        }
+
         return '/media/' + normalized;
     }
 
     function toThumbnailPath(rawPath) {
         var normalized = normalizeMediaPath(rawPath);
         if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
-        return normalized.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+
+        normalized = normalized.replace(/^\/+/, '');
+        var lower = normalized.toLowerCase();
+        if (lower.indexOf('media/') === 0) {
+            normalized = normalized.slice('media/'.length);
+            lower = normalized.toLowerCase();
+        }
+
+        if (lower.indexOf('thumbs/') === 0 || lower.indexOf('/thumbs/') !== -1) {
+            return normalized;
+        }
+
+        var parts = normalized.split('/');
+        if (parts.length < 2) return normalized;
+
+        var baseFolder = parts.shift();
+        var rest = parts.join('/');
+        var dot = rest.lastIndexOf('.');
+        if (dot > 0) {
+            rest = rest.slice(0, dot) + '.webp';
+        }
+        return baseFolder + '/thumbs/' + rest;
     }
 
     function normalizeFieldKey(value) {
@@ -913,22 +1592,13 @@ function initReprintPickerHandlers() {
             fieldData[key] = String(inputEl.value || '').trim();
         });
 
-        // Preserve image values from current row state during inline text save.
-        // This keeps images stable even if a backend update path treats payload as replace.
-        var card = getCardById(cardId);
-        var imageRows = getImageRows(card);
-        imageRows.forEach(function(img) {
-            var key = String(img.key || '').trim();
-            if (!key) return;
-            fieldData[key] = String(img.value || '').trim();
-        });
-
         return fieldData;
     }
 
     function updateCardInline(cardId, fieldData) {
         var formData = new FormData();
         formData.append('field_data', JSON.stringify(fieldData || {}));
+        formData.append('reprint_modal_edit', '1');
         return ApiClient.upload('/api/card/' + cardId + '/update/', formData)
             .then(function(data) {
                 if (data && data.success) return data.card || null;
@@ -937,14 +1607,42 @@ function initReprintPickerHandlers() {
     }
 
     function uploadImageInline(cardId, fieldName, file) {
+        var normalizedFieldName = String(fieldName || '').trim();
+        if (!normalizedFieldName) {
+            return Promise.reject(new Error('Image field is missing'));
+        }
+
         var formData = new FormData();
-        formData.append('field_data', JSON.stringify({}));
-        formData.append(fieldName, file);
+        var fieldDataPayload = {};
+        // Keep the image field present in payload so backend image-field loop runs.
+        fieldDataPayload[normalizedFieldName] = null;
+        formData.append('field_data', JSON.stringify(fieldDataPayload));
+        formData.append('reprint_modal_edit', '1');
+
+        // Backend update service expects multipart file keys as image_<field_name>.
+        formData.append('image_' + normalizedFieldName, file);
+
+        // Backward-compatible fallback for legacy PHOTO handling.
+        if (normalizedFieldName.toUpperCase() === 'PHOTO') {
+            formData.append('photo', file);
+        }
+
         return ApiClient.upload('/api/card/' + cardId + '/update/', formData)
             .then(function(data) {
                 if (data && data.success) return data.card || null;
                 throw new Error((data && data.message) || 'Could not upload image');
             });
+    }
+
+    function isClientEditLockedStatus() {
+        if (!window.IS_CLIENT_USER) return false;
+
+        var currentStatus = String(typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '').toLowerCase();
+        var lockedStatuses = Array.isArray(window.CLIENT_READONLY_STATUSES)
+            ? window.CLIENT_READONLY_STATUSES.map(function(v) { return String(v || '').toLowerCase(); })
+            : ['approved', 'download', 'reprint'];
+
+        return lockedStatuses.indexOf(currentStatus) !== -1;
     }
 
     function updateSelectionUi() {
@@ -1082,16 +1780,22 @@ function initReprintPickerHandlers() {
         var ids = pendingEditIds.length ? pendingEditIds.slice() : selectedCardIdsAsNumbers();
         if (!ids.length) return;
         var cardId = ids[0];
+        var requestPayload = { card_ids: ids };
         var submitPromise;
         if (inlineEditMode) {
             if (inlineDirtyCount > 0) {
-                submitPromise = updateCardInline(cardId, collectInlineFieldData(cardId))
-                    .then(function() { return ApiClient.post(endpoints.requestCreate, { card_ids: ids }); });
+                requestPayload.inline_field_data = collectInlineFieldData(cardId);
+                if (isClientEditLockedStatus()) {
+                    submitPromise = ApiClient.post(endpoints.requestCreate, requestPayload);
+                } else {
+                    submitPromise = updateCardInline(cardId, collectInlineFieldData(cardId))
+                        .then(function() { return ApiClient.post(endpoints.requestCreate, requestPayload); });
+                }
             } else {
-                submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
+                submitPromise = ApiClient.post(endpoints.requestCreate, requestPayload);
             }
         } else {
-            submitPromise = ApiClient.post(endpoints.requestCreate, { card_ids: ids });
+            submitPromise = ApiClient.post(endpoints.requestCreate, requestPayload);
         }
 
         inlineSaveInFlight = true;
@@ -1113,8 +1817,9 @@ function initReprintPickerHandlers() {
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Could not create reprint request', 'error');
                 }
             })
-            .catch(function() {
-                if (typeof showToast === 'function') showToast('Could not create reprint request', 'error');
+            .catch(function(err) {
+                var msg = (err && err.data && err.data.message) || (err && err.message) || 'Could not create reprint request';
+                if (typeof showToast === 'function') showToast(msg, 'error');
             })
             .finally(function() {
                 inlineSaveInFlight = false;
@@ -1262,7 +1967,8 @@ function initReprintPickerHandlers() {
                     if (typeof showToast === 'function') showToast('Image uploaded', 'success');
                 })
                 .catch(function(err) {
-                    if (typeof showToast === 'function') showToast((err && err.message) ? err.message : 'Could not upload image', 'error');
+                    var msg = (err && err.data && err.data.message) || (err && err.message) || 'Could not upload image';
+                    if (typeof showToast === 'function') showToast(msg, 'error');
                 })
                 .finally(function() {
                     imageUploadInput.value = '';
@@ -1314,6 +2020,11 @@ function closeDownloadImgModal() {
     currentDownloadType = null;
 }
 
+function markNextBulkUiLock() {
+    window.IDCardApp = window.IDCardApp || {};
+    window.IDCardApp._nextBulkUiLock = true;
+}
+
 function initDownloadImagesHandlers() {
     const downloadImgBtnIds = ['downloadImgBtn', 'downloadImgBtnV', 'downloadImgBtnP', 'downloadImgBtnA', 'downloadImgBtnD'];
 
@@ -1337,16 +2048,61 @@ function initDownloadImagesHandlers() {
     // Modal button handlers
     document.getElementById('downloadImgCancel')?.addEventListener('click', closeDownloadImgModal);
     document.getElementById('downloadImgClose')?.addEventListener('click', closeDownloadImgModal);
-    document.getElementById('downloadImgRenameToggle')?.addEventListener('change', function() {
-        const panelEl = document.getElementById('downloadImgRenamePanel');
-        if (!panelEl) return;
-        panelEl.style.display = this.checked ? 'block' : 'none';
-        if (this.checked) _dlInitializeImageRenamePanel();
-    });
+
+    const renameToggleEl = document.getElementById('downloadImgRenameToggle');
+    const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
+
+    if (renameToggleEl && renameToggleEl.dataset.modeBound !== '1') {
+        renameToggleEl.addEventListener('change', function() {
+            if (this.checked) {
+                if (generateToggleEl) generateToggleEl.checked = false;
+                _dlSetActiveImageMode('rename');
+                _dlInitializeImageRenamePanel();
+                return;
+            }
+
+            if (generateToggleEl && generateToggleEl.checked) {
+                _dlSetActiveImageMode('generate');
+            } else {
+                _dlSetActiveImageMode('');
+            }
+            _dlInitializeImageRenamePanel();
+        });
+        renameToggleEl.dataset.modeBound = '1';
+    }
+
+    if (generateToggleEl && generateToggleEl.dataset.modeBound !== '1') {
+        generateToggleEl.addEventListener('change', function() {
+            if (this.checked) {
+                if (renameToggleEl) renameToggleEl.checked = false;
+                _dlSetActiveImageMode('generate');
+                _dlInitializeImageRenamePanel();
+                return;
+            }
+
+            if (renameToggleEl && renameToggleEl.checked) {
+                _dlSetActiveImageMode('rename');
+            } else {
+                _dlSetActiveImageMode('');
+            }
+            _dlInitializeImageRenamePanel();
+        });
+        generateToggleEl.dataset.modeBound = '1';
+    }
+
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
         const selectedCardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
         const renameOptions = _dlGetImageRenameOptionsFromModal();
+
+        if (renameOptions && renameOptions.__error) {
+            if (typeof showToast === 'function') {
+                showToast(renameOptions.__error, 'warning');
+            }
+            return;
+        }
+
         closeDownloadImgModal();
+        markNextBulkUiLock();
         window.IDCardApp.downloadImages(selectedCardIds, renameOptions);
     });
 }
@@ -1425,6 +2181,7 @@ function initDownloadDocxHandlers() {
     document.getElementById('downloadDocxConfirm')?.addEventListener('click', function() {
         const templateSelect = document.getElementById('downloadDocxTemplate');
         const templateId = templateSelect ? templateSelect.value : '';
+        markNextBulkUiLock();
         window.IDCardApp.downloadDocx(pendingDocxDownloadIds, pendingDocxFormat, templateId);
     });
 
@@ -1463,10 +2220,12 @@ function openDownloadXlsxModal(cardIds) {
 
     const listNameEl = document.getElementById('downloadXlsxListName');
     const cardCountEl = document.getElementById('downloadXlsxCardCount');
+    const includeImagesEl = document.getElementById('downloadXlsxIncludeImages');
 
     if (listNameEl) listNameEl.textContent = _getStatusLabel() + ' List';
     // Show "All" if no specific cards selected, otherwise show the count
     if (cardCountEl) cardCountEl.textContent = cardIds.length > 0 ? cardIds.length : 'All';
+    if (includeImagesEl) includeImagesEl.checked = false;
 
     downloadXlsxModal.style.display = 'flex';
 }
@@ -1475,6 +2234,8 @@ function closeDownloadXlsxModal() {
     if (downloadXlsxModal) {
         downloadXlsxModal.style.display = 'none';
     }
+    const includeImagesEl = document.getElementById('downloadXlsxIncludeImages');
+    if (includeImagesEl) includeImagesEl.checked = false;
     pendingDownloadCardIds = [];
     currentDownloadType = null;
 }
@@ -1501,8 +2262,12 @@ function initDownloadXlsxHandlers() {
     document.getElementById('downloadXlsxCancel')?.addEventListener('click', closeDownloadXlsxModal);
     document.getElementById('downloadXlsxClose')?.addEventListener('click', closeDownloadXlsxModal);
     document.getElementById('downloadXlsxConfirm')?.addEventListener('click', function() {
+        const includeImagesEl = document.getElementById('downloadXlsxIncludeImages');
+        const includeImagesZip = !!(includeImagesEl && includeImagesEl.checked);
+        const cardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
         closeDownloadXlsxModal();
-        window.IDCardApp.downloadXlsx(pendingDownloadCardIds);
+        markNextBulkUiLock();
+        window.IDCardApp.downloadXlsx(cardIds, { includeImagesZip: includeImagesZip });
     });
 }
 
@@ -1589,6 +2354,7 @@ function initDownloadPdfHandlers() {
         var shortenCb = document.getElementById('downloadPdfShortenTitles');
         var shortenTitles = shortenCb ? shortenCb.checked : false;
         closeDownloadPdfModal();
+        markNextBulkUiLock();
         window.IDCardApp.downloadPdf(pendingPdfCardIds, templateId, fontMode, shortenTitles);
     });
 

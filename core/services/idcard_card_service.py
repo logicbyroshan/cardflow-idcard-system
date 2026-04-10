@@ -9,6 +9,7 @@ Part of the IDCardService split. Handles:
   class filtering, and name-field detection.
 """
 import logging
+import re
 from typing import Dict, Any, List
 
 from django.core.cache import cache
@@ -97,17 +98,46 @@ class IDCardCardService(BaseService):
     @classmethod
     def _get_class_section_field_names(cls, table):
         """Extract class and section field names from table field definitions."""
+        class_field, section_field, _course_field, _branch_field = cls._get_class_section_course_branch_field_names(table)
+        return class_field, section_field
+
+    @classmethod
+    def _get_class_section_course_branch_field_names(cls, table):
+        """Extract class, section, course, and branch field names from table definitions."""
         class_field = None
         section_field = None
-        if table.fields:
-            for field in table.fields:
-                fname = field.get('name', '')
-                ftype = field.get('type', '')
-                if ftype == 'class' or (not class_field and fname.lower() == 'class'):
-                    class_field = fname
-                if ftype == 'section' or (not section_field and fname.lower() == 'section'):
-                    section_field = fname
-        return class_field, section_field
+        course_field = None
+        branch_field = None
+
+        class_tokens = {'class', 'std', 'standard', 'grade'}
+        section_tokens = {'section', 'sec', 'div', 'division'}
+        course_tokens = {'course', 'program', 'programme'}
+        branch_tokens = {'branch', 'stream', 'dept', 'department'}
+
+        for field in (table.fields or []):
+            fname = str(field.get('name', '') or '').strip()
+            ftype = str(field.get('type', '') or '').strip().lower()
+            tokens = {
+                tok for tok in re.split(r'[^a-z0-9]+', fname.lower())
+                if tok
+            }
+
+            if not class_field and (ftype == 'class' or bool(tokens & class_tokens)):
+                class_field = fname
+                continue
+
+            if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
+                section_field = fname
+                continue
+
+            if not course_field and (ftype == 'course' or bool(tokens & course_tokens)):
+                course_field = fname
+                continue
+
+            if not branch_field and (ftype == 'branch' or bool(tokens & branch_tokens)):
+                branch_field = fname
+
+        return class_field, section_field, course_field, branch_field
 
     @classmethod
     def _apply_class_filter(cls, qs, class_filter, class_field_name, table_id=None):
@@ -152,6 +182,46 @@ class IDCardCardService(BaseService):
         for raw in matching_raw:
             q |= Q(_cls=raw)
         return qs.filter(q)
+
+    @classmethod
+    def _apply_compact_text_filter(
+        cls,
+        qs,
+        text_filter,
+        field_name,
+        *,
+        table_id=None,
+        alias='_flt_txt',
+        cache_prefix='compact_raw_vals',
+    ):
+        """Apply punctuation/space-insensitive filtering for course/branch text."""
+        from core.utils.field_utils import normalize_compact_text_value
+
+        normalized_filter = normalize_compact_text_value(text_filter)
+        if not normalized_filter:
+            return qs.none()
+
+        cache_key = f'{cache_prefix}:{table_id}:{field_name}' if table_id else None
+        all_raw = cache.get(cache_key) if cache_key else None
+
+        if all_raw is None:
+            base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
+            all_raw = list(
+                base_qs
+                .annotate(_fv_raw=Cast(KeyTextTransform(field_name, 'field_data'), CharField()))
+                .exclude(_fv_raw__isnull=True).exclude(_fv_raw='')
+                .order_by()
+                .values_list('_fv_raw', flat=True).distinct()
+            )
+            if cache_key:
+                cache.set(cache_key, all_raw, 60)
+
+        matching_raw = [raw for raw in all_raw if normalize_compact_text_value(raw) == normalized_filter]
+        if not matching_raw:
+            return qs.none()
+
+        qs = qs.annotate(**{alias: Cast(KeyTextTransform(field_name, 'field_data'), CharField())})
+        return qs.filter(**{f'{alias}__in': matching_raw})
 
     @classmethod
     def _get_name_field(cls, table):
@@ -325,6 +395,8 @@ class IDCardCardService(BaseService):
         search: str = '',
         class_filter: str = '',
         section_filter: str = '',
+        course_filter: str = '',
+        branch_filter: str = '',
         sort_order: str = 'sr-asc',
         image_column: str = '',
         image_condition: str = '',
@@ -350,15 +422,33 @@ class IDCardCardService(BaseService):
             if search:
                 cards_query = cls._apply_search_filter(cards_query, search, table=table)
 
-            # --- Class / Section filters (with canonical normalization) ---
-            if class_filter or section_filter:
-                class_field_name, section_field_name = cls._get_class_section_field_names(table)
+            # --- Class / Section / Course / Branch filters ---
+            if class_filter or section_filter or course_filter or branch_filter:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    cls._get_class_section_course_branch_field_names(table)
+                )
                 if class_filter and class_field_name:
                     cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
                     ).filter(_sec__iexact=section_filter)
+                if course_filter and course_field_name:
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        course_filter,
+                        course_field_name,
+                        table_id=table_id,
+                        alias='_course_cmp',
+                    )
+                if branch_filter and branch_field_name:
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        branch_filter,
+                        branch_field_name,
+                        table_id=table_id,
+                        alias='_branch_cmp',
+                    )
 
             # --- Image sort filter ---
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
@@ -482,6 +572,7 @@ class IDCardCardService(BaseService):
     @classmethod
     def get_all_card_ids(cls, table_id: int, status_filter: str = None,
                          search: str = '', class_filter: str = '', section_filter: str = '',
+                         course_filter: str = '', branch_filter: str = '',
                          from_date: str = '', to_date: str = '',
                          image_column: str = '', image_condition: str = '') -> ServiceResult:
         """Get all card IDs for a table (for Select All). Capped at 50,000."""
@@ -497,15 +588,33 @@ class IDCardCardService(BaseService):
             if search:
                 cards_query = cls._apply_search_filter(cards_query, search, table=table)
 
-            # Apply class/section with canonical normalization
-            if class_filter or section_filter:
-                class_field_name, section_field_name = cls._get_class_section_field_names(table)
+            # Apply class/section/course/branch filters
+            if class_filter or section_filter or course_filter or branch_filter:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    cls._get_class_section_course_branch_field_names(table)
+                )
                 if class_filter and class_field_name:
                     cards_query = cls._apply_class_filter(cards_query, class_filter, class_field_name, table_id=table_id)
                 if section_filter and section_field_name:
                     cards_query = cards_query.annotate(
                         _sec=KeyTextTransform(section_field_name, 'field_data')
                     ).filter(_sec__iexact=section_filter)
+                if course_filter and course_field_name:
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        course_filter,
+                        course_field_name,
+                        table_id=table_id,
+                        alias='_course_cmp',
+                    )
+                if branch_filter and branch_field_name:
+                    cards_query = cls._apply_compact_text_filter(
+                        cards_query,
+                        branch_filter,
+                        branch_field_name,
+                        table_id=table_id,
+                        alias='_branch_cmp',
+                    )
 
             # Apply image sort filter
             # Cast() avoids SQLite crash: JSON_EXTRACT('', '$') is invalid.
@@ -521,23 +630,24 @@ class IDCardCardService(BaseService):
                 elif image_condition == 'incomplete':
                     cards_query = cards_query.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
 
-            # DateTime range filter (download list)
-            if from_date:
-                try:
-                    from django.utils.dateparse import parse_datetime
-                    dt = parse_datetime(from_date)
-                    if dt:
-                        cards_query = cards_query.filter(downloaded_at__gte=dt)
-                except (ValueError, TypeError):
-                    pass
-            if to_date:
-                try:
-                    from django.utils.dateparse import parse_datetime
-                    dt = parse_datetime(to_date)
-                    if dt:
-                        cards_query = cards_query.filter(downloaded_at__lte=dt)
-                except (ValueError, TypeError):
-                    pass
+            # DateTime range filter applies only to download status.
+            if status_filter == 'download' and (from_date or to_date):
+                if from_date:
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        dt = parse_datetime(from_date)
+                        if dt:
+                            cards_query = cards_query.filter(downloaded_at__gte=dt)
+                    except (ValueError, TypeError):
+                        pass
+                if to_date:
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        dt = parse_datetime(to_date)
+                        if dt:
+                            cards_query = cards_query.filter(downloaded_at__lte=dt)
+                    except (ValueError, TypeError):
+                        pass
 
             card_ids = list(cards_query.order_by('-id').values_list('id', flat=True)[:MAX_CARD_IDS])
 
@@ -744,8 +854,25 @@ class IDCardCardService(BaseService):
                 existing_data = card.field_data or {}
                 image_field_names = cls.get_image_field_names(table.fields)
 
-                if field_data:
-                    field_data = cls.uppercase_field_data_selective(field_data, table.fields)
+                # Be tolerant to payload shape/casing differences coming from multipart UI flows.
+                if not isinstance(field_data, dict):
+                    field_data = {}
+
+                has_any_field_data = bool(field_data)
+                normalized_field_data = {
+                    str(k).strip().upper(): v
+                    for k, v in field_data.items()
+                    if isinstance(k, str)
+                }
+                normalized_image_files = {
+                    str(k).strip().upper(): v
+                    for k, v in (image_files or {}).items()
+                    if isinstance(k, str)
+                }
+
+                if has_any_field_data or image_files:
+                    if has_any_field_data:
+                        field_data = cls.uppercase_field_data_selective(field_data, table.fields)
 
                     # Merge text (non-image) fields
                     for key, value in field_data.items():
@@ -756,7 +883,26 @@ class IDCardCardService(BaseService):
                     image_counter = 0
                     for img_field in image_field_names:
                         uploaded_file = image_files.get(f"image_{img_field}") if image_files else None
+
+                        # Fallback: case-insensitive lookup for multipart keys.
+                        if uploaded_file is None and normalized_image_files:
+                            exact_key_upper = f"image_{img_field}".strip().upper()
+                            uploaded_file = normalized_image_files.get(exact_key_upper)
+
+                        # Fallback: scan image_* keys and compare suffix case-insensitively.
+                        if uploaded_file is None and normalized_image_files:
+                            img_field_upper = str(img_field).strip().upper()
+                            for file_key_upper, file_obj in normalized_image_files.items():
+                                if not file_key_upper.startswith('IMAGE_'):
+                                    continue
+                                key_suffix_upper = file_key_upper[6:].strip().upper()
+                                if key_suffix_upper == img_field_upper:
+                                    uploaded_file = file_obj
+                                    break
+
                         new_value = field_data.get(img_field)  # None if not sent
+                        if new_value is None:
+                            new_value = normalized_field_data.get(str(img_field).strip().upper(), None)
 
                         if uploaded_file is not None or new_value is not None:
                             existing_value = existing_data.get(img_field, '')

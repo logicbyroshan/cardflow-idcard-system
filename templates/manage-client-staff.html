@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Assistent - Adarsh Admin{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/card-history-drawer.css' %}">
+  <style>
+    .client-staff-history-trigger {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 2px;
+      color: #2563eb;
+      background: rgba(37, 99, 235, 0.12);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.16s ease;
+    }
+
+    .client-staff-history-trigger:hover {
+      background: rgba(37, 99, 235, 0.2);
+      color: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    .staff-history-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .staff-history-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 2px;
+      padding: 3px 9px;
+      font-size: 10.5px;
+      font-weight: 500;
+      line-height: 1.2;
+      border: 1px solid #dbe2ea;
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .staff-history-chip i {
+      width: 15px;
+      height: 15px;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
+    }
+
+    .staff-history-chip--action {
+      color: #1e40af;
+      background: #eaf1ff;
+      border-color: #bfd5ff;
+    }
+
+    .staff-history-chip--action i {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .staff-history-chip--meta {
+      color: #334155;
+      background: #f8fafc;
+      border-color: #dbe2ea;
+    }
+
+    .staff-history-chip--meta i {
+      background: #e2e8f0;
+      color: #475569;
+    }
+  </style>
+{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">Manage Assistent</span>
+{% endblock %}
+
+{% block content %}
+  <div class="main-content">
+    {% include 'partials/staff/action-bar.html' %}
+
+    <div id="staff-table-container"
+         data-table-skeleton="true"
+         hx-trigger="refreshTable from:body"
+         hx-get="{% url 'manage_client_staff' %}"
+         hx-target="#staff-table-container"
+         hx-swap="innerHTML">
+      {% include 'partials/client_staff/table-container.html' %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block modals %}
+  {% include 'partials/client_staff/staff-drawer.html' %}
+  {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
+  {% include 'components/status-modal.html' with modal_id="status-modal" item_name="staff member" %}
+  {% include 'partials/staff/temp-password-modal.html' %}
+{% endblock %}
+
+{% block page_js %}
+  <script defer src="{% static 'js/manage-client-staff-admin.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      function initStaffPasswordEyeToggleFallback() {
+        var input = document.getElementById('staff-password');
+        var group = document.getElementById('staffCustomPasswordGroup');
+        if (!input || !group) return;
+
+        var btn = document.getElementById('staffPasswordToggleBtn');
+        var icon = document.getElementById('staffPasswordEyeIcon');
+        if (!btn) return;
+
+        var cleanBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(cleanBtn, btn);
+        btn = cleanBtn;
+        icon = btn.querySelector('#staffPasswordEyeIcon') || icon;
+
+        function setHidden() {
+          input.type = 'password';
+          if (icon) icon.className = 'fa-solid fa-eye';
+        }
+
+        function isGroupVisible() {
+          return group.style.display !== 'none';
+        }
+
+        function syncToggleVisibility() {
+          btn.style.display = isGroupVisible() ? '' : 'none';
+          if (!isGroupVisible()) setHidden();
+        }
+
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'fa-solid fa-eye-slash';
+          } else {
+            setHidden();
+          }
+        });
+
+        var passwordDropdown = document.getElementById('staffPasswordOptionDropdown');
+        if (passwordDropdown && !passwordDropdown.dataset.boundToggleSync) {
+          passwordDropdown.addEventListener('click', function() {
+            setTimeout(syncToggleVisibility, 0);
+          });
+          passwordDropdown.dataset.boundToggleSync = '1';
+        }
+
+        var addBtn = document.getElementById('addStaffBtn');
+        if (addBtn && !addBtn.dataset.boundToggleSync) {
+          addBtn.addEventListener('click', function() {
+            setTimeout(syncToggleVisibility, 0);
+          });
+          addBtn.dataset.boundToggleSync = '1';
+        }
+
+        syncToggleVisibility();
+      }
+
+      setTimeout(initStaffPasswordEyeToggleFallback, 0);
+
+      function initStatusFilterDropdown() {
+        var dropdown = document.getElementById('status-dropdown');
+        var toggle = document.getElementById('statusToggle');
+        var options = document.getElementById('statusOptions');
+        var selectedText = document.getElementById('statusSelectedText');
+        var searchInput = document.getElementById('searchInput');
+
+        if (!dropdown || !toggle || !options || dropdown.dataset.dropdownBound === '1') return;
+
+        function syncSelectedText() {
+          if (!selectedText) return;
+          var active = options.querySelector('.dropdown-option.selected');
+          if (active) selectedText.textContent = active.textContent.trim();
+        }
+
+        toggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          dropdown.classList.toggle('open');
+        });
+
+        options.addEventListener('click', function(e) {
+          var option = e.target.closest('.dropdown-option');
+          if (!option) return;
+
+          options.querySelectorAll('.dropdown-option').forEach(function(item) {
+            item.classList.remove('selected');
+          });
+          option.classList.add('selected');
+
+          if (selectedText) selectedText.textContent = option.textContent.trim();
+          if (searchInput) {
+            var val = option.dataset.value || '';
+            searchInput.placeholder = val ? ('Search ' + option.textContent.trim() + '...') : 'Search All...';
+          }
+
+          dropdown.classList.remove('open');
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+
+        syncSelectedText();
+        dropdown.dataset.dropdownBound = '1';
+      }
+
+      function initClientFilterDropdown() {
+        var dropdown = document.getElementById('client-dropdown');
+        var toggle = document.getElementById('clientToggle');
+        var options = document.getElementById('clientOptions');
+        var selectedText = document.getElementById('clientSelectedText');
+
+        if (!dropdown || !toggle || !options || dropdown.dataset.dropdownBound === '1') return;
+
+        function syncSelectedText() {
+          if (!selectedText) return;
+          var active = options.querySelector('.dropdown-option.selected');
+          if (active) selectedText.textContent = active.textContent.trim();
+        }
+
+        toggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          dropdown.classList.toggle('open');
+        });
+
+        options.addEventListener('click', function(e) {
+          var option = e.target.closest('.dropdown-option');
+          if (!option) return;
+
+          options.querySelectorAll('.dropdown-option').forEach(function(item) {
+            item.classList.remove('selected');
+          });
+          option.classList.add('selected');
+
+          if (selectedText) selectedText.textContent = option.textContent.trim();
+          dropdown.classList.remove('open');
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
+        });
+
+        syncSelectedText();
+        dropdown.dataset.dropdownBound = '1';
+      }
+
+      function initRowsDropdownDelegation() {
+        if (document.body.dataset.rowsDropdownBound === '1') return;
+
+        document.addEventListener('click', function(e) {
+          var toggle = e.target.closest('#rowsToggle');
+          if (toggle) {
+            e.stopPropagation();
+            var dropdown = document.getElementById('rowsDropdown');
+            if (dropdown) dropdown.classList.toggle('open');
+            return;
+          }
+
+          var option = e.target.closest('#rowsOptions .dropdown-option');
+          if (option) {
+            var options = document.getElementById('rowsOptions');
+            var selectedText = document.getElementById('rowsSelectedText');
+            var dropdown = document.getElementById('rowsDropdown');
+
+            if (options) {
+              options.querySelectorAll('.dropdown-option').forEach(function(item) {
+                item.classList.remove('selected');
+              });
+            }
+
+            option.classList.add('selected');
+            if (selectedText) selectedText.textContent = option.dataset.value || option.textContent.trim();
+            if (dropdown) dropdown.classList.remove('open');
+            return;
+          }
+
+          var rowsDropdown = document.getElementById('rowsDropdown');
+          if (rowsDropdown && !rowsDropdown.contains(e.target)) {
+            rowsDropdown.classList.remove('open');
+          }
+        });
+
+        document.body.dataset.rowsDropdownBound = '1';
+      }
+
+      initStatusFilterDropdown();
+      initClientFilterDropdown();
+      initRowsDropdownDelegation();
+
+      initHTMXFilters({
+        baseUrl: '{% url "manage_client_staff" %}',
+        target: '#staff-table-container',
+        searchInputId: 'searchInput',
+        filters: [
+          { name: 'status', optionsId: 'statusOptions' },
+          { name: 'client_id', optionsId: 'clientOptions' }
+        ]
+      });
+    });
+  </script>
+{% endblock %}

@@ -17,6 +17,29 @@ function generateVerificationCode() {
 // Current verification code for permanent delete
 let currentVerificationCode = null;
 
+function sanitizeCodeInputValue(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 10);
+}
+
+function renderVerificationBoxes(value) {
+    const clean = sanitizeCodeInputValue(value);
+    const boxes = document.querySelectorAll('#deleteVerificationBoxes .confirm-code-box');
+    boxes.forEach(function(box, idx) {
+        const ch = clean[idx] || '';
+        box.textContent = ch;
+        box.classList.toggle('is-filled', !!ch);
+        box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+    });
+    return clean;
+}
+
+function setVerificationWrapState(state) {
+    const wrap = document.getElementById('deleteVerificationWrap');
+    if (!wrap) return;
+    wrap.classList.remove('is-valid', 'is-invalid');
+    if (state) wrap.classList.add(state);
+}
+
 function closeDeleteModalFn() {
     const deleteModalOverlay = document.getElementById('deleteModalOverlay');
     if (deleteModalOverlay) {
@@ -28,8 +51,9 @@ function closeDeleteModalFn() {
     const confirmBtn = document.getElementById('confirmDeleteModal');
     if (verificationInput) {
         verificationInput.value = '';
-        verificationInput.classList.remove('valid', 'invalid');
+        renderVerificationBoxes('');
     }
+    setVerificationWrapState('');
     if (confirmBtn) {
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Delete Permanently';
@@ -66,8 +90,9 @@ function openPermanentDeleteModal(cardIds) {
     const verificationInput = document.getElementById('deleteVerificationInput');
     if (verificationInput) {
         verificationInput.value = '';
-        verificationInput.classList.remove('valid', 'invalid');
+        renderVerificationBoxes('');
     }
+    setVerificationWrapState('');
     
     const confirmBtn = document.getElementById('confirmDeleteModal');
     if (confirmBtn) {
@@ -113,14 +138,14 @@ function initDeleteModal() {
     // Verification code input handler
     if (verificationInput) {
         verificationInput.addEventListener('input', function() {
-            const entered = this.value.trim();
+            const entered = renderVerificationBoxes(this.value);
+            this.value = entered;
             const confirmBtn = document.getElementById('confirmDeleteModal');
             const verificationStatus = document.getElementById('verificationStatus');
             
             if (entered.length === 10) {
                 if (entered === currentVerificationCode) {
-                    this.classList.remove('invalid');
-                    this.classList.add('valid');
+                    setVerificationWrapState('is-valid');
                     if (confirmBtn) confirmBtn.disabled = false;
                     if (verificationStatus) {
                         verificationStatus.textContent = ' Code matched';
@@ -128,8 +153,7 @@ function initDeleteModal() {
                         verificationStatus.classList.add('match');
                     }
                 } else {
-                    this.classList.remove('valid');
-                    this.classList.add('invalid');
+                    setVerificationWrapState('is-invalid');
                     if (confirmBtn) confirmBtn.disabled = true;
                     if (verificationStatus) {
                         verificationStatus.textContent = ' Code does not match';
@@ -138,7 +162,7 @@ function initDeleteModal() {
                     }
                 }
             } else {
-                this.classList.remove('valid', 'invalid');
+                setVerificationWrapState('');
                 if (confirmBtn) confirmBtn.disabled = true;
                 if (verificationStatus) {
                     verificationStatus.textContent = '';

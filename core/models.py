@@ -272,6 +272,9 @@ class ActivityLog(models.Model):
         # Auth
         ('login', 'Logged in'),
         ('logout', 'Logged out'),
+        ('password_reset', 'Password reset completed'),
+        ('impersonate_start', 'Impersonation started'),
+        ('impersonate_stop', 'Impersonation stopped'),
         # Client management
         ('client_create', 'Client created'),
         ('client_update', 'Client updated'),
@@ -282,6 +285,7 @@ class ActivityLog(models.Model):
         ('staff_update', 'Staff updated'),
         ('staff_delete', 'Staff deleted'),
         ('staff_status', 'Staff status changed'),
+        ('staff_password_reset', 'Staff password reset'),
         # ID Card operations
         ('card_create', 'ID cards added'),
         ('card_update', 'ID card updated'),
@@ -305,6 +309,13 @@ class ActivityLog(models.Model):
         ('bulk_upgrade', 'Bulk upgrade'),
         # Website content
         ('website_update', 'Website content updated'),
+        ('notification_create', 'Notification created'),
+        ('notification_delete', 'Notification deleted'),
+        ('email_send', 'Email sent'),
+        ('email_resend', 'Email resent'),
+        ('backup_initiate', 'Backup initiated'),
+        ('backup_start', 'Backup started'),
+        ('backup_delete', 'Backup deleted'),
         # Reprint
         ('reprint_request', 'Reprint requested'),
         ('reprint_status', 'Reprint status changed'),
@@ -318,6 +329,9 @@ class ActivityLog(models.Model):
     ACTION_ICONS = {
         'login': ('fa-right-to-bracket', 'verify'),
         'logout': ('fa-right-from-bracket', 'edit'),
+        'password_reset': ('fa-key', 'approve'),
+        'impersonate_start': ('fa-user-secret', 'approve'),
+        'impersonate_stop': ('fa-user-check', 'verify'),
         'client_create': ('fa-user-plus', 'add'),
         'client_update': ('fa-user-pen', 'edit'),
         'client_delete': ('fa-user-minus', 'delete'),
@@ -326,6 +340,7 @@ class ActivityLog(models.Model):
         'staff_update': ('fa-user-pen', 'edit'),
         'staff_delete': ('fa-user-minus', 'delete'),
         'staff_status': ('fa-user-check', 'verify'),
+        'staff_password_reset': ('fa-key', 'approve'),
         'card_create': ('fa-plus', 'add'),
         'card_update': ('fa-pen', 'edit'),
         'card_delete': ('fa-trash', 'delete'),
@@ -344,6 +359,13 @@ class ActivityLog(models.Model):
         'bulk_delete': ('fa-trash-can', 'delete'),
         'bulk_upgrade': ('fa-arrow-up', 'approve'),
         'website_update': ('fa-globe', 'edit'),
+        'notification_create': ('fa-bell', 'add'),
+        'notification_delete': ('fa-bell-slash', 'delete'),
+        'email_send': ('fa-envelope-circle-check', 'approve'),
+        'email_resend': ('fa-envelope-open-text', 'edit'),
+        'backup_initiate': ('fa-database', 'edit'),
+        'backup_start': ('fa-vault', 'approve'),
+        'backup_delete': ('fa-trash-can', 'delete'),
         'reprint_request': ('fa-print', 'add'),
         'reprint_status': ('fa-print', 'verify'),
         'settings_update': ('fa-gear', 'edit'),
@@ -452,14 +474,16 @@ class Notification(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_notifications')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    # Optional: schedule or expiry
+    # Visibility controls
     is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at', 'target'], name='notif_time_target_idx'),
             models.Index(fields=['is_active', '-created_at'], name='notif_active_time_idx'),
+            models.Index(fields=['is_active', 'expires_at'], name='notif_active_exp_idx'),
         ]
 
     def __str__(self):
@@ -491,6 +515,66 @@ class NotificationRead(models.Model):
 
     def __str__(self):
         return f"{self.user} read {self.notification}"
+
+
+class ClientMessage(models.Model):
+    """
+    One-way admin/admin-staff message stream per client.
+
+    Messages are delivered through Notification records so recipients can
+    dismiss/read them globally while preserving sender history in Manage Clients.
+    """
+    SCOPE_CHOICES = [
+        ('client_only', 'Client Only'),
+        ('client_and_staff', 'Client + Staff'),
+    ]
+    VISIBILITY_CHOICES = [
+        ('permanent', 'Permanent'),
+        ('temporary', 'Temporary'),
+    ]
+
+    client = models.ForeignKey('core.Client', on_delete=models.CASCADE, related_name='client_messages')
+    sent_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_client_messages')
+    message = models.TextField()
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default='client_only', db_index=True)
+    visibility = models.CharField(
+        max_length=12,
+        choices=VISIBILITY_CHOICES,
+        default='permanent',
+        db_index=True,
+    )
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    notification = models.OneToOneField(
+        Notification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='client_message',
+    )
+    recipient_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['client', '-created_at'], name='climsg_client_time_idx'),
+            models.Index(fields=['scope', '-created_at'], name='climsg_scope_time_idx'),
+            models.Index(fields=['visibility', 'expires_at'], name='climsg_visibility_exp_idx'),
+        ]
+
+    def __str__(self):
+        return f"ClientMessage(client={self.client_id}, scope={self.scope})"
+
+    @property
+    def is_temporary(self):
+        return self.visibility == 'temporary'
+
+    @property
+    def is_expired(self):
+        if not self.is_temporary or not self.expires_at:
+            return False
+        from django.utils import timezone
+        return self.expires_at <= timezone.now()
 
 
 class BackgroundTask(models.Model):

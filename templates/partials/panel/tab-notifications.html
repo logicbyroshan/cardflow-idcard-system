@@ -1,5 +1,5 @@
 <!-- === NOTIFICATIONS TAB === -->
-<div class="panel-tab-content active" id="tab-notifications">
+<div class="panel-tab-content panel-tab-full-height active notif-panel-theme" id="tab-notifications">
 
   <!-- Notification Actions Bar -->
   <div class="notif-actions-bar">
@@ -8,20 +8,41 @@
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="notifSearch" placeholder="Search notifications..." oninput="debounceSearch()">
       </div>
+      <div class="notif-actions-left-buttons">
+        {% if is_super_admin %}
+        <button class="btn btn-sm btn-danger" type="button" id="mtQuickToggleBtn" onclick="openMaintenanceModeModal()">
+          <i class="fa-solid fa-power-off"></i> Enable Maintenance
+        </button>
+        <button class="btn btn-sm btn-outline-primary domain-quick-btn" type="button" id="domainQuickControlBtn" onclick="openDomainNotFoundModal()">
+          <i class="fa-solid fa-triangle-exclamation"></i> Domain Not Found
+        </button>
+        {% endif %}
+        <button class="btn btn-sm btn-outline-primary" type="button" onclick="refreshNotificationsPanel()">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh
+        </button>
+        <button class="btn btn-md btn-primary" onclick="openCreateModal()">
+          <i class="fa-solid fa-plus"></i> New Notification
+        </button>
+      </div>
     </div>
     <div class="notif-actions-right">
-      <button class="btn btn-md btn-primary" onclick="openCreateModal()">
-        <i class="fa-solid fa-plus"></i> New Notification
-      </button>
+      <span class="notif-inline-stat-badge" title="Total Sent">
+        <i class="fa-solid fa-bell"></i> <span id="statTotal">0</span>
+      </span>
+      <span class="notif-inline-stat-badge" title="Broadcasts">
+        <i class="fa-solid fa-users"></i> <span id="statBroadcast">0</span>
+      </span>
+      <span class="notif-inline-stat-badge" title="Targeted">
+        <i class="fa-solid fa-user-check"></i> <span id="statTargeted">0</span>
+      </span>
+      <span class="notif-inline-stat-badge" title="Urgent">
+        <i class="fa-solid fa-triangle-exclamation"></i> <span id="statUrgent">0</span>
+      </span>
+      {% if is_super_admin %}
+      <span class="notif-maintenance-status" id="mtQuickStatusBadge">Maintenance: Inactive</span>
+      <span class="notif-domain-status" id="domainNotFoundQuickBadge">Domain Mode: Off</span>
+      {% endif %}
     </div>
-  </div>
-
-  <!-- Notification Stats -->
-  <div class="notif-stats">
-    {% include 'components/stat-card.html' with icon="fa-solid fa-bell" value=0 label="Total Sent" color="notif-stat-icon-primary" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statTotal" %}
-    {% include 'components/stat-card.html' with icon="fa-solid fa-users" value=0 label="Broadcasts" color="notif-stat-icon-success" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statBroadcast" %}
-    {% include 'components/stat-card.html' with icon="fa-solid fa-user-check" value=0 label="Targeted" color="notif-stat-icon-warning" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statTargeted" %}
-    {% include 'components/stat-card.html' with icon="fa-solid fa-triangle-exclamation" value=0 label="Urgent" color="notif-stat-icon-danger" card_class="notif-stat-card" icon_class="notif-stat-icon" info_class="notif-stat-info" value_class="notif-stat-value" label_class="notif-stat-label" id="statUrgent" %}
   </div>
 
   <!-- Notifications Table -->
@@ -29,6 +50,7 @@
     <table class="notif-table">
       <thead>
         <tr>
+          <th scope="col" class="panel-col-w8">No.</th>
           <th scope="col" class="panel-col-w30">Notification</th>
           <th scope="col" class="panel-col-w12">Category</th>
           <th scope="col" class="panel-col-w10">Priority</th>
@@ -40,7 +62,7 @@
       </thead>
       <tbody id="notifTableBody">
         <tr class="notif-table-empty">
-          <td colspan="7">
+          <td colspan="8">
             <div class="empty-state">
               <i class="fa-solid fa-bell-slash"></i>
               <p>No notifications yet</p>
@@ -52,10 +74,141 @@
     </table>
   </div>
 
-  <!-- Load More -->
-  <div class="notif-load-more panel-hidden" id="notifLoadMore">
-    <button class="btn btn-md btn-neutral" onclick="loadMoreNotifications()">
-      <i class="fa-solid fa-arrow-down"></i> Load More
-    </button>
+  <!-- Pagination -->
+  <div class="pagination-bar notif-pagination-bar">
+    <div class="pagination-left">
+      <span class="pagination-info" id="notifPaginationInfo">Showing <strong>0-0</strong> of <strong>0</strong> results</span>
+    </div>
+    <div class="pagination-center">
+      <button class="pagination-btn" id="notifFirstBtn" onclick="notifSetPage(1)" disabled title="First Page" aria-label="First page">
+        <i class="fa-solid fa-angles-left"></i>
+      </button>
+      <button class="pagination-btn" id="notifPrevBtn" onclick="notifPage(-1)" disabled title="Previous Page" aria-label="Previous page">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <span class="page-numbers" id="notifPageNumbers">
+        <button class="page-num active">1</button>
+      </span>
+      <button class="pagination-btn" id="notifNextBtn" onclick="notifPage(1)" disabled title="Next Page" aria-label="Next page">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+      <button class="pagination-btn" id="notifLastBtn" onclick="notifSetPage(-1)" disabled title="Last Page" aria-label="Last page">
+        <i class="fa-solid fa-angles-right"></i>
+      </button>
+    </div>
+    <div class="pagination-right">
+      <label for="notifRowsPerPage">Rows per page:</label>
+      <select id="notifRowsPerPage" class="form-select form-select-sm" onchange="onNotifRowsPerPageChange(this.value)">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
   </div>
+
+  {% if is_super_admin %}
+  <div class="center-modal-overlay center-modal-theme-blue" id="domainNotFoundModal" style="display:none;">
+    <div class="center-modal-card domain-not-found-modal-card" @click.stop>
+      <div class="center-modal-header">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Domain Not Found Controls</h3>
+        <button type="button" class="center-modal-header-close" onclick="closeDomainNotFoundModal()" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="center-modal-body-area domain-not-found-modal-body">
+        <div class="domain-mode-intro">
+          <div class="domain-mode-intro-icon">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <p class="domain-mode-intro-title">Emergency Website Recovery</p>
+            <p class="panel-subtitle domain-mode-intro-sub">
+              Use this when your public domain has routing or DNS issues and you need to keep user access restricted while panel recovery links remain available.
+            </p>
+          </div>
+        </div>
+
+        <div class="domain-mode-status-strip">
+          <span class="notif-domain-status" id="domainModeStatusText">Domain Mode: Off</span>
+          <span class="notif-inline-stat-badge" id="websiteStatusText"><i class="fa-solid fa-globe"></i> Website: Draft</span>
+          <button type="button" class="btn btn-sm btn-neutral domain-mode-refresh-btn" id="domainModeRefreshBtn" onclick="loadDomainNotFoundStatus()">
+            <i class="fa-solid fa-rotate"></i> Refresh
+          </button>
+        </div>
+        <span class="panel-subtitle domain-sync-note" id="domainModeLastSyncText">Status not synced yet.</span>
+
+        <div class="maintenance-mode-form-row domain-mode-section-card">
+          <label class="panel-form-label">Domain Mode</label>
+          <span class="panel-subtitle">
+            When enabled, public website routes return 404 while panel recovery remains available.
+          </span>
+          <div class="domain-mode-actions">
+            <button type="button" class="btn btn-sm btn-danger" id="domainModeToggleBtn" onclick="toggleDomainNotFoundMode()">
+              <i class="fa-solid fa-triangle-exclamation"></i> Enable Not Found Mode
+            </button>
+          </div>
+        </div>
+
+        <div class="maintenance-mode-form-row domain-mode-section-card">
+          <label class="panel-form-label" for="domainRecoveryEmailInput">Emergency Access Email</label>
+          <input
+            type="email"
+            id="domainRecoveryEmailInput"
+            class="panel-form-input"
+            placeholder="Enter account email"
+          >
+          <span class="panel-subtitle domain-input-error" id="domainRecoveryValidation" style="display:none;"></span>
+          <span class="panel-subtitle" id="domainRecoveryHelpText">
+            Send a tokenized emergency panel access link while Domain Not Found mode is active.
+          </span>
+          <div class="domain-mode-actions">
+            <button type="button" class="btn btn-sm btn-primary" id="domainRecoverySendBtn" onclick="sendDomainRecoveryAccessLink()">
+              <i class="fa-solid fa-paper-plane"></i> Send Emergency Email
+            </button>
+          </div>
+          <span class="panel-subtitle domain-pro-note" id="domainProOnlyNote" style="display:none;">
+            Emergency access email sending is restricted to Pro User accounts.
+          </span>
+        </div>
+      </div>
+      <div class="center-modal-footer-area">
+        <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeDomainNotFoundModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="center-modal-overlay center-modal-theme-blue" id="maintenanceModeModal" style="display:none;">
+    <div class="center-modal-card maintenance-mode-modal-card" @click.stop>
+      <div class="center-modal-header">
+        <h3><i class="fa-solid fa-power-off"></i> Enable Maintenance Mode</h3>
+        <button type="button" class="center-modal-header-close" onclick="closeMaintenanceModeModal()" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="center-modal-body-area maintenance-mode-modal-body">
+        <div class="maintenance-mode-form-row">
+          <label class="panel-form-label">Duration</label>
+          <div class="maintenance-duration-group">
+            <button type="button" class="btn btn-sm btn-primary mt-dur-btn" data-min="60" onclick="setMtDuration(60)">1 hr</button>
+            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="360" onclick="setMtDuration(360)">6 hr</button>
+            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="1440" onclick="setMtDuration(1440)">1 day</button>
+            <input type="hidden" id="mtDuration" value="60">
+          </div>
+        </div>
+        <div class="maintenance-mode-form-row">
+          <label class="panel-form-label" for="mtModalMessage">Maintenance Message</label>
+          <textarea id="mtModalMessage" class="panel-form-input" rows="8" placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
+          <span class="panel-subtitle">This message appears on the maintenance page and user notifications.</span>
+        </div>
+      </div>
+      <div class="center-modal-footer-area">
+        <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeMaintenanceModeModal()">Cancel</button>
+        <button type="button" class="center-modal-btn center-modal-btn-confirm" id="mtModalSubmitBtn" onclick="submitMaintenanceModeModal()">
+          <i class="fa-solid fa-power-off"></i> Enable Maintenance
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>

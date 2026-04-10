@@ -3,12 +3,39 @@
    Stat cards, icon gradients, count badges & cards overview
    ============================================ */
 
+:root {
+    --list-pending-bg: #fef3c7;
+    --list-pending-text: #92400e;
+    --list-pending-border: #fcd34d;
+    --list-pending-accent: #f59e0b;
+
+    --list-verified-bg: #d1fae5;
+    --list-verified-text: #065f46;
+    --list-verified-border: #6ee7b7;
+    --list-verified-accent: #10b981;
+
+    --list-approved-bg: #dbeafe;
+    --list-approved-text: #1e40af;
+    --list-approved-border: #93c5fd;
+    --list-approved-accent: #3b82f6;
+
+    --list-download-bg: #f3f4f6;
+    --list-download-text: #374151;
+    --list-download-border: #d1d5db;
+    --list-download-accent: #6b7280;
+
+    --list-pool-bg: #fee2e2;
+    --list-pool-text: #991b1b;
+    --list-pool-border: #fca5a5;
+    --list-pool-accent: #ef4444;
+}
+
 /* ====================
    Stats Cards
    ==================== */
 .stats-cards {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 0;
 }
 
@@ -18,7 +45,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    background: #fff;
+    background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
     border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 0;
     margin-left: -1px;
@@ -39,6 +66,7 @@ a.stat-card-link {
 }
 a.stat-card-link:hover {
     border-color: #667eea;
+    background: linear-gradient(145deg, #ffffff 0%, #f4f7ff 100%);
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.13);
 }
 
@@ -107,17 +135,22 @@ a.stat-card-link:hover {
 }
 
 .stat-icon.verified {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #fff;
 }
 
 .stat-icon.approved {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: #fff;
 }
 
 .stat-icon.downloaded {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: #fff;
+}
+
+.stat-icon.pool {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: #fff;
 }
 
@@ -133,12 +166,15 @@ a.stat-card-link:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 24px;
+    width: 5ch;
+    min-width: 5ch;
     height: 20px;
-    padding: 0 6px;
+    padding: 0;
     font-size: 13px;
     font-weight: 600;
     border-radius: 2px;
+    border: 1px solid transparent;
+    font-variant-numeric: tabular-nums;
     text-decoration: none;
     transition: all 0.2s ease;
 }
@@ -153,39 +189,53 @@ a.count-badge:hover {
 }
 
 .count-badge.pending {
-    background: #fef3c7;
-    color: #d97706;
+    background: var(--list-pending-bg);
+    color: var(--list-pending-text);
+    border-color: var(--list-pending-border);
 }
 
 a.count-badge.pending:hover {
-    background: #fde68a;
+    background: #f9d78f;
 }
 
 .count-badge.verified {
-    background: #dbeafe;
-    color: #2563eb;
+    background: var(--list-verified-bg);
+    color: var(--list-verified-text);
+    border-color: var(--list-verified-border);
 }
 
 a.count-badge.verified:hover {
-    background: #bfdbfe;
+    background: #a7f3d0;
 }
 
 .count-badge.approved {
-    background: #ede9fe;
-    color: #7c3aed;
+    background: var(--list-approved-bg);
+    color: var(--list-approved-text);
+    border-color: var(--list-approved-border);
 }
 
 a.count-badge.approved:hover {
-    background: #ddd6fe;
+    background: #bfdbfe;
 }
 
 .count-badge.downloaded {
-    background: #dcfce7;
-    color: #16a34a;
+    background: var(--list-download-bg);
+    color: var(--list-download-text);
+    border-color: var(--list-download-border);
 }
 
 a.count-badge.downloaded:hover {
-    background: #bbf7d0;
+    background: #e5e7eb;
+}
+
+.count-badge.pool {
+    background: var(--list-pool-bg);
+    color: var(--list-pool-text);
+    border-color: var(--list-pool-border);
+}
+
+a.count-badge.pool:hover {
+    background: #fecaca;
 }
 
 /* ====================
@@ -197,24 +247,54 @@ a.count-badge.downloaded:hover {
     gap: 0;
 }
 
+.team-overview-search-inline {
+    margin-bottom: 10px;
+}
+
+.team-overview-search-inline .recent-updates-search-input {
+    height: 30px;
+    border-color: #bfdbfe;
+}
+
+.team-overview-search-inline .recent-updates-search-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
 .card-overview-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    background: #fafbfc;
+    background: #f8fbff;
     border-radius: 0;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid #bfdbfe;
     margin-top: -1px;
     margin-left: -1px;
     text-decoration: none;
     color: inherit;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+button.card-overview-item {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
 }
 
 .card-overview-item:hover {
-    background: #f0f4f8;
+    background: #edf5ff;
+    border-color: #60a5fa;
+}
+
+.card-overview-item-static {
+    cursor: default;
+}
+
+.card-overview-item-static:hover {
+    background: #f8fbff;
 }
 
 .card-overview-item:first-child {
@@ -242,23 +322,28 @@ a.count-badge.downloaded:hover {
 }
 
 .card-overview-icon.pending {
-    background: #fef3c7;
-    color: #d97706;
+    background: var(--list-pending-bg);
+    color: var(--list-pending-text);
 }
 
 .card-overview-icon.verified {
-    background: #dbeafe;
-    color: #2563eb;
+    background: var(--list-verified-bg);
+    color: var(--list-verified-text);
 }
 
 .card-overview-icon.approved {
-    background: #ede9fe;
-    color: #7c3aed;
+    background: var(--list-approved-bg);
+    color: var(--list-approved-text);
 }
 
 .card-overview-icon.downloaded {
-    background: #dcfce7;
-    color: #16a34a;
+    background: var(--list-download-bg);
+    color: var(--list-download-text);
+}
+
+.card-overview-icon.pool {
+    background: var(--list-pool-bg);
+    color: var(--list-pool-text);
 }
 
 .card-overview-icon.clients {
@@ -284,11 +369,70 @@ a.count-badge.downloaded:hover {
 .card-overview-label {
     font-size: 13px;
     color: #555;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .card-overview-value {
+    display: inline-block;
+    width: 5ch;
     font-size: 15px;
     font-weight: 700;
     color: #2c3e50;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.dashboard-tab-item {
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    text-align: left;
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+}
+
+.dashboard-section-tabs .dashboard-tab-item {
+    background: #ffffff;
+    border-color: #d1d5db;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dashboard-section-tabs .dashboard-tab-item:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.dashboard-section-tabs .dashboard-tab-item .card-overview-label,
+.dashboard-section-tabs .dashboard-tab-item .card-overview-value {
+    color: #1f2937;
+}
+
+.dashboard-section-tabs .dashboard-tab-item .card-overview-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+}
+
+.dashboard-side-sticky .card-overview-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+}
+
+.dashboard-tab-item.is-active {
+    background: #eef2ff;
+    border-color: #1d4ed8;
+}
+
+.dashboard-tab-item.is-active .card-overview-label,
+.dashboard-tab-item.is-active .card-overview-value {
+    color: #1e3a8a;
+}
+
+.dashboard-team-scope-item.is-active {
+    background: #e7f1ff;
+    border-color: #1d4ed8;
+}
+
+.dashboard-team-scope-item.is-active .card-overview-label,
+.dashboard-team-scope-item.is-active .card-overview-value {
+    color: #1e3a8a;
 }

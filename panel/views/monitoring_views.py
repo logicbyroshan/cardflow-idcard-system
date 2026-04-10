@@ -29,8 +29,41 @@ logger = logging.getLogger('core.views')
 
 _MAX_REPORTS_PER_MIN = 10
 _MAX_LOG_FIELD_LEN = 500
-_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v2'
-_SERVER_INFO_CACHE_TTL = 300
+_SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v3'
+_SERVER_INFO_CACHE_TTL = 86400
+
+
+def _infer_device_surface(action, description):
+    text = f"{action or ''} {description or ''}".lower()
+    mobile_tokens = ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')
+    desktop_tokens = ('desktop web', 'desktop', 'browser', 'windows', 'mac', 'linux', 'web app', 'web')
+
+    if any(token in text for token in mobile_tokens):
+        return 'mobile'
+    if any(token in text for token in desktop_tokens):
+        return 'desktop'
+    return 'unknown'
+
+
+def _device_surface_meta(surface):
+    normalized = str(surface or '').strip().lower()
+    if normalized == 'mobile':
+        return {
+            'device_surface': 'mobile',
+            'device_surface_label': 'Mobile',
+            'device_surface_icon': 'fa-mobile-screen-button',
+        }
+    if normalized == 'desktop':
+        return {
+            'device_surface': 'desktop',
+            'device_surface_label': 'Desktop',
+            'device_surface_icon': 'fa-desktop',
+        }
+    return {
+        'device_surface': 'unknown',
+        'device_surface_label': 'Unknown',
+        'device_surface_icon': 'fa-circle-question',
+    }
 
 
 def _sanitize_log_value(val, max_len=_MAX_LOG_FIELD_LEN):
@@ -151,8 +184,8 @@ def _dir_size_fast(path_obj):
             if proc.returncode == 0 and proc.stdout:
                 first_token = proc.stdout.split()[0]
                 return int(first_token)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('Native du scan failed for %s: %s', path_str, exc)
     return _dir_size_bytes(path_str)
 
 
@@ -230,6 +263,71 @@ def _other_usage_breakdown(base_dir: Path, other_total_bytes: int, project_total
 
     parts.sort(key=lambda x: x['size_bytes'], reverse=True)
     return parts
+
+
+def _size_for_label(path_usage_raw, label):
+    for item in path_usage_raw:
+        if item.get('name') == label:
+            return int(item.get('size_bytes') or 0)
+    return 0
+
+
+def _sum_existing_dirs(paths):
+    total = 0
+    seen = set()
+    for path_obj in paths:
+        try:
+            resolved = path_obj.resolve()
+        except Exception:
+            resolved = path_obj
+
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if not path_obj.exists() or not path_obj.is_dir():
+            continue
+        try:
+            total += _dir_size_fast(path_obj)
+        except Exception:
+            continue
+    return int(total)
+
+
+def _media_video_usage_bytes(media_roots):
+    video_exts = {
+        '.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv',
+        '.mpeg', '.mpg', '.3gp', '.flv', '.ts', '.m2ts',
+    }
+    total = 0
+
+    for root in media_roots:
+        if not root.exists() or not root.is_dir():
+            continue
+
+        stack = [str(root)]
+        while stack:
+            current = stack.pop()
+            try:
+                with os.scandir(current) as entries:
+                    for entry in entries:
+                        try:
+                            if entry.is_symlink():
+                                continue
+                            if entry.is_dir(follow_symlinks=False):
+                                stack.append(entry.path)
+                                continue
+                            if not entry.is_file(follow_symlinks=False):
+                                continue
+                            if Path(entry.name).suffix.lower() in video_exts:
+                                total += int(entry.stat(follow_symlinks=False).st_size)
+                        except (FileNotFoundError, PermissionError, OSError):
+                            continue
+            except (FileNotFoundError, PermissionError, OSError):
+                continue
+
+    return int(total)
 
 
 def _database_storage_snapshot(base_dir):
@@ -464,6 +562,325 @@ def api_monitoring_data(request):
 
 @require_http_methods(["GET"])
 @login_required
+def api_operations_feed(request):
+    """
+    Unified operations feed for Manage Panel.
+    Combines background tasks, backup tasks and activity logs with filters.
+
+    GET /panel/api/operations-feed/
+    """
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+    from django.utils.timesince import timesince as django_timesince
+    from core.models import ActivityLog, BackgroundTask, BackupTask
+    from core.services.permission_service import PermissionService
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin only'}, status=403)
+
+    def _parse_int(value, default, min_value=None, max_value=None):
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = default
+        if min_value is not None:
+            parsed = max(min_value, parsed)
+        if max_value is not None:
+            parsed = min(max_value, parsed)
+        return parsed
+
+    now = timezone.now()
+    since_24h = now - timedelta(hours=24)
+
+    limit = _parse_int(request.GET.get('limit', 180), 180, min_value=20, max_value=300)
+    offset = _parse_int(request.GET.get('offset', 0), 0, min_value=0)
+    fetch_cap = min(max(offset + limit + 400, 300), 2000)
+
+    source = (request.GET.get('source', 'all') or 'all').strip().lower()
+    allowed_sources = {'all', 'tasks', 'task', 'background', 'background_tasks', 'backups', 'backup', 'logs', 'log', 'activity'}
+    if source not in allowed_sources:
+        return JsonResponse({'success': False, 'message': 'Invalid source filter'}, status=400)
+    search = (request.GET.get('search', '') or '').strip()
+    user_role = (request.GET.get('user_role', '') or '').strip()
+    task_status = (request.GET.get('task_status', '') or '').strip()
+    action = (request.GET.get('action', '') or '').strip()
+
+    include_background = source in ('all', 'tasks', 'task', 'background', 'background_tasks')
+    include_backups = source in ('all', 'tasks', 'task', 'backups', 'backup')
+    include_logs = source in ('all', 'logs', 'log', 'activity')
+
+    allow_latest_cancel = PermissionService.is_pro_user(request.user)
+    latest_active_background_task_id = None
+    if allow_latest_cancel:
+        latest_active_background_task_id = (
+            BackgroundTask.objects
+            .filter(status__in=['pending', 'processing'])
+            .order_by('-created_at', '-id')
+            .values_list('id', flat=True)
+            .first()
+        )
+
+    active_tasks = BackgroundTask.objects.filter(status__in=['pending', 'processing']).count()
+    pending_tasks = BackgroundTask.objects.filter(status='pending').count()
+    completed_24h = BackgroundTask.objects.filter(
+        status='completed', completed_at__gte=since_24h
+    ).count()
+    failed_24h = BackgroundTask.objects.filter(
+        status='failed', completed_at__gte=since_24h
+    ).count()
+
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+
+    def _card_status_summary_text(raw_description):
+        """Normalize noisy per-card status logs into a stable summary line."""
+        summary = str(raw_description or '').strip()
+        if not summary:
+            return 'Card status changed'
+        summary = re.sub(r'\s*\|\s*Target:\s*Card\s*#.*$', '', summary, flags=re.IGNORECASE)
+        summary = re.sub(r'\s*Target:\s*Card\s*#.*$', '', summary, flags=re.IGNORECASE)
+        summary = summary.strip(' |')
+        return summary or 'Card status changed'
+
+    items = []
+
+    if include_background:
+        bg_qs = BackgroundTask.objects.select_related('user').order_by('-created_at')
+        if user_role:
+            bg_qs = bg_qs.filter(user__role=user_role)
+        if task_status:
+            bg_qs = bg_qs.filter(status=task_status)
+        if search:
+            bg_qs = bg_qs.filter(
+                Q(task_type__icontains=search)
+                | Q(error_message__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+            )
+
+        for task in bg_qs[:fetch_cap]:
+            user_name = task.user.get_full_name() or task.user.username if task.user else 'System'
+            progress_text = ''
+            if task.total and task.total > 0:
+                progress_text = f'Progress {task.progress}/{task.total} ({task.progress_percentage}%)'
+            can_cancel = (
+                allow_latest_cancel
+                and latest_active_background_task_id is not None
+                and task.status in ('pending', 'processing')
+                and task.id == latest_active_background_task_id
+            )
+
+            items.append({
+                'source_type': 'background_task',
+                'source_label': 'Background Task',
+                'event_title': task.get_task_type_display(),
+                'event_subtitle': f'Task #{task.id}',
+                'task_id': task.id,
+                'status': task.status,
+                'status_display': task.get_status_display(),
+                'action': '',
+                'action_display': '',
+                'can_cancel': can_cancel,
+                'description': task.error_message or 'Background task event',
+                'target_name': '',
+                'user': user_name,
+                'ip_address': '',
+                'progress_text': progress_text,
+                'error': (task.error_message or '')[:180],
+                'icon_class': 'fa-gears',
+                'icon_color': 'edit',
+                'created_at': task.created_at.strftime('%d-%m-%Y %H:%M'),
+                'time_ago': django_timesince(task.created_at, now) + ' ago',
+                'created_at_dt': task.created_at,
+            })
+
+    if include_backups:
+        backup_qs = BackupTask.objects.select_related('created_by').order_by('-created_at')
+        if user_role:
+            backup_qs = backup_qs.filter(created_by__role=user_role)
+        if task_status:
+            backup_qs = backup_qs.filter(status=task_status)
+        if search:
+            backup_qs = backup_qs.filter(
+                Q(current_client__icontains=search)
+                | Q(error_message__icontains=search)
+                | Q(created_by__username__icontains=search)
+                | Q(created_by__first_name__icontains=search)
+                | Q(created_by__last_name__icontains=search)
+            )
+
+        for task in backup_qs[:fetch_cap]:
+            user_name = task.created_by.get_full_name() or task.created_by.username if task.created_by else 'System'
+            progress_text = ''
+            if task.total and task.total > 0:
+                progress_pct = round((task.progress / task.total) * 100)
+                progress_text = f'Progress {task.progress}/{task.total} ({progress_pct}%)'
+
+            items.append({
+                'source_type': 'backup_task',
+                'source_label': 'Backup Task',
+                'event_title': 'Client Backup',
+                'event_subtitle': f'Backup #{task.id}',
+                'task_id': None,
+                'status': task.status,
+                'status_display': task.get_status_display(),
+                'action': '',
+                'action_display': '',
+                'can_cancel': False,
+                'description': task.current_client or 'Backup pipeline event',
+                'target_name': '',
+                'user': user_name,
+                'ip_address': '',
+                'progress_text': progress_text,
+                'error': (task.error_message or '')[:180],
+                'icon_class': 'fa-database',
+                'icon_color': 'approve',
+                'created_at': task.created_at.strftime('%d-%m-%Y %H:%M'),
+                'time_ago': django_timesince(task.created_at, now) + ' ago',
+                'created_at_dt': task.created_at,
+            })
+
+    if include_logs:
+        log_qs = ActivityLog.objects.select_related('user', 'user__client_profile').order_by('-created_at')
+
+        if user_role:
+            log_qs = log_qs.filter(user__role=user_role)
+        if action:
+            log_qs = log_qs.filter(action=action)
+
+        if search:
+            base_search_q = (
+                Q(description__icontains=search)
+                | Q(target_name__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+                | Q(action__icontains=search)
+            )
+            log_qs = log_qs.filter(base_search_q)
+
+        log_items = []
+        card_status_groups = {}
+
+        for log in log_qs[:fetch_cap]:
+            user_name = log.user.get_full_name() or log.user.username if log.user else 'System'
+
+            description = log.description or ''
+            if log.action == 'password_reset' and log.user and getattr(log.user, 'email', ''):
+                # Show full recipient email in recent activity for password reset actions.
+                description = f'Password reset completed for {log.user.email}'
+
+            device_meta = _device_surface_meta(_infer_device_surface(log.action, description))
+
+            if log.action == 'card_status':
+                summary_desc = _card_status_summary_text(description)
+                minute_bucket = log.created_at.replace(second=0, microsecond=0)
+                group_key = (log.user_id or 0, minute_bucket, summary_desc.lower())
+                existing_idx = card_status_groups.get(group_key)
+                if existing_idx is not None:
+                    grouped = log_items[existing_idx]
+                    grouped['_group_count'] = int(grouped.get('_group_count') or 1) + 1
+                    count = grouped['_group_count']
+                    grouped['event_title'] = f'{count} cards status changed'
+                    grouped['action_display'] = f'{count} cards status changed'
+                    grouped['description'] = f'{summary_desc} ({count} cards)'
+                    grouped['target_name'] = ''
+                    continue
+
+                card_status_groups[group_key] = len(log_items)
+                event_title = action_display_map.get(log.action, log.action)
+                action_display = event_title
+                row_description = summary_desc
+            else:
+                event_title = action_display_map.get(log.action, log.action)
+                action_display = event_title
+                row_description = description
+
+            log_items.append({
+                'source_type': 'activity_log',
+                'source_label': 'Activity Log',
+                'event_title': event_title,
+                'event_subtitle': log.target_model or '',
+                'task_id': None,
+                'status': '',
+                'status_display': '',
+                'action': log.action,
+                'action_display': action_display,
+                'can_cancel': False,
+                'description': row_description,
+                'target_name': log.target_name or '',
+                'user': user_name,
+                'ip_address': log.ip_address or '',
+                'progress_text': '',
+                'error': '',
+                'icon_class': log.icon_class,
+                'icon_color': log.icon_color,
+                'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
+                'time_ago': django_timesince(log.created_at, now) + ' ago',
+                'created_at_dt': log.created_at,
+                '_group_count': 1,
+                **device_meta,
+            })
+
+        items.extend(log_items)
+
+    items.sort(key=lambda row: row.get('created_at_dt') or now, reverse=True)
+    total = len(items)
+    source_counts = {
+        'background_task': sum(1 for row in items if row.get('source_type') == 'background_task'),
+        'backup_task': sum(1 for row in items if row.get('source_type') == 'backup_task'),
+        'activity_log': sum(1 for row in items if row.get('source_type') == 'activity_log'),
+    }
+    paged_items = items[offset:offset + limit]
+
+    for row in paged_items:
+        row.pop('created_at_dt', None)
+        row.pop('_group_count', None)
+
+    return JsonResponse({
+        'success': True,
+        'total': total,
+        'items': paged_items,
+        'source_counts': source_counts,
+        'stats': {
+            'active_tasks': active_tasks,
+            'pending_tasks': pending_tasks,
+            'completed_24h': completed_24h,
+            'failed_24h': failed_24h,
+        },
+    })
+
+
+@require_POST
+@login_required
+@csrf_protect
+def api_clear_activity_logs(request):
+    """
+    Manually clear all activity log entries from Operations Hub.
+
+    POST /panel/api/activity-logs/clear/
+    """
+    from core.models import ActivityLog
+    from core.services.permission_service import PermissionService
+
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Super admin only'}, status=403)
+
+    try:
+        deleted_count, _ = ActivityLog.objects.all().delete()
+        return JsonResponse({
+            'success': True,
+            'deleted_count': int(deleted_count or 0),
+            'message': f'Cleared {int(deleted_count or 0)} activity log entries.',
+        })
+    except Exception:
+        logger.exception('Failed to clear activity logs manually')
+        return JsonResponse({'success': False, 'message': 'Failed to clear activity logs.'}, status=500)
+
+
+@require_http_methods(["GET"])
+@login_required
 def api_server_info_snapshot(request):
     """
     Return a server snapshot for Manage Panel -> Server Info tab.
@@ -521,6 +938,26 @@ def api_server_info_snapshot(request):
 
     db_info = _database_storage_snapshot(base_dir)
     db_size_bytes = int(db_info.get('size_bytes') or 0)
+    website_db_size_bytes = db_size_bytes
+    db_backend = str(settings.DATABASES.get('default', {}).get('ENGINE', '')).lower()
+    if ('postgresql' in db_backend or 'postgres' in db_backend) and db_info.get('status') == 'ok':
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT COALESCE(
+                        SUM(pg_total_relation_size(to_regclass(format('%I.%I', schemaname, relname)))),
+                        0
+                    )
+                    FROM pg_stat_user_tables
+                    WHERE relname LIKE 'website_%'
+                    """
+                )
+                row = cursor.fetchone()
+            website_db_size_bytes = int(row[0]) if row and row[0] is not None else 0
+        except Exception:
+            logger.exception('Website app DB size estimate failed')
+            website_db_size_bytes = db_size_bytes
 
     disk_used_nonfree = int(disk.used)
     known_used_bytes = max(project_root_size + db_size_bytes, 0)
@@ -554,6 +991,91 @@ def api_server_info_snapshot(request):
         item['pct_of_total_disk'] = round((item['size_bytes'] / disk.total) * 100, 2) if disk.total > 0 else 0
 
     usage_breakdown.sort(key=lambda x: x['size_bytes'], reverse=True)
+
+    media_size_bytes = _size_for_label(path_usage_raw, 'media') + _size_for_label(path_usage_raw, 'mediafiles')
+    logs_size_bytes = _size_for_label(path_usage_raw, 'logs') + _size_for_label(path_usage_raw, 'Face Cropper/logs')
+    support_explicit_bytes = (
+        _size_for_label(path_usage_raw, '.git')
+        + _size_for_label(path_usage_raw, 'logs')
+        + _size_for_label(path_usage_raw, 'Face Cropper/build')
+        + _size_for_label(path_usage_raw, 'Face Cropper/installer')
+        + _size_for_label(path_usage_raw, 'Face Cropper/logs')
+    )
+
+    dependency_bytes = _sum_existing_dirs([
+        base_dir / 'venv',
+        base_dir / '.venv',
+        base_dir / 'env',
+        base_dir / 'node_modules',
+        base_dir / 'Face Cropper' / 'venv',
+        base_dir / 'Face Cropper' / '.venv',
+        base_dir / 'Face Cropper' / 'node_modules',
+    ])
+
+    core_project_bytes = max(project_root_size - media_size_bytes - dependency_bytes, 0)
+    support_bytes = min(max(support_explicit_bytes, 0), core_project_bytes)
+    project_files_without_media_bytes = max(core_project_bytes - support_bytes, 0)
+    system_usage_details = [
+        {
+            'name': 'OS Usage',
+            'size_bytes': int(other_system_used),
+            'size_human': _format_bytes(other_system_used),
+            'pct_of_used_disk': round((other_system_used / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Machine storage outside this project',
+        },
+        {
+            'name': 'Project Dependencies Usage',
+            'size_bytes': int(dependency_bytes),
+            'size_human': _format_bytes(dependency_bytes),
+            'pct_of_used_disk': round((dependency_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'venv and installed dependency folders',
+        },
+        {
+            'name': 'Project Files Usage',
+            'size_bytes': int(project_files_without_media_bytes),
+            'size_human': _format_bytes(project_files_without_media_bytes),
+            'pct_of_used_disk': round((project_files_without_media_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Project files excluding images and videos',
+        },
+        {
+            'name': 'Project Support Usage',
+            'size_bytes': int(support_bytes),
+            'size_human': _format_bytes(support_bytes),
+            'pct_of_used_disk': round((support_bytes / disk_used_nonfree) * 100, 1) if disk_used_nonfree > 0 else 0,
+            'meta': 'Git, logs, build and installer support files',
+        },
+    ]
+
+    panel_usage_details = [
+        {
+            'name': 'Images Usage',
+            'size_bytes': int(media_size_bytes),
+            'size_human': _format_bytes(media_size_bytes),
+            'pct_of_project': round((media_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Media and mediafiles storage',
+        },
+        {
+            'name': 'Database Usage',
+            'size_bytes': int(db_size_bytes),
+            'size_human': _format_bytes(db_size_bytes),
+            'pct_of_project': round((db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Overall database size (Postgres/SQLite)',
+        },
+        {
+            'name': 'Logs Usage',
+            'size_bytes': int(logs_size_bytes),
+            'size_human': _format_bytes(logs_size_bytes),
+            'pct_of_project': round((logs_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Application and service logs',
+        },
+        {
+            'name': 'Website App DB',
+            'size_bytes': int(website_db_size_bytes),
+            'size_human': _format_bytes(website_db_size_bytes),
+            'pct_of_project': round((website_db_size_bytes / project_root_size) * 100, 1) if project_root_size > 0 else 0,
+            'meta': 'Website app tables footprint',
+        },
+    ]
 
     other_breakdown = _other_usage_breakdown(
         base_dir=base_dir,
@@ -592,6 +1114,8 @@ def api_server_info_snapshot(request):
         'database': db_info,
         'usage_breakdown': usage_breakdown,
         'other_usage_breakdown': other_breakdown,
+        'system_usage_details': system_usage_details,
+        'panel_usage_details': panel_usage_details,
         'path_usage': path_usage,
     }
 

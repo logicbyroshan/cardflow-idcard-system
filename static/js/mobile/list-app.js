@@ -2,6 +2,18 @@
  * list-app.js  Alpine.js component for mobile list page
  * Globals expected: CSRF, TABLE_ID, LIST_TYPE, STUDENTS_DATA
  */
+const MOBILE_ENDPOINTS = Object.freeze({
+    appApi: '/app/api',
+    panelApi: '/panel/api',
+    panelReprintApi: '/panel/reprint/api',
+});
+
+function buildEndpoint(base, path) {
+    const normalizedBase = String(base || '').replace(/\/+$/, '');
+    const normalizedPath = String(path || '').replace(/^\/+/, '');
+    return normalizedBase + '/' + normalizedPath;
+}
+
 function listApp() {
     return {
         searchQuery: '',
@@ -23,7 +35,13 @@ function listApp() {
             cancelling: false,
             abortController: null,
         },
-        filters: { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' },
+        filters: {
+            photo: 'all',
+            selectedClass: '',
+            selectedSection: '',
+            dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
+            dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
+        },
         filtersActive: false,
         classOptions: [],
         sectionOptions: [],
@@ -36,6 +54,8 @@ function listApp() {
         overlayWatchersBound: false,
         actionMenuOpen: false,
         reprintSearchTimer: null,
+        searchFilterTimer: null,
+        searchScopeHintShown: false,
 
         permanentDeleteModal: {
             show: false,
@@ -71,6 +91,7 @@ function listApp() {
         showCropModal: false,
         cropSourceUrl: null,
         cropSourceFile: null,
+        cropTargetField: null,
         cropperInstance: null,
         viewMode: false,
         editMode: false,
@@ -85,11 +106,14 @@ function listApp() {
         allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
         tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
         dynamicFormFields: [],
+        imageFormFields: [],
+        activeImageField: '',
         tabCounts: TAB_COUNTS || { pending: 0, verified: 0, approved: 0, download: 0, pool: 0 },
         form: {
             dynamicValues: {},
-            photoFile: null,
-            photoPreview: null,
+            imageFiles: {},
+            imagePreviews: {},
+            imageHasPath: {},
         },
 
         init() {
@@ -272,20 +296,85 @@ function listApp() {
             }, 3500);
         },
 
-        toggleSelectAll() {
+        async toggleSelectAll() {
             if (this.selectAll) {
-                // Only select visible (non-hidden) rows
-                const visible = [];
-                document.querySelectorAll('[data-sid]').forEach(el => {
-                    if (el.style.display !== 'none') visible.push(parseInt(el.getAttribute('data-sid')));
-                });
-                this.selectedIds = visible;
+                const allMatchingIds = await this._fetchAllMatchingIds();
+                if (Array.isArray(allMatchingIds)) {
+                    this.selectedIds = allMatchingIds;
+                } else {
+                    // Fallback: if server-side select-all is unavailable, select visible rows.
+                    const visible = [];
+                    document.querySelectorAll('[data-sid]').forEach(el => {
+                        if (el.style.display !== 'none') visible.push(parseInt(el.getAttribute('data-sid')));
+                    });
+                    this.selectedIds = visible;
+                }
             } else { this.selectedIds = []; }
             if (!this.selectedIds.length) this.actionMenuOpen = false;
             // Sync classes for dynamically loaded rows
             document.querySelectorAll('[data-sid]').forEach(el => {
                 this._updateRowClass(parseInt(el.dataset.sid));
             });
+        },
+        _buildAllIdsQueryParams() {
+            const params = new URLSearchParams();
+            params.set('status', LIST_TYPE);
+
+            const q = String(this.searchQuery || '').trim();
+            if (q) params.set('search', q);
+
+            if (this.filters.selectedClass) params.set('class', this.filters.selectedClass);
+            if (this.filters.selectedSection) params.set('section', this.filters.selectedSection);
+
+            if (LIST_TYPE === 'download') {
+                if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
+                if (this.filters.dateTo) params.set('to', this.filters.dateTo);
+            }
+
+            if (this.filters.photo !== 'all') {
+                const photoFields = (this.tableFields || [])
+                    .filter((f) => this._isPhotoFieldDef(f))
+                    .map((f) => String(f.name || '').trim())
+                    .filter(Boolean);
+
+                if (photoFields.length === 1) {
+                    params.set('image_column', photoFields[0]);
+                    params.set('image_condition', this.filters.photo === 'with' ? 'complete' : 'incomplete');
+                } else {
+                    return null;
+                }
+            }
+
+            return params;
+        },
+        async _fetchAllMatchingIds() {
+            const params = this._buildAllIdsQueryParams();
+            if (!params) {
+                this.showToast('Photo filter uses multiple image fields. Selecting visible records only.', 'info');
+                return null;
+            }
+
+            try {
+                const url = buildEndpoint(MOBILE_ENDPOINTS.panelApi, `table/${TABLE_ID}/cards/all-ids/`) + `?${params.toString()}`;
+                const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.success) {
+                    this.showToast(data.message || 'Could not select all records', 'error');
+                    this.selectAll = false;
+                    return null;
+                }
+
+                const ids = Array.isArray(data.card_ids) ? data.card_ids.map((id) => parseInt(id, 10)).filter((id) => Number.isFinite(id)) : [];
+                if (!ids.length) {
+                    this.showToast('No records match current filters', 'info');
+                }
+                return ids;
+            } catch (e) {
+                this.showToast('Could not select all records', 'error');
+                this.selectAll = false;
+                return null;
+            }
         },
         toggleSelect(id) {
             const idx = this.selectedIds.indexOf(id);
@@ -299,8 +388,14 @@ function listApp() {
 
         // --- Filtering & Sorting ---
         filterStudents() {
-            // Debounced text search  also applies active filters
-            this._applyAllFilters();
+            // Debounced text search to avoid filtering/reflow on every keystroke.
+            if (this.searchFilterTimer) {
+                clearTimeout(this.searchFilterTimer);
+                this.searchFilterTimer = null;
+            }
+            this.searchFilterTimer = setTimeout(() => {
+                this._applyAllFilters({ showCountToast: false });
+            }, 180);
         },
         setClassFilter(classValue) {
             this.filters.selectedClass = classValue || '';
@@ -444,24 +539,35 @@ function listApp() {
                 this.filters.dateTo !== ''
             );
 
-            if ((this.filtersActive || (this.searchQuery || '').trim()) && this.hasMore) {
+            const searchActive = !!String(this.searchQuery || '').trim();
+
+            // Only force full-data loading for strict filter modes. Text search stays incremental.
+            if (this.filtersActive && this.hasMore) {
                 this.loadingAllForFilters = true;
                 this.showToast('Loading all records for accurate filtering...', 'info');
-                await this.loadAllDataForFiltering();
+                await this.loadAllDataForFiltering(20);
                 this.loadingAllForFilters = false;
+            } else if (searchActive && this.hasMore && !this.searchScopeHintShown) {
+                this.showToast('Search currently applies to loaded records. Scroll to load more for wider matches.', 'info');
+                this.searchScopeHintShown = true;
+            } else if (!searchActive) {
+                this.searchScopeHintShown = false;
             }
 
-            this._applyAllFilters();
+            this._applyAllFilters({ showCountToast: true });
             this.showFilters = false;
         },
-        async loadAllDataForFiltering() {
+        async loadAllDataForFiltering(maxPages = 20) {
             let safety = 0;
-            while (this.hasMore && safety < 80) {
+            while (this.hasMore && safety < maxPages) {
                 await this.loadMore(true);
                 safety += 1;
             }
+            if (this.hasMore) {
+                this.showToast('Loaded a large chunk for filters. Refine filters for faster results.', 'info');
+            }
         },
-        _applyAllFilters() {
+        _applyAllFilters(options = {}) {
             const q = (this.searchQuery || '').toLowerCase().trim();
             let filtered = this.studentsData.filter(s => {
                 // Text search
@@ -494,9 +600,16 @@ function listApp() {
                 if (this.filters.selectedClass && this._normalizeClassValue(s.class_name) !== this.filters.selectedClass) return false;
                 // Section filter
                 if (this.filters.selectedSection && s.section !== this.filters.selectedSection) return false;
-                // Date range (DOB)  only active for download list
-                if (this.filters.dateFrom && s.dob && s.dob < this.filters.dateFrom) return false;
-                if (this.filters.dateTo && s.dob && s.dob > this.filters.dateTo) return false;
+                // Date range (download list): filter by downloaded date, not DOB.
+                if (LIST_TYPE === 'download') {
+                    const downloadedDate = String(s.downloaded_date || '').slice(0, 10);
+                    if (this.filters.dateFrom) {
+                        if (!downloadedDate || downloadedDate < this.filters.dateFrom) return false;
+                    }
+                    if (this.filters.dateTo) {
+                        if (!downloadedDate || downloadedDate > this.filters.dateTo) return false;
+                    }
+                }
                 return true;
             });
             const visibleIds = new Set(filtered.map(s => s.id));
@@ -507,12 +620,14 @@ function listApp() {
                 const id = parseInt(el.getAttribute('data-sid'));
                 el.style.display = visibleIds.has(id) ? '' : 'none';
             });
-            // Deselect items that are no longer visible
-            this.selectedIds = this.selectedIds.filter(id => visibleIds.has(id));
+            // Deselect items that are no longer visible when not using Select All mode.
+            if (!this.selectAll) {
+                this.selectedIds = this.selectedIds.filter(id => visibleIds.has(id));
+            }
             // Update visible count
             this.visibleCount = filtered.length;
             // Show count
-            if (q || this.filtersActive) {
+            if ((q || this.filtersActive) && options.showCountToast) {
                 this.showToast(filtered.length + ' of ' + this.studentsData.length + ' shown', 'info');
             }
         },
@@ -611,7 +726,7 @@ function listApp() {
                     throw new Error('AbortError');
                 }
 
-                const statusRes = await fetch('/panel/api/task-status/' + taskId + '/', {
+                const statusRes = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'task-status/' + taskId + '/'), {
                     headers: { 'X-CSRFToken': CSRF },
                     signal: this.downloadModal.abortController?.signal,
                 });
@@ -656,7 +771,7 @@ function listApp() {
                 status: LIST_TYPE,
             }, extraPayload);
 
-            const res = await fetch('/panel/api/table/' + TABLE_ID + '/export-task/', {
+            const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/export-task/'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                 body: JSON.stringify(body),
@@ -691,7 +806,7 @@ function listApp() {
 
             let code = this._generateNumericCode(10);
             try {
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/generate-delete-code/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/generate-delete-code/'), {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF },
                 });
@@ -839,7 +954,7 @@ function listApp() {
             const fd = new FormData();
             fd.append('field_data', JSON.stringify(payload));
 
-            const res = await fetch('/app/api/table/' + TABLE_ID + '/card/' + cardId + '/update/', {
+            const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/' + cardId + '/update/'), {
                 method: 'POST',
                 headers: { 'X-CSRFToken': CSRF },
                 body: fd,
@@ -855,7 +970,7 @@ function listApp() {
             this.reprintPicker.loading = true;
             try {
                 const q = encodeURIComponent(String(this.reprintPicker.query || '').trim());
-                const url = '/panel/reprint/api/table/' + TABLE_ID + '/reprint-list/?available_only=1&limit=500&q=' + q;
+                const url = buildEndpoint(MOBILE_ENDPOINTS.panelReprintApi, 'table/' + TABLE_ID + '/reprint-list/') + '?available_only=1&limit=500&q=' + q;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || data.status !== 'ok') {
@@ -942,7 +1057,7 @@ function listApp() {
                 return false;
             }
             try {
-                const res = await fetch('/panel/reprint/api/table/' + TABLE_ID + '/request/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelReprintApi, 'table/' + TABLE_ID + '/request/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: ids }),
@@ -1086,8 +1201,12 @@ function listApp() {
             const source = sourceFieldData || {};
             const ordered = [];
             const used = new Set();
+            const sourceLookupValues = {};
+            Object.keys(source || {}).forEach((k) => {
+                sourceLookupValues[this._normalizeLookupKey(k)] = source[k];
+            });
             const sourceLookupKeys = new Set(
-                Object.keys(source || {}).map((k) => this._normalizeLookupKey(k))
+                Object.keys(sourceLookupValues || {})
             );
 
             (this.tableFields || []).forEach((f) => {
@@ -1095,7 +1214,12 @@ function listApp() {
                 const name = String(f.name || '').trim();
                 const lk = this._normalizeLookupKey(name);
                 if (!lk || used.has(lk)) return;
-                if (!includeAllTableFields && !sourceLookupKeys.has(lk)) return;
+                if (!includeAllTableFields) {
+                    if (!sourceLookupKeys.has(lk)) return;
+                    const srcVal = sourceLookupValues[lk];
+                    const hasValue = srcVal !== null && srcVal !== undefined && String(srcVal).trim() !== '';
+                    if (!hasValue && !f.mandatory) return;
+                }
                 ordered.push({
                     name,
                     type: this._normalizeFieldType(f.type),
@@ -1108,6 +1232,10 @@ function listApp() {
             Object.keys(source).forEach((rawKey) => {
                 const key = String(rawKey || '').trim();
                 if (!key || key.startsWith('__') || this._isImageLikeFieldName(key)) return;
+                if (!includeAllTableFields) {
+                    const rawVal = source[rawKey];
+                    if (rawVal === null || rawVal === undefined || String(rawVal).trim() === '') return;
+                }
                 const lk = this._normalizeLookupKey(key);
                 if (!lk || used.has(lk)) return;
                 ordered.push({
@@ -1258,11 +1386,11 @@ function listApp() {
         },
 
         _statusPhotoBorderClasses(status) {
-            if (status === 'pending') return 'border border-gray-100 border-t-2 border-b-2 border-t-amber-300 border-b-amber-300';
-            if (status === 'verified') return 'border border-gray-100 border-t-2 border-b-2 border-t-green-300 border-b-green-300';
-            if (status === 'approved') return 'border border-gray-100 border-t-2 border-b-2 border-t-blue-300 border-b-blue-300';
-            if (status === 'download') return 'border border-gray-100 border-t-2 border-b-2 border-t-purple-300 border-b-purple-300';
-            return 'border border-gray-200';
+            if (status === 'pending') return 'ring-1 ring-amber-200';
+            if (status === 'verified') return 'ring-1 ring-emerald-200';
+            if (status === 'approved') return 'ring-1 ring-sky-200';
+            if (status === 'download') return 'ring-1 ring-violet-200';
+            return '';
         },
 
         _isPhotoFieldDef(fieldDef) {
@@ -1275,18 +1403,62 @@ function listApp() {
         _normalizePhotoPath(raw) {
             const v = String(raw || '').trim();
             if (!v) return { url: null, hasPath: false };
-            const low = v.toLowerCase();
-            const exts = ['.jpg', '.jpeg', '.png', '.webp'];
-            if (v.startsWith('/') || v.startsWith('http://') || v.startsWith('https://')) {
+
+            if (/^data:image\//i.test(v)) {
                 return { url: v, hasPath: true };
             }
-            if (low.includes('adarshimg/') || exts.some((ext) => low.endsWith(ext))) {
-                return { url: (window.MEDIA_URL || '/media/') + v, hasPath: true };
+
+            const lowRaw = v.toLowerCase();
+            if (lowRaw === 'not_found' || lowRaw.startsWith('pending:')) {
+                return { url: null, hasPath: true };
             }
-            if (v.includes('/') || v.includes('\\')) {
-                return { url: (window.MEDIA_URL || '/media/') + v.replace(/^[/\\]+/, ''), hasPath: true };
+
+            if (v.startsWith('http://') || v.startsWith('https://')) {
+                return { url: v, hasPath: true };
             }
-            return { url: null, hasPath: false };
+
+            const mediaBase = window.MEDIA_URL || '/media/';
+            const normalized = v.replace(/\\/g, '/');
+            const lower = normalized.toLowerCase();
+
+            const mediaMarker = '/media/';
+            const mediaIdx = lower.lastIndexOf(mediaMarker);
+            if (mediaIdx !== -1) {
+                const rel = normalized.slice(mediaIdx + mediaMarker.length).replace(/^\/+/, '');
+                return rel ? { url: mediaBase + rel, hasPath: true } : { url: null, hasPath: true };
+            }
+
+            if (normalized.startsWith('/')) {
+                return { url: normalized, hasPath: true };
+            }
+
+            const mediaRoots = [
+                'adarshimg/',
+                'card_media/',
+                'clients_imgs/',
+                'clients_imgs_cropped/',
+                'clients_imgs_failed/',
+                'staff_imgs/',
+                'images/',
+            ];
+            for (let i = 0; i < mediaRoots.length; i += 1) {
+                const root = mediaRoots[i];
+                const marker = '/' + root;
+                const idx = lower.indexOf(marker);
+                if (idx !== -1) {
+                    return { url: mediaBase + normalized.slice(idx + 1).replace(/^\/+/, ''), hasPath: true };
+                }
+                if (lower.startsWith(root)) {
+                    return { url: mediaBase + normalized.replace(/^\/+/, ''), hasPath: true };
+                }
+            }
+
+            const exts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.heif', '.hei'];
+            if (exts.some((ext) => lower.endsWith(ext)) || normalized.includes('/')) {
+                return { url: mediaBase + normalized.replace(/^\/+/, ''), hasPath: true };
+            }
+
+            return { url: null, hasPath: true };
         },
 
         _buildPhotoSlotsFromCard(card) {
@@ -1355,6 +1527,130 @@ function listApp() {
             return { slots, urls };
         },
 
+        _defaultImageFieldName() {
+            const defs = (this.tableFields || []).filter((f) => this._isPhotoFieldDef(f));
+            if (defs.length) {
+                return String(defs[0].name || 'PHOTO').trim() || 'PHOTO';
+            }
+            return 'PHOTO';
+        },
+
+        _getImageFormFields(sourceFieldData) {
+            const source = sourceFieldData || {};
+            const names = [];
+            const seen = {};
+
+            (this.tableFields || []).forEach((f) => {
+                if (!this._isPhotoFieldDef(f)) return;
+                const n = String(f.name || '').trim();
+                if (!n) return;
+                const lk = this._normalizeLookupKey(n);
+                if (!lk || seen[lk]) return;
+                seen[lk] = true;
+                names.push(n);
+            });
+
+            Object.keys(source).forEach((k) => {
+                const key = String(k || '').trim();
+                if (!key || !this._isImageLikeFieldName(key)) return;
+                const lk = this._normalizeLookupKey(key);
+                if (!lk || seen[lk]) return;
+                seen[lk] = true;
+                names.push(key);
+            });
+
+            if (!names.length) {
+                names.push(this._defaultImageFieldName());
+            }
+
+            return names;
+        },
+
+        _initImageForm(sourceFieldData, sourceCard) {
+            const fd = sourceFieldData || {};
+            const card = sourceCard || {};
+            this.imageFormFields = this._getImageFormFields(fd);
+
+            const imageFiles = {};
+            const imagePreviews = {};
+            const imageHasPath = {};
+
+            this.imageFormFields.forEach((fieldName) => {
+                const rawVal = this._getFieldValue(fd, [fieldName], '');
+                const normalized = this._normalizePhotoPath(rawVal);
+                imageFiles[fieldName] = null;
+                imagePreviews[fieldName] = normalized.url || null;
+                imageHasPath[fieldName] = !!normalized.hasPath;
+            });
+
+            const cardPhotoSlots = Array.isArray(card.photo_slots) ? card.photo_slots : [];
+            if (cardPhotoSlots.length) {
+                const slotsByField = {};
+                cardPhotoSlots.forEach((slot) => {
+                    if (!slot) return;
+                    const slotField = slot.field_name || slot.field || slot.name || '';
+                    const key = this._normalizeLookupKey(slotField);
+                    if (key && !slotsByField[key]) {
+                        slotsByField[key] = slot;
+                    }
+                });
+
+                this.imageFormFields.forEach((fieldName, idx) => {
+                    const key = this._normalizeLookupKey(fieldName);
+                    const slot = (key && slotsByField[key]) || cardPhotoSlots[idx] || null;
+                    if (!slot) return;
+                    const normalizedSlot = this._normalizePhotoPath(slot.url || '');
+                    imagePreviews[fieldName] = normalizedSlot.url || null;
+                    imageHasPath[fieldName] = normalizedSlot.hasPath || !!slot.has_path;
+                });
+            }
+
+            if (!Object.values(imagePreviews).some(Boolean) && card.photo_url) {
+                const normalizedPrimary = this._normalizePhotoPath(card.photo_url);
+                const first = this.imageFormFields[0];
+                if (first) {
+                    imagePreviews[first] = normalizedPrimary.url;
+                    imageHasPath[first] = normalizedPrimary.hasPath;
+                }
+            }
+
+            this.form.imageFiles = imageFiles;
+            this.form.imagePreviews = imagePreviews;
+            this.form.imageHasPath = imageHasPath;
+
+            if (!this.activeImageField || !this.imageFormFields.includes(this.activeImageField)) {
+                this.activeImageField = this.imageFormFields[0] || this._defaultImageFieldName();
+            }
+        },
+
+        _imagePreview(fieldName) {
+            return (this.form.imagePreviews || {})[fieldName] || null;
+        },
+
+        _imageHasPath(fieldName) {
+            return !!((this.form.imageHasPath || {})[fieldName]);
+        },
+
+        startImageSelection(fieldName) {
+            if (this.viewMode) return;
+            this.activeImageField = fieldName || this.activeImageField || this._defaultImageFieldName();
+            this.showImagePicker = true;
+        },
+
+        openCropForField(fieldName) {
+            if (this.viewMode) return;
+            const target = fieldName || this.activeImageField || this._defaultImageFieldName();
+            const currentPreview = this._imagePreview(target);
+            if (!currentPreview) return;
+
+            this.activeImageField = target;
+            this.cropTargetField = target;
+            this.cropSourceUrl = currentPreview;
+            this.cropSourceFile = null;
+            this.showCropModal = true;
+            this.$nextTick(() => this.initCropper());
+        },
+
         _bumpTabCounts(fromStatus, toStatus, n) {
             const count = Number(n || 0);
             if (!count || count < 1) return;
@@ -1371,10 +1667,9 @@ function listApp() {
             const el = document.querySelector(`[data-sid="${id}"]`);
             if (!el || el.hasAttribute(':class') || el.hasAttribute('x-bind:class')) return;
             const sel = this.selectedIds.includes(id);
-            el.classList.toggle('bg-indigo-50', sel);
-            el.classList.toggle('border-l-2', sel);
-            el.classList.toggle('border-l-brand-light', sel);
-            el.classList.toggle('hover:bg-gray-50', !sel);
+            el.classList.toggle('ring-2', sel);
+            el.classList.toggle('ring-indigo-300', sel);
+            el.classList.toggle('bg-indigo-100/55', sel);
             const cb = el.querySelector('input[type=checkbox]');
             if (cb) cb.checked = sel;
         },
@@ -1427,7 +1722,12 @@ function listApp() {
         _mapCardDetailToStudent(detail, fallbackId = null) {
             const data = detail || {};
             const fd = data.field_data || {};
-            const photoUrl = data.photo_url || null;
+            const photoMeta = this._buildPhotoSlotsFromCard({
+                field_data: fd,
+                photo_url: data.photo_url || null,
+                photo_urls: Array.isArray(data.photo_urls) ? data.photo_urls : [],
+            });
+            const photoUrl = (photoMeta.urls && photoMeta.urls.length) ? photoMeta.urls[0] : null;
             return {
                 id: Number(data.id || fallbackId || 0),
                 sr_no: 0,
@@ -1439,8 +1739,9 @@ function listApp() {
                 section: String(this._getFieldValue(fd, ['SECTION', 'section'])),
                 dob: String(data.dob || this._getFieldValue(fd, ['DOB', 'DATE OF BIRTH', 'DATE_OF_BIRTH', 'dob'])),
                 photo_url: photoUrl,
-                photo_urls: photoUrl ? [photoUrl] : [],
-                has_photo: !!photoUrl,
+                photo_urls: photoMeta.urls || [],
+                photo_slots: photoMeta.slots || [],
+                has_photo: !!(photoMeta.urls && photoMeta.urls.length),
                 status: String(data.status || LIST_TYPE),
                 field_data: fd,
                 display_fields: this._buildDisplayFieldsFromData(fd),
@@ -1448,7 +1749,7 @@ function listApp() {
         },
 
         async _fetchCardSnapshot(cardId) {
-            const res = await fetch('/app/api/card/' + cardId + '/detail/', {
+            const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'card/' + cardId + '/detail/'), {
                 method: 'GET',
                 headers: { 'X-CSRFToken': CSRF },
             });
@@ -1545,13 +1846,7 @@ function listApp() {
         _buildCardDiv(card) {
             const fd = card.field_data || {};
             const photoBorderClass = this._statusPhotoBorderClasses(card.status);
-            const noPhotoToneByStatus = {
-                pending: 'bg-amber-50 text-amber-400',
-                verified: 'bg-green-50 text-green-400',
-                approved: 'bg-blue-50 text-blue-400',
-                download: 'bg-purple-50 text-purple-400',
-            };
-            const noPhotoToneClass = noPhotoToneByStatus[card.status] || 'bg-gray-100 text-gray-300';
+            const noPhotoToneClass = 'bg-gray-100 text-gray-300';
 
             const photoMeta = this._buildPhotoSlotsFromCard(card);
             const photoSlots = photoMeta.slots || [];
@@ -1575,21 +1870,29 @@ function listApp() {
                 .join('');
 
             const classPill = (card.class_name || card.section)
-                ? `<span class="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-0.5 w-fit"><i class="fa-solid fa-graduation-cap text-[8px]"></i>${this._escHtml(card.class_name || '')}${card.class_name && card.section ? ' &bull; ' : ''}${this._escHtml(card.section || '')}</span>`
+                ? `<span class="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-700 bg-indigo-200/70 rounded-lg px-2 py-0.5 w-fit"><i class="fa-solid fa-graduation-cap text-[8px]"></i>${this._escHtml(card.class_name || '')}${card.class_name && card.section ? ' &bull; ' : ''}${this._escHtml(card.section || '')}</span>`
                 : '';
 
             const nameHtml = card.name
                 ? `<p class="font-bold text-gray-800 leading-tight" style="font-size:14px;">${this._escHtml(card.name)}</p>`
-                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;"></p>`;
+                : `<p class="font-semibold text-gray-300 leading-tight italic" style="font-size:13px;"> - </p>`;
 
             const cbHtml = !IS_VIEW_ONLY
                 ? `<label class="custom-checkbox custom-checkbox-lg dyn-cb" style="cursor:pointer;"><input type="checkbox"><span class="checkmark"></span></label>`
                 : '';
+            const canEditCurrentList = (!IS_VIEW_ONLY && CAN_EDIT && !(typeof POOL_EDIT_LOCKED !== 'undefined' && POOL_EDIT_LOCKED));
+            const editButtonHtml = canEditCurrentList
+                ? `<div class="mt-2.5"><button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-edit-card" data-edit-id="${card.id}">Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i></button></div>`
+                : '';
 
             const div = document.createElement('div');
             div.setAttribute('data-sid', String(card.id));
-            div.className = 'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all shadow-sm hover:shadow-md';
-            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:40% 1fr;">${fieldRows}</div></div><div class="mt-2.5"><button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-200/70 rounded-lg px-2.5 py-1 active:opacity-70 transition-all js-edit-card" data-edit-id="${card.id}">Edit <i class="fa-solid fa-pen-to-square text-[9px]"></i></button></div></div></div>`;
+            div.className = 'm-pop-card rounded-2xl overflow-hidden transition-all shadow-sm hover:shadow-md';
+            div.innerHTML = `<div class="flex gap-3 p-3"><div class="flex flex-col items-center gap-1.5 flex-shrink-0" style="width:56px;">${cbHtml}${photoHtml}</div><div class="flex-1 min-w-0 flex flex-col">${nameHtml}${classPill}<div class="mt-2"><div class="grid text-[11px] leading-snug" style="grid-template-columns:minmax(0, 42%) minmax(0, 58%);">${fieldRows}</div></div>${editButtonHtml}</div></div>`;
+
+            if (!IS_VIEW_ONLY && this.selectedIds.includes(Number(card.id))) {
+                div.classList.add('ring-2', 'ring-indigo-300', 'bg-indigo-100/55');
+            }
 
             const editButton = div.querySelector('.js-edit-card');
             if (editButton) {
@@ -1603,6 +1906,7 @@ function listApp() {
             if (!IS_VIEW_ONLY) {
                 const cb = div.querySelector('input[type=checkbox]');
                 if (cb) {
+                    cb.checked = this.selectedIds.includes(Number(card.id));
                     cb.addEventListener('change', (e) => { e.stopPropagation(); this.toggleSelect(card.id); });
                     cb.closest('label').addEventListener('click', e => e.stopPropagation());
                 }
@@ -1712,7 +2016,18 @@ function listApp() {
             this.loading = true;
             try {
                 const page = this.loadMorePage + 1;
-                const url = `/app/api/table/${TABLE_ID}/cards/?status=${LIST_TYPE}&per_page=50&page=${page}`;
+                const params = new URLSearchParams();
+                params.set('status', LIST_TYPE);
+                params.set('per_page', '50');
+                params.set('page', String(page));
+                const q = String(this.searchQuery || '').trim();
+                if (q) params.set('search', q);
+                if (LIST_TYPE === 'download') {
+                    if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
+                    if (this.filters.dateTo) params.set('to', this.filters.dateTo);
+                }
+
+                const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/cards/`) + `?${params.toString()}`;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const json = await res.json();
                 if (!json.success) { this.showToast('Failed to load more', 'error'); this.loading = false; return; }
@@ -1746,6 +2061,7 @@ function listApp() {
                             photo_slots: photoMeta.slots || [],
                             has_photo: !!(photoMeta.urls && photoMeta.urls.length),
                             status: c.status,
+                            downloaded_date: c.downloaded_date || '',
                             field_data: f,
                             display_fields: this._buildDisplayFieldsFromData(f),
                         };
@@ -1785,25 +2101,52 @@ function listApp() {
             var _ac = new AbortController();
             setTimeout(function() { _ac.abort(); }, 120000);
             try {
-                const res = await fetch('/app/api/table/' + TABLE_ID + '/bulk-status/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-                    body: JSON.stringify({ card_ids: this.selectedIds, status: status }),
-                    signal: _ac.signal,
-                });
-                if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
-                    this.showToast('Server error (' + res.status + ')', 'error');
-                    this.loading = false;
-                    return;
+                const chunks = [];
+                for (let i = 0; i < actedIds.length; i += 500) {
+                    chunks.push(actedIds.slice(i, i + 500));
                 }
-                const data = await res.json();
-                if (data.success) {
-                    this.showToast(data.message || (actedIds.length + ' ' + label), 'success');
 
-                    const skippedSet = new Set((data.skipped_ids || []).map(Number));
-                    const movedIds = actedIds.filter(id => !skippedSet.has(Number(id)));
-                    keepSelected = actedIds.filter(id => skippedSet.has(Number(id)));
+                const processedSet = new Set();
+                const skippedSet = new Set();
+                let firstErrorMessage = '';
+
+                for (let i = 0; i < chunks.length; i += 1) {
+                    const batch = chunks[i];
+                    const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/bulk-status/'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+                        body: JSON.stringify({ card_ids: batch, status: status }),
+                        signal: _ac.signal,
+                    });
+
+                    if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
+                        firstErrorMessage = 'Server error (' + res.status + ')';
+                        break;
+                    }
+
+                    const data = await res.json().catch(() => ({}));
+                    if (!data.success) {
+                        firstErrorMessage = data.message || 'Action failed';
+                        break;
+                    }
+
+                    batch.forEach((id) => processedSet.add(Number(id)));
+                    (data.skipped_ids || []).forEach((id) => skippedSet.add(Number(id)));
+                }
+
+                if (!processedSet.size) {
+                    this.showToast(firstErrorMessage || 'Action failed', 'error');
+                } else {
+                    const processedIds = actedIds.filter((id) => processedSet.has(Number(id)));
+                    const movedIds = processedIds.filter((id) => !skippedSet.has(Number(id)));
+                    keepSelected = actedIds.filter((id) => !processedSet.has(Number(id)) || skippedSet.has(Number(id)));
                     const movedCount = movedIds.length;
+
+                    if (firstErrorMessage) {
+                        this.showToast(`${movedCount} ${label}. Some records were not processed.`, 'info');
+                    } else {
+                        this.showToast(`${movedCount} ${label}`, 'success');
+                    }
 
                     // Update top badge counts immediately without waiting for reload.
                     if (status !== LIST_TYPE && movedCount > 0) {
@@ -1814,12 +2157,11 @@ function listApp() {
                     if (status !== LIST_TYPE && movedCount > 0) {
                         this._removeCardsFromCurrentList(movedIds);
                     }
-                } else {
-                    this.showToast(data.message || 'Action failed', 'error');
                 }
             } catch (e) { this.showToast(e.name === 'AbortError' ? 'Request timed out' : 'Network error', 'error'); }
             this.loading = false;
             this.selectedIds = keepSelected;
+            if (!this.selectedIds.length) this.selectAll = false;
             document.querySelectorAll('[data-sid]').forEach(el => {
                 this._updateRowClass(Number(el.getAttribute('data-sid')));
             });
@@ -1836,8 +2178,7 @@ function listApp() {
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
             this._initDynamicForm(fd, false);
-            this.form.photoFile = null;
-            this.form.photoPreview = (student && student.photo_url) || null;
+            this._initImageForm(fd, student || {});
         },
         async openViewById(cardId) {
             const viewId = Number(cardId);
@@ -1860,6 +2201,11 @@ function listApp() {
             this.showAddForm = true;
         },
         async openEditById(cardId) {
+            const isEditLockedForList = IS_VIEW_ONLY || !CAN_EDIT || (typeof POOL_EDIT_LOCKED !== 'undefined' && POOL_EDIT_LOCKED);
+            if (isEditLockedForList) {
+                this.showToast('Edit is not allowed in this list', 'error');
+                return;
+            }
             const editId = Number(cardId);
             let student = this.studentsData.find(s => Number(s.id) === editId);
             if (!student) { this.showToast('Card not found', 'error'); return; }
@@ -1880,6 +2226,11 @@ function listApp() {
             this.showAddForm = true;
         },
         async editSelected() {
+            const isEditLockedForList = IS_VIEW_ONLY || !CAN_EDIT || (typeof POOL_EDIT_LOCKED !== 'undefined' && POOL_EDIT_LOCKED);
+            if (isEditLockedForList) {
+                this.showToast('Edit is not allowed in this list', 'error');
+                return;
+            }
             if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
             return this.openEditById(this.selectedIds[0]);
         },
@@ -1895,25 +2246,29 @@ function listApp() {
         resetForm() {
             this.form = {
                 dynamicValues: {},
-                photoFile: null,
-                photoPreview: null,
+                imageFiles: {},
+                imagePreviews: {},
+                imageHasPath: {},
             };
             this._initDynamicForm({});
+            this._initImageForm({}, {});
             this.showImagePicker = false;
         },
-        openImagePicker() {
+        openImagePicker(fieldName) {
             if (this.viewMode) return;
+            this.activeImageField = fieldName || this.activeImageField || this._defaultImageFieldName();
             this.showImagePicker = !this.showImagePicker;
         },
         takePhoto() {
             if (this.viewMode) return;
-            if (this.editMode && this.editingId) {
+            const hasSingleImageField = (this.imageFormFields || []).length <= 1;
+            if (this.editMode && this.editingId && hasSingleImageField) {
                 // Redirect to full camera.html  same as top-bar camera button
                 sessionStorage.setItem('cam_return_edit', String(this.editingId));
                 sessionStorage.setItem('cam_return_url', window.location.href);
                 window.location.href = '/app/camera/' + TABLE_ID + '/' + this.editingId + '/';
             } else {
-                // Add-new mode: use native camera input (no card_id yet)
+                // Add mode and multi-image edit mode use inline picker for target field.
                 if (this.$refs.cameraInput) this.$refs.cameraInput.click();
                 this.showImagePicker = false;
             }
@@ -1928,6 +2283,7 @@ function listApp() {
             if (!file) return;
             if (!file.type.startsWith('image/')) { this.showToast('Please select an image file', 'error'); return; }
             if (file.size > 10 * 1024 * 1024) { this.showToast('Image must be less than 10MB', 'error'); return; }
+            this.cropTargetField = this.activeImageField || this._defaultImageFieldName();
             this.cropSourceFile = file;
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -1959,6 +2315,7 @@ function listApp() {
         },
         cropAndUse() {
             if (!this.cropperInstance) { this.skipCrop(); return; }
+            const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
             const canvas = this.cropperInstance.getCroppedCanvas({
                 width: 900,
                 height: 1200,
@@ -1971,17 +2328,33 @@ function listApp() {
                 if (!blob) { this.skipCrop(); return; }
                 const fileName = (this.cropSourceFile && this.cropSourceFile.name) ? this.cropSourceFile.name : 'photo.jpg';
                 const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
-                this.form.photoFile = croppedFile;
+                if (!this.form.imageFiles) this.form.imageFiles = {};
+                if (!this.form.imagePreviews) this.form.imagePreviews = {};
+                if (!this.form.imageHasPath) this.form.imageHasPath = {};
+                this.form.imageFiles[targetField] = croppedFile;
                 const reader = new FileReader();
-                reader.onload = (e) => { this.form.photoPreview = e.target.result; };
+                reader.onload = (e) => {
+                    this.form.imagePreviews[targetField] = e.target.result;
+                    this.form.imageHasPath[targetField] = true;
+                };
                 reader.readAsDataURL(croppedFile);
                 this.closeCropModal();
             }, 'image/jpeg', 0.96);
         },
         skipCrop() {
             // Use original file without cropping
-            this.form.photoFile = this.cropSourceFile;
-            this.form.photoPreview = this.cropSourceUrl;
+            const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
+            if (!this.form.imageFiles) this.form.imageFiles = {};
+            if (!this.form.imagePreviews) this.form.imagePreviews = {};
+            if (!this.form.imageHasPath) this.form.imageHasPath = {};
+
+            if (this.cropSourceFile) {
+                this.form.imageFiles[targetField] = this.cropSourceFile;
+            }
+            if (this.cropSourceUrl) {
+                this.form.imagePreviews[targetField] = this.cropSourceUrl;
+                this.form.imageHasPath[targetField] = true;
+            }
             this.closeCropModal();
         },
         closeCropModal() {
@@ -1989,6 +2362,7 @@ function listApp() {
             this.showCropModal = false;
             this.cropSourceUrl = null;
             this.cropSourceFile = null;
+            this.cropTargetField = null;
         },
         async submitAddForm() {
             if (this.viewMode) {
@@ -1997,8 +2371,8 @@ function listApp() {
             }
             this.loading = true;
             const url = this.editMode
-                ? '/app/api/table/' + TABLE_ID + '/card/' + this.editingId + '/update/'
-                : '/app/api/table/' + TABLE_ID + '/card/add/';
+                ? buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/' + this.editingId + '/update/')
+                : buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/add/');
             const fd = new FormData();
             const fieldData = {};
             Object.entries(this.form.dynamicValues || {}).forEach(([key, value]) => {
@@ -2029,7 +2403,17 @@ function listApp() {
             }
 
             fd.append('field_data', JSON.stringify(fieldData));
-            if (this.form.photoFile) fd.append('photo', this.form.photoFile);
+            let legacyPhotoFile = null;
+            Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
+                if (!fileObj) return;
+                fd.append('image_' + fieldName, fileObj);
+                if (!legacyPhotoFile && this._isImageLikeFieldName(fieldName)) {
+                    legacyPhotoFile = fileObj;
+                }
+            });
+            if (legacyPhotoFile) {
+                fd.append('photo', legacyPhotoFile);
+            }
             try {
                 var _ac2 = new AbortController();
                 setTimeout(function() { _ac2.abort(); }, 120000);
@@ -2061,6 +2445,21 @@ function listApp() {
                                 if (idx > -1) {
                                     const existing = this.studentsData[idx];
                                     const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
+                                    const fallbackSlots = (this.imageFormFields || []).map((fieldName, slotIdx) => {
+                                        const previewUrl = (this.form.imagePreviews || {})[fieldName]
+                                            || ((existing.photo_slots || [])[slotIdx] || {}).url
+                                            || null;
+                                        const hasPath = !!(
+                                            (this.form.imageHasPath || {})[fieldName]
+                                            || ((existing.photo_slots || [])[slotIdx] || {}).has_path
+                                            || previewUrl
+                                        );
+                                        return {
+                                            url: previewUrl,
+                                            has_path: hasPath,
+                                        };
+                                    });
+                                    const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
                                     const fallbackCard = Object.assign({}, existing, {
                                         name: summary.name,
                                         roll_no: summary.roll_no,
@@ -2069,6 +2468,10 @@ function listApp() {
                                         class_name: summary.class_name,
                                         section: summary.section,
                                         dob: summary.dob,
+                                        photo_url: fallbackUrls.length ? fallbackUrls[0] : existing.photo_url,
+                                        photo_urls: fallbackUrls.length ? fallbackUrls : (existing.photo_urls || []),
+                                        photo_slots: fallbackSlots.length ? fallbackSlots : (existing.photo_slots || []),
+                                        has_photo: fallbackUrls.length ? true : !!(existing.has_photo),
                                         field_data: mergedFieldData,
                                         display_fields: this._buildDisplayFieldsFromData(mergedFieldData),
                                     });
@@ -2077,6 +2480,11 @@ function listApp() {
                             } else if (LIST_TYPE === 'pending' && cardId) {
                                 const fallbackSummary = this._summarizeCardFromFieldData(fieldData);
                                 const fallbackFieldData = Object.assign({}, fieldData);
+                                const fallbackSlots = (this.imageFormFields || []).map((fieldName) => ({
+                                    url: (this.form.imagePreviews || {})[fieldName] || null,
+                                    has_path: !!((this.form.imageHasPath || {})[fieldName]),
+                                }));
+                                const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
                                 const fallbackCard = {
                                     id: Number(cardId),
                                     sr_no: this.studentsData.length + 1,
@@ -2087,9 +2495,10 @@ function listApp() {
                                     class_name: fallbackSummary.class_name,
                                     section: fallbackSummary.section,
                                     dob: fallbackSummary.dob,
-                                    photo_url: this.form.photoPreview || null,
-                                    photo_urls: this.form.photoPreview ? [this.form.photoPreview] : [],
-                                    has_photo: !!this.form.photoPreview,
+                                    photo_url: fallbackUrls.length ? fallbackUrls[0] : null,
+                                    photo_urls: fallbackUrls,
+                                    photo_slots: fallbackSlots,
+                                    has_photo: !!fallbackUrls.length,
                                     status: 'pending',
                                     field_data: fallbackFieldData,
                                     display_fields: this._buildDisplayFieldsFromData(fallbackFieldData),
@@ -2182,7 +2591,7 @@ function listApp() {
                         if (this.downloadModal.abortController?.signal?.aborted) {
                             throw new Error('AbortError');
                         }
-                        const statusRes = await fetch('/panel/api/export/status/' + taskId + '/', {
+                        const statusRes = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'export/status/' + taskId + '/'), {
                             headers: { 'X-CSRFToken': CSRF },
                             signal: this.downloadModal.abortController?.signal,
                         });
@@ -2213,7 +2622,7 @@ function listApp() {
                 };
 
                 this.updateDownloadProgress(10, 'Sending request...');
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-pdf-async/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/download-pdf-async/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -2273,7 +2682,7 @@ function listApp() {
 
             try {
                 this.updateDownloadProgress(10, 'Preparing images...');
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-images/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/download-images/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -2337,7 +2746,7 @@ function listApp() {
             if (LIST_TYPE !== 'approved' || !ids.length) return;
 
             try {
-                const res = await fetch('/app/api/table/' + TABLE_ID + '/bulk-status/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/bulk-status/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: ids, status: 'download' }),
@@ -2407,7 +2816,7 @@ function listApp() {
             }
 
             try {
-                const res = await fetch('/panel/api/table/' + TABLE_ID + '/cards/download-xlsx/', {
+                const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.panelApi, 'table/' + TABLE_ID + '/cards/download-xlsx/'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                     body: JSON.stringify({ card_ids: idsToDownload, status: LIST_TYPE }),
@@ -2453,7 +2862,7 @@ function listApp() {
             let success = 0, failed = 0;
             for (const id of requestedIds) {
                 try {
-                    const res = await fetch('/app/api/card/' + id + '/delete/', {
+                    const res = await fetch(buildEndpoint(MOBILE_ENDPOINTS.appApi, 'card/' + id + '/delete/'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
                         body: JSON.stringify({ permanent: true }),

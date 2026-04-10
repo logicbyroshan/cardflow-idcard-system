@@ -16,6 +16,29 @@
   let _activeModalTaskId = null;
   let _deleteNowCode = '';
 
+  function _sanitizeCodeInput(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
+  function _renderCodeBoxes(container, value) {
+    if (!container) return;
+    const clean = _sanitizeCodeInput(value);
+    const boxes = container.querySelectorAll('.confirm-code-box');
+    boxes.forEach(function (box, idx) {
+      const ch = clean[idx] || '';
+      box.textContent = ch;
+      box.classList.toggle('is-filled', !!ch);
+      box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+    });
+  }
+
+  function _setCodeWrapState(wrapEl, isMatch, isComplete) {
+    if (!wrapEl) return;
+    wrapEl.classList.remove('is-valid', 'is-invalid');
+    if (!isComplete) return;
+    wrapEl.classList.add(isMatch ? 'is-valid' : 'is-invalid');
+  }
+
   /*  Init  */
   document.addEventListener('DOMContentLoaded', function () {
     // Auto-open backups tab if URL contains ?tab=backups
@@ -23,6 +46,24 @@
     if (params.get('tab') === 'backups' && typeof switchTab === 'function') {
       switchTab('backups');
       loadBackups();
+    }
+
+    const deleteNowInput = document.getElementById('deleteNowCode');
+    const deleteNowBoxes = document.getElementById('deleteNowCodeBoxes');
+    const deleteNowWrap = document.getElementById('deleteNowCodeWrap');
+    if (deleteNowInput) {
+      _renderCodeBoxes(deleteNowBoxes, deleteNowInput.value);
+      deleteNowInput.addEventListener('input', function () {
+        this.value = _sanitizeCodeInput(this.value);
+        _renderCodeBoxes(deleteNowBoxes, this.value);
+        const isComplete = this.value.length === 10;
+        const isMatch = isComplete && this.value === _deleteNowCode;
+        _setCodeWrapState(deleteNowWrap, isMatch, isComplete);
+        const errEl = document.getElementById('deleteNowError');
+        if (errEl && this.value.length < 10) {
+          errEl.style.display = 'none';
+        }
+      });
     }
   });
 
@@ -44,26 +85,45 @@
   }
 
   /*  Load backups  */
-  window.loadBackups = function () {
+  window.loadBackups = async function (options) {
     const container = document.getElementById('backupsList');
     if (!container) return;
 
-    fetch('/api/backup/list/')
-      .then(r => r.json())
-      .then(data => {
-        if (!data.success) return;
-        _backups = data.backups || [];
-        _renderBackups();
+    const cfg = (typeof options === 'boolean')
+      ? { showSkeleton: options }
+      : (options || {});
+    const showSkeleton = cfg.showSkeleton !== false;
+    const skeletonStart = showSkeleton ? _renderBackupsSkeleton(container, 3) : null;
 
-        // If any backup is active, keep polling
-        const hasActive = _backups.some(b => b.status === 'processing' || b.status === 'pending');
-        if (hasActive) _startPolling();
-        else _stopPolling();
-      })
-      .catch(err => {
-        container.innerHTML = '<div class="backup-empty-state"><p>Failed to load backups.</p></div>';
-        console.error('loadBackups error', err);
-      });
+    try {
+      const response = await fetch('/api/backup/list/');
+      const data = await response.json();
+
+      if (!data.success) {
+        if (skeletonStart != null && typeof waitForMinDelay === 'function') {
+          await waitForMinDelay(skeletonStart);
+        }
+        return;
+      }
+
+      if (skeletonStart != null && typeof waitForMinDelay === 'function') {
+        await waitForMinDelay(skeletonStart);
+      }
+
+      _backups = data.backups || [];
+      _renderBackups();
+
+      // If any backup is active, keep polling
+      const hasActive = _backups.some(b => b.status === 'processing' || b.status === 'pending');
+      if (hasActive) _startPolling();
+      else _stopPolling();
+    } catch (err) {
+      if (skeletonStart != null && typeof waitForMinDelay === 'function') {
+        await waitForMinDelay(skeletonStart);
+      }
+      container.innerHTML = '<div class="backup-empty-state"><p>Failed to load backups.</p></div>';
+      console.error('loadBackups error', err);
+    }
   };
 
   /*  Render  */
@@ -81,6 +141,24 @@
     }
 
     container.innerHTML = _backups.map(b => _renderCard(b)).join('');
+  }
+
+  function _renderBackupsSkeleton(container, rows) {
+    const count = Math.max(2, Number(rows || 3));
+    const html = Array.from({ length: count }, function () {
+      return '<div class="backup-skeleton-item" aria-hidden="true">' +
+        '<div class="backup-skeleton-left">' +
+          '<div class="backup-skeleton-block backup-skeleton-icon"></div>' +
+          '<div>' +
+            '<div class="backup-skeleton-block backup-skeleton-title"></div>' +
+            '<div class="backup-skeleton-block backup-skeleton-subtitle"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="backup-skeleton-block backup-skeleton-btn"></div>' +
+      '</div>';
+    }).join('');
+    container.innerHTML = html;
+    return Date.now();
   }
 
   function _renderCard(b) {
@@ -167,26 +245,42 @@
     const freshCode = (typeof ConfirmationCode !== 'undefined') ? ConfirmationCode.generate() : String(Math.floor(1000000000 + Math.random() * 9000000000));
     _deleteNowCode = freshCode;
     document.getElementById('deleteNowCode').value = '';
+    _renderCodeBoxes(document.getElementById('deleteNowCodeBoxes'), '');
+    _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), false, false);
     document.getElementById('deleteNowCodeDisplay').textContent = freshCode;
     document.getElementById('deleteNowError').style.display = 'none';
-    document.getElementById('deleteNowModal').style.display = 'flex';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+      window.AdarshModalBridge.open('deleteNowModal', { overlayClass: 'show', focusSelector: '#deleteNowCode' });
+    } else {
+      document.getElementById('deleteNowModal').style.display = 'flex';
+    }
     setTimeout(() => document.getElementById('deleteNowCode').focus(), 100);
   };
 
   window.closeDeleteNowModal = function () {
-    document.getElementById('deleteNowModal').style.display = 'none';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+      window.AdarshModalBridge.close('deleteNowModal', { overlayClass: 'show' });
+    } else {
+      document.getElementById('deleteNowModal').style.display = 'none';
+    }
     _activeModalTaskId = null;
+    _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), false, false);
   };
 
   window.submitDeleteNow = function () {
-    const entered = document.getElementById('deleteNowCode').value.trim();
+    const entered = _sanitizeCodeInput(document.getElementById('deleteNowCode').value);
+    document.getElementById('deleteNowCode').value = entered;
+    _renderCodeBoxes(document.getElementById('deleteNowCodeBoxes'), entered);
     const errEl = document.getElementById('deleteNowError');
 
     if (entered !== _deleteNowCode) {
+      _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), false, entered.length === 10);
       errEl.textContent = 'Incorrect code. Please enter the code shown above.';
       errEl.style.display = 'block';
       return;
     }
+
+    _setCodeWrapState(document.getElementById('deleteNowCodeWrap'), true, true);
 
     const btn = document.getElementById('deleteNowBtn');
     btn.disabled = true;
@@ -221,7 +315,7 @@
   /*  Polling  */
   function _startPolling() {
     if (_pollTimer) return;
-    _pollTimer = setInterval(loadBackups, 3000);
+    _pollTimer = setInterval(function () { loadBackups({ showSkeleton: false }); }, 3000);
   }
 
   function _stopPolling() {

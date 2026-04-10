@@ -14,7 +14,11 @@ from django.core.cache import cache
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.models import Group
 from django.conf import settings
-from core.utils.threaded_email import send_mail_async
+from core.utils.threaded_email import send_html_email_async
+from core.utils.email_utils import (
+    get_password_reset_otp_email_template,
+    get_security_alert_email_template,
+)
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -65,6 +69,16 @@ AUTH_FAIL_NOTIFY_COOLDOWN_SECONDS = int(
 MAX_CONCURRENT_SESSIONS = int(os.getenv('MAX_CONCURRENT_SESSIONS', '5'))
 DEV_LOG_OTP = os.getenv('DEV_LOG_OTP', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
 
+_ROLE_SURFACE_LIMITS = {
+    # One desktop + one mobile for standard staff/client roles.
+    'client': {'desktop': 1, 'mobile': 1},
+    'client_staff': {'desktop': 1, 'mobile': 1},
+    'admin_staff': {'desktop': 1, 'mobile': 1},
+    # Elevated allowance for privileged roles.
+    'super_admin': {'desktop': 3, 'mobile': 3},
+    'pro_user': {'desktop': 10, 'mobile': 10},
+}
+
 
 def _normalize_identifier(value: str) -> str:
     """Normalize user-provided identifiers used for lookups/cache keys."""
@@ -109,6 +123,40 @@ class AuthService:
     @staticmethod
     def max_concurrent_sessions() -> int:
         return max(1, MAX_CONCURRENT_SESSIONS)
+
+    @staticmethod
+    def normalize_login_surface(surface: str) -> str:
+        s = str(surface or '').strip().lower()
+        return 'mobile' if s == 'mobile' else 'desktop'
+
+    @staticmethod
+    def session_surface_from_payload(session_data: dict) -> str:
+        data = session_data or {}
+        explicit = AuthService.normalize_login_surface(data.get('_auth_login_surface'))
+        if explicit == 'mobile':
+            return 'mobile'
+        # Backward compatibility for sessions created before _auth_login_surface.
+        if bool(data.get('mobile_auth_ok')):
+            return 'mobile'
+        return 'desktop'
+
+    @staticmethod
+    def role_surface_limits(user_or_role) -> dict:
+        role = ''
+        if isinstance(user_or_role, str):
+            role = user_or_role.strip().lower()
+        else:
+            role = str(getattr(user_or_role, 'role', '') or '').strip().lower()
+
+        limits = _ROLE_SURFACE_LIMITS.get(role)
+        if limits:
+            return {
+                'desktop': max(1, int(limits.get('desktop', 1))),
+                'mobile': max(1, int(limits.get('mobile', 1))),
+            }
+
+        fallback = max(1, MAX_CONCURRENT_SESSIONS)
+        return {'desktop': fallback, 'mobile': fallback}
 
     @staticmethod
     def count_active_sessions_for_user(user_id, *, exclude_session_key: str = '', stop_after=None) -> int:
@@ -172,6 +220,7 @@ class AuthService:
         active = 0
         has_different_browser = False
         known_browser_fingerprints = set()
+        surface_counts = {'desktop': 0, 'mobile': 0}
         current_fp = str(browser_fingerprint or '').strip()
 
         for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
@@ -187,6 +236,8 @@ class AuthService:
                 continue
 
             active += 1
+            surface = AuthService.session_surface_from_payload(data)
+            surface_counts[surface] = surface_counts.get(surface, 0) + 1
             fp = str(data.get('_auth_browser_fp') or '').strip()
             if fp:
                 known_browser_fingerprints.add(fp)
@@ -200,6 +251,10 @@ class AuthService:
             'count': active,
             'has_different_browser': has_different_browser,
             'known_browser_fingerprints': sorted(known_browser_fingerprints),
+            'surface_counts': {
+                'desktop': int(surface_counts.get('desktop', 0) or 0),
+                'mobile': int(surface_counts.get('mobile', 0) or 0),
+            },
         }
 
     @staticmethod
@@ -303,17 +358,15 @@ class AuthService:
             return
 
         try:
-            subject = 'Security Alert: Multiple failed login attempts'
-            message = (
-                f'Hi {user.get_full_name() or user.username},\n\n'
-                'We detected multiple failed login attempts for your account.\n'
-                f'Attempts observed: {attempts}\n\n'
-                'If this was not you, please change your password immediately and contact support.\n\n'
-                'Adarsh Admin Security'
+            subject = '🚨 Security Alert: Multiple failed login attempts'
+            html_content, plain_content = get_security_alert_email_template(
+                name=user.get_full_name() or user.username,
+                attempts=attempts,
             )
-            send_mail_async(
+            send_html_email_async(
                 subject=subject,
-                message=message,
+                plain_content=plain_content,
+                html_content=html_content,
                 from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
                 recipient_list=[user.email],
                 email_type='security_alert',
@@ -328,8 +381,8 @@ class AuthService:
             return
         try:
             cache.delete(_auth_fail_cache_key(identifier))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('Failed to clear login-failure cache for identifier=%s: %s', identifier, exc)
 
     @staticmethod
     def authenticate_user(identifier, password, role=None):
@@ -520,68 +573,11 @@ class OTPService:
                 # Production: Send branded HTML OTP email
                 from core.utils.threaded_email import send_html_email_with_callback
                 user_name = user.get_full_name() or user.username
-
-                html_content = f'''<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f4f7fa;">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f7fa;padding:40px 20px;">
-<tr><td align="center">
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden;">
-  <!-- Header -->
-  <tr>
-    <td style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px 40px;text-align:center;">
-      <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:600;">Password Reset</h1>
-      <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Adarsh Admin Panel</p>
-    </td>
-  </tr>
-  <!-- Body -->
-  <tr>
-    <td style="padding:36px 40px;">
-      <p style="color:#333;font-size:15px;margin:0 0 16px;line-height:1.6;">
-        Hello <strong style="color:#667eea;">{user_name}</strong>,
-      </p>
-      <p style="color:#555;font-size:14px;margin:0 0 24px;line-height:1.6;">
-        We received a request to reset your password. Use the OTP below to proceed. This code is valid for <strong>{OTP_EXPIRY_MINUTES} minutes</strong>.
-      </p>
-      <!-- OTP Box -->
-      <div style="text-align:center;margin:28px 0;">
-        <div style="display:inline-block;background:linear-gradient(135deg,#f8f9ff 0%,#f0f4ff 100%);border:2px dashed #667eea;border-radius:12px;padding:20px 40px;">
-          <span style="font-size:36px;font-weight:700;letter-spacing:12px;color:#333;font-family:'Courier New',monospace;">{otp}</span>
-        </div>
-      </div>
-      <p style="color:#888;font-size:13px;text-align:center;margin:0 0 24px;">
-        Enter this code on the password reset page
-      </p>
-      <!-- Security Notice -->
-      <div style="background:#fff8e6;border-radius:10px;padding:14px 18px;border-left:4px solid #f5a623;">
-        <p style="color:#856404;font-size:13px;margin:0;line-height:1.5;">
-          <strong>&#9888;&#65039; Security:</strong> If you did not request this reset, ignore this email. Your password will remain unchanged.
-        </p>
-      </div>
-    </td>
-  </tr>
-  <!-- Footer -->
-  <tr>
-    <td style="background-color:#f8f9fa;padding:20px 40px;text-align:center;border-top:1px solid #eee;">
-      <p style="color:#999;font-size:12px;margin:0 0 6px;">This is an automated message. Please do not reply.</p>
-      <p style="color:#999;font-size:11px;margin:0;">&copy; 2026 Adarsh Admin. All rights reserved.</p>
-    </td>
-  </tr>
-</table>
-</td></tr></table>
-</body></html>'''
-
-                plain_content = f'''Hello {user_name},
-
-Your OTP for password reset is: {otp}
-
-This OTP is valid for {OTP_EXPIRY_MINUTES} minutes.
-
-If you did not request this, please ignore this email.
-
-Thanks,
-Adarsh Admin Team'''
+                html_content, plain_content = get_password_reset_otp_email_template(
+                    user_name=user_name,
+                    otp=otp,
+                    expiry_minutes=OTP_EXPIRY_MINUTES,
+                )
 
                 def _mark_sent():
                     EmailLog.objects.filter(pk=log.pk).update(
@@ -631,7 +627,7 @@ Adarsh Admin Team'''
                     error_message=str(e),
                 )
             except Exception:
-                pass
+                logger.debug('Failed to persist OTP failure EmailLog for %s', email)
             return {
                 'success': False,
                 'message': 'An error occurred. Please try again.'

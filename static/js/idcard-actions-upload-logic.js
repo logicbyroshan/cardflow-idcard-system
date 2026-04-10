@@ -223,6 +223,8 @@ function initXlsxUpload() {
     //  UPLOAD button (Step 2  send to server) 
     if (confirmUploadModal) {
         var _uploadXhr = null; // Store current XHR for cancel support
+        var _uploadTaskId = null;
+        var _taskPollTimer = null;
         
         confirmUploadModal.addEventListener('click', async function() {
             if (!_us.pendingUploadFile) {
@@ -251,6 +253,18 @@ function initXlsxUpload() {
             if (typeof showBlockingOverlay === 'function') {
                 showBlockingOverlay('Uploading data...', function() {
                     if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
+                    if (_taskPollTimer) { clearTimeout(_taskPollTimer); _taskPollTimer = null; }
+                    if (_uploadTaskId) {
+                        fetch('/api/task-cancel/' + _uploadTaskId + '/', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        }).catch(function(err) {
+                            console.error('Cancel upload task failed:', err);
+                        });
+                    }
                     resetUploadState();
                     if (typeof showToast === 'function') showToast('Upload cancelled', 'warning');
                 });
@@ -280,6 +294,90 @@ function initXlsxUpload() {
                 formData.append('unified_zip_count', unifiedZips.length.toString());
             }
 
+            function _buildBulkUploadResultMessage(taskData) {
+                var result = (taskData && taskData.result) ? taskData.result : {};
+                var cards = Number(result.cards_created);
+                var photos = Number(result.photos_matched);
+                var msg = [];
+                if (isFinite(cards) && cards >= 0) msg.push('Created ' + cards + ' cards');
+                if (isFinite(photos) && photos >= 0) msg.push(photos + ' photos matched');
+                if (!msg.length && taskData && taskData.message) return taskData.message;
+                return msg.length ? msg.join(' | ') : 'Bulk upload completed successfully';
+            }
+
+            function _pollBulkUploadTask(taskId) {
+                function _pollOnce() {
+                    fetch('/api/task-status/' + taskId + '/', {
+                        headers: {
+                            'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(function(r) { return r.json(); })
+                        .then(function(taskData) {
+                            if (!taskData || !taskData.success) {
+                                if (typeof showToast === 'function') showToast((taskData && taskData.message) || 'Could not read upload status.', false);
+                                resetUploadState();
+                                return;
+                            }
+
+                            if (taskData.status === 'completed') {
+                                if (progressBar) { progressBar.style.width = '100%'; progressBar.classList.remove('processing'); }
+                                if (percentageText) percentageText.textContent = '100%';
+                                if (sizeText) sizeText.textContent = 'Upload complete';
+                                if (timeText) timeText.textContent = 'Complete!';
+                                if (typeof hideBlockingOverlay === 'function') hideBlockingOverlay();
+                                _uploadTaskId = null;
+                                _taskPollTimer = null;
+
+                                var successMessage = _buildBulkUploadResultMessage(taskData);
+                                setTimeout(function() {
+                                    closeUploadModalFn();
+                                    if (typeof showToast === 'function') showToast(successMessage, true);
+                                    setTimeout(function() {
+                                        if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
+                                            window.IDCardApp.refreshCardTable();
+                                        } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
+                                            window.IDCardPage.navigateStatusNoReload((typeof CURRENT_STATUS !== 'undefined' && CURRENT_STATUS) ? CURRENT_STATUS : 'pending');
+                                        } else {
+                                            console.warn('upload completion fallback skipped: no refresh bridge available');
+                                        }
+                                    }, 1500);
+                                }, 400);
+                                return;
+                            }
+
+                            if (taskData.status === 'failed' || taskData.status === 'cancelled') {
+                                var failMsg = taskData.error_message || 'Upload failed while processing data.';
+                                if (typeof showToast === 'function') showToast(failMsg, false);
+                                resetUploadState();
+                                return;
+                            }
+
+                            var backendPct = Number(taskData.progress_percentage || 0);
+                            if (!isFinite(backendPct)) backendPct = 0;
+                            backendPct = Math.max(0, Math.min(100, backendPct));
+                            var displayPct = Math.min(99, 65 + Math.round((backendPct * 35) / 100));
+
+                            if (progressBar) { progressBar.style.width = displayPct + '%'; progressBar.classList.add('processing'); }
+                            if (percentageText) percentageText.textContent = displayPct + '%';
+                            if (sizeText) sizeText.textContent = 'Upload complete';
+                            if (timeText) timeText.textContent = 'Processing rows: ' + (taskData.progress || 0) + '/' + (taskData.total || '?');
+                            if (typeof updateBlockingOverlay === 'function') {
+                                updateBlockingOverlay(displayPct, 'Processing... ' + displayPct + '%');
+                            }
+
+                            _taskPollTimer = setTimeout(_pollOnce, 2000);
+                        })
+                        .catch(function(err) {
+                            console.error('Bulk upload task poll error:', err);
+                            _taskPollTimer = setTimeout(_pollOnce, 4000);
+                        });
+                }
+
+                _pollOnce();
+            }
+
             //  Reusable upload sender (supports retry with fresh XHR) 
             function _createAndSendXhr() {
             var xhr = new XMLHttpRequest();
@@ -288,7 +386,8 @@ function initXlsxUpload() {
 
             xhr.upload.addEventListener('progress', function(e) {
                 if (e.lengthComputable) {
-                    var percentComplete = Math.round((e.loaded / e.total) * 100);
+                    var rawPercentComplete = Math.round((e.loaded / e.total) * 100);
+                    var percentComplete = Math.min(65, Math.round((rawPercentComplete * 65) / 100));
                     var elapsedTime = (Date.now() - startTime) / 1000;
                     var uploadSpeed = e.loaded / elapsedTime;
                     var remainingBytes = e.total - e.loaded;
@@ -327,8 +426,8 @@ function initXlsxUpload() {
             });
 
             xhr.upload.addEventListener('load', function() {
-                if (progressBar) progressBar.style.width = '100%';
-                if (percentageText) percentageText.textContent = '100%';
+                if (progressBar) progressBar.style.width = '65%';
+                if (percentageText) percentageText.textContent = '65%';
                 if (sizeText) sizeText.textContent = 'Upload complete';
                 if (timeText) timeText.textContent = 'Server processing data...';
                 if (progressBar) progressBar.classList.add('processing');
@@ -359,17 +458,27 @@ function initXlsxUpload() {
                     var result = JSON.parse(xhr.responseText);
 
                     if (xhr.status === 200 && result.success) {
+                        _uploadXhr = null;
+
+                        if (result.task_id) {
+                            _uploadTaskId = result.task_id;
+                            if (progressBar) { progressBar.style.width = '66%'; progressBar.classList.add('processing'); }
+                            if (percentageText) percentageText.textContent = '66%';
+                            if (sizeText) sizeText.textContent = 'Upload complete';
+                            if (timeText) timeText.textContent = 'Queued for processing...';
+                            _pollBulkUploadTask(result.task_id);
+                            return;
+                        }
+
+                        // Legacy fallback if server returns immediate completion payload.
                         if (progressBar) { progressBar.style.width = '100%'; progressBar.classList.remove('processing'); }
                         if (percentageText) percentageText.textContent = '100%';
                         if (timeText) timeText.textContent = 'Complete!';
-                        
-                        // Hide blocking overlay on success
                         if (typeof hideBlockingOverlay === 'function') hideBlockingOverlay();
-                        _uploadXhr = null;
 
                         setTimeout(function() {
                             closeUploadModalFn();
-                            if (typeof showToast === 'function') showToast(result.message, true);
+                            if (typeof showToast === 'function') showToast(result.message || 'Upload completed successfully', true);
                             setTimeout(function() {
                                 if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                                     window.IDCardApp.refreshCardTable();
@@ -422,13 +531,14 @@ function initXlsxUpload() {
             });
 
             var tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
-            xhr.open('POST', '/api/table/' + tableId + '/cards/bulk-upload/');
+            xhr.open('POST', '/api/table/' + tableId + '/bulk-upload-task/');
             xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
             xhr.timeout = 600000; // 10-minute timeout for large uploads
             xhr.send(formData);
             }  // end _createAndSendXhr
 
             function resetUploadState() {
+                if (_taskPollTimer) { clearTimeout(_taskPollTimer); _taskPollTimer = null; }
                 if (progressSection) progressSection.style.display = 'none';
                 if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
                 confirmUploadModal.innerHTML = originalText;
@@ -436,6 +546,7 @@ function initXlsxUpload() {
                 if (cancelBtn) cancelBtn.disabled = false;
                 if (backBtnEl) backBtnEl.disabled = false;
                 _uploadXhr = null;
+                _uploadTaskId = null;
                 // Hide blocking overlay
                 if (typeof hideBlockingOverlay === 'function') hideBlockingOverlay();
             }

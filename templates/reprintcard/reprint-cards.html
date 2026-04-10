@@ -11,12 +11,12 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/idcard-actions.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}">
+  <link rel="stylesheet" href="{% static 'css/card-history-drawer.css' %}">
   <link rel="stylesheet" href="{% static 'css/reprint-cards.css' %}">
   <link rel="stylesheet" href="{% static 'css/partials-common.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/flatpickr.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' %}
   <script>
     var TABLE_ID = {{ table.id }};
     var CLIENT_ID = {{ client.id }};
@@ -40,7 +40,7 @@
     };
   </script>
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
   {% include 'partials/sidebar.html' %}
   <main class="main idcard-actions-page reprint-cards-page">
     {% include 'reprintcard/partials/topbar.html' %}
@@ -55,6 +55,7 @@
   <script defer src="{% static 'dist/js/cardprint-shared.min.js' %}"></script>
   <script defer src="{% static 'js/vendor/flatpickr.min.js' %}"></script>
   <script defer src="{% static 'js/reprintcard/reprint-cards.js' %}"></script>
+  <script defer src="{% static 'js/card-history-drawer.js' %}"></script>
   <script>
     (function() {
       'use strict';

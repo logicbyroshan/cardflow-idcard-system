@@ -22,7 +22,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from idcards.models import IDCard, IDCardTable
+from core.services import IDCardService
 from core.services.permission_service import PermissionService, api_require_permission
+from core.services.activity_service import ActivityService
 from core.views.base import get_user_role, require_any_admin
 from core.views.idcard_helpers import _get_class_section_field_names, _build_class_filter_q
 
@@ -62,6 +64,7 @@ def _build_ordered_fields(card, table):
     """Build ordered field list from card field_data with CardMedia fallback for images."""
     fd = card.field_data or {}
     fd_upper = {k.upper(): v for k, v in fd.items()}
+    fd_norm = {}
 
     def _is_missing_image_value(value):
         v = str(value or '').strip()
@@ -82,6 +85,8 @@ def _build_ordered_fields(card, table):
             return raw
 
         normalized = raw.replace('\\', '/').strip()
+        while '//' in normalized:
+            normalized = normalized.replace('//', '/')
 
         # URL input: use the path section only.
         if normalized.lower().startswith('http://') or normalized.lower().startswith('https://'):
@@ -90,21 +95,31 @@ def _build_ordered_fields(card, table):
             except Exception:
                 pass
 
-        # Handle absolute paths by extracting the part after /media/.
+        # Handle absolute paths by extracting the part after media root markers.
         lower = normalized.lower()
-        marker = '/media/'
-        idx = lower.find(marker)
-        if idx >= 0:
-            normalized = normalized[idx + len(marker):]
+        mediafiles_marker = '/mediafiles/'
+        media_marker = '/media/'
+        mediafiles_idx = lower.find(mediafiles_marker)
+        if mediafiles_idx >= 0:
+            normalized = 'mediafiles/' + normalized[mediafiles_idx + len(mediafiles_marker):]
+        else:
+            media_idx = lower.find(media_marker)
+            if media_idx >= 0:
+                normalized = 'media/' + normalized[media_idx + len(media_marker):]
 
         normalized = normalized.lstrip('/').strip()
-        if normalized.lower().startswith('media/'):
-            normalized = normalized[6:]
+        while '//' in normalized:
+            normalized = normalized.replace('//', '/')
 
         return normalized
 
     def _norm_key(value):
         return ''.join(ch for ch in str(value or '').upper() if ch.isalnum())
+
+    for key, value in fd.items():
+        nk = _norm_key(key)
+        if nk and nk not in fd_norm:
+            fd_norm[nk] = value
 
     def _is_image_field(ftype, fname):
         t = str(ftype or '').lower()
@@ -172,7 +187,7 @@ def _build_ordered_fields(card, table):
     for field in table.fields:
         fname = field['name']
         ftype = field.get('type', 'text')
-        fval = fd.get(fname, '') or fd_upper.get(fname.upper(), '')
+        fval = fd.get(fname, '') or fd_upper.get(fname.upper(), '') or fd_norm.get(_norm_key(fname), '')
 
         # Image fallback: if field_data is empty/stale but CardMedia exists, use that path.
         if _is_image_field(ftype, fname) and _is_missing_image_value(fval):
@@ -214,7 +229,11 @@ def _can_use_reprint_cards(user) -> bool:
 
 def _can_view_reprint_request_list(user) -> bool:
     """Permission for opening the Reprint Request List page/tab."""
-    return PermissionService.has(user, 'perm_reprint_request_list')
+    if PermissionService.has(user, 'perm_reprint_request_list'):
+        return True
+    if PermissionService.is_client_role(user):
+        return PermissionService.has(user, 'perm_idcard_reprint_list')
+    return False
 
 
 def _can_view_reprint_confirmed_list(user) -> bool:
@@ -281,6 +300,109 @@ def _parse_local_datetime_filter(value):
     return dt
 
 
+def _parse_json_body_dict(request):
+    """Parse JSON body and ensure object payloads for mutation endpoints."""
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None, JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    if not isinstance(body, dict):
+        return None, JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    return body, None
+
+
+def _apply_inline_reprint_edit(table, user, card_ids, inline_field_data):
+    """Apply optional inline field edits before creating a reprint request."""
+    if inline_field_data is None:
+        return None
+
+    if not isinstance(inline_field_data, dict):
+        return JsonResponse({'status': 'error', 'message': 'inline_field_data must be an object'}, status=400)
+
+    if not inline_field_data:
+        return None
+
+    # Reprint inline edit is for text/meta corrections only.
+    # Image mutations are handled by dedicated upload/remove endpoints and
+    # should never be rewritten by request-create payloads.
+    safe_inline_field_data = {}
+    for key, value in inline_field_data.items():
+        key_name = str(key or '').strip()
+        if not key_name:
+            continue
+        if IDCardService.is_image_field_name_for_table(key_name, table.fields or []):
+            continue
+        safe_inline_field_data[key_name] = value
+
+    if not safe_inline_field_data:
+        return None
+
+    normalized_ids = ReprintWorkflowService._normalize_positive_int_ids(card_ids)
+    if len(normalized_ids) != 1:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Inline edits are only allowed when exactly one card is selected'},
+            status=400,
+        )
+
+    target_id = normalized_ids[0]
+    card = IDCard.objects.filter(table=table, id=target_id, status='download').only('id').first()
+    if not card:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Inline edits are only allowed for cards in download status'},
+            status=400,
+        )
+
+    update_result = IDCardService.update_card(
+        card_id=card.id,
+        field_data=safe_inline_field_data,
+        uploaded_by=user if getattr(user, 'is_authenticated', False) else None,
+        modified_by=user.username if getattr(user, 'is_authenticated', False) else '',
+    )
+    if not update_result.success:
+        return JsonResponse(
+            {'status': 'error', 'message': update_result.message or 'Could not save inline edits'},
+            status=400,
+        )
+
+    try:
+        ActivityService.log(
+            'card_update',
+            'ID card updated before reprint request',
+            user=user,
+            target_model='IDCard',
+            target_id=card.id,
+            target_name=f'Card #{card.id}',
+        )
+    except Exception:
+        pass
+
+    return None
+
+
+def _get_reprint_step_counts(table):
+    """Return download/request/confirmed counts for the reprint workflow."""
+    source_cards_count = IDCard.objects.filter(table=table, status='download').count()
+    status_counts = ReprintRequest.objects.filter(
+        table=table,
+        card__status='download',
+    ).aggregate(
+        request_count=Count('id', filter=Q(status='requested')),
+        confirmed_count=Count('id', filter=Q(status='confirmed')),
+    )
+
+    request_count = int(status_counts.get('request_count') or 0)
+    confirmed_count = int(status_counts.get('confirmed_count') or 0)
+
+    return {
+        'download_list': source_cards_count,
+        'reprint_list': source_cards_count,
+        'request_list': request_count,
+        'confirmed': confirmed_count,
+    }
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
@@ -312,23 +434,7 @@ def reprint_cards(request, table_id):
 
     # Step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')
-    source_cards_count = source_cards_qs.count()
-    request_count = ReprintRequest.objects.filter(
-        table=table,
-        status='requested',
-        card__status='download',
-    ).count()
-    confirmed_count = ReprintRequest.objects.filter(
-        table=table,
-        status='confirmed',
-        card__status='download',
-    ).count()
-    step_counts = {
-        'download_list': source_cards_count,
-        'reprint_list': source_cards_count,
-        'request_list': request_count,
-        'confirmed': confirmed_count,
-    }
+    step_counts = _get_reprint_step_counts(table)
 
     INITIAL_LOAD_LIMIT = 100
 
@@ -436,24 +542,8 @@ def api_reprint_step_counts(request, table_id):
     if err:
         return err
 
-    source_cards_count = IDCard.objects.filter(table=table, status='download').count()
-    request_count = ReprintRequest.objects.filter(
-        table=table,
-        status='requested',
-        card__status='download',
-    ).count()
-    confirmed_count = ReprintRequest.objects.filter(
-        table=table,
-        status='confirmed',
-        card__status='download',
-    ).count()
-    return JsonResponse({
-        'status': 'ok',
-        'download_list': source_cards_count,
-        'reprint_list': source_cards_count,
-        'request_list': request_count,
-        'confirmed': confirmed_count,
-    })
+    step_counts = _get_reprint_step_counts(table)
+    return JsonResponse({'status': 'ok', **step_counts})
 
 
 @require_http_methods(["GET"])
@@ -523,13 +613,22 @@ def api_reprint_request_create(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     card_ids = body.get('card_ids', [])
     reason = body.get('reason', '')
+    inline_field_data = body.get('inline_field_data')
+
+    inline_err = _apply_inline_reprint_edit(
+        table=table,
+        user=request.user,
+        card_ids=card_ids,
+        inline_field_data=inline_field_data,
+    )
+    if inline_err:
+        return inline_err
 
     result = ReprintWorkflowService.create_requests(
         table=table,
@@ -565,10 +664,9 @@ def api_reprint_confirm(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = body.get('rr_ids', [])
     if not rr_ids:
@@ -682,14 +780,13 @@ def api_reprint_reject(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = body.get('rr_ids', [])
 
-    result = ReprintWorkflowService.reject_requests(table=table, rr_ids=rr_ids)
+    result = ReprintWorkflowService.reject_requests(table=table, rr_ids=rr_ids, user=request.user)
 
     if result.success:
         return JsonResponse({
@@ -798,10 +895,9 @@ def api_reprint_mark_downloaded(request, table_id):
     if err:
         return err
 
-    try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    body, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = body.get('rr_ids', [])
     if not rr_ids:
@@ -898,10 +994,9 @@ def api_reprint_send_to_print(request, table_id):
     if err:
         return err
 
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    data, json_err = _parse_json_body_dict(request)
+    if json_err:
+        return json_err
 
     rr_ids = data.get('rr_ids', [])
     if not rr_ids:
@@ -915,10 +1010,9 @@ def api_reprint_send_to_print(request, table_id):
         card__status='download',
     )
 
-    eligible_rr_ids = list(requested_qs.values_list('id', flat=True))
-    requested_rrs = requested_qs.values_list('card_id', flat=True)
-
-    card_ids = list(requested_rrs)
+    requested_rows = list(requested_qs.values_list('id', 'card_id'))
+    eligible_rr_ids = [rr_id for rr_id, _ in requested_rows]
+    card_ids = [card_id for _, card_id in requested_rows]
     if not card_ids:
         return JsonResponse(
             {'status': 'error', 'message': 'No requested reprint items found'},
@@ -941,6 +1035,17 @@ def api_reprint_send_to_print(request, table_id):
         status='requested',
         card__status='download',
     ).update(status='confirmed')
+
+    if moved_count:
+        for card_id in card_ids:
+            ActivityService.log(
+                'reprint_status',
+                'Reprint sent to print list and moved to confirmed',
+                user=request.user,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name=f'Card #{card_id}',
+            )
 
     return JsonResponse({
         'status': 'ok',

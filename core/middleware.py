@@ -576,15 +576,12 @@ class PermissionValidationMiddleware:
         
         if fresh_user is None:
             try:
-                # Re-fetch from DB with related profiles in one query.
-                # select_related('staff_profile', 'client_profile') means the
-                # context processor and PermissionService.get_profile() calls
-                # that happen later in the same request (template rendering)
-                # will find the profiles already cached on the user object —
-                # no additional DB queries needed.
+                # Keep the revalidation query limited to user fields only.
+                # This avoids coupling session validation to optional profile
+                # schema changes on related tables.
                 fresh_user = (
                     User.objects
-                    .select_related('staff_profile__client', 'client_profile')
+                    .only('id', 'username', 'role', 'is_active')
                     .get(pk=user.pk)
                 )
                 setattr(request, _cache_attr, fresh_user)
@@ -624,9 +621,14 @@ class PermissionValidationMiddleware:
         from client.models import Client
         
         try:
-            client = getattr(user, 'client_profile', None)
-            if client is None:
-                client = Client.objects.get(user=user)
+            client_row = (
+                Client.objects
+                .filter(user_id=user.pk)
+                .values('id', 'name', 'status')
+                .first()
+            )
+            if not client_row:
+                raise Client.DoesNotExist()
         except Client.DoesNotExist:
             logger.warning(
                 "PermissionValidationMiddleware: Client profile not found for user %s - forcing logout",
@@ -641,22 +643,22 @@ class PermissionValidationMiddleware:
             return self._validation_unavailable_response(request)
         
         # Check if client is still active
-        if client.status != 'active':
+        if client_row['status'] != 'active':
             logger.warning(
                 "PermissionValidationMiddleware: Client '%s' (ID: %s) is now %s - redirecting to maintenance for user %s",
-                client.name, client.pk, client.status, user.username
+                client_row['name'], client_row['id'], client_row['status'], user.username
             )
             return self._redirect_to_maintenance(request, 'Your organization account has been suspended.')
         
         # Store client_id in session for reassignment detection
         session_client_id = request.session.get('_client_id')
         if session_client_id is None:
-            request.session['_client_id'] = client.pk
-        elif session_client_id != client.pk:
+            request.session['_client_id'] = client_row['id']
+        elif session_client_id != client_row['id']:
             # Client was reassigned (edge case) - force re-login
             logger.warning(
                 "PermissionValidationMiddleware: Client reassigned from %s to %s for user %s - forcing logout",
-                session_client_id, client.pk, user.username
+                session_client_id, client_row['id'], user.username
             )
             return self._force_logout(request, 'Your account configuration has changed. Please log in again.')
         
@@ -667,9 +669,14 @@ class PermissionValidationMiddleware:
         from staff.models import Staff
         
         try:
-            staff = getattr(user, 'staff_profile', None)
-            if staff is None:
-                staff = Staff.objects.select_related('client').get(user=user)
+            staff_row = (
+                Staff.objects
+                .filter(user_id=user.pk)
+                .values('id', 'client_id', 'client__name', 'client__status')
+                .first()
+            )
+            if not staff_row:
+                raise Staff.DoesNotExist()
         except Staff.DoesNotExist:
             logger.warning(
                 "PermissionValidationMiddleware: Staff profile not found for user %s - forcing logout",
@@ -684,7 +691,7 @@ class PermissionValidationMiddleware:
             return self._validation_unavailable_response(request)
         
         # Check if staff has no client assigned
-        if not staff.client:
+        if not staff_row['client_id']:
             logger.warning(
                 "PermissionValidationMiddleware: Staff %s has no client assigned - forcing logout",
                 user.username
@@ -692,10 +699,10 @@ class PermissionValidationMiddleware:
             return self._force_logout(request, 'You are not assigned to any client.')
         
         # Check if staff's client is still active
-        if staff.client.status != 'active':
+        if staff_row['client__status'] != 'active':
             logger.warning(
                 "PermissionValidationMiddleware: Client '%s' (ID: %s) is now %s - redirecting to maintenance for staff %s",
-                staff.client.name, staff.client.pk, staff.client.status, user.username
+                staff_row['client__name'], staff_row['client_id'], staff_row['client__status'], user.username
             )
             return self._redirect_to_maintenance(
                 request, 
@@ -705,11 +712,11 @@ class PermissionValidationMiddleware:
         # Detect client reassignment (edge case: admin moved staff to different client)
         session_client_id = request.session.get('_staff_client_id')
         if session_client_id is None:
-            request.session['_staff_client_id'] = staff.client.pk
-        elif session_client_id != staff.client.pk:
+            request.session['_staff_client_id'] = staff_row['client_id']
+        elif session_client_id != staff_row['client_id']:
             logger.warning(
                 "PermissionValidationMiddleware: Client staff reassigned from client %s to %s for user %s - forcing logout",
-                session_client_id, staff.client.pk, user.username
+                session_client_id, staff_row['client_id'], user.username
             )
             return self._force_logout(
                 request, 
@@ -733,14 +740,22 @@ class PermissionValidationMiddleware:
             }
 
             if PermissionService.is_client(user):
-                client = getattr(user, 'client_profile', None)
-                if client:
-                    request.user_scope['client_id'] = client.id
+                from client.models import Client
+                request.user_scope['client_id'] = (
+                    Client.objects
+                    .filter(user_id=user.id)
+                    .values_list('id', flat=True)
+                    .first()
+                )
 
             elif PermissionService.is_client_staff(user):
-                staff = getattr(user, 'staff_profile', None)
-                if staff and staff.client:
-                    request.user_scope['client_id'] = staff.client.id
+                from staff.models import Staff
+                request.user_scope['client_id'] = (
+                    Staff.objects
+                    .filter(user_id=user.id)
+                    .values_list('client_id', flat=True)
+                    .first()
+                )
         except Exception as exc:
             logger.warning(
                 "PermissionValidationMiddleware: _annotate_request_scope failed for user %s — using defaults: %s",
@@ -995,6 +1010,7 @@ class SessionIdleTimeoutMiddleware:
 
     SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
     ACTIVITY_WRITE_INTERVAL = 60  # seconds
+    USER_IDLE_TIMEOUT_SESSION_KEY = '_user_idle_timeout_seconds'
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -1023,6 +1039,33 @@ class SessionIdleTimeoutMiddleware:
             }, status=401)
         return redirect(login_url)
 
+    def _resolve_user_idle_timeout_seconds(self, request):
+        """
+        Resolve per-user idle timeout in seconds.
+        Falls back to global SESSION_IDLE_TIMEOUT when no user override exists.
+        """
+        cached = request.session.get(self.USER_IDLE_TIMEOUT_SESSION_KEY)
+        if cached is not None:
+            try:
+                return max(int(cached), 0)
+            except (TypeError, ValueError):
+                request.session.pop(self.USER_IDLE_TIMEOUT_SESSION_KEY, None)
+
+        try:
+            from core.services.user_profile_service import UserProfileService
+
+            security = UserProfileService.get_security_settings(request.user)
+            timeout_minutes = int(security.get('session_timeout_minutes') or 0)
+            timeout_seconds = max(timeout_minutes, 0) * 60
+            request.session[self.USER_IDLE_TIMEOUT_SESSION_KEY] = timeout_seconds
+            return timeout_seconds
+        except Exception:
+            logger.exception(
+                "SessionIdleTimeout: failed to resolve per-user timeout for user=%s",
+                getattr(request.user, 'pk', None),
+            )
+            return max(int(self._timeout or 0), 0)
+
     def __call__(self, request):
         # Skip for static/media and unauthenticated users
         if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
@@ -1032,11 +1075,12 @@ class SessionIdleTimeoutMiddleware:
             return self.get_response(request)
 
         now = time.time()
+        user_idle_timeout = self._resolve_user_idle_timeout_seconds(request)
 
         # ── Policy 1: Idle timeout ────────────────────────────────────────────
-        if self._timeout > 0:
+        if user_idle_timeout > 0:
             last_activity = request.session.get('_last_activity')
-            if last_activity is not None and (now - last_activity) > self._timeout:
+            if last_activity is not None and (now - last_activity) > user_idle_timeout:
                 return self._force_logout(request, reason='idle')
 
         # ── Policy 2: Absolute max-age ────────────────────────────────────────
@@ -1114,6 +1158,7 @@ class SecurityHeadersMiddleware:
             "font-src 'self' data:; "
             f"connect-src {self._build_connect_src()}; "
             "media-src 'self'; "
+            "frame-src 'self' https://www.google.com https://maps.google.com; "
             "object-src 'none'; "
             "base-uri 'self'; "
             "form-action 'self'; "
@@ -1140,6 +1185,7 @@ class SecurityHeadersMiddleware:
                 "https://fonts.gstatic.com; "
             f"connect-src {self._build_connect_src()}; "
             "media-src 'self' blob:; "
+            "frame-src 'self' https://www.google.com https://maps.google.com; "
             "object-src 'none'; "
             "base-uri 'self'; "
             "form-action 'self'; "

@@ -26,7 +26,7 @@
     </a>
     {% endif %}
     
-    {% if is_super_admin or is_admin_staff and perm_idcard_client_list %}
+    {% if is_super_admin or is_admin_staff and perm_idcard_client_list or is_admin_staff and perm_manage_client_staff %}
     <!-- User Management Section -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
@@ -38,9 +38,16 @@
       <i class="fa-solid fa-user-tie"></i><span>Manage Staff</span>
     </a>
     {% endif %}
+    {% if is_super_admin or perm_idcard_client_list %}
     <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
+    {% endif %}
+    {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
+    <a href="{% url 'manage_client_staff' %}" class="{% if active_page == 'manage_client_staff' %}active{% endif %}">
+      <i class="fa-solid fa-user-gear"></i><span>Manage Assistent</span>
+    </a>
+    {% endif %}
     {% endif %}
     
     {% if is_client and perm_idcard_client_list %}
@@ -89,24 +96,26 @@
     </a>
     {% endif %}
     {% endif %}
-    
-    {% if is_super_admin or perm_website_view %}
+
+    {% if is_super_admin or perm_website_view or perm_manage_website_clients or perm_manage_website_portfolio %}
     <!-- Site Management Section -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Site Management</span>
       <div class="nav-section-line"></div>
     </div>
-    <a href="{% url 'website_admin:dashboard' %}" class="{% if active_page == 'manage_website' %}active{% endif %}">
+    <a href="{% url 'manage_website' %}" class="{% if active_page == 'manage_website' %}active{% endif %}">
       <i class="fa-solid fa-globe"></i><span>Manage Website</span>
     </a>
+    {% if is_super_admin or perm_manage_panel_backup or perm_manage_panel_email %}
     <a href="{% url 'manage_panel' %}" class="{% if active_page == 'manage_panel' %}active{% endif %}">
       <i class="fa-solid fa-sliders"></i><span>Manage Panel</span>
     </a>
     {% endif %}
+    {% endif %}
 
     {% if is_super_admin or is_admin_staff %}
-    <!-- Tools  -  Admin & Admin Staff only -->
+    <!-- Tools  -  Admin & Operator only -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Tools</span>
@@ -117,15 +126,15 @@
     </a>
     {% endif %}
 
-    {% if is_pro_user and not is_impersonating %}
-    <!-- Pro User  -  Impersonation -->
+    {% if is_pro_user %}
+    <!-- Pro User tools -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">Pro User</span>
       <div class="nav-section-line"></div>
     </div>
-    <a href="{% url 'login_as_user' %}" class="{% if active_page == 'impersonate' %}active{% endif %}">
-      <i class="fa-solid fa-user-secret"></i><span>Login As User</span>
+    <a href="{% if is_impersonating %}{% url 'pro_user_activity_logs' %}{% else %}{% url 'login_as_user' %}{% endif %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' %}active{% endif %}">
+      <i class="fa-solid fa-gem"></i><span>Pro Feature</span>
     </a>
     {% endif %}
   </nav>
@@ -134,25 +143,14 @@
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
       </a>
-      <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
-        <i class="fa-solid fa-gear"></i><span>Settings</span>
-      </a>
     </div>
     <div class="sidebar-info">
-      <div class="info-item">
-        <i class="fa-solid fa-calendar-days"></i>
-        <span id="date"></span>
-      </div>
-      <div class="info-item">
-        <i class="fa-solid fa-clock"></i>
-        <span id="time"></span>
-      </div>
       <div class="info-item">
         <i class="fa-solid fa-code-branch"></i>
         <span>{{ APP_VERSION }}</span>
       </div>
     </div>
-    <div class="sidebar-user">
+    <a href="{% url 'settings' %}" class="sidebar-user" style="text-decoration:none;color:inherit;">
       <div class="user-avatar">
         {% include 'partials/components/user-avatar.html' with role=user.role size='medium' %}
       </div>
@@ -160,7 +158,7 @@
         <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
         <span class="user-role">{{ user_role|default:"User" }}</span>
       </div>
-    </div>
+    </a>
   </div>
 </aside>
 <script>
@@ -171,17 +169,5 @@
     document.getElementById('sidebar').classList.add('collapsed');
     document.body.classList.add('sidebar-collapsed');
   }
-})();
-// Fallback clock  -  runs independently of Alpine.js
-(function(){
-  function _sidebarClock(){
-    var now = new Date();
-    var d = document.getElementById('date');
-    var t = document.getElementById('time');
-    if (d) d.textContent = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-    if (t) t.textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false});
-  }
-  _sidebarClock();
-  setInterval(_sidebarClock, 1000);
 })();
 </script>

@@ -61,7 +61,7 @@
                             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div class="search-filter-group">
+                    <div class="search-filter-group" id="globalSearchFilterGroup">
                         <label for="globalSearchFilter">Filter:</label>
                         <select id="globalSearchFilter">
                             <option value="all">All Fields</option>
@@ -94,9 +94,51 @@
     let searchTimeout = null;
     let searchSkeletonStart = 0;
     let searchRequestSeq = 0;
+    let currentSearchMode = 'idcard';
+    let clientQuickListCache = null;
+    let clientQuickListPromise = null;
     const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
 
     function getEl(id) { return document.getElementById(id); }
+
+    function getPanelBasePath() {
+        return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+    }
+
+    function panelUrl(path) {
+        if (!path) return path;
+        if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
+        const normalized = path.charAt(0) === '/' ? path : '/' + path;
+        return getPanelBasePath() + normalized;
+    }
+
+    function getClientQuickScope() {
+        return {
+            title: 'Search clients to open ID Card Group',
+            hint: 'Type a client name and jump directly to that client\'s ID Card Group page.',
+        };
+    }
+
+    function getGlobalHomeUrl() {
+        const sidebarHome = document.querySelector('.sidebar nav a[href] i.fa-house')?.closest('a[href]');
+        if (sidebarHome) {
+            return sidebarHome.getAttribute('href');
+        }
+
+        const breadcrumbHome = document.querySelector('.breadcrumb a[href]');
+        if (breadcrumbHome) {
+            return breadcrumbHome.getAttribute('href');
+        }
+
+        return panelUrl('/dashboard/');
+    }
+
+    function goHomeFromShortcut() {
+        const homeUrl = getGlobalHomeUrl();
+        if (homeUrl) {
+            window.location.href = homeUrl;
+        }
+    }
 
     function parseCurrentActionsTableId() {
         const path = String(window.location.pathname || '');
@@ -161,26 +203,187 @@
 
     function buildGlobalSearchUrl(query, filter) {
         const scope = getSearchScopeContext();
-        let url = `/api/global-search/?q=${encodeURIComponent(query)}&filter=${encodeURIComponent(filter)}`;
+        let url = `${panelUrl('/api/global-search/')}?q=${encodeURIComponent(query)}&filter=${encodeURIComponent(filter)}`;
         if (scope.mode === 'table' && scope.tableId) {
             url += `&table_id=${encodeURIComponent(String(scope.tableId))}`;
         }
         return url;
     }
 
+    function setSearchMode(mode) {
+        currentSearchMode = mode === 'client' ? 'client' : 'idcard';
+
+        const input = getEl('globalSearchInput');
+        const filterGroup = getEl('globalSearchFilterGroup');
+
+        if (filterGroup) {
+            filterGroup.style.display = currentSearchMode === 'client' ? 'none' : '';
+        }
+
+        if (input) {
+            if (currentSearchMode === 'client') {
+                input.placeholder = 'Search clients by name...';
+                input.setAttribute('aria-label', 'Search clients');
+            }
+        }
+    }
+
+    function normalizeClientList(data) {
+        const clients = Array.isArray(data && data.clients) ? data.clients : [];
+        return clients
+            .map(function (item) {
+                const id = Number(item && item.id);
+                const name = String(item && item.name ? item.name : '').trim();
+                const status = String(item && item.status ? item.status : 'active').trim().toLowerCase();
+                return {
+                    id: Number.isFinite(id) ? id : null,
+                    name,
+                    status: status || 'active',
+                };
+            })
+            .filter(function (item) {
+                return item.id !== null && item.name.length > 0;
+            })
+            .sort(function (a, b) {
+                return a.name.localeCompare(b.name);
+            });
+    }
+
+    function fetchQuickClientList() {
+        if (Array.isArray(clientQuickListCache)) {
+            return Promise.resolve(clientQuickListCache);
+        }
+
+        if (clientQuickListPromise) {
+            return clientQuickListPromise;
+        }
+
+        const activeUrl = panelUrl('/api/clients/active/');
+        const fallbackUrl = panelUrl('/api/client-staff/clients/');
+
+        clientQuickListPromise = ApiClient.get(activeUrl)
+            .then(function (data) {
+                if (!data || !data.success) throw new Error('Failed to load clients');
+                clientQuickListCache = normalizeClientList(data);
+                return clientQuickListCache;
+            })
+            .catch(function () {
+                return ApiClient.get(fallbackUrl).then(function (data) {
+                    if (!data || !data.success) throw new Error('Failed to load clients');
+                    clientQuickListCache = normalizeClientList(data);
+                    return clientQuickListCache;
+                });
+            })
+            .finally(function () {
+                clientQuickListPromise = null;
+            });
+
+        return clientQuickListPromise;
+    }
+
+    function clientGroupUrl(clientId) {
+        return panelUrl('/client/' + encodeURIComponent(String(clientId)) + '/groups/');
+    }
+
+    function displayClientQuickResults(results, query) {
+        const container = getEl('globalSearchResults');
+        if (!container) return;
+
+        const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+        if (!results.length) {
+            container.innerHTML = `
+                <div class="global-search-no-results">
+                    <i class="fa-solid fa-users"></i>
+                    <p>No clients found for "${esc(query)}"</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `<div class="global-search-results-header">${results.length} client${results.length > 1 ? 's' : ''} found</div>`;
+        results.forEach(function (client) {
+            const statusClass = esc(String(client.status || 'active').toLowerCase());
+            const statusLabel = statusClass === 'active' ? 'Active' : esc(statusClass);
+            html += `
+                <div class="global-search-result-item" data-client-id="${esc(String(client.id))}">
+                    <div class="result-icon idcard"><i class="fa-solid fa-building"></i></div>
+                    <div class="result-info">
+                        <div class="result-title">${esc(client.name)}</div>
+                        <div class="result-subtitle">Open ID Card Group</div>
+                        <div class="result-meta-row">
+                            <span class="result-list-name">Client Quick Switch</span>
+                            <span class="result-status-pill ${statusClass}">${statusLabel}</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right result-arrow"></i>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        container.querySelectorAll('.global-search-result-item').forEach(function (item) {
+            item.addEventListener('click', function () {
+                const clientId = parseInt(this.getAttribute('data-client-id'), 10);
+                if (!Number.isFinite(clientId)) return;
+                window.location.href = clientGroupUrl(clientId);
+            });
+        });
+    }
+
+    function performClientQuickSearch(query) {
+        const results = getEl('globalSearchResults');
+        const requestSeq = ++searchRequestSeq;
+        const skeletonStart = searchSkeletonStart || Date.now();
+
+        fetchQuickClientList()
+            .then(function (clients) {
+                return waitForMinDelay(skeletonStart).then(function () {
+                    return clients;
+                });
+            })
+            .then(function (clients) {
+                if (requestSeq !== searchRequestSeq || currentSearchMode !== 'client') return;
+                searchSkeletonStart = 0;
+                const normalizedQuery = String(query || '').trim().toLowerCase();
+                const filtered = clients.filter(function (client) {
+                    return client.name.toLowerCase().includes(normalizedQuery);
+                });
+                displayClientQuickResults(filtered, query);
+            })
+            .catch(function () {
+                waitForMinDelay(skeletonStart).then(function () {
+                    if (requestSeq !== searchRequestSeq || currentSearchMode !== 'client') return;
+                    searchSkeletonStart = 0;
+                    if (results) {
+                        results.innerHTML = `
+                            <div class="global-search-no-results">
+                                <i class="fa-solid fa-exclamation-circle"></i>
+                                <p>Unable to load client list right now.</p>
+                            </div>
+                        `;
+                    }
+                });
+            });
+    }
+
     let _searchTriggerEl = null;
 
-    function openGlobalSearch() {
+    function openGlobalSearch(options) {
+        const mode = options && options.mode === 'client' ? 'client' : 'idcard';
         _searchTriggerEl = document.activeElement;
         const overlay = getEl('globalSearchOverlay');
         if (overlay) {
             overlay.classList.add('active');
-            const scope = getSearchScopeContext();
+            setSearchMode(mode);
+            const scope = mode === 'client' ? getClientQuickScope() : getSearchScopeContext();
             const input = getEl('globalSearchInput');
             if (input) {
-                input.placeholder = scope.mode === 'table'
-                    ? 'Search this list across all statuses...'
-                    : 'Search ID cards by name, address, mobile...';
+                if (mode === 'idcard') {
+                    input.placeholder = scope.mode === 'table'
+                        ? 'Search this list across all statuses...'
+                        : 'Search ID cards by name, address, mobile...';
+                }
                 input.setAttribute('aria-label', scope.title);
             }
             renderPlaceholder(getEl('globalSearchResults'), scope);
@@ -196,7 +399,7 @@
         const input = getEl('globalSearchInput');
         const clearBtn = getEl('clearGlobalSearch');
         const results = getEl('globalSearchResults');
-        const scope = getSearchScopeContext();
+        const scope = currentSearchMode === 'client' ? getClientQuickScope() : getSearchScopeContext();
 
         if (overlay) overlay.classList.remove('active');
         if (input) input.value = '';
@@ -208,6 +411,7 @@
             searchTimeout = null;
         }
         renderPlaceholder(results, scope);
+        setSearchMode('idcard');
         // Restore focus to trigger element (a11y)
         if (_searchTriggerEl && typeof _searchTriggerEl.focus === 'function') {
             _searchTriggerEl.focus();
@@ -216,6 +420,11 @@
     }
 
     function performSearch(query) {
+        if (currentSearchMode === 'client') {
+            performClientQuickSearch(query);
+            return;
+        }
+
         const skeletonStart = searchSkeletonStart || Date.now();
         const filter = getEl('globalSearchFilter')?.value || 'all';
         const results = getEl('globalSearchResults');
@@ -376,12 +585,26 @@
 
         // Ctrl+K / Cmd+K
         document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && e.shiftKey && (e.code === 'Space' || e.key === ' ')) {
+                e.preventDefault();
+                goHomeFromShortcut();
+                return;
+            }
+
+            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                openGlobalSearch({ mode: 'client' });
+                return;
+            }
+
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 openGlobalSearch();
+                return;
             }
             if (e.key === 'Escape' && overlay?.classList.contains('active')) {
                 closeGlobalSearch();
+                return;
             }
             // Focus trap inside search modal (a11y)
             if (e.key === 'Tab' && overlay?.classList.contains('active')) {
@@ -397,7 +620,7 @@
                     e.preventDefault(); first.focus();
                 }
             }
-        });
+        }, true);
 
         // Close button
         if (closeBtn) {
@@ -427,6 +650,7 @@
         if (input) {
             input.addEventListener('input', function () {
                 const query = this.value.trim();
+                const minChars = currentSearchMode === 'client' ? 1 : 2;
 
                 if (clearBtn) {
                     clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
@@ -434,15 +658,15 @@
 
                 if (searchTimeout) clearTimeout(searchTimeout);
 
-                if (query.length < 2) {
+                if (query.length < minChars) {
                     searchSkeletonStart = 0;
                     searchRequestSeq += 1;
                     if (resultsEl) {
-                        const scope = getSearchScopeContext();
+                        const scope = currentSearchMode === 'client' ? getClientQuickScope() : getSearchScopeContext();
                         renderPlaceholder(
                             resultsEl,
                             scope,
-                            query.length === 0 ? scope.title : 'Enter at least 2 characters'
+                            query.length === 0 ? scope.title : `Enter at least ${minChars} character${minChars > 1 ? 's' : ''}`
                         );
                     }
                     return;
@@ -462,6 +686,7 @@
         // Filter change
         if (filter) {
             filter.addEventListener('change', function () {
+                if (currentSearchMode !== 'idcard') return;
                 const query = input?.value.trim();
                 if (query && query.length >= 2) {
                     if (resultsEl) {

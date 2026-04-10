@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block title %}Login As User  -  Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -9,13 +10,109 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
-  .imp-page { padding: 16px 20px; }
+  .imp-page {
+    padding: 0 0 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .main.main-scrollable-page {
+    grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
+  }
+
+  .main.main-scrollable-page > .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--color-white, #ffffff) !important;
+    border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  .main.main-scrollable-page > :not(.topbar) {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden !important;
+    overflow-x: hidden;
+    background: var(--color-gray-50, #f8fafc);
+  }
+
+  .imp-sticky-stack {
+    position: sticky;
+    top: 0;
+    z-index: 28;
+    background: var(--color-gray-50, #f8fafc);
+    padding-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .imp-page .pro-feature-tabs {
+    position: static;
+    top: auto;
+    margin: 0;
+    padding: 0 20px;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    background: #fff;
+  }
+
+  .imp-page .action-bar {
+    position: static;
+    top: auto !important;
+    z-index: 22;
+    margin: 0;
+    background: var(--color-white, #ffffff);
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px 20px;
+  }
+
+  .imp-page .action-bar .action-left,
+  .imp-page .action-bar .action-right {
+    align-items: center;
+  }
+
+  .imp-grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 20px 0;
+  }
+
+  @media (max-width: 768px) {
+    .imp-page .pro-feature-tabs {
+      padding: 0 12px;
+    }
+
+    .imp-page .action-bar {
+      padding: 8px 12px;
+    }
+
+    .imp-grid-wrap {
+      padding: 8px 12px 0;
+    }
+  }
 
   /* Role filter pills */
   .imp-pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .imp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 2px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -30,13 +127,35 @@
     border-color: var(--primary, #667eea);
     background: var(--primary, #667eea);
   }
+  .imp-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    background: rgba(15, 23, 42, 0.06);
+    color: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .imp-pill:hover .imp-pill-count,
+  .imp-pill.active .imp-pill-count {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
 
   /* User Cards Grid */
   .imp-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 10px;
-    margin-top: 16px;
+    margin-top: 0;
+    padding-bottom: 8px;
   }
   .imp-card {
     display: flex;
@@ -45,7 +164,7 @@
     padding: 12px 14px;
     background: #fff;
     border: 1px solid var(--border-color, #e0e0e0);
-    border-radius: 6px;
+    border-radius: 2px;
     cursor: pointer;
     transition: all 0.15s;
   }
@@ -83,10 +202,18 @@
     text-overflow: ellipsis;
     margin-top: 1px;
   }
+  .imp-client-meta {
+    color: #64748b;
+    font-size: 10px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .imp-role-tag {
     font-size: 10px;
     padding: 2px 8px;
-    border-radius: 4px;
+    border-radius: 2px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -103,7 +230,7 @@
     display: inline-block;
     margin-left: 5px;
     padding: 1px 6px;
-    border-radius: 3px;
+    border-radius: 2px;
     background: #fee2e2;
     color: #b91c1c;
     font-size: 9px;
@@ -117,7 +244,7 @@
   .imp-login-btn {
     display: none;
     padding: 4px 10px;
-    border-radius: 4px;
+    border-radius: 2px;
     background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
     color: #fff;
     font-size: 11px;
@@ -184,6 +311,69 @@
     border-radius: 9999px;
     flex-shrink: 0;
   }
+
+  .imp-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    margin-top: 8px;
+    padding: 10px 2px 10px;
+    font-size: 12px;
+    color: var(--text-secondary, #666);
+    flex-wrap: wrap;
+  }
+  .imp-pager-info {
+    color: var(--text-secondary, #666);
+    white-space: nowrap;
+  }
+  .imp-pager-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .imp-pager-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--text-secondary, #374151);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .imp-pager-btn:hover:not(:disabled) {
+    border-color: var(--primary, #667eea);
+    color: var(--primary, #667eea);
+  }
+  .imp-pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .imp-pager-page {
+    min-width: 90px;
+    text-align: center;
+    color: var(--text-primary, #2c3e50);
+    font-weight: 600;
+  }
+  .imp-pager-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .imp-pager-size select {
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--text-primary, #2c3e50);
+  }
 </style>
 {% endblock %}
 
@@ -200,42 +390,73 @@
 {% endblock %}
 
 {% block content %}
-<div class="imp-page">
+<div class="imp-page pro-feature-page">
 
-  <!-- Action Bar -->
-  <div class="action-bar">
-    <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
-      <div class="search-box" style="max-width:320px;">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-        <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, or role..." oninput="__impFilter()" autocomplete="off">
-        <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="imp-pills" id="impPills">
-        <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All</button>
-        <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Admin Staff</button>
-        <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client</button>
-        <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Client Staff</button>
-        <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin</button>
-      </div>
+  <div class="imp-sticky-stack">
+    <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+      <a href="{% url 'login_as_user' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
+        <i class="fa-solid fa-user-secret"></i> Login As User
+      </a>
+      <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+        <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+      </a>
     </div>
-    <div class="action-right">
-      <span style="font-size:12px;color:var(--text-muted,#888);" id="impCount"></span>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
+        <div class="search-box" style="max-width:320px;">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="impSearch" class="search-input" placeholder="Search by name, email, or role..." oninput="__impFilter()" autocomplete="off">
+          <button class="search-clear-btn" id="impSearchClear" type="button" title="Clear search" aria-label="Clear search" onclick="document.getElementById('impSearch').value='';__impFilter()" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="imp-pills" id="impPills">
+          <button class="imp-pill active" data-role="all" onclick="__impSetRole('all',this)">All <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="admin_staff" onclick="__impSetRole('admin_staff',this)">Operator <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client" onclick="__impSetRole('client',this)">Client <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="client_staff" onclick="__impSetRole('client_staff',this)">Assistant <span class="imp-pill-count">0</span></button>
+          <button class="imp-pill" data-role="super_admin" onclick="__impSetRole('super_admin',this)">Super Admin <span class="imp-pill-count">0</span></button>
+        </div>
+      </div>
+      <div class="action-right">
+        <span style="font-size:12px;color:var(--text-muted,#888);" id="impCount"></span>
+      </div>
     </div>
   </div>
 
   <!-- User Grid -->
-  <div id="impGrid" class="imp-grid">
-    <div class="imp-skeleton-grid" aria-hidden="true">
-      {% for _ in "123456" %}
-      <div class="imp-skeleton-card">
-        <div class="imp-skeleton-block imp-skeleton-avatar"></div>
-        <div class="imp-skeleton-main">
-          <div class="imp-skeleton-block imp-skeleton-title"></div>
-          <div class="imp-skeleton-block imp-skeleton-subtitle"></div>
+  <div class="imp-grid-wrap">
+    <div id="impGrid" class="imp-grid">
+      <div class="imp-skeleton-grid" aria-hidden="true">
+        {% for _ in "123456" %}
+        <div class="imp-skeleton-card">
+          <div class="imp-skeleton-block imp-skeleton-avatar"></div>
+          <div class="imp-skeleton-main">
+            <div class="imp-skeleton-block imp-skeleton-title"></div>
+            <div class="imp-skeleton-block imp-skeleton-subtitle"></div>
+          </div>
+          <div class="imp-skeleton-block imp-skeleton-role"></div>
         </div>
-        <div class="imp-skeleton-block imp-skeleton-role"></div>
+        {% endfor %}
       </div>
-      {% endfor %}
+    </div>
+    <div id="impPager" class="imp-pager" style="display:none;">
+      <div id="impPagerInfo" class="imp-pager-info">Showing 0-0 of 0</div>
+      <div class="imp-pager-controls">
+        <button type="button" id="impPagerFirst" class="imp-pager-btn" onclick="__impGoPage('first')" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button type="button" id="impPagerPrev" class="imp-pager-btn" onclick="__impGoPage('prev')" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="impPagerPage" class="imp-pager-page">Page 1/1</span>
+        <button type="button" id="impPagerNext" class="imp-pager-btn" onclick="__impGoPage('next')" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button type="button" id="impPagerLast" class="imp-pager-btn" onclick="__impGoPage('last')" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+      </div>
+      <div class="imp-pager-size">
+        <label for="impPerPage">Rows</label>
+        <select id="impPerPage" onchange="__impSetPerPage(this.value)">
+          <option value="12">12</option>
+          <option value="24" selected>24</option>
+          <option value="48">48</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -246,7 +467,66 @@
 <script>
 (function() {
   var _users = [], _role = 'all', _text = '';
+  var _filteredUsers = [];
+  var _page = 1;
+  var _perPage = 24;
   var COLORS = { super_admin:'#667eea', admin_staff:'#d97706', client:'#38a169', client_staff:'#3182ce' };
+  var ROLE_LABELS = { admin_staff:'Operator', client_staff:'Assistant' };
+
+  function _displayRole(role, fallback) {
+    return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');
+  }
+
+  function _updateRolePillCounts() {
+    var counts = { all: 0, super_admin: 0, admin_staff: 0, client: 0, client_staff: 0 };
+    _users.forEach(function(u) {
+      counts.all += 1;
+      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+        counts[u.role] += 1;
+      }
+    });
+    document.querySelectorAll('.imp-pill[data-role]').forEach(function(btn) {
+      var role = btn.dataset.role || 'all';
+      var countEl = btn.querySelector('.imp-pill-count');
+      if (countEl) countEl.textContent = String(counts[role] || 0);
+    });
+  }
+
+  function _togglePager(show) {
+    var pager = document.getElementById('impPager');
+    if (pager) pager.style.display = show ? '' : 'none';
+  }
+
+  function _renderPager(total) {
+    if (total <= 0) {
+      _togglePager(false);
+      return;
+    }
+
+    _togglePager(true);
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+
+    var start = ((_page - 1) * _perPage) + 1;
+    var end = Math.min(total, _page * _perPage);
+
+    var info = document.getElementById('impPagerInfo');
+    if (info) info.textContent = 'Showing ' + start + '-' + end + ' of ' + total;
+
+    var pageLabel = document.getElementById('impPagerPage');
+    if (pageLabel) pageLabel.textContent = 'Page ' + _page + '/' + totalPages;
+
+    var firstBtn = document.getElementById('impPagerFirst');
+    var prevBtn = document.getElementById('impPagerPrev');
+    var nextBtn = document.getElementById('impPagerNext');
+    var lastBtn = document.getElementById('impPagerLast');
+
+    if (firstBtn) firstBtn.disabled = _page <= 1;
+    if (prevBtn) prevBtn.disabled = _page <= 1;
+    if (nextBtn) nextBtn.disabled = _page >= totalPages;
+    if (lastBtn) lastBtn.disabled = _page >= totalPages;
+  }
 
   // Load users on page load
   _load();
@@ -257,7 +537,7 @@
     fetch('/panel/api/auth/impersonate/users/', { headers: { 'X-CSRFToken': csrf } })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.success) { _users = d.users; _render(); }
+        if (d.success) { _users = d.users; _updateRolePillCounts(); _render(); }
         else { document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-circle-exclamation"></i>' + _esc(d.message || 'Failed to load') + '</div>'; }
       })
       .catch(function() {
@@ -266,34 +546,75 @@
   }
 
   function _render() {
-    var f = _users.filter(function(u) {
+    _filteredUsers = _users.filter(function(u) {
       if (_role !== 'all' && u.role !== _role) return false;
-      if (_text) { var q = _text.toLowerCase(); return u.name.toLowerCase().indexOf(q) !== -1 || u.email.toLowerCase().indexOf(q) !== -1 || u.role_display.toLowerCase().indexOf(q) !== -1; }
+      if (_text) {
+        var q = _text.toLowerCase();
+        var nameText = String(u.name || '').toLowerCase();
+        var emailText = String(u.email || '').toLowerCase();
+        var roleText = _displayRole(u.role, u.role_display).toLowerCase();
+        return nameText.indexOf(q) !== -1 || emailText.indexOf(q) !== -1 || roleText.indexOf(q) !== -1;
+      }
       return true;
     });
-    document.getElementById('impCount').textContent = f.length + ' user' + (f.length !== 1 ? 's' : '');
-    if (!f.length) { document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-users-slash"></i>No users found</div>'; return; }
+
+    var total = _filteredUsers.length;
+    document.getElementById('impCount').textContent = total + ' user' + (total !== 1 ? 's' : '');
+    if (!total) {
+      _togglePager(false);
+      document.getElementById('impGrid').innerHTML = '<div class="imp-empty"><i class="fa-solid fa-users-slash"></i>No users found</div>';
+      return;
+    }
+
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (_page > totalPages) _page = totalPages;
+    if (_page < 1) _page = 1;
+    var startIndex = (_page - 1) * _perPage;
+    var pageUsers = _filteredUsers.slice(startIndex, startIndex + _perPage);
+
     var h = '';
-    f.forEach(function(u) {
-      var init = (u.name[0] || '?').toUpperCase();
+    pageUsers.forEach(function(u) {
+      var nameText = String(u.name || 'User');
+      var init = (nameText[0] || '?').toUpperCase();
       var inactiveBadge = u.is_active === false ? '<span class="imp-inactive-tag">Inactive</span>' : '';
-      h += '<div class="imp-card" onclick="__impStart(' + u.id + ')" title="Login as ' + _esc(u.name) + '" role="button" tabindex="0">'
+      var roleDisplay = _displayRole(u.role, u.role_display);
+      var showClientMeta = u.role === 'client_staff';
+      var clientMeta = (showClientMeta && u.client_name) ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
+      h += '<div class="imp-card" onclick="__impStart(' + u.id + ')" title="Login as ' + _esc(nameText) + '" role="button" tabindex="0">'
         + '<div class="imp-avatar" style="background:' + (COLORS[u.role]||'#667eea') + (!u.is_active ? ';opacity:0.6' : '') + '">' + init + '</div>'
-        + '<div class="imp-info"><div class="imp-name">' + _esc(u.name) + inactiveBadge + '</div><div class="imp-email">' + _esc(u.email) + '</div></div>'
-        + '<span class="imp-role-tag r-' + u.role + '">' + _esc(u.role_display) + '</span>'
+        + '<div class="imp-info"><div class="imp-name">' + _esc(nameText) + inactiveBadge + '</div><div class="imp-email">' + _esc(u.email) + '</div>' + clientMeta + '</div>'
+        + '<span class="imp-role-tag r-' + u.role + '">' + _esc(roleDisplay) + '</span>'
         + '<button class="imp-login-btn"><i class="fa-solid fa-right-to-bracket"></i> Login</button>'
         + '</div>';
     });
     document.getElementById('impGrid').innerHTML = h;
+      _renderPager(total);
   }
 
   function _esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-  window.__impFilter = function() { _text = document.getElementById('impSearch').value; _render(); };
+  window.__impFilter = function() { _text = document.getElementById('impSearch').value; _page = 1; _render(); };
   window.__impSetRole = function(r, btn) {
     _role = r;
+    _page = 1;
     document.querySelectorAll('.imp-pill').forEach(function(p) { p.classList.remove('active'); });
     btn.classList.add('active');
+    _render();
+  };
+  window.__impSetPerPage = function(v) {
+    var next = parseInt(v, 10);
+    if (!Number.isFinite(next) || next <= 0) return;
+    _perPage = next;
+    _page = 1;
+    _render();
+  };
+  window.__impGoPage = function(direction) {
+    var total = _filteredUsers.length;
+    var totalPages = Math.max(1, Math.ceil(total / _perPage));
+    if (direction === 'first') _page = 1;
+    else if (direction === 'prev') _page = Math.max(1, _page - 1);
+    else if (direction === 'next') _page = Math.min(totalPages, _page + 1);
+    else if (direction === 'last') _page = totalPages;
     _render();
   };
   window.__impStart = function(uid) {

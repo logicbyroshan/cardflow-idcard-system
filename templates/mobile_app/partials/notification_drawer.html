@@ -57,11 +57,11 @@
                 <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-50">
                     <!-- Icon -->
                     <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
-                         {% if activity.status == 'verified' %}bg-green-100 text-green-500
-                         {% elif activity.status == 'approved' %}bg-blue-100 text-blue-500
-                         {% elif activity.status == 'download' %}bg-purple-100 text-purple-500
+                        {% if activity.status == 'verified' %}bg-emerald-100 text-emerald-500
+                        {% elif activity.status == 'approved' %}bg-sky-100 text-sky-500
+                        {% elif activity.status == 'download' %}bg-violet-100 text-violet-500
                          {% elif activity.status == 'pending' %}bg-amber-100 text-amber-500
-                         {% elif activity.status == 'pool' %}bg-red-100 text-red-500
+                        {% elif activity.status == 'pool' %}bg-rose-100 text-rose-500
                          {% else %}bg-gray-100 text-gray-400{% endif %}">
                         <i class="fa-solid text-[11px]
                              {% if activity.status == 'verified' %}fa-check-circle
@@ -76,11 +76,11 @@
                         <p class="text-[13px] font-semibold text-gray-800 leading-snug truncate">{{ activity.name }}</p>
                         <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">
                             <span class="font-medium
-                                {% if activity.status == 'verified' %}text-green-600
-                                {% elif activity.status == 'approved' %}text-blue-600
-                                {% elif activity.status == 'download' %}text-purple-600
+                                {% if activity.status == 'verified' %}text-emerald-600
+                                {% elif activity.status == 'approved' %}text-sky-600
+                                {% elif activity.status == 'download' %}text-violet-600
                                 {% elif activity.status == 'pending' %}text-amber-600
-                                {% elif activity.status == 'pool' %}text-red-600
+                                {% elif activity.status == 'pool' %}text-rose-600
                                 {% else %}text-gray-500{% endif %}">
                                 {{ activity.status_display }}
                             </span>

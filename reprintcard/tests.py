@@ -175,9 +175,24 @@ class ReprintWorkflowServiceTests(TestCase):
 		self.assertFalse(result.success)
 		self.assertIn('No reprint IDs provided', result.message)
 
-	def test_reject_requests_moves_cards_to_pool(self):
+	def test_reject_requests_keeps_cards_in_download_by_default(self):
 		from reprintcard.services import ReprintWorkflowService
 		from reprintcard.models import ReprintRequest
+
+		result = ReprintWorkflowService.reject_requests(
+			table=self.table,
+			rr_ids=[self.rr_requested.id],
+		)
+
+		self.assertTrue(result.success)
+		self.assertEqual(result.data['rejected_count'], 1)
+		self.assertFalse(ReprintRequest.objects.filter(id=self.rr_requested.id).exists())
+		self.card_download_1.refresh_from_db()
+		self.assertEqual(self.card_download_1.status, 'download')
+		self.assertIsNone(self.card_download_1.deleted_at)
+
+	def test_reject_requests_can_optionally_move_cards_to_pool(self):
+		from reprintcard.services import ReprintWorkflowService
 
 		result = ReprintWorkflowService.reject_requests(
 			table=self.table,
@@ -186,8 +201,6 @@ class ReprintWorkflowServiceTests(TestCase):
 		)
 
 		self.assertTrue(result.success)
-		self.assertEqual(result.data['rejected_count'], 1)
-		self.assertFalse(ReprintRequest.objects.filter(id=self.rr_requested.id).exists())
 		self.card_download_1.refresh_from_db()
 		self.assertEqual(self.card_download_1.status, 'pool')
 		self.assertIsNotNone(self.card_download_1.deleted_at)
@@ -198,6 +211,26 @@ class ReprintWorkflowServiceTests(TestCase):
 
 		info = ReprintWorkflowService.debug_reprint(987654)
 		self.assertIn('error', info)
+
+	def test_bulk_transition_logs_per_card_activity_entries(self):
+		from reprintcard.services import ReprintWorkflowService
+		from core.models import ActivityLog
+
+		result = ReprintWorkflowService.bulk_transition(
+			table=self.table,
+			rr_ids=[self.rr_requested.id],
+			target_status='confirmed',
+			user=self.owner,
+		)
+		self.assertTrue(result.success)
+
+		self.assertTrue(
+			ActivityLog.objects.filter(
+				action='reprint_status',
+				target_model='IDCard',
+				target_id=self.rr_requested.card_id,
+			).exists()
+		)
 
 
 class ReprintApiIntegrationTests(TestCase):
@@ -325,6 +358,15 @@ class ReprintApiIntegrationTests(TestCase):
 		)
 		self.assertEqual(response.status_code, 400)
 
+	def test_reprint_request_create_rejects_non_object_json_payload(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data='[]',
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+
 	def test_reprint_request_create_and_request_list(self):
 		self.client.force_login(self.super_admin)
 
@@ -339,6 +381,221 @@ class ReprintApiIntegrationTests(TestCase):
 		list_response = self.client.get(self._url('api_request_list'))
 		self.assertEqual(list_response.status_code, 200)
 		self.assertGreaterEqual(len(list_response.json()['items']), 2)
+
+	def test_reprint_request_create_allows_inline_edit_for_client_reprint_flow(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_b.id],
+				'inline_field_data': {
+					'Name': 'Beta Inline',
+					'Class': '10',
+					'Section': 'B',
+				},
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		self.assertEqual(payload.get('created_count'), 1)
+
+		self.card_b.refresh_from_db()
+		field_data = self.card_b.field_data or {}
+		updated_name = field_data.get('Name') or field_data.get('NAME') or ''
+		self.assertEqual(str(updated_name).upper(), 'BETA INLINE')
+
+	def test_reprint_request_create_inline_edit_requires_single_card(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_a.id, self.card_b.id],
+				'inline_field_data': {'Name': 'Should Fail'},
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('exactly one card', response.json().get('message', '').lower())
+
+	def test_reprint_request_create_inline_edit_rejects_non_object(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.post(
+			self._url('api_reprint_request_create'),
+			data=json.dumps({
+				'card_ids': [self.card_b.id],
+				'inline_field_data': 'bad',
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('must be an object', response.json().get('message', '').lower())
+
+	def test_reprint_request_create_inline_edit_ignores_image_fields(self):
+		from idcards.models import IDCardTable, IDCard
+
+		image_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Inline Image Safe Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Photo', 'type': 'image'},
+			],
+		)
+		image_card = IDCard.objects.create(
+			table=image_table,
+			field_data={
+				'Name': 'Inline Image Card',
+				'Photo': 'mediafiles/cards/original-photo.jpg',
+			},
+			status='download',
+		)
+
+		self.client.force_login(self.client_user)
+		response = self.client.post(
+			self._url('api_reprint_request_create', table_id=image_table.id),
+			data=json.dumps({
+				'card_ids': [image_card.id],
+				'inline_field_data': {
+					'Name': 'Inline Updated',
+					'Photo': '',
+				},
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		image_card.refresh_from_db()
+		field_data = image_card.field_data or {}
+		updated_name = field_data.get('Name') or field_data.get('NAME') or ''
+		self.assertEqual(str(updated_name).upper(), 'INLINE UPDATED')
+		self.assertEqual(field_data.get('Photo') or field_data.get('PHOTO'), 'mediafiles/cards/original-photo.jpg')
+
+	def test_request_list_visible_for_client_with_reprint_permission(self):
+		self.client.force_login(self.client_user)
+
+		response = self.client.get(self._url('api_request_list'))
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		self.assertGreaterEqual(payload.get('total', 0), 1)
+
+	def test_reprint_list_normalizes_legacy_mediafiles_image_paths(self):
+		from idcards.models import IDCardTable, IDCard
+
+		legacy_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Legacy Image Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Photo', 'type': 'image'},
+			],
+		)
+		legacy_card = IDCard.objects.create(
+			table=legacy_table,
+			field_data={
+				'Name': 'Legacy Alpha',
+				'Photo': r'C:\\legacy\\uploads\\mediafiles\\cards\\alpha.jpg',
+			},
+			status='download',
+		)
+
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_reprint_list', table_id=legacy_table.id))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		item = next((entry for entry in payload.get('items', []) if entry.get('card_id') == legacy_card.id), None)
+		self.assertIsNotNone(item)
+		photo_field = next((f for f in item.get('ordered_fields', []) if str(f.get('name', '')).lower() == 'photo'), None)
+		self.assertIsNotNone(photo_field)
+		self.assertEqual(photo_field.get('value'), 'mediafiles/cards/alpha.jpg')
+
+	def test_request_list_normalizes_legacy_mediafiles_image_paths(self):
+		from idcards.models import IDCardTable, IDCard
+		from reprintcard.models import ReprintRequest
+
+		legacy_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Legacy Requested Image Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Photo', 'type': 'image'},
+			],
+		)
+		legacy_card = IDCard.objects.create(
+			table=legacy_table,
+			field_data={
+				'Name': 'Legacy Beta',
+				'Photo': r'C:\\legacy\\uploads\\mediafiles\\cards\\beta.jpg',
+			},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			table=legacy_table,
+			card=legacy_card,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_request_list', table_id=legacy_table.id))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		item = next((entry for entry in payload.get('items', []) if entry.get('card_id') == legacy_card.id), None)
+		self.assertIsNotNone(item)
+		photo_field = next((f for f in item.get('ordered_fields', []) if str(f.get('name', '')).lower() == 'photo'), None)
+		self.assertIsNotNone(photo_field)
+		self.assertEqual(photo_field.get('value'), 'mediafiles/cards/beta.jpg')
+
+	def test_request_list_reads_image_value_when_field_key_format_differs(self):
+		from idcards.models import IDCardTable, IDCard
+		from reprintcard.models import ReprintRequest
+
+		table = IDCardTable.objects.create(
+			group=self.group,
+			name='Key Format Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Student Image', 'type': 'image'},
+			],
+		)
+		card = IDCard.objects.create(
+			table=table,
+			field_data={
+				'Name': 'Format Student',
+				'STUDENT_IMAGE': 'mediafiles/cards/keyfmt-request.jpg',
+			},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			table=table,
+			card=card,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_request_list', table_id=table.id))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		item = next((entry for entry in payload.get('items', []) if entry.get('card_id') == card.id), None)
+		self.assertIsNotNone(item)
+		img_field = next((f for f in item.get('ordered_fields', []) if str(f.get('name', '')).lower() == 'student image'), None)
+		self.assertIsNotNone(img_field)
+		self.assertEqual(img_field.get('value'), 'mediafiles/cards/keyfmt-request.jpg')
 
 	def test_request_list_clamps_offset_and_limit(self):
 		self.client.force_login(self.super_admin)
@@ -358,6 +615,15 @@ class ReprintApiIntegrationTests(TestCase):
 		response = self.client.post(
 			self._url('api_reprint_confirm'),
 			data=json.dumps({'rr_ids': ['bad', None, {}]}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+
+	def test_confirm_rejects_non_object_json_payload(self):
+		self.client.force_login(self.super_admin)
+		response = self.client.post(
+			self._url('api_reprint_confirm'),
+			data='[]',
 			content_type='application/json',
 		)
 		self.assertEqual(response.status_code, 400)
@@ -410,7 +676,7 @@ class ReprintApiIntegrationTests(TestCase):
 
 		self.assertTrue(ReprintRequest.objects.filter(id=self.rr_requested.id, status='downloaded').exists())
 
-	def test_reject_moves_card_to_pool(self):
+	def test_reject_keeps_card_in_download(self):
 		self.client.force_login(self.super_admin)
 		response = self.client.post(
 			self._url('api_reprint_reject'),
@@ -420,7 +686,7 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 
 		self.card_a.refresh_from_db()
-		self.assertEqual(self.card_a.status, 'pool')
+		self.assertEqual(self.card_a.status, 'download')
 
 	def test_send_to_print_requires_selected_ids(self):
 		self.client.force_login(self.super_admin)

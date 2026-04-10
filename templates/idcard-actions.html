@@ -11,7 +11,7 @@
   {% include 'partials/idcard-actions/head-assets.html' %}
   {% include 'partials/idcard-actions/global-vars.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
   <!-- Sidebar -->
   {% include 'partials/sidebar.html' %}
 
@@ -72,7 +72,9 @@
           searchInputId: 'searchInput',
           filters: [
             { name: 'class', optionsId: 'classFilterOptions' },
-            { name: 'section', optionsId: 'sectionFilterOptions' }
+            { name: 'section', optionsId: 'sectionFilterOptions' },
+            { name: 'course', optionsId: 'courseFilterOptions' },
+            { name: 'branch', optionsId: 'branchFilterOptions' }
           ],
           staticParams: {
             status: function() { return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : ''; }
@@ -138,40 +140,6 @@
             applyDateTimeFilter();
           });
         }
-      }
-
-      function setupGoBackHandlers() {
-        if (NS._goBackInit) return;
-        NS._goBackInit = true;
-
-        function goBack() {
-          var referrer = document.referrer;
-          if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
-            window.location.href = referrer;
-          } else {
-            {% if is_client or is_client_staff %}
-            window.location.href = '{% url "client:idcard_group" %}';
-            {% else %}
-            window.location.href = '{% url "idcard_group" client.id %}';
-            {% endif %}
-          }
-        }
-
-        document.addEventListener('click', function(e) {
-          if (e.target.closest('#goBackBtn')) {
-            e.preventDefault();
-            goBack();
-          }
-        });
-
-        document.addEventListener('keydown', function(e) {
-          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-            var tag = (e.target.tagName || '').toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-            e.preventDefault();
-            goBack();
-          }
-        });
       }
 
       function swapMainShellNoReload(urlLike) {
@@ -292,7 +260,6 @@
       }
 
       document.addEventListener('DOMContentLoaded', function() {
-        setupGoBackHandlers();
         setupNoReloadStatusTabs();
         setupNoReloadSearchResultNav();
         initPageBindings();

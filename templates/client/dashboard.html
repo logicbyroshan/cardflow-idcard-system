@@ -20,6 +20,13 @@
     <span>Search ID cards...</span>
     <kbd>Ctrl+K</kbd>
   </button>
+  <button type="button" class="client-message-top-shortcut" data-client-message-open>
+    <span class="client-message-top-shortcut-icon">
+      <i class="fa-solid fa-bell"></i>
+      <span class="client-message-top-shortcut-badge" data-client-msg-count>0</span>
+    </span>
+    <span>Messages</span>
+  </button>
   {% include 'partials/notification-bell.html' %}
 </div>
 {% endblock %}
@@ -29,6 +36,8 @@
 
   <!-- Fixed Top: Welcome Banner + Stats -->
   <div class="dashboard-top-fixed">
+
+  <div id="clientMessageWelcomeSlot"></div>
 
   <!-- Welcome Banner with Sliding Notifications -->
   {% include 'partials/dashboard/welcome-notification-banner.html' %}
@@ -72,6 +81,16 @@
       <div class="stat-info">
         <div class="stat-value stat-value-skeleton" id="stat-download">0</div>
         <div class="stat-label">Downloaded Cards</div>
+      </div>
+    </a>
+
+    <a href="{% url 'client:idcard_group' %}" class="stat-card-link stat-card">
+      <div class="stat-icon pool">
+        <i class="fa-solid fa-box-archive"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value stat-value-skeleton" id="stat-pool">0</div>
+        <div class="stat-label">Pool Cards</div>
       </div>
     </a>
 
@@ -221,6 +240,13 @@
         <span>Bulk Upload</span>
       </a>
       {% endif %}
+      <button type="button" class="quick-action-btn quick-action-message" data-client-message-open>
+        <span class="client-message-quick-icon">
+          <i class="fa-solid fa-bell"></i>
+          <span class="client-message-quick-badge" data-client-msg-count>0</span>
+        </span>
+        <span>Messages</span>
+      </button>
       <a href="{% url 'settings' %}" class="quick-action-btn">
         <i class="fa-solid fa-gear"></i>
         <span>Settings</span>
@@ -249,7 +275,7 @@ function setStatValue(id, value) {
 }
 
 function clearAllStatSkeletons() {
-  ['stat-total', 'stat-pending', 'stat-verified', 'stat-approved', 'stat-download'].forEach(function(id) {
+  ['stat-total', 'stat-pending', 'stat-verified', 'stat-approved', 'stat-download', 'stat-pool'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.classList.remove('stat-value-skeleton');
   });
@@ -263,11 +289,12 @@ async function loadDashboardData() {
 
     if (data.success) {
       const stats = data.data.card_counts;
-      setStatValue('stat-total', stats.total);
+      setStatValue('stat-total', data.data.total_cards);
       setStatValue('stat-pending', stats.pending);
       setStatValue('stat-verified', stats.verified);
       setStatValue('stat-approved', stats.approved);
       setStatValue('stat-download', stats.download);
+      setStatValue('stat-pool', stats.pool);
 
       // Render recent activity
       const actList = document.getElementById('recentActivityList');

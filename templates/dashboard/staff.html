@@ -13,12 +13,10 @@
   <!-- Page-specific: dashboard -->
   <link rel="stylesheet" href="{% static 'dist/css/dashboard.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
 
   {% include 'partials/sidebar.html' %}
 
@@ -28,8 +26,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
           <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
@@ -106,18 +104,30 @@
       <!-- Scrollable Middle -->
       <div class="dashboard-middle-scroll">
         <!-- Main Grid: Recent Client Updates (left) + Recent Activity (right) -->
-        <div class="dashboard-grid">
+        <div class="dashboard-grid dashboard-grid-main">
 
           <!-- Recent Client Updates -->
           <div class="dashboard-card">
-            <div class="dashboard-card-header">
+            <div class="dashboard-card-header updates-header">
               <h3><i class="fa-solid fa-users"></i> Recent Client Updates</h3>
+              <div class="recent-updates-search-inline">
+                <div class="recent-updates-search-box">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input
+                    type="text"
+                    id="recentClientUpdatesSearch"
+                    class="recent-updates-search-input"
+                    placeholder="Search client or table name"
+                    autocomplete="off"
+                  >
+                </div>
+              </div>
               {% if perm_idcard_setting_list %}
               <a href="{% url 'active_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
               {% endif %}
             </div>
             <div class="dashboard-card-body tall-body p-0">
-              <table class="recent-table">
+              <table class="recent-table recent-table-6col">
                 <thead>
                   <tr>
                     <th scope="col">Client</th>
@@ -125,6 +135,7 @@
                     <th scope="col" class="text-center">Verified</th>
                     <th scope="col" class="text-center">Approved</th>
                     <th scope="col" class="text-center">Downloaded</th>
+                    <th scope="col" class="text-center">Pool</th>
                   </tr>
                 </thead>
                 <tbody id="recentClientUpdatesBody">
@@ -134,9 +145,11 @@
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                   </tr>
                   <tr class="dashboard-table-skeleton-row">
                     <td><span class="dash-skeleton dash-skeleton-line" style="width: 66%;"></span></td>
+                    <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
                     <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
@@ -231,7 +244,7 @@
         </div>
         <div class="search-filter-group">
           <label>Filter:</label>
-          <select id="globalSearchFilter">
+          <select id="globalSearchFilter" class="form-select">
             <option value="all">All Fields</option>
             <option value="name">Name</option>
             <option value="address">Address</option>

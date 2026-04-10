@@ -159,8 +159,8 @@ class ThumbnailService:
                 # Handle EXIF orientation
                 try:
                     img = ImageOps.exif_transpose(img)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug('EXIF transpose skipped during thumbnail generation: %s', exc)
                 
                 # Create thumbnail (maintains aspect ratio)
                 img.thumbnail(size, Image.Resampling.LANCZOS)

@@ -36,6 +36,7 @@ jobs:
   build:
     name: Build & Release
     runs-on: windows-latest
+    if: ${{ false }}  # TEMP: Engine release paused
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────
@@ -284,6 +285,15 @@ jobs:
             download_url = $downloadUrl
             changelog    = "Adarsh Engine v$ver — automated build from CI/CD."
           } | ConvertTo-Json -Compress
+
+          $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds().ToString()
+          $nonce = [Guid]::NewGuid().ToString("N")
+          $signedPayload = "$timestamp.$payload"
+
+          $hmac = [System.Security.Cryptography.HMACSHA256]::new([System.Text.Encoding]::UTF8.GetBytes($env:WEBHOOK_SECRET))
+          $sigBytes = $hmac.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($signedPayload))
+          $sigHex = -join ($sigBytes | ForEach-Object { $_.ToString('x2') })
+          $signature = "sha256=$sigHex"
           
           Write-Host "Notifying server at $($env:WEBHOOK_URL) for v$ver ..."
           
@@ -291,7 +301,11 @@ jobs:
             $response = Invoke-RestMethod -Uri $env:WEBHOOK_URL `
               -Method POST `
               -ContentType "application/json" `
-              -Headers @{ "X-Webhook-Secret" = $env:WEBHOOK_SECRET } `
+              -Headers @{
+                "X-Hub-Signature-256" = $signature
+                "X-Webhook-Timestamp" = $timestamp
+                "X-Webhook-Nonce" = $nonce
+              } `
               -Body $payload `
               -TimeoutSec 30
             

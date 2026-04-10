@@ -4,11 +4,14 @@ Client Card Service — read and status-transition operations on ID cards.
 from typing import Optional, List, Any, Tuple
 
 from django.utils.timezone import localtime
+from django.utils.dateparse import parse_datetime, parse_date
+from django.utils.timezone import make_aware, is_naive
 from django.db.models import Count, Q
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
 from django.db.models import CharField
 
+from core.services import IDCardService
 from core.models import User
 from client.models import Client
 from staff.models import Staff
@@ -58,11 +61,19 @@ class ClientCardService(BaseService):
             ftype = str(field.get('type', '') or '').strip().lower()
             fname = str(field.get('name', '') or '').strip()
             lower = fname.lower()
+            normalized = lower.replace('_', ' ').replace('-', ' ').replace('.', ' ')
+            normalized = ' '.join(normalized.split())
 
-            if not class_field and (ftype == 'class' or lower == 'class'):
+            if not class_field and (
+                ftype == 'class'
+                or normalized in ('class', 'class name', 'std', 'standard', 'designation', 'grade')
+            ):
                 class_field = fname
                 continue
-            if not section_field and (ftype == 'section' or lower == 'section'):
+            if not section_field and (
+                ftype == 'section'
+                or normalized in ('section', 'section name', 'sec', 'division', 'div')
+            ):
                 section_field = fname
                 continue
             if not branch_field and (
@@ -89,13 +100,23 @@ class ClientCardService(BaseService):
 
     @classmethod
     def _table_scope_filters(cls, staff, table) -> Tuple[List[str], List[str], List[str]]:
+        table_key = (int(table.id), int(table.group_id))
+        cached_scopes = getattr(staff, '_cached_table_scope_filters', None)
+        if isinstance(cached_scopes, dict) and table_key in cached_scopes:
+            return cached_scopes[table_key]
+
         scopes = getattr(staff, 'assignment_scopes', None)
         if not isinstance(scopes, list) or not scopes:
-            return (
+            result = (
                 cls._dedupe_scope_values(staff.allowed_classes or []),
                 cls._dedupe_scope_values(staff.allowed_sections or []),
                 cls._dedupe_scope_values(staff.allowed_branches or []),
             )
+            if not isinstance(cached_scopes, dict):
+                cached_scopes = {}
+            cached_scopes[table_key] = result
+            setattr(staff, '_cached_table_scope_filters', cached_scopes)
+            return result
 
         matched = []
         for scope in scopes:
@@ -114,11 +135,16 @@ class ClientCardService(BaseService):
                 matched.append(scope)
 
         if not matched:
-            return (
+            result = (
                 cls._dedupe_scope_values(staff.allowed_classes or []),
                 cls._dedupe_scope_values(staff.allowed_sections or []),
                 cls._dedupe_scope_values(staff.allowed_branches or []),
             )
+            if not isinstance(cached_scopes, dict):
+                cached_scopes = {}
+            cached_scopes[table_key] = result
+            setattr(staff, '_cached_table_scope_filters', cached_scopes)
+            return result
 
         classes: List[str] = []
         sections: List[str] = []
@@ -128,14 +154,23 @@ class ClientCardService(BaseService):
             sections.extend(scope.get('sections') or [])
             branches.extend(scope.get('branches') or [])
 
-        return (
+        result = (
             cls._dedupe_scope_values(classes),
             cls._dedupe_scope_values(sections),
             cls._dedupe_scope_values(branches),
         )
+        if not isinstance(cached_scopes, dict):
+            cached_scopes = {}
+        cached_scopes[table_key] = result
+        setattr(staff, '_cached_table_scope_filters', cached_scopes)
+        return result
 
     @staticmethod
     def _assigned_group_ids_for_access(staff) -> List[int]:
+        cached_group_ids = getattr(staff, '_cached_assigned_group_ids_for_card_scope', None)
+        if cached_group_ids is not None:
+            return cached_group_ids
+
         scopes = getattr(staff, 'assignment_scopes', None)
         if isinstance(scopes, list) and scopes:
             out: List[int] = []
@@ -163,13 +198,26 @@ class ClientCardService(BaseService):
                 out.append(sid_int)
 
             if has_any_valid_scope:
+                setattr(staff, '_cached_assigned_group_ids_for_card_scope', out)
                 return out
 
-        return list(staff.assigned_groups.values_list('id', flat=True))
+        fallback_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+        setattr(staff, '_cached_assigned_group_ids_for_card_scope', fallback_group_ids)
+        return fallback_group_ids
+
+    @classmethod
+    def _assigned_table_ids_for_access(cls, staff) -> List[int]:
+        cached_table_ids = getattr(staff, '_cached_assigned_table_ids_for_card_scope', None)
+        if cached_table_ids is not None:
+            return cached_table_ids
+
+        assigned_table_ids = cls._normalize_positive_int_ids(staff.assigned_table_ids or [])
+        setattr(staff, '_cached_assigned_table_ids_for_card_scope', assigned_table_ids)
+        return assigned_table_ids
 
     @classmethod
     def _table_is_assigned_to_staff(cls, staff, table) -> bool:
-        assigned_table_ids = set(cls._normalize_positive_int_ids(staff.assigned_table_ids or []))
+        assigned_table_ids = set(cls._assigned_table_ids_for_access(staff))
         assigned_group_ids = set(cls._assigned_group_ids_for_access(staff))
 
         if assigned_table_ids and assigned_group_ids:
@@ -199,7 +247,27 @@ class ClientCardService(BaseService):
         if allowed_classes:
             if not class_field:
                 return qs.none()
-            qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField())).filter(_scope_cls__in=allowed_classes)
+            from core.utils.field_utils import normalize_class_value
+
+            qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField()))
+            normalized_allowed = {
+                normalize_class_value(value)
+                for value in allowed_classes
+                if normalize_class_value(value)
+            }
+            if not normalized_allowed:
+                return qs.none()
+
+            raw_values = list(
+                qs.exclude(_scope_cls__isnull=True)
+                .exclude(_scope_cls='')
+                .values_list('_scope_cls', flat=True)
+                .distinct()
+            )
+            matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
+            if not matching_raw:
+                return qs.none()
+            qs = qs.filter(_scope_cls__in=matching_raw)
 
         if allowed_sections:
             if not section_field:
@@ -209,7 +277,31 @@ class ClientCardService(BaseService):
         if allowed_branches:
             if not branch_field:
                 return qs.none()
-            qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField())).filter(_scope_branch__in=allowed_branches)
+            from core.utils.field_utils import normalize_compact_text_value
+
+            qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField()))
+            normalized_allowed = {
+                normalize_compact_text_value(value)
+                for value in allowed_branches
+                if normalize_compact_text_value(value)
+            }
+            if not normalized_allowed:
+                return qs.none()
+
+            raw_values = list(
+                qs.exclude(_scope_branch__isnull=True)
+                .exclude(_scope_branch='')
+                .values_list('_scope_branch', flat=True)
+                .distinct()
+            )
+            matching_raw = [
+                raw for raw in raw_values
+                if normalize_compact_text_value(raw) in normalized_allowed
+            ]
+            if not matching_raw:
+                return qs.none()
+
+            qs = qs.filter(_scope_branch__in=matching_raw)
 
         return qs
     
@@ -281,7 +373,9 @@ class ClientCardService(BaseService):
         offset: int = 0,
         limit: int = 100,
         search: Optional[str] = None,
-        cursor: int = None
+        cursor: int = None,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
@@ -348,22 +442,36 @@ class ClientCardService(BaseService):
 
             cards_query = cls._apply_client_staff_row_scope(user, table, cards_query)
             
-            # Search in field_data (JSONField)
+            # Search in field_data (JSONField) using table-aware matcher.
             if search:
-                search_lower = search.lower()
-                # Filter by searching in the JSON field data
-                # This looks for the search term in NAME, name, id_number, etc.
-                cards_query = cards_query.filter(
-                    Q(field_data__NAME__icontains=search_lower) |
-                    Q(field_data__name__icontains=search_lower) |
-                    Q(field_data__Name__icontains=search_lower) |
-                    Q(field_data__ID__icontains=search) |
-                    Q(field_data__id__icontains=search) |
-                    Q(field_data__ID_NUMBER__icontains=search) |
-                    Q(field_data__id_number__icontains=search) |
-                    Q(field_data__ROLL_NO__icontains=search) |
-                    Q(field_data__roll_no__icontains=search)
-                )
+                cards_query = IDCardService._apply_search_filter(cards_query, search, table=table)
+
+            # Download list supports date/date-time range filtering by downloaded_at.
+            if status_filter == 'download':
+                from_value = (from_date or '').strip()
+                to_value = (to_date or '').strip()
+
+                if from_value:
+                    parsed_from_dt = parse_datetime(from_value)
+                    if parsed_from_dt is not None:
+                        if is_naive(parsed_from_dt):
+                            parsed_from_dt = make_aware(parsed_from_dt)
+                        cards_query = cards_query.filter(downloaded_at__gte=parsed_from_dt)
+                    else:
+                        parsed_from_d = parse_date(from_value)
+                        if parsed_from_d is not None:
+                            cards_query = cards_query.filter(downloaded_at__date__gte=parsed_from_d)
+
+                if to_value:
+                    parsed_to_dt = parse_datetime(to_value)
+                    if parsed_to_dt is not None:
+                        if is_naive(parsed_to_dt):
+                            parsed_to_dt = make_aware(parsed_to_dt)
+                        cards_query = cards_query.filter(downloaded_at__lte=parsed_to_dt)
+                    else:
+                        parsed_to_d = parse_date(to_value)
+                        if parsed_to_d is not None:
+                            cards_query = cards_query.filter(downloaded_at__date__lte=parsed_to_d)
             
             total_count = cards_query.count()
 
@@ -415,6 +523,7 @@ class ClientCardService(BaseService):
                     'field_data': card.field_data,
                     'status': card.status,
                     'status_display': card.get_status_display(),
+                    'downloaded_date': localtime(card.downloaded_at).strftime('%Y-%m-%d') if card.downloaded_at else '',
                     'created_at': localtime(card.created_at).strftime('%d %b %Y, %H:%M'),
                     'updated_at': localtime(card.updated_at).strftime('%d %b %Y, %H:%M'),
                 }
@@ -449,6 +558,9 @@ class ClientCardService(BaseService):
             client = ClientAccessService.get_client_for_user(user)
             if not client and not PermissionService.is_any_admin(user):
                 return ServiceResult(success=False, message='Client profile not found')
+
+            if not PermissionService.has_permission(user, 'perm_idcard_info'):
+                return ServiceResult(success=False, message='Permission denied')
             
             # Get card
             try:
@@ -567,7 +679,7 @@ class ClientCardService(BaseService):
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def change_card_status(cls, user, card_id: int, new_status: str) -> ServiceResult:
+    def change_card_status(cls, user, card_id: int, new_status: str, request=None) -> ServiceResult:
         """
         Change a card's status — delegates to WorkflowService.transition().
 
@@ -599,13 +711,13 @@ class ClientCardService(BaseService):
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService
-            return WorkflowService.transition(card, new_status, user=user)
+            return WorkflowService.transition(card, new_status, user=user, request=request)
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))
     
     @classmethod
-    def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str) -> ServiceResult:
+    def bulk_change_status(cls, user, table_id: int, card_ids: List[int], new_status: str, request=None) -> ServiceResult:
         """
         Change status for multiple cards — delegates to WorkflowService.bulk_transition().
 
@@ -643,7 +755,7 @@ class ClientCardService(BaseService):
             
             # Delegate entirely to WorkflowService (handles permissions + all guards)
             from idcards.services_workflow import WorkflowService
-            return WorkflowService.bulk_transition(table, card_ids, new_status, user=user)
+            return WorkflowService.bulk_transition(table, card_ids, new_status, user=user, request=request)
             
         except Exception as e:
             return ServiceResult(success=False, message=str(e))

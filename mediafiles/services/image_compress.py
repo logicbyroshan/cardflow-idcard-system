@@ -66,8 +66,8 @@ class ImageCompressMixin:
                 try:
                     from PIL import ImageOps
                     img = ImageOps.exif_transpose(img)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug('EXIF transpose skipped during compression: %s', exc)
 
                 # Binary-search for best quality that meets target
                 lo, hi = min_quality, 95

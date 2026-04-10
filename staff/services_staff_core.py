@@ -32,6 +32,7 @@ class StaffService(BaseService):
     PERMISSION_FIELDS = [
         # ID Card Client List
         'perm_idcard_client_list',
+        'perm_manage_client_staff',
         # ID Card Settings
         'perm_idcard_setting_list', 'perm_idcard_setting_add', 
         'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 
@@ -54,6 +55,10 @@ class StaffService(BaseService):
         'perm_idcard_upgrade_all',
         # Mobile App
         'perm_mobile_app',
+        # Manage Panel
+        'perm_manage_panel_backup', 'perm_manage_panel_email',
+        # Manage Website sections
+        'perm_manage_website_clients', 'perm_manage_website_portfolio',
     ]
     
     @classmethod
@@ -91,6 +96,11 @@ class StaffService(BaseService):
         """Hide internal placeholder emails from API payloads."""
         value = (email or '').strip()
         return '' if value.endswith('@noemail.local') else value
+
+    @staticmethod
+    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
+        logger.exception('StaffService.%s failed: %s', action, exc)
+        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
     
     @classmethod
     def create(
@@ -266,7 +276,7 @@ class StaffService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('create', e)
     
     @classmethod
     def get(cls, staff_id: int, include_permissions: bool = True) -> ServiceResult:
@@ -278,7 +288,7 @@ class StaffService(BaseService):
                 data={'staff': cls.serialize(staff, include_permissions)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get', e)
     
     @classmethod
     def update(cls, staff_id: int, data: Dict[str, Any], profile_image=None) -> ServiceResult:
@@ -364,7 +374,7 @@ class StaffService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('update', e)
     
     @classmethod
     def delete(cls, staff_id: int) -> ServiceResult:
@@ -385,7 +395,7 @@ class StaffService(BaseService):
                 message=f'Staff "{staff_name}" deleted successfully!'
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('delete', e)
     
     @classmethod
     def toggle_status(cls, staff_id: int) -> ServiceResult:
@@ -478,7 +488,7 @@ class StaffService(BaseService):
         except Staff.DoesNotExist:
             return ServiceResult(success=False, message='Staff not found')
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('toggle_status', e)
     
     @classmethod
     def list_admin_staff(cls) -> ServiceResult:
@@ -491,7 +501,7 @@ class StaffService(BaseService):
                 data={'staff': staff_list, 'total': len(staff_list)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('list_admin_staff', e)
     
     @classmethod
     def list_client_staff(cls, client_id: int) -> ServiceResult:
@@ -508,7 +518,7 @@ class StaffService(BaseService):
                 data={'staff': staff_list, 'total': len(staff_list)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('list_client_staff', e)
 
     @classmethod
     def set_temp_password(cls, staff_id: int, new_password: str, request=None) -> ServiceResult:
@@ -541,6 +551,7 @@ class StaffService(BaseService):
                     role=staff.staff_type,
                     phone=user.phone or '',
                     request=request,
+                    email_variant='temp_password',
                 )
                 EmailLog.objects.create(
                     recipient_name=user.get_full_name(),
@@ -558,4 +569,4 @@ class StaffService(BaseService):
                 data={'email_sent': email_sent}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('set_temp_password', e)

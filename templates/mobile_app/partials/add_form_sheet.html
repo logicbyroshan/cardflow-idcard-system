@@ -56,62 +56,70 @@
         <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
             <!-- Photo Section -->
-            <div class="rounded-2xl p-4 border border-slate-200 bg-gradient-to-br from-slate-50 to-white space-y-3">
+            <div class="rounded-2xl p-4 border border-slate-200 bg-gradient-to-br from-slate-50 to-white flex flex-col gap-3">
                 <div class="flex items-center justify-between gap-2">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Student Photo</p>
-                    <span class="text-[9px] font-semibold px-2 py-1 rounded-full border"
-                          :class="form.photoPreview ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'"
-                          x-text="form.photoPreview ? 'Preview Ready' : 'No Photo Selected'"></span>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Card Photos</p>
+                    <p class="text-[9px] font-semibold px-2 py-1 rounded-full border bg-sky-50 text-sky-700 border-sky-200" x-show="activeImageField" x-text="'Selected: ' + _fieldLabel(activeImageField)"></p>
                 </div>
 
-                <div class="relative w-full max-w-[280px] mx-auto aspect-[3/4] rounded-2xl overflow-hidden border-2 shadow-sm transition-all"
-                     :class="form.photoPreview ? 'border-emerald-300 bg-slate-900' : 'border-dashed border-slate-300 bg-slate-100'"
-                     @click="if(!viewMode) pickFromGallery()">
-                    <template x-if="form.photoPreview">
-                        <img :src="form.photoPreview" class="absolute inset-0 w-full h-full object-contain bg-slate-900">
-                    </template>
-
-                    <template x-if="!form.photoPreview">
-                        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 text-center">
-                            <div class="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center">
-                                <i class="fa-solid fa-camera text-2xl text-slate-400"></i>
+                <div class="grid grid-cols-3 gap-2">
+                    <template x-for="fieldName in imageFormFields" :key="'img-slot-' + fieldName">
+                        <div class="flex flex-col gap-1.5">
+                            <p class="h-4 text-[9px] font-semibold text-slate-600 truncate flex items-center" :title="_fieldLabel(fieldName)" x-text="_fieldLabel(fieldName)"></p>
+                            <div class="relative h-28 w-full rounded-xl border-2 flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden shadow-sm"
+                                 :class="_imagePreview(fieldName) ? 'border-emerald-300 bg-slate-900' : 'border-dashed border-slate-300 bg-slate-100'"
+                                 @click="if(!viewMode) startImageSelection(fieldName)">
+                                <template x-if="_imagePreview(fieldName)">
+                                    <img
+                                        :src="_imagePreview(fieldName)"
+                                        class="absolute inset-0 w-full h-full object-contain bg-slate-900 rounded-xl"
+                                        @error="if (imageFormState && imageFormState[fieldName]) { imageFormState[fieldName].preview = null; imageFormState[fieldName].has_path = true; imageFormState[fieldName].existing = null; }"
+                                    >
+                                </template>
+                                <template x-if="!_imagePreview(fieldName)">
+                                    <div class="flex flex-col items-center gap-1.5 text-center px-1.5">
+                                        <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+                                            <i class="text-sm transition"
+                                               :class="_imageHasPath(fieldName) ? 'fa-solid fa-image text-amber-400' : 'fa-solid fa-camera text-slate-400 group-hover:text-brand-light'"></i>
+                                        </div>
+                                        <span class="text-[8px] text-slate-500 font-semibold" x-text="_imageHasPath(fieldName) ? 'Image path found' : 'Tap to add'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="!viewMode && _imagePreview(fieldName)">
+                                    <div class="absolute bottom-1 right-1 w-6 h-6 rounded-lg bg-slate-900/85 text-white flex items-center justify-center text-[10px] shadow">
+                                        <i class="fa-solid fa-camera"></i>
+                                    </div>
+                                </template>
                             </div>
-                            <p class="text-[11px] font-semibold text-slate-600">Tap to add photo</p>
-                            <p class="text-[10px] text-slate-400">Clear preview appears here instantly</p>
+                            <div class="h-7">
+                                <button type="button"
+                                        x-show="!viewMode && _imagePreview(fieldName)"
+                                        @click="openCropForField(fieldName)"
+                                        class="w-full h-7 rounded-lg text-[9px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 active:scale-95 transition-all">
+                                    Crop / Adjust
+                                </button>
+                            </div>
                         </div>
                     </template>
-
-                    <template x-if="form.photoPreview && !viewMode">
-                        <div class="absolute inset-x-0 bottom-0 px-3 py-2 text-[10px] font-semibold text-white bg-gradient-to-t from-black/65 to-transparent">
-                            Tap to replace photo
-                        </div>
-                    </template>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2" x-show="!viewMode">
-                    <button @click="takePhoto()" type="button"
-                            class="flex items-center justify-center gap-2 py-2.5 px-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-700 text-[11px] font-bold active:scale-[0.98] transition-all">
-                        <i class="fa-solid fa-camera"></i>
-                        Camera
+                <p class="text-[10px] text-slate-500 text-center" x-text="viewMode ? 'Photo previews' : 'Tap any image slot to upload or replace with a clear image'" ></p>
+            </div>
+
+            <!-- Image Picker -->
+            <div x-show="showImagePicker && !viewMode" x-transition class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Choose Photo Source</p>
+                <p class="text-[10px] text-slate-500 mb-2.5" x-show="activeImageField" x-text="'For ' + _fieldLabel(activeImageField)"></p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button @click="takePhoto()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-sky-200 shadow-sm active:scale-95 transition-all">
+                        <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center"><i class="fa-solid fa-camera text-blue-500 text-lg"></i></div>
+                        <span class="text-[10px] font-bold text-gray-600">Camera</span>
                     </button>
-                    <button @click="pickFromGallery()" type="button"
-                            class="flex items-center justify-center gap-2 py-2.5 px-3 bg-violet-50 border border-violet-200 rounded-xl text-violet-700 text-[11px] font-bold active:scale-[0.98] transition-all">
-                        <i class="fa-solid fa-images"></i>
-                        Gallery
+                    <button @click="pickFromGallery()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-violet-200 shadow-sm active:scale-95 transition-all">
+                        <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center"><i class="fa-solid fa-images text-purple-500 text-lg"></i></div>
+                        <span class="text-[10px] font-bold text-gray-600">Gallery</span>
                     </button>
                 </div>
-
-                <div class="flex justify-center" x-show="!viewMode && form.photoPreview">
-                    <button @click="cropSourceUrl = form.photoPreview; cropSourceFile = null; showCropModal = true; $nextTick(() => initCropper())"
-                            type="button"
-                            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 rounded-xl active:scale-[0.98] transition-all">
-                        <i class="fa-solid fa-crop-simple"></i>
-                        Crop / Adjust
-                    </button>
-                </div>
-
-                <p class="text-[10px] text-slate-500 text-center"
-                   x-text="viewMode ? 'Photo preview' : (form.photoPreview ? 'Photo selected. You can replace or crop again.' : 'Use Camera or Gallery to upload a clear photo')"></p>
             </div>
 
             <input type="file" x-ref="cameraInput" accept="image/*" capture="environment" class="hidden" @change="handleImageSelected($event)">

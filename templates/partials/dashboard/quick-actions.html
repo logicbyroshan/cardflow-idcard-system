@@ -1,46 +1,34 @@
 {% load static %}
 <!-- Quick Actions - Permission controlled -->
-<div class="dashboard-card">
+<div class="dashboard-card dashboard-card-blue-accent">
   <div class="dashboard-card-header">
     <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
   </div>
   <div class="dashboard-card-body">
     <div class="quick-actions">
-      {% if is_super_admin %}
-      <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn">
+      {% if is_super_admin or perm_idcard_client_list %}
+      <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-client">
         <i class="fa-solid fa-user-plus"></i>
         <span>Add New Client</span>
       </a>
       {% endif %}
       {% if is_super_admin %}
-      <a href="{% url 'manage_staff' %}?add=1" class="quick-action-btn">
+      <a href="{% url 'manage_staff' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-operator">
         <i class="fa-solid fa-user-tie"></i>
         <span>Add New Staff</span>
       </a>
       {% endif %}
-      {% if is_super_admin %}
-      <button type="button" class="quick-action-btn" onclick="openBackupModal()">
-        <i class="fa-solid fa-database"></i>
-        <span>Take Backup</span>
+      {% if is_super_admin or perm_idcard_client_list or perm_manage_client_staff %}
+      <a href="{% url 'manage_client_staff' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-assistent">
+        <i class="fa-solid fa-user-gear"></i>
+        <span>Add New Assistent</span>
+      </a>
+      {% endif %}
+      {% if is_super_admin or perm_idcard_client_list %}
+      <button type="button" class="quick-action-btn" data-dashboard-quick-action="open-client-message">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>Messages</span>
       </button>
-      {% endif %}
-      {% if is_super_admin %}
-      <a href="{% url 'settings' %}" class="quick-action-btn">
-        <i class="fa-solid fa-gear"></i>
-        <span>User Settings</span>
-      </a>
-      {% endif %}
-      {% if is_super_admin %}
-      <a href="{% url 'manage_website' %}" class="quick-action-btn">
-        <i class="fa-solid fa-globe"></i>
-        <span>Manage Website</span>
-      </a>
-      {% endif %}
-      {% if is_super_admin %}
-      <a href="{% url 'manage_panel' %}" class="quick-action-btn">
-        <i class="fa-solid fa-sliders"></i>
-        <span>Manage Panel</span>
-      </a>
       {% endif %}
     </div>
   </div>

@@ -1,7 +1,7 @@
 {% load static %}
 <!-- Search and Filter Bar -->
 <div class="action-bar search-filter-bar">
-    <!-- Left Section - Select All, Image Sort, Class/Section Filters, Search -->
+    <!-- Left Section - Select All, Image Sort, Class/Section/Course/Branch Filters, Search -->
     <div class="action-left">
         <div class="filter-group">
             <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="var o=document.getElementById('imageSortModalOverlay');if(o){o.classList.add('active');document.body.style.overflow='hidden';}">
@@ -33,8 +33,34 @@
                 </div>
             </div>
             {% endif %}
-            {% if table.has_class_field or table.has_section_field %}
-            <!-- Clear All Filters Button (class/section/image) -->
+            {% if table.has_course_field %}
+            <!-- Course Filter Dropdown -->
+            <div class="custom-dropdown filter-dropdown" id="courseFilterDropdown">
+                <button class="dropdown-toggle filter-toggle" id="courseFilterToggle" type="button">
+                    <span id="courseFilterText">All Courses</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="courseFilterOptions">
+                    <div class="dropdown-option selected" data-value="">All Courses</div>
+                    <!-- Options populated dynamically from table data -->
+                </div>
+            </div>
+            {% endif %}
+            {% if table.has_branch_field %}
+            <!-- Branch Filter Dropdown -->
+            <div class="custom-dropdown filter-dropdown" id="branchFilterDropdown">
+                <button class="dropdown-toggle filter-toggle" id="branchFilterToggle" type="button">
+                    <span id="branchFilterText">All Branches</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options filter-options" id="branchFilterOptions">
+                    <div class="dropdown-option selected" data-value="">All Branches</div>
+                    <!-- Options populated dynamically from table data -->
+                </div>
+            </div>
+            {% endif %}
+            {% if table.has_class_field or table.has_section_field or table.has_course_field or table.has_branch_field %}
+            <!-- Clear All Filters Button (class/section/course/branch/image) -->
             {% endif %}
             <button class="clear-filters-btn" id="clearFiltersBtn" type="button" title="Clear all filters" aria-label="Clear all filters">
                 <i class="fa-solid fa-xmark"></i>

@@ -8,78 +8,396 @@
 <span class="breadcrumb-item active">Clients</span>
 {% endblock %}
 
-{% block content %}
-<div class="wa-page-container">
-    <div class="wa-dashboard-section">
-        <div class="wa-action-bar">
-            <div class="wa-action-left">
-                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-handshake"></i> Client Logos / Partners</h3>
-                <span class="wa-count-badge">{{ clients_list|length }} clients</span>
-            </div>
-            <div class="wa-action-right">
-                {% if is_super_admin or perm_website_add %}
-                <button class="btn btn-primary" onclick="openClientModal()">
-                    <i class="fa-solid fa-plus"></i> Add Client
-                </button>
-                {% endif %}
-            </div>
-        </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
+<style>
+    :root {
+        --wa-surface: var(--bg-white, #ffffff);
+        --wa-surface-soft: var(--color-gray-50, #f8fafc);
+        --wa-border: var(--color-gray-200, #e5e7eb);
+        --wa-text: var(--text-primary, #1e293b);
+        --wa-muted: var(--color-gray-500, #64748b);
+    }
 
-        <div class="wa-table-wrap">
-    <table class="wa-table" id="clientsTable">
-        <thead>
-            <tr>
-                <th>Client</th>
-                <th>Order</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="clientsBody">
-            {% for c in clients_list %}
-            <tr data-id="{{ c.id }}">
-                <td>
-                    <div class="wa-cell-media">
-                        {% if c.logo %}
-                        <img src="{{ c.logo.url }}" class="wa-thumb logo" alt="{{ c.name }}">
-                        {% else %}
-                        <span class="wa-no-img"><i class="fa-solid fa-building"></i></span>
-                        {% endif %}
-                        <div class="wa-cell-info">
-                            <span class="wa-cell-title">{{ c.name }}</span>
-                            <span class="wa-cell-sub"><i class="fa-solid fa-handshake wa-cell-icon-note"></i> Partner</span>
+  .wa-clients-panel {
+        border: 1px solid var(--wa-border);
+    border-top: none;
+        background: var(--wa-surface);
+    min-height: calc(100vh - 230px);
+  }
+
+  .wa-clients-panel .notif-actions-left {
+    gap: 8px;
+  }
+
+  .wa-clients-panel .notif-table {
+    min-width: 940px;
+    table-layout: fixed;
+  }
+
+    .wa-clients-panel #clientsTable th:first-child,
+    .wa-clients-panel #clientsTable td:first-child {
+        text-align: left;
+    }
+
+  .client-row-media {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+    .client-logo-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: contain;
+        background: var(--wa-surface);
+        border: 1px solid var(--wa-border);
+    padding: 4px;
+    flex-shrink: 0;
+  }
+
+  .client-logo-fallback {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+        color: var(--wa-muted);
+        background: var(--wa-surface-soft);
+        border: 1px solid var(--wa-border);
+    flex-shrink: 0;
+  }
+
+  .client-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .client-main strong {
+    font-size: 12px;
+        color: var(--wa-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .client-main span {
+    font-size: 11px;
+        color: var(--wa-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .client-order {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    border-radius: 4px;
+        border: 1px solid var(--wa-border);
+        background: var(--wa-surface-soft);
+    font-size: 11px;
+        color: var(--text-secondary, #475569);
+    font-weight: 600;
+  }
+
+    .client-order-input {
+        width: 84px;
+        height: 30px;
+        border: 1px solid var(--wa-border);
+        border-radius: 4px;
+        background: var(--wa-surface);
+        color: var(--wa-text);
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .client-order-input:focus {
+        outline: none;
+        border-color: var(--color-primary, #667eea);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #667eea) 18%, transparent 82%);
+    }
+
+    .client-visibility-select {
+        min-width: 150px;
+        height: 30px;
+        padding: 4px 8px;
+        font-size: 11.5px;
+        border-radius: 4px;
+    }
+
+    .client-visibility-select.status-visible {
+        border-color: color-mix(in srgb, var(--color-success, #22c55e) 35%, #ffffff 65%);
+        background: var(--color-success-bg, #f0fdf4);
+        color: var(--color-success-dark, #166534);
+    }
+
+    .client-visibility-select.status-hidden {
+        border-color: var(--color-gray-300, #cbd5e1);
+        background: var(--wa-surface-soft);
+        color: var(--text-secondary, #475569);
+    }
+
+    .client-logo-action-block {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .client-logo-action-preview {
+        width: 108px;
+        height: 54px;
+        border-radius: 8px;
+        border: 1px solid var(--wa-border);
+        background: var(--wa-surface-soft);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .client-logo-action-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: var(--wa-surface);
+        padding: 4px;
+    }
+
+    .client-logo-action-preview span {
+        font-size: 11px;
+        color: var(--wa-muted);
+    }
+
+    .client-logo-action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .client-logo-action-buttons .btn {
+        min-width: 118px;
+        justify-content: center;
+    }
+
+    .client-logo-preview {
+        width: 100%;
+        min-height: 84px;
+        border-radius: 8px;
+        border: 1px dashed var(--color-gray-300, #cbd5e1);
+        background: var(--wa-surface-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .client-logo-preview img {
+        width: 100%;
+        height: 84px;
+        object-fit: contain;
+        background: var(--wa-surface);
+    }
+
+    .client-logo-preview span {
+        font-size: 11px;
+        color: var(--wa-muted);
+    }
+
+  .wa-clients-panel .btn-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .wa-clients-panel .pagination-center .page-num {
+    cursor: default;
+  }
+
+  .wa-clients-panel .pagination-right {
+    gap: 8px;
+  }
+
+  .wa-clients-panel .pagination-right label {
+    font-size: 11px;
+        color: var(--wa-muted);
+  }
+
+  .wa-clients-panel #clientRowsPerPage {
+    min-width: 74px;
+    height: 26px;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .wa-clients-panel .pagination-btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="panel-tab-content panel-tab-full-height email-panel-theme active wa-clients-panel">
+    <div class="notif-actions-bar">
+        <div class="notif-actions-left">
+            <select id="clientStatusFilter" class="form-select form-select-sm" onchange="onClientStatusFilterChange(this.value)">
+                <option value="" {% if not current_visibility %}selected{% endif %}>All Visibility</option>
+                <option value="visible" {% if current_visibility == 'visible' %}selected{% endif %}>Visible on Landing</option>
+                <option value="hidden" {% if current_visibility == 'hidden' %}selected{% endif %}>Hidden from Landing</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.location.reload()">
+                <i class="fa-solid fa-rotate-right"></i> Refresh
+            </button>
+        </div>
+        <div class="notif-actions-right"></div>
+    </div>
+
+    <div class="notif-table-wrap">
+        <table class="notif-table" id="clientsTable">
+            <colgroup>
+                <col style="width: 34%;">
+                <col style="width: 16%;">
+                <col style="width: 20%;">
+                <col style="width: 30%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Landing Order</th>
+                    <th>Website Visibility</th>
+                    <th>Logo Actions</th>
+                </tr>
+            </thead>
+            <tbody id="clientsBody">
+                {% for c in clients_list %}
+                <tr data-id="{{ c.id }}">
+                    <td>
+                        <div class="client-row-media">
+                            {% if c.website_logo %}
+                            <img src="{{ c.website_logo.url }}" class="client-logo-thumb" alt="{{ c.name }}">
+                            {% else %}
+                            <span class="client-logo-fallback"><i class="fa-solid fa-building"></i></span>
+                            {% endif %}
+                            <div class="client-main">
+                                <strong>{{ c.name }}</strong>
+                            </div>
                         </div>
-                    </div>
-                </td>
-                <td><span class="wa-order-badge">{{ c.order }}</span></td>
-                <td>
-                    <span class="wa-status-badge {% if c.is_active %}active{% else %}inactive{% endif %}"
-                          onclick="toggleClient({{ c.id }}, this)">
-                        {{ c.is_active|yesno:"Active,Inactive" }}
-                    </span>
-                </td>
-                <td class="wa-actions">
-                    {% if is_super_admin or perm_website_edit %}
-                    <button class="btn btn-icon" title="Edit" onclick="editClient({{ c.id }})"><i class="fa-solid fa-pen"></i></button>
-                    {% endif %}
-                    {% if is_super_admin or perm_website_delete %}
-                    <button class="btn btn-icon danger" title="Delete" onclick="deleteClient({{ c.id }})"><i class="fa-solid fa-trash"></i></button>
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-building-slash"></i>
-                        <h3>No Clients Added</h3>
-                        <p>No clients have been linked to the website yet.</p>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
+                    </td>
+                    <td>
+                        {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                        <input
+                            type="number"
+                            min="0"
+                            max="9999"
+                            step="1"
+                            class="client-order-input"
+                            value="{{ c.website_display_order|default:0 }}"
+                            data-current-order="{{ c.website_display_order|default:0 }}"
+                            onchange="setClientWebsiteOrder({{ c.id }}, this)">
+                        {% else %}
+                        <span class="client-order">{{ c.website_display_order|default:0 }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                        <select
+                            class="form-select form-select-sm client-visibility-select status-{% if c.website_is_visible %}visible{% else %}hidden{% endif %}"
+                            onchange="setClientWebsiteVisibility({{ c.id }}, this.value, this)">
+                            <option value="visible" {% if c.website_is_visible %}selected{% endif %}>Visible on Landing</option>
+                            <option value="hidden" {% if not c.website_is_visible %}selected{% endif %}>Hidden from Landing</option>
+                        </select>
+                        {% else %}
+                        <span class="client-order">{% if c.website_is_visible %}Visible{% else %}Hidden{% endif %}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="client-logo-action-block">
+                            <div class="client-logo-action-preview">
+                                {% if c.website_logo %}
+                                <img src="{{ c.website_logo.url }}" alt="{{ c.name }} logo">
+                                {% else %}
+                                <span>No Logo</span>
+                                {% endif %}
+                            </div>
+                            <div class="client-logo-action-buttons">
+                                {% if is_super_admin or perm_website_edit or perm_manage_website_clients %}
+                                    {% if c.website_logo %}
+                                    <button class="btn btn-sm btn-outline-primary" type="button" onclick="openUploadClientLogo({{ c.id }})">
+                                        <i class="fa-solid fa-upload"></i> Upload New
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" type="button" onclick="removeClientLogo({{ c.id }}, '{{ c.name|escapejs }}')">
+                                        <i class="fa-solid fa-trash"></i> Remove
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-primary" type="button" onclick="openUploadClientLogo({{ c.id }})">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Logo
+                                    </button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="notif-table-empty">
+                    <td colspan="4">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-building-slash"></i>
+                            <p>No Clients Added</p>
+                            <span>No clients have been linked to the website yet.</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
+    </div>
+
+    <div class="pagination-bar notif-pagination-bar">
+        <div class="pagination-left">
+            <span class="pagination-info">Showing {{ page_start }} to {{ page_end }} of {{ total_clients_count }} clients</span>
+        </div>
+        <div class="pagination-center">
+            <button class="pagination-btn" type="button" title="First Page" aria-label="First page" onclick="goClientPage(1)" {% if not page_obj.has_previous %}disabled{% endif %}>
+                <i class="fa-solid fa-angles-left"></i>
+            </button>
+            <button class="pagination-btn" type="button" title="Previous Page" aria-label="Previous page" onclick="goClientPage({{ page_obj.number|add:'-1' }})" {% if not page_obj.has_previous %}disabled{% endif %}>
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="page-numbers">
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <span class="page-num active">{{ num }}</span>
+                    {% else %}
+                    <button class="page-num" type="button" onclick="goClientPage({{ num }})">{{ num }}</button>
+                    {% endif %}
+                {% endfor %}
+            </span>
+            <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goClientPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <button class="pagination-btn" type="button" title="Last Page" aria-label="Last page" onclick="goClientPage({{ page_obj.paginator.num_pages }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                <i class="fa-solid fa-angles-right"></i>
+            </button>
+        </div>
+        <div class="pagination-right">
+            <label for="clientRowsPerPage">Rows per page:</label>
+            <select id="clientRowsPerPage" class="form-select form-select-sm" onchange="onClientRowsPerPageChange(this.value)">
+                {% for size in per_page_options %}
+                <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+                {% endfor %}
+            </select>
         </div>
     </div>
 </div>
@@ -88,33 +406,33 @@
 <div class="wa-modal-overlay" id="clientModal">
     <div class="wa-modal wa-modal-sm">
         <div class="wa-modal-header">
-            <h3 id="clientModalTitle">Add Client</h3>
+            <h3 id="clientModalTitle">Update Client Logo</h3>
             <button class="wa-modal-close" onclick="closeClientModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="clientForm" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" id="clientId" value="">
             <div class="wa-form-group">
-                <label for="cl_name">Name *</label>
-                <input type="text" id="cl_name" name="name" required>
+                <label for="cl_name">Client Name</label>
+                <input type="text" id="cl_name" name="name" readonly>
+            </div>
+            <div class="wa-form-group">
+                <label for="cl_status">Panel Status</label>
+                <input type="text" id="cl_status" readonly>
+            </div>
+            <div class="wa-form-group">
+                <label>Current Logo</label>
+                <div class="client-logo-preview" id="cl_logo_preview">
+                    <span>No logo uploaded</span>
+                </div>
             </div>
             <div class="wa-form-group">
                 <label for="cl_logo">Logo</label>
                 <input type="file" id="cl_logo" name="logo" accept="image/*">
             </div>
-            <div class="wa-form-group">
-                <label for="cl_order">Display Order</label>
-                <input type="number" id="cl_order" name="order" value="0">
-            </div>
-            <div class="wa-form-group">
-                <label class="wa-toggle-label">
-                    <input type="checkbox" id="cl_active" name="is_active" checked>
-                    <span>Active</span>
-                </label>
-            </div>
             <div class="wa-modal-footer">
                 <button type="button" class="btn btn-neutral" onclick="closeClientModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Upload</button>
             </div>
         </form>
     </div>
@@ -122,5 +440,34 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/clients.js' %}?v=134"></script>
+<script>
+function onClientStatusFilterChange(status) {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    if (status) {
+        params.set('visibility', status);
+    } else {
+        params.delete('visibility');
+        params.delete('status');
+    }
+    params.set('page', '1');
+    window.location.search = params.toString();
+}
+
+function onClientRowsPerPageChange(value) {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    params.set('per_page', String(value || 25));
+    params.set('page', '1');
+    window.location.search = params.toString();
+}
+
+function goClientPage(page) {
+    const targetPage = Math.max(1, parseInt(page || 1, 10));
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', String(targetPage));
+    window.location.search = url.searchParams.toString();
+}
+</script>
+<script src="{% static 'js/website-admin/clients.js' %}?v=138"></script>
 {% endblock %}

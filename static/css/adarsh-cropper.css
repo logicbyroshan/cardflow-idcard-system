@@ -519,17 +519,10 @@
 }
 
 .pipeline-select {
-  padding: 4px 8px;
+  height: 30px;
+  padding: 4px 26px 4px 8px;
+  min-width: 160px;
   font-size: 12px;
-  border: 1px solid var(--color-gray-300, #d1d5db);
-  border-radius: 4px;
-  background: var(--color-white, #fff);
-  cursor: pointer;
-}
-
-.pipeline-select:focus {
-  outline: none;
-  border-color: var(--color-primary, #3b82f6);
 }
 
 .pipeline-text-input {
@@ -661,25 +654,9 @@
 
 .client-dropdown {
   width: 100%;
-  padding: 10px 12px;
+  height: 38px;
+  padding: 8px 32px 8px 12px;
   font-size: 13px;
-  border: 1px solid var(--color-gray-300);
-  border-radius: 6px;
-  background: var(--color-white);
-  color: var(--color-gray-800);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
-}
-
-.client-dropdown:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .client-dropdown:disabled {

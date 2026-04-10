@@ -215,6 +215,14 @@ TITLE_SHORTENING_MAP: dict = {
     'MARITAL STATUS':       'MAR. STS.',
     'MOTHER TONGUE':        'MTH. TNGUE.',
     'EMERGENCY CONTACT':    'EMER. CONT.',
+    'EMERGENCY CONTACT NO': 'EMER. CONT. NO.',
+    'EMERGENCY CONTACT NUMBER': 'EMER. CONT. NO.',
+    'EMERG CONT NO':        'EMER. CONT. NO.',
+    'EMERG. CONT. NO':      'EMER. CONT. NO.',
+    'DRIVER MOBILE':        'DRIVER MOB.',
+    'DRIVER MOB':           'DRIVER MOB.',
+    'TRANSPORT MODE':       'TRANSPORT',
+    'TRANSPORT TYPE':       'TRANSPORT',
     'ALTERNATE MOBILE':     'ALT. MOB.',
     'ALTERNATE NUMBER':     'ALT. NO.',
     'ALTERNATE NO':         'ALT. NO.',
@@ -288,6 +296,7 @@ class PdfExporter:
         template_id: int = None,
         font_mode: str = 'auto',
         shorten_titles: bool = False,
+        progress_callback=None,
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -379,7 +388,7 @@ class PdfExporter:
                 )
 
             # Sort cards for export (Class → Section → Name)
-            cards_list = sort_cards_for_export(list(cards), table.fields)
+            cards_list = sort_cards_for_export(cards, table.fields)
             column_configs = self._build_column_configs(ordered_fields, cards_list, shorten_titles=shorten_titles)
 
             # ── Resolve font mode ────────────────────────────────
@@ -416,7 +425,12 @@ class PdfExporter:
             row_height_cm = round(max_img_h + 0.15, 2) if max_img_h > 0 else 0.8
 
             # Build row data (file:// image URIs for WeasyPrint)
-            rows = self._build_rows(ordered_fields, cards_list, column_configs)
+            rows = self._build_rows(
+                ordered_fields,
+                cards_list,
+                column_configs,
+                progress_callback=progress_callback,
+            )
 
             # Get institution name
             institution_name = "Institution"
@@ -588,6 +602,7 @@ class PdfExporter:
             'NUMBER', 'SECTION', 'CLASS', 'NAME', 'EMAIL', 'BIRTH',
             'AADHAR', 'AADHAAR', 'PINCODE', 'STATE', 'CITY', 'COUNTRY',
             'BLOOD', 'GROUP', 'GENDER', 'PHOTO', 'IMAGE', 'DATE',
+            'EMERGENCY', 'EMERG', 'CONTACT', 'CONT', 'TRANSPORT', 'DRIVER',
             'JOINING', 'ENROL', 'ROLL', 'CATEGORY', 'CASTE',
             'OCCUPATION', 'QUALIFICATION', 'DESIGNATION', 'RELIGION',
             'NATIONALITY', 'HOUSE', 'WARD', 'BLOCK', 'POST', 'OFFICE',
@@ -859,6 +874,7 @@ class PdfExporter:
         ordered_fields: List[Dict[str, Any]],
         cards: list,
         column_configs: List[Dict[str, Any]] = None,
+        progress_callback=None,
     ) -> List[List[Dict[str, Any]]]:
         """
         Build row data for the template.
@@ -945,6 +961,12 @@ class PdfExporter:
                 row_cells.append(cell)
 
             rows.append(row_cells)
+
+            if callable(progress_callback) and ((sr_no % 20 == 0) or (sr_no == len(cards))):
+                try:
+                    progress_callback(sr_no, len(cards))
+                except Exception:
+                    pass
 
         return rows
 

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.utils import timezone
-from core.utils.threaded_email import send_mail_async
+from core.utils.threaded_email import send_html_email_async
+from core.utils.email_utils import get_contact_submission_email_template
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,20 +14,7 @@ def send_contact_email(submission):
     """
     try:
         subject = f"[Contact Form] {submission.subject}"
-        message = f"""
-New contact form submission:
-
-Name: {submission.name}
-Email: {submission.email}
-Phone: {submission.phone or 'Not provided'}
-Subject: {submission.subject}
-
-Message:
-{submission.message}
-
----
-Submitted at: {submission.created_at.strftime('%Y-%m-%d %H:%M:%S')}
-"""
+        html_content, plain_content = get_contact_submission_email_template(submission)
         
         # Check email backend is configured
         email_backend = getattr(settings, 'EMAIL_BACKEND', '')
@@ -40,11 +28,13 @@ Submitted at: {submission.created_at.strftime('%Y-%m-%d %H:%M:%S')}
             return False
         
         # Send in background thread (non-blocking)
-        send_mail_async(
+        send_html_email_async(
             subject=subject,
-            message=message,
+            plain_content=plain_content,
+            html_content=html_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[recipient],
+            email_type='contact',
         )
         
         # Mark as sent (email dispatched to thread)

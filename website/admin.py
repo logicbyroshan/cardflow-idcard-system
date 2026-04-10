@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
     BusinessDetails, Feature, HeroImage, PortfolioCategory, PortfolioItem, 
-    TrustedClient, Testimonial, ContactSubmission, FAQ, Reel,
+    Testimonial, ContactSubmission, FAQ, Reel,
     WebsiteStatus,
 )
 
@@ -79,20 +79,6 @@ class PortfolioItemAdmin(admin.ModelAdmin):
     def thumbnail(self, obj):
         return image_preview(obj.image)
     thumbnail.short_description = 'Preview'
-
-
-@admin.register(TrustedClient)
-class TrustedClientAdmin(admin.ModelAdmin):
-    list_display = ('logo_preview', 'name', 'is_active', 'order')
-    list_filter = ('is_active',)
-    search_fields = ('name',)
-    list_editable = ('is_active', 'order')
-    
-    fields = ('name', 'logo', 'order', 'is_active')
-
-    def logo_preview(self, obj):
-        return image_preview(obj.logo)
-    logo_preview.short_description = 'Logo'
 
 
 @admin.register(Testimonial)

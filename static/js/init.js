@@ -112,8 +112,208 @@
     };
 
     // ==========================================
+    // MODAL BRIDGE (shared helper for legacy/custom modals)
+    // ==========================================
+
+    function getModalBridgeDefaults(opts) {
+        const cfg = Object.assign({
+            overlayClass: 'show',
+            closeOnEscape: true,
+            closeOnOverlayClick: false,
+            lockBodyScroll: true,
+            focusSelector: null,
+            focusDelayMs: 40
+        }, opts || {});
+        return cfg;
+    }
+
+    function openModalViaBridge(id, opts) {
+        const cfg = getModalBridgeDefaults(opts);
+        const el = document.getElementById(id);
+        if (!el) return false;
+
+        if (el.style && el.style.display === 'none') {
+            el.dataset.inlineHiddenAtInit = '1';
+            el.style.display = '';
+        }
+
+        if (window.ModalManager && typeof window.ModalManager.register === 'function') {
+            try {
+                const ctrl = window.ModalManager.register(id, {
+                    overlayClass: cfg.overlayClass,
+                    closeOnEscape: cfg.closeOnEscape,
+                    closeOnOverlayClick: cfg.closeOnOverlayClick,
+                    lockBodyScroll: cfg.lockBodyScroll
+                });
+                if (ctrl && typeof ctrl.open === 'function') {
+                    ctrl.open(cfg.data);
+                } else {
+                    el.classList.add(cfg.overlayClass);
+                }
+            } catch (err) {
+                el.classList.add(cfg.overlayClass);
+            }
+        } else {
+            el.classList.add(cfg.overlayClass);
+        }
+
+        if (cfg.focusSelector) {
+            setTimeout(function () {
+                const target = el.querySelector(cfg.focusSelector);
+                if (target && typeof target.focus === 'function') target.focus();
+            }, cfg.focusDelayMs);
+        }
+        return true;
+    }
+
+    function closeModalViaBridge(id, opts) {
+        const cfg = getModalBridgeDefaults(opts);
+        const el = document.getElementById(id);
+        if (!el) return false;
+
+        if (window.ModalManager && typeof window.ModalManager.close === 'function') {
+            const closed = window.ModalManager.close(id);
+            if (!closed) {
+                el.classList.remove(cfg.overlayClass, 'active', 'show', 'open');
+            }
+        } else {
+            el.classList.remove(cfg.overlayClass, 'active', 'show', 'open');
+        }
+
+        if (el.dataset.inlineHiddenAtInit === '1' && el.style) {
+            el.style.display = 'none';
+        }
+        return true;
+    }
+
+    window.AdarshModalBridge = window.AdarshModalBridge || {
+        open: openModalViaBridge,
+        close: closeModalViaBridge,
+    };
+
+    // ==========================================
     // GLOBAL KEYBOARD SHORTCUTS
     // ==========================================
+
+    function isVisibleElement(el) {
+        if (!el) return false;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }
+
+    function getOpenModalContainers() {
+        const selectors = [
+            '.wa-confirm-overlay.show',
+            '#coreConfirmOverlay.show',
+            '.modal.show',
+            '.modal.active',
+            '.modal-backdrop',
+            '.modal-overlay',
+            '.confirm-modal',
+            '[role="dialog"][aria-modal="true"]',
+            '.drawer.open',
+            '.side-drawer.open'
+        ];
+        const set = new Set();
+        selectors.forEach((sel) => {
+            document.querySelectorAll(sel).forEach((el) => {
+                if (isVisibleElement(el)) set.add(el);
+            });
+        });
+        return Array.from(set);
+    }
+
+    function isDismissButton(btn) {
+        if (!btn) return true;
+        const cls = btn.className || '';
+        if (/cancel|close|modal-close|modal-cancel/i.test(cls)) return true;
+        const txt = (btn.textContent || '').trim();
+        return /^(cancel|close|back|no)$/i.test(txt);
+    }
+
+    function scorePrimaryButton(btn) {
+        if (!btn || btn.disabled || isDismissButton(btn) || !isVisibleElement(btn)) return -1;
+        const id = (btn.id || '').toLowerCase();
+        const cls = (btn.className || '').toLowerCase();
+        const txt = (btn.textContent || '').toLowerCase();
+        const type = (btn.getAttribute('type') || '').toLowerCase();
+        let score = 0;
+
+        if (btn.dataset.hotkeyEnter === 'primary') score += 200;
+        if (btn.hasAttribute('data-modal-primary') || btn.hasAttribute('data-confirm')) score += 140;
+        if (/(confirm|delete|save|submit|apply|move|upgrade|reupload|start|done|ok|yes)/.test(id)) score += 90;
+        if (/(btn-danger|btn-primary|btn-save|btn-confirm|danger|primary|confirm)/.test(cls)) score += 80;
+        if (type === 'submit' || btn.hasAttribute('data-drawer-submit')) score += 60;
+        if (/(confirm|delete|save|submit|apply|move|upgrade|reupload|start|done|ok|yes)/.test(txt)) score += 40;
+        if (/(neutral|secondary)/.test(cls)) score -= 20;
+
+        return score;
+    }
+
+    function findPrimaryButton(container) {
+        if (!container) return null;
+        const candidates = container.querySelectorAll('button, input[type="submit"], [type="submit"], a[role="button"], [data-modal-primary], [data-confirm], [data-action="confirm"]');
+        let winner = null;
+        let best = -1;
+        candidates.forEach((btn) => {
+            const s = scorePrimaryButton(btn);
+            if (s >= best) {
+                best = s;
+                winner = btn;
+            }
+        });
+        return best > 0 ? winner : null;
+    }
+
+    function findDismissButton(container) {
+        if (!container) return null;
+        const btn = container.querySelector('[data-modal-cancel], .modal-cancel, .cancel-btn, [data-modal-close], .modal-close, .close-btn, .btn-neutral');
+        return btn && isVisibleElement(btn) ? btn : null;
+    }
+
+    function isConfirmLikeModal(container) {
+        if (!container) return false;
+        const meta = ((container.id || '') + ' ' + (container.className || '')).toLowerCase();
+        if (/(confirm|delete|warning|danger)/.test(meta)) return true;
+        if (container.querySelector('.cc-warning, .wa-confirm-warning, .modal-alert, #ccWarning, #waConfirmWarning')) return true;
+        const hasNeutral = !!container.querySelector('.btn-neutral, .cancel-btn, .modal-cancel');
+        const hasAction = !!container.querySelector('.btn-danger, .btn-primary, .btn-confirm, .btn-save, [data-confirm], [data-modal-primary], [data-drawer-submit], [type="submit"]');
+        return hasNeutral && hasAction;
+    }
+
+    function initModalActionHotkeys() {
+        document.addEventListener('keydown', function (e) {
+            if (e.defaultPrevented || e.isComposing) return;
+            if (e.altKey || e.ctrlKey || e.metaKey) return;
+            if (e.key !== 'Enter' && e.key !== 'Escape') return;
+
+            const openModals = getOpenModalContainers();
+            if (!openModals.length) return;
+            const activeModal = openModals[openModals.length - 1];
+
+            if (e.key === 'Escape') {
+                const dismissBtn = findDismissButton(activeModal);
+                if (dismissBtn) {
+                    e.preventDefault();
+                    dismissBtn.click();
+                }
+                return;
+            }
+
+            const target = e.target;
+            if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+            if (target && target.closest('button, a, [role="button"]')) return;
+            if (!isConfirmLikeModal(activeModal)) return;
+
+            const primaryBtn = findPrimaryButton(activeModal);
+            if (primaryBtn) {
+                e.preventDefault();
+                primaryBtn.click();
+            }
+        });
+    }
 
     /**
      * Initialize global keyboard shortcuts
@@ -217,6 +417,9 @@
 
         // Initialize global keyboard shortcuts
         initKeyboardShortcuts();
+
+        // Enter/Escape behavior for confirm-style modals across pages
+        initModalActionHotkeys();
 
         // Initialize search clear buttons (universal)
         initSearchClearButtons();

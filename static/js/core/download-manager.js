@@ -39,15 +39,64 @@
     var _queue = [];     // [{ id, options }]  waiting to start
     var _currentOverlayId = null;   // ID of the download currently shown in blocking overlay
     var _overlayStartTime = null;   // Track start time for ETA calculation
+    var _bulkUiLockActive = false;
+
+    function _isBulkLockAllowedRoot(node) {
+        if (!node || !node.nodeType || node.nodeType !== 1) return false;
+        if (node.id === 'blockingOverlay' || node.id === 'downloadToastContainer') return true;
+        if (node.classList && node.classList.contains('alpine-toast-wrapper')) return true;
+        return false;
+    }
+
+    function _toggleBulkLockInert(active) {
+        if (!document || !document.body || !document.body.children) return;
+        var roots = document.body.children;
+        for (var i = 0; i < roots.length; i++) {
+            var node = roots[i];
+            if (_isBulkLockAllowedRoot(node)) continue;
+
+            if (active) {
+                if (!node.hasAttribute('inert')) {
+                    node.setAttribute('inert', '');
+                    node.setAttribute('data-bulk-lock-inert', '1');
+                }
+            } else if (node.getAttribute('data-bulk-lock-inert') === '1') {
+                node.removeAttribute('inert');
+                node.removeAttribute('data-bulk-lock-inert');
+            }
+        }
+    }
+
+    function _setBulkUiLock(active) {
+        if (!document || !document.body) return;
+        var shouldLock = !!active;
+        document.body.classList.toggle('bulk-operation-active', shouldLock);
+        _toggleBulkLockInert(shouldLock);
+
+        if (shouldLock && document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
+    }
+
+    function _consumeBulkUiLockFlag() {
+        window.IDCardApp = window.IDCardApp || {};
+        if (window.IDCardApp._nextBulkUiLock === true) {
+            window.IDCardApp._nextBulkUiLock = false;
+            return true;
+        }
+        return false;
+    }
 
     // =========================================
     // BLOCKING OVERLAY HELPERS (Enhanced)
     // =========================================
-    function _showBlockingOverlay(id, name, itemCount) {
+    function _showBlockingOverlay(id, name, itemCount, lockUi) {
         var overlay = document.getElementById('blockingOverlay');
         if (!overlay) return;
         _currentOverlayId = id;
         _overlayStartTime = Date.now();
+        _bulkUiLockActive = !!lockUi || _consumeBulkUiLockFlag();
+        if (_bulkUiLockActive) _setBulkUiLock(true);
 
         var content = overlay.querySelector('#blockingOverlayContent');
         var iconEl = overlay.querySelector('#blockingOverlayIconInner');
@@ -187,6 +236,10 @@
         if (overlay) overlay.style.display = 'none';
         _currentOverlayId = null;
         _overlayStartTime = null;
+        if (_bulkUiLockActive) {
+            _setBulkUiLock(false);
+            _bulkUiLockActive = false;
+        }
     }
 
     // =========================================
@@ -502,7 +555,7 @@
         }
 
         // Show blocking overlay with item count
-        _showBlockingOverlay(id, dl.name, itemCount);
+        _showBlockingOverlay(id, dl.name, itemCount, !!opts.lockUi);
 
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;
@@ -766,7 +819,7 @@
         }
 
         // Show blocking overlay for image download with item count
-        _showBlockingOverlay(id, name, itemCount);
+        _showBlockingOverlay(id, name, itemCount, !!options.lockUi);
 
         var xhr = new XMLHttpRequest();
         dl.xhr = xhr;
@@ -1037,6 +1090,8 @@
             var overlay = document.getElementById('blockingOverlay');
             if (!overlay) return;
             _currentOverlayId = 'upload-' + Date.now();
+            _bulkUiLockActive = true;
+            _setBulkUiLock(true);
             var msgEl = overlay.querySelector('#blockingOverlayMessage');
             var barEl = overlay.querySelector('#blockingOverlayBar');
             var cancelBtn = overlay.querySelector('#blockingOverlayCancelBtn');
@@ -1063,12 +1118,20 @@
             var overlay = document.getElementById('blockingOverlay');
             if (overlay) overlay.style.display = 'none';
             _currentOverlayId = null;
+            if (_bulkUiLockActive) {
+                _setBulkUiLock(false);
+                _bulkUiLockActive = false;
+            }
         }
     };
 
     window.DownloadManager = DownloadManager;
     window.IDCardApp = window.IDCardApp || {};
     window.IDCardApp.DownloadManager = DownloadManager;
+    window.IDCardApp.applyBulkUiLock = _setBulkUiLock;
+    window.IDCardApp.isBulkUiLocked = function () {
+        return !!(document && document.body && document.body.classList.contains('bulk-operation-active'));
+    };
 
     // Global shortcuts for upload overlay (convenience for vanilla JS upload code)
     window.showBlockingOverlay = DownloadManager.showUploadOverlay;

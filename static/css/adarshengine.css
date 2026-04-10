@@ -382,22 +382,15 @@
 
 .ae-preset-select {
   flex: 1;
-  padding: 8px 10px;
+  height: 34px;
+  padding: 8px 28px 8px 10px;
   font-size: 11px;
   background: #1a1f2e;
   border: 1px solid #3d4556;
-  border-radius: 5px;
   color: #e2e8f0;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23a0aec0' d='M2 3L5 7l3-4'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 24px;
 }
 
 .ae-preset-select:focus {
-  outline: none;
   border-color: #667eea;
 }
 

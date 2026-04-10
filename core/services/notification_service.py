@@ -12,15 +12,16 @@ ARCHITECTURE: Service layer only — no direct model mutations in views.
 
 import logging
 from datetime import timedelta
+from html import escape
 
 from django.core.cache import cache as _cache
 from django.db import transaction
 from django.db.models import Q, Exists, OuterRef, Value, BooleanField
-from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.timesince import timesince
 
 from core.models import Notification, NotificationRead, User
+from core.utils.email_utils import build_unified_email_html
 from .base import ServiceResult
 
 logger = logging.getLogger(__name__)
@@ -29,51 +30,13 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     """Service for creating, querying, and managing notifications."""
 
-    EMAIL_CATEGORY_THEMES = {
-        'general': {
-            'accent': '#2563eb',
-            'accent_soft': '#dbeafe',
-            'banner_bg': '#eff6ff',
-            'badge_bg': '#dbeafe',
-            'badge_text': '#1e3a8a',
-        },
-        'announcement': {
-            'accent': '#d97706',
-            'accent_soft': '#fde68a',
-            'banner_bg': '#fffbeb',
-            'badge_bg': '#fef3c7',
-            'badge_text': '#92400e',
-        },
-        'update': {
-            'accent': '#059669',
-            'accent_soft': '#a7f3d0',
-            'banner_bg': '#ecfdf5',
-            'badge_bg': '#d1fae5',
-            'badge_text': '#065f46',
-        },
-        'maintenance': {
-            'accent': '#7c3aed',
-            'accent_soft': '#ddd6fe',
-            'banner_bg': '#f5f3ff',
-            'badge_bg': '#ede9fe',
-            'badge_text': '#5b21b6',
-        },
-        'alert': {
-            'accent': '#dc2626',
-            'accent_soft': '#fecaca',
-            'banner_bg': '#fef2f2',
-            'badge_bg': '#fee2e2',
-            'badge_text': '#991b1b',
-        },
-    }
-
     # ── creation ────────────────────────────────────────────
 
     @classmethod
     def create_notification(cls, *, title, message, priority='normal',
                             category='general', target='all',
                             target_user_ids=None, created_by=None,
-                            send_email=False):
+                            send_email=False, visibility_hours=None):
         """
         Create a notification and optionally send email alerts.
 
@@ -86,6 +49,8 @@ class NotificationService:
             target_user_ids: list of user IDs when target='selected'
             created_by: User who created the notification
             send_email: Whether to also send email to targeted users
+            visibility_hours: Number of hours notification should remain visible.
+                Use None for no auto-expiry.
 
         Returns:
             ServiceResult with notification data on success
@@ -98,6 +63,15 @@ class NotificationService:
         if target == 'selected' and not target_user_ids:
             return ServiceResult(success=False, message='Select at least one user.')
 
+        expires_at = None
+        if visibility_hours is not None:
+            try:
+                visibility_hours = int(visibility_hours)
+            except (TypeError, ValueError):
+                return ServiceResult(success=False, message='Visibility duration must be a number of hours.')
+            visibility_hours = max(24, min(visibility_hours, 24 * 365))
+            expires_at = timezone.now() + timedelta(hours=visibility_hours)
+
         try:
             with transaction.atomic():
                 notif = Notification.objects.create(
@@ -107,6 +81,7 @@ class NotificationService:
                     category=category,
                     target=target,
                     created_by=created_by,
+                    expires_at=expires_at,
                 )
 
                 # If selected users, add M2M
@@ -152,7 +127,10 @@ class NotificationService:
 
         Returns list of dicts with 'is_read' flag and 'time_ago' string.
         """
-        qs = Notification.objects.filter(is_active=True).select_related('created_by')
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        ).select_related('created_by')
 
         # Filter by target scope
         role_filter = Q(target='all') | Q(target=user.role)
@@ -197,7 +175,10 @@ class NotificationService:
         if cached is not None:
             return cached
 
-        qs = Notification.objects.filter(is_active=True)
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
 
         role_filter = Q(target='all') | Q(target=user.role)
         selected_filter = Q(target='selected', target_users=user)
@@ -228,7 +209,10 @@ class NotificationService:
     @classmethod
     def mark_all_as_read(cls, user):
         """Mark all visible notifications as read for a user."""
-        qs = Notification.objects.filter(is_active=True)
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
         role_filter = Q(target='all') | Q(target=user.role)
         selected_filter = Q(target='selected', target_users=user)
         qs = qs.filter(role_filter | selected_filter).distinct()
@@ -258,7 +242,10 @@ class NotificationService:
     @classmethod
     def list_all_notifications(cls, limit=50, offset=0, search=''):
         """List all notifications (admin panel view)."""
-        qs = Notification.objects.filter(is_active=True).select_related('created_by').order_by('-created_at')
+        now = timezone.now()
+        qs = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        ).select_related('created_by').order_by('-created_at')
         if search:
             qs = qs.filter(
                 Q(title__icontains=search) | Q(message__icontains=search)
@@ -266,7 +253,9 @@ class NotificationService:
         total = qs.count()
         notifications = list(qs[offset:offset + limit])
         # Aggregate counts across ALL notifications (not just this page)
-        all_active = Notification.objects.filter(is_active=True)
+        all_active = Notification.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
         stats = {
             'broadcast': all_active.filter(target='all').count(),
             'targeted':  all_active.filter(target='selected').count(),
@@ -280,12 +269,12 @@ class NotificationService:
 
     @classmethod
     def delete_notification(cls, notification_id):
-        """Soft-delete a notification (deactivate)."""
+        """Hide a notification from all users (deactivate)."""
         try:
             notif = Notification.objects.get(id=notification_id)
             notif.is_active = False
             notif.save(update_fields=['is_active'])
-            return ServiceResult(success=True, message='Notification deleted.')
+            return ServiceResult(success=True, message='Notification hidden from users.')
         except Notification.DoesNotExist:
             return ServiceResult(success=False, message='Notification not found.')
 
@@ -343,6 +332,7 @@ class NotificationService:
             'icon_class': notif.icon_class,
             'created_at': notif.created_at.isoformat(),
             'time_ago': timesince(notif.created_at, timezone.now()),
+            'expires_at': notif.expires_at.isoformat() if notif.expires_at else None,
         }
         if user and hasattr(notif, 'is_read'):
             data['is_read'] = notif.is_read
@@ -365,14 +355,9 @@ class NotificationService:
 
     @classmethod
     def _build_email_context(cls, notif):
-        """Build render context for notification email templates."""
-        theme = cls.EMAIL_CATEGORY_THEMES.get(
-            notif.category,
-            cls.EMAIL_CATEGORY_THEMES['general'],
-        )
+        """Build context values used for plain and HTML notification emails."""
         return {
             'notification': notif,
-            'theme': theme,
             'category_display': notif.get_category_display(),
             'priority_display': notif.get_priority_display(),
             'target_display': notif.get_target_display(),
@@ -397,6 +382,51 @@ class NotificationService:
             f"{'=' * len(notif.title)}\n"
             f"{notif.message}\n\n"
             "This is an automated notification from Adarsh Admin."
+        )
+
+    @classmethod
+    def _build_html_email_body(cls, notif, context):
+        """Generate unified HTML body for notification emails."""
+        safe_message = escape(notif.message or '').replace('\n', '<br>')
+        body_html = (
+            '<p style="margin:0 0 12px;">A new system notification is available.</p>'
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            'style="border:1px solid #dbe4f2;border-radius:12px;background:#f8fbff;">'
+            '<tr><td style="padding:12px 14px;">'
+            f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Category</div>'
+            f'<div style="font-size:14px;font-weight:700;color:#0f172a;">{escape(context["category_display"])}</div>'
+            '<div style="height:8px;"></div>'
+            f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Priority</div>'
+            f'<div style="font-size:14px;font-weight:700;color:#0f172a;">{escape(context["priority_display"])}</div>'
+            '<div style="height:8px;"></div>'
+            f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Target</div>'
+            f'<div style="font-size:14px;font-weight:700;color:#0f172a;">{escape(context["target_display"])}</div>'
+            '<div style="height:8px;"></div>'
+            f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Sent by</div>'
+            f'<div style="font-size:14px;font-weight:700;color:#0f172a;">{escape(context["sender_name"])}</div>'
+            '<div style="height:8px;"></div>'
+            f'<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Sent at</div>'
+            f'<div style="font-size:14px;font-weight:700;color:#0f172a;">{escape(context["created_at_display"])}</div>'
+            '</td></tr></table>'
+            '<div style="margin-top:12px;border:1px solid #cbd5e1;border-radius:10px;background:#ffffff;padding:12px 14px;">'
+            '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Message</div>'
+            f'<div style="font-size:13px;line-height:1.7;color:#334155;">{safe_message}</div>'
+            '</div>'
+        )
+
+        if context['is_urgent']:
+            body_html += (
+                '<div style="margin-top:12px;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:10px;background:#fef2f2;padding:10px 12px;font-size:12px;color:#991b1b;line-height:1.65;">'
+                '<strong>Urgent:</strong> Please review this notification as soon as possible.'
+                '</div>'
+            )
+
+        return build_unified_email_html(
+            theme=notif.category,
+            kicker='Adarsh Admin Notification',
+            title=notif.title,
+            subtitle='You are receiving this based on your notification preferences.',
+            body_html=body_html,
         )
 
     @classmethod
@@ -441,7 +471,7 @@ class NotificationService:
             priority_label = f"[{notif.get_priority_display()}] " if notif.priority != 'normal' else ''
             subject = f"{priority_label}{notif.title}"
             context = cls._build_email_context(notif)
-            html_content = render_to_string('emails/notification_alert.html', context)
+            html_content = cls._build_html_email_body(notif, context)
             plain_content = cls._build_plain_email_body(notif, context)
 
             # Send individually so recipients don't see each other's addresses

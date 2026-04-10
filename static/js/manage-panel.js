@@ -5,16 +5,25 @@
 
 /* ============ State ============ */
 let panelNotifications = [];
-let panelOffset = 0;
-const PANEL_LIMIT = 20;
 let panelTotal = 0;
+let _notifPage = 1;
+let _notifPerPage = 25;
+let _notifTotalPages = 1;
 let allUsers = {};       // { role: [{id, name, username, role_display}] }
 let selectedUserIds = new Set();
 let searchTimer = null;
 let serverInfoSnapshot = null;
 let serverInfoHasFetched = false;
 let serverInfoLoading = false;
+let _maintenanceEnabled = false;
+let _domainNotFoundEnabled = false;
+let _domainCanSendProAccess = false;
+let _domainStatusLoading = false;
+let _domainToggleBusy = false;
+let _domainEmailBusy = false;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
+const SERVER_INFO_LOCAL_CACHE_KEY = 'managePanel:serverInfoSnapshot:v2';
+const SERVER_INFO_LOCAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 function _isPageReloadNavigation() {
   try {
@@ -47,90 +56,235 @@ function _restoreManagePanelTabOnReload() {
     saved = '';
   }
   if (!saved) return '';
+  if (saved === 'monitoring') saved = 'log-history';
   if (!document.querySelector(`.panel-tab[data-tab="${saved}"]`)) return '';
   switchTab(saved);
   return saved;
 }
 
+function _getAvailablePanelTabs() {
+  return Array.from(document.querySelectorAll('.panel-tab[data-tab]'))
+    .map(function (el) { return el.getAttribute('data-tab') || ''; })
+    .filter(Boolean);
+}
+
+function _loadInitialManagePanelTabData(tabName) {
+  if (!tabName) return;
+  if (tabName === 'notifications') {
+    loadNotifications();
+    return;
+  }
+  if (tabName === 'download-templates') {
+    loadExportSettings();
+    loadTemplates();
+    return;
+  }
+  if (tabName === 'log-history') {
+    loadOperationsFeed(1);
+    return;
+  }
+  if (tabName === 'email-logs') {
+    loadEmailLogs(1);
+    return;
+  }
+  if (tabName === 'server-info') {
+    initServerInfoTab();
+    return;
+  }
+  if (tabName === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
+    loadMaintenanceStatus();
+  }
+}
+
 /* ============ Init ============ */
 document.addEventListener('DOMContentLoaded', function() {
   const restoredTab = _restoreManagePanelTabOnReload();
-  if (!restoredTab || restoredTab === 'notifications') {
-    loadNotifications();
-  } else if (restoredTab === 'download-templates') {
-    loadTemplates();
-  } else if (restoredTab === 'log-history') {
-    loadLogs(false);
-  } else if (restoredTab === 'email-logs') {
-    loadEmailLogs(1);
-  } else if (restoredTab === 'monitoring') {
-    loadMonitoring();
-  } else if (restoredTab === 'server-info') {
-    initServerInfoTab();
-  } else if (restoredTab === 'maintenance' && typeof loadMaintenanceStatus === 'function') {
-    loadMaintenanceStatus();
+  if (restoredTab) {
+    _loadInitialManagePanelTabData(restoredTab);
+    return;
   }
+
+  const tabs = _getAvailablePanelTabs();
+  if (!tabs.length) return;
+  const initialTab = tabs[0];
+  switchTab(initialTab);
+  _loadInitialManagePanelTabData(initialTab);
 });
 
 /* ============ Tabs ============ */
 function switchTab(tabName) {
+  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const tabPane = document.getElementById(`tab-${tabName}`);
+  if (!tabBtn || !tabPane) return false;
+
   document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
   // Also strip inline display overrides so the CSS .active rule always wins
   document.querySelectorAll('.panel-tab-content').forEach(c => {
     c.classList.remove('active');
     c.style.removeProperty('display');
   });
-  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
-  const tabPane = document.getElementById(`tab-${tabName}`);
-  if (tabBtn) tabBtn.classList.add('active');
-  if (tabPane) tabPane.classList.add('active');
+  tabBtn.classList.add('active');
+  tabPane.classList.add('active');
+  if (tabName === 'notifications' && typeof loadMaintenanceStatus === 'function') {
+    loadMaintenanceStatus();
+  }
+  if (tabName === 'notifications' && typeof loadDomainNotFoundStatus === 'function') {
+    loadDomainNotFoundStatus();
+  }
+  if (tabName === 'download-templates') {
+    loadExportSettings();
+    loadTemplates();
+  }
   _saveManagePanelTab(tabName);
+  return true;
 }
 
 /* ============ Load Notifications ============ */
-async function loadNotifications(append) {
-  if (!append) panelOffset = 0;
+async function loadNotifications(page) {
+  if (page !== undefined && page !== null) {
+    if (typeof page === 'number') {
+      _notifPage = Math.max(1, Number(page || 1));
+    } else if (page === false) {
+      _notifPage = 1;
+    }
+  }
+
+  const panelOffset = (_notifPage - 1) * _notifPerPage;
+  let skeletonStart = null;
+  skeletonStart = setPanelTableSkeleton('notifTableBody', {
+    colCount: 8,
+    columns: ['0.7fr', '2.7fr', '1.2fr', '1fr', '1.3fr', '0.9fr', '1.2fr', '1fr'],
+    rows: 3,
+    ariaLabel: 'Loading notifications...',
+  });
   try {
     const search = document.getElementById('notifSearch')?.value || '';
-    const res = await fetch(`/api/notifications/admin/list/?limit=${PANEL_LIMIT}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
-    if (!res.ok) { console.error('Failed to load notifications: HTTP', res.status); return; }
-    const data = await res.json();
-    if (!data.success) return;
-
-    if (append) {
-      panelNotifications = panelNotifications.concat(data.notifications);
-    } else {
-      panelNotifications = data.notifications;
+    const res = await fetch(`/api/notifications/admin/list/?limit=${_notifPerPage}&offset=${panelOffset}&search=${encodeURIComponent(search)}`);
+    if (!res.ok) {
+      console.error('Failed to load notifications: HTTP', res.status);
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'notifTableBody',
+        8,
+        'fa-bell-slash',
+        'Unable to load notifications',
+        'Please refresh and try again.'
+      );
+      return;
     }
+    const data = await res.json();
+    if (!data.success) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'notifTableBody',
+        8,
+        'fa-bell-slash',
+        'Unable to load notifications',
+        'Please refresh and try again.'
+      );
+      return;
+    }
+
+    panelNotifications = data.notifications || [];
     panelTotal = data.total;
+    _notifTotalPages = Math.max(1, Math.ceil(Math.max(0, panelTotal) / _notifPerPage));
+
+    if (_notifPage > _notifTotalPages) {
+      _notifPage = _notifTotalPages;
+      return loadNotifications(_notifPage);
+    }
 
     // Cache server-side aggregate stats so updateStats() is accurate
     if (data.stats) window._panelNotifStats = data.stats;
 
+    await waitForPanelSkeletonDelay(skeletonStart);
     renderTable();
+    _updateNotifPagination(panelNotifications.length);
     updateStats();
     var totalEl = document.getElementById('totalNotifCount');
     if (totalEl) totalEl.textContent = panelTotal;
-
-    const loadMoreEl = document.getElementById('notifLoadMore');
-    if (loadMoreEl) {
-      loadMoreEl.style.display = panelNotifications.length < panelTotal ? '' : 'none';
-    }
   } catch (err) {
     console.error('Failed to load notifications:', err);
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'notifTableBody',
+      8,
+      'fa-bell-slash',
+      'Unable to load notifications',
+      'Network issue. Please refresh and try again.'
+    );
   }
 }
 
-function loadMoreNotifications() {
-  panelOffset += PANEL_LIMIT;
-  loadNotifications(true);
+function _buildNotifPageNumbers(currentPage, totalPages) {
+  if (!totalPages || totalPages < 1) return '';
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if ((end - start + 1) < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  let html = '';
+  for (let p = start; p <= end; p++) {
+    html += '<button class="page-num' + (p === currentPage ? ' active' : '') + '" onclick="notifSetPage(' + p + ')">' + p + '</button>';
+  }
+  return html;
 }
+
+function _updateNotifPagination(rowsOnPage) {
+  const safeTotal = Math.max(0, Number(panelTotal || 0));
+  const safeRows = Math.max(0, Number(rowsOnPage || 0));
+  const start = safeTotal ? ((_notifPage - 1) * _notifPerPage) + 1 : 0;
+  const end = safeTotal ? (start + safeRows - 1) : 0;
+
+  const info = document.getElementById('notifPaginationInfo');
+  const pageNumbers = document.getElementById('notifPageNumbers');
+  const firstBtn = document.getElementById('notifFirstBtn');
+  const prevBtn = document.getElementById('notifPrevBtn');
+  const nextBtn = document.getElementById('notifNextBtn');
+  const lastBtn = document.getElementById('notifLastBtn');
+  const rowsSelect = document.getElementById('notifRowsPerPage');
+
+  if (info) {
+    info.innerHTML = 'Showing <strong>' + start + '-' + end + '</strong> of <strong>' + safeTotal + '</strong> results';
+  }
+  if (pageNumbers) {
+    pageNumbers.innerHTML = _buildNotifPageNumbers(_notifPage, _notifTotalPages);
+  }
+
+  if (firstBtn) firstBtn.disabled = _notifPage <= 1;
+  if (prevBtn) prevBtn.disabled = _notifPage <= 1;
+  if (nextBtn) nextBtn.disabled = _notifPage >= _notifTotalPages;
+  if (lastBtn) lastBtn.disabled = _notifPage >= _notifTotalPages;
+  if (rowsSelect && String(rowsSelect.value) !== String(_notifPerPage)) {
+    rowsSelect.value = String(_notifPerPage);
+  }
+}
+
+window.notifSetPage = function (page) {
+  const requested = page === -1 ? _notifTotalPages : Number(page || 1);
+  const nextPage = Math.max(1, Math.min(requested, _notifTotalPages));
+  if (nextPage === _notifPage) return;
+  loadNotifications(nextPage);
+};
+
+window.notifPage = function (delta) {
+  notifSetPage(_notifPage + Number(delta || 0));
+};
+
+window.onNotifRowsPerPageChange = function (value) {
+  const next = Number(value || 25);
+  _notifPerPage = [10, 25, 50, 100].includes(next) ? next : 25;
+  _notifPage = 1;
+  loadNotifications(1);
+};
 
 /* ============ Render Table ============ */
 function renderTable() {
   const tbody = document.getElementById('notifTableBody');
   if (!panelNotifications.length) {
-    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
+    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="8">
       <div class="empty-state">
         <i class="fa-solid fa-bell-slash"></i>
         <p>No notifications yet</p>
@@ -140,9 +294,11 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = panelNotifications.map(n => {
+  tbody.innerHTML = panelNotifications.map((n, i) => {
     const msgPreview = n.message.length > 60 ? n.message.substring(0, 60) + '...' : n.message;
+    const rowNumber = ((_notifPage - 1) * _notifPerPage) + i + 1;
     return `<tr>
+      <td class="text-center text-xs text-gray-400">${rowNumber}</td>
       <td>
         <div class="notif-title-cell">
           <strong>${escHtml(n.title)}</strong>
@@ -156,8 +312,8 @@ function renderTable() {
       <td><span class="notif-time">${n.time_ago} ago</span></td>
       <td>
         <div class="notif-actions-cell">
-          <button class="btn btn-icon btn-danger" title="Delete" onclick="deleteNotification(${n.id})">
-            <i class="fa-solid fa-trash"></i>
+          <button class="btn btn-icon btn-neutral" title="Hide" onclick="hideNotification(${n.id})">
+            <i class="fa-solid fa-eye-slash"></i>
           </button>
         </div>
       </td>
@@ -166,39 +322,500 @@ function renderTable() {
 }
 
 function updateStats() {
-  document.getElementById('statTotal').textContent = panelTotal;
+  const totalEl = document.getElementById('statTotal');
+  if (totalEl) totalEl.textContent = panelTotal;
   // Use server-side aggregates (returned by API) for accurate full-dataset counts
   const s = window._panelNotifStats || {};
-  document.getElementById('statBroadcast').textContent = s.broadcast != null ? s.broadcast : '';
-  document.getElementById('statTargeted').textContent  = s.targeted  != null ? s.targeted  : '';
-  document.getElementById('statUrgent').textContent    = s.urgent    != null ? s.urgent    : '';
+  const broadcastEl = document.getElementById('statBroadcast');
+  const targetedEl = document.getElementById('statTargeted');
+  const urgentEl = document.getElementById('statUrgent');
+  if (broadcastEl) broadcastEl.textContent = s.broadcast != null ? s.broadcast : 0;
+  if (targetedEl) targetedEl.textContent = s.targeted != null ? s.targeted : 0;
+  if (urgentEl) urgentEl.textContent = s.urgent != null ? s.urgent : 0;
 }
+
+/* ============ Notifications Top Bar Actions ============ */
+window.refreshNotificationsPanel = function () {
+  loadNotifications(false);
+  if (typeof loadMaintenanceStatus === 'function') loadMaintenanceStatus();
+  if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
+};
+
+/* ============ Domain Not Found Controls ============ */
+function _updateDomainQuickBadges(enabled) {
+  const text = enabled ? 'Domain Mode: On' : 'Domain Mode: Off';
+  const quickBadge = document.getElementById('domainNotFoundQuickBadge');
+  const modalBadge = document.getElementById('domainModeStatusText');
+  const quickBtn = document.getElementById('domainQuickControlBtn');
+
+  [quickBadge, modalBadge].forEach(function(el) {
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('is-active', !!enabled);
+  });
+
+  if (quickBtn) quickBtn.classList.toggle('is-active', !!enabled);
+}
+
+function _setDomainSyncText(message, tone) {
+  const syncEl = document.getElementById('domainModeLastSyncText');
+  if (!syncEl) return;
+  syncEl.textContent = message || 'Status not synced yet.';
+  syncEl.style.color = tone === 'error' ? '#b91c1c' : '#64748b';
+}
+
+function _setDomainEmailValidation(message) {
+  const validationEl = document.getElementById('domainRecoveryValidation');
+  if (!validationEl) return;
+  if (!message) {
+    validationEl.style.display = 'none';
+    validationEl.textContent = '';
+    return;
+  }
+  validationEl.textContent = message;
+  validationEl.style.display = '';
+}
+
+function _setDomainControlAvailability() {
+  const input = document.getElementById('domainRecoveryEmailInput');
+  const sendBtn = document.getElementById('domainRecoverySendBtn');
+  const toggleBtn = document.getElementById('domainModeToggleBtn');
+  const refreshBtn = document.getElementById('domainModeRefreshBtn');
+  const canUseEmailAction = _domainNotFoundEnabled && _domainCanSendProAccess;
+
+  if (refreshBtn) {
+    refreshBtn.disabled = !!_domainStatusLoading;
+    refreshBtn.innerHTML = _domainStatusLoading
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing...'
+      : '<i class="fa-solid fa-rotate"></i> Refresh';
+  }
+
+  if (toggleBtn) {
+    toggleBtn.disabled = !!_domainStatusLoading || !!_domainToggleBusy;
+  }
+
+  if (input) {
+    input.disabled = !canUseEmailAction || !!_domainStatusLoading || !!_domainEmailBusy;
+    input.placeholder = _domainCanSendProAccess
+      ? 'Enter account email'
+      : 'Pro User permission required';
+  }
+
+  if (sendBtn) {
+    sendBtn.disabled = !canUseEmailAction || !!_domainStatusLoading || !!_domainEmailBusy;
+    sendBtn.title = _domainCanSendProAccess
+      ? (_domainNotFoundEnabled ? '' : 'Enable Domain Not Found mode first')
+      : 'Pro User permission required';
+    sendBtn.innerHTML = _domainEmailBusy
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Sending...'
+      : '<i class="fa-solid fa-paper-plane"></i> Send Emergency Email';
+  }
+}
+
+function _isValidEmailAddress(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function _updateDomainNotFoundUi(status) {
+  const hasWebsiteMode = status && Object.prototype.hasOwnProperty.call(status, 'website_not_found_mode');
+  const enabled = !!(hasWebsiteMode ? status.website_not_found_mode : status && status.enabled);
+  _domainNotFoundEnabled = enabled;
+
+  if (status && Object.prototype.hasOwnProperty.call(status, 'can_send_pro_access_link')) {
+    _domainCanSendProAccess = !!status.can_send_pro_access_link;
+  }
+
+  _updateDomainQuickBadges(enabled);
+
+  const websiteStatusRaw = ((status && (status.website_status || status.status)) || '').toString().toLowerCase();
+  const websiteStatusText = websiteStatusRaw ? capitalize(websiteStatusRaw) : 'Unknown';
+  const websiteStatusEl = document.getElementById('websiteStatusText');
+  if (websiteStatusEl) {
+    const iconCls = websiteStatusRaw === 'live' ? 'fa-globe' : 'fa-eye-slash';
+    websiteStatusEl.innerHTML = '<i class="fa-solid ' + iconCls + '"></i> Website: ' + escHtml(websiteStatusText);
+  }
+
+  const toggleBtn = document.getElementById('domainModeToggleBtn');
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('btn-danger', !enabled);
+    toggleBtn.classList.toggle('btn-success', enabled);
+    toggleBtn.innerHTML = enabled
+      ? '<i class="fa-solid fa-power-off"></i> Disable Not Found Mode'
+      : '<i class="fa-solid fa-triangle-exclamation"></i> Enable Not Found Mode';
+  }
+
+  const input = document.getElementById('domainRecoveryEmailInput');
+  const helpText = document.getElementById('domainRecoveryHelpText');
+  const proNote = document.getElementById('domainProOnlyNote');
+  _setDomainControlAvailability();
+  if (helpText) {
+    helpText.textContent = enabled
+      ? 'Send a tokenized emergency panel access link while Domain Not Found mode is active.'
+      : 'Enable Domain Not Found mode first, then send emergency access link email.';
+  }
+  if (proNote) {
+    proNote.style.display = _domainCanSendProAccess ? 'none' : '';
+  }
+}
+
+window.loadDomainNotFoundStatus = async function () {
+  const statusUrl = window.WEBSITE_STATUS_SUMMARY_API_URL || '';
+  if (!statusUrl) return;
+
+  _domainStatusLoading = true;
+  _setDomainControlAvailability();
+
+  try {
+    const res = await fetch(statusUrl, { method: 'GET', credentials: 'same-origin' });
+    if (!res.ok) {
+      if (res.status === 403) {
+        _domainCanSendProAccess = false;
+        _updateDomainNotFoundUi({ website_not_found_mode: false, website_status: 'unknown', can_send_pro_access_link: false });
+        _setDomainSyncText('Permission denied while syncing domain mode.', 'error');
+      } else {
+        _setDomainSyncText('Unable to sync status right now.', 'error');
+      }
+      return;
+    }
+    const data = await res.json();
+    if (data && data.success !== false) {
+      _updateDomainNotFoundUi(data);
+      _setDomainSyncText('Last synced: ' + new Date().toLocaleTimeString());
+    }
+  } catch (err) {
+    console.error('loadDomainNotFoundStatus failed:', err);
+    _setDomainSyncText('Network issue while syncing status.', 'error');
+  } finally {
+    _domainStatusLoading = false;
+    _setDomainControlAvailability();
+  }
+};
+
+window.openDomainNotFoundModal = function () {
+  const modal = document.getElementById('domainNotFoundModal');
+  if (!modal) return;
+  _setDomainEmailValidation('');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('domainNotFoundModal', { overlayClass: 'show', focusSelector: '#domainRecoveryEmailInput' });
+  } else {
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+  }
+  if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
+};
+
+window.closeDomainNotFoundModal = function () {
+  const modal = document.getElementById('domainNotFoundModal');
+  if (!modal) return;
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('domainNotFoundModal', { overlayClass: 'show' });
+  } else {
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+};
+
+window.toggleDomainNotFoundMode = async function () {
+  const apiUrl = window.WEBSITE_NOT_FOUND_TOGGLE_API_URL || '';
+  if (!apiUrl) return;
+
+  const nextEnabled = !_domainNotFoundEnabled;
+  const confirmTitle = nextEnabled ? 'Enable Domain Not Found Mode?' : 'Disable Domain Not Found Mode?';
+  const confirmText = nextEnabled
+    ? 'Public website routes will return 404 until this mode is disabled.'
+    : 'Public website routes will become reachable again.';
+
+  let ok = true;
+  if (typeof window.waConfirm === 'function') {
+    ok = await window.waConfirm({
+      title: confirmTitle,
+      text: confirmText,
+      icon: 'fa-solid fa-triangle-exclamation',
+      confirmLabel: nextEnabled ? 'Enable' : 'Disable',
+      btnClass: nextEnabled ? 'btn-danger' : 'btn-success',
+      hideWarning: true,
+    });
+  }
+  if (!ok) return;
+
+  const toggleBtn = document.getElementById('domainModeToggleBtn');
+  _domainToggleBusy = true;
+  _setDomainControlAvailability();
+
+  if (toggleBtn) toggleBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ enabled: String(nextEnabled) }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data && data.success) {
+      if (typeof showToast === 'function') {
+        showToast(nextEnabled ? 'Domain Not Found mode enabled.' : 'Domain Not Found mode disabled.', 'success');
+      }
+      await loadDomainNotFoundStatus();
+      return;
+    }
+
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to update domain mode.', 'error');
+    }
+  } catch (err) {
+    console.error('toggleDomainNotFoundMode failed:', err);
+    if (typeof showToast === 'function') showToast('Network error while updating domain mode.', 'error');
+  } finally {
+    _domainToggleBusy = false;
+    _setDomainControlAvailability();
+    if (typeof loadDomainNotFoundStatus === 'function') loadDomainNotFoundStatus();
+  }
+};
+
+window.sendDomainRecoveryAccessLink = async function () {
+  const apiUrl = window.WEBSITE_PRO_ACCESS_API_URL || '';
+  if (!apiUrl) return;
+
+  if (!_domainNotFoundEnabled) {
+    if (typeof showToast === 'function') showToast('Enable Domain Not Found mode first.', 'error');
+    return;
+  }
+  if (!_domainCanSendProAccess) {
+    if (typeof showToast === 'function') showToast('Pro User permission required for emergency access emails.', 'error');
+    return;
+  }
+
+  const input = document.getElementById('domainRecoveryEmailInput');
+  const email = (input && input.value ? input.value : '').trim();
+  _setDomainEmailValidation('');
+
+  if (!email) {
+    if (typeof showToast === 'function') showToast('Please enter an email address.', 'error');
+    _setDomainEmailValidation('Please enter a valid email address.');
+    if (input) input.focus();
+    return;
+  }
+
+  if (!_isValidEmailAddress(email)) {
+    if (typeof showToast === 'function') showToast('Enter a valid email address format.', 'error');
+    _setDomainEmailValidation('Email format looks invalid. Example: name@example.com');
+    if (input) input.focus();
+    return;
+  }
+
+  _domainEmailBusy = true;
+  _setDomainControlAvailability();
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ email: email }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data && data.success) {
+      if (typeof showToast === 'function') showToast(data.message || 'Access link sent.', 'success');
+      if (input) input.value = '';
+      return;
+    }
+
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to send access link.', 'error');
+    }
+  } catch (err) {
+    console.error('sendDomainRecoveryAccessLink failed:', err);
+    if (typeof showToast === 'function') showToast('Network error while sending access link.', 'error');
+  } finally {
+    _domainEmailBusy = false;
+    _setDomainControlAvailability();
+  }
+};
+
+/* ============ Maintenance Quick Controls ============ */
+function _updateMaintenanceQuickUi(status) {
+  const badge = document.getElementById('mtQuickStatusBadge');
+  const toggleBtn = document.getElementById('mtQuickToggleBtn');
+  if (!badge || !toggleBtn) return;
+
+  const enabled = !!(status && status.enabled);
+  _maintenanceEnabled = enabled;
+
+  badge.textContent = enabled ? 'Maintenance: Active' : 'Maintenance: Inactive';
+  badge.classList.toggle('is-active', enabled);
+
+  if (enabled) {
+    toggleBtn.classList.remove('btn-danger');
+    toggleBtn.classList.add('btn-success');
+    toggleBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Disable Maintenance';
+    toggleBtn.setAttribute('onclick', "toggleMaintenance('disable')");
+  } else {
+    toggleBtn.classList.remove('btn-success');
+    toggleBtn.classList.add('btn-danger');
+    toggleBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> Enable Maintenance';
+    toggleBtn.setAttribute('onclick', 'openMaintenanceModeModal()');
+  }
+}
+
+window.setMtDuration = function (min) {
+  const hidden = document.getElementById('mtDuration');
+  if (hidden) hidden.value = String(min);
+  document.querySelectorAll('.mt-dur-btn').forEach(function (btn) {
+    const isActive = parseInt(btn.dataset.min || '0', 10) === parseInt(min, 10);
+    btn.classList.toggle('btn-primary', isActive);
+    btn.classList.toggle('btn-neutral', !isActive);
+  });
+};
+
+window.openMaintenanceModeModal = function () {
+  const modal = document.getElementById('maintenanceModeModal');
+  if (!modal) return;
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('maintenanceModeModal', { overlayClass: 'show', focusSelector: '#mtModalMessage' });
+  } else {
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+  }
+};
+
+window.closeMaintenanceModeModal = function () {
+  const modal = document.getElementById('maintenanceModeModal');
+  if (!modal) return;
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('maintenanceModeModal', { overlayClass: 'show' });
+  } else {
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+};
+
+window.submitMaintenanceModeModal = function () {
+  window.toggleMaintenance('enable');
+};
+
+window.toggleMaintenance = async function (action) {
+  const apiUrl = window.MAINTENANCE_TOGGLE_API_URL || '';
+  if (!apiUrl) return;
+
+  const submitBtn = document.getElementById('mtModalSubmitBtn');
+  if (action === 'enable' && submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enabling...';
+  }
+
+  try {
+    const body = { action: action };
+    if (action === 'enable') {
+      const duration = parseInt(document.getElementById('mtDuration')?.value || '60', 10);
+      const message = (document.getElementById('mtModalMessage')?.value || '').trim();
+      body.duration_minutes = Number.isFinite(duration) && duration > 0 ? duration : 60;
+      body.message = message;
+    }
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      _updateMaintenanceQuickUi(data.status || { enabled: action === 'enable' });
+      if (action === 'enable') closeMaintenanceModeModal();
+      if (typeof showToast === 'function') showToast(data.message || 'Maintenance status updated.', 'success');
+    } else if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to update maintenance mode.', 'error');
+    }
+  } catch (err) {
+    console.error('toggleMaintenance failed:', err);
+    if (typeof showToast === 'function') showToast('Network error while updating maintenance mode.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> Enable Maintenance';
+    }
+  }
+};
+
+window.loadMaintenanceStatus = async function () {
+  const statusUrl = window.MAINTENANCE_STATUS_API_URL || '';
+  const badge = document.getElementById('mtQuickStatusBadge');
+  if (!statusUrl || !badge) return;
+
+  try {
+    const res = await fetch(statusUrl, { method: 'GET', credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    _updateMaintenanceQuickUi(data || { enabled: false });
+  } catch (err) {
+    console.error('loadMaintenanceStatus failed:', err);
+  }
+};
 
 /* ============ Search ============ */
 function debounceSearch() {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => loadNotifications(false), 350);
+  searchTimer = setTimeout(() => loadNotifications(1), 350);
 }
 
 /* ============ Delete ============ */
 let _panelConfirmCallback = null;
 
-function _panelConfirm(title, message, onConfirm) {
+function _panelConfirm(title, message, onConfirm, options) {
   const modal = document.getElementById('panelDeleteConfirmModal');
   const titleEl = document.getElementById('panelConfirmTitleText');
   const msgEl = document.getElementById('panelConfirmMessage');
   const okBtn = document.getElementById('panelConfirmOkBtn');
   if (!modal) { if (onConfirm) onConfirm(); return; }
+  const warningItems = modal.querySelectorAll('.alert-box-list li');
+  const defaultWarnings = [
+    'This action cannot be undone',
+    'The item will be permanently removed',
+  ];
+  const lines = (options && Array.isArray(options.warningLines) && options.warningLines.length)
+    ? options.warningLines
+    : defaultWarnings;
+
+  warningItems.forEach(function (item, idx) {
+    const text = lines[idx] || defaultWarnings[idx] || '';
+    item.textContent = text;
+    item.style.display = text ? '' : 'none';
+  });
+
   titleEl.textContent = title;
   msgEl.textContent = message;
   _panelConfirmCallback = onConfirm;
-  modal.style.display = 'flex';
-  okBtn.focus();
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('panelDeleteConfirmModal', { overlayClass: 'show', focusSelector: '#panelConfirmOkBtn' });
+  } else {
+    modal.style.display = 'flex';
+    okBtn.focus();
+  }
 }
 
 window.closePanelConfirmModal = function () {
   const modal = document.getElementById('panelDeleteConfirmModal');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+      window.AdarshModalBridge.close('panelDeleteConfirmModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'none';
+    }
+  }
   _panelConfirmCallback = null;
 };
 
@@ -222,54 +839,106 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       const m = document.getElementById('panelDeleteConfirmModal');
-      if (m && m.style.display !== 'none') closePanelConfirmModal();
+      if (m && (m.classList.contains('show') || m.style.display !== 'none')) closePanelConfirmModal();
     }
   });
+
+  const maintenanceModal = document.getElementById('maintenanceModeModal');
+  if (maintenanceModal) {
+    maintenanceModal.addEventListener('click', function (e) {
+      if (e.target === maintenanceModal) closeMaintenanceModeModal();
+    });
+    window.setMtDuration(parseInt(document.getElementById('mtDuration')?.value || '60', 10));
+  }
+
+  const domainModal = document.getElementById('domainNotFoundModal');
+  if (domainModal) {
+    domainModal.addEventListener('click', function (e) {
+      if (e.target === domainModal) closeDomainNotFoundModal();
+    });
+
+    const domainInput = document.getElementById('domainRecoveryEmailInput');
+    if (domainInput) {
+      domainInput.addEventListener('input', function () {
+        _setDomainEmailValidation('');
+      });
+      domainInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendDomainRecoveryAccessLink();
+        }
+      });
+    }
+  }
 });
 
-async function deleteNotification(id) {
+async function hideNotification(id) {
   _panelConfirm(
-    'Delete Notification',
-    'Delete this notification? It will no longer be visible to users.',
+    'Hide Notification',
+    'Hide this notification? It will no longer be visible to users.',
     async function () {
       try {
         const res = await fetch(`/api/notifications/admin/${id}/delete/`, {
           method: 'DELETE',
           headers: { 'X-CSRFToken': getCSRFToken() },
         });
-        if (!res.ok) { if (window.showToast) showToast('Delete failed (HTTP ' + res.status + ')', 'error'); return; }
+        if (!res.ok) { if (window.showToast) showToast('Hide failed (HTTP ' + res.status + ')', 'error'); return; }
         const data = await res.json();
         if (data.success) {
-          if (window.showToast) showToast('Notification deleted', 'success');
+          if (window.showToast) showToast(data.message || 'Notification hidden', 'success');
           loadNotifications(false);
         } else {
           if (window.showToast) showToast(data.message || 'Failed', 'error');
         }
       } catch (err) {
-        console.error('Delete failed:', err);
+        console.error('Hide failed:', err);
       }
+    },
+    {
+      warningLines: [
+        'Users will no longer see this notification',
+        'Read history will be kept for audit',
+      ],
     }
   );
 }
 
+async function deleteNotification(id) {
+  // Backward-compatible alias for older inline handlers.
+  return hideNotification(id);
+}
+
 /* ============ Create Modal ============ */
 function openCreateModal() {
-  document.getElementById('createNotifModal').classList.add('show');
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('createNotifModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('createNotifModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
   document.getElementById('createNotifForm').reset();
   document.getElementById('userPickerWrap').style.display = 'none';
+  const visibilityInput = document.getElementById('notifVisibilityHours');
+  if (visibilityInput) visibilityInput.value = '24';
   selectedUserIds.clear();
   renderSelectedChips();
-  document.body.style.overflow = 'hidden';
 }
 
 function closeCreateModal() {
-  document.getElementById('createNotifModal').classList.remove('show');
-  document.body.style.overflow = '';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('createNotifModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('createNotifModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
 }
 
 /* Escape key */
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeCreateModal();
+  if (e.key !== 'Escape') return;
+  closeCreateModal();
+  if (typeof closeMaintenanceModeModal === 'function') closeMaintenanceModeModal();
+  if (typeof closeDomainNotFoundModal === 'function') closeDomainNotFoundModal();
 });
 
 /* ============ Target Change ============ */
@@ -345,9 +1014,9 @@ function renderUserPicker(filter) {
   const roleLabels = {
     pro_user: 'Pro User',
     super_admin: 'Super Admin',
-    admin_staff: 'Admin Staff',
+    admin_staff: 'Operator',
     client: 'Client',
-    client_staff: 'Client Staff',
+    client_staff: 'Assistent',
   };
 
   for (const [role, users] of Object.entries(allUsers)) {
@@ -427,6 +1096,11 @@ async function handleCreateNotif(e) {
     send_email: document.getElementById('notifSendEmail').checked,
   };
 
+  const visibilityHoursRaw = Number(document.getElementById('notifVisibilityHours')?.value || 24);
+  payload.visibility_hours = Number.isFinite(visibilityHoursRaw)
+    ? Math.max(24, Math.min(Math.trunc(visibilityHoursRaw), 8760))
+    : 24;
+
   if (payload.target === 'selected') {
     payload.target_user_ids = Array.from(selectedUserIds);
     if (!payload.target_user_ids.length) {
@@ -494,12 +1168,136 @@ function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 
+function waitForPanelSkeletonDelay(startTs) {
+  if (startTs == null) return Promise.resolve();
+  if (typeof waitForMinDelay === 'function') {
+    return waitForMinDelay(startTs);
+  }
+  return Promise.resolve();
+}
+
+function setPanelTableSkeleton(tbodyId, options) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return null;
+
+  const cfg = options || {};
+  const colCount = Math.max(1, Number(cfg.colCount || 1));
+  const rows = Math.max(2, Number(cfg.rows || 3));
+  const columns = Array.isArray(cfg.columns) && cfg.columns.length
+    ? cfg.columns.slice(0, colCount)
+    : Array.from({ length: colCount }, function () { return '1fr'; });
+  const gridTemplate = columns.join(' ');
+
+  const rowHtml = Array.from({ length: rows }, function () {
+    return '<div class="panel-table-skeleton-row" style="grid-template-columns:' + gridTemplate + ';">' +
+      columns.map(function () {
+        return '<span class="panel-table-skeleton-block"></span>';
+      }).join('') +
+      '</div>';
+  }).join('');
+
+  const ariaLabel = String(cfg.ariaLabel || 'Loading data...');
+  tbody.innerHTML =
+    '<tr><td colspan="' + colCount + '" class="notif-table-empty-cell">' +
+      '<div class="panel-table-skeleton" role="status" aria-label="' + escAttr(ariaLabel) + '">' + rowHtml + '</div>' +
+    '</td></tr>';
+
+  return Date.now();
+}
+
+function setPanelTableError(tbodyId, colCount, iconClass, title, subtitle) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const cols = Math.max(1, Number(colCount || 1));
+  tbody.innerHTML =
+    '<tr class="notif-table-empty"><td colspan="' + cols + '">' +
+      '<div class="empty-state">' +
+        '<i class="fa-solid ' + escAttr(iconClass || 'fa-circle-exclamation') + '"></i>' +
+        '<p>' + escHtml(title || 'Unable to load data') + '</p>' +
+        '<span>' + escHtml(subtitle || 'Please try again.') + '</span>' +
+      '</div>' +
+    '</td></tr>';
+}
+
 
 /* ================================================================
    DOWNLOAD TEMPLATES TAB
    ================================================================ */
 let panelTemplates = [];
 let _templateBoldState = false;
+
+async function loadExportSettings() {
+  const noteEl = document.getElementById('panelExportNoteLine');
+  const copyrightEl = document.getElementById('panelExportCopyrightLine');
+  if (!noteEl || !copyrightEl) return;
+
+  try {
+    const res = await fetch('/api/export-settings/');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.success) return;
+    const settings = data.data || {};
+    noteEl.value = settings.export_note_line || '';
+    copyrightEl.value = settings.export_copyright_line || '';
+  } catch (err) {
+    console.error('loadExportSettings:', err);
+  }
+}
+
+async function saveExportSettings() {
+  const noteEl = document.getElementById('panelExportNoteLine');
+  const copyrightEl = document.getElementById('panelExportCopyrightLine');
+  const saveBtn = document.getElementById('panelSaveExportSettingsBtn');
+  const statusEl = document.getElementById('panelExportSettingsStatus');
+  if (!noteEl || !copyrightEl || !saveBtn) return;
+
+  const payload = {
+    export_note_line: (noteEl.value || '').trim(),
+    export_copyright_line: (copyrightEl.value || '').trim(),
+  };
+
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+  if (statusEl) {
+    statusEl.textContent = '';
+    statusEl.style.color = '';
+  }
+
+  try {
+    const res = await fetch('/api/export-settings/update/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok && data && data.success) {
+      if (window.showToast) showToast('Export settings saved', 'success');
+      if (statusEl) {
+        statusEl.textContent = 'Saved';
+        statusEl.style.color = '#15803d';
+      }
+      return;
+    }
+    if (window.showToast) showToast((data && data.message) || 'Failed to save export settings', 'error');
+    if (statusEl) {
+      statusEl.textContent = 'Failed';
+      statusEl.style.color = '#b91c1c';
+    }
+  } catch (err) {
+    console.error('saveExportSettings:', err);
+    if (window.showToast) showToast('Network error saving export settings', 'error');
+    if (statusEl) {
+      statusEl.textContent = 'Error';
+      statusEl.style.color = '#b91c1c';
+    }
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Export Settings';
+  }
+}
 
 /* Live-preview: update textarea font based on language + bold selection */
 function _syncTemplatePreviewFont() {
@@ -529,18 +1327,63 @@ function toggleTemplateBold() {
 document.addEventListener('DOMContentLoaded', function () {
   var sel = document.getElementById('templateFontName');
   if (sel) sel.addEventListener('change', _syncTemplatePreviewFont);
+
+  const exportForm = document.getElementById('panelExportSettingsForm');
+  if (exportForm && !exportForm.dataset.bound) {
+    exportForm.dataset.bound = '1';
+    exportForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      saveExportSettings();
+    });
+  }
 });
 
 async function loadTemplates() {
+  const skeletonStart = setPanelTableSkeleton('templateTableBody', {
+    colCount: 6,
+    columns: ['0.5fr', '1.5fr', '3fr', '1fr', '1fr', '1fr'],
+    rows: 3,
+    ariaLabel: 'Loading templates...',
+  });
   try {
     const res = await fetch('/api/export-templates/');
-    if (!res.ok) return;
+    if (!res.ok) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'templateTableBody',
+        6,
+        'fa-file-lines',
+        'Unable to load templates',
+        'Please refresh and try again.'
+      );
+      return;
+    }
     const data = await res.json();
     if (data.success) {
+      await waitForPanelSkeletonDelay(skeletonStart);
       panelTemplates = data.templates || [];
       renderTemplateTable();
+      return;
     }
-  } catch (err) { console.error('loadTemplates:', err); }
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'templateTableBody',
+      6,
+      'fa-file-lines',
+      'Unable to load templates',
+      'Please refresh and try again.'
+    );
+  } catch (err) {
+    console.error('loadTemplates:', err);
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'templateTableBody',
+      6,
+      'fa-file-lines',
+      'Unable to load templates',
+      'Network issue. Please refresh and try again.'
+    );
+  }
 }
 
 function renderTemplateTable() {
@@ -582,8 +1425,12 @@ function openCreateTemplateModal() {
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> New Template';
-  document.getElementById('templateModal').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('templateModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('templateModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function editTemplate(id) {
@@ -598,13 +1445,21 @@ function editTemplate(id) {
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> Edit Template';
-  document.getElementById('templateModal').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+    window.AdarshModalBridge.open('templateModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('templateModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function closeTemplateModal() {
-  document.getElementById('templateModal').classList.remove('show');
-  document.body.style.overflow = '';
+  if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+    window.AdarshModalBridge.close('templateModal', { overlayClass: 'show' });
+  } else {
+    document.getElementById('templateModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
 }
 
 async function saveTemplate() {
@@ -649,7 +1504,7 @@ async function deleteTemplate(id) {
     async function () {
       try {
         const res = await fetch(`/api/export-templates/${id}/delete/`, {
-          method: 'DELETE',
+          method: 'POST',
           headers: { 'X-CSRFToken': getCSRFToken() },
         });
         const data = await res.json();
@@ -666,72 +1521,457 @@ async function deleteTemplate(id) {
 
 
 /* ================================================================
-   LOG HISTORY TAB
+   OPERATIONS HUB TAB (Monitoring + Logs)
    ================================================================ */
-let panelLogs = [];
-let logOffset = 0;
-const LOG_LIMIT = 500;  // Load all logs at once  table scrolls natively
-let logTotal = 0;
-let logSearchTimer = null;
+let operationsFeed = [];
+let _opsPerPage = 25;
+let _opsPage = 1;
+let _opsTotalPages = 1;
+let operationsTotal = 0;
+let opsSearchTimer = null;
+let opsAutoRefreshTimer = null;
 
-async function loadLogs(append) {
-  if (!append) logOffset = 0;
-  try {
-    const search = document.getElementById('logSearch')?.value || '';
-    const userRole = document.getElementById('logUserTypeFilter')?.value || '';
-    let url = `/api/activity-logs/?limit=${LOG_LIMIT}&offset=${logOffset}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
+function handleOpsSourceChange() {
+  const source = document.getElementById('opsSourceFilter')?.value || 'all';
+  const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
+  const actionFilter = document.getElementById('opsActionFilter');
+  const userRoleFilter = document.getElementById('opsUserTypeFilter');
 
-    const res = await fetch(url);
-    if (!res.ok) { console.error('loadLogs HTTP', res.status); return; }
-    const data = await res.json();
-    if (!data.success) return;
+  if (taskStatusFilter) {
+    const taskOnly = source === 'tasks' || source === 'backups';
+    taskStatusFilter.disabled = source === 'logs';
+    taskStatusFilter.style.opacity = source === 'logs' ? '0.65' : '1';
+    if (!taskOnly) taskStatusFilter.value = '';
+  }
 
-    if (append) {
-      panelLogs = panelLogs.concat(data.logs);
-    } else {
-      panelLogs = data.logs;
-    }
-    logTotal = data.total;
-    renderLogTable();
-    const label = document.getElementById('logCountLabel');
-    if (label) label.textContent = `${panelLogs.length} of ${logTotal} logs`;
-  } catch (err) { console.error('loadLogs:', err); }
+  if (actionFilter) {
+    const disableAction = source === 'tasks' || source === 'backups';
+    actionFilter.disabled = disableAction;
+    actionFilter.style.opacity = disableAction ? '0.65' : '1';
+    if (source !== 'logs') actionFilter.value = '';
+  }
+
+  if (userRoleFilter) {
+    userRoleFilter.disabled = false;
+    userRoleFilter.style.opacity = '1';
+  }
+
+  loadOperationsFeed(1);
 }
 
-function loadMoreLogs() {
-  logOffset += LOG_LIMIT;
-  loadLogs(true);
+function resetOperationsFilters() {
+  const ids = ['opsSearch', 'opsSourceFilter', 'opsUserTypeFilter', 'opsTaskStatusFilter', 'opsActionFilter'];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') {
+      el.selectedIndex = 0;
+    } else {
+      el.value = '';
+    }
+  });
+  handleOpsSourceChange();
+}
+
+async function clearActivityLogsManual() {
+  const clearBtn = document.getElementById('opsClearLogsBtn');
+  const ok = await showConfirm({
+    title: 'Clear Activity Logs?',
+    text: 'This will permanently delete all activity logs. This action cannot be undone.',
+    icon: 'fa-solid fa-trash-can',
+    confirmLabel: 'Clear Logs',
+    btnClass: 'btn-danger',
+  });
+  if (!ok) return;
+
+  const originalHtml = clearBtn ? clearBtn.innerHTML : '';
+  if (clearBtn) {
+    clearBtn.disabled = true;
+    clearBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing';
+  }
+
+  try {
+    const res = await fetch('/api/activity-logs/clear/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+    const data = await res.json();
+    if (res.ok && data && data.success) {
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Activity logs cleared.', 'success');
+      }
+      _opsPage = 1;
+      await loadOperationsFeed(1);
+      return;
+    }
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to clear activity logs.', 'error');
+    }
+  } catch (err) {
+    console.error('clearActivityLogsManual:', err);
+    if (typeof showToast === 'function') {
+      showToast('Network error while clearing activity logs.', 'error');
+    }
+  } finally {
+    if (clearBtn) {
+      clearBtn.disabled = false;
+      clearBtn.innerHTML = originalHtml || '<i class="fa-solid fa-trash-can"></i> Clear Activity Logs';
+    }
+  }
+}
+
+function _syncOpsAutoRefresh(shouldRun) {
+  if (!shouldRun) {
+    if (opsAutoRefreshTimer) {
+      clearInterval(opsAutoRefreshTimer);
+      opsAutoRefreshTimer = null;
+    }
+    return;
+  }
+  if (opsAutoRefreshTimer) return;
+  opsAutoRefreshTimer = setInterval(() => {
+    const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
+    if (activeTab === 'log-history' && !document.hidden) {
+      loadOperationsFeed();
+    }
+  }, 45000);
+}
+
+function debounceOpsSearch() {
+  clearTimeout(opsSearchTimer);
+  opsSearchTimer = setTimeout(() => loadOperationsFeed(1), 300);
+}
+
+function _opsSourceBadge(sourceType, sourceLabel) {
+  const label = sourceLabel || 'Event';
+  const cls = sourceType === 'background_task'
+    ? 'ops-source-badge task'
+    : sourceType === 'backup_task'
+      ? 'ops-source-badge backup'
+      : 'ops-source-badge log';
+  const icon = sourceType === 'background_task'
+    ? 'fa-gears'
+    : sourceType === 'backup_task'
+      ? 'fa-database'
+      : 'fa-clock-rotate-left';
+  return `<span class="${cls}"><i class="fa-solid ${icon}"></i> ${escHtml(label)}</span>`;
+}
+
+function _opsStatusCell(item) {
+  if (item.source_type === 'activity_log') {
+    return `<span class="log-action-badge ${item.icon_color || 'edit'}"><i class="fa-solid ${item.icon_class || 'fa-circle-info'}"></i> ${escHtml(item.action_display || item.action || 'Event')}</span>`;
+  }
+  return _statusBadge(item.status, item.status_display || item.status || 'Unknown');
+}
+
+function _opsDeviceMeta(item) {
+  if (!item || item.source_type !== 'activity_log') return null;
+  const action = String(item.action || '').trim().toLowerCase();
+  const isAuthEvent = action === 'login' || action === 'logout';
+
+  let surface = String(item.device_surface || '').trim().toLowerCase();
+  if (!surface || surface === 'unknown') {
+    const text = String(item.description || '').toLowerCase();
+    if (/(mobile app|android|iphone|ipad|ipod|\bmobile\b|\bios\b)/.test(text)) {
+      surface = 'mobile';
+    } else if (/(desktop|browser|windows|mac|linux|\bweb\b)/.test(text)) {
+      surface = 'desktop';
+    }
+  }
+
+  if (surface === 'mobile') return { icon: 'fa-mobile-screen-button', label: 'Mobile' };
+  if (surface === 'desktop') return { icon: 'fa-desktop', label: 'Desktop' };
+
+  if (!isAuthEvent) return null;
+
+  const fallbackLabel = String(item.device_surface_label || '').trim() || 'Unknown';
+  const fallbackIcon = String(item.device_surface_icon || '').trim() || 'fa-circle-question';
+  return { icon: fallbackIcon, label: fallbackLabel };
+}
+
+function _opsCancelAction(item) {
+  const taskId = Number(item?.task_id || 0);
+  if (!item || !item.can_cancel || !Number.isInteger(taskId) || taskId <= 0) {
+    return '';
+  }
+  const btnId = `opsCancelTaskBtn-${taskId}`;
+  return `<div class="ops-row-action"><button type="button" class="btn btn-sm btn-danger ops-cancel-btn" id="${btnId}" onclick="cancelOperationsLatestTask(${taskId})" title="Cancel latest active task"><i class="fa-solid fa-ban"></i> Cancel Task</button></div>`;
+}
+
+window.cancelOperationsLatestTask = async function (taskId) {
+  const parsedTaskId = Number(taskId || 0);
+  if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0) return;
+
+  const ok = await showConfirm({
+    title: 'Cancel Latest Active Task?',
+    text: 'This will stop the latest running background task from Operations Hub.',
+    icon: 'fa-solid fa-ban',
+    confirmLabel: 'Cancel Task',
+    btnClass: 'btn-danger',
+  });
+  if (!ok) return;
+
+  const btn = document.getElementById(`opsCancelTaskBtn-${parsedTaskId}`);
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cancelling';
+  }
+
+  try {
+    const res = await fetch(`/api/task-cancel/${parsedTaskId}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({ latest_only: true }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data?.success) {
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Task cancelled.', 'success');
+      }
+      await loadOperationsFeed(_opsPage);
+      return;
+    }
+
+    if (typeof showToast === 'function') {
+      showToast((data && data.message) || 'Failed to cancel task.', 'error');
+    }
+  } catch (err) {
+    console.error('cancelOperationsLatestTask:', err);
+    if (typeof showToast === 'function') {
+      showToast('Network error while cancelling task.', 'error');
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml || '<i class="fa-solid fa-ban"></i> Cancel Task';
+    }
+  }
+};
+
+function renderOperationsTable() {
+  const tbody = document.getElementById('opsTableBody');
+  if (!tbody) return;
+  if (!operationsFeed.length) {
+    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
+      <div class="empty-state"><i class="fa-solid fa-wave-square"></i>
+      <p>No operations found</p><span>Adjust filters or wait for new activity.</span></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = operationsFeed.map((item, i) => {
+    const detailMain = item.description || item.current_client || item.target_name || '';
+    const detailMeta = [];
+    const deviceMeta = _opsDeviceMeta(item);
+    if (item.target_name) detailMeta.push(`Target: ${item.target_name}`);
+    if (item.progress_text) detailMeta.push(item.progress_text);
+    if (item.ip_address) detailMeta.push(`IP: ${item.ip_address}`);
+    if (item.error) detailMeta.push(`Error: ${item.error}`);
+    const deviceLine = deviceMeta
+      ? `<div class="ops-detail-meta"><i class="fa-solid ${escHtml(deviceMeta.icon)}"></i> Device: ${escHtml(deviceMeta.label)}</div>`
+      : '';
+    const rowNumber = ((_opsPage - 1) * _opsPerPage) + i + 1;
+
+    return `<tr>
+      <td class="text-center text-xs text-gray-400">${rowNumber}</td>
+      <td>${_opsSourceBadge(item.source_type, item.source_label)}</td>
+      <td>
+        <div class="ops-event-title">${escHtml(item.event_title || '-')}</div>
+        <div class="ops-event-sub">${escHtml(item.event_subtitle || '')}</div>
+      </td>
+      <td>${_opsStatusCell(item)}${_opsCancelAction(item)}</td>
+      <td><span class="text-xs font-medium">${escHtml(item.user || 'System')}</span></td>
+      <td>
+        <div class="ops-detail-main">${escHtml(detailMain || '-')}</div>
+        <div class="ops-detail-meta">${escHtml(detailMeta.join(' | '))}</div>
+        ${deviceLine}
+      </td>
+      <td>
+        <span class="notif-time">${escHtml(item.created_at || '')}</span>
+        <div class="ops-time-sub">${escHtml(item.time_ago || '')}</div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function _buildOpsPageNumbers(currentPage, totalPages) {
+  if (!totalPages || totalPages < 1) return '';
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if ((end - start + 1) < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  let html = '';
+  for (let p = start; p <= end; p++) {
+    html += `<button class="page-num${p === currentPage ? ' active' : ''}" onclick="opsSetPage(${p})">${p}</button>`;
+  }
+  return html;
+}
+
+function _updateOpsPagination(rowsOnPage) {
+  const total = Math.max(0, Number(operationsTotal || 0));
+  const start = total ? ((_opsPage - 1) * _opsPerPage) + 1 : 0;
+  const end = total ? (start + Math.max(0, Number(rowsOnPage || 0)) - 1) : 0;
+
+  const info = document.getElementById('opsPaginationInfo');
+  const pageNumbers = document.getElementById('opsPageNumbers');
+  const firstBtn = document.getElementById('opsFirstBtn');
+  const prevBtn = document.getElementById('opsPrevBtn');
+  const nextBtn = document.getElementById('opsNextBtn');
+  const lastBtn = document.getElementById('opsLastBtn');
+  const rowsSelect = document.getElementById('opsRowsPerPage');
+
+  if (info) {
+    info.innerHTML = `Showing <strong>${start}-${end}</strong> of <strong>${total}</strong> results`;
+  }
+  if (pageNumbers) {
+    pageNumbers.innerHTML = _buildOpsPageNumbers(_opsPage, _opsTotalPages);
+  }
+
+  if (firstBtn) firstBtn.disabled = _opsPage <= 1;
+  if (prevBtn) prevBtn.disabled = _opsPage <= 1;
+  if (nextBtn) nextBtn.disabled = _opsPage >= _opsTotalPages;
+  if (lastBtn) lastBtn.disabled = _opsPage >= _opsTotalPages;
+  if (rowsSelect && String(rowsSelect.value) !== String(_opsPerPage)) {
+    rowsSelect.value = String(_opsPerPage);
+  }
+}
+
+window.opsSetPage = function (page) {
+  const requested = page === -1 ? _opsTotalPages : Number(page || 1);
+  const nextPage = Math.max(1, Math.min(requested, _opsTotalPages));
+  if (nextPage === _opsPage) return;
+  loadOperationsFeed(nextPage);
+};
+
+window.opsPage = function (delta) {
+  opsSetPage(_opsPage + Number(delta || 0));
+};
+
+window.onOpsRowsPerPageChange = function (value) {
+  const next = Number(value || 25);
+  _opsPerPage = [10, 25, 50, 100].includes(next) ? next : 25;
+  _opsPage = 1;
+  loadOperationsFeed(1);
+};
+
+async function loadOperationsFeed(page) {
+  if (page !== undefined) _opsPage = Math.max(1, Number(page || 1));
+  const refreshBtn = document.getElementById('opsRefreshBtn');
+  const skeletonStart = setPanelTableSkeleton('opsTableBody', {
+    colCount: 7,
+    columns: ['0.5fr', '1fr', '1.3fr', '1.3fr', '1.2fr', '2.4fr', '1.3fr'],
+    rows: 3,
+    ariaLabel: 'Loading operations feed...',
+  });
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading';
+  }
+
+  try {
+    const search = document.getElementById('opsSearch')?.value || '';
+    const source = document.getElementById('opsSourceFilter')?.value || 'all';
+    const userRole = document.getElementById('opsUserTypeFilter')?.value || '';
+    const taskStatus = document.getElementById('opsTaskStatusFilter')?.value || '';
+    const action = document.getElementById('opsActionFilter')?.value || '';
+
+    const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
+    const actionFilter = document.getElementById('opsActionFilter');
+    const userRoleFilter = document.getElementById('opsUserTypeFilter');
+    if (taskStatusFilter) {
+      taskStatusFilter.disabled = source === 'logs';
+      taskStatusFilter.style.opacity = source === 'logs' ? '0.65' : '1';
+    }
+    if (actionFilter) {
+      const disableAction = source === 'tasks' || source === 'backups';
+      actionFilter.disabled = disableAction;
+      actionFilter.style.opacity = disableAction ? '0.65' : '1';
+    }
+    if (userRoleFilter) {
+      userRoleFilter.disabled = false;
+      userRoleFilter.style.opacity = '1';
+    }
+
+    const offset = (_opsPage - 1) * _opsPerPage;
+    let url = `/api/operations-feed/?limit=${_opsPerPage}&offset=${offset}&source=${encodeURIComponent(source)}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (userRole) url += `&user_role=${encodeURIComponent(userRole)}`;
+    if (taskStatus) url += `&task_status=${encodeURIComponent(taskStatus)}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error('loadOperationsFeed HTTP', res.status);
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'opsTableBody',
+        7,
+        'fa-wave-square',
+        'Unable to load operations',
+        'Please refresh and try again.'
+      );
+      return;
+    }
+    const data = await res.json();
+    if (!data.success) {
+      await waitForPanelSkeletonDelay(skeletonStart);
+      setPanelTableError(
+        'opsTableBody',
+        7,
+        'fa-wave-square',
+        'Unable to load operations',
+        'Please refresh and try again.'
+      );
+      return;
+    }
+
+    operationsFeed = data.items || [];
+    operationsTotal = Number(data.total || operationsFeed.length || 0);
+    _opsTotalPages = Math.max(1, Math.ceil(operationsTotal / _opsPerPage));
+
+    if (_opsPage > _opsTotalPages) {
+      _opsPage = _opsTotalPages;
+      return loadOperationsFeed(_opsPage);
+    }
+
+    await waitForPanelSkeletonDelay(skeletonStart);
+    renderOperationsTable();
+    _updateOpsPagination(operationsFeed.length);
+  } catch (err) {
+    console.error('loadOperationsFeed:', err);
+    await waitForPanelSkeletonDelay(skeletonStart);
+    setPanelTableError(
+      'opsTableBody',
+      7,
+      'fa-wave-square',
+      'Unable to load operations',
+      'Network issue. Please refresh and try again.'
+    );
+  } finally {
+    if (refreshBtn) {
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+    }
+  }
+}
+
+function loadLogs() {
+  return loadOperationsFeed();
 }
 
 function debounceLogSearch() {
-  clearTimeout(logSearchTimer);
-  logSearchTimer = setTimeout(() => loadLogs(false), 350);
-}
-
-function renderLogTable() {
-  const tbody = document.getElementById('logTableBody');
-  if (!tbody) return;
-  if (!panelLogs.length) {
-    tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
-      <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i>
-      <p>No logs found</p><span>Activity logs will appear here</span></div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = panelLogs.map((l, i) => {
-    const actionLabel = l.action_display || l.action;
-    const colorClass = l.icon_color || 'edit';
-    return `<tr>
-      <td class="text-center text-xs text-gray-400">${i + 1}</td>
-      <td><span class="text-xs font-medium">${escHtml(l.user_name || 'System')}</span></td>
-      <td><span class="log-action-badge ${colorClass}"><i class="fa-solid ${l.icon_class || 'fa-circle-info'}"></i> ${escHtml(actionLabel)}</span></td>
-      <td><span class="text-xs text-gray-600">${escHtml(l.description || '')}</span></td>
-      <td><span class="text-xs text-gray-500">${escHtml(l.target_name || '')}</span></td>
-      <td><span class="text-xs text-gray-400">${escHtml(l.ip_address || '')}</span></td>
-      <td><span class="notif-time">${l.time_ago || ''}</span></td>
-    </tr>`;
-  }).join('');
+  debounceOpsSearch();
 }
 
 /* ================================================================
@@ -740,6 +1980,9 @@ function renderLogTable() {
     proper file-based caching, linting and CSP compliance)
    ================================================================ */
 let _emailPage = 1;
+let _emailPerPage = 50;
+let _emailTotalPages = 1;
+let _emailTotal = 0;
 let _emailLogsById = {};
 let _emailComposePreviewBound = false;
 
@@ -831,19 +2074,19 @@ function _buildEmailTemplateHtml(payload, asDocument) {
     '*{box-sizing:border-box}' +
     'body{margin:0;padding:0;background:#eef2f7;font-family:Segoe UI,Arial,sans-serif;color:#0f172a}' +
     '.mail-shell{width:100%;padding:24px 12px;background:#eef2f7}' +
-    '.mail-card{width:100%;max-width:1200px;min-width:300px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ef;border-radius:18px;overflow:hidden}' +
+    '.mail-card{width:100%;max-width:1200px;min-width:300px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ef;border-radius:8px;overflow:hidden}' +
     '.mail-header{padding:26px 26px 22px;background:' + cfg.gradient + ';color:#fff}' +
-    '.mail-badge{display:inline-block;padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.2);margin-bottom:14px}' +
+    '.mail-badge{display:inline-block;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.2);margin-bottom:14px}' +
     '.mail-title{margin:0;font-size:26px;line-height:1.2;font-weight:700}' +
     '.mail-sub{margin:8px 0 0;font-size:14px;opacity:.95}' +
     '.mail-body{padding:28px 26px 24px}' +
-    '.mail-meta{border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;padding:14px 16px;margin:0 0 18px}' +
+    '.mail-meta{border:1px solid #e5e7eb;border-radius:6px;background:#f8fafc;padding:14px 16px;margin:0 0 18px}' +
     '.mail-meta-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin:0 0 5px;font-weight:700}' +
     '.mail-meta-value{font-size:14px;color:#0f172a;font-weight:600;word-break:break-word;margin:0}' +
-    '.mail-message{border:1px solid #e2e8f0;border-left:4px solid ' + cfg.accent + ';background:#ffffff;border-radius:12px;padding:16px 16px 2px;font-size:15px;color:#334155}' +
+    '.mail-message{border:1px solid #e2e8f0;border-left:4px solid ' + cfg.accent + ';background:#ffffff;border-radius:6px;padding:16px 16px 2px;font-size:15px;color:#334155}' +
     '.mail-footer{padding:16px 26px 22px;border-top:1px solid #e5e7eb;background:#f8fafc;font-size:12px;color:#64748b}' +
     '.mail-footer p{margin:0 0 4px}' +
-    '@media (max-width:760px){.mail-shell{padding:12px 8px}.mail-card{min-width:300px;border-radius:14px}.mail-header{padding:18px 16px}.mail-title{font-size:21px}.mail-body{padding:18px 16px}.mail-footer{padding:14px 16px}}' +
+    '@media (max-width:760px){.mail-shell{padding:12px 8px}.mail-card{min-width:300px;border-radius:8px}.mail-header{padding:18px 16px}.mail-title{font-size:21px}.mail-body{padding:18px 16px}.mail-footer{padding:14px 16px}}' +
     '</style>';
 
   const body = '<div class="mail-shell">' +
@@ -931,12 +2174,73 @@ function _buildEmailActionButtons(log) {
   '</div>';
 }
 
+function _buildEmailPageNumbers(currentPage, totalPages) {
+  if (!totalPages || totalPages < 1) return '';
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if ((end - start + 1) < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  let html = '';
+  for (let p = start; p <= end; p++) {
+    html += '<button class="page-num' + (p === currentPage ? ' active' : '') + '" onclick="emailSetPage(' + p + ')">' + p + '</button>';
+  }
+  return html;
+}
+
+function _updateEmailPagination(total, totalPages, rowsOnPage) {
+  const safeTotal = Math.max(0, Number(total || 0));
+  const safePages = Math.max(1, Number(totalPages || 1));
+  const safeRows = Math.max(0, Number(rowsOnPage || 0));
+  const start = safeTotal ? ((_emailPage - 1) * _emailPerPage) + 1 : 0;
+  const end = safeTotal ? (start + safeRows - 1) : 0;
+
+  const label = document.getElementById('emailLogCountLabel');
+  const pageNumbers = document.getElementById('emailPageNumbers');
+  const firstBtn = document.getElementById('emailFirstBtn');
+  const prevBtn = document.getElementById('emailPrevBtn');
+  const nextBtn = document.getElementById('emailNextBtn');
+  const lastBtn = document.getElementById('emailLastBtn');
+  const rowsSelect = document.getElementById('emailRowsPerPage');
+
+  if (label) {
+    label.innerHTML = 'Showing <strong>' + start + '-' + end + '</strong> of <strong>' + safeTotal + '</strong> results';
+  }
+  if (pageNumbers) {
+    pageNumbers.innerHTML = _buildEmailPageNumbers(_emailPage, safePages);
+  }
+
+  if (firstBtn) firstBtn.disabled = _emailPage <= 1;
+  if (prevBtn) prevBtn.disabled = _emailPage <= 1;
+  if (nextBtn) nextBtn.disabled = _emailPage >= safePages;
+  if (lastBtn) lastBtn.disabled = _emailPage >= safePages;
+  if (rowsSelect && String(rowsSelect.value) !== String(_emailPerPage)) {
+    rowsSelect.value = String(_emailPerPage);
+  }
+}
+
+window.emailSetPage = function (page) {
+  const requested = page === -1 ? _emailTotalPages : Number(page || 1);
+  const nextPage = Math.max(1, Math.min(requested, _emailTotalPages));
+  if (nextPage === _emailPage) return;
+  loadEmailLogs(nextPage);
+};
+
+window.onEmailRowsPerPageChange = function (value) {
+  const next = Number(value || 50);
+  _emailPerPage = [10, 25, 50, 100].includes(next) ? next : 50;
+  _emailPage = 1;
+  loadEmailLogs(1);
+};
+
 window.loadEmailLogs = function (page) {
-  if (page !== undefined) _emailPage = page;
+  if (page !== undefined) _emailPage = Math.max(1, Number(page || 1));
 
   const status = document.getElementById('emailStatusFilter')?.value || '';
   const type   = document.getElementById('emailTypeFilter')?.value   || '';
-  let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=50';
+  let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=' + _emailPerPage;
   if (status) url += '&status='     + encodeURIComponent(status);
   if (type)   url += '&email_type=' + encodeURIComponent(type);
 
@@ -979,10 +2283,14 @@ window.loadEmailLogs = function (page) {
       const tBody = document.getElementById('emailLogsBody');
       if (!tBody) return;
 
-      const total      = data.total;
-      const totalPages = data.total_pages;
+      const logs = Array.isArray(data.logs) ? data.logs : [];
+      const total = Number(data.total || 0);
+      const totalPages = Math.max(1, Number(data.total_pages || 1));
+      _emailTotal = total;
+      _emailTotalPages = totalPages;
+      if (_emailPage > _emailTotalPages) _emailPage = _emailTotalPages;
 
-      if (!data.logs.length) {
+      if (!logs.length) {
         tBody.innerHTML =
           '<tr class="notif-table-empty"><td colspan="7">' +
           '<div class="empty-state"><i class="fa-solid fa-envelope-open"></i>' +
@@ -990,14 +2298,14 @@ window.loadEmailLogs = function (page) {
           '<span>Logs appear here after emails are sent</span></div></td></tr>';
       } else {
         const statusClassMap = { on_hold: 'on-hold', pending: 'pending', sent: 'sent', failed: 'failed' };
-        tBody.innerHTML = data.logs.map(function (log, i) {
+        tBody.innerHTML = logs.map(function (log, i) {
           const statusCls = statusClassMap[log.status] || '';
           const errorMeta = log.error_message
             ? '<div class="email-error-meta" title="' + escAttr(log.error_message) + '"><i class="fa-solid fa-circle-info"></i> Failed details</div>'
             : '';
           const actionHtml = _buildEmailActionButtons(log);
           return '<tr id="email-log-row-' + log.id + '">' +
-            '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * 50) + i + 1) + '</td>' +
+            '<td class="text-center text-xs text-gray-400">' + (((_emailPage - 1) * _emailPerPage) + i + 1) + '</td>' +
             '<td><strong style="font-size:12.5px;color:#1e293b;">' + escHtml(log.recipient_name || '') + '</strong></td>' +
             '<td class="notif-time">' + escHtml(log.recipient_email) + '</td>' +
             '<td><span class="notif-badge-cat">' + escHtml(log.email_type_display) + '</span></td>' +
@@ -1008,22 +2316,13 @@ window.loadEmailLogs = function (page) {
         }).join('');
       }
 
-      // Pagination controls
-      const label     = document.getElementById('emailLogCountLabel');
-      const pageLabel = document.getElementById('emailPageLabel');
-      const prevBtn   = document.getElementById('emailPrevBtn');
-      const nextBtn   = document.getElementById('emailNextBtn');
-      if (label)     label.textContent     = 'Page ' + _emailPage + ' of ' + totalPages + ' (' + total + ' total)';
-      if (pageLabel) pageLabel.textContent = _emailPage + ' / ' + totalPages;
-      if (prevBtn)   prevBtn.disabled      = _emailPage <= 1;
-      if (nextBtn)   nextBtn.disabled      = _emailPage >= totalPages;
+      _updateEmailPagination(total, totalPages, logs.length);
     })
     .catch(function (err) { console.error('Email logs load error:', err); });
 };
 
 window.emailLogPage = function (delta) {
-  _emailPage = Math.max(1, _emailPage + delta);
-  loadEmailLogs();
+  emailSetPage(_emailPage + Number(delta || 0));
 };
 
 window.resendEmail = async function (logId, emailType) {
@@ -1096,8 +2395,12 @@ window.openNewEmailModal = async function () {
 
   const modal = document.getElementById('emailComposeModal');
   if (modal) {
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+      window.AdarshModalBridge.open('emailComposeModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
   }
 };
 
@@ -1135,15 +2438,25 @@ window.openEditEmailModal = function (logId) {
 
   const modal = document.getElementById('emailComposeModal');
   if (modal) {
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+      window.AdarshModalBridge.open('emailComposeModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
   }
 };
 
 window.closeEmailComposeModal = function () {
   const modal = document.getElementById('emailComposeModal');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
+  if (modal) {
+    if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+      window.AdarshModalBridge.close('emailComposeModal', { overlayClass: 'show' });
+    } else {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
 };
 
 window.submitEmailCompose = async function (event) {
@@ -1220,10 +2533,11 @@ const _origSwitchTab = switchTab;
 switchTab = function(tabName) {
   _origSwitchTab(tabName);
   if (tabName === 'download-templates' && !panelTemplates.length) loadTemplates();
-  if (tabName === 'log-history' && !panelLogs.length) loadLogs();
+  if (tabName === 'log-history' && !operationsFeed.length) loadOperationsFeed();
+  _syncOpsAutoRefresh(tabName === 'log-history');
 };
 
-/* ============ Monitoring Tab ============ */
+/* ============ Monitoring (legacy alias -> Operations Hub) ============ */
 
 const STATUS_BADGE = {
   pending:    { color: '#92400e', bg: '#fef3c7', label: 'Pending' },
@@ -1236,109 +2550,181 @@ const STATUS_BADGE = {
 function _statusBadge(status, displayText) {
   const s = STATUS_BADGE[status] || { color: '#374151', bg: '#f3f4f6', label: displayText };
   const label = displayText || s.label;
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:${s.color};background:${s.bg};">${escHtml(label)}</span>`;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;color:${s.color};background:${s.bg};">${escHtml(label)}</span>`;
 }
 
 async function loadMonitoring() {
-  const refreshBtn = document.getElementById('monitoringRefreshBtn');
-  if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Loading'; }
-
-  try {
-    const res = await fetch('/api/monitoring/');
-    if (!res.ok) { window.showToast && showToast('Failed to load monitoring data', 'error'); return; }
-    const data = await res.json();
-    if (!data.success) return;
-
-    // Stats
-    const el = id => document.getElementById(id);
-    if (el('statActiveTasks')) el('statActiveTasks').textContent = data.stats.active_tasks;
-    if (el('statPendingTasks')) el('statPendingTasks').textContent = data.stats.pending_tasks;
-    if (el('statCompleted24h')) el('statCompleted24h').textContent = data.stats.completed_24h;
-    if (el('statFailed24h')) el('statFailed24h').textContent = data.stats.failed_24h;
-
-    // Timestamp
-    const ts = el('monitoringLastUpdated');
-    if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
-
-    // Backup tasks
-    const backupSection = el('monitoringBackups');
-    const backupBody = el('monitoringBackupBody');
-    if (backupSection && backupBody) {
-      if (data.backup_tasks.length > 0) {
-        backupSection.style.display = '';
-        backupBody.innerHTML = data.backup_tasks.map(b => `
-          <div class="system-row">
-            <span class="system-label">#${b.id}  ${escHtml(b.status_display)}</span>
-            <span class="system-value">
-              ${escHtml(b.current_client || 'Queued')}
-              <span style="color:#94a3b8;margin-left:6px;">(${b.progress}/${b.total})</span>
-              ${b.progress_pct > 0 ? `<div style="width:100px;height:4px;background:#e2e8f0;border-radius:999px;display:inline-block;vertical-align:middle;margin-left:8px;overflow:hidden;"><div style="width:${b.progress_pct}%;height:100%;background:#667eea;border-radius:999px;"></div></div>` : ''}
-            </span>
-          </div>
-        `).join('');
-      } else {
-        backupSection.style.display = 'none';
-      }
-    }
-
-    // Tasks table
-    const tbody = el('monitoringTasksBody');
-    const countBadge = el('monitoringTaskCount');
-    if (countBadge) countBadge.textContent = data.recent_tasks.length;
-
-    if (!tbody) return;
-    if (!data.recent_tasks.length) {
-      tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="8"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No background tasks yet</p><span>Tasks will appear here when processing starts</span></div></td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = data.recent_tasks.map((t, i) => {
-      const pct = t.progress_pct;
-      const progressCell = pct > 0
-        ? `<div style="display:flex;align-items:center;gap:6px;"><div style="width:50px;height:4px;background:#e2e8f0;border-radius:999px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:#667eea;"></div></div><span style="font-size:11px;color:#64748b;">${pct}%</span></div>`
-        : `<span style="font-size:11px;color:#94a3b8;"></span>`;
-
-      const errTip = t.error ? ` title="${escHtml(t.error)}"` : '';
-      const errIcon = t.error ? ` <i class="fa-solid fa-circle-info" style="color:#ef4444;cursor:help;" title="${escHtml(t.error)}"></i>` : '';
-
-      return `<tr${errTip}>
-        <td class="text-center text-xs text-gray-400">${i + 1}</td>
-        <td><span class="text-xs font-medium">${escHtml(t.task_type)}</span></td>
-        <td>${_statusBadge(t.status, t.status_display)}${errIcon}</td>
-        <td><span class="text-xs text-gray-600">${escHtml(t.user)}</span></td>
-        <td>${progressCell}</td>
-        <td><span class="notif-time">${escHtml(t.created_at)}</span></td>
-        <td><span class="notif-time">${t.completed_at ? escHtml(t.completed_at) : '<span style="color:#94a3b8;"></span>'}</span></td>
-        <td></td>
-      </tr>`;
-    }).join('');
-
-  } catch (err) {
-    console.error('Monitoring load error:', err);
-  } finally {
-    if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh'; }
-  }
+  return loadOperationsFeed();
 }
+
+document.addEventListener('visibilitychange', function () {
+  const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
+  if (activeTab === 'log-history' && !document.hidden) {
+    _syncOpsAutoRefresh(true);
+    return;
+  }
+  if (document.hidden) {
+    _syncOpsAutoRefresh(false);
+  }
+});
 
 
 /* ============ Server Info Tab ============ */
 
+const SERVER_INFO_DYNAMIC_VALUE_IDS = [
+  'serverStoragePct',
+  'serverDiskTotal',
+  'serverDiskUsed',
+  'serverDiskFree',
+  'serverProjectTotal',
+  'serverOtherUsed',
+  'serverDiskTracked',
+  'serverCpuCores',
+  'serverMemoryUsed',
+  'serverMemoryTotal',
+  'serverMemoryPct',
+  'serverDbBackend',
+  'serverDbName',
+  'serverDbSize',
+  'serverDbStatus',
+];
+
+function _readServerInfoLocalCache() {
+  try {
+    const raw = localStorage.getItem(SERVER_INFO_LOCAL_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed && parsed.saved_at ? parsed.saved_at : 0);
+    const snapshot = parsed && parsed.snapshot ? parsed.snapshot : null;
+    if (!savedAt || !snapshot || typeof snapshot !== 'object') {
+      localStorage.removeItem(SERVER_INFO_LOCAL_CACHE_KEY);
+      return null;
+    }
+    if ((Date.now() - savedAt) > SERVER_INFO_LOCAL_CACHE_TTL_MS) {
+      localStorage.removeItem(SERVER_INFO_LOCAL_CACHE_KEY);
+      return null;
+    }
+    return snapshot;
+  } catch (e) {
+    return null;
+  }
+}
+
+function _saveServerInfoLocalCache(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return;
+  try {
+    localStorage.setItem(SERVER_INFO_LOCAL_CACHE_KEY, JSON.stringify({
+      saved_at: Date.now(),
+      snapshot,
+    }));
+  } catch (e) {
+    // localStorage may be unavailable in strict privacy mode
+  }
+}
+
+function _syncServerInfoButtons() {
+  const fetchBtn = document.getElementById('serverInfoFetchBtn');
+  const refreshBtn = document.getElementById('serverInfoRefreshBtn');
+
+  if (fetchBtn) {
+    fetchBtn.disabled = false;
+    fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';
+    fetchBtn.style.display = serverInfoSnapshot ? 'none' : '';
+  }
+
+  if (refreshBtn) {
+    refreshBtn.disabled = false;
+    refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh Latest';
+    refreshBtn.style.display = serverInfoSnapshot ? '' : 'none';
+  }
+}
+
+function buildServerInfoListSkeleton(sectionLabel) {
+  const safeLabel = escHtml(sectionLabel || 'Loading');
+  return (
+    '<div class="server-list-skeleton" role="status" aria-label="' + safeLabel + '">' +
+      '<div class="server-list-skeleton-row">' +
+        '<span class="server-list-skeleton-block server-list-skeleton-title"></span>' +
+        '<span class="server-list-skeleton-block server-list-skeleton-size"></span>' +
+      '</div>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-bar"></span>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-meta"></span>' +
+    '</div>' +
+    '<div class="server-list-skeleton" aria-hidden="true">' +
+      '<div class="server-list-skeleton-row">' +
+        '<span class="server-list-skeleton-block server-list-skeleton-title"></span>' +
+        '<span class="server-list-skeleton-block server-list-skeleton-size"></span>' +
+      '</div>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-bar"></span>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-meta"></span>' +
+    '</div>' +
+    '<div class="server-list-skeleton" aria-hidden="true">' +
+      '<div class="server-list-skeleton-row">' +
+        '<span class="server-list-skeleton-block server-list-skeleton-title"></span>' +
+        '<span class="server-list-skeleton-block server-list-skeleton-size"></span>' +
+      '</div>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-bar"></span>' +
+      '<span class="server-list-skeleton-block server-list-skeleton-meta"></span>' +
+    '</div>'
+  );
+}
+
+function setServerInfoLoadingState(isLoading, options) {
+  const opts = options || {};
+  const initialLoad = !!opts.initialLoad;
+  const tabRoot = document.getElementById('tab-server-info');
+  const contentShell = document.getElementById('serverInfoContentShell');
+  const donutWrap = document.querySelector('.server-donut-wrap');
+  const rows = document.getElementById('serverInfoPathRows');
+  const otherRows = document.getElementById('serverOtherBreakdownRows');
+
+  if (tabRoot) {
+    tabRoot.classList.toggle('is-loading', !!isLoading);
+  }
+  if (contentShell) {
+    contentShell.classList.toggle('is-loading', !!isLoading && initialLoad);
+  }
+  if (donutWrap) {
+    donutWrap.classList.toggle('is-loading', !!isLoading && initialLoad);
+  }
+
+  SERVER_INFO_DYNAMIC_VALUE_IDS.forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('server-value-skeleton', !!isLoading && initialLoad);
+  });
+
+  if (isLoading) {
+    if (rows) rows.innerHTML = buildServerInfoListSkeleton('Loading panel usage details');
+    if (otherRows) otherRows.innerHTML = buildServerInfoListSkeleton('Loading system usage details');
+  }
+}
+
 function initServerInfoTab() {
   const rows = document.getElementById('serverInfoPathRows');
-  const breakdownRows = document.getElementById('serverInfoBreakdownRows');
   const otherRows = document.getElementById('serverOtherBreakdownRows');
-  if (!rows || !breakdownRows || !otherRows) return;
+  if (!rows || !otherRows) return;
+
+  if (!serverInfoSnapshot) {
+    const cachedSnapshot = _readServerInfoLocalCache();
+    if (cachedSnapshot) {
+      serverInfoSnapshot = cachedSnapshot;
+      serverInfoHasFetched = true;
+    }
+  }
 
   if (serverInfoSnapshot) {
-    renderServerInfo(serverInfoSnapshot);
+    renderServerInfo(serverInfoSnapshot, true);
+    _syncServerInfoButtons();
     return;
   }
 
   if (!serverInfoHasFetched) {
     rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-cloud-arrow-down"></i><p>Snapshot not loaded</p><span>Click "Fetch Snapshot" to load current server usage.</span></div>`;
-    breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown not loaded</p><span>Fetch snapshot to see detailed used-space accounting.</span></div>`;
-    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details not loaded</p><span>Fetch snapshot to see where "Other System" is likely used.</span></div>`;
+    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>System usage details not loaded</p><span>Fetch snapshot to load system usage categories.</span></div>`;
   }
+
+  _syncServerInfoButtons();
 }
 
 async function loadServerInfo(forceRefresh) {
@@ -1349,8 +2735,23 @@ async function loadServerInfo(forceRefresh) {
   const rows = document.getElementById('serverInfoPathRows');
   if (!rows) return;
 
+  if (!forceRefresh && !serverInfoSnapshot) {
+    const cachedSnapshot = _readServerInfoLocalCache();
+    if (cachedSnapshot) {
+      serverInfoSnapshot = cachedSnapshot;
+      serverInfoHasFetched = true;
+      renderServerInfo(serverInfoSnapshot, true);
+      _syncServerInfoButtons();
+      return;
+    }
+  }
+
   serverInfoLoading = true;
   serverInfoHasFetched = true;
+  let loadedSuccessfully = false;
+  const isInitialLoad = !serverInfoSnapshot;
+  const skeletonStart = Date.now();
+  setServerInfoLoadingState(true, { initialLoad: isInitialLoad });
 
   if (fetchBtn) {
     fetchBtn.disabled = true;
@@ -1376,36 +2777,39 @@ async function loadServerInfo(forceRefresh) {
     }
 
     serverInfoSnapshot = data.snapshot;
+    _saveServerInfoLocalCache(serverInfoSnapshot);
     renderServerInfo(serverInfoSnapshot, data.cached === true);
+    loadedSuccessfully = true;
   } catch (err) {
     console.error('Server info load error:', err);
     window.showToast && showToast('Unable to fetch server info', 'error');
   } finally {
+    await waitForPanelSkeletonDelay(skeletonStart);
     serverInfoLoading = false;
-    if (fetchBtn) {
-      fetchBtn.disabled = false;
-      fetchBtn.innerHTML = '<i class="fa-solid fa-download"></i> Fetch Snapshot';
-      fetchBtn.style.display = serverInfoSnapshot ? 'none' : '';
+    setServerInfoLoadingState(false, { initialLoad: false });
+
+    if (!loadedSuccessfully) {
+      if (serverInfoSnapshot) {
+        renderServerInfo(serverInfoSnapshot, true);
+      } else {
+        initServerInfoTab();
+      }
     }
-    if (refreshBtn) {
-      refreshBtn.disabled = false;
-      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh Latest';
-      refreshBtn.style.display = serverInfoSnapshot ? '' : 'none';
-    }
+
+    _syncServerInfoButtons();
   }
 }
 
 function renderServerInfo(snapshot, fromCache) {
   const storage = snapshot.storage || {};
   const database = snapshot.database || {};
-  const usageBreakdown = Array.isArray(snapshot.usage_breakdown) ? snapshot.usage_breakdown : [];
-  const otherUsageBreakdown = Array.isArray(snapshot.other_usage_breakdown) ? snapshot.other_usage_breakdown : [];
+  const systemUsageDetails = Array.isArray(snapshot.system_usage_details) ? snapshot.system_usage_details : [];
+  const panelUsageDetails = Array.isArray(snapshot.panel_usage_details) ? snapshot.panel_usage_details : [];
   const memory = snapshot.memory || {};
   const cpu = snapshot.cpu || {};
   const rows = document.getElementById('serverInfoPathRows');
-  const breakdownRows = document.getElementById('serverInfoBreakdownRows');
   const otherRows = document.getElementById('serverOtherBreakdownRows');
-  if (!rows || !breakdownRows || !otherRows) return;
+  if (!rows || !otherRows) return;
 
   const usedPct = Number(storage.used_pct || 0);
   const donut = document.getElementById('serverStorageDonut');
@@ -1429,9 +2833,6 @@ function renderServerInfo(snapshot, fromCache) {
   setText('serverMemoryUsed', memory.used_human || '-');
   setText('serverMemoryTotal', memory.total_human || '-');
   setText('serverMemoryPct', (memory.used_pct != null ? `${memory.used_pct}%` : '-'));
-  setText('serverHostName', snapshot.host || '-');
-  setText('serverPythonVersion', snapshot.python_version || '-');
-  setText('serverPlatformText', snapshot.platform || '-');
   setText('serverDbBackend', database.backend || '-');
   setText('serverDbName', database.name || '-');
   setText('serverDbSize', database.size_human || '-');
@@ -1439,56 +2840,40 @@ function renderServerInfo(snapshot, fromCache) {
 
   const updatedEl = document.getElementById('serverInfoLastUpdated');
   if (updatedEl) {
-    const cacheText = fromCache ? ' (cached)' : '';
+    const cacheText = fromCache ? ' (cached up to 24h)' : '';
     updatedEl.textContent = `Last fetched: ${snapshot.fetched_at_human || '-'}${cacheText}`;
   }
 
-  const pathUsage = Array.isArray(snapshot.path_usage) ? snapshot.path_usage : [];
-  if (!usageBreakdown.length) {
-    breakdownRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-chart-pie"></i><p>Breakdown unavailable</p><span>Server could not calculate used-space categories.</span></div>`;
+  if (!systemUsageDetails.length) {
+    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>System usage details unavailable</p><span>No system usage categories could be estimated.</span></div>`;
   } else {
-    breakdownRows.innerHTML = usageBreakdown.map(item => {
-      const pctUsed = Number(item.pct_of_used_disk || 0);
+    otherRows.innerHTML = systemUsageDetails.map(item => {
+      const pctValue = Number(item.pct_of_used_disk || 0);
       return `<div class="server-path-row">
         <div class="server-path-main">
           <div class="server-path-name">${escHtml(item.name || '')}</div>
           <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
         </div>
-        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctUsed))}%;"></div></div>
-        <div class="server-path-meta">${pctUsed.toFixed(1)}% of used disk</div>
-      </div>`;
-    }).join('');
-  }
-  if (!otherUsageBreakdown.length) {
-    otherRows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-layer-group"></i><p>Other usage details unavailable</p><span>No extra system-level detail could be estimated.</span></div>`;
-  } else {
-    otherRows.innerHTML = otherUsageBreakdown.map(item => {
-      const pctOther = Number(item.pct_of_other || 0);
-      return `<div class="server-path-row">
-        <div class="server-path-main">
-          <div class="server-path-name">${escHtml(item.name || '')}</div>
-          <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
-        </div>
-        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctOther))}%;"></div></div>
-        <div class="server-path-meta">${pctOther.toFixed(1)}% of Other System usage</div>
+        <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctValue))}%;"></div></div>
+        <div class="server-path-meta">${pctValue.toFixed(1)}% of used disk${item.meta ? ` | ${escHtml(item.meta)}` : ''}</div>
       </div>`;
     }).join('');
   }
 
-  if (!pathUsage.length) {
-    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-folder-open"></i><p>No tracked folders found</p><span>Tracked folders are missing or empty on this server.</span></div>`;
+  if (!panelUsageDetails.length) {
+    rows.innerHTML = `<div class="empty-state" style="padding:18px 16px;"><i class="fa-solid fa-folder-open"></i><p>Panel usage details unavailable</p><span>No panel usage breakdown could be estimated.</span></div>`;
     return;
   }
 
-  rows.innerHTML = pathUsage.map(item => {
-    const pctTracked = Number(item.pct_of_tracked || 0);
+  rows.innerHTML = panelUsageDetails.map(item => {
+    const pctProject = Number(item.pct_of_project || 0);
     return `<div class="server-path-row">
       <div class="server-path-main">
         <div class="server-path-name">${escHtml(item.name || '')}</div>
         <div class="server-path-size">${escHtml(item.size_human || '-')}</div>
       </div>
-      <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctTracked))}%;"></div></div>
-      <div class="server-path-meta">${pctTracked.toFixed(1)}% of tracked storage</div>
+      <div class="server-path-bar-bg"><div class="server-path-bar-fill" style="width:${Math.max(0, Math.min(100, pctProject))}%;"></div></div>
+      <div class="server-path-meta">${pctProject.toFixed(1)}% of project usage${item.meta ? ` | ${escHtml(item.meta)}` : ''}</div>
     </div>`;
   }).join('');
 

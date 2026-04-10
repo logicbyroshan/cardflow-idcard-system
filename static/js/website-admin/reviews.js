@@ -25,11 +25,19 @@
                     document.getElementById('rv_active').checked = r.is_active;
                 });
         }
-        document.getElementById('reviewModal').classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('reviewModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('reviewModal').classList.add('show');
+        }
     };
 
     window.closeReviewModal = function () {
-        document.getElementById('reviewModal').classList.remove('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('reviewModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('reviewModal').classList.remove('show');
+        }
     };
 
     window.editReview = function (id) { openReviewModal(id); };

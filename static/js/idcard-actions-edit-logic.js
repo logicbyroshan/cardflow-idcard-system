@@ -17,8 +17,22 @@ function _isSectionLikeField(fieldName) {
     return f === 'SECTION' || f === 'SEC' || f === 'DIV' || f === 'DIVISION';
 }
 
+function _isCourseLikeField(fieldName) {
+    var f = String(fieldName || '').trim().toUpperCase();
+    return f === 'COURSE' || f === 'PROGRAM' || f === 'PROGRAMME';
+}
+
+function _isBranchLikeField(fieldName) {
+    var f = String(fieldName || '').trim().toUpperCase();
+    return f === 'BRANCH' || f === 'STREAM' || f === 'DEPT' || f === 'DEPARTMENT';
+}
+
 function _normalizeFilterText(value) {
     return String(value || '').trim().toUpperCase();
+}
+
+function _normalizeCompactFilterText(value) {
+    return _normalizeFilterText(value).replace(/[^A-Z0-9]+/g, '');
 }
 
 function _getRowFieldValueByKind(row, kind) {
@@ -26,7 +40,11 @@ function _getRowFieldValueByKind(row, kind) {
     var cells = row.querySelectorAll('td[data-field]');
     for (var i = 0; i < cells.length; i++) {
         var field = String(cells[i].getAttribute('data-field') || '');
-        var isMatch = (kind === 'class') ? _isClassLikeField(field) : _isSectionLikeField(field);
+        var isMatch = false;
+        if (kind === 'class') isMatch = _isClassLikeField(field);
+        else if (kind === 'section') isMatch = _isSectionLikeField(field);
+        else if (kind === 'course') isMatch = _isCourseLikeField(field);
+        else if (kind === 'branch') isMatch = _isBranchLikeField(field);
         if (!isMatch) continue;
         var valNode = cells[i].querySelector('.cell-value');
         var raw = valNode ? valNode.textContent : cells[i].textContent;
@@ -42,12 +60,22 @@ function _rowMatchesActiveClassSectionFilters(row, editedField, editedValue) {
     var sectionValue = _isSectionLikeField(editedField)
         ? String(editedValue || '')
         : _getRowFieldValueByKind(row, 'section');
+    var courseValue = _isCourseLikeField(editedField)
+        ? String(editedValue || '')
+        : _getRowFieldValueByKind(row, 'course');
+    var branchValue = _isBranchLikeField(editedField)
+        ? String(editedValue || '')
+        : _getRowFieldValueByKind(row, 'branch');
 
     var classFilter = _normalizeFilterText(IDCardApp.currentClassFilter);
     var sectionFilter = _normalizeFilterText(IDCardApp.currentSectionFilter);
+    var courseFilter = _normalizeFilterText(IDCardApp.currentCourseFilter);
+    var branchFilter = _normalizeFilterText(IDCardApp.currentBranchFilter);
     var classMatches = !classFilter || _normalizeFilterText(classValue) === classFilter;
     var sectionMatches = !sectionFilter || _normalizeFilterText(sectionValue) === sectionFilter;
-    return classMatches && sectionMatches;
+    var courseMatches = !courseFilter || _normalizeCompactFilterText(courseValue) === _normalizeCompactFilterText(courseFilter);
+    var branchMatches = !branchFilter || _normalizeCompactFilterText(branchValue) === _normalizeCompactFilterText(branchFilter);
+    return classMatches && sectionMatches && courseMatches && branchMatches;
 }
 
 // ==========================================
@@ -141,12 +169,18 @@ function saveCellEdit(cell, newValue, cardId, field) {
         }
         
         //  Check if row should be removed from current filtered view 
-        // If a class/section filter is active and we just changed that field,
+        // If a class/section/course/branch filter is active and we just changed that field,
         // the row may no longer match the filter  animate it out.
         const fieldUpper = field.toUpperCase();
         const row = cell.closest('tr');
-        var changedClassOrSection = _isClassLikeField(fieldUpper) || _isSectionLikeField(fieldUpper);
-        var hasClassOrSectionFilter = !!IDCardApp.currentClassFilter || !!IDCardApp.currentSectionFilter;
+        var changedClassOrSection = _isClassLikeField(fieldUpper)
+            || _isSectionLikeField(fieldUpper)
+            || _isCourseLikeField(fieldUpper)
+            || _isBranchLikeField(fieldUpper);
+        var hasClassOrSectionFilter = !!IDCardApp.currentClassFilter
+            || !!IDCardApp.currentSectionFilter
+            || !!IDCardApp.currentCourseFilter
+            || !!IDCardApp.currentBranchFilter;
 
         if (changedClassOrSection && hasClassOrSectionFilter && row && cardId) {
             var stillMatches = _rowMatchesActiveClassSectionFilters(row, fieldUpper, finalValue);
@@ -270,8 +304,14 @@ window.saveInlineEdit = async function (cardId, fieldName, value) {
 
         var row = document.querySelector('tr[data-card-id="' + cardId + '"]');
         var fieldUpper = String(fieldName || '').toUpperCase();
-        var changedClassOrSection = _isClassLikeField(fieldUpper) || _isSectionLikeField(fieldUpper);
-        var hasClassOrSectionFilter = !!IDCardApp.currentClassFilter || !!IDCardApp.currentSectionFilter;
+        var changedClassOrSection = _isClassLikeField(fieldUpper)
+            || _isSectionLikeField(fieldUpper)
+            || _isCourseLikeField(fieldUpper)
+            || _isBranchLikeField(fieldUpper);
+        var hasClassOrSectionFilter = !!IDCardApp.currentClassFilter
+            || !!IDCardApp.currentSectionFilter
+            || !!IDCardApp.currentCourseFilter
+            || !!IDCardApp.currentBranchFilter;
 
         if (changedClassOrSection && hasClassOrSectionFilter && row && cardId) {
             var stillMatches = _rowMatchesActiveClassSectionFilters(row, fieldUpper, finalValue);

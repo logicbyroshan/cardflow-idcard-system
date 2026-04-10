@@ -23,7 +23,7 @@ class ReprintWorkflowService:
     Single authority for ReprintRequest status transitions.
 
     Workflow: requested → confirmed → downloaded
-    Reject deletes the ReprintRequest and moves card to IDCard pool.
+    Reject removes the ReprintRequest. Card status remains unchanged by default.
     """
 
     ALLOWED_TRANSITIONS: Dict[str, List[str]] = {
@@ -35,6 +35,11 @@ class ReprintWorkflowService:
     VALID_STATUSES = ['requested', 'confirmed', 'downloaded']
 
     INITIAL_STATUS = 'requested'
+
+    @staticmethod
+    def _status_label(status):
+        labels = dict(ReprintRequest.REPRINT_STATUS_CHOICES)
+        return labels.get(status, str(status or '').replace('_', ' ').title())
 
     @staticmethod
     def _normalize_positive_int_ids(raw_ids: Any) -> List[int]:
@@ -87,6 +92,15 @@ class ReprintWorkflowService:
             reprint_req.status = target_status
             reprint_req.save(update_fields=['status', 'updated_at'])
 
+        ActivityService.log(
+            'reprint_status',
+            f'Reprint moved from {cls._status_label(current)} to {cls._status_label(target_status)}',
+            user=user,
+            target_model='IDCard',
+            target_id=reprint_req.card_id,
+            target_name=f'Card #{reprint_req.card_id}',
+        )
+
         return ServiceResult(
             success=True,
             message=f'Reprint request status changed to {target_status}.',
@@ -116,14 +130,35 @@ class ReprintWorkflowService:
             return ServiceResult(success=False, message=f'No valid source status for {target_status}.')
 
         now = timezone.now()
+        transition_rows = list(
+            ReprintRequest.objects.filter(
+                id__in=rr_ids,
+                table=table,
+                status__in=valid_from,
+            ).values('id', 'card_id', 'status')
+        )
+        eligible_ids = [row['id'] for row in transition_rows]
+
         updated = ReprintRequest.objects.filter(
-            id__in=rr_ids, table=table, status__in=valid_from
+            id__in=eligible_ids,
+            table=table,
+            status__in=valid_from,
         ).update(status=target_status, updated_at=now)
 
         if not updated:
             return ServiceResult(
                 success=False,
                 message=f'No reprint requests eligible for transition to {target_status}.'
+            )
+
+        for row in transition_rows:
+            ActivityService.log(
+                'reprint_status',
+                f'Reprint moved from {cls._status_label(row.get("status"))} to {cls._status_label(target_status)}',
+                user=user,
+                target_model='IDCard',
+                target_id=row.get('card_id'),
+                target_name=f'Card #{row.get("card_id")}',
             )
 
         return ServiceResult(
@@ -201,6 +236,15 @@ class ReprintWorkflowService:
                 target_id=table.id,
                 target_name=getattr(table, 'name', ''),
             )
+            for cid in new_ids:
+                ActivityService.log(
+                    'reprint_request',
+                    f'Reprint requested{suffix}',
+                    user=requested_by,
+                    target_model='IDCard',
+                    target_id=cid,
+                    target_name=f'Card #{cid}',
+                )
 
         return ServiceResult(
             success=True,
@@ -216,7 +260,8 @@ class ReprintWorkflowService:
         cls,
         table: IDCardTable,
         rr_ids: List[int],
-        move_card_to_pool: bool = True,
+        move_card_to_pool: bool = False,
+        user=None,
     ) -> ServiceResult:
         """Reject (delete) reprint requests and optionally move cards to IDCard pool."""
         rr_ids = cls._normalize_positive_int_ids(rr_ids)
@@ -232,24 +277,41 @@ class ReprintWorkflowService:
 
             rejected_ids = list(rr_qs.values_list('id', flat=True))
             rejected_count = len(rejected_ids)
+            card_ids = list(rr_qs.values_list('card_id', flat=True))
 
-            if move_card_to_pool:
-                card_ids = list(rr_qs.values_list('card_id', flat=True))
-                if card_ids:
-                    now = timezone.now()
-                    IDCard.objects.filter(id__in=card_ids).update(
-                        status='pool',
-                        deleted_at=now,
-                        status_changed_at=now,
-                        updated_at=now,
-                    )
+            if move_card_to_pool and card_ids:
+                now = timezone.now()
+                IDCard.objects.filter(id__in=card_ids).update(
+                    status='pool',
+                    deleted_at=now,
+                    status_changed_at=now,
+                    updated_at=now,
+                )
 
             rr_qs.delete()
 
+        for card_id in card_ids:
+            ActivityService.log(
+                'reprint_status',
+                'Reprint rejected and card moved to pool' if move_card_to_pool else 'Reprint rejected',
+                user=user,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name=f'Card #{card_id}',
+            )
+
         return ServiceResult(
             success=True,
-            message=f'{rejected_count} reprint(s) rejected and moved to pool',
-            data={'rejected_count': rejected_count, 'rejected_ids': rejected_ids},
+            message=(
+                f'{rejected_count} reprint(s) rejected and moved to pool'
+                if move_card_to_pool
+                else f'{rejected_count} reprint(s) removed from request list'
+            ),
+            data={
+                'rejected_count': rejected_count,
+                'rejected_ids': rejected_ids,
+                'moved_to_pool': bool(move_card_to_pool),
+            },
         )
 
     # ── Debug / introspection ───────────────────────────────────────

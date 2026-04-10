@@ -1,5 +1,5 @@
-<!-- === MAINTENANCE TAB === -->
-<div class="panel-tab-content" id="tab-maintenance">
+<!-- === MAINTENANCE SECTION (embedded in Notifications) === -->
+<div class="panel-inline-maintenance maintenance-panel-theme" id="notificationMaintenanceSection">
 
   <!-- Header bar -->
   <div class="notif-actions-bar">
@@ -8,8 +8,8 @@
         <i class="fa-solid fa-gear"></i>
         System Maintenance
       </span>
-      <span id="mtStatusBadge" class="email-status-badge" style="background: rgba(34,197,94,.12); color: #16a34a;">
-        <i class="fa-solid fa-circle-check"></i> Inactive
+      <span id="mtStatusBadge" class="maintenance-status-text">
+        Status: Inactive
       </span>
     </div>
     <div class="notif-actions-right">
@@ -23,39 +23,38 @@
   <!-- Status + Controls Grid -->
   <div class="system-grid" id="mtGrid">
 
-    <!-- Left: Controls -->
+    <!-- Left: Message -->
+    <div class="system-card">
+      <div class="system-card-header">
+        <i class="fa-solid fa-message"></i> Maintenance Message
+      </div>
+      <div class="system-card-body" style="padding: 14px 16px;">
+        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
+          <span class="system-label">Maintenance Message</span>
+          <textarea id="mtMessage" rows="7" class="form-input" style="width: 100%; resize: vertical; font-size: 12px; min-height: 170px;"
+                    placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
+          <span class="system-value" style="font-size: 11px; color: #94a3b8; font-weight: 500;">
+            This message appears on the maintenance page and in automatic user notifications.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Controls -->
     <div class="system-card">
       <div class="system-card-header">
         <i class="fa-solid fa-sliders"></i> Maintenance Controls
       </div>
       <div class="system-card-body" style="padding: 14px 16px;">
-
-        <!-- Message -->
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
-          <span class="system-label">Maintenance Message</span>
-          <textarea id="mtMessage" rows="2" class="form-input" style="width: 100%; resize: vertical; font-size: 12px;"
-                    placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
-        </div>
-
         <!-- Duration -->
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px; margin-top: 12px;">
+        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
           <span class="system-label">Duration</span>
           <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="15" onclick="setMtDuration(15)">15 min</button>
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="30" onclick="setMtDuration(30)">30 min</button>
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="60" onclick="setMtDuration(60)">1 hr</button>
-            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="120" onclick="setMtDuration(120)">2 hr</button>
+            <button type="button" class="btn btn-sm btn-primary mt-dur-btn" data-min="60" onclick="setMtDuration(60)">1 hr</button>
             <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="360" onclick="setMtDuration(360)">6 hr</button>
-            <input type="number" id="mtDuration" class="form-input" min="1" max="1440" value="30"
-                   style="width: 72px; font-size: 12px; text-align: center; padding: 4px 6px;" placeholder="min">
-            <span style="color: #94a3b8; font-size: 11px;">minutes</span>
+            <button type="button" class="btn btn-sm btn-neutral mt-dur-btn" data-min="1440" onclick="setMtDuration(1440)">1 day</button>
+            <input type="hidden" id="mtDuration" value="60">
           </div>
-        </div>
-
-        <!-- Specific end time -->
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 4px; margin-top: 12px;">
-          <span class="system-label">Or set specific end time</span>
-          <input type="datetime-local" id="mtEndTime" class="form-input" style="width: 100%; font-size: 12px; padding: 6px 8px;">
         </div>
 
         <!-- Actions -->
@@ -66,42 +65,6 @@
           <button type="button" id="mtDisableBtn" class="btn btn-md btn-success" onclick="toggleMaintenance('disable')" style="display: none;">
             <i class="fa-solid fa-circle-check"></i> Disable Maintenance Mode
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: Info & Status -->
-    <div class="system-card">
-      <div class="system-card-header">
-        <i class="fa-solid fa-circle-info"></i> How It Works
-      </div>
-      <div class="system-card-body">
-        <div class="system-row" style="flex-direction: column; align-items: stretch; gap: 2px;">
-          <span class="system-label" style="margin-bottom: 4px;">When maintenance mode is enabled:</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-shield-halved" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Access Control</span>
-          <span class="system-value" style="font-weight: 500;">Non-admin users redirected to maintenance page</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-bell" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Notifications</span>
-          <span class="system-value" style="font-weight: 500;">Broadcast sent to all users automatically</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-user-shield" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Super Admin</span>
-          <span class="system-value" style="font-weight: 500;">Full panel access remains available</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-clock" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Auto-Expire</span>
-          <span class="system-value" style="font-weight: 500;">Ends automatically when timer runs out</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-hourglass-half" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Countdown</span>
-          <span class="system-value" style="font-weight: 500;">Users see a live countdown timer</span>
-        </div>
-        <div class="system-row">
-          <span class="system-label"><i class="fa-solid fa-rotate" style="color: #667eea; width: 16px; text-align: center;"></i>&ensp;Auto-Redirect</span>
-          <span class="system-value" style="font-weight: 500;">Users redirected back when maintenance ends</span>
         </div>
       </div>
     </div>
@@ -131,9 +94,8 @@
     var disableBtn = document.getElementById('mtDisableBtn');
 
     if (status.enabled) {
-      badge.style.background = 'rgba(239,68,68,.12)';
-      badge.style.color = '#dc2626';
-      badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Active';
+      badge.textContent = 'Status: Active';
+      badge.classList.add('is-active');
       var msg = 'Maintenance mode is active';
       if (status.end_time) {
         var end = new Date(status.end_time);
@@ -143,9 +105,8 @@
       enableBtn.style.display = 'none';
       disableBtn.style.display = '';
     } else {
-      badge.style.background = 'rgba(34,197,94,.12)';
-      badge.style.color = '#16a34a';
-      badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> Inactive';
+      badge.textContent = 'Status: Inactive';
+      badge.classList.remove('is-active');
       label.textContent = 'System is running normally';
       enableBtn.style.display = '';
       disableBtn.style.display = 'none';
@@ -155,12 +116,9 @@
   function toggleMaintenance(action) {
     var body = { action: action };
     if (action === 'enable') {
-      var endTimeInput = document.getElementById('mtEndTime').value;
       var durationInput = document.getElementById('mtDuration').value;
       body.message = document.getElementById('mtMessage').value;
-      if (endTimeInput) {
-        body.end_time = new Date(endTimeInput).toISOString();
-      } else if (durationInput) {
+      if (durationInput) {
         body.duration_minutes = parseInt(durationInput);
       }
     }
@@ -195,11 +153,12 @@
   }
   window.loadMaintenanceStatus = loadMaintenanceStatus;
 
-  // Auto-load when tab is opened
+  // Load maintenance status after page is ready.
   document.addEventListener('DOMContentLoaded', function() {
-    var tab = document.querySelector('[data-tab="maintenance"]');
-    if (tab) {
-      tab.addEventListener('click', loadMaintenanceStatus);
+    var section = document.getElementById('notificationMaintenanceSection');
+    if (section) {
+      setMtDuration(parseInt(document.getElementById('mtDuration').value || '60'));
+      loadMaintenanceStatus();
     }
   });
 })();

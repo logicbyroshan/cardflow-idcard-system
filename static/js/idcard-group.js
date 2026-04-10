@@ -22,10 +22,6 @@ function initIdcardGroup(config) {
   var tableBody = document.querySelector('.idcard-table tbody');
   var tableContainer = document.querySelector('.idcard-table');
 
-  var selectedTableId = null;
-  var printCardsBtn = document.getElementById('printCardsBtn');
-  var reprintCardsBtn = document.getElementById('reprintCardsBtn');
-
   function refreshGroupTableInPlace() {
     if (!tableBody || !tableContainer) return;
     fetch(window.location.href, {
@@ -40,7 +36,6 @@ function initIdcardGroup(config) {
         if (nextBody) {
           tableBody.innerHTML = nextBody.innerHTML;
           tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
-          updateGroupActionBtns(null);
         }
       })
       .catch(function(err) {
@@ -51,26 +46,14 @@ function initIdcardGroup(config) {
   window.IDCardGroup = window.IDCardGroup || {};
   window.IDCardGroup.refreshTable = refreshGroupTableInPlace;
 
-  function updateGroupActionBtns(tableId) {
-    selectedTableId = tableId;
-    if (printCardsBtn) {
-      printCardsBtn.disabled = !tableId;
-      if (tableId) {
-        var printUrl = isClientRole
-          ? panelUrl('/client/table/' + tableId + '/print/')
-          : panelUrl('/print/table/' + tableId + '/');
-        printCardsBtn.onclick = function() { window.location.href = printUrl; };
-      }
-    }
-    if (reprintCardsBtn) {
-      reprintCardsBtn.disabled = !tableId;
-      if (tableId) {
-        var reprintUrl = isClientRole
-          ? panelUrl('/client/table/' + tableId + '/reprint/')
-          : panelUrl('/reprint/table/' + tableId + '/');
-        reprintCardsBtn.onclick = function() { window.location.href = reprintUrl; };
-      }
-    }
+  function broadcastClassesUpgraded(tableId) {
+    var payload = { tableId: Number(tableId) || null, ts: Date.now() };
+    try {
+      window.dispatchEvent(new CustomEvent('idcard-classes-upgraded', { detail: payload }));
+    } catch (_err) {}
+    try {
+      localStorage.setItem('idcard:classes-upgraded', JSON.stringify(payload));
+    } catch (_err2) {}
   }
 
   // ==================== SINGLE-CLICK ROW SELECTION ====================
@@ -79,14 +62,11 @@ function initIdcardGroup(config) {
       var row = e.target.closest('tr[data-table-id]');
       if (!row) return;
       // Toggle selection
-      var rowTableId = row.getAttribute('data-table-id');
       if (row.classList.contains('selected')) {
         row.classList.remove('selected');
-        updateGroupActionBtns(null);
       } else {
         tableBody.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
         row.classList.add('selected');
-        updateGroupActionBtns(rowTableId);
       }
     });
   }
@@ -154,9 +134,34 @@ function initIdcardGroup(config) {
     });
   }
 
+  function sanitizeCodeInputValue(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
+  function renderCodeBoxes(container, value) {
+    if (!container) return;
+    var clean = sanitizeCodeInputValue(value);
+    var boxes = container.querySelectorAll('.confirm-code-box');
+    boxes.forEach(function(box, idx) {
+      var ch = clean[idx] || '';
+      box.textContent = ch;
+      box.classList.toggle('is-filled', !!ch);
+      box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+    });
+  }
+
+  function setCodeWrapState(wrapEl, isMatch, isComplete) {
+    if (!wrapEl) return;
+    wrapEl.classList.remove('is-valid', 'is-invalid');
+    if (!isComplete) return;
+    wrapEl.classList.add(isMatch ? 'is-valid' : 'is-invalid');
+  }
+
   // ==================== DELETE ALL SECURE MODAL ====================
   var deleteAllCodeDisplay = document.getElementById('deleteAllCode');
   var deleteAllCodeInput = document.getElementById('deleteAllCodeInput');
+  var deleteAllCodeBoxes = document.getElementById('deleteAllCodeBoxes');
+  var deleteAllCodeWrap = document.getElementById('deleteAllCodeWrap');
   var deleteAllConfirmBtn = document.getElementById('deleteAllConfirm');
   var deleteAllCancelBtn = document.getElementById('deleteAllCancel');
   var deleteAllTableNameEl = document.getElementById('deleteAllTableName');
@@ -167,6 +172,8 @@ function initIdcardGroup(config) {
   function openDeleteAllModal(tableId) {
     deleteAllTableId = tableId;
     deleteAllCodeInput.value = '';
+    renderCodeBoxes(deleteAllCodeBoxes, '');
+    setCodeWrapState(deleteAllCodeWrap, false, false);
     deleteAllConfirmBtn.disabled = true;
 
     fetch(panelUrl('/api/table/' + tableId + '/cards/generate-delete-code/'), {
@@ -194,11 +201,17 @@ function initIdcardGroup(config) {
     deleteAllTableId = null;
     deleteAllExpectedCode = '';
     deleteAllCodeInput.value = '';
+    renderCodeBoxes(deleteAllCodeBoxes, '');
+    setCodeWrapState(deleteAllCodeWrap, false, false);
   }
 
   if (deleteAllCodeInput) {
     deleteAllCodeInput.addEventListener('input', function() {
-      var match = this.value.trim() === deleteAllExpectedCode;
+      this.value = sanitizeCodeInputValue(this.value);
+      renderCodeBoxes(deleteAllCodeBoxes, this.value);
+      var isComplete = this.value.length === 10;
+      var match = isComplete && this.value === deleteAllExpectedCode;
+      setCodeWrapState(deleteAllCodeWrap, match, isComplete);
       deleteAllConfirmBtn.disabled = !match;
     });
   }
@@ -640,6 +653,8 @@ function initIdcardGroup(config) {
   // ==================== UPGRADE ALL CLASSES ====================
   var upgradeAllCodeDisplay = document.getElementById('upgradeAllCode');
   var upgradeAllCodeInput = document.getElementById('upgradeAllCodeInput');
+  var upgradeAllCodeBoxes = document.getElementById('upgradeAllCodeBoxes');
+  var upgradeAllCodeWrap = document.getElementById('upgradeAllCodeWrap');
   var upgradeAllConfirmBtn = document.getElementById('upgradeAllConfirm');
   var upgradeAllCancelBtn = document.getElementById('upgradeAllCancel');
   var upgradeAllTableNameEl = document.getElementById('upgradeAllTableName');
@@ -650,6 +665,8 @@ function initIdcardGroup(config) {
   function openUpgradeAllModal(tableId) {
     upgradeAllTableId = tableId;
     upgradeAllCodeInput.value = '';
+    renderCodeBoxes(upgradeAllCodeBoxes, '');
+    setCodeWrapState(upgradeAllCodeWrap, false, false);
     upgradeAllConfirmBtn.disabled = true;
     upgradeAllConfirmBtn.textContent = 'Upgrade All Classes';
 
@@ -678,11 +695,17 @@ function initIdcardGroup(config) {
     upgradeAllTableId = null;
     upgradeAllExpectedCode = '';
     upgradeAllCodeInput.value = '';
+    renderCodeBoxes(upgradeAllCodeBoxes, '');
+    setCodeWrapState(upgradeAllCodeWrap, false, false);
   }
 
   if (upgradeAllCodeInput) {
     upgradeAllCodeInput.addEventListener('input', function() {
-      var match = this.value.trim() === upgradeAllExpectedCode;
+      this.value = sanitizeCodeInputValue(this.value);
+      renderCodeBoxes(upgradeAllCodeBoxes, this.value);
+      var isComplete = this.value.length === 10;
+      var match = isComplete && this.value === upgradeAllExpectedCode;
+      setCodeWrapState(upgradeAllCodeWrap, match, isComplete);
       upgradeAllConfirmBtn.disabled = !match;
     });
   }
@@ -706,6 +729,7 @@ function initIdcardGroup(config) {
       .then(function(data) {
         closeUpgradeAllModal();
         if (data.success) {
+          broadcastClassesUpgraded(upgradeAllTableId);
           window.showToast(data.message || 'Classes upgraded!', 'success');
           setTimeout(function() { refreshGroupTableInPlace(); }, 300);
         } else {
@@ -750,4 +774,5 @@ function initIdcardGroup(config) {
       window.showToast('This action is not available yet.', 'info');
     }
   });
+
 }

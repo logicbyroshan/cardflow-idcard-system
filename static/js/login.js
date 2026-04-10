@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // State
     let currentStep = 1;
-    let selectedRole = '';
     let email = '';
     let userName = '';
     let resetToken = '';
@@ -12,26 +11,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const stepDots = document.querySelectorAll('.step-dot');
     const messageBox = document.getElementById('messageBox');
     
-    // Role selection
-    const roleOptions = document.querySelectorAll('.role-option');
-    const btnStep1Next = document.getElementById('btnStep1Next');
-    
     // Email step
     const emailInput = document.getElementById('emailInput');
-    const btnStep2Next = document.getElementById('btnStep2Next');
-    const btnStep2Back = document.getElementById('btnStep2Back');
+    const btnStep1Next = document.getElementById('btnStep1Next');
     
     // Password step
     const passwordInput = document.getElementById('passwordInput');
     const btnLogin = document.getElementById('btnLogin');
-    const btnStep3Back = document.getElementById('btnStep3Back');
+    const btnStep2Back = document.getElementById('btnStep2Back');
     const btnForgotPassword = document.getElementById('btnForgotPassword');
     const togglePassword = document.getElementById('togglePassword');
     
     // OTP step
     const otpInputs = document.querySelectorAll('#otpInputs input');
     const btnVerifyOtp = document.getElementById('btnVerifyOtp');
-    const btnStep4Back = document.getElementById('btnStep4Back');
+    const btnStep3Back = document.getElementById('btnStep3Back');
     const btnResendOtp = document.getElementById('btnResendOtp');
     const resendTimerEl = document.getElementById('resendTimer');
     const devOtpDisplay = document.getElementById('devOtpDisplay');
@@ -114,26 +108,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.disabled = loading;
     }
     
-    // Role Selection
-    roleOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            roleOptions.forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
-            this.querySelector('input').checked = true;
-            selectedRole = this.dataset.role;
-            btnStep1Next.disabled = false;
-        });
-    });
-    
-    btnStep1Next.addEventListener('click', function() {
-        if (selectedRole) {
-            goToStep(2);
-            emailInput.focus();
-        }
-    });
-    
     // Email Step
-    btnStep2Next.addEventListener('click', async function() {
+    btnStep1Next.addEventListener('click', async function() {
         email = emailInput.value.trim();
         if (!email) {
             showMessage('Please enter your email or username');
@@ -143,12 +119,12 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/api/auth/check-email/', { email, role: selectedRole });
+            const data = await safePost('/api/auth/check-email/', { email });
             if (data.success) {
                 userName = data.user_name;
                 document.getElementById('displayUserName').textContent = userName;
                 document.getElementById('displayUserEmail').textContent = email;
-                goToStep(3);
+                goToStep(2);
                 passwordInput.focus();
             } else {
                 showMessage(data.message);
@@ -161,11 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     emailInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') btnStep2Next.click();
-    });
-    
-    btnStep2Back.addEventListener('click', function() {
-        goToStep(1);
+        if (e.key === 'Enter') btnStep1Next.click();
     });
     
     // Password Step
@@ -185,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/api/auth/login/', { email, password, role: selectedRole });
+            const data = await safePost('/api/auth/login/', { email, password });
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
                 // Respect ?next= param (e.g. from PWA  login redirect)
@@ -218,9 +190,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') btnLogin.click();
     });
     
-    btnStep3Back.addEventListener('click', function() {
+    btnStep2Back.addEventListener('click', function() {
         passwordInput.value = '';
-        goToStep(2);
+        goToStep(1);
     });
     
     // Forgot Password
@@ -228,10 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(btnLogin, true);
         
         try {
-            const data = await safePost('/api/auth/forgot-password/', { email, role: selectedRole });
+            const data = await safePost('/api/auth/forgot-password/', { email });
             if (data.success) {
                 // Show OTP step
-                goToStep(4);
+                goToStep(3);
                 otpInputs[0].focus();
                 startResendTimer();
                 
@@ -296,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     btnResendOtp.addEventListener('click', async function() {
         try {
-            const data = await safePost('/api/auth/forgot-password/', { email, role: selectedRole });
+            const data = await safePost('/api/auth/forgot-password/', { email });
             if (data.success) {
                 showMessage('OTP sent successfully!', 'success');
                 startResendTimer();
@@ -323,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await safePost('/api/auth/verify-otp/', { email, otp });
             if (data.success) {
                 resetToken = data.reset_token;
-                goToStep(5);
+                goToStep(4);
                 newPasswordInput.focus();
             } else {
                 showMessage(data.message);
@@ -335,10 +307,10 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, false);
     });
     
-    btnStep4Back.addEventListener('click', function() {
+    btnStep3Back.addEventListener('click', function() {
         otpInputs.forEach(i => i.value = '');
         devOtpDisplay.style.display = 'none';
-        goToStep(3);
+        goToStep(2);
     });
     
     // Reset Password
@@ -383,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     newPasswordInput.value = '';
                     confirmPasswordInput.value = '';
                     passwordInput.value = '';
-                    goToStep(3);
+                    goToStep(2);
                 }, 2000);
             } else {
                 showMessage(data.message);

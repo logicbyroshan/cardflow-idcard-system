@@ -20,17 +20,17 @@ JS contract (Alpine bridge):
 {% endcomment %}
 
 <div id="{{ modal_id|default:'status-modal' }}" class="modal-backdrop"
-     x-show="activeModal === 'status'" x-transition.opacity
+  x-show="isStatusModalOpen" x-transition.opacity
      style="display:none"
      role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'status-modal' }}-title">
   <div class="modal-center modal-warning" @click.stop
-       x-show="activeModal === 'status'" x-transition.scale.origin.center>
+    x-show="isStatusModalOpen" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header" id="statusModalHeader">
       <h3 id="{{ modal_id|default:'status-modal' }}-title"><i class="fa-solid fa-toggle-on"></i> Confirm Status Change</h3>
       <button type="button" class="modal-close"
-              @click="closeModal()"
+              @click="closeModal"
               aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -61,7 +61,7 @@ JS contract (Alpine bridge):
     <!-- Footer -->
     <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" id="cancelStatusBtn"
-              @click="closeModal()">
+              @click="closeModal">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button type="button" class="btn btn-md btn-warning" id="confirmStatusBtn">

@@ -3,7 +3,7 @@ Website Watermark Service
 =========================
 Applies watermarks to uploaded images before they are saved.
 
-  • Portfolio images  → 2 semi-transparent text watermarks (random position, slight angle)
+    • Portfolio images  → 4-5 smaller semi-transparent text watermarks (diagonal pattern)
   • Reel thumbnails   → Brand logo watermark centred on the image, ~55 % opacity
 
 Both functions accept any Django-uploaded file object and return a
@@ -90,10 +90,10 @@ def apply_text_watermark(file_obj):
     Tile the entire image with diagonal 'adarsh id card' watermarks.
 
     Pattern design:
-    - 2 diagonal text watermarks placed across the image
-    - Font size ≈ 4 % of image width (min 18 px, max 72 px)
-    - White text (alpha ≈ 70) + dark shadow for visibility
-    - One line at ~1/3 height, another at ~2/3 height, angled −25°
+    - 4-5 diagonal text watermarks (count scales with image size)
+    - Font size ≈ 2.8 % of shorter image side (min 14 px, max 52 px)
+    - White text (higher opacity) + stronger dark shadow for visibility
+    - Distributed along a diagonal from upper-left to lower-right, angled 25°
 
     Returns the watermarked image as a ContentFile with the original filename.
     Falls back to the original file_obj on any error.
@@ -112,18 +112,30 @@ def apply_text_watermark(file_obj):
         img = img.convert('RGBA')
         w, h = img.size
 
-        # Font proportional to image width
-        font_size = max(18, min(72, int(w * 0.040)))
+        # Smaller watermark text that still scales with image dimensions
+        short_side = min(w, h)
+        long_side = max(w, h)
+        font_size = max(14, min(52, int(short_side * 0.028)))
         font = _load_font(font_size)
 
         overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Two watermark lines across the image
-        lines = [
-            (_WATERMARK_TEXTS[0], w // 2, int(h * 0.33)),
-            (_WATERMARK_TEXTS[3], w // 2, int(h * 0.66)),
-        ]
+        # 4 marks for normal images, 5 for larger images.
+        area = w * h
+        watermark_count = 5 if (long_side >= 2400 or area >= 3_500_000) else 4
+
+        margin_x = int(w * 0.14)
+        margin_y = int(h * 0.18)
+        span_x = max(1, w - (2 * margin_x))
+        span_y = max(1, h - (2 * margin_y))
+
+        lines = []
+        for idx in range(watermark_count):
+            t = idx / max(1, (watermark_count - 1))
+            cx = int(margin_x + (span_x * t))
+            cy = int(margin_y + (span_y * t))
+            lines.append((_WATERMARK_TEXTS[idx % len(_WATERMARK_TEXTS)], cx, cy))
 
         for text, cx, cy in lines:
             bbox = draw.textbbox((0, 0), text, font=font)
@@ -135,11 +147,11 @@ def apply_text_watermark(file_obj):
             txt_img = Image.new('RGBA', (tw + pad, th + pad), (0, 0, 0, 0))
             td = ImageDraw.Draw(txt_img)
             tx, ty = pad // 2, pad // 2
-            # Shadow
-            for ox, oy in ((-1, -1), (-1, 1), (1, -1), (1, 1), (0, 2), (2, 0)):
-                td.text((tx + ox, ty + oy), text, font=font, fill=(0, 0, 0, 80))
-            # Main text — 50% opacity
-            td.text((tx, ty), text, font=font, fill=(255, 255, 255, 128))
+            # Stronger shadow/outline so smaller text remains visible on bright backgrounds.
+            for ox, oy in ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1), (0, 2), (2, 0)):
+                td.text((tx + ox, ty + oy), text, font=font, fill=(0, 0, 0, 120))
+            # Main text — higher opacity for better visibility.
+            td.text((tx, ty), text, font=font, fill=(255, 255, 255, 170))
 
             txt_rot = txt_img.rotate(25, resample=Image.BICUBIC, expand=True)
             # Paste centered at (cx, cy)

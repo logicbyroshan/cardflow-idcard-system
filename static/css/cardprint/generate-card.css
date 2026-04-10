@@ -337,15 +337,11 @@
   font-weight: 500;
 }
 
-.gen-row select {
+.gen-row .form-select {
   flex: 1;
   height: 30px;
   font-size: 12px;
-  border: 1px solid var(--border-color, #d1d5db);
-  border-radius: 6px;
-  padding: 0 6px;
-  background: var(--bg-input, #f9fafb);
-  color: var(--text-primary, #111827);
+  padding: 0 22px 0 6px;
 }
 
 .gen-mini-input {

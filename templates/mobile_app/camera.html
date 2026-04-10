@@ -5,8 +5,8 @@
 
 {% block extra_head %}
 <!-- Cropper.js for photo cropping -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+<script src="{% static 'js/vendor/cropper.min.js' %}"></script>
 <style>
 .crop-modal { position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.95);display:flex;flex-direction:column; }
 .crop-modal img { max-height:70vh;width:100%; }
@@ -144,7 +144,7 @@
             </template>
             <button @click="toggleFlash()" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform"
                     :class="{ 'bg-amber-500/40 text-amber-300': flashOn }">
-                <i :class="flashOn ? 'fa-solid fa-bolt' : 'fa-solid fa-bolt-slash'" style="font-size:1.125rem;"></i>
+                <i :class="flashOn ? 'fa-solid fa-bolt text-lg' : 'fa-solid fa-bolt-slash text-lg'"></i>
             </button>
         </div>
     </div>
@@ -307,15 +307,35 @@ function cameraApp() {
             }
             this.uploading = true;
             try {
-                const blob = await new Promise(r => this.$refs.canvas.toBlob(r, 'image/jpeg', 0.9));
+                const blob = await new Promise((resolve, reject) => {
+                    this.$refs.canvas.toBlob((b) => {
+                        if (b) {
+                            resolve(b);
+                            return;
+                        }
+                        reject(new Error('Unable to prepare image. Please retake photo.'));
+                    }, 'image/jpeg', 0.9);
+                });
                 const fd = new FormData();
                 fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
-                fd.append('card_id', this.selectedCardId);
+                fd.append('card_id', String(this.selectedCardId));
                 const csrf = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
                 const res = await fetch('/app/api/table/' + this.tableId + '/upload-photo/', {
                     method: 'POST', headers: { 'X-CSRFToken': csrf }, body: fd
                 });
-                const data = await res.json();
+                const raw = await res.text();
+                let data = {};
+                try {
+                    data = raw ? JSON.parse(raw) : {};
+                } catch (parseErr) {
+                    data = {
+                        success: false,
+                        message: res.status === 401
+                            ? 'Session expired. Please login again.'
+                            : 'Server returned an invalid response. Please try again.'
+                    };
+                }
+
                 if (data.success) {
                     this.showMsg('Photo uploaded successfully!', 'success');
                     this.photoTaken = false;
@@ -326,9 +346,12 @@ function cameraApp() {
                     /* Navigate back after brief delay */
                     setTimeout(() => { this.goBack(); }, 900);
                 } else {
-                    this.showMsg(data.message || 'Upload failed', 'error');
+                    const msg = data.message || (res.ok ? 'Upload failed' : ('Upload failed (' + res.status + ')'));
+                    this.showMsg(msg, 'error');
                 }
-            } catch (e) { this.showMsg('Network error', 'error'); }
+            } catch (e) {
+                this.showMsg(e && e.message ? e.message : 'Network error', 'error');
+            }
             this.uploading = false;
         },
 

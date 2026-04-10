@@ -5,13 +5,19 @@ JSON API views for the client panel: dashboard data, staff CRUD,
 card listing/status changes, image uploads, and group/class helpers.
 """
 import json
+import logging
 
 from django.core.cache import cache
+from django.db.models import Exists, OuterRef, Q
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from accounts.rate_limit import rate_limit
+from staff.models import Staff
 
+from core.models import ClientMessage, NotificationRead
 from core.services.permission_service import PermissionService
+from core.services.activity_service import ActivityService
 
 from .views_decorators import require_client_user, require_client_admin
 from .services import (
@@ -21,6 +27,9 @@ from .services import (
     ClientCardService,
     ClientImageService,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_positive_int_ids(values, max_items: int = 500):
@@ -44,6 +53,43 @@ def _normalize_positive_int_ids(values, max_items: int = 500):
         if len(out) >= max_items:
             break
     return out
+
+
+def _normalize_assignment_scopes(values, max_items: int = 500):
+    """Keep assignment scopes as a bounded list of dicts."""
+    if not isinstance(values, list):
+        return []
+
+    out = []
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        out.append(item)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _normalize_staff_assignment_payload(data):
+    """Normalize and cap assignment-related payload fields for stability."""
+    if not isinstance(data, dict):
+        return data
+
+    if 'assigned_groups' in data:
+        data['assigned_groups'] = _normalize_positive_int_ids(data.get('assigned_groups'), max_items=500)
+
+    if 'assignment_scopes' in data:
+        data['assignment_scopes'] = _normalize_assignment_scopes(data.get('assignment_scopes'), max_items=500)
+
+    return data
+
+
+def _result_error_status(message: str, fallback: int = 400) -> int:
+    """Map service error messages to HTTP status without case-sensitive checks."""
+    text = str(message or '').strip().lower()
+    if 'permission' in text or 'access denied' in text or 'access' in text:
+        return 403
+    return fallback
 
 
 # =============================================================================
@@ -125,6 +171,73 @@ def api_groups_list(request):
     }, status=400)
 
 
+@require_client_user
+@require_http_methods(["GET"])
+def api_messages_drawer(request):
+    """API: Return client message history payload for the right-side drawer."""
+    user = request.user
+    client = ClientAccessService.get_client_for_user(user)
+    if not client:
+        return JsonResponse({'success': False, 'message': 'Client not found.'}, status=403)
+
+    try:
+        limit = max(10, min(int(request.GET.get('limit', 40)), 100))
+    except (TypeError, ValueError):
+        limit = 40
+
+    now = timezone.now()
+    base_qs = (
+        ClientMessage.objects
+        .filter(
+            client_id=client.id,
+            notification__is_active=True,
+            notification__target='selected',
+            notification__target_users=user,
+        )
+        .filter(Q(visibility='permanent') | Q(expires_at__gt=now))
+        .annotate(
+            is_read=Exists(
+                NotificationRead.objects.filter(
+                    notification_id=OuterRef('notification_id'),
+                    user=user,
+                )
+            )
+        )
+        .select_related('client', 'sent_by', 'notification')
+        .order_by('-created_at')
+    )
+
+    total_count = base_qs.count()
+    unread_count = base_qs.filter(is_read=False).count()
+    rows = list(base_qs[:limit])
+
+    items = []
+    for row in rows:
+        sender_name = 'Admin'
+        if row.sent_by:
+            sender_name = row.sent_by.get_full_name() or row.sent_by.username
+        items.append({
+            'id': row.id,
+            'notification_id': row.notification_id,
+            'message': row.message,
+            'scope': row.scope,
+            'scope_display': row.get_scope_display(),
+            'visibility': row.visibility,
+            'expires_at': row.expires_at.isoformat() if row.expires_at else None,
+            'created_at': row.created_at.isoformat(),
+            'sent_by_name': sender_name,
+            'client_name': row.client.name if row.client_id else '',
+            'is_read': bool(getattr(row, 'is_read', False)),
+        })
+
+    return JsonResponse({
+        'success': True,
+        'items': items,
+        'total_count': total_count,
+        'unread_count': unread_count,
+    })
+
+
 # =============================================================================
 # API VIEWS - Staff Management
 
@@ -178,16 +291,25 @@ def api_staff_list_create(request):
                 'error': 'Invalid JSON data'
             }, status=400)
     
+    data = _normalize_staff_assignment_payload(data)
     result = ClientStaffService.create_staff(request.user, data)
     
     if result.success:
+        staff_id = (result.data or {}).get('staff_id')
+        if staff_id:
+            try:
+                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff:
+                    ActivityService.log_staff_create(request, staff)
+            except Exception:
+                logger.exception('Failed to log staff create activity for staff_id=%s', staff_id)
         return JsonResponse({
             'success': True,
             'message': result.message,
             'data': {'staff_id': result.data.get('staff_id')}
         })
 
-    status_code = 403 if 'Permission' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -254,31 +376,50 @@ def api_staff_detail(request, staff_id):
                     'success': False,
                     'error': 'Invalid JSON data'
                 }, status=400)
+        data = _normalize_staff_assignment_payload(data)
         
         result = ClientStaffService.update_staff(request.user, staff_id, data)
         
         if result.success:
+            try:
+                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff:
+                    ActivityService.log_staff_update(request, staff)
+            except Exception:
+                logger.exception('Failed to log staff update activity for staff_id=%s', staff_id)
             return JsonResponse({
                 'success': True,
                 'message': result.message
             })
         
-        status_code = 403 if 'Permission' in result.message else 400
+        status_code = _result_error_status(result.message, fallback=400)
         return JsonResponse({
             'success': False,
             'error': result.message
         }, status=status_code)
     
     # DELETE
+    staff_name = f'Staff #{staff_id}'
+    try:
+        existing_staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+        if existing_staff:
+            staff_name = existing_staff.user.get_full_name() or existing_staff.user.username
+    except Exception:
+        logger.exception('Failed to resolve staff name before delete for staff_id=%s', staff_id)
+
     result = ClientStaffService.delete_staff(request.user, staff_id)
     
     if result.success:
+        try:
+            ActivityService.log_staff_delete(request, staff_name, staff_id)
+        except Exception:
+            logger.exception('Failed to log staff delete activity for staff_id=%s', staff_id)
         return JsonResponse({
             'success': True,
             'message': result.message
         })
     
-    status_code = 403 if 'Permission' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -296,6 +437,21 @@ def api_staff_toggle_status(request, staff_id):
         
         if result.success:
             is_active = result.data.get('is_active', False)
+            try:
+                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                if staff:
+                    ActivityService.log_staff_status(request, staff, is_active)
+                else:
+                    ActivityService.log(
+                        'staff_status',
+                        f'Staff "#{staff_id}" marked as {"active" if is_active else "inactive"}',
+                        request=request,
+                        target_model='Staff',
+                        target_id=staff_id,
+                        target_name=f'Staff #{staff_id}',
+                    )
+            except Exception:
+                logger.exception('Failed to log staff status activity for staff_id=%s', staff_id)
             return JsonResponse({
                 'success': True,
                 'message': result.message,
@@ -303,14 +459,13 @@ def api_staff_toggle_status(request, staff_id):
                 'status_display': 'Active' if is_active else 'Inactive',
             })
         
-        status_code = 403 if 'Permission' in result.message else 400
+        status_code = _result_error_status(result.message, fallback=400)
         return JsonResponse({
             'success': False,
             'message': result.message
         }, status=status_code)
     except Exception:
-        import logging as _logging
-        _logging.getLogger(__name__).exception("Staff toggle status error")
+        logger.exception('Staff toggle status error')
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 
 
@@ -344,6 +499,21 @@ def api_staff_set_temp_password(request, staff_id):
     )
 
     if result.success:
+        try:
+            staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+            staff_name = f'Staff #{staff_id}'
+            if staff:
+                staff_name = staff.user.get_full_name() or staff.user.username
+            ActivityService.log(
+                'staff_password_reset',
+                f'Temporary password reset for client staff "{staff_name}"',
+                request=request,
+                target_model='Staff',
+                target_id=staff_id,
+                target_name=staff_name,
+            )
+        except Exception:
+            logger.exception('Failed to log staff temp-password activity for staff_id=%s', staff_id)
         return JsonResponse(result.to_response_dict(), status=200)
 
     msg = (result.message or '').lower()
@@ -526,8 +696,9 @@ def api_class_section_options(request):
         if class_field or section_field or branch_field:
             table_field_map[table['id']] = (class_field, section_field, branch_field)
 
-    if table_field_map:
-        cards = IDCard.objects.filter(table_id__in=table_field_map.keys()).values_list('table_id', 'field_data')
+    table_ids = list(table_field_map.keys())
+    if table_ids:
+        cards = IDCard.objects.filter(table_id__in=table_ids).values_list('table_id', 'field_data').iterator(chunk_size=1000)
     else:
         cards = []
 
@@ -683,7 +854,7 @@ def api_cards_list(request, table_id):
             }
         })
     
-    status_code = 403 if 'Access' in result.message or 'permission' in result.message.lower() else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -705,7 +876,7 @@ def api_card_detail(request, card_id):
             'data': result.data
         })
     
-    status_code = 403 if 'Access' in result.message or 'permission' in result.message.lower() else 404
+    status_code = _result_error_status(result.message, fallback=404)
     return JsonResponse({
         'success': False,
         'error': result.message
@@ -728,7 +899,7 @@ def api_card_change_status(request, card_id):
     
     new_status = data.get('status', '')
     
-    result = ClientCardService.change_card_status(request.user, card_id, new_status)
+    result = ClientCardService.change_card_status(request.user, card_id, new_status, request=request)
     
     if result.success:
         return JsonResponse({
@@ -737,7 +908,7 @@ def api_card_change_status(request, card_id):
             **result.data
         })
     
-    status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'message': result.message
@@ -771,7 +942,8 @@ def api_cards_bulk_status(request, table_id):
         request.user,
         table_id,
         card_ids,
-        new_status
+        new_status,
+        request=request,
     )
     
     if result.success:
@@ -781,7 +953,7 @@ def api_cards_bulk_status(request, table_id):
             **result.data
         })
     
-    status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
+    status_code = _result_error_status(result.message, fallback=400)
     return JsonResponse({
         'success': False,
         'message': result.message
@@ -816,7 +988,7 @@ def api_upload_images(request, table_id):
                 **result.data
             })
         
-        status_code = 403 if 'permission' in result.message.lower() or 'Access' in result.message else 400
+        status_code = _result_error_status(result.message, fallback=400)
         return JsonResponse({
             'success': False,
             'message': result.message

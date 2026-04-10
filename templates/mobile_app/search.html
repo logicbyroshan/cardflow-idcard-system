@@ -7,6 +7,8 @@
 <!-- Seed JS with server-side results (present when page loaded via ?q=...) -->
 {{ results|json_script:"_search_init_results" }}
 {{ query|json_script:"_search_init_query" }}
+{{ filter_type|json_script:"_search_init_filter" }}
+{{ table_scope_id|json_script:"_search_init_table_scope" }}
 
 <!-- Hidden anchor used to build client-side card-detail URLs. 123456789 is a placeholder ID that gets stripped to extract the base path. -->
 <a id="_card_url_tmpl" href="{% url 'mobile_app:card_detail' card_id=123456789 %}" style="display:none"></a>
@@ -28,6 +30,25 @@
                     class="w-full pl-9 pr-4 py-2.5 bg-white/20 border border-white/20 rounded-xl text-[13px] text-white placeholder:text-white/50 focus:outline-none focus:bg-white/30 transition"
                     autofocus>
             </div>
+        </div>
+        <div class="flex items-center gap-2 mt-2.5 pl-11">
+            <select x-model="filterType"
+                    @change="doSearch()"
+                    class="min-w-[110px] px-2.5 py-1.5 bg-white/20 border border-white/20 rounded-lg text-[11px] text-white focus:outline-none focus:bg-white/30 transition">
+                <option value="all" class="text-gray-800">All Fields</option>
+                <option value="name" class="text-gray-800">Name</option>
+                <option value="address" class="text-gray-800">Address</option>
+                <option value="mobile" class="text-gray-800">Mobile</option>
+            </select>
+            <template x-if="tableScopeId">
+                <button type="button"
+                        @click="clearTableScope()"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/20 border border-white/20 text-[11px] text-white/95 font-semibold active:scale-95 transition-all">
+                    <i class="fa-solid fa-table-cells text-[10px]"></i>
+                    This Table
+                    <i class="fa-solid fa-xmark text-[9px]"></i>
+                </button>
+            </template>
         </div>
     </div>
 
@@ -115,13 +136,30 @@
 
     const _initResults = JSON.parse(document.getElementById('_search_init_results').textContent || '[]');
     const _initQuery   = JSON.parse(document.getElementById('_search_init_query').textContent   || '""') || '';
+    const _initFilter  = JSON.parse(document.getElementById('_search_init_filter').textContent || '"all"') || 'all';
+    const _initTableScope = JSON.parse(document.getElementById('_search_init_table_scope').textContent || 'null');
 
     window.searchApp = function () {
         return {
             query:   _initQuery,
             results: _initResults,
+            filterType: ['all', 'name', 'address', 'mobile'].includes(_initFilter) ? _initFilter : 'all',
+            tableScopeId: Number.isFinite(Number(_initTableScope)) && Number(_initTableScope) > 0 ? Number(_initTableScope) : null,
             loading: false,
             _timer:  null,
+
+            buildSearchUrl(q) {
+                const params = new URLSearchParams();
+                params.set('q', q);
+                if (this.filterType && this.filterType !== 'all') params.set('filter', this.filterType);
+                if (this.tableScopeId) params.set('table_id', String(this.tableScopeId));
+                return `${_API}?${params.toString()}`;
+            },
+
+            clearTableScope() {
+                this.tableScopeId = null;
+                this.doSearch();
+            },
 
             cardUrl(id) {
                 return _BASE + id + '/';
@@ -130,11 +168,11 @@
             resultUrl(card) {
                 if (!card) return '#';
                 const status = (card.status || '').toLowerCase();
-                if (status === 'approved' || status === 'download') {
-                    return `/app/desktop-required/?status=${encodeURIComponent(status)}`;
-                }
+                const safeStatus = ['pending', 'verified', 'approved', 'download', 'pool'].includes(status)
+                    ? status
+                    : 'pending';
                 if (!card.table_id) return this.cardUrl(card.id);
-                return `/app/table/${card.table_id}/${status}/?focus_card=${card.id}`;
+                return `/app/table/${card.table_id}/${safeStatus}/?focus_card=${card.id}`;
             },
 
             openResult(card) {
@@ -144,10 +182,10 @@
             statusClass(s) {
                 return {
                     'bg-amber-50 text-amber-600':   s === 'pending',
-                    'bg-green-50 text-green-600':   s === 'verified',
-                    'bg-blue-50 text-blue-600':     s === 'approved',
-                    'bg-purple-50 text-purple-600': s === 'download',
-                    'bg-red-50 text-red-600':       s === 'pool',
+                    'bg-emerald-50 text-emerald-600': s === 'verified',
+                    'bg-sky-50 text-sky-600':       s === 'approved',
+                    'bg-violet-50 text-violet-600': s === 'download',
+                    'bg-rose-50 text-rose-600':     s === 'pool',
                     'bg-gray-50 text-gray-600':     !['pending','verified','approved','download','pool'].includes(s),
                 };
             },
@@ -164,7 +202,7 @@
                 if (!q || q.length < 2) return;
                 this.loading = true;
                 try {
-                    const res  = await fetch(`${_API}?q=${encodeURIComponent(q)}`);
+                    const res  = await fetch(this.buildSearchUrl(q));
                     const json = await res.json();
                     if (json.success) this.results = json.data.results;
                 } catch (e) {

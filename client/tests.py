@@ -83,6 +83,202 @@ class ClientAccessControlTests(TestCase):
         self.assertIn(response.status_code, [302, 403])
 
 
+class ClientMessagesPageTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        self.sender = User.objects.create_user(
+            username='sender-msg@test.com',
+            email='sender-msg@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+        self.client_owner = User.objects.create_user(
+            username='client-owner-msg@test.com',
+            email='client-owner-msg@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=self.client_owner, name='Msg Client')
+
+        self.client_staff_user = User.objects.create_user(
+            username='client-staff-msg@test.com',
+            email='client-staff-msg@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        self.client_staff = Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        self.super_admin = User.objects.create_user(
+            username='superadmin-msg@test.com',
+            email='superadmin-msg@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+
+    def _create_message(self, text, recipients, scope='client_and_staff'):
+        from core.models import Notification, ClientMessage
+
+        notification = Notification.objects.create(
+            title='Client Message',
+            message=text,
+            target='selected',
+            category='announcement',
+            priority='normal',
+            created_by=self.sender,
+        )
+        notification.target_users.set(recipients)
+
+        return ClientMessage.objects.create(
+            client=self.client_obj,
+            sent_by=self.sender,
+            message=text,
+            scope=scope,
+            notification=notification,
+            recipient_count=len(recipients),
+        )
+
+    def test_client_can_view_full_history_read_and_unread(self):
+        from core.models import NotificationRead
+
+        unread_msg = self._create_message('Unread message body', [self.client_owner])
+        read_msg = self._create_message('Read message body', [self.client_owner])
+        NotificationRead.objects.create(user=self.client_owner, notification=read_msg.notification)
+
+        self.client.login(username='client-owner-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, unread_msg.message)
+        self.assertContains(response, read_msg.message)
+        self.assertContains(response, 'Unread')
+        self.assertContains(response, 'Read')
+
+    def test_client_staff_can_access_messages_page(self):
+        self._create_message('Staff visible message', [self.client_staff_user])
+
+        self.client.login(username='client-staff-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Staff visible message')
+
+    def test_message_page_filters_to_current_recipient(self):
+        self._create_message('Owner only message', [self.client_owner], scope='client_only')
+        self._create_message('Staff only message', [self.client_staff_user], scope='client_and_staff')
+
+        self.client.login(username='client-owner-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Owner only message')
+        self.assertNotContains(response, 'Staff only message')
+
+    def test_non_client_role_cannot_access_messages_page(self):
+        self.client.login(username='superadmin-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+        self.assertIn(response.status_code, [302, 403])
+
+    def test_messages_page_is_read_only_no_reply_form(self):
+        self._create_message('Read-only test message', [self.client_owner])
+
+        self.client.login(username='client-owner-msg@test.com', password='pass1234')
+        response = self.client.get('/panel/client/messages/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '<textarea')
+        self.assertNotContains(response, 'data-send-message-btn')
+
+
+class ManageClientsPaginationTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+
+        self.super_admin = User.objects.create_user(
+            username='sa-manage-clients@test.com',
+            email='sa-manage-clients@test.com',
+            password='pass1234',
+            role='super_admin',
+        )
+        for idx in range(12):
+            owner = User.objects.create_user(
+                username=f'client-owner-{idx}@test.com',
+                email=f'client-owner-{idx}@test.com',
+                password='pass1234',
+                role='client',
+            )
+            Client.objects.create(user=owner, name=f'Client {idx}')
+
+    def test_manage_clients_renders_all_rows_not_first_ten_only(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['clients']), 12)
+        self.assertEqual(response.context['page_obj'].paginator.count, 12)
+
+    def test_manage_clients_shows_delete_button_for_super_admin(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="deleteClientBtn"')
+
+
+class ManageClientsPermissionGateTests(TestCase):
+    def setUp(self):
+        from client.models import Client
+        from staff.models import Staff
+
+        owner = User.objects.create_user(
+            username='gate-client-owner@test.com',
+            email='gate-client-owner@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj = Client.objects.create(user=owner, name='Gate Client')
+        owner2 = User.objects.create_user(
+            username='gate-client-owner-2@test.com',
+            email='gate-client-owner-2@test.com',
+            password='pass1234',
+            role='client',
+        )
+        self.client_obj_2 = Client.objects.create(user=owner2, name='Gate Client 2')
+
+        self.admin_staff = User.objects.create_user(
+            username='gate-admin-staff@test.com',
+            email='gate-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
+        self.staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
+        self.staff_profile.assigned_clients.add(self.client_obj)
+
+    def test_manage_clients_redirects_admin_staff_without_manage_client_permission(self):
+        self.client.login(username='gate-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+        self.assertEqual(response.status_code, 302)
+
+    def test_manage_clients_allows_admin_staff_with_manage_client_permission(self):
+        self.staff_profile.perm_idcard_client_list = True
+        self.staff_profile.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='gate-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['clients']), 2)
+        self.assertEqual(response.context['page_obj'].paginator.count, 2)
+        self.assertTrue(response.context['can_manage_clients'])
+        self.assertNotContains(response, 'id="deleteClientBtn"')
+
+
 class ClientAccessServiceTests(TestCase):
     """Tests for ClientAccessService."""
 
@@ -274,6 +470,22 @@ class ClientAccessServiceAdvancedTests(TestCase):
 
 
 class ClientDashboardServiceTests(TestCase):
+    def test_dashboard_photo_url_maps_mediafiles_under_media_route(self):
+        from client.services import ClientDashboardService
+
+        self.assertEqual(
+            ClientDashboardService._to_dashboard_photo_url('mediafiles/cards/sample.jpg'),
+            '/media/mediafiles/cards/sample.jpg',
+        )
+        self.assertEqual(
+            ClientDashboardService._to_dashboard_photo_url('/mediafiles/cards/sample.jpg'),
+            '/media/mediafiles/cards/sample.jpg',
+        )
+        self.assertEqual(
+            ClientDashboardService._to_dashboard_photo_url('media/adarshimg/CODE/sample.jpg'),
+            '/media/adarshimg/CODE/sample.jpg',
+        )
+
     def test_dashboard_data_for_non_client_returns_error(self):
         from client.services import ClientDashboardService
         admin = User.objects.create_user(
@@ -421,6 +633,176 @@ class ClientDashboardServiceTests(TestCase):
         self.assertEqual(len(group_payload['tables']), 1)
         self.assertEqual(group_payload['tables'][0]['id'], table_a.id)
         self.assertEqual(group_payload['tables'][0]['card_count'], 1)
+
+    def test_reprint_history_includes_requested_for_inactive_table(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-history@test.com',
+            email='dash-owner-reprint-history@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint History Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Reprint Group')
+        table = IDCardTable.objects.create(group=group, name='Reprint Table', fields=[])
+        table.is_active = False
+        table.save(update_fields=['is_active'])
+
+        card = IDCard.objects.create(table=table, status='download', field_data={'NAME': 'Student One'})
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        result = ClientDashboardService.get_reprint_history(owner)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(len(result.data['items']), 1)
+        self.assertEqual(result.data['items'][0]['status'], 'requested')
+
+    def test_reprint_history_tolerates_malformed_legacy_rows(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-malformed@test.com',
+            email='dash-owner-reprint-malformed@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Malformed Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Malformed Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Malformed Table',
+            fields=['bad-field-entry', {'name': 'Name', 'type': 'text'}],
+        )
+
+        # Legacy corrupted field_data shape should not break whole dashboard history API/service.
+        card = IDCard.objects.create(table=table, status='download', field_data=['not-a-dict'])
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        result = ClientDashboardService.get_reprint_history(owner)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(len(result.data['items']), 1)
+        self.assertEqual(result.data['items'][0]['status'], 'requested')
+        self.assertIn('Card #', result.data['items'][0]['details'])
+
+    def test_reprint_history_populates_photo_url_with_export_helper(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-photo@test.com',
+            email='dash-owner-reprint-photo@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Photo Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Photo Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Photo Table',
+            fields=[
+                {'name': 'Name', 'type': 'text'},
+                {'name': 'Student Image', 'type': 'text'},
+            ],
+        )
+
+        card = IDCard.objects.create(
+            table=table,
+            status='download',
+            field_data={
+                'Name': 'Photo Student',
+                'Student Image': 'mediafiles/cards/raw.jpg',
+            },
+        )
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        with mock.patch(
+            'mediafiles.services.ImageService.get_image_path_for_export',
+            return_value='mediafiles/cards/thumb.webp',
+        ) as get_path:
+            result = ClientDashboardService.get_reprint_history(owner)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(result.data['items'][0]['photo_url'], '/media/mediafiles/cards/thumb.webp')
+        self.assertTrue(get_path.called)
+
+    def test_reprint_history_photo_url_falls_back_when_field_key_format_differs(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-photo-keyfmt@test.com',
+            email='dash-owner-reprint-photo-keyfmt@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Photo KeyFmt Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Photo KeyFmt Group')
+        table = IDCardTable.objects.create(
+            group=group,
+            name='Photo KeyFmt Table',
+            fields=[
+                {'name': 'Name', 'type': 'text'},
+                {'name': 'Student Image', 'type': 'image'},
+            ],
+        )
+
+        card = IDCard.objects.create(
+            table=table,
+            status='download',
+            field_data={
+                'Name': 'Photo Student',
+                'STUDENT_IMAGE': r'C:\\legacy\\uploads\\mediafiles\\cards\\keyfmt.jpg',
+            },
+        )
+        ReprintRequest.objects.create(table=table, card=card, status='requested')
+
+        with mock.patch('mediafiles.services.ImageService.get_image_path_for_export', return_value=''):
+            result = ClientDashboardService.get_reprint_history(owner)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['total_count'], 1)
+        self.assertEqual(result.data['items'][0]['photo_url'], '/media/mediafiles/cards/keyfmt.jpg')
+
+    def test_reprint_stats_count_requested_items(self):
+        from client.services import ClientDashboardService
+        from client.models import Client
+        from idcards.models import IDCardGroup, IDCardTable, IDCard
+        from reprintcard.models import ReprintRequest
+
+        owner = User.objects.create_user(
+            username='dash-owner-reprint-stats@test.com',
+            email='dash-owner-reprint-stats@test.com',
+            password='pass1234',
+            role='client',
+        )
+        client_obj = Client.objects.create(user=owner, name='Dash Reprint Stats Client')
+        group = IDCardGroup.objects.create(client=client_obj, name='Stats Group')
+        table = IDCardTable.objects.create(group=group, name='Stats Table', fields=[])
+
+        card_requested = IDCard.objects.create(table=table, status='download', field_data={'NAME': 'Requested'})
+        card_confirmed = IDCard.objects.create(table=table, status='download', field_data={'NAME': 'Confirmed'})
+
+        ReprintRequest.objects.create(table=table, card=card_requested, status='requested')
+        ReprintRequest.objects.create(table=table, card=card_confirmed, status='confirmed')
+
+        result = ClientDashboardService.get_reprint_stats(owner)
+        self.assertTrue(result.success)
+        self.assertEqual(result.data['reprint_requested'], 1)
+        self.assertEqual(result.data['reprint_confirmed'], 1)
+        self.assertEqual(result.data['reprint_total'], 2)
 
 
 class ClientImageServiceTests(TestCase):
@@ -688,7 +1070,70 @@ class ClientApiIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    @mock.patch('client.views_api.ClientStaffService.create_staff')
+    def test_api_staff_create_caps_assignment_payload_sizes(self, mock_create_staff):
+        from core.services.base import ServiceResult
+
+        mock_create_staff.return_value = ServiceResult(
+            success=True,
+            message='Created',
+            data={'staff_id': 9999},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        payload = {
+            'name': 'Scoped Staff',
+            'phone': '7777777777',
+            'assigned_groups': list(range(1, 1201)),
+            'assignment_scopes': [
+                {'scope_type': 'group', 'scope_id': i, 'classes': [], 'sections': [], 'branches': []}
+                for i in range(1, 1201)
+            ],
+        }
+        response = self.client.post(
+            '/panel/client/api/staff/',
+            data=json.dumps(payload),
+            content_type='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+
+        called_data = mock_create_staff.call_args.args[1]
+        self.assertEqual(len(called_data.get('assigned_groups', [])), 500)
+        self.assertEqual(len(called_data.get('assignment_scopes', [])), 500)
+
+    @mock.patch('client.views_api.ClientStaffService.update_staff')
+    def test_api_staff_update_normalizes_invalid_assignment_scope_shape(self, mock_update_staff):
+        from core.services.base import ServiceResult
+
+        mock_update_staff.return_value = ServiceResult(
+            success=True,
+            message='Updated',
+            data={},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.put(
+            f'/panel/client/api/staff/{self.staff_profile.id}/',
+            data=json.dumps({
+                'assignment_scopes': {'scope_type': 'group', 'scope_id': self.group.id},
+            }),
+            content_type='application/json',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+
+        called_data = mock_update_staff.call_args.args[2]
+        self.assertEqual(called_data.get('assignment_scopes'), [])
+
     def test_api_card_detail_success_for_client(self):
+        self.client_obj.perm_idcard_info = True
+        self.client_obj.save(update_fields=['perm_idcard_info'])
+
         self.client.login(username='api-owner@test.com', password='pass1234')
         response = self.client.get(f'/panel/client/api/cards/{self.card.id}/')
         self.assertEqual(response.status_code, 200)
@@ -1003,6 +1448,35 @@ class ClientApiIntegrationTests(TestCase):
         self.assertEqual(len(table_cards), 1)
         self.assertEqual(table_cards[0].get('field_data', {}).get('CLASS'), '12')
 
+    def test_api_staff_detail_denied_without_manage_client_permission(self):
+        self.client_obj.perm_idcard_client_list = False
+        self.client_obj.save(update_fields=['perm_idcard_client_list'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/api/staff/{self.staff_profile.id}/')
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+
+    def test_api_card_detail_requires_card_info_permission(self):
+        self.client_obj.perm_idcard_info = False
+        self.client_obj.save(update_fields=['perm_idcard_info'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/api/cards/{self.card.id}/')
+
+        self.assertEqual(response.status_code, 403)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+
+    def test_client_print_page_redirects_without_print_permissions(self):
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/client/table/{self.table.id}/print/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/panel/client/idcard-group/', response.url)
+
     def test_client_staff_table_scope_does_not_unlock_full_parent_group(self):
         from idcards.models import IDCardTable, IDCard
 
@@ -1084,6 +1558,185 @@ class ClientApiIntegrationTests(TestCase):
 
         payload = response.json()
         self.assertTrue(payload.get('success'))
+
+    def test_filter_options_dedupes_course_branch_variants(self):
+        from idcards.models import IDCardTable, IDCard
+        from core.utils.field_utils import normalize_compact_text_value
+
+        table = IDCardTable.objects.create(
+            group=self.group,
+            name='Course Branch Table',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'COURSE', 'type': 'course'},
+                {'name': 'BRANCH', 'type': 'branch'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BTECH', 'BRANCH': 'CSE', 'NAME': 'One'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'B.Tech', 'BRANCH': 'C.S.E', 'NAME': 'Two'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'B TECH', 'BRANCH': 'c s e', 'NAME': 'Three'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BCA', 'BRANCH': 'IT', 'NAME': 'Four'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+        response = self.client.get(f'/panel/api/table/{table.id}/filter-options/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        course_values = payload.get('course_values', [])
+        branch_values = payload.get('branch_values', [])
+
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in course_values},
+            {'BTECH', 'BCA'},
+        )
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in branch_values},
+            {'CSE', 'IT'},
+        )
+
+        btech_display = next(v for v in course_values if normalize_compact_text_value(v) == 'BTECH')
+        cse_display = next(v for v in branch_values if normalize_compact_text_value(v) == 'CSE')
+
+        mapped_branches = payload.get('course_to_branches', {}).get(btech_display, [])
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in mapped_branches},
+            {'CSE'},
+        )
+
+        mapped_courses = payload.get('branch_to_courses', {}).get(cse_display, [])
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in mapped_courses},
+            {'BTECH'},
+        )
+
+    def test_cards_api_course_branch_filters_match_variants(self):
+        from idcards.models import IDCardTable, IDCard
+
+        table = IDCardTable.objects.create(
+            group=self.group,
+            name='Course Branch Cards',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'COURSE', 'type': 'course'},
+                {'name': 'BRANCH', 'type': 'branch'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BTECH', 'BRANCH': 'CSE', 'NAME': 'One'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'B.Tech', 'BRANCH': 'C.S.E', 'NAME': 'Two'},
+        )
+        IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BCA', 'BRANCH': 'IT', 'NAME': 'Three'},
+        )
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+
+        course_resp = self.client.get(
+            f'/panel/api/table/{table.id}/cards/',
+            {'status': 'pending', 'course': 'B TECH'},
+        )
+        self.assertEqual(course_resp.status_code, 200)
+        course_payload = course_resp.json()
+        self.assertTrue(course_payload.get('success'))
+        self.assertEqual(len(course_payload.get('cards', [])), 2)
+
+        branch_resp = self.client.get(
+            f'/panel/api/table/{table.id}/cards/',
+            {'status': 'pending', 'branch': 'c.s.e'},
+        )
+        self.assertEqual(branch_resp.status_code, 200)
+        branch_payload = branch_resp.json()
+        self.assertTrue(branch_payload.get('success'))
+        self.assertEqual(len(branch_payload.get('cards', [])), 2)
+
+    def test_update_field_refreshes_course_branch_filter_options(self):
+        from idcards.models import IDCardTable, IDCard
+        from core.utils.field_utils import normalize_compact_text_value
+
+        table = IDCardTable.objects.create(
+            group=self.group,
+            name='Inline Update Filters',
+            fields=[
+                {'name': 'CLASS', 'type': 'class'},
+                {'name': 'SECTION', 'type': 'section'},
+                {'name': 'COURSE', 'type': 'course'},
+                {'name': 'BRANCH', 'type': 'branch'},
+                {'name': 'NAME', 'type': 'text'},
+            ],
+        )
+        card = IDCard.objects.create(
+            table=table,
+            status='pending',
+            field_data={'CLASS': '10', 'SECTION': 'A', 'COURSE': 'BTECH', 'BRANCH': 'CSE', 'NAME': 'Inline User'},
+        )
+
+        self.client_obj.perm_idcard_edit = True
+        self.client_obj.save(update_fields=['perm_idcard_edit'])
+
+        self.client.login(username='api-owner@test.com', password='pass1234')
+
+        warm_resp = self.client.get(f'/panel/api/table/{table.id}/filter-options/')
+        self.assertEqual(warm_resp.status_code, 200)
+
+        update_course = self.client.post(
+            f'/panel/api/card/{card.id}/update-field/',
+            data=json.dumps({'field': 'COURSE', 'value': 'BCA'}),
+            content_type='application/json',
+        )
+        self.assertEqual(update_course.status_code, 200)
+
+        update_branch = self.client.post(
+            f'/panel/api/card/{card.id}/update-field/',
+            data=json.dumps({'field': 'BRANCH', 'value': 'I.T'}),
+            content_type='application/json',
+        )
+        self.assertEqual(update_branch.status_code, 200)
+
+        refreshed = self.client.get(f'/panel/api/table/{table.id}/filter-options/')
+        self.assertEqual(refreshed.status_code, 200)
+        payload = refreshed.json()
+        self.assertTrue(payload.get('success'))
+
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in payload.get('course_values', [])},
+            {'BCA'},
+        )
+        self.assertEqual(
+            {normalize_compact_text_value(v) for v in payload.get('branch_values', [])},
+            {'IT'},
+        )
 
     def test_client_staff_temp_password_api_requires_client_permission(self):
         self.client_obj.perm_set_temp_password = False

@@ -7,13 +7,19 @@
         <div class="logos-track">
             {% for client in trusted_clients %}
                 <div class="logo-item">
-                    <img src="{{ client.logo.url }}" alt="{{ client.name }}" loading="lazy" decoding="async">
+                    <div class="logo-visual">
+                        <img src="{{ client.website_logo.url }}" alt="{{ client.name }}" loading="lazy" decoding="async">
+                    </div>
+                    <span class="school-name" title="{{ client.name }}">{{ client.name }}</span>
                 </div>
             {% endfor %}
             <!-- Duplicate ALL items for seamless infinite loop -->
             {% for client in trusted_clients %}
                 <div class="logo-item" aria-hidden="true">
-                    <img src="{{ client.logo.url }}" alt="" loading="lazy" decoding="async">
+                    <div class="logo-visual">
+                        <img src="{{ client.website_logo.url }}" alt="" loading="lazy" decoding="async">
+                    </div>
+                    <span class="school-name">{{ client.name }}</span>
                 </div>
             {% endfor %}
         </div>

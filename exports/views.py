@@ -35,19 +35,59 @@ logger = logging.getLogger(__name__)
 
 # None means no ID-count cap at request parsing stage.
 MAX_EXPORT_CARD_IDS: Optional[int] = None
+MAX_EXPORT_JSON_BODY_BYTES = int(os.getenv('MAX_EXPORT_JSON_BODY_BYTES', '5242880'))  # 5 MB
 
 _VALID_STATUSES = {'pending', 'verified', 'approved', 'download', 'pool'}
+
+
+def _is_json_request(request) -> bool:
+    return 'application/json' in str(getattr(request, 'content_type', '') or '').lower()
+
+
+def _get_json_body(request) -> Optional[Dict[str, Any]]:
+    """Parse and cache JSON request body once with a defensive size limit."""
+    if not _is_json_request(request):
+        return None
+
+    if getattr(request, '_exports_json_body_cache_set', False):
+        return getattr(request, '_exports_json_body_cache', None)
+
+    body_bytes = request.body or b''
+    if MAX_EXPORT_JSON_BODY_BYTES > 0 and len(body_bytes) > MAX_EXPORT_JSON_BODY_BYTES:
+        logger.warning(
+            'Export JSON body too large: size=%s limit=%s user=%s path=%s',
+            len(body_bytes),
+            MAX_EXPORT_JSON_BODY_BYTES,
+            getattr(getattr(request, 'user', None), 'id', None),
+            getattr(request, 'path', ''),
+        )
+        request._exports_json_body_cache = None
+        request._exports_json_body_cache_set = True
+        return None
+
+    try:
+        parsed = json.loads(body_bytes)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        request._exports_json_body_cache = None
+        request._exports_json_body_cache_set = True
+        return None
+
+    if isinstance(parsed, dict):
+        request._exports_json_body_cache = parsed
+        request._exports_json_body_cache_set = True
+        return parsed
+
+    request._exports_json_body_cache = None
+    request._exports_json_body_cache_set = True
+    return None
 
 
 def _get_status_from_request(request) -> str:
     """Extract status label from POST body (JSON or form data)."""
     status = ''
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            status = data.get('status', '')
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        status = data.get('status', '')
     if not status:
         status = request.POST.get('status', '')
     return status if status in _VALID_STATUSES else ''
@@ -96,12 +136,9 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
     is_super_admin = bool(user and getattr(user, 'is_authenticated', False) and PermissionService.is_super_admin(user))
     
     # Try JSON body first
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            card_ids = data.get('card_ids', [])
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        card_ids = data.get('card_ids', [])
     
     # Fall back to POST data
     if not card_ids:
@@ -129,21 +166,32 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
         search_q = ''
         class_f = ''
         section_f = ''
+        course_f = ''
+        branch_f = ''
+        image_column = ''
+        image_condition = ''
         from_date = ''
         to_date = ''
-        if request.content_type == 'application/json':
-            try:
-                body = json.loads(request.body)
-                search_q = (body.get('search') or '').strip()
-                class_f = (body.get('class') or body.get('class_filter') or '').strip()
-                section_f = (body.get('section') or body.get('section_filter') or '').strip()
-                from_date = (body.get('from') or '').strip()
-                to_date = (body.get('to') or '').strip()
-            except (json.JSONDecodeError, ValueError):
-                pass
+        if _is_json_request(request):
+            body = _get_json_body(request) or {}
+            search_q = (body.get('search') or '').strip()
+            class_f = (body.get('class') or body.get('class_filter') or '').strip()
+            section_f = (body.get('section') or body.get('section_filter') or '').strip()
+            course_f = (body.get('course') or body.get('course_filter') or '').strip()
+            branch_f = (body.get('branch') or body.get('branch_filter') or '').strip()
+            image_column = (body.get('image_column') or '').strip()
+            image_condition = (body.get('image_condition') or '').strip()
+            from_date = (body.get('from') or '').strip()
+            to_date = (body.get('to') or '').strip()
         try:
+            from django.db.models import Q, CharField
             from django.db.models.fields.json import KeyTextTransform
-            from core.views.idcard_api import _get_class_section_field_names
+            from django.db.models.functions import Cast
+            from core.views.idcard_helpers import (
+                _apply_client_staff_row_scope,
+                _build_class_filter_q,
+                _get_class_section_course_branch_field_names,
+            )
 
             table = IDCardTable.objects.select_related('group').filter(id=table_id).first()
             if not table:
@@ -158,35 +206,51 @@ def _get_card_ids_from_request(request, table_id: int = None) -> Optional[List[i
                 return None
 
             qs = IDCard.objects.filter(table=table)
+            qs = _apply_client_staff_row_scope(qs, user, table)
             if status:
                 qs = qs.filter(status=status)
             if search_q:
                 qs = IDCardService._apply_search_filter(qs, search_q, table=table)
-            # Use proper JSON field extraction for exact class/section matching
-            if class_f or section_f:
-                if table:
-                    class_field_name, section_field_name = _get_class_section_field_names(table)
-                    if class_f and class_field_name:
-                        qs = qs.annotate(_cls=KeyTextTransform(class_field_name, 'field_data')).filter(_cls__iexact=class_f)
-                    if section_f and section_field_name:
-                        qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data')).filter(_sec__iexact=section_f)
-            # DateTime range filter (download list)
-            if from_date:
-                try:
-                    from django.utils.dateparse import parse_datetime
-                    dt = parse_datetime(from_date)
-                    if dt:
-                        qs = qs.filter(downloaded_at__gte=dt)
-                except (ValueError, TypeError):
-                    pass
-            if to_date:
-                try:
-                    from django.utils.dateparse import parse_datetime
-                    dt = parse_datetime(to_date)
-                    if dt:
-                        qs = qs.filter(downloaded_at__lte=dt)
-                except (ValueError, TypeError):
-                    pass
+            # Keep export fallback filtering consistent with the listing API.
+            if class_f or section_f or course_f or branch_f:
+                class_field_name, section_field_name, course_field_name, branch_field_name = (
+                    _get_class_section_course_branch_field_names(table)
+                )
+                if class_f and class_field_name:
+                    qs = _build_class_filter_q(qs, class_f, class_field_name)
+                if section_f and section_field_name:
+                    qs = qs.annotate(_sec=KeyTextTransform(section_field_name, 'field_data')).filter(_sec__iexact=section_f)
+                if course_f and course_field_name:
+                    qs = qs.annotate(_course=KeyTextTransform(course_field_name, 'field_data')).filter(_course__iexact=course_f)
+                if branch_f and branch_field_name:
+                    qs = qs.annotate(_branch=KeyTextTransform(branch_field_name, 'field_data')).filter(_branch__iexact=branch_f)
+            if image_column and image_condition in ('complete', 'pending', 'incomplete'):
+                qs = qs.annotate(_img=Cast(KeyTextTransform(image_column, 'field_data'), CharField()))
+                if image_condition == 'complete':
+                    qs = qs.exclude(_img__isnull=True).exclude(_img='').exclude(_img='NOT_FOUND')
+                    qs = qs.exclude(_img__startswith='PENDING:')
+                elif image_condition == 'pending':
+                    qs = qs.filter(_img__startswith='PENDING:')
+                elif image_condition == 'incomplete':
+                    qs = qs.filter(Q(_img__isnull=True) | Q(_img='') | Q(_img='NOT_FOUND'))
+            # DateTime range filter applies only to download status.
+            if status == 'download':
+                if from_date:
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        dt = parse_datetime(from_date)
+                        if dt:
+                            qs = qs.filter(downloaded_at__gte=dt)
+                    except (ValueError, TypeError):
+                        pass
+                if to_date:
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        dt = parse_datetime(to_date)
+                        if dt:
+                            qs = qs.filter(downloaded_at__lte=dt)
+                    except (ValueError, TypeError):
+                        pass
             max_items = None if is_super_admin else MAX_EXPORT_CARD_IDS
             if max_items is None:
                 card_ids = list(qs.order_by('id').values_list('id', flat=True))
@@ -206,21 +270,31 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
         {
             "rename_options": {
                 "enabled": true,
+                "mode": "rename" | "generate",
                 "output_format": "zip" | "pdf_zip",
+                "selected_image_field": "PHOTO",
                 "image_name_fields": {
-                    "PHOTO": "Student Name",
-                    "FATHER_PHOTO": "Father Name",
-                    "MOTHER_PHOTO": "Mother Name"
+                    "PHOTO": "Student Name" | ["Student Name", "Class", "Section"],
+                    "FATHER_PHOTO": "Father Name" | ["Student Name", "Father Name"],
+                    "MOTHER_PHOTO": "Mother Name" | ["Student Name", "Mother Name"]
+                },
+                "generate_options": {
+                    "enabled": true,
+                    "name_field": "Student Name",
+                    "detail_fields": ["Class", "Section"],
+                    "max_detail_lines": 2,
+                    "compress_enabled": true,
+                    "target_size_kb": 40,
+                    "maintain_dimensions": true
                 }
             }
         }
     """
-    if request.content_type != 'application/json':
+    if not _is_json_request(request):
         return None
 
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
+    data = _get_json_body(request)
+    if not data:
         return None
 
     rename_options = data.get('rename_options')
@@ -233,27 +307,166 @@ def _get_image_rename_options_from_request(request) -> Optional[Dict[str, Any]]:
     if not isinstance(raw_map, dict):
         return None
 
-    cleaned_map: Dict[str, str] = {}
+    cleaned_map: Dict[str, Any] = {}
     for key, value in raw_map.items():
         k = str(key or '').strip().upper()
-        v = str(value or '').strip()
-        if not k or not v:
+        if not k:
             continue
-        if len(k) > 60 or len(v) > 120:
+        if len(k) > 60:
+            continue
+
+        if isinstance(value, (list, tuple)):
+            values = []
+            seen = set()
+            for item in value:
+                v = str(item or '').strip()
+                if not v or len(v) > 120:
+                    continue
+                v_norm = v.lower()
+                if v_norm in seen:
+                    continue
+                seen.add(v_norm)
+                values.append(v)
+            if values:
+                cleaned_map[k] = values
+            continue
+
+        v = str(value or '').strip()
+        if not v or len(v) > 120:
             continue
         cleaned_map[k] = v
 
     if not cleaned_map:
         return None
 
+    selected_image_field = str(rename_options.get('selected_image_field') or '').strip()
+    if len(selected_image_field) > 120:
+        selected_image_field = ''
+
     raw_output_format = str(rename_options.get('output_format', 'zip') or 'zip').strip().lower()
     output_format = 'pdf_zip' if raw_output_format == 'pdf_zip' else 'zip'
 
-    return {
+    raw_mode = str(rename_options.get('mode', 'rename') or 'rename').strip().lower()
+    mode = 'generate' if raw_mode == 'generate' else 'rename'
+
+    cleaned_options = {
         'enabled': True,
         'image_name_fields': cleaned_map,
         'output_format': output_format,
+        'mode': mode,
     }
+
+    if selected_image_field:
+        cleaned_options['selected_image_field'] = selected_image_field
+
+    if mode == 'generate':
+        raw_generate_options = rename_options.get('generate_options')
+        if not isinstance(raw_generate_options, dict):
+            raw_generate_options = {}
+
+        name_field = str(raw_generate_options.get('name_field') or '').strip()
+        if len(name_field) > 120:
+            name_field = ''
+
+        raw_detail_fields = raw_generate_options.get('detail_fields')
+        if not isinstance(raw_detail_fields, (list, tuple)):
+            raw_detail_fields = []
+
+        detail_fields = []
+        seen_details = set()
+        for item in raw_detail_fields:
+            value = str(item or '').strip()
+            if not value or len(value) > 120:
+                continue
+            key = value.lower()
+            if key in seen_details:
+                continue
+            seen_details.add(key)
+            detail_fields.append(value)
+
+        # Fallback: derive name/details from image_name_fields mapping when
+        # explicit generate_options are not provided.
+        if not name_field:
+            mapping_values = []
+            for mapped in cleaned_map.values():
+                if isinstance(mapped, list):
+                    mapping_values = mapped
+                    break
+                if isinstance(mapped, str):
+                    mapping_values = [mapped]
+                    break
+            if mapping_values:
+                name_field = mapping_values[0]
+                if not detail_fields:
+                    detail_fields = mapping_values[1:]
+
+        class_field = str(raw_generate_options.get('class_field') or '').strip()
+        if len(class_field) > 120:
+            class_field = ''
+
+        section_field = str(raw_generate_options.get('section_field') or '').strip()
+        if len(section_field) > 120:
+            section_field = ''
+
+        custom_date = str(raw_generate_options.get('custom_date') or '').strip()
+        if len(custom_date) > 40:
+            custom_date = custom_date[:40]
+
+        raw_size_preset = str(raw_generate_options.get('size_preset', 'size_23x34') or 'size_23x34').strip().lower()
+        size_preset = 'size_37x53' if raw_size_preset in ('size_37x53', '37x53', 'large') else 'size_23x34'
+
+        if not class_field and detail_fields:
+            class_field = detail_fields[0]
+        if not section_field and len(detail_fields) > 1:
+            section_field = detail_fields[1]
+
+        raw_detail_mode = str(raw_generate_options.get('detail_mode') or '').strip().lower()
+        if raw_detail_mode not in ('class_only', 'class_section', 'custom_date'):
+            if custom_date:
+                raw_detail_mode = 'custom_date'
+            elif class_field and section_field:
+                raw_detail_mode = 'class_section'
+            else:
+                raw_detail_mode = 'class_only'
+        detail_mode = raw_detail_mode
+
+        resolved_detail_fields = []
+        if detail_mode == 'class_section':
+            if class_field:
+                resolved_detail_fields.append(class_field)
+            if section_field and section_field.lower() != str(class_field or '').lower():
+                resolved_detail_fields.append(section_field)
+        elif detail_mode == 'class_only':
+            if class_field:
+                resolved_detail_fields.append(class_field)
+
+        max_detail_lines = 1
+
+        compress_enabled = raw_generate_options.get('compress_enabled') is True
+
+        raw_target_kb = raw_generate_options.get('target_size_kb', 40)
+        try:
+            target_size_kb = int(raw_target_kb)
+        except (TypeError, ValueError):
+            target_size_kb = 40
+        target_size_kb = max(10, min(200, target_size_kb))
+
+        cleaned_options['generate_options'] = {
+            'enabled': True,
+            'name_field': name_field,
+            'detail_fields': resolved_detail_fields,
+            'max_detail_lines': max_detail_lines,
+            'detail_mode': detail_mode,
+            'class_field': class_field,
+            'section_field': section_field,
+            'custom_date': custom_date,
+            'size_preset': size_preset,
+            'compress_enabled': compress_enabled,
+            'target_size_kb': target_size_kb,
+            'maintain_dimensions': True,
+        }
+
+    return cleaned_options
 
 
 def _check_export_permission(request, skip_status_check=False):
@@ -278,11 +491,20 @@ def _check_export_permission(request, skip_status_check=False):
             'success': False,
             'message': 'Permission denied: You do not have bulk download access'
         }, status=403)
+
+    # Keep export access aligned with status list permissions.
+    status = _get_status_from_request(request)
+    if status:
+        required_perm = PermissionService.STATUS_LIST_PERM_MAP.get(status)
+        if required_perm and not PermissionService.has(request.user, required_perm):
+            return JsonResponse({
+                'success': False,
+                'message': 'Permission denied: You do not have access to this list'
+            }, status=403)
     
     # Block client/client_staff from exporting approved or download status cards
     # (skipped for PDF exports — clients can download PDF on all statuses)
     if not skip_status_check and request.user.role in ('client', 'client_staff'):
-        status = _get_status_from_request(request)
         if status in ('approved', 'download'):
             return JsonResponse({
                 'success': False,
@@ -316,12 +538,11 @@ def _check_export_client_scope(request, table_id):
     Returns:
         None if permitted, JsonResponse with error if not
     """
-    table = get_object_or_404(IDCardTable.objects.select_related('group'), id=table_id)
-    if not PermissionService.can_access_client(request.user, table.group.client_id):
-        return JsonResponse({
-            'success': False,
-            'message': 'Access denied. You are not assigned to this client.'
-        }, status=403)
+    from core.views.idcard_helpers import _check_client_scope_by_table
+
+    _, error = _check_client_scope_by_table(request.user, table_id)
+    if error:
+        return error
     return None
 
 
@@ -423,6 +644,32 @@ def _disk_zip_result_to_payload(disk_result) -> Dict[str, Any]:
         payload['download_url'] = zip_files[0]['download_url']
         payload['filename'] = zip_files[0]['filename']
     return payload
+
+
+def _write_http_response_to_file(response, file_path: str) -> int:
+    """Persist HttpResponse/StreamingHttpResponse content to disk safely."""
+    if response is None:
+        return 0
+
+    bytes_written = 0
+    with open(file_path, 'wb') as handle:
+        if hasattr(response, 'streaming_content'):
+            for chunk in response.streaming_content:
+                if isinstance(chunk, str):
+                    chunk = chunk.encode('utf-8')
+                if not chunk:
+                    continue
+                handle.write(chunk)
+                bytes_written += len(chunk)
+        elif hasattr(response, 'content'):
+            payload = response.content or b''
+            if isinstance(payload, str):
+                payload = payload.encode('utf-8')
+            if payload:
+                handle.write(payload)
+                bytes_written = len(payload)
+
+    return bytes_written
 
 
 # =============================================================================
@@ -544,18 +791,15 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
     # Get format preference and template_id
     doc_format = 'docx'
     template_id = None
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            doc_format = data.get('format', 'docx')
-            tpl_val = data.get('template_id', '')
-            if tpl_val:
-                try:
-                    template_id = int(tpl_val)
-                except (ValueError, TypeError):
-                    pass
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        doc_format = data.get('format', 'docx')
+        tpl_val = data.get('template_id', '')
+        if tpl_val:
+            try:
+                template_id = int(tpl_val)
+            except (ValueError, TypeError):
+                pass
     else:
         doc_format = request.POST.get('format', 'docx')
     
@@ -637,18 +881,15 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            tpl_val = data.get('template_id', '')
-            if tpl_val:
-                try:
-                    template_id = int(tpl_val)
-                except (ValueError, TypeError):
-                    pass
-            shorten_titles = bool(data.get('shorten_titles', False))
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        tpl_val = data.get('template_id', '')
+        if tpl_val:
+            try:
+                template_id = int(tpl_val)
+            except (ValueError, TypeError):
+                pass
+        shorten_titles = bool(data.get('shorten_titles', False))
     
     # Concurrent export guard
     acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf')
@@ -720,18 +961,15 @@ def api_export_pdf_async(request, table_id: int) -> JsonResponse:
     template_id = None
     font_mode = 'auto'
     shorten_titles = False
-    if request.content_type == 'application/json':
-        try:
-            data = json.loads(request.body)
-            tpl_val = data.get('template_id', '')
-            if tpl_val:
-                try:
-                    template_id = int(tpl_val)
-                except (ValueError, TypeError):
-                    pass
-            shorten_titles = bool(data.get('shorten_titles', False))
-        except (json.JSONDecodeError, ValueError):
-            pass
+    if _is_json_request(request):
+        data = _get_json_body(request) or {}
+        tpl_val = data.get('template_id', '')
+        if tpl_val:
+            try:
+                template_id = int(tpl_val)
+            except (ValueError, TypeError):
+                pass
+        shorten_titles = bool(data.get('shorten_titles', False))
     
     from .tasks import BackgroundExportManager
     
@@ -875,6 +1113,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         too_large_inline = (
             not is_super_admin
             and not is_pdf_zip_mode
+            and not rename_options
             and not result.success
             and (
                 'too large for inline' in str(result.message or '').lower()
@@ -1088,23 +1327,10 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
                 if xlsx_result.success and xlsx_result.response:
                     xlsx_filename = f"{base_name}.xlsx"
                     xlsx_path = os.path.join(EXPORT_TEMP_DIR, f"{task_id}_{xlsx_filename}")
-                    # Handle both HttpResponse (.content) and StreamingHttpResponse (.streaming_content)
-                    resp = xlsx_result.response
-                    if hasattr(resp, 'content'):
-                        xlsx_bytes = resp.content
-                    elif hasattr(resp, 'streaming_content'):
-                        xlsx_bytes = b''.join(
-                            ch.encode('utf-8') if isinstance(ch, str) else ch
-                            for ch in resp.streaming_content
-                        )
-                    else:
-                        xlsx_bytes = b''
-                    if xlsx_bytes:
-                        with open(xlsx_path, 'wb') as f:
-                            f.write(xlsx_bytes)
+                    written = _write_http_response_to_file(xlsx_result.response, xlsx_path)
+                    if written > 0:
                         file_entries.append((xlsx_filename, xlsx_path))
                         temp_files.append(xlsx_path)
-                    del xlsx_bytes
                     del xlsx_result
             except Exception as e:
                 logger.error("XLSX export failed for status %s: %s", status_key, e)

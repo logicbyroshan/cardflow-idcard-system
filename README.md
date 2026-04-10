@@ -3,7 +3,7 @@
 A production-grade, full-stack Django application for professional ID card design, printing, and management. Built for schools, colleges, and organizations to manage bulk ID card workflows end-to-end — from data upload to final print-ready output.
 
 > **Live:** [adarshbhopal.in](https://adarshbhopal.in) (website) · [panel.adarshbhopal.in](https://panel.adarshbhopal.in) (admin)
-> **Version:** v1.18.0
+> **Version:** v2.18.09
 
 ---
 
@@ -283,10 +283,6 @@ Adarsh Admin New/
 |   |-- views.py               #   Landing, portfolio, contact, sitemap
 |   +-- urls.py                #   Public URL patterns
 |
-|-- PWA/                       # PWA static assets
-|   |-- static/                #   Service worker, manifest, offline assets
-|   +-- templates/             #   (mobile templates live in templates/mobile_app/)
-|
 |-- Face Cropper/              # Standalone face cropping engine
 |   |-- main.py                #   FastAPI application
 |   |-- passport_engine_core/  #   Image processing module
@@ -336,23 +332,21 @@ Adarsh Admin New/
 |-- static/                    # Static assets (source)
 |   |-- css/                   #   Stylesheets (Tailwind + custom)
 |   |-- js/                    #   JavaScript modules
+|   |-- mobile/                #   Mobile app frontend assets
 |   |-- assets/                #   Images, fonts, favicon
 |   +-- vendor/                #   Third-party libraries
 |
-|-- deployment/                # Production deployment configs
-|   |-- nginx_example.conf           #   Nginx single-domain config
-|   |-- nginx_subdomain_example.conf #   Nginx subdomain config
-|   |-- gunicorn_example.service     #   Systemd service file
-|   |-- gunicorn.conf_example.py     #   Gunicorn worker config
-|   |-- setup_swap_example.sh        #   Swap file setup script
-|   |-- cron_cleanup_example.txt     #   Cron for periodic cleanup tasks
-|   +-- README.md              #   Deployment instructions
+|-- .github/workflows/         # CI/CD + engine release automation
+|   |-- ci.yml                 #   Full validation workflow
+|   |-- cd.yml                 #   Manual production deploy workflow
+|   |-- quick-deploy.yml       #   Fast hotfix deploy workflow
+|   +-- build-cropper.yml      #   Face Cropper build + release workflow
 |
 |-- manage.py                  # Django management CLI
 |-- requirements.txt           # Python dependencies
 |-- package.json               # Node.js (Tailwind CSS CLI)
 |-- tailwind-input.css         # Tailwind CSS input file
-|-- VERSION.txt                # Current version (v1.18.0)
+|-- VERSION.txt                # Current version (v2.18.09)
 +-- db.sqlite3                 # Development database
 ```
 
@@ -362,7 +356,7 @@ Adarsh Admin New/
 
 | App | Purpose | Has Models? |
 |-----|---------|-------------|
-| `core` | Central hub — User model, permissions, middleware, context processors, base views, all services | Yes (User, Notification, ActivityLog, BackgroundTask, SystemSettings, ExportTemplate, CropperRelease) |
+| `core` | Central hub — User model, permissions, middleware, context processors, base views, all services | Yes (User, Notification, NotificationRead, ClientMessage, ActivityLog, BackgroundTask, SystemSettings, ExportTemplate, CropperRelease) |
 | `accounts` | Authentication — login, OTP verification, password reset, rate limiting, session management | No (uses core.User) |
 | `client` | Client organization CRUD — company/school profiles, client staff management, group settings | Yes (Client) |
 | `staff` | Admin staff management — role assignment, client assignment, permissions | Yes (Staff) |
@@ -437,6 +431,7 @@ Status Workflow:
 |-------|---------|
 | **Notification** | Broadcast/targeted messages with priority (low/normal/high/urgent), category (general/announcement/update/maintenance/alert), and targeting (all/role/selected users) |
 | **NotificationRead** | Per-user read tracking for notifications |
+| **ClientMessage** | One-way admin/admin-staff message stream per client with scope (`client_only` / `client_and_staff`), visibility (`permanent` / `temporary`), optional expiry, and notification linkage |
 | **BackgroundTask** | Async task queue — tracks status, progress, result files, metadata. Types: bulk_upload, reupload_images, export_zip/pdf/docx/excel |
 | **ActivityLog** | Append-only audit trail — 30+ action types, IP tracking, target model references |
 | **SystemSettings** | Key-value configuration store with 5-minute cache |
@@ -469,6 +464,7 @@ Status Workflow:
 - **Group-based organization** — clients have groups containing tables of cards
 - **Individual card CRUD** — add, edit, delete, view details, reupload photo
 - **Card search** — search across all fields within a table
+- **Course/Branch normalization** — filters and export queries match common variants (`BTECH`, `B.Tech`, `B TECH`, etc.) consistently
 - **Field upgrades** — batch class/section upgrades
 - **Horizontal scroll tables** — large datasets scroll properly without wrapping
 - **Humanized headers** — automatic word splitting for concatenated field names
@@ -511,6 +507,7 @@ Status Workflow:
 - **Real-time stats** — Pending, verified, approved, downloaded card counts (global aggregate for admins; client-scoped for clients)
 - **Recent activity feed** — role-filtered, card-based activity showing name, status, and timestamp
 - **Notification bar** — in-app notifications with unread badge
+- **One-way client messaging** — admin/admin_staff can send permanent or temporary notices to client users with history and unread strip integration
 - **Global search** — search across ID cards from any page
 - **Manage Panel** — system administration with tabs:
   - Notifications management (create/broadcast)
@@ -1101,6 +1098,7 @@ In local development, both URL configs merge into `config.urls` for single-domai
 |----------|-----------|-------|
 | Authentication | login, logout, check-email, forgot-password, verify-otp, reset-password | 6 |
 | Client CRUD | create, get, update, delete, toggle-status, staff, set-temp-password | 7 |
+| Client Messaging | history, send, target-options, group-send, delete, unread-strip | 6 |
 | Staff CRUD | create, get, update, delete, toggle-status, set-temp-password | 6 |
 | ID Card Table | list, create, get, update, delete, toggle-status, create-from-xlsx | 7 |
 | ID Card | list, get, create, update, update-field, delete, status, bulk-status, bulk-delete, bulk-upload, search, filter-options, all-ids, reupload | 14 |
@@ -1366,9 +1364,12 @@ Custom commands live under `core/management/commands/`.
 | Command | Purpose | Example |
 |---------|---------|---------|
 | `create_pro_user` | Creates the single allowed `pro_user` account | `python manage.py create_pro_user --email owner@example.com --password StrongPass123` |
+| `backfill_legacy_photo_to_field_data` | Backfills legacy image-path records into `IDCard.field_data` photo-like keys | `python manage.py backfill_legacy_photo_to_field_data --apply --client-id 7` |
+| `ensure_missing_card_thumbnails` | Generates missing card thumbnails for records that have source media but no thumb | `python manage.py ensure_missing_card_thumbnails --apply --client-id 7` |
 | `sanitize_field_data` | Cleans non-Latin-1 characters from all `IDCard.field_data` text values (dry-run by default) | `python manage.py sanitize_field_data --apply` |
 | `fix_dob_format` | Converts digit-only DOB values (`DDMMYYYY` / `DDMMYY`) to slash format | `python manage.py fix_dob_format --apply --client-id 7` |
 | `convert_thumbs_to_webp` | Migrates old `.jpg/.jpeg` thumbnails in thumbs folders to `.webp` | `python manage.py convert_thumbs_to_webp --apply --quality 85` |
+| `rename_uuid_images_to_timestamp` | Renames UUID-style media files to timestamp-oriented naming for consistency | `python manage.py rename_uuid_images_to_timestamp --apply --client-id 7` |
 | `revert_kg_dash_for_client` | Reverts `KG1/KG2` class values to `KG-I/KG-II` for one client | `python manage.py revert_kg_dash_for_client --client-id 123 --apply` |
 
 ---
@@ -1431,18 +1432,19 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 ### Step-by-Step
 
-1. **Setup swap** (2 GB) — see `deployment/setup_swap_example.sh`
+1. **Setup swap** (2 GB recommended) using your server provisioning scripts
 2. **Install system packages**: `python3.11`, `python3.11-venv`, `nginx`, `certbot`, `ffmpeg`
 3. **Clone repository** and setup virtualenv
 4. **Install dependencies**: `pip install -r requirements.txt`
 5. **Configure `.env`** with production settings
 6. **Run migrations**: `python manage.py migrate`
 7. **Collect static**: `python manage.py collectstatic`
-8. **Configure Nginx** — see `deployment/nginx_example.conf` or `deployment/nginx_subdomain_example.conf`
-9. **Configure Gunicorn** service — see `deployment/gunicorn_example.service`
-10. **Setup cron** for cleanup — see `deployment/cron_cleanup_example.txt`
-11. **SSL certificates**: `certbot --nginx -d yourdomain.com -d panel.yourdomain.com`
-12. **Start services**: `sudo systemctl enable --now gunicorn nginx`
+8. **Configure Nginx + Gunicorn** using your environment-specific templates
+9. **Setup cron/systemd timers** for cleanup and health checks
+10. **SSL certificates**: `certbot --nginx -d yourdomain.com -d panel.yourdomain.com`
+11. **Start services**: `sudo systemctl enable --now gunicorn nginx`
+
+> Note: deployment template files are not versioned in this branch; CI/CD workflows are tracked under `.github/workflows/`.
 
 ### CI/CD Workflows
 
@@ -1454,7 +1456,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ### Gunicorn Configuration
 
 ```python
-# deployment/gunicorn.conf_example.py
+# Example Gunicorn settings for a 1 GB server
 workers = 2              # 1 GB RAM = 2 workers max
 worker_class = 'sync'    # Sync workers (no async needed)
 bind = 'unix:/tmp/gunicorn.sock'
@@ -1463,46 +1465,24 @@ max_requests = 500       # Worker recycling
 max_requests_jitter = 50
 ```
 
-See [`deployment/README.md`](deployment/README.md) for comprehensive deployment instructions.
-
 ---
 
 ## Changelog
 
-### v1.18.0 (Current)
+### v2.18.09 (Current)
 
-- Version source of truth is `VERSION.txt` (`v1.18.0`).
-- Middleware stack now includes `PanelEntryGateMiddleware` and `MaintenanceModeMiddleware` in the active chain.
-- Background worker uses bounded thread-pool concurrency with heavy-task throttling.
-- Permission model reflects current rules: client/client_staff are blocked from delete-all and single-image reupload, while bulk permissions remain toggle-driven.
-- Protected media serving now enforces normalized paths, ownership checks, and optional `X-Accel-Redirect` handoff.
+- Version source of truth is `VERSION.txt` (`v2.18.09`).
+- Added one-way client messaging with full history, role-aware recipient scopes (`client_only` / `client_and_staff`), temporary visibility with expiry, and admin-side delete control.
+- Added group-send targeting APIs for selected clients or all active clients.
+- Added client-facing read-only messages page at `/panel/client/messages/` for client and client_staff roles.
+- Added unread client-message strip API integration in notification surfaces.
+- Added custom user-friendly error pages (403/404/500 flows) and shared modal bridge migration.
+- Improved export scope and status guard reliability for client-facing PDF flows.
+- Fixed filtered export edge cases for class/section and normalized course/branch matching behavior.
+- Hardened service-layer error handling and API status mapping consistency across panel/mobile endpoints.
+- Improved mobile reliability with service-worker cache-version assertion hardening.
 
-### Recent Main-Branch Updates (Unreleased)
-
-**Image & Video Processing Pipeline**
-- Portfolio images now go through a unified pipeline on every upload (desktop + mobile): text watermark → convert to WebP → progressive quality compression to target below 500 KB with fallback resize
-- Reel videos compressed via ffmpeg subprocess to H.264/AAC below 10 MB, max 1280×720, with `movflags faststart` for streaming; graceful fallback if ffmpeg is not installed
-- Reel thumbnails now receive logo watermark on every create and update
-
-**Mobile PWA — Service Layer Parity**
-- `api_portfolio_upload` now delegates to `PortfolioItemService.create()` instead of creating `PortfolioItem` directly — mobile uploads are now identical to desktop uploads
-- `api_reel_upload` now delegates to `ReelService.create()` instead of creating `Reel` directly — same compression and watermark pipeline applied on mobile
-
-**Mobile PWA — Permission Audit (6 fixes)**
-- Admin home stats now show global aggregate counts across all clients (previously showed first-client only)
-- Recent activity feed rebuilt to use card-based format (name, status, status_display, updated_at) matching the template's expected data shape
-- Home Block 2 now visible to all 4 roles: admins see "Recent Client Updates" with client list link; clients/client_staff see "My Groups" with groups overview link
-- Pending and Verified status tabs in card list now gated by `perm_idcard_pending_list` / `perm_idcard_verified_list` — tabs without permission render as plain text
-- `client_staff` users now see **Profile** link in the bottom navigation instead of **Staff** (they cannot manage staff)
-- Clients list page header now shows "Assigned Clients" for admin_staff and "Active Clients" for super_admin
-
-**Mobile PWA — Website Manage Page**
-- New `website_manage.html` page for managing portfolio and reels from mobile
-- Portfolio tab: category grid with per-category upload sheet, camera/gallery input, multi-image preview strip, bulk upload
-- Reels tab: scrollable reel grid, FAB to add new reel, title + video + optional thumbnail, full pipeline applied on upload
-- Accessible to super_admin and admin_staff only (`perm_website_add` required)
-
-### v2.17.x and earlier
+### v2.18.x and earlier
 
 See git log for previous changes.
 

@@ -178,7 +178,7 @@
           {# Client Dropdown #}
           <template x-if="inputMode === 'client'">
             <div class="client-dropdown-wrapper">
-              <select x-model="selectedClientId" @change="onClientSelect()" class="client-dropdown" :disabled="clientsLoading || processing || folderLocked">
+              <select x-model="selectedClientId" @change="onClientSelect()" class="form-select client-dropdown" :disabled="clientsLoading || processing || folderLocked">
                 <option value=""> -  Select a client  - </option>
                 <template x-for="client in clients" :key="client.id">
                   <option :value="client.id" x-text="client.name"></option>
@@ -255,7 +255,7 @@
                 <span class="pipeline-step-label">Rename</span>
               </label>
               <div class="pipeline-step-options" x-show="pipeline.rename">
-                <select x-model="pipeline.renameOperation" class="pipeline-select">
+                <select x-model="pipeline.renameOperation" class="form-select pipeline-select">
                   <option value="remove_camera_prefix">Remove camera prefix</option>
                   <option value="sequential">Sequential (001, 002...)</option>
                   <option value="add_prefix">Add prefix</option>
@@ -532,7 +532,7 @@
               <label class="rename-label">
                 <i class="fa-solid fa-cog"></i> Rename Operation
               </label>
-              <select x-model="renameModal.operation" class="rename-select" @change="updateRenameParams()">
+              <select x-model="renameModal.operation" class="form-select rename-select" @change="updateRenameParams()">
                 <option value="add_prefix">Add Prefix</option>
                 <option value="add_suffix">Add Suffix</option>
                 <option value="replace_text">Replace Text</option>

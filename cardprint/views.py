@@ -30,6 +30,7 @@ from django.urls import reverse
 
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
+from core.services.activity_service import ActivityService
 from core.views.base import get_user_role, require_any_admin
 from core.services import IDCardService
 from accounts.rate_limit import rate_limit
@@ -988,6 +989,15 @@ def api_print_send(request, table_id):
             table=table,
             status='approved',
         ).update(status='download')
+        for card_id in valid_ids:
+            ActivityService.log(
+                'card_status',
+                'Card moved from Approved to Download (sent to generate list)',
+                user=request.user,
+                target_model='IDCard',
+                target_id=card_id,
+                target_name=f'Card #{card_id}',
+            )
 
     return JsonResponse({
         'status': 'ok',
@@ -1308,6 +1318,16 @@ def api_print_retrieve_generate(request, table_id):
             status='generate_list',
         ).update(status='pool', updated_at=timezone.now())
 
+    for card_id in card_ids:
+        ActivityService.log(
+            'card_status',
+            'Card moved from Generate List to Approved',
+            user=request.user,
+            target_model='IDCard',
+            target_id=card_id,
+            target_name=f'Card #{card_id}',
+        )
+
     return JsonResponse({
         'status': 'ok',
         'message': f'{updated} item(s) moved back to approved list',
@@ -1363,6 +1383,16 @@ def api_print_retrieve_finalized(request, table_id):
             table=table,
             status='finalized',
         ).update(status='pool', updated_at=timezone.now())
+
+    for card_id in card_ids:
+        ActivityService.log(
+            'card_status',
+            'Card moved from Finalized to Pending',
+            user=request.user,
+            target_model='IDCard',
+            target_id=card_id,
+            target_name=f'Card #{card_id}',
+        )
 
     return JsonResponse({
         'status': 'ok',

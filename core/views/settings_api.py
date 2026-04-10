@@ -11,6 +11,7 @@ Architecture rule: Views are ULTRA-THIN.
 """
 import json
 import logging
+import time
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 def api_get_profile(request):
     """Get current user's profile data."""
     user = request.user
+    security_settings = UserProfileService.get_security_settings(user)
     return JsonResponse({
         'success': True,
         'profile': {
@@ -40,6 +42,7 @@ def api_get_profile(request):
             'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
             'profile_image': None,  # profile_image removed in Phase 1 refactor
             'member_since': user.date_joined.strftime('%b %Y') if user.date_joined else '',
+            'security_settings': security_settings,
         }
     })
 
@@ -86,6 +89,35 @@ def api_change_password(request):
 
 @login_required
 @require_http_methods(["POST"])
+@rate_limit(max_requests=20, window_seconds=60, key_prefix='security_settings')
+def api_update_security_settings(request):
+    """Persist current user's security preference toggles."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    try:
+        success, message, security_settings = UserProfileService.update_security_settings(request.user, data)
+        if not success:
+            return JsonResponse({'success': False, 'message': message}, status=400)
+
+        timeout_minutes = int(security_settings.get('session_timeout_minutes') or 0)
+        request.session['_user_idle_timeout_seconds'] = max(timeout_minutes, 0) * 60
+        request.session['_last_activity'] = time.time()
+
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'security_settings': security_settings,
+        })
+    except Exception as e:
+        logger.exception("Settings API error (update_security_settings): %s", e)
+        return JsonResponse({'success': False, 'message': 'An error occurred'})
+
+
+@login_required
+@require_http_methods(["POST"])
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='profile_image')
 def api_upload_profile_image(request):
     """Upload profile image."""
@@ -119,6 +151,7 @@ __all__ = [
     'api_get_profile',
     'api_update_profile',
     'api_change_password',
+    'api_update_security_settings',
     'api_upload_profile_image',
     'api_remove_profile_image',
 ]

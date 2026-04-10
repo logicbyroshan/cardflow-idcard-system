@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     NS.permissionFields = [
         // Client
         'perm-idcard-client-list',
+        'perm-manage-client-staff',
         // Settings
         'perm-idcard-setting-list', 'perm-idcard-setting-add', 'perm-idcard-setting-edit',
         'perm-idcard-setting-delete', 'perm-idcard-setting-status',
@@ -36,7 +37,11 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm-idcard-created-at', 'perm-idcard-updated-at',
         'perm-idcard-delete-from-pool', 'perm-delete-all-idcard',
         'perm-idcard-retrieve',
-        'perm-mobile-app'
+        'perm-mobile-app',
+        // Manage Panel
+        'perm-manage-panel-backup', 'perm-manage-panel-email',
+        // Manage Website sections
+        'perm-manage-website-clients', 'perm-manage-website-portfolio'
     ];
 
     // ==================== FORM STATUS DROPDOWN ====================

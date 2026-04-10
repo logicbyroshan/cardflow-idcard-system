@@ -17,8 +17,10 @@ import hmac
 import json
 import logging
 import os
+import time
 
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -32,16 +34,23 @@ logger = logging.getLogger(__name__)
 # Set this as an environment variable on the production server AND in
 # the GitHub repo secrets (CROPPER_WEBHOOK_SECRET).
 WEBHOOK_SECRET = os.getenv("CROPPER_WEBHOOK_SECRET", "")
+WEBHOOK_MAX_BODY_BYTES = int(os.getenv("CROPPER_WEBHOOK_MAX_BODY_BYTES", "65536"))
+WEBHOOK_MAX_AGE_SECONDS = int(os.getenv("CROPPER_WEBHOOK_MAX_AGE_SECONDS", "300"))
+WEBHOOK_RATE_LIMIT_PER_MIN = int(os.getenv("CROPPER_WEBHOOK_RATE_LIMIT_PER_MIN", "30"))
+WEBHOOK_ALLOW_LEGACY_AUTH = os.getenv("CROPPER_WEBHOOK_ALLOW_LEGACY_AUTH", "false").strip().lower() in ('1', 'true', 'yes')
 
 
 def _verify_webhook(request) -> bool:
     """
     Verify the request is from a trusted source.
 
-    Accepts two auth methods:
-    1.  ``X-Webhook-Secret`` header — simple shared secret comparison.
-    2.  ``X-Hub-Signature-256`` header — GitHub-style HMAC-SHA256 of the
-        body (used when the webhook is triggered by a GitHub Action).
+    Preferred (replay-safe) auth:
+    1. ``X-Hub-Signature-256`` with HMAC over ``"{timestamp}.{body}"``
+       (or raw body for compatibility), plus
+    2. ``X-Webhook-Timestamp`` and optional ``X-Webhook-Nonce``.
+
+    Legacy auth (optional, compatibility):
+    - ``X-Webhook-Secret`` header only.
 
     Returns True if the request is authenticated, False otherwise.
     """
@@ -49,23 +58,78 @@ def _verify_webhook(request) -> bool:
         logger.warning("CROPPER_WEBHOOK_SECRET is not configured — rejecting webhook.")
         return False
 
-    # Method 1: simple shared secret header
-    header_secret = request.headers.get("X-Webhook-Secret", "")
-    if header_secret and hmac.compare_digest(header_secret, WEBHOOK_SECRET):
-        return True
+    timestamp_raw = (request.headers.get("X-Webhook-Timestamp") or "").strip()
+    nonce = (request.headers.get("X-Webhook-Nonce") or "").strip()
 
-    # Method 2: HMAC-SHA256 (GitHub style)
+    timestamp_value = None
+    if timestamp_raw:
+        try:
+            timestamp_value = int(timestamp_raw)
+        except (TypeError, ValueError):
+            return False
+
+        now = int(time.time())
+        if abs(now - timestamp_value) > WEBHOOK_MAX_AGE_SECONDS:
+            logger.warning("Webhook rejected: stale timestamp (age > %ss).", WEBHOOK_MAX_AGE_SECONDS)
+            return False
+
+        if nonce:
+            nonce_key = f"cropper:webhook:nonce:{timestamp_raw}:{nonce}"
+            if not cache.add(nonce_key, 1, WEBHOOK_MAX_AGE_SECONDS):
+                logger.warning("Webhook rejected: replay nonce detected.")
+                return False
+
+    # Method 1: HMAC-SHA256 (preferred)
     sig_header = request.headers.get("X-Hub-Signature-256", "")
     if sig_header:
-        expected = "sha256=" + hmac.digest(
+        expected_raw = "sha256=" + hmac.digest(
             WEBHOOK_SECRET.encode(),
             request.body,
             'sha256',
         ).hex()
-        if hmac.compare_digest(sig_header, expected):
+        expected_timestamped = None
+        if timestamp_raw:
+            signed_payload = timestamp_raw.encode('utf-8') + b'.' + request.body
+            expected_timestamped = "sha256=" + hmac.digest(
+                WEBHOOK_SECRET.encode(),
+                signed_payload,
+                'sha256',
+            ).hex()
+
+        if (
+            (expected_timestamped and hmac.compare_digest(sig_header, expected_timestamped))
+            or hmac.compare_digest(sig_header, expected_raw)
+        ):
+            return True
+
+    # Method 2: simple shared secret header (legacy compatibility)
+    if WEBHOOK_ALLOW_LEGACY_AUTH:
+        header_secret = request.headers.get("X-Webhook-Secret", "")
+        if header_secret and hmac.compare_digest(header_secret, WEBHOOK_SECRET):
             return True
 
     return False
+
+
+def _allow_webhook_rate(request) -> bool:
+    """Best-effort per-IP rate limit to reduce brute-force/noise traffic."""
+    ip = (
+        request.META.get("HTTP_X_FORWARDED_FOR", "").split(',')[0].strip()
+        or request.META.get("REMOTE_ADDR", "")
+        or "unknown"
+    )
+    minute_bucket = int(time.time() // 60)
+    key = f"cropper:webhook:rl:{ip}:{minute_bucket}"
+
+    try:
+        created = cache.add(key, 1, 70)
+        if created:
+            return True
+        hits = int(cache.incr(key) or 0)
+        return hits <= WEBHOOK_RATE_LIMIT_PER_MIN
+    except Exception:
+        # If cache is unavailable, avoid hard-failing valid releases.
+        return True
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -87,6 +151,12 @@ def api_cropper_release_webhook(request):
 
     Auth: ``X-Webhook-Secret`` header must match ``CROPPER_WEBHOOK_SECRET``.
     """
+    if len(request.body) > WEBHOOK_MAX_BODY_BYTES:
+        return JsonResponse({"ok": False, "error": "Payload too large."}, status=413)
+
+    if not _allow_webhook_rate(request):
+        return JsonResponse({"ok": False, "error": "Too many requests."}, status=429)
+
     if not _verify_webhook(request):
         return JsonResponse(
             {"ok": False, "error": "Unauthorized"},

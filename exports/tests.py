@@ -130,6 +130,18 @@ class ExportViewHelperTests(TestCase):
         ids = _get_card_ids_from_request(request)
         self.assertEqual(ids, [1, 2, 3])
 
+    def test_get_status_from_request_supports_json_charset_content_type(self):
+        from exports.views import _get_status_from_request
+
+        request = self.factory.post(
+            '/panel/exports/pdf/1/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json; charset=utf-8',
+        )
+
+        status = _get_status_from_request(request)
+        self.assertEqual(status, 'pending')
+
     def test_get_card_ids_normalizes_and_deduplicates(self):
         from exports.views import _get_card_ids_from_request
 
@@ -141,6 +153,20 @@ class ExportViewHelperTests(TestCase):
 
         ids = _get_card_ids_from_request(request)
         self.assertEqual(ids, [1, 2])
+
+    def test_get_card_ids_rejects_oversized_json_body(self):
+        from exports import views as export_views
+
+        request = self.factory.post(
+            '/panel/exports/xlsx/1/',
+            data=json.dumps({'card_ids': [1, 2, 3]}),
+            content_type='application/json',
+        )
+
+        with mock.patch.object(export_views, 'MAX_EXPORT_JSON_BODY_BYTES', 8):
+            ids = export_views._get_card_ids_from_request(request)
+
+        self.assertIsNone(ids)
 
     def test_get_card_ids_fallback_by_status_when_not_supplied(self):
         from exports.views import _get_card_ids_from_request
@@ -177,6 +203,162 @@ class ExportViewHelperTests(TestCase):
         ids = _get_card_ids_from_request(request, table_id=self.table.id)
         self.assertIsNone(ids)
 
+    def test_get_card_ids_fallback_class_section_uses_canonical_class_matching(self):
+        from idcards.models import IDCard
+        from exports.views import _get_card_ids_from_request
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+            {'name': 'SECTION', 'type': 'section', 'order': 3},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table).delete()
+        matched = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'A', 'CLASS': 'KG-I', 'SECTION': 'A'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'B', 'CLASS': 'KG-II', 'SECTION': 'A'},
+            status='pending',
+        )
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'status': 'pending', 'class': 'KG1', 'section': 'A'}),
+            content_type='application/json',
+        )
+        request.user = self.admin
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(ids, [matched.id])
+
+    def test_get_card_ids_fallback_respects_client_staff_row_scope(self):
+        from client.models import Client
+        from idcards.models import IDCard
+        from staff.models import Staff
+        from exports.views import _get_card_ids_from_request
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table).delete()
+        allowed = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'Allowed', 'CLASS': 'KG-I'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'Blocked', 'CLASS': 'KG-II'},
+            status='pending',
+        )
+
+        staff_user = User.objects.create_user(
+            username='export-cs-scope@test.com',
+            email='export-cs-scope@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        # Keep parent client profile present and active.
+        Client.objects.filter(pk=self.client_obj.pk).update(status='active')
+        Staff.objects.create(
+            user=staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            assigned_table_ids=[self.table.id],
+            allowed_classes=['KG1'],
+            perm_idcard_bulk_download=True,
+            perm_idcard_pending_list=True,
+        )
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+        )
+        request.user = staff_user
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(ids, [allowed.id])
+
+    def test_get_card_ids_fallback_ignores_date_range_for_non_download_status(self):
+        from exports.views import _get_card_ids_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({
+                'status': 'pending',
+                'from': '2099-01-01T00:00:00',
+                'to': '2099-12-31T23:59:59',
+            }),
+            content_type='application/json',
+        )
+        request.user = self.admin
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(len(ids), 5)
+
+    def test_get_all_card_ids_ignores_date_range_for_non_download_status(self):
+        from core.services import IDCardService
+
+        result = IDCardService.get_all_card_ids(
+            self.table.id,
+            status_filter='pending',
+            from_date='2099-01-01T00:00:00',
+            to_date='2099-12-31T23:59:59',
+        )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.data.get('total_count'), 5)
+
+    def test_get_card_ids_fallback_respects_image_filter(self):
+        from idcards.models import IDCard
+        from exports.views import _get_card_ids_from_request
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'image', 'order': 2},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table).delete()
+        complete = IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'A', 'PHOTO': 'clients_imgs/a.jpg'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'B', 'PHOTO': 'PENDING:upload'},
+            status='pending',
+        )
+        IDCard.objects.create(
+            table=self.table,
+            field_data={'NAME': 'C', 'PHOTO': 'NOT_FOUND'},
+            status='pending',
+        )
+
+        request = self.factory.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({
+                'status': 'pending',
+                'image_column': 'PHOTO',
+                'image_condition': 'complete',
+            }),
+            content_type='application/json',
+        )
+        request.user = self.admin
+
+        ids = _get_card_ids_from_request(request, table_id=self.table.id)
+        self.assertEqual(ids, [complete.id])
+
     def test_get_image_rename_options_filters_invalid_pairs(self):
         from exports.views import _get_image_rename_options_from_request
 
@@ -198,6 +380,102 @@ class ExportViewHelperTests(TestCase):
         opts = _get_image_rename_options_from_request(request)
         self.assertTrue(opts['enabled'])
         self.assertEqual(opts['image_name_fields'], {'PHOTO': 'Student Name'})
+
+    def test_get_image_rename_options_accepts_field_combinations(self):
+        from exports.views import _get_image_rename_options_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'rename_options': {
+                    'enabled': True,
+                    'image_name_fields': {
+                        ' photo ': [' Student Name ', ' Class ', '', 'student name'],
+                        'father_photo': ['Father Name', None],
+                        'x': [],
+                    },
+                }
+            }),
+            content_type='application/json',
+        )
+
+        opts = _get_image_rename_options_from_request(request)
+        self.assertTrue(opts['enabled'])
+        self.assertEqual(
+            opts['image_name_fields'],
+            {
+                'PHOTO': ['Student Name', 'Class'],
+                'FATHER_PHOTO': ['Father Name'],
+            },
+        )
+
+    def test_get_image_rename_options_accepts_selected_image_field(self):
+        from exports.views import _get_image_rename_options_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'rename_options': {
+                    'enabled': True,
+                    'selected_image_field': ' photo ',
+                    'image_name_fields': {
+                        'photo': ['Student Name'],
+                    },
+                }
+            }),
+            content_type='application/json',
+        )
+
+        opts = _get_image_rename_options_from_request(request)
+        self.assertTrue(opts['enabled'])
+        self.assertEqual(opts['selected_image_field'], 'photo')
+        self.assertEqual(opts['image_name_fields'], {'PHOTO': ['Student Name']})
+
+    def test_get_image_rename_options_supports_generate_mode_and_compression(self):
+        from exports.views import _get_image_rename_options_from_request
+
+        request = self.factory.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'rename_options': {
+                    'enabled': True,
+                    'mode': 'generate',
+                    'output_format': 'pdf_zip',
+                    'selected_image_field': ' photo ',
+                    'image_name_fields': {
+                        'photo': [' Student Name ', ' Class ', 'Section'],
+                    },
+                    'generate_options': {
+                        'enabled': True,
+                        'name_field': ' Student Name ',
+                        'detail_fields': ['Class', 'Section', 'Class', ''],
+                        'max_detail_lines': 9,
+                        'compress_enabled': True,
+                        'target_size_kb': 999,
+                    },
+                }
+            }),
+            content_type='application/json',
+        )
+
+        opts = _get_image_rename_options_from_request(request)
+        self.assertTrue(opts['enabled'])
+        self.assertEqual(opts['mode'], 'generate')
+        self.assertEqual(opts['output_format'], 'pdf_zip')
+        self.assertEqual(opts['selected_image_field'], 'photo')
+        self.assertEqual(opts['image_name_fields'], {'PHOTO': ['Student Name', 'Class', 'Section']})
+
+        gen_opts = opts.get('generate_options') or {}
+        self.assertTrue(gen_opts.get('enabled'))
+        self.assertEqual(gen_opts.get('name_field'), 'Student Name')
+        self.assertEqual(gen_opts.get('detail_fields'), ['Class', 'Section'])
+        self.assertEqual(gen_opts.get('max_detail_lines'), 1)
+        self.assertEqual(gen_opts.get('detail_mode'), 'class_section')
+        self.assertEqual(gen_opts.get('class_field'), 'Class')
+        self.assertEqual(gen_opts.get('section_field'), 'Section')
+        self.assertEqual(gen_opts.get('size_preset'), 'size_23x34')
+        self.assertTrue(gen_opts.get('compress_enabled'))
+        self.assertEqual(gen_opts.get('target_size_kb'), 200)
 
     def test_lock_acquire_and_release(self):
         from exports.views import _acquire_export_lock, _release_export_lock
@@ -265,6 +543,41 @@ class ExportServiceAdvancedTests(TestCase):
 
         self.assertEqual(cards_for_table1.count(), 2)
         self.assertEqual(cards_for_table2.count(), 0)
+
+    def test_get_scoped_cards_client_staff_respects_table_row_scope(self):
+        from exports.services import ExportService
+        from staff.models import Staff
+        from idcards.models import IDCard
+
+        self.table1.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'class', 'order': 2},
+        ]
+        self.table1.save(update_fields=['fields'])
+
+        IDCard.objects.filter(table=self.table1).delete()
+        keep = IDCard.objects.create(table=self.table1, field_data={'NAME': 'A', 'CLASS': 'KG-I'}, status='pending')
+        IDCard.objects.create(table=self.table1, field_data={'NAME': 'B', 'CLASS': 'KG-II'}, status='pending')
+
+        cs_user = User.objects.create_user(
+            username='svc-clientstaff@test.com',
+            email='svc-clientstaff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=cs_user,
+            staff_type='client_staff',
+            client=self.client1,
+            assigned_table_ids=[self.table1.id],
+            allowed_classes=['KG1'],
+            perm_idcard_bulk_download=True,
+            perm_idcard_pending_list=True,
+        )
+
+        service = ExportService(cs_user)
+        cards = list(service.get_scoped_cards(self.table1).values_list('id', flat=True))
+        self.assertEqual(cards, [keep.id])
 
     def test_prepare_context_permission_denied_when_no_bulk_download(self):
         from exports.services import ExportService
@@ -369,6 +682,31 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         self.assertTrue(response.json()['success'])
         rename_opts = mocked_export.call_args.kwargs['rename_options']
         self.assertEqual(rename_opts['image_name_fields'], {'PHOTO': 'Name'})
+
+    def test_images_export_passes_field_combination_rename_options(self):
+        self.client.login(username='exadmin@test.com', password='adminpass1')
+
+        fake_zip_result = object()
+        with mock.patch('exports.views.ExportService.export_images', return_value=fake_zip_result) as mocked_export:
+            with mock.patch('exports.views.zip_result_to_dict', return_value={'success': True, 'zip_files': []}):
+                response = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({
+                        'card_ids': [1],
+                        'rename_options': {
+                            'enabled': True,
+                            'image_name_fields': {
+                                'photo': ['Name', 'Father'],
+                            },
+                        },
+                    }),
+                    content_type='application/json',
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        rename_opts = mocked_export.call_args.kwargs['rename_options']
+        self.assertEqual(rename_opts['image_name_fields'], {'PHOTO': ['Name', 'Father']})
 
     def test_images_export_large_inline_falls_back_to_disk_urls(self):
         from staff.models import Staff
@@ -508,7 +846,13 @@ class ExportDeepLimitAndRoleTests(TestCase):
         )
         self.client_obj = Client.objects.create(user=self.client_user, name='Deep Client')
         self.client_obj.perm_idcard_bulk_download = True
-        self.client_obj.save(update_fields=['perm_idcard_bulk_download'])
+        self.client_obj.perm_idcard_approved_list = True
+        self.client_obj.perm_idcard_download_list = True
+        self.client_obj.save(update_fields=[
+            'perm_idcard_bulk_download',
+            'perm_idcard_approved_list',
+            'perm_idcard_download_list',
+        ])
 
         self.admin_staff_user = User.objects.create_user(
             username='deep-adminstaff@test.com',
@@ -534,6 +878,8 @@ class ExportDeepLimitAndRoleTests(TestCase):
             staff_type='client_staff',
             client=self.client_obj,
             perm_idcard_bulk_download=True,
+            perm_idcard_approved_list=True,
+            perm_idcard_download_list=True,
         )
 
         group = IDCardGroup.objects.create(client=self.client_obj, name='Deep Group')
@@ -550,6 +896,56 @@ class ExportDeepLimitAndRoleTests(TestCase):
             field_data={'NAME': 'Student A', 'PHOTO': 'clients_imgs/deep/photo_a.jpg'},
             status='pending',
         )
+
+    def test_export_pdf_requires_status_list_permission(self):
+        from idcards.models import IDCard
+
+        self.client.login(username='deep-adminstaff@test.com', password='pass1234')
+        card_id = IDCard.objects.filter(table=self.table).values_list('id', flat=True).first()
+
+        response = self.client.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'card_ids': [card_id], 'status': 'pending'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_export_pdf_client_staff_blocked_for_unassigned_table(self):
+        from idcards.models import IDCard, IDCardGroup, IDCardTable
+        from staff.models import Staff
+
+        other_group = IDCardGroup.objects.create(client=self.client_obj, name='Other Group')
+        other_table = IDCardTable.objects.create(
+            group=other_group,
+            name='Other Table',
+            fields=[{'name': 'NAME', 'type': 'text', 'order': 1}],
+        )
+        IDCard.objects.create(table=other_table, field_data={'NAME': 'X'}, status='pending')
+
+        restricted_user = User.objects.create_user(
+            username='deep-restricted-staff@test.com',
+            email='deep-restricted-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=restricted_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+            assigned_table_ids=[other_table.id],
+            perm_idcard_bulk_download=True,
+            perm_idcard_pending_list=True,
+        )
+
+        self.client.logout()
+        self.client.login(username='deep-restricted-staff@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/exports/pdf/{self.table.id}/',
+            data=json.dumps({'status': 'pending'}),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def _mock_file_response(self):
         return type('Res', (), {'success': True, 'response': HttpResponse(b'ok')})
@@ -657,6 +1053,243 @@ class ExportDeepLimitAndRoleTests(TestCase):
         self.assertIn('1 GB inline ZIP limit', over_limit_blocked.message)
         self.assertTrue(super_admin_ok.success)
 
+    def test_zip_export_uses_combined_rename_fields_for_filename(self):
+        from exports.zip import ZipExporter
+        import base64
+        import io
+        import zipfile
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'image_name_fields': {
+                'PHOTO': ['NAME', 'UNKNOWN_FIELD'],
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = b'a' * 256
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/original_photo.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+
+        self.assertTrue(any(name.startswith('PHOTO/Student_A') for name in names), names)
+
+    def test_zip_export_rename_mode_limits_to_selected_image_field(self):
+        from exports.zip import ZipExporter
+        import base64
+        import io
+        import zipfile
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'image', 'order': 2},
+            {'name': 'PHOTO_2', 'type': 'image', 'order': 3},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        card = self.table.id_cards.first()
+        card.field_data = {
+            'NAME': 'Student A',
+            'PHOTO': 'clients_imgs/deep/photo_a.jpg',
+            'PHOTO_2': 'clients_imgs/deep/photo_b.jpg',
+        }
+        card.save(update_fields=['field_data'])
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'selected_image_field': 'PHOTO',
+            'image_name_fields': {
+                'PHOTO': ['NAME'],
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = b'a' * 256
+
+        def _mock_image_path(*args, **kwargs):
+            card_obj = kwargs.get('card') if 'card' in kwargs else (args[0] if len(args) > 0 else None)
+            field_name = kwargs.get('field_name') if 'field_name' in kwargs else (args[1] if len(args) > 1 else '')
+            return (card_obj.field_data or {}).get(field_name, '')
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', side_effect=_mock_image_path):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+
+        self.assertTrue(any(name.startswith('PHOTO/') for name in names), names)
+        self.assertFalse(any(name.startswith('PHOTO_2/') for name in names), names)
+
+    def test_zip_export_generate_mode_builds_compressed_passport_images(self):
+        from exports.zip import ZipExporter
+        from PIL import Image
+        import base64
+        import io
+        import zipfile
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'text', 'order': 2},
+            {'name': 'SECTION', 'type': 'text', 'order': 3},
+            {'name': 'PHOTO', 'type': 'image', 'order': 4},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        card = self.table.id_cards.first()
+        card.field_data = {
+            'NAME': 'Student A',
+            'CLASS': '10',
+            'SECTION': 'A',
+            'PHOTO': 'clients_imgs/deep/photo_a.jpg',
+        }
+        card.save(update_fields=['field_data'])
+
+        img_buf = io.BytesIO()
+        Image.new('RGB', (900, 1200), (88, 112, 158)).save(img_buf, format='JPEG', quality=92)
+        valid_jpg_bytes = img_buf.getvalue()
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'mode': 'generate',
+            'output_format': 'zip',
+            'selected_image_field': 'PHOTO',
+            'image_name_fields': {
+                'PHOTO': ['NAME', 'CLASS', 'SECTION'],
+            },
+            'generate_options': {
+                'enabled': True,
+                'size_preset': 'size_23x34',
+                'name_field': 'NAME',
+                'detail_mode': 'class_section',
+                'class_field': 'CLASS',
+                'section_field': 'SECTION',
+                'detail_fields': ['CLASS', 'SECTION'],
+                'max_detail_lines': 1,
+                'compress_enabled': True,
+                'target_size_kb': 40,
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = valid_jpg_bytes
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/photo_a.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+            self.assertTrue(any(name.startswith('PHOTO/Student_A') and name.lower().endswith('.jpg') for name in names), names)
+
+            generated_name = next(name for name in names if name.startswith('PHOTO/Student_A'))
+            generated_payload = zf.read(generated_name)
+            self.assertLessEqual(len(generated_payload), 40 * 1024)
+
+        with Image.open(io.BytesIO(generated_payload)) as generated_image:
+            self.assertEqual(generated_image.size, (272, 402))
+
+    def test_pdf_zip_generate_mode_exports_generated_pages(self):
+        from exports.zip import ZipExporter
+        from PIL import Image
+        import base64
+        import io
+        import zipfile
+
+        self.table.fields = [
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'CLASS', 'type': 'text', 'order': 2},
+            {'name': 'SECTION', 'type': 'text', 'order': 3},
+            {'name': 'PHOTO', 'type': 'image', 'order': 4},
+        ]
+        self.table.save(update_fields=['fields'])
+
+        self.card.field_data = {
+            'NAME': 'Student A',
+            'CLASS': '10',
+            'SECTION': 'A',
+            'PHOTO': 'clients_imgs/deep/photo_a.jpg',
+        }
+        self.card.save(update_fields=['field_data'])
+
+        img_buf = io.BytesIO()
+        Image.new('RGB', (900, 1200), (88, 112, 158)).save(img_buf, format='JPEG', quality=92)
+        valid_jpg_bytes = img_buf.getvalue()
+
+        exporter = ZipExporter()
+        cards = self.table.id_cards.all()
+        rename_options = {
+            'enabled': True,
+            'mode': 'generate',
+            'output_format': 'pdf_zip',
+            'selected_image_field': 'PHOTO',
+            'image_name_fields': {
+                'PHOTO': ['NAME', 'CLASS', 'SECTION'],
+            },
+            'generate_options': {
+                'enabled': True,
+                'size_preset': 'size_37x53',
+                'name_field': 'NAME',
+                'detail_mode': 'class_section',
+                'class_field': 'CLASS',
+                'section_field': 'SECTION',
+                'compress_enabled': False,
+                'target_size_kb': 120,
+            },
+        }
+
+        mocked_file = mock.MagicMock()
+        mocked_file.__enter__.return_value = mocked_file
+        mocked_file.__exit__.return_value = False
+        mocked_file.read.return_value = valid_jpg_bytes
+
+        with mock.patch('exports.zip.is_valid_image_path', return_value=True):
+            with mock.patch('exports.zip.ImageService.get_image_path_for_card', return_value='clients_imgs/deep/photo_a.jpg'):
+                with mock.patch('exports.zip.default_storage.open', return_value=mocked_file):
+                    result = exporter.export_images(self.table, cards, rename_options=rename_options, allow_large_base64=True)
+
+        self.assertTrue(result.success)
+        self.assertEqual(len(result.zip_files), 1)
+
+        zip_payload = base64.b64decode(result.zip_files[0].data)
+        with zipfile.ZipFile(io.BytesIO(zip_payload), 'r') as zf:
+            names = zf.namelist()
+            self.assertTrue(any(name.lower().endswith('.pdf') for name in names), names)
+            pdf_name = next(name for name in names if name.lower().endswith('.pdf'))
+            pdf_payload = zf.read(pdf_name)
+            self.assertGreater(len(pdf_payload), 500)
+
     def test_pdf_zip_1gb_boundary_and_super_admin_bypass(self):
         from exports.zip import ZipExporter, MAX_BASE64_ZIP_BYTES
 
@@ -678,6 +1311,27 @@ class ExportDeepLimitAndRoleTests(TestCase):
         self.assertFalse(blocked.success)
         self.assertIn('1 GB inline ZIP limit', blocked.message)
         self.assertTrue(allowed_super.success)
+
+
+class ColumnSpecAliasCoverageTests(SimpleTestCase):
+    def test_emergency_contact_abbrev_maps_to_non_wrapping_spec(self):
+        from exports.column_spec import classify_column, get_column_spec
+
+        self.assertEqual(classify_column('EMERG CONT NO'), 'emergency_mobile')
+        self.assertEqual(classify_column('EMERGENCY CONTACT NUMBER'), 'emergency_mobile')
+        self.assertFalse(get_column_spec('EMERG CONT NO').wrap)
+
+    def test_transport_aliases_map_to_bus_route(self):
+        from exports.column_spec import classify_column
+
+        self.assertEqual(classify_column('TRANSPORT'), 'bus_route')
+        self.assertEqual(classify_column('TRANSPOR'), 'bus_route')
+        self.assertEqual(classify_column('TRAN SPORT'), 'bus_route')
+
+    def test_gender_alias_accepts_spaced_variant(self):
+        from exports.column_spec import classify_column
+
+        self.assertEqual(classify_column('GEN DER'), 'gender')
 
 
 class WordLayoutTuningTests(SimpleTestCase):

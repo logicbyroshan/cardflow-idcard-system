@@ -73,6 +73,7 @@ class ClientService(BaseService):
     @classmethod
     def serialize(cls, client: Client, include_permissions: bool = True) -> Dict[str, Any]:
         """Serialize Client instance to dict"""
+        logo_url = client.website_logo.url if client.website_logo else None
         data = {
             'id': client.id,
             'name': client.name,
@@ -83,7 +84,9 @@ class ClientService(BaseService):
             'state': client.state or '',
             'pincode': client.pincode or '',
             'status': client.status,
-            'photo_url': None,  # Phase 1: Photo field removed - using avatar placeholder
+            # Keep photo_url key for existing UI compatibility.
+            'photo_url': logo_url,
+            'website_logo_url': logo_url,
             'created_at': localtime(client.created_at).strftime('%d-%m-%Y %H:%M'),
             'updated_at': localtime(client.updated_at).strftime('%d-%m-%Y %H:%M'),
         }
@@ -99,6 +102,12 @@ class ClientService(BaseService):
         """Hide internal placeholder emails from API payloads."""
         value = (email or '').strip()
         return '' if value.endswith('@noemail.local') else value
+
+    @staticmethod
+    def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
+        """Return a safe error response while retaining full server-side diagnostics."""
+        logger.exception('ClientService.%s failed: %s', action, exc)
+        return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
     
     @classmethod
     def create(cls, data: Dict[str, Any], request=None, photo=None) -> ServiceResult:
@@ -276,7 +285,7 @@ class ClientService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('create', e)
     
     @classmethod
     def get(cls, client_id: int, include_permissions: bool = True) -> ServiceResult:
@@ -288,7 +297,7 @@ class ClientService(BaseService):
                 data={'client': cls.serialize(client, include_permissions)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get', e)
     
     @classmethod
     def update(cls, client_id: int, data: Dict[str, Any], photo=None) -> ServiceResult:
@@ -367,7 +376,7 @@ class ClientService(BaseService):
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('update', e)
     
     @classmethod
     def _cascade_revoked_permissions(cls, client: Client, revoked_permissions: List[str]) -> None:
@@ -441,7 +450,7 @@ class ClientService(BaseService):
                 message=f'Client "{client_name}" deleted successfully!'
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('delete', e)
     
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
@@ -561,7 +570,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('toggle_status', e)
     
     @classmethod
     def _cascade_deactivate_staff(cls, client: Client) -> int:
@@ -598,7 +607,7 @@ class ClientService(BaseService):
                 data={'clients': clients, 'total': len(clients)}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('list_all', e)
     
     @classmethod
     def get_staff(cls, client_id: int) -> ServiceResult:
@@ -620,6 +629,13 @@ class ClientService(BaseService):
                     active_count += 1
                 else:
                     inactive_count += 1
+
+                # Include all permission booleans so UI can render current staff grants.
+                staff_permissions = {
+                    field.name: bool(getattr(staff, field.name, False))
+                    for field in staff._meta.fields
+                    if field.name.startswith('perm_')
+                }
                 
                 staff_list.append({
                     'id': staff.id,
@@ -633,14 +649,7 @@ class ClientService(BaseService):
                     'status': 'active' if is_active else 'inactive',
                     'status_display': 'Active' if is_active else 'Inactive',
                     'created_at': staff.created_at.strftime('%d-%m-%Y'),
-                    # ID Card Client List Permission
-                    'perm_idcard_client_list': staff.perm_idcard_client_list,
-                    # ID Card Setting Permissions
-                    'perm_idcard_setting_list': staff.perm_idcard_setting_list,
-                    'perm_idcard_setting_add': staff.perm_idcard_setting_add,
-                    'perm_idcard_setting_edit': staff.perm_idcard_setting_edit,
-                    'perm_idcard_setting_delete': staff.perm_idcard_setting_delete,
-                    'perm_idcard_setting_status': staff.perm_idcard_setting_status,
+                    **staff_permissions,
                 })
             
             return ServiceResult(
@@ -654,7 +663,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('get_staff', e)
 
     @classmethod
     def toggle_client_staff_status(cls, client_id: int, staff_id: int) -> ServiceResult:
@@ -690,7 +699,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('toggle_client_staff_status', e)
     
     @classmethod
     def update_client_staff_permissions(cls, client_id: int, staff_id: int, permissions: dict) -> ServiceResult:
@@ -765,7 +774,7 @@ class ClientService(BaseService):
                 }
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('update_client_staff_permissions', e)
 
     @classmethod
     def set_temp_password(cls, client_id: int, new_password: str, request=None) -> ServiceResult:
@@ -795,6 +804,7 @@ class ClientService(BaseService):
                     role='client',
                     phone=user.phone or '',
                     request=request,
+                    email_variant='temp_password',
                 )
                 EmailLog.objects.create(
                     recipient_name=client.name or user.get_full_name(),
@@ -812,4 +822,4 @@ class ClientService(BaseService):
                 data={'email_sent': email_sent}
             )
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            return cls._unexpected_error_result('set_temp_password', e)

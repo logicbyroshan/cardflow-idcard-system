@@ -46,6 +46,10 @@ class ClientAccessService:
         grant group-level access. Table scopes should not implicitly unlock all
         tables in the parent group.
         """
+        cached = getattr(staff, '_cached_assigned_group_ids_for_access', None)
+        if cached is not None:
+            return cached
+
         scopes = getattr(staff, 'assignment_scopes', None)
         if isinstance(scopes, list) and scopes:
             explicit_group_ids = []
@@ -73,9 +77,40 @@ class ClientAccessService:
                 explicit_group_ids.append(sid_int)
 
             if has_any_valid_scope:
+                setattr(staff, '_cached_assigned_group_ids_for_access', explicit_group_ids)
                 return explicit_group_ids
 
-        return list(staff.assigned_groups.values_list('id', flat=True))
+        fallback_group_ids = list(staff.assigned_groups.values_list('id', flat=True))
+        setattr(staff, '_cached_assigned_group_ids_for_access', fallback_group_ids)
+        return fallback_group_ids
+
+    @staticmethod
+    def _assigned_table_ids_for_access(staff):
+        """Return cached normalized assigned table IDs for client_staff checks."""
+        cached = getattr(staff, '_cached_assigned_table_ids_for_access', None)
+        if cached is not None:
+            return cached
+
+        assigned_table_ids = ClientAccessService._normalize_positive_int_ids(
+            staff.assigned_table_ids or []
+        )
+        setattr(staff, '_cached_assigned_table_ids_for_access', assigned_table_ids)
+        return assigned_table_ids
+
+    @staticmethod
+    def _assigned_client_ids_for_access(staff):
+        """Return cached assigned client IDs for admin_staff access checks.
+
+        This avoids repeating the same M2M query multiple times during a
+        single request where several can_access_* checks are performed.
+        """
+        cached = getattr(staff, '_cached_assigned_client_ids_for_access', None)
+        if cached is not None:
+            return cached
+
+        assigned_ids = set(staff.assigned_clients.values_list('id', flat=True))
+        setattr(staff, '_cached_assigned_client_ids_for_access', assigned_ids)
+        return assigned_ids
 
     @staticmethod
     def get_client_for_user(user) -> Optional[Client]:
@@ -109,7 +144,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if not staff:
                 return False
-            return staff.assigned_clients.filter(id=client_id).exists()
+            return client_id in ClientAccessService._assigned_client_ids_for_access(staff)
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
             return False
@@ -128,7 +163,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if not staff:
                 return False
-            return staff.assigned_clients.filter(id=group.client_id).exists()
+            return group.client_id in ClientAccessService._assigned_client_ids_for_access(staff)
 
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
@@ -140,7 +175,7 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_group_ids and group.id in assigned_group_ids:
@@ -171,7 +206,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if not staff:
                 return False
-            return staff.assigned_clients.filter(id=table.group.client_id).exists()
+            return table.group.client_id in ClientAccessService._assigned_client_ids_for_access(staff)
 
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
@@ -183,7 +218,7 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_table_ids and assigned_group_ids:
@@ -206,7 +241,7 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
                 from idcards.models import IDCardTable as _IDCardTable
 
@@ -254,7 +289,7 @@ class ClientAccessService:
             staff = getattr(user, 'staff_profile', None)
             if not staff:
                 return False
-            return staff.assigned_clients.filter(id=card.table.group.client_id).exists()
+            return card.table.group.client_id in ClientAccessService._assigned_client_ids_for_access(staff)
 
         client = ClientAccessService.get_client_for_user(user)
         if client is None:
@@ -266,7 +301,7 @@ class ClientAccessService:
         if PermissionService.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                assigned_table_ids = ClientAccessService._normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_table_ids = ClientAccessService._assigned_table_ids_for_access(staff)
                 assigned_group_ids = ClientAccessService._assigned_group_ids_for_access(staff)
 
                 if assigned_table_ids and assigned_group_ids:

@@ -1,0 +1,211 @@
+/* Unified dropdown styling across the entire app */
+:root {
+  --dropdown-unified-height: 28px;
+  --dropdown-unified-radius: 4px;
+  --dropdown-unified-border: #e5e7eb;
+  --dropdown-unified-border-hover: #d1d5db;
+  --dropdown-unified-border-focus: #667eea;
+  --dropdown-unified-text: #475569;
+  --dropdown-unified-bg: #ffffff;
+  --dropdown-unified-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394a3b8' d='M1.2.8L5 4.6 8.8.8 10 2 5 7 0 2z'/%3E%3C/svg%3E");
+}
+
+select:not([multiple]):not([size]),
+select.form-select,
+select.form-input,
+select.panel-form-select,
+select.panel-form-input,
+select.center-modal-select:not(.center-modal-select-multiple),
+select.session-select,
+select.field-type-select,
+select.pipeline-select,
+select.rename-select,
+select.ae-preset-select,
+select.wa-status-select,
+.bulk-select-group select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-color: var(--dropdown-unified-bg) !important;
+  border: 1px solid var(--dropdown-unified-border) !important;
+  border-radius: var(--dropdown-unified-radius) !important;
+  color: var(--dropdown-unified-text) !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.2 !important;
+  height: var(--dropdown-unified-height) !important;
+  min-height: var(--dropdown-unified-height) !important;
+  padding: 4px 30px 4px 10px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+  background-image: var(--dropdown-unified-arrow) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 10px 6px !important;
+}
+
+select:not([multiple]):not([size]):hover,
+select.form-select:hover,
+select.form-input:hover,
+select.panel-form-select:hover,
+select.panel-form-input:hover,
+select.center-modal-select:not(.center-modal-select-multiple):hover,
+select.session-select:hover,
+select.field-type-select:hover,
+select.pipeline-select:hover,
+select.rename-select:hover,
+select.ae-preset-select:hover,
+select.wa-status-select:hover,
+.bulk-select-group select:hover {
+  border-color: var(--dropdown-unified-border-hover) !important;
+}
+
+select:not([multiple]):not([size]):focus,
+select.form-select:focus,
+select.form-input:focus,
+select.panel-form-select:focus,
+select.panel-form-input:focus,
+select.center-modal-select:not(.center-modal-select-multiple):focus,
+select.session-select:focus,
+select.field-type-select:focus,
+select.pipeline-select:focus,
+select.rename-select:focus,
+select.ae-preset-select:focus,
+select.wa-status-select:focus,
+.bulk-select-group select:focus {
+  outline: none !important;
+  border-color: var(--dropdown-unified-border-focus) !important;
+  box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.2) !important;
+}
+
+select:not([multiple]):not([size]):disabled,
+select.form-select:disabled,
+select.form-input:disabled,
+select.panel-form-select:disabled,
+select.panel-form-input:disabled,
+select.center-modal-select:not(.center-modal-select-multiple):disabled,
+select.session-select:disabled,
+select.field-type-select:disabled,
+select.pipeline-select:disabled,
+select.rename-select:disabled,
+select.ae-preset-select:disabled,
+select.wa-status-select:disabled,
+.bulk-select-group select:disabled {
+  background-color: #f8fafc !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.8 !important;
+}
+
+.form-select-sm {
+  height: var(--dropdown-unified-height) !important;
+  min-height: var(--dropdown-unified-height) !important;
+  padding: 4px 30px 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.main.wa-page .main-content select.form-select,
+.main.wa-page .main-content select.form-select-sm,
+.main.wa-page .main-content select.wa-status-select,
+.main.wa-page .main-content select.contact-status-select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border-radius: var(--dropdown-unified-radius) !important;
+  border: 1px solid var(--dropdown-unified-border) !important;
+  background-image: var(--dropdown-unified-arrow) !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 10px 6px !important;
+  height: var(--dropdown-unified-height) !important;
+  min-height: var(--dropdown-unified-height) !important;
+  padding: 4px 30px 4px 10px !important;
+  box-shadow: none !important;
+}
+
+.custom-dropdown .dropdown-toggle,
+.form-dropdown .dropdown-toggle,
+.filter-dropdown .dropdown-toggle,
+.gs-dropdown-toggle,
+.wa-status-toggle,
+.wa-status-toggle.status-new,
+.wa-status-toggle.status-read,
+.wa-status-toggle.status-replied,
+.wa-status-toggle.status-closed {
+  border: 1px solid var(--dropdown-unified-border) !important;
+  border-radius: var(--dropdown-unified-radius) !important;
+  background: var(--dropdown-unified-bg) !important;
+  color: var(--dropdown-unified-text) !important;
+  height: var(--dropdown-unified-height) !important;
+  min-height: var(--dropdown-unified-height) !important;
+  padding: 4px 10px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.custom-dropdown .dropdown-toggle:hover,
+.form-dropdown .dropdown-toggle:hover,
+.filter-dropdown .dropdown-toggle:hover,
+.gs-dropdown-toggle:hover,
+.wa-status-toggle:hover,
+.wa-status-toggle.status-new:hover,
+.wa-status-toggle.status-read:hover,
+.wa-status-toggle.status-replied:hover,
+.wa-status-toggle.status-closed:hover {
+  border-color: var(--dropdown-unified-border-hover) !important;
+  box-shadow: none !important;
+}
+
+.custom-dropdown .dropdown-options,
+.form-dropdown .dropdown-options,
+.filter-dropdown .dropdown-options,
+.wa-status-dropdown .dropdown-options {
+  border: 1px solid var(--dropdown-unified-border) !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  padding: 4px 0 !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
+.dropdown-option {
+  color: #475569 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  padding: 6px 10px !important;
+  transition: background-color 0.1s ease, color 0.1s ease !important;
+}
+
+.panel-content .custom-dropdown .dropdown-options,
+.panel-content .form-dropdown .dropdown-options,
+.panel-content .filter-dropdown .dropdown-options,
+.panel-content .wa-status-dropdown .dropdown-options,
+.main.wa-page .main-content .custom-dropdown .dropdown-options,
+.main.wa-page .main-content .form-dropdown .dropdown-options,
+.main.wa-page .main-content .filter-dropdown .dropdown-options,
+.main.wa-page .main-content .wa-status-dropdown .dropdown-options {
+  border-radius: 7px !important;
+  margin-top: 4px !important;
+}
+
+.panel-content .dropdown-option,
+.main.wa-page .main-content .dropdown-option {
+  margin: 0 4px !important;
+  border-radius: 4px !important;
+}
+
+.panel-content select option,
+.main.wa-page .main-content select option {
+  padding: 6px 10px;
+}
+
+.dropdown-option:hover {
+  background-color: #f8fafc !important;
+}
+
+.dropdown-option.selected {
+  background-color: rgba(102, 126, 234, 0.1) !important;
+  color: #4f46e5 !important;
+  font-weight: 500 !important;
+}

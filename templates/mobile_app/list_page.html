@@ -36,6 +36,7 @@
 </div>
 
 {% csrf_token %}
+{{ students|json_script:"mobile-students-data" }}
 {{ classes|json_script:"mobile-classes-data" }}
 {{ sections|json_script:"mobile-sections-data" }}
 {{ class_to_sections|json_script:"mobile-class-sections-data" }}
@@ -51,14 +52,16 @@ function getCookie(name) {
 const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 const TABLE_ID = {{ table_id }};
 const LIST_TYPE = '{{ list_type }}';
-const ALL_STUDENT_IDS = [{% for s in students %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}];
-const TOTAL_COUNT = {{ total_count }};
 const HAS_MORE = {{ has_more|yesno:"true,false" }};
-const STUDENTS_DATA = JSON.parse('{{ students_json|escapejs }}');
+const STUDENTS_DATA = JSON.parse(document.getElementById('mobile-students-data')?.textContent || '[]');
+const INITIAL_FROM_DATE = '{{ from_date|default:""|escapejs }}';
+const INITIAL_TO_DATE = '{{ to_date|default:""|escapejs }}';
 const ALL_CLASSES = JSON.parse(document.getElementById('mobile-classes-data')?.textContent || '[]');
 const ALL_SECTIONS = JSON.parse(document.getElementById('mobile-sections-data')?.textContent || '[]');
 const ALL_CLASS_TO_SECTIONS = JSON.parse(document.getElementById('mobile-class-sections-data')?.textContent || '{}');
 const IS_VIEW_ONLY = {{ view_only_list|yesno:"true,false" }};
+const POOL_EDIT_LOCKED = {{ pool_edit_locked|yesno:"true,false" }};
+const CAN_EDIT = {{ perm_idcard_edit|yesno:"true,false" }};
 const TABLE_FIELDS = JSON.parse('{{ table_fields|escapejs }}');
 const TAB_COUNTS = {
     pending: {{ tab_counts.pending|default:0 }},
@@ -68,7 +71,7 @@ const TAB_COUNTS = {
     pool: {{ tab_counts.pool|default:0 }}
 };
 </script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
-<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>
-<script src="{% static 'js/mobile/list-app.js' %}?v=13"></script>
+<link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+<script src="{% static 'js/vendor/cropper.min.js' %}"></script>
+<script src="{% static 'js/mobile/list-app.js' %}?v=14"></script>
 {% endblock %}

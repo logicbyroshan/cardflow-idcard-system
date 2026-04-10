@@ -37,6 +37,7 @@ from core.services.permission_service import (
 )
 from core.services.background_worker import (
     background_worker,
+    cancel_task as background_cancel_task,
     save_uploaded_file_to_disk,
     cleanup_temp_file,
 )
@@ -121,6 +122,32 @@ def _parse_reupload_scope_payload(request):
         'card_ids': card_ids,
         'status_filter': status_filter,
     }
+
+
+def _parse_field_mapping_payload(raw_mapping):
+    """Parse optional frontend field-mapping payload for bulk uploads."""
+    if not raw_mapping:
+        return {}
+
+    try:
+        parsed = json.loads(raw_mapping)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
+
+    if not isinstance(parsed, dict):
+        return {}
+
+    normalized = {}
+    for table_field, upload_header in parsed.items():
+        field_name = str(table_field or '').strip()
+        header_name = str(upload_header or '').strip()
+        if not field_name or not header_name:
+            continue
+        normalized[field_name] = header_name
+        if len(normalized) >= 500:
+            break
+
+    return normalized
 
 
 def _acquire_task_lock(user_id, task_type, ttl=10):
@@ -290,8 +317,43 @@ def api_task_cancel(request, task_id):
     but their status will be marked as cancelled.
     """
     try:
-        from ..services.background_worker import cancel_task
-        result = cancel_task(task_id, user=request.user)
+        payload = {}
+        if request.body:
+            try:
+                payload = json.loads(request.body.decode('utf-8'))
+            except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+                payload = {}
+
+        latest_only_raw = payload.get('latest_only', request.POST.get('latest_only', False))
+        latest_only = str(latest_only_raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+        if latest_only:
+            if not PermissionService.is_pro_user(request.user):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Latest-only cancel is available for pro user only.'
+                }, status=403)
+
+            latest_active_task_id = (
+                BackgroundTask.objects
+                .filter(status__in=['pending', 'processing'])
+                .order_by('-created_at', '-id')
+                .values_list('id', flat=True)
+                .first()
+            )
+            if latest_active_task_id is None:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No active task is available to cancel.'
+                }, status=400)
+
+            if int(task_id) != int(latest_active_task_id):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only the latest active task can be cancelled from Operations Hub.'
+                }, status=400)
+
+        result = background_cancel_task(task_id, user=request.user)
 
         if result['success']:
             return JsonResponse({'success': True, 'message': result['message']})
@@ -440,6 +502,7 @@ def api_create_bulk_upload_task(request, table_id):
     
     Request:
         - file: XLSX/CSV file (required)
+        - field_mapping: JSON object {table_field: uploaded_header} (optional)
         - photos_zip_<FIELDNAME>: ZIP files for specific image fields (optional)
         - unified_zip_<N>: Unified ZIP files for all image fields (optional)
         - unified_zip_count: Number of unified ZIPs (optional)
@@ -488,6 +551,7 @@ def api_create_bulk_upload_task(request, table_id):
         
         # Save main file to disk
         main_file_path = save_uploaded_file_to_disk(uploaded_file)
+        field_mapping = _parse_field_mapping_payload(request.POST.get('field_mapping', ''))
         
         # Process ZIP files
         zip_paths = {}  # {field_name: relative_path}
@@ -558,6 +622,7 @@ def api_create_bulk_upload_task(request, table_id):
             file_path=main_file_path,
             metadata={
                 'table_id': table_id,
+                'field_mapping': field_mapping,
                 'zip_paths': zip_paths,
                 'unified_zip_paths': unified_zip_paths,
                 'original_filename': uploaded_file.name,
@@ -806,6 +871,12 @@ def api_create_export_task(request, table_id):
             except (TypeError, ValueError):
                 template_id = None
 
+        replace_active_raw = data.get('replace_active', False)
+        if isinstance(replace_active_raw, str):
+            replace_active = replace_active_raw.strip().lower() in ('1', 'true', 'yes', 'on')
+        else:
+            replace_active = bool(replace_active_raw)
+
         metadata = {
             'table_id': table_id,
             'card_ids': card_ids,
@@ -814,19 +885,40 @@ def api_create_export_task(request, table_id):
         if task_type == 'export_docx':
             metadata['doc_format'] = doc_format
             metadata['template_id'] = template_id
+
+        def _create_task_once():
+            return BackgroundTask.create_if_no_active(
+                user=request.user,
+                task_type=task_type,
+                metadata=metadata,
+            )
         
         # Create BackgroundTask atomically (prevents race conditions)
-        task, error_msg = BackgroundTask.create_if_no_active(
-            user=request.user,
-            task_type=task_type,
-            metadata=metadata,
-        )
+        task, error_msg = _create_task_once()
+
+        replaced_task_id = None
+        if not task and replace_active:
+            active_task = BackgroundTask.has_active_task(request.user)
+            if active_task and active_task.task_type in ('export_zip', 'export_pdf', 'export_docx', 'export_excel'):
+                cancel_result = background_cancel_task(active_task.id, user=request.user)
+                if cancel_result.get('success'):
+                    replaced_task_id = active_task.id
+                    task, error_msg = _create_task_once()
         
         if not task:
-            return JsonResponse({
+            response = {
                 'success': False,
                 'message': error_msg
-            }, status=429)
+            }
+
+            if error_msg and 'active task' in str(error_msg).lower():
+                active_task = BackgroundTask.has_active_task(request.user)
+                if active_task:
+                    response['active_task_id'] = active_task.id
+                    response['active_task_type'] = active_task.task_type
+                    response['active_task_status'] = active_task.status
+
+            return JsonResponse(response, status=429)
         
         # Submit to background worker
         background_worker.submit_task(task.id)
@@ -834,6 +926,7 @@ def api_create_export_task(request, table_id):
         return JsonResponse({
             'success': True,
             'task_id': task.id,
+            'replaced_task_id': replaced_task_id,
             'message': f'Export task created. Check progress at /api/task-status/{task.id}/'
         })
         

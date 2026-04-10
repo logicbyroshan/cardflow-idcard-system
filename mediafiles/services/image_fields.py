@@ -247,8 +247,8 @@ class ImageFieldsMixin:
                 try:
                     if default_storage.exists(path):
                         return path
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug('Storage exists check failed for %s: %s', path, exc)
                 # Return path anyway for backward compat (callers check existence)
                 return path
         

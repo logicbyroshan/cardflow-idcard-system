@@ -22,6 +22,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from django.conf import settings
 from django.utils import timezone as django_tz
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,33 @@ class ZipExporter:
     }
 
     RENAMEABLE_IMAGE_KEYS = {'PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'}
+
+    GENERATED_DPI = 300
+    GENERATED_FONT_DPI = 96
+    PT_PER_MM = 72.0 / 25.4
+    PX_PER_MM = GENERATED_DPI / 25.4
+    GENERATED_SIZE_PRESETS = {
+        'size_23x34': {
+            'canvas_mm': (23.0, 34.0),
+            'photo_mm': (19.0, 25.0),
+            'padding_mm': 2.0,
+            'gap_below_photo_mm': 2.0,
+            'name_font_pt': 8.0,
+            'detail_font_pt': 6.0,
+            'line_gap_mm': 0.6,
+        },
+        'size_37x53': {
+            'canvas_mm': (37.0, 53.0),
+            'photo_mm': (30.0, 40.0),
+            'padding_mm': 3.0,
+            'gap_below_photo_mm': 3.0,
+            'name_font_pt': 12.0,
+            'detail_font_pt': 9.0,
+            'line_gap_mm': 0.9,
+        },
+    }
+    GENERATED_TEXT_COLOR = (17, 24, 39)
+    GENERATED_QUALITY_STEPS = (92, 88, 84, 80, 76, 72, 68, 64, 60, 56, 52, 48, 44)
     
     def export_images(
         self,
@@ -126,6 +154,30 @@ class ZipExporter:
                     success=False,
                     message='No image fields found in this table!'
                 )
+
+            requested_selected_image = ''
+            if isinstance(rename_options, dict) and rename_options.get('enabled') is True:
+                requested_selected_image = str(rename_options.get('selected_image_field') or '').strip()
+
+            selected_image_field = self._resolve_selected_image_field(rename_options, image_fields)
+            if requested_selected_image and not selected_image_field:
+                return ZipExportResult(
+                    success=False,
+                    message='Selected image column is not available in this table.'
+                )
+
+            if selected_image_field:
+                selected_image_norm = self._normalize_field_key(selected_image_field)
+                image_fields = [
+                    field for field in image_fields
+                    if self._normalize_field_key(str((field or {}).get('name', ''))) == selected_image_norm
+                ]
+
+                if not image_fields:
+                    return ZipExportResult(
+                        success=False,
+                        message='Selected image column is not available in this table.'
+                    )
             
             # Get client name for filename
             client_name = ''
@@ -138,11 +190,19 @@ class ZipExporter:
             total_images = 0
             image_name_mapping = self._resolve_image_name_mapping(rename_options, table.fields or [])
 
+            export_mode = 'rename'
+            if isinstance(rename_options, dict):
+                raw_export_mode = str(rename_options.get('mode', 'rename') or 'rename').strip().lower()
+                if raw_export_mode == 'generate':
+                    export_mode = 'generate'
+
             output_format = 'zip'
             if isinstance(rename_options, dict):
                 raw_mode = str(rename_options.get('output_format', 'zip') or 'zip').strip().lower()
                 if raw_mode == 'pdf_zip':
                     output_format = 'pdf_zip'
+
+            generate_options = self._resolve_generate_options(rename_options, image_name_mapping)
 
             if output_format == 'pdf_zip':
                 return self._export_images_as_pdf_zip(
@@ -154,6 +214,8 @@ class ZipExporter:
                     clean_table_name=clean_table_name,
                     status=status,
                     allow_large_base64=allow_large_base64,
+                    export_mode=export_mode,
+                    generate_options=generate_options,
                 )
             
             # Create a SINGLE ZIP with subdirectories per image field
@@ -168,7 +230,7 @@ class ZipExporter:
                         field_type = field_info.get('type', '')
                         folder_name = self._get_readable_field_name(field_name)
                         canonical_key = self._canonical_image_key(field_name, field_type)
-                        rename_source_field = image_name_mapping.get(canonical_key, '')
+                        rename_source_fields = image_name_mapping.get(canonical_key, [])
                         used_names = {}
                         field_count = 0
                         
@@ -188,11 +250,25 @@ class ZipExporter:
                                     img_data = img_file.read()
                                     
                                     if img_data and len(img_data) >= 100:
+                                        forced_extension = ''
+                                        if export_mode == 'generate':
+                                            generated_image_data = self._build_generated_passport_image(
+                                                card=card,
+                                                source_image_bytes=img_data,
+                                                rename_source_fields=rename_source_fields,
+                                                generate_options=generate_options,
+                                            )
+                                            if not generated_image_data:
+                                                continue
+                                            img_data = generated_image_data
+                                            forced_extension = '.jpg'
+
                                         download_filename = self._build_download_filename(
                                             img_path=img_path,
                                             card=card,
-                                            rename_source_field=rename_source_field,
+                                            rename_source_fields=rename_source_fields,
                                             used_names=used_names,
+                                            forced_extension=forced_extension,
                                         )
                                         
                                         # Place inside subdirectory named after field
@@ -203,8 +279,10 @@ class ZipExporter:
                                         
                                         del img_data
                             except FileNotFoundError:
+                                logger.debug('Image file missing during ZIP export: %s', img_path)
                                 continue
-                            except Exception:
+                            except Exception as exc:
+                                logger.warning('Failed to include image in ZIP export for card=%s path=%s: %s', getattr(card, 'id', None), img_path, exc)
                                 continue
                 
                 if total_images == 0:
@@ -270,11 +348,13 @@ class ZipExporter:
         table,
         cards: QuerySet,
         image_fields: List[Dict[str, Any]],
-        image_name_mapping: Dict[str, str],
+        image_name_mapping: Dict[str, List[str]],
         clean_client_name: str,
         clean_table_name: str,
         status: str,
         allow_large_base64: bool = False,
+        export_mode: str = 'rename',
+        generate_options: Optional[Dict[str, Any]] = None,
     ) -> ZipExportResult:
         """Create one ZIP that contains one PDF per selected photo column."""
         selected_keys = [
@@ -321,11 +401,15 @@ class ZipExporter:
                     pdf_tmp.close()
                     try:
                         max_pages = None
+                        rename_source_fields = image_name_mapping.get(key, [])
                         page_count = self._write_image_field_pdf(
                             cards=cards,
                             field_name=field_name,
                             pdf_path=pdf_tmp_path,
                             max_pages=max_pages,
+                            export_mode=export_mode,
+                            rename_source_fields=rename_source_fields,
+                            generate_options=generate_options,
                         )
                         if page_count <= 0:
                             continue
@@ -394,13 +478,38 @@ class ZipExporter:
             except OSError:
                 pass
 
-    def _write_image_field_pdf(self, cards: QuerySet, field_name: str, pdf_path: str, max_pages: Optional[int] = None) -> int:
+    def _write_image_field_pdf(
+        self,
+        cards: QuerySet,
+        field_name: str,
+        pdf_path: str,
+        max_pages: Optional[int] = None,
+        export_mode: str = 'rename',
+        rename_source_fields: Optional[List[str]] = None,
+        generate_options: Optional[Dict[str, Any]] = None,
+    ) -> int:
         """Write one PDF where each page contains one image from the given field."""
         from reportlab.pdfgen import canvas
         from reportlab.lib.utils import ImageReader
 
         pdf_canvas = canvas.Canvas(pdf_path)
         page_count = 0
+        normalized_mode = str(export_mode or 'rename').strip().lower()
+        is_generate_mode = normalized_mode == 'generate'
+        rename_source_fields = rename_source_fields or []
+        resolved_generate_options = generate_options if isinstance(generate_options, dict) else {}
+
+        generate_layout = self._resolve_generate_layout(resolved_generate_options) if is_generate_mode else None
+        generate_page_width_pt = 0.0
+        generate_page_height_pt = 0.0
+        if isinstance(generate_layout, dict):
+            canvas_mm = generate_layout.get('canvas_mm', (0.0, 0.0))
+            try:
+                generate_page_width_pt = float(canvas_mm[0]) * self.PT_PER_MM
+                generate_page_height_pt = float(canvas_mm[1]) * self.PT_PER_MM
+            except Exception:
+                generate_page_width_pt = 0.0
+                generate_page_height_pt = 0.0
 
         try:
             for card in cards.iterator(chunk_size=100):
@@ -422,28 +531,47 @@ class ZipExporter:
                     if not img_data or len(img_data) < 100:
                         continue
 
-                    image_reader = ImageReader(io.BytesIO(img_data))
+                    image_payload = img_data
+                    if is_generate_mode:
+                        generated_payload = self._build_generated_passport_image(
+                            card=card,
+                            source_image_bytes=img_data,
+                            rename_source_fields=rename_source_fields,
+                            generate_options=resolved_generate_options,
+                        )
+                        if not generated_payload:
+                            continue
+                        image_payload = generated_payload
+
+                    image_reader = ImageReader(io.BytesIO(image_payload))
                     width, height = image_reader.getSize()
                     if width <= 0 or height <= 0:
                         continue
 
-                    width = float(width)
-                    height = float(height)
+                    if is_generate_mode and generate_page_width_pt > 0 and generate_page_height_pt > 0:
+                        width = float(generate_page_width_pt)
+                        height = float(generate_page_height_pt)
+                    else:
+                        width = float(width)
+                        height = float(height)
+
                     pdf_canvas.setPageSize((width, height))
                     pdf_canvas.drawImage(image_reader, 0, 0, width=width, height=height)
                     pdf_canvas.showPage()
                     page_count += 1
                 except FileNotFoundError:
+                    logger.debug('Image file missing during PDF-ZIP export: %s', img_path)
                     continue
-                except Exception:
+                except Exception as exc:
+                    logger.warning('Failed PDF page generation for card=%s field=%s path=%s: %s', getattr(card, 'id', None), field_name, img_path, exc)
                     continue
 
             pdf_canvas.save()
         except Exception:
             try:
                 pdf_canvas.save()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed to finalize PDF canvas after error for field=%s: %s', field_name, exc)
             return 0
 
         return page_count
@@ -522,9 +650,11 @@ class ZipExporter:
                                 del img_data
                     except FileNotFoundError:
                         # Image file doesn't exist on disk — skip silently
+                        logger.debug('Image file missing while building field ZIP: %s', img_path)
                         continue
-                    except Exception:
+                    except Exception as exc:
                         # Skip problematic images silently
+                        logger.warning('Failed to add image to field ZIP for card=%s field=%s path=%s: %s', getattr(card, 'id', None), field_name, img_path, exc)
                         continue
         
             if images_count == 0:
@@ -606,7 +736,7 @@ class ZipExporter:
             return 'PHOTO'
         return ''
 
-    def _resolve_image_name_mapping(self, rename_options: Optional[Dict[str, Any]], table_fields: List[Dict[str, Any]]) -> Dict[str, str]:
+    def _resolve_image_name_mapping(self, rename_options: Optional[Dict[str, Any]], table_fields: List[Dict[str, Any]]) -> Dict[str, List[str]]:
         """Validate and resolve requested image->name-field mapping against table fields."""
         if not isinstance(rename_options, dict) or rename_options.get('enabled') is not True:
             return {}
@@ -624,17 +754,57 @@ class ZipExporter:
                 continue
             valid_text_fields[self._normalize_field_key(field_name)] = field_name
 
-        mapping: Dict[str, str] = {}
-        for raw_image_key, raw_text_field_name in raw_map.items():
+        mapping: Dict[str, List[str]] = {}
+        for raw_image_key, raw_text_field_names in raw_map.items():
             canonical_image = self._canonical_image_key(str(raw_image_key), '')
             if canonical_image not in self.RENAMEABLE_IMAGE_KEYS:
                 continue
-            normalized_text_key = self._normalize_field_key(str(raw_text_field_name))
-            resolved_text_field = valid_text_fields.get(normalized_text_key)
-            if resolved_text_field:
-                mapping[canonical_image] = resolved_text_field
+
+            values_to_resolve = []
+            if isinstance(raw_text_field_names, (list, tuple)):
+                values_to_resolve = list(raw_text_field_names)
+            else:
+                values_to_resolve = [raw_text_field_names]
+
+            resolved_fields = []
+            seen = set()
+            for raw_text_field_name in values_to_resolve:
+                normalized_text_key = self._normalize_field_key(str(raw_text_field_name))
+                resolved_text_field = valid_text_fields.get(normalized_text_key)
+                if not resolved_text_field:
+                    continue
+                dedupe_key = resolved_text_field.lower()
+                if dedupe_key in seen:
+                    continue
+                seen.add(dedupe_key)
+                resolved_fields.append(resolved_text_field)
+
+            if resolved_fields:
+                mapping[canonical_image] = resolved_fields
 
         return mapping
+
+    def _resolve_selected_image_field(self, rename_options: Optional[Dict[str, Any]], image_fields: List[Dict[str, Any]]) -> str:
+        """Return a validated selected image field name for rename-mode exports."""
+        if not isinstance(rename_options, dict) or rename_options.get('enabled') is not True:
+            return ''
+
+        raw_selected_field = str(rename_options.get('selected_image_field') or '').strip()
+        if not raw_selected_field:
+            return ''
+
+        normalized_target = self._normalize_field_key(raw_selected_field)
+        if not normalized_target:
+            return ''
+
+        for field in image_fields:
+            field_name = str((field or {}).get('name') or '').strip()
+            if not field_name:
+                continue
+            if self._normalize_field_key(field_name) == normalized_target:
+                return field_name
+
+        return ''
 
     def _get_card_field_value(self, card: Any, field_name: str) -> str:
         """Read a text field from card.field_data using exact then normalized matching."""
@@ -652,18 +822,476 @@ class ZipExporter:
                 return str(value).strip()
         return ''
 
-    def _build_download_filename(self, img_path: str, card: Any, rename_source_field: str, used_names: Dict[str, int]) -> str:
+    def _resolve_generate_options(self, rename_options: Optional[Dict[str, Any]], image_name_mapping: Dict[str, List[str]]) -> Dict[str, Any]:
+        """Resolve generate-image options with safe defaults."""
+        defaults = {
+            'enabled': False,
+            'size_preset': 'size_23x34',
+            'name_field': '',
+            'detail_mode': 'class_only',
+            'class_field': '',
+            'section_field': '',
+            'custom_date': '',
+            'detail_fields': [],
+            'max_detail_lines': 1,
+            'compress_enabled': False,
+            'target_size_kb': 40,
+            'maintain_dimensions': True,
+        }
+
+        if not isinstance(rename_options, dict) or rename_options.get('enabled') is not True:
+            return defaults
+
+        mode = str(rename_options.get('mode', 'rename') or 'rename').strip().lower()
+        if mode != 'generate':
+            return defaults
+
+        raw_generate_options = rename_options.get('generate_options')
+        if not isinstance(raw_generate_options, dict):
+            raw_generate_options = {}
+
+        mapped_fields = []
+        for values in image_name_mapping.values():
+            if isinstance(values, list) and values:
+                mapped_fields = values
+                break
+
+        name_field = str(raw_generate_options.get('name_field') or '').strip()
+        if not name_field and mapped_fields:
+            name_field = mapped_fields[0]
+
+        raw_size_preset = str(raw_generate_options.get('size_preset', 'size_23x34') or 'size_23x34').strip().lower()
+        size_preset = 'size_37x53' if raw_size_preset in ('size_37x53', '37x53', 'large') else 'size_23x34'
+
+        class_field = str(raw_generate_options.get('class_field') or '').strip()
+        section_field = str(raw_generate_options.get('section_field') or '').strip()
+        custom_date = str(raw_generate_options.get('custom_date') or '').strip()[:40]
+
+        raw_detail_fields = raw_generate_options.get('detail_fields')
+        if not isinstance(raw_detail_fields, (list, tuple)):
+            raw_detail_fields = []
+
+        detail_fields = []
+        seen = set()
+        for item in raw_detail_fields:
+            value = str(item or '').strip()
+            if not value:
+                continue
+            key = value.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            detail_fields.append(value)
+
+        if not detail_fields and len(mapped_fields) > 1:
+            detail_fields = mapped_fields[1:]
+
+        if not class_field and detail_fields:
+            class_field = detail_fields[0]
+        if not section_field and len(detail_fields) > 1:
+            section_field = detail_fields[1]
+
+        raw_detail_mode = str(raw_generate_options.get('detail_mode') or '').strip().lower()
+        if raw_detail_mode not in ('class_only', 'class_section', 'custom_date'):
+            if custom_date:
+                raw_detail_mode = 'custom_date'
+            elif class_field and section_field:
+                raw_detail_mode = 'class_section'
+            else:
+                raw_detail_mode = 'class_only'
+        detail_mode = raw_detail_mode
+
+        resolved_detail_fields = []
+        if detail_mode == 'class_section':
+            if class_field:
+                resolved_detail_fields.append(class_field)
+            if section_field and section_field.lower() != str(class_field or '').lower():
+                resolved_detail_fields.append(section_field)
+        elif detail_mode == 'class_only':
+            if class_field:
+                resolved_detail_fields.append(class_field)
+
+        compress_enabled = raw_generate_options.get('compress_enabled') is True
+
+        try:
+            target_size_kb = int(raw_generate_options.get('target_size_kb', 40))
+        except (TypeError, ValueError):
+            target_size_kb = 40
+        target_size_kb = max(10, min(200, target_size_kb))
+
+        return {
+            'enabled': True,
+            'size_preset': size_preset,
+            'name_field': name_field,
+            'detail_mode': detail_mode,
+            'class_field': class_field,
+            'section_field': section_field,
+            'custom_date': custom_date,
+            'detail_fields': resolved_detail_fields,
+            'max_detail_lines': 1,
+            'compress_enabled': compress_enabled,
+            'target_size_kb': target_size_kb,
+            'maintain_dimensions': True,
+        }
+
+    def _load_generate_font(self, size: int, prefer_narrow: bool = True):
+        """Load Arial/Arial Narrow style font with graceful fallback."""
+        from PIL import ImageFont
+
+        font_candidates = []
+        static_fonts_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
+
+        if prefer_narrow:
+            font_candidates.extend([
+                os.path.join(static_fonts_dir, 'arialn.ttf'),
+                os.path.join(static_fonts_dir, 'ArialN.ttf'),
+                os.path.join(static_fonts_dir, 'arial.ttf'),
+            ])
+        else:
+            font_candidates.extend([
+                os.path.join(static_fonts_dir, 'arial.ttf'),
+                os.path.join(static_fonts_dir, 'arialn.ttf'),
+            ])
+
+        font_candidates.extend(['arialn.ttf', 'Arial Narrow.ttf', 'arial.ttf', 'Arial.ttf'])
+
+        for candidate in font_candidates:
+            try:
+                if os.path.exists(candidate) or os.path.basename(candidate).lower().endswith('.ttf'):
+                    return ImageFont.truetype(candidate, size)
+            except (OSError, IOError):
+                continue
+
+        return ImageFont.load_default()
+
+    def _text_width(self, draw: Any, text: str, font: Any) -> float:
+        try:
+            return float(draw.textlength(text, font=font))
+        except Exception:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            return float(max(0, bbox[2] - bbox[0]))
+
+    def _text_height(self, draw: Any, text: str, font: Any) -> int:
+        try:
+            bbox = draw.textbbox((0, 0), text or 'A', font=font)
+            return max(1, int(bbox[3] - bbox[1]))
+        except Exception:
+            return max(1, int(getattr(font, 'size', 16)))
+
+    def _truncate_text_to_width(self, draw: Any, text: str, font: Any, max_width: float) -> str:
+        value = re.sub(r'\s+', ' ', str(text or '')).strip()
+        if not value:
+            return ''
+        if self._text_width(draw, value, font) <= max_width:
+            return value
+
+        ellipsis = '...'
+        trimmed = value
+        while trimmed and self._text_width(draw, trimmed + ellipsis, font) > max_width:
+            trimmed = trimmed[:-1]
+        return (trimmed.rstrip() + ellipsis) if trimmed else ellipsis
+
+    def _encode_generated_image(self, image_obj: Any, compress_enabled: bool, target_size_kb: int) -> bytes:
+        """Encode generated image as JPEG while optionally enforcing target KB."""
+        quality_steps = self.GENERATED_QUALITY_STEPS if compress_enabled else (self.GENERATED_QUALITY_STEPS[0],)
+        target_bytes = max(10, min(200, int(target_size_kb or 40))) * 1024
+
+        best_payload = b''
+        for quality in quality_steps:
+            out = io.BytesIO()
+            image_obj.save(out, format='JPEG', quality=quality, optimize=True, progressive=True)
+            payload = out.getvalue()
+
+            if not best_payload or len(payload) < len(best_payload):
+                best_payload = payload
+
+            if compress_enabled and len(payload) <= target_bytes:
+                return payload
+
+        return best_payload
+
+    def _mm_to_px(self, mm_value: float) -> int:
+        try:
+            mm_value = float(mm_value)
+        except (TypeError, ValueError):
+            mm_value = 0.0
+        return max(1, int(round(mm_value * self.PX_PER_MM)))
+
+    def _pt_to_px(self, pt_value: float) -> int:
+        try:
+            pt_value = float(pt_value)
+        except (TypeError, ValueError):
+            pt_value = 0.0
+        return max(1, int(round(pt_value * self.GENERATED_FONT_DPI / 72.0)))
+
+    def _resolve_generate_layout(self, generate_options: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        opts = generate_options if isinstance(generate_options, dict) else {}
+        raw_size = str(opts.get('size_preset', 'size_23x34') or 'size_23x34').strip().lower()
+        preset_key = 'size_37x53' if raw_size in ('size_37x53', '37x53', 'large') else 'size_23x34'
+        preset = self.GENERATED_SIZE_PRESETS[preset_key]
+
+        canvas_mm = preset['canvas_mm']
+        photo_mm = preset['photo_mm']
+        padding_mm = float(preset['padding_mm'])
+        gap_below_photo_mm = float(preset['gap_below_photo_mm'])
+        line_gap_mm = float(preset['line_gap_mm'])
+
+        canvas_px = (self._mm_to_px(canvas_mm[0]), self._mm_to_px(canvas_mm[1]))
+        photo_px = (self._mm_to_px(photo_mm[0]), self._mm_to_px(photo_mm[1]))
+        padding_px = self._mm_to_px(padding_mm)
+        gap_below_photo_px = self._mm_to_px(gap_below_photo_mm)
+        line_gap_px = max(1, self._mm_to_px(line_gap_mm))
+
+        max_photo_w = max(1, canvas_px[0] - (2 * padding_px))
+        max_photo_h = max(1, canvas_px[1] - (2 * padding_px))
+        photo_w = max(1, min(photo_px[0], max_photo_w))
+        photo_h = max(1, min(photo_px[1], max_photo_h))
+
+        photo_x = max(0, int(round((canvas_px[0] - photo_w) / 2.0)))
+        photo_y = padding_px
+
+        return {
+            'size_preset': preset_key,
+            'canvas_mm': canvas_mm,
+            'photo_mm': photo_mm,
+            'canvas_px': canvas_px,
+            'photo_px': (photo_w, photo_h),
+            'photo_origin_px': (photo_x, photo_y),
+            'padding_px': padding_px,
+            'gap_below_photo_px': gap_below_photo_px,
+            'line_gap_px': line_gap_px,
+            'name_font_px': self._pt_to_px(preset['name_font_pt']),
+            'detail_font_px': self._pt_to_px(preset['detail_font_pt']),
+        }
+
+    def _build_generate_detail_line(
+        self,
+        card: Any,
+        generate_options: Dict[str, Any],
+        rename_source_fields: List[str],
+    ) -> str:
+        detail_mode = str(generate_options.get('detail_mode') or '').strip().lower()
+        if detail_mode not in ('class_only', 'class_section', 'custom_date'):
+            detail_mode = 'class_only'
+
+        class_field = str(generate_options.get('class_field') or '').strip()
+        section_field = str(generate_options.get('section_field') or '').strip()
+        custom_date = re.sub(r'\s+', ' ', str(generate_options.get('custom_date') or '')).strip()
+
+        detail_fields = generate_options.get('detail_fields')
+        if not isinstance(detail_fields, list):
+            detail_fields = []
+
+        if not class_field and detail_fields:
+            class_field = str(detail_fields[0] or '').strip()
+        if not section_field and len(detail_fields) > 1:
+            section_field = str(detail_fields[1] or '').strip()
+        if not class_field and len(rename_source_fields) > 1:
+            class_field = str(rename_source_fields[1] or '').strip()
+        if not section_field and len(rename_source_fields) > 2:
+            section_field = str(rename_source_fields[2] or '').strip()
+
+        if detail_mode == 'custom_date':
+            return custom_date[:40]
+
+        class_value = self._get_card_field_value(card, class_field) if class_field else ''
+        section_value = self._get_card_field_value(card, section_field) if section_field else ''
+
+        class_value = re.sub(r'\s+', ' ', str(class_value or '')).strip()
+        section_value = re.sub(r'\s+', ' ', str(section_value or '')).strip()
+
+        if detail_mode == 'class_section':
+            if class_value and section_value:
+                return f'{class_value} "{section_value}"'
+            return class_value or section_value
+
+        return class_value
+
+    def _draw_name_with_squeeze(
+        self,
+        canvas: Any,
+        draw: Any,
+        text: str,
+        font: Any,
+        x: int,
+        y: int,
+        max_width: int,
+    ) -> int:
+        from PIL import Image, ImageDraw
+
+        clean_text = re.sub(r'\s+', ' ', str(text or '')).strip()
+        if not clean_text:
+            return 0
+
+        text_height = self._text_height(draw, clean_text, font)
+        text_width = self._text_width(draw, clean_text, font)
+        if text_width <= float(max_width):
+            draw.text((x, y), clean_text, fill=self.GENERATED_TEXT_COLOR, font=font)
+            return text_height
+
+        target_width = max(1, int(max_width))
+        source_width = max(1, int(round(text_width)))
+        source_height = max(1, int(round(text_height * 1.35)))
+
+        text_layer = Image.new('RGBA', (source_width + 2, source_height), (0, 0, 0, 0))
+        text_draw = ImageDraw.Draw(text_layer)
+        text_draw.text((0, 0), clean_text, fill=self.GENERATED_TEXT_COLOR + (255,), font=font)
+
+        resample = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
+        squeezed = text_layer.resize((target_width, source_height), resample=resample)
+        canvas.paste(squeezed, (int(x), int(y)), squeezed)
+        return text_height
+
+    def _resolve_name_font_for_generate(
+        self,
+        draw: Any,
+        name_text: str,
+        base_font_px: int,
+        max_text_width: int,
+    ) -> Any:
+        """Use configured font size by default; reduce by 1pt only for very extreme name lengths."""
+        normalized_name = re.sub(r'\s+', ' ', str(name_text or '')).strip()
+        base_size = max(1, int(base_font_px or 1))
+        base_font = self._load_generate_font(base_size, prefer_narrow=True)
+        if not normalized_name:
+            return base_font
+
+        base_width = self._text_width(draw, normalized_name, base_font)
+        if base_width <= float(max_text_width) * 2.8:
+            return base_font
+
+        one_pt_px = max(1, self._pt_to_px(1.0))
+        reduced_size = max(1, base_size - one_pt_px)
+        if reduced_size >= base_size:
+            return base_font
+        return self._load_generate_font(reduced_size, prefer_narrow=True)
+
+    def _build_generated_passport_image(
+        self,
+        card: Any,
+        source_image_bytes: bytes,
+        rename_source_fields: List[str],
+        generate_options: Dict[str, Any],
+    ) -> bytes:
+        """Build a generated passport-style image on white background."""
+        if not source_image_bytes:
+            return b''
+
+        from PIL import Image, ImageOps, ImageDraw
+
+        try:
+            with Image.open(io.BytesIO(source_image_bytes)) as source_img:
+                source_img = ImageOps.exif_transpose(source_img).convert('RGB')
+
+                layout = self._resolve_generate_layout(generate_options)
+                canvas_width, canvas_height = layout['canvas_px']
+                photo_width, photo_height = layout['photo_px']
+                photo_x, photo_y = layout['photo_origin_px']
+                padding_px = layout['padding_px']
+                gap_below_photo_px = layout['gap_below_photo_px']
+                line_gap_px = layout['line_gap_px']
+
+                canvas = Image.new('RGB', (canvas_width, canvas_height), (255, 255, 255))
+                resample_filter = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
+                fitted = ImageOps.fit(source_img, (photo_width, photo_height), method=resample_filter, centering=(0.5, 0.5))
+                canvas.paste(fitted, (photo_x, photo_y))
+
+                draw = ImageDraw.Draw(canvas)
+                text_left = padding_px
+                text_right = canvas_width - padding_px
+                max_text_width = max(40, text_right - text_left)
+
+                name_field = str(generate_options.get('name_field') or '').strip()
+                if not name_field and rename_source_fields:
+                    name_field = rename_source_fields[0]
+
+                raw_name_value = self._get_card_field_value(card, name_field) if name_field else ''
+                raw_name_value = re.sub(r'\s+', ' ', str(raw_name_value or '')).strip()
+                detail_line = self._build_generate_detail_line(card, generate_options, rename_source_fields)
+
+                text_start_y = photo_y + photo_height + gap_below_photo_px
+                available_text_height = max(1, (canvas_height - padding_px) - text_start_y)
+
+                name_font_size_px = max(10, int(layout['name_font_px']))
+                detail_font_size_px = max(8, int(layout['detail_font_px']))
+                name_font = self._resolve_name_font_for_generate(
+                    draw=draw,
+                    name_text=raw_name_value,
+                    base_font_px=name_font_size_px,
+                    max_text_width=max_text_width,
+                )
+                detail_font = self._load_generate_font(detail_font_size_px, prefer_narrow=True)
+
+                detail_text = self._truncate_text_to_width(draw, detail_line, detail_font, max_text_width) if detail_line else ''
+                name_height = self._text_height(draw, raw_name_value or 'A', name_font) if raw_name_value else 0
+                detail_height = self._text_height(draw, detail_text or 'A', detail_font) if detail_text else 0
+
+                line_gap_draw_px = 0
+                if raw_name_value and detail_text:
+                    preferred_gap = max(1, line_gap_px)
+                    max_allowed_gap = max(0, available_text_height - (name_height + detail_height))
+                    line_gap_draw_px = min(preferred_gap, max_allowed_gap)
+
+                required_height = name_height + line_gap_draw_px + detail_height
+                vertical_offset = max(0, int(round((available_text_height - required_height) / 2.0)))
+
+                cursor_y = text_start_y + vertical_offset
+                if raw_name_value:
+                    name_drawn_height = self._draw_name_with_squeeze(
+                        canvas=canvas,
+                        draw=draw,
+                        text=raw_name_value,
+                        font=name_font,
+                        x=text_left,
+                        y=cursor_y,
+                        max_width=max_text_width,
+                    )
+                    cursor_y += name_drawn_height
+                    if detail_text:
+                        cursor_y += line_gap_draw_px
+
+                if detail_text:
+                    draw.text((text_left, cursor_y), detail_text, fill=self.GENERATED_TEXT_COLOR, font=detail_font)
+
+                compress_enabled = generate_options.get('compress_enabled') is True
+                target_size_kb = int(generate_options.get('target_size_kb', 40) or 40)
+                return self._encode_generated_image(canvas, compress_enabled, target_size_kb)
+        except Exception as exc:
+            logger.warning('Generate-image mode failed for card=%s: %s', getattr(card, 'id', None), exc)
+            return b''
+
+    def _build_download_filename(
+        self,
+        img_path: str,
+        card: Any,
+        rename_source_fields: List[str],
+        used_names: Dict[str, int],
+        forced_extension: str = '',
+    ) -> str:
         """Build collision-safe filename, optionally renamed from selected card field."""
         base_name = os.path.basename(img_path)
         _, ext = os.path.splitext(base_name)
+        if forced_extension:
+            ext = forced_extension
         if not ext:
             ext = '.jpg'
 
         target_base = ''
-        if rename_source_field:
-            name_value = self._get_card_field_value(card, rename_source_field)
-            if name_value:
-                target_base = f"{clean_filename(name_value)}{ext.lower()}"
+        if rename_source_fields:
+            values = []
+            for source_field in rename_source_fields:
+                name_value = self._get_card_field_value(card, source_field)
+                if not name_value:
+                    continue
+                clean_value = clean_filename(name_value)
+                if clean_value:
+                    values.append(clean_value)
+
+            if values:
+                base_stem = '_'.join(values)
+                if len(base_stem) > 180:
+                    base_stem = base_stem[:180].rstrip('._')
+                target_base = f"{base_stem}{ext.lower()}"
 
         if not target_base:
             target_base = base_name
@@ -907,8 +1535,8 @@ def export_images_to_disk(
         else:
             try:
                 os.remove(current_zip_path)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed removing empty ZIP part %s: %s', current_zip_path, exc)
 
         # If we split, rename the first part
         if len(all_parts) > 1:
@@ -918,8 +1546,8 @@ def export_images_to_disk(
             try:
                 os.rename(old_path, new_path)
                 all_parts[0] = (new_path, new_fn, cnt)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed renaming first ZIP part %s -> %s: %s', old_path, new_path, exc)
 
         for p_path, p_fn, p_cnt in all_parts:
             zip_files.append(DiskZipInfo(

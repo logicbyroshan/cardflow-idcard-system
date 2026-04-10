@@ -37,6 +37,29 @@ body {
     --m-border: #cfe3f7;
     --m-text: #1f2d3d;
     --m-muted: #5b6b7b;
+    --m-font-family: "Segoe UI", "Inter", "Noto Sans", sans-serif;
+
+    /* Status palette used across lists/chips/buttons */
+    --st-pending-bg: #fffbeb;
+    --st-pending-border: #fcd34d;
+    --st-pending-text: #b45309;
+
+    --st-verified-bg: #ecfdf5;
+    --st-verified-border: #86efac;
+    --st-verified-text: #047857;
+
+    --st-approved-bg: #eff6ff;
+    --st-approved-border: #93c5fd;
+    --st-approved-text: #1d4ed8;
+
+    --st-download-bg: #f5f3ff;
+    --st-download-border: #c4b5fd;
+    --st-download-text: #6d28d9;
+
+    --st-pool-bg: #fff1f2;
+    --st-pool-border: #fda4af;
+    --st-pool-text: #be123c;
+
     --pwa-topbar-height: 52px;
     --pwa-bottom-nav-height: 58px;
 }
@@ -53,12 +76,28 @@ body {
     --color-brand-dark: var(--m-primary-dark);
     background: var(--m-surface);
     color: var(--m-text);
+    font-family: var(--m-font-family);
+}
+
+#mobile-app,
+#mobile-app button,
+#mobile-app input,
+#mobile-app select,
+#mobile-app textarea {
+    font-family: var(--m-font-family);
+}
+
+#mobile-app i.fa-solid,
+#mobile-app i.fa-regular,
+#mobile-app i.fa-brands {
+    line-height: 1;
+    vertical-align: middle;
 }
 
 /* Vibrant card system for mobile pages (less border, stronger color). */
 .m-pop-card {
     position: relative;
-    border-radius: 16px;
+    border-radius: 12px;
     border: 1px solid #c9e0f5;
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
     background: linear-gradient(145deg, #ffffff 0%, #f7fbff 100%);
@@ -71,7 +110,7 @@ body {
     left: 0;
     right: 0;
     height: 4px;
-    border-radius: 16px 16px 0 0;
+    border-radius: 12px 12px 0 0;
     background: #2563eb;
     opacity: 0.48;
 }
@@ -117,15 +156,102 @@ body {
 }
 
 .m-pop-soft {
-    border-radius: 12px;
+    border-radius: 10px;
     border: none;
     box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
 }
 
 .m-pill {
-    border-radius: 10px;
+    border-radius: 8px;
     border: none;
     font-weight: 700;
+}
+
+/* Consistent tiny typography for status tabs/chips across mobile pages. */
+.mobile-tab-label {
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.mobile-chip-label {
+    font-size: 9px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.mobile-chip-count {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    min-width: 4ch;
+    text-align: center;
+}
+
+.mobile-status-chip {
+    min-height: 26px;
+    gap: 4px;
+    border-radius: 8px;
+}
+
+.mobile-status-chip-fixed {
+    min-width: 104px;
+}
+
+.mobile-status-tab {
+    min-height: 32px;
+}
+
+/* Keep status chips/tabs color-consistent with list status semantics. */
+#mobile-app a.mobile-status-chip[href*='/pending/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/pending/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=pending']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=pending']:not([class*='text-white']) {
+    background: var(--st-pending-bg);
+    border-color: var(--st-pending-border);
+    color: var(--st-pending-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/verified/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/verified/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=verified']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=verified']:not([class*='text-white']) {
+    background: var(--st-verified-bg);
+    border-color: var(--st-verified-border);
+    color: var(--st-verified-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/approved/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/approved/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=approved']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=approved']:not([class*='text-white']) {
+    background: var(--st-approved-bg);
+    border-color: var(--st-approved-border);
+    color: var(--st-approved-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/download/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/download/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=download']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=download']:not([class*='text-white']) {
+    background: var(--st-download-bg);
+    border-color: var(--st-download-border);
+    color: var(--st-download-text);
+}
+
+#mobile-app a.mobile-status-chip[href*='/pool/']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='/pool/']:not([class*='text-white']),
+#mobile-app a.mobile-status-chip[href*='status=pool']:not([class*='text-white']),
+#mobile-app a.mobile-status-tab[href*='status=pool']:not([class*='text-white']) {
+    background: var(--st-pool-bg);
+    border-color: var(--st-pool-border);
+    color: var(--st-pool-text);
 }
 
 #mobile-app {
@@ -236,7 +362,7 @@ textarea:focus-visible {
    ================================================================ */
 
 .font-condensed {
-    font-family: "Roboto Condensed", "Segoe UI", system-ui, sans-serif;
+    font-family: "Arial Narrow", "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
     letter-spacing: -0.01em;
 }
 
@@ -268,6 +394,10 @@ textarea:focus-visible {
 
 .pwa-topbar-inner {
     height: var(--pwa-topbar-height);
+}
+
+.pwa-brand-title {
+    color: #1f2937;
 }
 
 .pwa-bottom-nav-spacer {
@@ -306,7 +436,7 @@ textarea:focus-visible {
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: 52px;
     height: 52px;
-    border-radius: 16px;
+    border-radius: 12px;
     background: linear-gradient(135deg, var(--m-primary), var(--m-primary-dark));
     color: #fff;
     display: flex;
@@ -348,7 +478,7 @@ textarea:focus-visible {
 .home-stat-card {
     position: relative;
     overflow: hidden;
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: 0 10px 20px rgba(13, 24, 48, 0.1);
     isolation: isolate;
     border: 1px solid rgba(255, 255, 255, 0.8);
@@ -369,7 +499,7 @@ textarea:focus-visible {
     left: 0;
     right: 0;
     height: 4px;
-    border-radius: 16px 16px 0 0;
+    border-radius: 12px 12px 0 0;
     background: #2563eb;
     opacity: 0.5;
     pointer-events: none;
@@ -393,7 +523,7 @@ textarea:focus-visible {
 .home-stat-icon {
     width: 30px;
     height: 30px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -461,31 +591,31 @@ textarea:focus-visible {
 .home-stat-verified {
     grid-column: 2;
     grid-row: 2;
-    background: linear-gradient(145deg, #99f6e4, #2dd4bf);
+    background: linear-gradient(145deg, #d1fae5, #34d399);
 }
 
 .home-stat-verified::after {
-    background: #0f766e;
+    background: #047857;
 }
 
 .home-stat-verified .home-stat-icon {
-    color: #0f766e;
-    border-color: rgba(15, 118, 110, 0.25);
+    color: #047857;
+    border-color: rgba(4, 120, 87, 0.25);
 }
 
 .home-stat-approved {
     grid-column: 1;
     grid-row: 3;
-    background: linear-gradient(145deg, #86efac, #22c55e);
+    background: linear-gradient(145deg, #dbeafe, #60a5fa);
 }
 
 .home-stat-approved::after {
-    background: #15803d;
+    background: #1d4ed8;
 }
 
 .home-stat-approved .home-stat-icon {
-    color: #166534;
-    border-color: rgba(22, 101, 52, 0.25);
+    color: #1e3a8a;
+    border-color: rgba(30, 58, 138, 0.25);
 }
 
 .home-stat-download {
@@ -552,31 +682,36 @@ textarea:focus-visible {
     line-height: 1.6;
 }
 
-.pwa-badge-green {
+.pwa-badge-green,
+.pwa-badge-verified {
     background-color: #ecfdf5;
     color: #059669;
     border: 1px solid #a7f3d0;
 }
 
-.pwa-badge-blue {
+.pwa-badge-blue,
+.pwa-badge-approved {
     background-color: #eff6ff;
     color: #2563eb;
     border: 1px solid #bfdbfe;
 }
 
-.pwa-badge-purple {
+.pwa-badge-purple,
+.pwa-badge-download {
     background-color: #faf5ff;
     color: #7c3aed;
     border: 1px solid #ddd6fe;
 }
 
-.pwa-badge-amber {
+.pwa-badge-amber,
+.pwa-badge-pending {
     background-color: #fffbeb;
     color: #d97706;
     border: 1px solid #fde68a;
 }
 
-.pwa-badge-red {
+.pwa-badge-red,
+.pwa-badge-pool {
     background-color: #fef2f2;
     color: #dc2626;
     border: 1px solid #fecaca;
@@ -1085,7 +1220,7 @@ textarea:focus-visible {
     justify-content: center;
     gap: 8px;
     padding: 14px 20px;
-    border-radius: 12px;
+    border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
     border: none;
@@ -1201,7 +1336,7 @@ textarea:focus-visible {
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: 52px;
     height: 52px;
-    border-radius: 16px;
+    border-radius: 12px;
     background: linear-gradient(135deg, var(--m-primary), var(--m-primary-dark));
     color: #fff;
     display: flex;
@@ -1239,13 +1374,13 @@ textarea:focus-visible {
 
 
 /* ================================================================
-   17. GLOBAL BORDER RADIUS ENHANCEMENTS
-   Extra border-radius for a softer UI feel.
-   ================================================================ */
+    17. GLOBAL BORDER RADIUS TUNING
+    Keep corners tighter for denser, cleaner mobile UI.
+    ================================================================ */
 
 /* Cards and containers */
 .bg-white.border {
-    border-radius: 16px;
+    border-radius: 12px;
 }
 
 /* Input fields across mobile app */
@@ -1253,7 +1388,7 @@ textarea:focus-visible {
 .pwa-home input[type="search"],
 .pwa-home input[type="email"],
 .pwa-home select {
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 /* Subtle consistency upgrades for common mobile cards/surfaces. */
@@ -1335,6 +1470,11 @@ body.pwa-v2 .pwa-topbar-inner {
     box-shadow: 0 10px 26px rgba(31, 95, 207, 0.3);
 }
 
+body.pwa-v2 .pwa-brand-title {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
 /* High-contrast header controls: avoid low-contrast white icons on light glass */
 body.pwa-v2 .pwa-page-topbar a[class*='bg-white/20'],
 body.pwa-v2 .pwa-page-topbar button[class*='bg-white/20'],
@@ -1353,14 +1493,6 @@ body.pwa-v2 .bg-gradient-to-r.from-brand-light.to-brand-dark a[class*='bg-white/
 body.pwa-v2 .bg-gradient-to-r.from-brand-light.to-brand-dark button[class*='bg-white/20'] i,
 body.pwa-v2 .bg-gradient-to-r.from-brand-light.to-brand-dark i[class*='fa-chevron-down'] {
     color: #1d4ed8 !important;
-}
-
-body.pwa-v2 .pwa-page-topbar a[class*='bg-white/20'],
-body.pwa-v2 .pwa-page-topbar button[class*='bg-white/20'] {
-    background: rgba(255, 255, 255, 0.23) !important;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
 }
 
 body.pwa-v2 .pwa-bottom-nav .bg-white {
@@ -1439,9 +1571,26 @@ body.pwa-v2 #mobile-app select,
 body.pwa-v2 #mobile-app textarea {
     background: rgba(255, 255, 255, 0.82) !important;
     border: 1px solid rgba(191, 213, 243, 0.8) !important;
-    border-radius: 14px !important;
+    border-radius: 10px !important;
     color: #1e2f46 !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+body.pwa-v2 #mobile-app .rounded-2xl {
+    border-radius: 12px !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-xl {
+    border-radius: 10px !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-lg {
+    border-radius: 8px !important;
+}
+
+body.pwa-v2 #mobile-app .rounded-t-3xl {
+    border-top-left-radius: 20px !important;
+    border-top-right-radius: 20px !important;
 }
 
 body.pwa-v2 #mobile-app input::placeholder,
@@ -1505,8 +1654,8 @@ body.pwa-v2 #mobile-app [class*='border-'] {
 body.pwa-v2 .download-modal-sheet,
 body.pwa-v2 .absolute.bottom-0.left-0.right-0.bg-white.rounded-t-3xl {
     background: rgba(255, 255, 255, 0.95) !important;
-    border-top-left-radius: 28px !important;
-    border-top-right-radius: 28px !important;
+    border-top-left-radius: 20px !important;
+    border-top-right-radius: 20px !important;
     box-shadow: 0 -16px 40px rgba(35, 80, 156, 0.25);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);

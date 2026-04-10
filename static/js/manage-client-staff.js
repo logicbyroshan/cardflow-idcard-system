@@ -1,4 +1,4 @@
-// Manage Client Staff Page  config wrapper for manage-staff-common.js
+// Manage Assistent Page  config wrapper for manage-staff-common.js
 // Uses client API endpoints and Group Assignment instead of Client Assignment.
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -962,7 +962,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var cancelDeleteBtn   = document.getElementById('cancelDeleteBtn');
 
     function closeDeleteModalFn() {
-        if (deleteModal) { deleteModal.classList.remove('show'); document.body.style.overflow = ''; }
+        if (!deleteModal) return;
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('delete-modal', { overlayClass: 'show' });
+        } else {
+            deleteModal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
     }
 
     if (closeDeleteModalB) closeDeleteModalB.addEventListener('click', closeDeleteModalFn);
@@ -1196,7 +1202,13 @@ document.addEventListener('DOMContentLoaded', function () {
         openDeleteModal: function (name) {
             var el = document.getElementById('deleteStaffName');
             if (el) el.textContent = name;
-            if (deleteModal) { deleteModal.classList.add('show'); document.body.style.overflow = 'hidden'; }
+            if (!deleteModal) return;
+            if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+                window.AdarshModalBridge.open('delete-modal', { overlayClass: 'show', focusSelector: '#confirmDeleteBtn' });
+            } else {
+                deleteModal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
         },
         closeDeleteModal: closeDeleteModalFn,
 
@@ -1270,19 +1282,32 @@ document.addEventListener('DOMContentLoaded', function () {
         step2.style.display = 'none';
         codeEl.textContent = tempPwVerificationCode;
         codeInput.value = '';
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes('');
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
         codeErr.style.display = 'none';
         pwInput.value = '';
         pwInput.type = 'password';
         pwErr.style.display = 'none';
         userNameEl.textContent = tempPwTargetName;
-        modal.style.display = 'flex';
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('temp-password-modal', { overlayClass: 'show' });
+        } else {
+            modal.style.display = 'flex';
+        }
     };
 
     window.closeTempPasswordModal = function () {
         var modal = document.getElementById('temp-password-modal');
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+                window.AdarshModalBridge.close('temp-password-modal', { overlayClass: 'show' });
+            } else {
+                modal.style.display = 'none';
+            }
+        }
         tempPwVerificationCode = '';
         tempPwTargetId = null;
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('');
     };
 
     window.verifyTempPwCode = function () {
@@ -1293,13 +1318,19 @@ document.addEventListener('DOMContentLoaded', function () {
         var pwInput = document.getElementById('tempPwNewPassword');
         if (!codeInput || !codeErr || !step1 || !step2) return;
 
-        if ((codeInput.value || '').trim() === tempPwVerificationCode) {
+        var input = (codeInput.value || '').replace(/\D/g, '').slice(0, 10);
+        codeInput.value = input;
+        if (typeof window.renderTempPwCodeBoxes === 'function') window.renderTempPwCodeBoxes(input);
+
+        if (input === tempPwVerificationCode) {
+            if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState('is-valid');
             codeErr.style.display = 'none';
             step1.style.display = 'none';
             step2.style.display = '';
             if (pwInput) pwInput.focus();
             return;
         }
+        if (typeof window.setTempPwCodeState === 'function') window.setTempPwCodeState(input.length === 10 ? 'is-invalid' : '');
         codeErr.style.display = '';
     };
 

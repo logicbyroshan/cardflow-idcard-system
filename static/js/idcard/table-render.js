@@ -107,7 +107,10 @@
         return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function _isPhoneCol(name) {
-        if (window.FieldClassifier) return window.FieldClassifier.classify(name) === 'phone';
+        if (window.FieldClassifier) {
+            var cat = window.FieldClassifier.classify(name);
+            return cat === 'phone' || cat === 'emergency_phone';
+        }
         var n = (name || '').toLowerCase();
         return /(?:father|mother|guardian|parent|mama|nana|dada|nani|dadi)\s*(?:no\.?|num|mob|ph(?:one)?|cell|tel|contact)/.test(n) ||
                /\bphone\b|\bmobile\b|\bcontact\b|\bwhatsapp\b|\btel\b|\bmob\b/.test(n);
@@ -812,10 +815,15 @@
      * Fetch all distinct class/section values from a lightweight API
      * instead of scanning the partially-loaded _allCards array.
      */
-    async function _fetchFilterOptions() {
+    async function _fetchFilterOptions(options) {
+        options = options || {};
+        var force = !!options.force;
         if (!_tableId) return;
         try {
             var url = '/api/table/' + _tableId + '/filter-options/';
+            if (force) {
+                url += '?_=' + Date.now();
+            }
             var response;
             if (typeof ApiClient !== 'undefined' && typeof ApiClient.get === 'function') {
                 response = await ApiClient.get(url);
@@ -1065,7 +1073,8 @@
         IDCardApp.getSelectedCardIds = function () { return Array.from(_selectedIds); };
 
         //  populateFilterOptions 
-        IDCardApp.populateFilterOptions = function () { _fetchFilterOptions(); };
+        IDCardApp.populateFilterOptions = function (options) { _fetchFilterOptions(options || {}); };
+        IDCardApp.forceRefreshFilterOptions = function () { _fetchFilterOptions({ force: true }); };
 
         //  initTableModule override 
         if (window.IDCardApp) {

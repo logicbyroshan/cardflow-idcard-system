@@ -11,16 +11,15 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/cardprint/generate-card.css' %}">
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
   {% include 'partials/sidebar.html' %}
   <main class="main">
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
           {% if is_super_admin %}

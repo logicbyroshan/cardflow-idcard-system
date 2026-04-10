@@ -76,23 +76,4 @@
     });
   </script>
   <script defer src="{% static 'js/create-xlsx.js' %}"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var _cfg = JSON.parse(document.getElementById('page-config').textContent);
-      var isClientRole = _cfg.isClientRole || _cfg.isClientStaff;
-      var groupId = _cfg.groupId;
-      var apiUrl = isClientRole
-        ? '/client/api/create-from-xlsx/'
-        : '/api/group/' + groupId + '/table/create-from-xlsx/';
-      initCreateWithXlsx({
-        apiUrl: apiUrl,
-        csrfToken: _cfg.csrfToken,
-        onSuccess: function() {
-          if (window.IDCardGroup && typeof window.IDCardGroup.refreshTable === 'function') {
-            window.IDCardGroup.refreshTable();
-          }
-        }
-      });
-    });
-  </script>
 {% endblock %}

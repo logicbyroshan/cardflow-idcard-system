@@ -68,23 +68,72 @@ function normalizeMediaPath(rawPath) {
   }
 
   value = value.replace(/\\/g, '/');
-  value = value.replace(/^\/+/, '');
-  if (value.toLowerCase().indexOf('media/') === 0) {
-    value = value.slice(6);
+  value = value.replace(/\/{2,}/g, '/');
+
+  // If path contains /media/ or /mediafiles/ anywhere (including absolute FS paths),
+  // keep only marker-relative part.
+  var lower = value.toLowerCase();
+  var mediaMarker = '/media/';
+  var mediafilesMarker = '/mediafiles/';
+  var markerIndexMediafiles = lower.indexOf(mediafilesMarker);
+  if (markerIndexMediafiles !== -1) {
+    value = value.slice(markerIndexMediafiles + mediafilesMarker.length);
+    value = 'mediafiles/' + value;
+  } else {
+    var markerIndexMedia = lower.indexOf(mediaMarker);
+    if (markerIndexMedia !== -1) {
+      value = value.slice(markerIndexMedia + mediaMarker.length);
+      value = 'media/' + value;
+    }
   }
+
+  value = value.replace(/^\/+/, '');
+  value = value.replace(/\/{2,}/g, '/');
   return value;
 }
 
 function toMediaUrl(rawPath) {
-  var normalized = normalizeMediaPath(rawPath);
+  var original = String(rawPath || '').trim();
+  if (!original || original === 'NOT_FOUND' || original.indexOf('PENDING:') === 0) return '';
+  if (/^https?:\/\//i.test(original)) return original;
+
+  var normalized = normalizeMediaPath(original);
   if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
+
+  normalized = normalized.replace(/^\/+/, '');
+  var lower = normalized.toLowerCase();
+  if (lower.indexOf('media/') === 0) {
+    normalized = normalized.slice('media/'.length);
+  }
+
   return '/media/' + normalized;
 }
 
 function toThumbnailPath(rawPath) {
   var normalized = normalizeMediaPath(rawPath);
   if (!normalized || normalized === 'NOT_FOUND' || normalized.indexOf('PENDING:') === 0) return '';
-  return normalized.replace(/\/([^\/]+)$/, '/thumbnails/$1');
+
+  normalized = normalized.replace(/^\/+/, '');
+  var lower = normalized.toLowerCase();
+  if (lower.indexOf('media/') === 0) {
+    normalized = normalized.slice('media/'.length);
+    lower = normalized.toLowerCase();
+  }
+
+  if (lower.indexOf('thumbs/') === 0 || lower.indexOf('/thumbs/') !== -1) {
+    return normalized;
+  }
+
+  var parts = normalized.split('/');
+  if (parts.length < 2) return normalized;
+
+  var baseFolder = parts.shift();
+  var rest = parts.join('/');
+  var dot = rest.lastIndexOf('.');
+  if (dot > 0) {
+    rest = rest.slice(0, dot) + '.webp';
+  }
+  return baseFolder + '/thumbs/' + rest;
 }
 
 function isImageField(type, name) {
@@ -494,40 +543,6 @@ function updateEmptyTable(tableBody, iconClass, text, totalCountEl, showingRange
   if (totalCountEl) totalCountEl.textContent = '0';
 }
 
-function wireBackButton(buttonId, fallbackUrl) {
-  var btn = document.getElementById(buttonId);
-  if (!btn) return;
-
-  function goBack() {
-    var referrer = document.referrer;
-    try {
-      if (referrer && new URL(referrer).origin === window.location.origin && referrer !== window.location.href) {
-        window.location.href = referrer;
-        return;
-      }
-    } catch (_e) {}
-    if (fallbackUrl) window.location.href = fallbackUrl;
-  }
-
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    goBack();
-  });
-
-  window.__reprintGoBack = goBack;
-  if (!window.__reprintBackKeyBound) {
-    window.__reprintBackKeyBound = true;
-    document.addEventListener('keydown', function(e) {
-      if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'b') {
-        var tag = (e.target && e.target.tagName ? e.target.tagName : '').toLowerCase();
-        if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
-        e.preventDefault();
-        if (typeof window.__reprintGoBack === 'function') window.__reprintGoBack();
-      }
-    });
-  }
-}
-
 function getCsrfToken() {
   var match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
@@ -646,8 +661,6 @@ function reprintListStep() {
   var tableBody = document.getElementById('reprintListTableBody');
   if (!tableBody) return;
 
-  wireBackButton('reprintListBackBtn', '/active-clients/');
-
   var selectAllCb = document.getElementById('reprintListSelectAll');
   var searchInput = document.getElementById('reprintListSearchInput');
   var searchClearBtn = document.getElementById('reprintListSearchClearBtn');
@@ -722,11 +735,23 @@ function reprintListStep() {
       submitBtn.disabled = false;
       submitBtn.title = 'Continue without edit and send to request list';
     }
-    if (modal) modal.classList.add('show');
+    if (modal) {
+      if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+        window.AdarshModalBridge.open('reprintConfirmModal', { overlayClass: 'show' });
+      } else {
+        modal.classList.add('show');
+      }
+    }
   }
 
   function closeModal() {
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+      if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+        window.AdarshModalBridge.close('reprintConfirmModal', { overlayClass: 'show' });
+      } else {
+        modal.classList.remove('show');
+      }
+    }
     pendingCardIds = [];
     wantEditInFlight = false;
     if (wantEditBtn) wantEditBtn.disabled = false;
@@ -862,8 +887,6 @@ function reprintListStep() {
 
 
 function requestListStep() {
-  // Back button logic
-  wireBackButton('requestListBackBtn', '/active-clients/');
   var tableBody = document.getElementById('requestTableBody');
   if (!tableBody) return;
 
@@ -1104,7 +1127,7 @@ function requestListStep() {
       if (!ids.length) return;
       var ok = await showConfirm({
         title: 'Reject Requests?',
-        text: 'Reject ' + ids.length + ' reprint request(s)? Cards will move to pool.',
+        text: 'Reject ' + ids.length + ' reprint request(s)? They will be removed from Request List only.',
         icon: 'fa-solid fa-ban',
         confirmLabel: 'Reject',
         hideWarning: true,
@@ -1313,8 +1336,6 @@ function requestListStep() {
 
 
 function confirmedListStep() {
-  // Back button logic
-  wireBackButton('confirmedListBackBtn', '/active-clients/');
   var tableBody = document.getElementById('confirmedTableBody');
   if (!tableBody) return;
 

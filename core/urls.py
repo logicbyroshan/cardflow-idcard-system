@@ -20,6 +20,9 @@ urlpatterns = [
     path('api/auth/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
     path('api/auth/impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
     path('api/auth/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
+    path('api/auth/user-audit/users/', views.api_user_audit_users, name='api_user_audit_users'),
+    path('api/auth/user-audit/history/', views.api_user_audit_history, name='api_user_audit_history'),
+    path('api/auth/user-audit/actions/', views.api_user_audit_actions, name='api_user_audit_actions'),
     
     # Role-specific Dashboards
     path('admin-staff-dashboard/', views.admin_staff_dashboard, name='admin_staff_dashboard'),
@@ -31,9 +34,15 @@ urlpatterns = [
     
     # Global Search API
     path('api/global-search/', views.api_global_search, name='api_global_search'),
+
+    # Dashboard live card stats API
+    path('api/dashboard-card-stats/', views.api_dashboard_card_stats, name='api_dashboard_card_stats'),
     
     # Recent Client Updates API
     path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),
+
+    # Dashboard Team Overview API
+    path('api/dashboard/team-overview/', views.api_dashboard_team_overview, name='api_dashboard_team_overview'),
     
     # Print & Reprint Overview API (dashboard)
     path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
@@ -43,6 +52,9 @@ urlpatterns = [
     
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),
+
+    # Client Staff Management
+    path('manage-client-staff/', views.manage_client_staff, name='manage_client_staff'),
     
     # Client Management
     path('manage-clients/', views.manage_clients, name='manage_clients'),
@@ -52,6 +64,9 @@ urlpatterns = [
     
     # ID Card Group for a client (shows all tables with status counts)
     path('client/<int:client_id>/groups/', views.idcard_group, name='idcard_group'),
+
+    # Active-client status badge redirect (opens requested status list)
+    path('client/<int:client_id>/status/<str:status>/', views.active_client_status_redirect, name='active_client_status_redirect'),
     
     # ID Card Actions for a table (shows cards, can filter by status)
     path('table/<int:table_id>/cards/', views.idcard_actions, name='idcard_actions'),
@@ -66,6 +81,10 @@ urlpatterns = [
 
     # Login As User (Pro User only)
     path('login-as-user/', views.login_as_user_page, name='login_as_user'),
+
+    # Deep User History (Pro User only)
+    path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
+    path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
     # Engine installer download (served via Django so headers are correct)
     path('engine/download/', views.engine_download, name='engine_download'),
@@ -125,6 +144,7 @@ urlpatterns = [
     path('api/notifications/unread-count/', views.api_notifications_unread_count, name='api_notifications_unread_count'),
     path('api/notifications/<int:notification_id>/read/', views.api_notification_mark_read, name='api_notification_mark_read'),
     path('api/notifications/mark-all-read/', views.api_notifications_mark_all_read, name='api_notifications_mark_all_read'),
+    path('api/notifications/client-messages/unread/', views.api_client_message_strip, name='api_client_message_strip'),
     # Admin notification management
     path('api/notifications/admin/list/', views.api_panel_notifications_list, name='api_panel_notifications_list'),
     path('api/notifications/admin/create/', views.api_panel_notification_create, name='api_panel_notification_create'),
@@ -133,6 +153,8 @@ urlpatterns = [
 
     # Client Tutorial (all authenticated users; content is client-oriented)
     path('tutorial/', views.tutorial, name='tutorial'),
+    path('tutorial/personal-guide/', views.tutorial_personal_guide, name='tutorial_personal_guide'),
+    path('tutorial/personal-guide/download/', views.tutorial_personal_guide_download, name='tutorial_personal_guide_download'),
     
     # System Settings
     path('settings/', views.settings, name='settings'),
@@ -148,6 +170,20 @@ urlpatterns = [
     path('api/client/<int:client_id>/staff/<int:staff_id>/toggle-status/', views.api_client_staff_toggle_status, name='api_client_staff_toggle_status'),
     path('api/client/<int:client_id>/staff/<int:staff_id>/permissions/', views.api_client_staff_permissions, name='api_client_staff_permissions'),
     path('api/client/<int:client_id>/set-temp-password/', views.api_client_set_temp_password, name='api_client_set_temp_password'),
+    path('api/client/<int:client_id>/messages/', views.api_client_messages, name='api_client_messages'),
+    path('api/client/<int:client_id>/messages/send/', views.api_client_message_send, name='api_client_message_send'),
+    path('api/client/messages/targets/', views.api_client_message_targets, name='api_client_message_targets'),
+    path('api/client/messages/group-send/', views.api_client_messages_group_send, name='api_client_messages_group_send'),
+    path('api/client/<int:client_id>/messages/<int:message_id>/delete/', views.api_client_message_delete, name='api_client_message_delete'),
+    path('api/client/<int:client_id>/login-history/', views.api_client_login_history, name='api_client_login_history'),
+    path('api/client-staff/<int:staff_id>/login-history/', views.api_client_staff_login_history, name='api_client_staff_login_history'),
+    path('api/client-staff/clients/', views.api_admin_client_staff_clients, name='api_admin_client_staff_clients'),
+    path('api/client-staff/create/', views.api_admin_client_staff_create, name='api_admin_client_staff_create'),
+    path('api/client-staff/<int:staff_id>/', views.api_admin_client_staff_get, name='api_admin_client_staff_get'),
+    path('api/client-staff/<int:staff_id>/update/', views.api_admin_client_staff_update, name='api_admin_client_staff_update'),
+    path('api/client-staff/<int:staff_id>/delete/', views.api_admin_client_staff_delete, name='api_admin_client_staff_delete'),
+    path('api/client-staff/<int:staff_id>/toggle-status/', views.api_admin_client_staff_toggle_status, name='api_admin_client_staff_toggle_status'),
+    path('api/client-staff/<int:staff_id>/set-temp-password/', views.api_admin_client_staff_set_temp_password, name='api_admin_client_staff_set_temp_password'),
     
     # Staff APIs
     path('api/staff/create/', views.api_staff_create, name='api_staff_create'),
@@ -155,6 +191,7 @@ urlpatterns = [
     path('api/staff/<int:staff_id>/update/', views.api_staff_update, name='api_staff_update'),
     path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
     path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
+    path('api/staff/<int:staff_id>/login-history/', views.api_staff_login_history, name='api_staff_login_history'),
     path('api/clients/active/', views.api_active_clients_list, name='api_active_clients_list'),
     path('api/clients/for-staff-assignment/', views.api_all_clients_for_assignment, name='api_all_clients_for_assignment'),
     path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),
@@ -175,6 +212,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/filter-options/', views.api_idcard_filter_options, name='api_idcard_filter_options'),
     path('api/table/<int:table_id>/card/create/', views.api_idcard_create, name='api_idcard_create'),
     path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
+    path('api/card/<int:card_id>/history/', views.api_idcard_history, name='api_idcard_history'),
     path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),
     path('api/card/<int:card_id>/update-field/', views.api_idcard_update_field, name='api_idcard_update_field'),
     path('api/image/preview-convert/', views.api_image_preview_convert, name='api_image_preview_convert'),
@@ -220,11 +258,13 @@ urlpatterns = [
 
     # Activity Logs API
     path('api/activity-logs/', views.api_activity_logs, name='api_activity_logs'),
+    path('api/activity-logs/clear/', views.api_clear_activity_logs, name='api_clear_activity_logs'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),
     path('api/profile/update/', views.api_update_profile, name='api_update_profile'),
     path('api/profile/change-password/', views.api_change_password, name='api_change_password'),
+    path('api/profile/security-settings/update/', views.api_update_security_settings, name='api_update_security_settings'),
     path('api/profile/upload-image/', views.api_upload_profile_image, name='api_upload_profile_image'),
     path('api/profile/remove-image/', views.api_remove_profile_image, name='api_remove_profile_image'),
 
@@ -239,6 +279,7 @@ urlpatterns = [
 
     # Monitoring dashboard data (super_admin only)
     path('api/monitoring/', views.api_monitoring_data, name='api_monitoring_data'),
+    path('api/operations-feed/', views.api_operations_feed, name='api_operations_feed'),
     path('api/server-info/', views.api_server_info_snapshot, name='api_server_info_snapshot'),
 ]
 

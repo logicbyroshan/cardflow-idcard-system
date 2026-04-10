@@ -91,7 +91,7 @@
     <div class="px-4 pb-3">
         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Quick Links</p>
         <div class="bg-gradient-to-br from-white via-white to-sky-50/30 rounded-2xl shadow-sm border border-sky-100 overflow-hidden divide-y divide-gray-50">
-            {% if is_client or is_super_admin %}
+            {% if is_super_admin or is_client and perm_idcard_client_list %}
             <a href="{% url 'mobile_app:staff_manage' %}" class="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-50 transition">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
@@ -123,8 +123,13 @@
         </div>
     </div>
 
-    <!-- Logout -->
-    <div class="px-4 pb-8">
+    <!-- App Update + Logout -->
+    <div class="px-4 pb-8 space-y-2.5">
+        <button type="button"
+                onclick="return window.mobileUpdateApp(event);"
+                class="flex items-center justify-center gap-2 w-full py-3.5 text-[13px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-2xl hover:bg-blue-100 active:scale-[0.98] transition-all">
+            <i class="fa-solid fa-rotate"></i>Update App
+        </button>
         <a href="/panel/auth/logout/" onclick="return window.mobileLogout(event);"
            class="flex items-center justify-center gap-2 w-full py-3.5 text-[13px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 active:scale-[0.98] transition-all">
             <i class="fa-solid fa-right-from-bracket"></i>Sign Out

@@ -8,161 +8,576 @@
 <span class="breadcrumb-item active">Portfolio</span>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .portfolio-admin-page {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        gap: 0;
+    }
+
+    .portfolio-admin-page .wa-count-badge {
+        border-radius: 3px;
+        border: 1px solid #dbe3ef;
+        background: #f8fafc;
+        box-shadow: none;
+        padding: 2px 8px;
+        font-weight: 700;
+    }
+
+    .portfolio-pane {
+        display: none;
+        min-height: 0;
+    }
+
+    .portfolio-pane.active {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .portfolio-items-pane .wa-table thead th,
+    .portfolio-categories-pane .wa-table thead th {
+        white-space: nowrap;
+    }
+
+    .portfolio-items-pane .wa-table {
+        min-width: 980px;
+    }
+
+    .portfolio-categories-pane .wa-table {
+        min-width: 860px;
+    }
+
+    .portfolio-items-pane .wa-table tbody td,
+    .portfolio-categories-pane .wa-table tbody td {
+        vertical-align: middle;
+    }
+
+    .portfolio-thumb {
+        width: 64px;
+        height: 50px;
+        border-radius: 3px;
+        object-fit: cover;
+        border-width: 1px;
+    }
+
+    .portfolio-thumb:hover {
+        transform: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    }
+
+    .portfolio-preview-empty {
+        width: 64px;
+        height: 50px;
+        border-radius: 3px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #94a3b8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .portfolio-items-pane .wa-cell-title,
+    .portfolio-categories-pane .wa-cell-title {
+        max-width: 240px;
+    }
+
+    .portfolio-items-pane .wa-cell-sub,
+    .portfolio-categories-pane .wa-cell-sub {
+        max-width: 320px;
+    }
+
+    .portfolio-categories-pane .wa-table-wrap {
+        margin-top: 0;
+    }
+
+    .portfolio-category-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 3px;
+        background: #eef2ff;
+        color: #4f46e5;
+        border: 1px solid #dbeafe;
+    }
+
+    .portfolio-category-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .portfolio-note-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #334155;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        border-radius: 3px;
+        padding: 2px 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .portfolio-admin-page .wa-filter-btn {
+        border-radius: 3px;
+        border: 1px solid #dbe3ef;
+        background: #ffffff;
+        box-shadow: none;
+        min-height: 28px;
+        padding: 0 10px;
+    }
+
+    .portfolio-admin-page .wa-filter-btn.active {
+        border-color: #c7d2fe;
+        background: #eef2ff;
+        color: #1e3a8a;
+    }
+
+    .portfolio-admin-page .wa-type-badge,
+    .portfolio-admin-page .wa-status-badge,
+    .portfolio-admin-page .wa-order-badge {
+        border-radius: 3px;
+    }
+
+    .portfolio-admin-page .wa-status-badge {
+        min-width: 62px;
+        justify-content: center;
+    }
+
+    .portfolio-admin-page .btn.btn-icon {
+        border-radius: 3px;
+        box-shadow: none;
+    }
+
+    .portfolio-admin-page .wa-action-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .portfolio-pane-switch {
+        border: 1px solid #dbe3ef;
+        background: #f8fafc;
+        color: #334155;
+    }
+
+    .portfolio-pane-switch:hover {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #1e3a8a;
+    }
+
+    .portfolio-admin-page .wa-toggle-label {
+        border-radius: 3px;
+    }
+
+    .portfolio-note-badge.bento {
+        color: #166534;
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+    }
+
+    .portfolio-note-badge.default {
+        color: #7c2d12;
+        border-color: #fed7aa;
+        background: #fff7ed;
+    }
+
+    .portfolio-categories-pane .wa-actions {
+        white-space: nowrap;
+    }
+
+    .portfolio-categories-pane .wa-cell-sub {
+        white-space: normal;
+        line-height: 1.35;
+    }
+
+    .portfolio-items-pane .wa-actions,
+    .portfolio-categories-pane .wa-actions {
+        width: 1%;
+    }
+
+    .portfolio-pagination-bar {
+        margin-top: 0;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
+        padding: 4px 10px;
+        min-height: 34px;
+        flex-shrink: 0;
+    }
+
+    .portfolio-fixed-pagination {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .portfolio-fixed-categories {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .portfolio-fixed-pagination .wa-action-bar,
+    .portfolio-fixed-categories .wa-action-bar,
+    .portfolio-fixed-pagination .wa-filter-row,
+    .portfolio-fixed-pagination .wa-bulk-action-bar {
+        flex-shrink: 0;
+    }
+
+    .portfolio-fixed-pagination .wa-table-wrap,
+    .portfolio-fixed-categories .wa-table-wrap {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    .portfolio-fixed-pagination .wa-table thead,
+    .portfolio-fixed-categories .wa-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    .portfolio-fixed-pagination .wa-table thead th,
+    .portfolio-fixed-categories .wa-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+    }
+
+    .main.wa-page .main-content .portfolio-fixed-pagination .portfolio-pagination-bar {
+        margin-top: auto;
+        position: sticky !important;
+        bottom: 0;
+        z-index: 7;
+    }
+
+    .portfolio-pagination-bar .pagination-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+
+    .portfolio-pagination-bar .pagination-right label {
+        font-size: 11px;
+        color: #64748b;
+        white-space: nowrap;
+        margin: 0;
+    }
+
+    .portfolio-pagination-bar #portfolioRowsPerPage {
+        width: 74px;
+        flex: 0 0 auto;
+        min-width: 74px;
+        height: 26px;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="wa-page-container">
-
-    <!-- Category Management -->
-    <div class="wa-dashboard-section">
-        <div class="wa-action-bar">
-            <div class="wa-action-left">
-                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-layer-group"></i> Categories</h3>
-                <span class="wa-count-badge">{{ categories|length }} categories</span>
-            </div>
-            <div class="wa-action-right">
-                {% if is_super_admin or perm_website_add %}
-                <button class="btn btn-primary" onclick="openCategoryModal()">
-                    <i class="fa-solid fa-plus"></i> Add Category
-                </button>
-                {% endif %}
-            </div>
-        </div>
-        <div class="wa-category-chips" id="categoryChips">
-            {% for cat in categories %}
-            <div class="wa-category-chip {% if cat.is_default %}default{% endif %}{% if cat.is_bento %} bento{% endif %}" data-id="{{ cat.id }}">
-                <div class="wa-chip-icon"><i class="{{ cat.icon }}"></i></div>
-                <div class="wa-chip-label">
-                    <span class="wa-chip-name">{{ cat.name }}</span>
-                    <div class="wa-chip-meta">
-                        <span class="wa-chip-count">{{ cat.item_count }} items</span>
-                        {% if cat.is_bento %}<small class="wa-bento-badge" title="In bento grid">Bento</small>{% endif %}
-                    </div>
+<div class="wa-page-container portfolio-admin-page">
+    <section class="portfolio-pane portfolio-items-pane active" id="portfolioItemsPane">
+        <div class="wa-dashboard-section portfolio-fixed-pagination">
+            <div class="wa-action-bar">
+                <div class="wa-action-left">
+                    <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
+                    <span class="wa-count-badge">{{ total_items_count }} items</span>
                 </div>
-                {% if not cat.is_default %}
-                <div class="wa-chip-actions">
-                    <button class="wa-chip-btn" title="Edit" onclick="editCategory({{ cat.id }}, '{{ cat.name|escapejs }}', '{{ cat.icon|escapejs }}', '{{ cat.description|escapejs }}', {{ cat.order }}, {{ cat.is_bento|yesno:'true,false' }}, '{{ cat.bento_size }}')"><i class="fa-solid fa-pen"></i></button>
-                    <button class="wa-chip-btn danger" title="Delete" onclick="deleteCategory({{ cat.id }})"><i class="fa-solid fa-trash"></i></button>
+                <div class="wa-action-right">
+                    <button class="btn btn-sm portfolio-pane-switch" type="button" onclick="openPortfolioPane('portfolioCategoriesPane')">
+                        <i class="fa-solid fa-layer-group"></i> Categories
+                    </button>
+                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+                    <button class="btn btn-secondary" type="button" onclick="openBulkUploadModal()">
+                        <i class="fa-solid fa-images"></i> Bulk Upload
+                    </button>
+                    <button class="btn btn-primary" type="button" onclick="openPortfolioModal()">
+                        <i class="fa-solid fa-plus"></i> Add Item
+                    </button>
+                    {% endif %}
                 </div>
+            </div>
+
+            <div class="wa-filter-row" id="portfolioFilters">
+                <button class="wa-filter-btn active" data-cat="all">All</button>
+                {% for cat in categories %}
+                <button class="wa-filter-btn" data-cat="{{ cat.id }}">{{ cat.name }}</button>
+                {% endfor %}
+            </div>
+
+            <div class="wa-bulk-action-bar" id="portfolioBulkBar" style="display:none;">
+                <span id="portfolioSelectedCount">0 selected</span>
+                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
+                <button class="btn btn-danger btn-sm" onclick="bulkDeletePortfolio()"><i class="fa-solid fa-trash"></i> Delete Selected</button>
                 {% endif %}
+                <button class="btn btn-neutral btn-sm" onclick="clearPortfolioSelection()"><i class="fa-solid fa-xmark"></i> Clear</button>
             </div>
-            {% endfor %}
-        </div>
-    </div>
 
-    <!-- Portfolio Items -->
-    <div class="wa-dashboard-section">
-        <div class="wa-action-bar">
-            <div class="wa-action-left">
-                <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-images"></i> Portfolio Items</h3>
-                <span class="wa-count-badge">{{ items|length }} items</span>
+            <div class="wa-table-wrap">
+                <table class="wa-table" id="portfolioTable">
+                    <colgroup>
+                        <col style="width:40px;">
+                        <col style="width:96px;">
+                        <col style="width:26%;">
+                        <col style="width:18%;">
+                        <col style="width:12%;">
+                        <col style="width:10%;">
+                        <col style="width:12%;">
+                        <col style="width:12%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="wa-check-th"><input type="checkbox" id="selectAllPortfolio" title="Select all" onchange="toggleAllPortfolio(this)"></th>
+                            <th>Preview</th>
+                            <th>Item</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Order</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="portfolioBody">
+                        {% for p in items %}
+                        <tr data-id="{{ p.id }}" data-cat="{{ p.category_id|default:'' }}">
+                            <td><input type="checkbox" class="portfolio-row-check" value="{{ p.id }}" onchange="updatePortfolioSelection()"></td>
+                            <td>
+                                {% if p.image %}
+                                <img src="{{ p.image.url }}" class="wa-thumb portfolio-thumb wa-thumb-clickable" alt="{{ p.title|default:'Item' }}" onclick="previewImage(this.src, this.alt)">
+                                {% elif p.item_type == 'video' or p.item_type == 'reel' %}
+                                <span class="portfolio-preview-empty"><i class="fa-solid fa-video"></i></span>
+                                {% else %}
+                                <span class="portfolio-preview-empty"><i class="fa-solid fa-image"></i></span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="wa-cell-info">
+                                    <span class="wa-cell-title">{{ p.title|default:"Untitled" }}</span>
+                                    {% if p.is_featured %}<span class="wa-cell-sub"><i class="fa-solid fa-star wa-featured-note"></i> Featured</span>{% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if p.category %}
+                                <span class="wa-type-badge cat">
+                                    <i class="{{ p.category.icon }}"></i> {{ p.category.name }}
+                                </span>
+                                {% else %}
+                                <span class="wa-cell-dash"> - </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="wa-type-badge {{ p.item_type }}">
+                                    <i class="fa-solid {% if p.item_type == 'image' %}fa-image{% elif p.item_type == 'video' %}fa-video{% else %}fa-film{% endif %}"></i>
+                                    {{ p.get_item_type_display }}
+                                </span>
+                            </td>
+                            <td><span class="wa-order-badge">{{ p.order }}</span></td>
+                            <td>
+                                <span class="wa-status-badge {% if p.is_active %}active{% else %}inactive{% endif %}"
+                                      onclick="togglePortfolio({{ p.id }}, this)">
+                                    {{ p.is_active|yesno:"Active,Inactive" }}
+                                </span>
+                            </td>
+                            <td class="wa-actions">
+                                {% if is_super_admin or perm_website_edit or perm_manage_website_portfolio %}
+                                <button class="btn btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
+                                {% endif %}
+                                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
+                                <button class="btn btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-images"></i>
+                                    <h3>No Portfolio Items</h3>
+                                    <p>Add your first portfolio item to showcase your work.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <div class="wa-action-right">
-                {% if is_super_admin or perm_website_add %}
-                <button class="btn btn-secondary" onclick="openBulkUploadModal()">
-                    <i class="fa-solid fa-images"></i> Bulk Upload
-                </button>
-                <button class="btn btn-primary" onclick="openPortfolioModal()">
-                    <i class="fa-solid fa-plus"></i> Add Item
-                </button>
-                {% endif %}
-            </div>
-        </div>
 
-        <!-- Category Filter -->
-        <div class="wa-filter-row" id="portfolioFilters">
-            <button class="wa-filter-btn active" data-cat="all">All</button>
-            {% for cat in categories %}
-            <button class="wa-filter-btn" data-cat="{{ cat.id }}">{{ cat.name }}</button>
-            {% endfor %}
-        </div>
-
-        <!-- Bulk action bar (shown when items selected) -->
-        <div class="wa-bulk-action-bar" id="portfolioBulkBar" style="display:none;">
-            <span id="portfolioSelectedCount">0 selected</span>
-            {% if is_super_admin or perm_website_delete %}
-            <button class="btn btn-danger btn-sm" onclick="bulkDeletePortfolio()"><i class="fa-solid fa-trash"></i> Delete Selected</button>
-            {% endif %}
-            <button class="btn btn-neutral btn-sm" onclick="clearPortfolioSelection()"><i class="fa-solid fa-xmark"></i> Clear</button>
-        </div>
-
-        <div class="wa-table-wrap">
-            <table class="wa-table" id="portfolioTable">
-                <thead>
-                    <tr>
-                        <th class="wa-check-th" style="width:40px;"><input type="checkbox" id="selectAllPortfolio" title="Select all" onchange="toggleAllPortfolio(this)"></th>
-                        <th>Preview</th>
-                        <th>Item</th>
-                        <th>Category</th>
-                        <th>Type</th>
-                        <th>Order</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="portfolioBody">
-                    {% for p in items %}
-                    <tr data-id="{{ p.id }}" data-cat="{{ p.category_id|default:'' }}">
-                        <td><input type="checkbox" class="portfolio-row-check" value="{{ p.id }}" onchange="updatePortfolioSelection()"></td>
-                        <td>
-                            {% if p.image %}
-                            <img src="{{ p.image.url }}" class="wa-thumb xl wa-thumb-clickable" alt="{{ p.title|default:'Item' }}" onclick="previewImage(this.src, this.alt)">
-                            {% elif p.item_type == 'video' or p.item_type == 'reel' %}
-                            <span class="wa-thumb-icon"></span>
+            <div class="pagination-bar notif-pagination-bar portfolio-pagination-bar">
+                <div class="pagination-left">
+                    <span class="pagination-info">Showing {{ page_start }} to {{ page_end }} of {{ total_items_count }} items</span>
+                </div>
+                <div class="pagination-center">
+                    <button class="pagination-btn" type="button" title="First Page" aria-label="First page" onclick="goPortfolioPage(1)" {% if not page_obj.has_previous %}disabled{% endif %}>
+                        <i class="fa-solid fa-angles-left"></i>
+                    </button>
+                    <button class="pagination-btn" type="button" title="Previous Page" aria-label="Previous page" onclick="goPortfolioPage({{ page_obj.number|add:'-1' }})" {% if not page_obj.has_previous %}disabled{% endif %}>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span class="page-numbers">
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if num == page_obj.number %}
+                            <span class="page-num active">{{ num }}</span>
                             {% else %}
-                            <span class="wa-no-img lg"><i class="fa-solid fa-image"></i></span>
+                            <button class="page-num" type="button" onclick="goPortfolioPage({{ num }})">{{ num }}</button>
                             {% endif %}
-                        </td>
-                        <td>
-                            <div class="wa-cell-info">
-                                <span class="wa-cell-title">{{ p.title|default:"Untitled" }}</span>
-                                {% if p.is_featured %}<span class="wa-cell-sub"><i class="fa-solid fa-star wa-featured-note"></i> Featured</span>{% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            {% if p.category %}
-                            <span class="wa-type-badge cat">
-                                <i class="{{ p.category.icon }}"></i> {{ p.category.name }}
-                            </span>
-                            {% else %}
-                            <span class="wa-cell-dash"> - </span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="wa-type-badge {{ p.item_type }}">
-                                <i class="fa-solid {% if p.item_type == 'image' %}fa-image{% elif p.item_type == 'video' %}fa-video{% else %}fa-film{% endif %}"></i>
-                                {{ p.get_item_type_display }}
-                            </span>
-                        </td>
-                        <td><span class="wa-order-badge">{{ p.order }}</span></td>
-                        <td>
-                            <span class="wa-status-badge {% if p.is_active %}active{% else %}inactive{% endif %}"
-                                  onclick="togglePortfolio({{ p.id }}, this)">
-                                {{ p.is_active|yesno:"Active,Inactive" }}
-                            </span>
-                        </td>
-                        <td class="wa-actions">
-                            {% if is_super_admin or perm_website_edit %}
-                            <button class="btn btn-icon" title="Edit" onclick="editPortfolio({{ p.id }})"><i class="fa-solid fa-pen"></i></button>
-                            {% endif %}
-                            {% if is_super_admin or perm_website_delete %}
-                            <button class="btn btn-icon danger" title="Delete" onclick="deletePortfolio({{ p.id }})"><i class="fa-solid fa-trash"></i></button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8">
-                            <div class="empty-state">
-                                <i class="fa-solid fa-images"></i>
-                                <h3>No Portfolio Items</h3>
-                                <p>Add your first portfolio item to showcase your work.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        {% endfor %}
+                    </span>
+                    <button class="pagination-btn" type="button" title="Next Page" aria-label="Next page" onclick="goPortfolioPage({{ page_obj.number|add:'1' }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button class="pagination-btn" type="button" title="Last Page" aria-label="Last page" onclick="goPortfolioPage({{ page_obj.paginator.num_pages }})" {% if not page_obj.has_next %}disabled{% endif %}>
+                        <i class="fa-solid fa-angles-right"></i>
+                    </button>
+                </div>
+                <div class="pagination-right">
+                    <label for="portfolioRowsPerPage">Rows per page:</label>
+                    <select id="portfolioRowsPerPage" class="form-select form-select-sm" onchange="onPortfolioRowsPerPageChange(this.value)">
+                        {% for size in per_page_options %}
+                        <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
+
+    <section class="portfolio-pane portfolio-categories-pane" id="portfolioCategoriesPane">
+        <div class="wa-dashboard-section portfolio-fixed-categories">
+            <div class="wa-action-bar">
+                <div class="wa-action-left">
+                    <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-layer-group"></i> Categories</h3>
+                    <span class="wa-count-badge">{{ categories|length }} categories</span>
+                </div>
+                <div class="wa-action-right">
+                    <button class="btn btn-sm portfolio-pane-switch" type="button" onclick="openPortfolioPane('portfolioItemsPane')">
+                        <i class="fa-solid fa-images"></i> Portfolio Items
+                    </button>
+                    {% if is_super_admin or perm_website_add or perm_manage_website_portfolio %}
+                    <button class="btn btn-primary" type="button" onclick="openCategoryModal()">
+                        <i class="fa-solid fa-plus"></i> Add Category
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="wa-filter-row" style="margin-top:0;border-top:0;padding-top:6px;padding-bottom:8px;">
+                <span class="wa-cell-sub" style="font-size:11px;">
+                    Public bento overrides are active: School Stationery and Office Stationery stay out of bento; Certificates, Marksheets, Mugs and T-Shirts stay in bento.
+                </span>
+            </div>
+
+            <div class="wa-table-wrap">
+                <table class="wa-table" id="portfolioCategoryTable">
+                    <colgroup>
+                        <col style="width:88px;">
+                        <col style="width:24%;">
+                        <col style="width:34%;">
+                        <col style="width:10%;">
+                        <col style="width:10%;">
+                        <col style="width:10%;">
+                        <col style="width:12%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Icon</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Items</th>
+                            <th>Order</th>
+                            <th>Bento</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr data-id="{{ cat.id }}">
+                            <td>
+                                <span class="portfolio-category-icon"><i class="{{ cat.icon }}"></i></span>
+                            </td>
+                            <td>
+                                <div class="wa-cell-info">
+                                    <span class="wa-cell-title">{{ cat.name }}</span>
+                                    <div class="portfolio-category-meta">
+                                        {% if cat.is_default %}<span class="portfolio-note-badge default">Default</span>{% endif %}
+                                        {% if cat.is_bento %}<span class="portfolio-note-badge bento">Bento {{ cat.bento_size|default:'normal' }}</span>{% endif %}
+                                        {% if cat.slug in public_bento_include_slugs %}<span class="portfolio-note-badge bento">Public Bento Forced</span>{% endif %}
+                                        {% if cat.slug in public_bento_exclude_slugs %}<span class="portfolio-note-badge default">Public Bento Excluded</span>{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if cat.description %}
+                                <span class="wa-cell-sub">{{ cat.description }}</span>
+                                {% else %}
+                                <span class="wa-cell-dash"> - </span>
+                                {% endif %}
+                            </td>
+                            <td><span class="wa-order-badge">{{ cat.item_count }}</span></td>
+                            <td><span class="wa-order-badge">{{ cat.order }}</span></td>
+                            <td>
+                                {% if cat.slug in public_bento_exclude_slugs %}
+                                <span class="wa-status-badge inactive" style="cursor:default;">No</span>
+                                {% elif cat.slug in public_bento_include_slugs or cat.is_bento %}
+                                <span class="wa-status-badge active" style="cursor:default;">Yes</span>
+                                {% else %}
+                                <span class="wa-status-badge inactive" style="cursor:default;">No</span>
+                                {% endif %}
+                            </td>
+                            <td class="wa-actions">
+                                {% if not cat.is_default %}
+                                {% if is_super_admin or perm_website_edit or perm_manage_website_portfolio %}
+                                <button class="btn btn-icon" title="Edit" onclick="editCategory({{ cat.id }}, '{{ cat.name|escapejs }}', '{{ cat.icon|escapejs }}', '{{ cat.description|escapejs }}', {{ cat.order }}, {{ cat.is_bento|yesno:'true,false' }}, '{{ cat.bento_size|escapejs }}')"><i class="fa-solid fa-pen"></i></button>
+                                {% endif %}
+                                {% if is_super_admin or perm_website_delete or perm_manage_website_portfolio %}
+                                <button class="btn btn-icon danger" title="Delete" onclick="deleteCategory({{ cat.id }})"><i class="fa-solid fa-trash"></i></button>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                    <h3>No Categories</h3>
+                                    <p>Create categories to organize portfolio items.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 </div>
 
 <!-- Category Modal -->
@@ -197,11 +612,11 @@
                         <input type="checkbox" id="cat_is_bento" name="is_bento">
                         <span>Show in Bento Grid</span>
                     </label>
-                    <small class="form-hint">Display this category in the bento layout on the public site.</small>
+                    <small class="form-hint">Display this category in the bento layout on the public site. Public overrides keep Certificates/Marksheets/Mugs/T-Shirts in bento, and School/Office Stationery out.</small>
                 </div>
                 <div class="wa-form-group">
                     <label for="cat_bento_size">Bento Size</label>
-                    <select id="cat_bento_size" name="bento_size">
+                    <select id="cat_bento_size" name="bento_size" class="form-select">
                         <option value="normal">Normal</option>
                         <option value="wide">Wide (2 columns)</option>
                         <option value="large">Large (featured)</option>
@@ -229,7 +644,7 @@
             <div class="wa-form-row">
                 <div class="wa-form-group">
                     <label for="pf_category">Category</label>
-                    <select id="pf_category" name="category">
+                    <select id="pf_category" name="category" class="form-select">
                         <option value=""> -  None  - </option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}">{{ cat.name }}</option>
@@ -252,7 +667,16 @@
             <div class="wa-form-group">
                 <label for="pf_video_file"><i class="fa-solid fa-video"></i> Video File (optional)</label>
                 <input type="file" id="pf_video_file" name="video_file" accept="video/*">
-                <small class="form-hint">Upload a video file. Type will be set to "video" automatically.</small>
+                <small class="form-hint">Upload video for Video or Reel items.</small>
+            </div>
+            <div class="wa-form-group">
+                <label for="pf_item_type">Media Type</label>
+                <select id="pf_item_type" name="item_type" class="form-select">
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                    <option value="reel">Reel (Short Vertical)</option>
+                </select>
+                <small class="form-hint">For short vertical videos, choose Reel so it is styled correctly in the product range modal.</small>
             </div>
             <div class="wa-form-row">
                 <div class="wa-form-group">
@@ -288,7 +712,7 @@
             <div class="wa-modal-body">
                 <div class="wa-form-group">
                     <label for="bulk_category">Category *</label>
-                    <select id="bulk_category" name="category" required>
+                    <select id="bulk_category" name="category" class="form-select" required>
                         <option value=""> -  Select Category  - </option>
                         {% for cat in categories %}
                         <option value="{{ cat.id }}">{{ cat.name }}</option>
@@ -320,7 +744,7 @@
 <div id="imagePreviewOverlay" onclick="closeImagePreview()"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
     <button onclick="event.stopPropagation();closeImagePreview()"
-            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
+            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:4px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.24);color:#fff;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
         <i class="fa-solid fa-xmark"></i>
     </button>
     <img id="imagePreviewImg" src="" alt=""
@@ -343,8 +767,33 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=134"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=136"></script>
 <script>
+function switchPortfolioPane(targetId) {
+    var panes = document.querySelectorAll('.portfolio-pane');
+    panes.forEach(function(pane) {
+        pane.classList.toggle('active', pane.id === targetId);
+    });
+
+    if (targetId !== 'portfolioItemsPane' && typeof clearPortfolioSelection === 'function') {
+        clearPortfolioSelection();
+    }
+}
+
+function openPortfolioPane(targetId) {
+    switchPortfolioPane(targetId);
+    if (history.replaceState) history.replaceState(null, '', '#' + targetId);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var hashTarget = (window.location.hash || '').replace('#', '');
+    if (hashTarget && document.getElementById(hashTarget)) {
+        switchPortfolioPane(hashTarget);
+    } else {
+        switchPortfolioPane('portfolioItemsPane');
+    }
+});
+
 function toggleAllPortfolio(master) {
     document.querySelectorAll('.portfolio-row-check').forEach(function(cb) { cb.checked = master.checked; });
     updatePortfolioSelection();
@@ -369,6 +818,24 @@ function clearPortfolioSelection() {
     document.getElementById('selectAllPortfolio').checked = false;
     document.getElementById('portfolioBulkBar').style.display = 'none';
 }
+
+function onPortfolioRowsPerPageChange(value) {
+    var url = new URL(window.location.href);
+    var params = url.searchParams;
+    params.set('per_page', String(value || 25));
+    params.set('page', '1');
+    var hash = window.location.hash || '#portfolioItemsPane';
+    window.location.href = url.pathname + '?' + params.toString() + hash;
+}
+
+function goPortfolioPage(page) {
+    var targetPage = Math.max(1, parseInt(page || 1, 10));
+    var url = new URL(window.location.href);
+    url.searchParams.set('page', String(targetPage));
+    var hash = window.location.hash || '#portfolioItemsPane';
+    window.location.href = url.pathname + '?' + url.searchParams.toString() + hash;
+}
+
 async function bulkDeletePortfolio() {
     var checked = document.querySelectorAll('.portfolio-row-check:checked');
     if (!checked.length) return;

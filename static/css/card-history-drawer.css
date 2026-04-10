@@ -1,0 +1,109 @@
+.card-history-col-head,
+.card-history-col-cell {
+  width: 38px;
+  min-width: 38px;
+  text-align: center;
+}
+
+.card-history-col-head {
+  padding: 10px 6px;
+}
+
+.card-history-trigger {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.card-history-trigger:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.card-history-overlay {
+  z-index: var(--z-drawer-backdrop);
+}
+
+.card-history-drawer {
+  width: 700px;
+  max-width: 100vw;
+}
+
+.card-history-drawer.open {
+  transform: translateX(0);
+}
+
+.card-history-header {
+  padding: 12px 20px;
+}
+
+.card-history-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.card-history-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.82);
+  margin-top: 2px;
+}
+
+.card-history-close {
+  border-radius: 6px;
+}
+
+.card-history-body {
+  background: #f8fafc;
+}
+
+.card-history-loading,
+.card-history-empty,
+.card-history-error {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 14px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.card-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-history-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.card-history-when {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.card-history-what {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.card-history-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #334155;
+}

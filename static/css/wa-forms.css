@@ -60,8 +60,7 @@
 .wa-form-group input[type="url"],
 .wa-form-group input[type="number"],
 .wa-form-group input[type="tel"],
-.wa-form-group textarea,
-.wa-form-group select {
+.wa-form-group textarea {
     height: 34px;
     padding: 0 10px;
     font-size: 13px;
@@ -80,10 +79,15 @@
     resize: vertical;
 }
 .wa-form-group input:focus,
-.wa-form-group textarea:focus,
-.wa-form-group select:focus {
+.wa-form-group textarea:focus {
     border-color: var(--wa-primary);
     box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
+}
+
+.wa-form-group .form-select {
+    height: 34px;
+    font-size: 13px;
+    font-weight: 500;
 }
 .wa-form-group input[type="file"] {
     font-size: 12.5px;

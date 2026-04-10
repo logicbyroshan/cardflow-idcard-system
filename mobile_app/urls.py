@@ -57,6 +57,11 @@ urlpatterns = [
     path('api/search/', views.api_search, name='api_search'),
     path('api/server-info/', views.api_server_info, name='api_server_info'),
 
+    # Pro user impersonation APIs (mobile surface)
+    path('api/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),
+    path('api/impersonate/start/', views.api_impersonate_start, name='api_impersonate_start'),
+    path('api/impersonate/stop/', views.api_impersonate_stop, name='api_impersonate_stop'),
+
     # Client Management APIs
     path('api/client/create/', views.api_client_create, name='api_client_create'),
     path('api/client/<int:client_id>/', views.api_client_detail, name='api_client_detail'),
@@ -65,9 +70,8 @@ urlpatterns = [
     path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
     path('api/client/<int:client_id>/tables/', views.api_client_tables, name='api_client_tables'),
 
-    # Website management (portfolio + reels upload from mobile)
+    # Website management (unified portfolio media upload from mobile)
     path('website/', views.website_manage, name='website_manage'),
     path('api/website/portfolio/upload/', views.api_portfolio_upload, name='api_portfolio_upload'),
     path('api/website/portfolio/category/<int:category_id>/items/', views.api_portfolio_category_items, name='api_portfolio_category_items'),
-    path('api/website/reel/upload/', views.api_reel_upload, name='api_reel_upload'),
 ]

@@ -25,9 +25,11 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
-from django.db.models import Count, Q, Max, CharField
+from django.db.models import Count, Q, Max, CharField, F, Case, When, Value, IntegerField
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
+from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.timezone import make_aware, is_naive
 
 from client.services import (
     ClientAccessService,
@@ -45,6 +47,8 @@ from staff.models import Staff
 from accounts.rate_limit import rate_limit
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
+from core.services import StaffService, IDCardService
+from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
 from mediafiles.services.image_thumbnail import ThumbnailService
@@ -52,7 +56,28 @@ from mediafiles.services.image_thumbnail import ThumbnailService
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
 MAX_SEARCH_QUERY_LEN = 100
+MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MAX_REPRINT_ACTION_IDS = 200
+MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
+
+MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS = [
+    'certificates',
+    'marksheets',
+    'mugs',
+    't-shirts',
+]
+MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS = [
+    'school-stationery',
+    'office-stationery',
+]
+MOBILE_PUBLIC_BENTO_ORDER = [
+    'id-cards',
+    'lanyards',
+    'badges',
+    'student-diaries',
+    'pamphlets',
+    *MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS,
+]
 
 
 # ---------------------------------------------------------------------------
@@ -130,24 +155,101 @@ def require_mobile_client(view_func):
 def _get_notification_count(user):
     """Return unread notification count for the mobile bell badge (capped at 99)."""
     try:
-        from core.models import Notification, NotificationRead
-        from django.db.models import Q as _Q
-        role = getattr(user, 'role', 'all')
-        active_ids = list(
-            Notification.objects
-            .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user), is_active=True)
-            .values_list('id', flat=True)
+        _, unread_count = _get_system_notifications(
+            user,
+            limit=100,
+            mark_visible_as_read=False,
         )
-        if not active_ids:
-            return 0
-        read_ids = set(
-            NotificationRead.objects
-            .filter(user=user, notification_id__in=active_ids)
-            .values_list('notification_id', flat=True)
-        )
-        return min(len(set(active_ids) - read_ids), 99)
+        return min(unread_count, 99)
     except Exception:
         return 0
+
+
+def _is_mobile_client_edit_locked(user, card_status):
+    """Client/client_staff cannot edit cards in specific locked statuses on mobile."""
+    return getattr(user, 'role', '') in ('client', 'client_staff') and card_status in MOBILE_CLIENT_EDIT_LOCK_STATUSES
+
+
+def _mobile_client_edit_locked_response():
+    """Standard 403 payload for mobile edit lock violations."""
+    return JsonResponse(
+        {'success': False, 'message': 'Cards in pool status cannot be edited by client users.'},
+        status=403,
+    )
+
+
+def _can_access_card_with_row_scope(user, card):
+    """Enforce card ownership plus client_staff row-level scope restrictions."""
+    if not ClientAccessService.can_access_card(user, card):
+        return False
+
+    if not PermissionService.is_client_staff(user):
+        return True
+
+    scoped = ClientCardService._apply_client_staff_row_scope(
+        user,
+        card.table,
+        IDCard.objects.filter(id=card.id, table_id=card.table_id),
+    )
+    return scoped.exists()
+
+
+def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
+    """Return system notifications for a user with consistent unread tracking."""
+    from core.models import Notification, NotificationRead
+    from django.db.models import Q as _Q
+    from django.utils import timezone as _tz
+
+    role = getattr(user, 'role', 'all')
+    safe_limit = max(1, min(int(limit or 20), 100))
+    now = _tz.now()
+
+    notifications = list(
+        Notification.objects
+        .filter(is_active=True)
+        .filter(_Q(expires_at__isnull=True) | _Q(expires_at__gt=now))
+        .filter(_Q(target='all') | _Q(target=role) | _Q(target='selected', target_users=user))
+        .distinct()
+        .order_by('-created_at')[:safe_limit]
+    )
+
+    if not notifications:
+        return [], 0
+
+    notif_ids = [n.id for n in notifications]
+    read_ids = set(
+        NotificationRead.objects
+        .filter(user=user, notification_id__in=notif_ids)
+        .values_list('notification_id', flat=True)
+    )
+
+    if mark_visible_as_read:
+        unread_ids = [nid for nid in notif_ids if nid not in read_ids]
+        if unread_ids:
+            NotificationRead.objects.bulk_create(
+                [NotificationRead(user=user, notification_id=nid) for nid in unread_ids],
+                ignore_conflicts=True,
+            )
+            read_ids.update(unread_ids)
+            cache.delete(f'mobile:notif_count:{user.pk}')
+
+    items = [
+        {
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'priority': n.priority,
+            'priority_color': n.priority_color,
+            'category': n.get_category_display(),
+            'icon_class': n.icon_class,
+            'created_at': n.created_at.strftime('%d %b %Y'),
+            'is_read': n.id in read_ids,
+        }
+        for n in notifications
+    ]
+
+    unread_count = sum(1 for n in items if not n['is_read'])
+    return items, unread_count
 
 
 def _client_ctx(user):
@@ -168,6 +270,21 @@ def _client_ctx(user):
             client = Client.objects.filter(id__in=accessible_ids, status='active').first()
     perms = PermissionService.get_permission_context(user)
     return client, perms
+
+
+def _mobile_no_client_redirect():
+    """Single redirect target when mobile session has no client context."""
+    return redirect('/app/no-access/?reason=no-client-context')
+
+
+def _can_manage_clients_surface(user):
+    """Return True when user can use Manage Client actions."""
+    return PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
+
+
+def _can_manage_client_staff_surface(user):
+    """Return True when client user can manage client staff."""
+    return PermissionService.is_client(user) and PermissionService.has(user, 'perm_idcard_client_list')
 
 
 _AACI_SENTINEL = object()  # sentinel for _admin_accessible_client_ids cache
@@ -195,47 +312,121 @@ def _admin_accessible_client_ids(user):
     return result
 
 
-def _search_cards_queryset(base_qs, query, limit=None):
-    """Apply performant card search over common JSON keys plus a few spaced-key annotations."""
+def _image_path_basename(value):
+    """Return a normalized basename from a stored media path-like value."""
+    raw = str(value or '').strip()
+    if not raw or raw == 'NOT_FOUND' or raw.startswith('PENDING:'):
+        return ''
+    cleaned = raw.replace('\\', '/').split('?', 1)[0].split('#', 1)[0]
+    return cleaned.rsplit('/', 1)[-1]
+
+
+def _search_cards_for_global_results(base_qs, query, limit=50, filter_type='all'):
+    """Desktop-parity card matching for mobile global search.
+
+    Uses a broad DB prefilter and then validates matches field-by-field so
+    mobile search behaves like desktop global search for dynamic table fields.
+    """
     if not query or len(query) < 2:
-        return base_qs.none()
+        return []
 
-    search_q = (
-        Q(field_data__NAME__icontains=query) |
-        Q(field_data__name__icontains=query) |
-        Q(field_data__Name__icontains=query) |
-        Q(field_data__ID__icontains=query) |
-        Q(field_data__id__icontains=query) |
-        Q(field_data__ID_NUMBER__icontains=query) |
-        Q(field_data__id_number__icontains=query) |
-        Q(field_data__ROLL_NO__icontains=query) |
-        Q(field_data__roll_no__icontains=query) |
-        Q(field_data__CLASS__icontains=query) |
-        Q(field_data__class__icontains=query) |
-        Q(field_data__SECTION__icontains=query) |
-        Q(field_data__section__icontains=query) |
-        Q(field_data__FATHER_NAME__icontains=query) |
-        Q(field_data__MOTHER_NAME__icontains=query) |
-        Q(field_data__CONTACT__icontains=query) |
-        Q(field_data__PHONE__icontains=query)
-    )
-    if query.isdigit():
-        search_q |= Q(id=int(query))
+    query_upper = query.upper()
+    active_filter = str(filter_type or 'all').strip().lower()
+    if active_filter not in ('all', 'name', 'address', 'mobile'):
+        active_filter = 'all'
+    image_field_types = {'photo', 'mother_photo', 'father_photo', 'image', 'signature'}
+    non_searchable_field_types = {'file', 'barcode', 'qr_code'}
+    non_searchable_name_tokens = ('BARCODE', 'QR', 'FILE')
 
-    qs = base_qs.annotate(
-        _roll_no_sp=Cast(KeyTextTransform('ROLL NO', 'field_data'), CharField()),
-        _father_name_sp=Cast(KeyTextTransform('FATHER NAME', 'field_data'), CharField()),
-        _mother_name_sp=Cast(KeyTextTransform('MOTHER NAME', 'field_data'), CharField()),
-    ).filter(
-        search_q |
-        Q(_roll_no_sp__icontains=query) |
-        Q(_father_name_sp__icontains=query) |
-        Q(_mother_name_sp__icontains=query)
-    )
+    cards = base_qs.filter(field_data__icontains=query)[:MAX_GLOBAL_SEARCH_DB_SCAN]
+    matched_cards = []
 
-    if limit is not None:
-        return qs[:limit]
-    return qs
+    for card in cards:
+        field_data = card.field_data or {}
+        if not isinstance(field_data, dict):
+            continue
+
+        field_type_by_name = {}
+        table_fields = getattr(card.table, 'fields', None)
+        if isinstance(table_fields, list):
+            for field in table_fields:
+                if not isinstance(field, dict):
+                    continue
+                field_name = str(field.get('name', '')).strip().upper()
+                if not field_name:
+                    continue
+                field_type_by_name[field_name] = str(field.get('type', 'text')).strip().lower()
+
+        matched = False
+        for field_name, field_value in field_data.items():
+            if field_value in (None, ''):
+                continue
+
+            field_name_upper = str(field_name).upper()
+            field_type = field_type_by_name.get(field_name_upper, '')
+
+            is_image_field = (
+                field_type in image_field_types
+                or ((not field_type) and ('PHOTO' in field_name_upper or 'IMAGE' in field_name_upper or 'SIGN' in field_name_upper))
+            )
+            if is_image_field:
+                if active_filter != 'all':
+                    continue
+                image_basename = _image_path_basename(field_value)
+                if image_basename and query_upper in image_basename.upper():
+                    matched = True
+                    break
+                continue
+
+            if field_type in non_searchable_field_types:
+                continue
+            if (not field_type) and any(token in field_name_upper for token in non_searchable_name_tokens):
+                continue
+
+            if active_filter != 'all':
+                if active_filter == 'name' and 'NAME' not in field_name_upper:
+                    continue
+                if active_filter == 'address' and 'ADDRESS' not in field_name_upper:
+                    continue
+                if active_filter == 'mobile' and ('MOBILE' not in field_name_upper and 'PHONE' not in field_name_upper and 'MOB' not in field_name_upper):
+                    continue
+
+            if query_upper in str(field_value).upper():
+                matched = True
+                break
+
+        if not matched:
+            continue
+
+        matched_cards.append(card)
+        if len(matched_cards) >= limit:
+            break
+
+    return matched_cards
+
+
+def _card_display_name(card, field_data):
+    """Return user-facing card name with table-aware fallback."""
+    for key in ('NAME', 'name', 'Name'):
+        value = (field_data or {}).get(key)
+        if value:
+            return str(value)
+
+    table_fields = getattr(card.table, 'fields', None)
+    if isinstance(table_fields, list):
+        for field in table_fields:
+            if not isinstance(field, dict):
+                continue
+            if str(field.get('type', 'text')).strip().lower() not in ('text', 'textarea'):
+                continue
+            fname = field.get('name')
+            if not fname:
+                continue
+            value = (field_data or {}).get(fname)
+            if value:
+                return str(value)
+
+    return f'Card #{card.id}'
 
 
 def _sanitize_search_query(value, max_len=MAX_SEARCH_QUERY_LEN):
@@ -472,7 +663,7 @@ _ALLOWED_IMAGE_TYPES = frozenset({
     'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence',
 })
 _ALLOWED_IMAGE_EXTS  = frozenset({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.hei'})
-_MAX_IMAGE_SIZE = 15 * 1024 * 1024  # 15 MB
+_MAX_IMAGE_SIZE = 40 * 1024 * 1024  # 40 MB raw input; normalized output is compressed JPEG
 
 def _validate_image(photo):
     """Return (ok, message, normalized_upload) for an uploaded file."""
@@ -497,6 +688,37 @@ def _unpack_validate_image_result(result, original_photo):
     return False, 'Invalid image validation response', None
 
 
+def _serialize_mobile_admin_staff(staff):
+    """Serialize admin_staff rows with full permission flags for mobile edit forms."""
+    row = {
+        'id': staff.id,
+        'name': staff.user.get_full_name() or staff.user.username,
+        'email': staff.user.email,
+        'phone': getattr(staff.user, 'phone', '') or '',
+        'department': staff.department or '',
+        'designation': staff.designation or '',
+        'is_active': staff.user.is_active,
+        'staff_type': staff.get_staff_type_display(),
+        'created_at': staff.created_at.strftime('%d %b %Y'),
+        'assigned_client_ids': [client.id for client in staff.assigned_clients.all()],
+    }
+    for perm in StaffService.PERMISSION_FIELDS:
+        row[perm] = bool(getattr(staff, perm, False))
+    return row
+
+
+def _list_mobile_admin_staff(limit=200):
+    """Return admin_staff records for mobile list/details, including permission booleans."""
+    queryset = (
+        Staff.objects
+        .filter(staff_type='admin_staff')
+        .select_related('user')
+        .prefetch_related('assigned_clients')
+        .order_by('-created_at')[:limit]
+    )
+    return [_serialize_mobile_admin_staff(staff) for staff in queryset]
+
+
 # ---------------------------------------------------------------------------
 # PAGE VIEWS
 # ---------------------------------------------------------------------------
@@ -514,6 +736,9 @@ def mobile_login(request):
             return redirect('/panel/auth/logout/?next=/app/login/')
         # Separate mobile auth flow: do not auto-enter app unless mobile auth checkpoint passed.
         if request.session.get('mobile_auth_ok') and PermissionService.has(user, 'perm_mobile_app'):
+            client, _ = _client_ctx(user)
+            if client is None:
+                return _mobile_no_client_redirect()
             return redirect('/app/')
     return render(request, 'mobile_app/login.html')
 
@@ -522,8 +747,20 @@ def mobile_login(request):
 def mobile_no_access(request):
     """Show explicit mobile permission-required page."""
     user = request.user if request.user.is_authenticated else None
+    reason = str(request.GET.get('reason') or '').strip().lower()
+
+    title = 'Access Not Enabled'
+    message = 'Mobile app access has not been enabled for your account. Please contact your administrator.'
+
+    if reason == 'no-client-context':
+        title = 'No Active Client Context'
+        message = 'Your account is signed in, but no active client is assigned. Please contact your administrator to assign an active client.'
+
     return render(request, 'mobile_app/no_access.html', {
         'user_name': (user.get_full_name() or user.username) if user else '',
+        'reason': reason,
+        'no_access_title': title,
+        'no_access_message': message,
     }, status=403)
 
 
@@ -546,12 +783,11 @@ def api_mobile_login(request):
         data = json.loads(request.body or '{}')
         identifier = (data.get('email') or '').strip()
         password = data.get('password', '')
-        role = data.get('role')
 
         if not identifier or not password:
             return JsonResponse({'success': False, 'message': 'Email and password are required.'}, status=400)
 
-        result = AuthService.authenticate_user(identifier, password, role)
+        result = AuthService.authenticate_user(identifier, password)
         if not result.get('success'):
             return JsonResponse({'success': False, 'message': result.get('message', 'Invalid credentials.')}, status=400)
 
@@ -567,8 +803,31 @@ def api_mobile_login(request):
                 'message': 'Mobile app access is disabled for your account. Please contact admin/owner.',
             }, status=403)
 
+        browser_fingerprint = AuthService.browser_fingerprint_from_request(request)
+        current_session_key = ''
+        if request.user.is_authenticated and getattr(request.user, 'pk', None) == user.pk:
+            current_session_key = request.session.session_key or ''
+
+        surface_limits = AuthService.role_surface_limits(user)
+        max_mobile_sessions = int(surface_limits.get('mobile', 1) or 1)
+        session_inspection = AuthService.inspect_active_sessions_for_user(
+            user.id,
+            browser_fingerprint=browser_fingerprint,
+            exclude_session_key=current_session_key,
+            stop_after=max_mobile_sessions + 1,
+        )
+        surface_counts = session_inspection.get('surface_counts') or {}
+        active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
+        if active_mobile_sessions >= max_mobile_sessions:
+            return JsonResponse({
+                'success': False,
+                'message': f'Maximum {max_mobile_sessions} active mobile login(s) are allowed for this account. Please logout from another mobile device and try again.',
+            }, status=200)
+
         auth_login(request, user)
-        request.session['selected_role'] = role
+        request.session['selected_role'] = getattr(user, 'role', '')
+        request.session['_auth_browser_fp'] = browser_fingerprint
+        request.session['_auth_login_surface'] = 'mobile'
         request.session['mobile_auth_ok'] = True
         ActivityService.log_login(request, user)
         return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
@@ -639,18 +898,41 @@ def pwa_service_worker(request):
     from django.http import HttpResponse
     sw_content = """\
 /* Adarsh ID Cards — PWA Service Worker */
-const CACHE = 'adarsh-app-v2';
-const SHELL = ['/app/', '/app/login/', '/app/manifest.json'];
+const APP_CACHE = 'adarsh-app-v5';
+const STATIC_CACHE = 'adarsh-static-v5';
+const SHELL = ['/app/login/', '/app/manifest.json'];
+const STATIC_ASSETS = [
+    '/static/css/tailwind.css',
+    '/static/css/vendor/fontawesome/all.min.css?v=2',
+    '/static/css/vendor/webfonts/fa-solid-900.woff2',
+    '/static/css/vendor/webfonts/fa-regular-400.woff2',
+    '/static/css/vendor/webfonts/fa-brands-400.woff2',
+    '/static/mobile/css/mobile.css?v=5',
+    '/static/mobile/js/app.js',
+];
+
+function shouldCache(response) {
+    return !!response && (response.status === 200 || response.type === 'opaque');
+}
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
-        caches.open(CACHE).then(async function(c) {
-            await Promise.allSettled(
-                SHELL.map(function(url) {
-                    return c.add(url);
-                })
-            );
-        })
+        Promise.all([
+            caches.open(APP_CACHE).then(async function(c) {
+                await Promise.allSettled(
+                    SHELL.map(function(url) {
+                        return c.add(url);
+                    })
+                );
+            }),
+            caches.open(STATIC_CACHE).then(async function(c) {
+                await Promise.allSettled(
+                    STATIC_ASSETS.map(function(url) {
+                        return c.add(url);
+                    })
+                );
+            }),
+        ])
     );
     self.skipWaiting();
 });
@@ -659,7 +941,10 @@ self.addEventListener('activate', function(e) {
     e.waitUntil(
         caches.keys().then(function(keys) {
             return Promise.all(
-                keys.filter(function(k) { return k !== CACHE; })
+                keys
+                    .filter(function(k) {
+                        return k !== APP_CACHE && k !== STATIC_CACHE;
+                    })
                     .map(function(k) { return caches.delete(k); })
             );
         })
@@ -667,16 +952,44 @@ self.addEventListener('activate', function(e) {
     self.clients.claim();
 });
 
+self.addEventListener('message', function(event) {
+    if (event && event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
 self.addEventListener('fetch', function(e) {
-    /* Only intercept GET requests within /app/ */
     if (e.request.method !== 'GET') return;
+
     var url = new URL(e.request.url);
+    if (url.origin !== self.location.origin) return;
+
+    if (url.pathname.startsWith('/static/')) {
+        e.respondWith(
+            caches.open(STATIC_CACHE).then(function(c) {
+                return c.match(e.request).then(function(cached) {
+                    var networkFetch = fetch(e.request).then(function(resp) {
+                        if (shouldCache(resp)) {
+                            c.put(e.request, resp.clone());
+                        }
+                        return resp;
+                    }).catch(function() {
+                        return cached;
+                    });
+
+                    return cached || networkFetch;
+                });
+            })
+        );
+        return;
+    }
+
     if (!url.pathname.startsWith('/app/')) return;
 
     e.respondWith(
         fetch(e.request).catch(function() {
             return caches.match(e.request).then(function(cached) {
-                return cached || caches.match('/app/');
+                return cached || caches.match('/app/login/');
             });
         })
     );
@@ -694,7 +1007,7 @@ def home(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/app/login/')
+        return _mobile_no_client_redirect()
 
     # ── Compute accessible_ids ONCE for the entire view ──────────────────
     # Avoids 4+ redundant M2M queries for admin_staff users.
@@ -740,17 +1053,22 @@ def home(request):
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
+        scoped_staff = Staff.objects.all()
         if accessible_ids is not None:
             scoped_clients = scoped_clients.filter(id__in=accessible_ids)
             scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+            scoped_staff = scoped_staff.filter(
+                Q(client_id__in=accessible_ids) |
+                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+            ).distinct()
 
         cache_key = 'mob_admin_home_counts' if accessible_ids is None else f'mob_admin_home_counts:{user.id}'
         _admin_counts = cache.get(cache_key)
         if _admin_counts is None:
             _admin_counts = {
                 'admin_client_count': scoped_clients.count(),
-                'admin_staff_count': Staff.objects.filter(staff_type='admin_staff').count(),
+                'admin_staff_count': scoped_staff.count(),
                 'admin_table_count': scoped_tables.count(),
                 'admin_total_cards': scoped_cards.count(),
             }
@@ -801,6 +1119,14 @@ def home(request):
     from django.utils.timesince import timesince as _timesince
     from django.utils import timezone as _tz
     _now = _tz.now()
+
+    def _safe_client_logo_url(_client_obj):
+        try:
+            _logo = getattr(_client_obj, 'website_logo', None)
+            return _logo.url if _logo else ''
+        except Exception:
+            return ''
+
     _cards_scope = (
         IDCard.objects.all() if _is_admin
         else IDCard.objects.filter(table__group__client=client)
@@ -836,22 +1162,28 @@ def home(request):
     ctx.update({'recent_activities': _recent_acts, 'has_new_activity': bool(_recent_acts)})
 
     # ── Recent Clients section ──────────────────────────────────────────────
-    # For admins: show top 8 active clients ordered by most-recently updated card.
+    # For admins: mirror desktop dashboard ordering for recent clients.
     # For client / client_staff: show the single client's groups as "clients".
     recent_client_updates = []
     try:
         if _is_admin:
             from client.models import Client as ClientModel
-            # Clients that have cards, ordered by most recent card update
+
+            base_qs = ClientModel.objects.all()
             clients_qs = (
-                ClientModel.objects
-                .filter(status='active')
-                .annotate(last_update=Max('id_card_groups__tables__id_cards__updated_at'))
-                .filter(last_update__isnull=False)
-                .order_by('-last_update')
+                PermissionService.get_accessible_clients(user, base_qs)
+                .annotate(
+                    latest_approved=Max(
+                        'id_card_groups__tables__id_cards__updated_at',
+                        filter=Q(id_card_groups__tables__id_cards__status='approved'),
+                    )
+                )
+                .order_by(
+                    F('latest_approved').desc(nulls_last=True),
+                    F('created_at').desc(nulls_last=True),
+                    F('id').desc(),
+                )
             )
-            if accessible_ids is not None:
-                clients_qs = clients_qs.filter(id__in=accessible_ids)
             client_list = list(clients_qs[:10])
             client_ids = [c.id for c in client_list]
 
@@ -905,6 +1237,7 @@ def home(request):
                 recent_client_updates.append({
                     'client_id': c.id,
                     'client_name': c.name,
+                    'logo_url': _safe_client_logo_url(c),
                     'pending': _sm.get('pending', 0),
                     'verified': _sm.get('verified', 0),
                     'approved': _sm.get('approved', 0),
@@ -912,33 +1245,80 @@ def home(request):
                     'tables': _tables_data,
                 })
         else:
-            # Single client — show per-group breakdown
-            # 2 queries total (groups list + one aggregate) instead of 1+N
-            from idcards.models import IDCardGroup
-            groups_list = list(IDCardGroup.objects.filter(client=client).order_by('name')[:6])
-            group_ids = [g.id for g in groups_list]
-            _gc_raw = (
-                IDCard.objects.filter(table__group_id__in=group_ids)
-                .values('table__group_id', 'status')
-                .annotate(n=Count('id'))
-            )
-            _gc_map = {}
-            for _row in _gc_raw:
-                _gc_map.setdefault(_row['table__group_id'], {})[_row['status']] = _row['n']
+            # Client/client_staff: group-first rows with expandable tables.
+            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True).select_related('group')
+            if PermissionService.is_client_staff(user):
+                _staff = getattr(user, 'staff_profile', None)
+                if _staff:
+                    _assigned_table_ids = _normalize_positive_int_ids(_staff.assigned_table_ids or [])
+                    _assigned_group_ids = _staff_assigned_group_ids_for_access(_staff)
+                    if _assigned_table_ids and _assigned_group_ids:
+                        _tables_qs = _tables_qs.filter(Q(id__in=_assigned_table_ids) | Q(group_id__in=_assigned_group_ids))
+                    elif _assigned_table_ids:
+                        _tables_qs = _tables_qs.filter(id__in=_assigned_table_ids)
+                    elif _assigned_group_ids:
+                        _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
 
-            for grp in groups_list:
-                status_map = _gc_map.get(grp.id, {})
-                if not sum(status_map.values(), 0):
-                    continue
+            _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
+            _table_ids = [t.id for t in _tables]
+            _group_ids = list({t.group_id for t in _tables})
+
+            _group_map = {
+                g.id: g
+                for g in IDCardGroup.objects.filter(id__in=_group_ids).only('id', 'name')
+            }
+
+            _gc_map = {}
+            _tc_map = {}
+            if _table_ids:
+                _gc_raw = (
+                    IDCard.objects.filter(table_id__in=_table_ids)
+                    .values('table__group_id', 'status')
+                    .annotate(n=Count('id'))
+                )
+                for _row in _gc_raw:
+                    _gc_map.setdefault(_row['table__group_id'], {})[_row['status']] = _row['n']
+
+                _tc_raw = (
+                    IDCard.objects.filter(table_id__in=_table_ids)
+                    .values('table_id', 'status')
+                    .annotate(n=Count('id'))
+                )
+                for _row in _tc_raw:
+                    _tc_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
+
+            _tables_by_group = {}
+            for _tbl in _tables:
+                _tables_by_group.setdefault(_tbl.group_id, [])
+                if len(_tables_by_group[_tbl.group_id]) < 8:
+                    _tm = _tc_map.get(_tbl.id, {})
+                    _tables_by_group[_tbl.group_id].append({
+                        'id': _tbl.id,
+                        'name': _tbl.name,
+                        'group_name': _tbl.group.name,
+                        'pending': _tm.get('pending', 0),
+                        'verified': _tm.get('verified', 0),
+                        'approved': _tm.get('approved', 0),
+                        'download': _tm.get('download', 0),
+                    })
+
+            _ordered_group_ids = sorted(
+                _group_ids,
+                key=lambda gid: (_group_map.get(gid).name.lower() if _group_map.get(gid) else ''),
+            )
+
+            for gid in _ordered_group_ids:
+                _grp = _group_map.get(gid)
+                _sm = _gc_map.get(gid, {})
                 recent_client_updates.append({
-                    'client_id': client.id,
-                    'client_name': grp.name,
-                    'group_id': grp.id,
-                    'pending': status_map.get('pending', 0),
-                    'verified': status_map.get('verified', 0),
-                    'approved': status_map.get('approved', 0),
-                    'download': status_map.get('download', 0),
-                    'tables': [],
+                    'client_id': gid,
+                    'client_name': _grp.name if _grp else f'Group #{gid}',
+                    'group_id': gid,
+                    'pending': _sm.get('pending', 0),
+                    'verified': _sm.get('verified', 0),
+                    'approved': _sm.get('approved', 0),
+                    'download': _sm.get('download', 0),
+                    'tables': _tables_by_group.get(gid, []),
                 })
     except Exception:
         logger.exception('Failed to build recent_client_updates for home view')
@@ -953,15 +1333,20 @@ def home(request):
         if _is_admin:
             from client.models import Client as ClientModel
 
+            base_qs = ClientModel.objects.all()
             clients_qs = (
-                ClientModel.objects
-                .filter(status='active')
-                .annotate(last_reprint_update=Max('id_card_groups__tables__reprint_requests__updated_at'))
-                .filter(last_reprint_update__isnull=False)
-                .order_by('-last_reprint_update')
+                PermissionService.get_accessible_clients(user, base_qs)
+                .annotate(
+                    latest_reprint_update=Max(
+                        'id_card_groups__tables__reprint_requests__updated_at',
+                        filter=Q(id_card_groups__tables__reprint_requests__status__in=['requested', 'confirmed']),
+                    )
+                )
+                .order_by(
+                    F('latest_reprint_update').desc(nulls_last=True),
+                    'name',
+                )
             )
-            if accessible_ids is not None:
-                clients_qs = clients_qs.filter(id__in=accessible_ids)
 
             client_list = list(clients_qs[:10])
             client_ids = [c.id for c in client_list]
@@ -1022,12 +1407,14 @@ def home(request):
                 recent_reprint_updates.append({
                     'client_id': c.id,
                     'client_name': c.name,
+                    'logo_url': _safe_client_logo_url(c),
                     'requested': _requested,
                     'confirmed': _confirmed,
                     'tables': _tables_data,
+                    'allow_client_jump': True,
                 })
         else:
-            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True)
+            _tables_qs = IDCardTable.objects.filter(group__client=client, is_active=True).select_related('group')
             if PermissionService.is_client_staff(user):
                 _staff = getattr(user, 'staff_profile', None)
                 if _staff:
@@ -1040,7 +1427,7 @@ def home(request):
                     elif _assigned_group_ids:
                         _tables_qs = _tables_qs.filter(group_id__in=_assigned_group_ids)
 
-            _tables = list(_tables_qs.order_by('group__name', 'name')[:12])
+            _tables = list(_tables_qs.order_by('group__name', 'name')[:80])
             _table_ids = [t.id for t in _tables]
 
             _tr_raw = (
@@ -1053,27 +1440,47 @@ def home(request):
             for _row in _tr_raw:
                 _tr_map.setdefault(_row['table_id'], {})[_row['status']] = _row['n']
 
-            _tables_data = []
+            _tables_by_group = {}
+            _group_totals = {}
             for _tbl in _tables:
                 _tm = _tr_map.get(_tbl.id, {})
                 _requested = _tm.get('requested', 0)
                 _confirmed = _tm.get('confirmed', 0)
                 reprint_request_total += _requested
                 reprint_confirmed_total += _confirmed
-                _tables_data.append({
+                _tables_by_group.setdefault(_tbl.group_id, [])
+                _group_totals.setdefault(_tbl.group_id, {'requested': 0, 'confirmed': 0})
+                _group_totals[_tbl.group_id]['requested'] += _requested
+                _group_totals[_tbl.group_id]['confirmed'] += _confirmed
+                if len(_tables_by_group[_tbl.group_id]) >= 8:
+                    continue
+                _tables_by_group[_tbl.group_id].append({
                     'id': _tbl.id,
                     'name': _tbl.name,
                     'requested': _requested,
                     'confirmed': _confirmed,
                 })
 
-            if _tables_data:
+            _group_map = {
+                g.id: g
+                for g in IDCardGroup.objects.filter(id__in=list(_tables_by_group.keys())).only('id', 'name')
+            }
+            _ordered_group_ids = sorted(
+                list(_tables_by_group.keys()),
+                key=lambda gid: (_group_map.get(gid).name.lower() if _group_map.get(gid) else ''),
+            )
+
+            for gid in _ordered_group_ids:
+                _grp = _group_map.get(gid)
+                _gt = _group_totals.get(gid, {'requested': 0, 'confirmed': 0})
                 recent_reprint_updates.append({
                     'client_id': client.id,
-                    'client_name': client.name,
-                    'requested': reprint_request_total,
-                    'confirmed': reprint_confirmed_total,
-                    'tables': _tables_data,
+                    'client_name': _grp.name if _grp else f'Group #{gid}',
+                    'group_id': gid,
+                    'requested': _gt.get('requested', 0),
+                    'confirmed': _gt.get('confirmed', 0),
+                    'tables': _tables_by_group.get(gid, []),
+                    'allow_client_jump': False,
                 })
     except Exception:
         logger.exception('Failed to build recent_reprint_updates for home view')
@@ -1116,11 +1523,20 @@ def clients_list(request):
             distinct=True,
         ),
     ).order_by('name')
+
+    def _safe_client_logo_url(_client_obj):
+        try:
+            _logo = getattr(_client_obj, 'website_logo', None)
+            return _logo.url if _logo else ''
+        except Exception:
+            return ''
+
     client_data = []
     for c in clients:
         client_data.append({
             'id': c.id,
             'name': c.name,
+            'logo_url': _safe_client_logo_url(c),
             'tables_count': c.tables_count,
             'cards_count': c.cards_count,
             'status': c.status,
@@ -1135,7 +1551,8 @@ def clients_list(request):
         'clients': client_data,
         'clients_json': client_data,
         'client_count': len(client_data),
-        'can_manage_clients': PermissionService.is_super_admin(user),
+        'can_manage_clients': _can_manage_clients_surface(user),
+        'can_delete_clients': PermissionService.is_super_admin(user),
         **perms,
     })
 
@@ -1267,6 +1684,9 @@ def card_list(request, table_id, status):
     if status_perm and not PermissionService.has(user, status_perm):
         return redirect('mobile_app:home')
 
+    from_date = (request.GET.get('from') or '').strip()
+    to_date = (request.GET.get('to') or '').strip()
+
     # Keep initial server-rendered ordering aligned with api_cards()/ClientCardService.get_cards.
     if status == 'download':
         cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-downloaded_at', '-id')
@@ -1283,9 +1703,28 @@ def card_list(request, table_id, status):
         'created_at', 'status_changed_at', 'downloaded_at', 'deleted_at',
     )
 
-    _card_batch_raw = list(cards_qs[:51])
-    _has_more_raw = len(_card_batch_raw) > 50
-    cards_batch = _card_batch_raw[:50]
+    if status == 'download':
+        if from_date:
+            parsed_from_dt = parse_datetime(from_date)
+            if parsed_from_dt is not None:
+                if is_naive(parsed_from_dt):
+                    parsed_from_dt = make_aware(parsed_from_dt)
+                cards_qs = cards_qs.filter(downloaded_at__gte=parsed_from_dt)
+            else:
+                parsed_from_d = parse_date(from_date)
+                if parsed_from_d is not None:
+                    cards_qs = cards_qs.filter(downloaded_at__date__gte=parsed_from_d)
+
+        if to_date:
+            parsed_to_dt = parse_datetime(to_date)
+            if parsed_to_dt is not None:
+                if is_naive(parsed_to_dt):
+                    parsed_to_dt = make_aware(parsed_to_dt)
+                cards_qs = cards_qs.filter(downloaded_at__lte=parsed_to_dt)
+            else:
+                parsed_to_d = parse_date(to_date)
+                if parsed_to_d is not None:
+                    cards_qs = cards_qs.filter(downloaded_at__date__lte=parsed_to_d)
 
     # For client_staff: apply class/section filter
     allowed_classes = []
@@ -1294,6 +1733,11 @@ def card_list(request, table_id, status):
         staff = getattr(user, 'staff_profile', None)
         if staff:
             allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
+        cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
+
+    _card_batch_raw = list(cards_qs[:51])
+    _has_more_raw = len(_card_batch_raw) > 50
+    cards_batch = _card_batch_raw[:50]
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
@@ -1316,14 +1760,52 @@ def card_list(request, table_id, status):
         _raw = raw_val.strip()
         if not _raw:
             return None, False
+
+        _media_base = settings.MEDIA_URL if str(settings.MEDIA_URL).endswith('/') else f"{settings.MEDIA_URL}/"
         _low = _raw.lower()
-        if _raw.startswith('/') or _raw.startswith('http://') or _raw.startswith('https://'):
+
+        if _low.startswith('data:image/'):
             return _raw, True
-        if 'adarshimg/' in _low or _low.endswith(photo_exts):
-            return settings.MEDIA_URL + _raw, True
-        if '/' in _raw or '\\' in _raw:
-            return settings.MEDIA_URL + _raw.lstrip('/\\'), True
-        return None, False
+
+        if _low == 'not_found' or _low.startswith('pending:'):
+            return None, True
+
+        if _raw.startswith('http://') or _raw.startswith('https://'):
+            return _raw, True
+
+        _norm = _raw.replace('\\', '/')
+        _norm_low = _norm.lower()
+
+        _marker = '/media/'
+        _idx = _norm_low.rfind(_marker)
+        if _idx != -1:
+            _rel = _norm[_idx + len(_marker):].lstrip('/')
+            return (_media_base + _rel, True) if _rel else (None, True)
+
+        if _norm.startswith('/'):
+            return _norm, True
+
+        _media_roots = (
+            'adarshimg/',
+            'card_media/',
+            'clients_imgs/',
+            'clients_imgs_cropped/',
+            'clients_imgs_failed/',
+            'staff_imgs/',
+            'images/',
+        )
+        for _root in _media_roots:
+            _root_marker = '/' + _root
+            _root_idx = _norm_low.find(_root_marker)
+            if _root_idx != -1:
+                return _media_base + _norm[_root_idx + 1:].lstrip('/'), True
+            if _norm_low.startswith(_root):
+                return _media_base + _norm.lstrip('/'), True
+
+        if _norm_low.endswith(photo_exts) or '/' in _norm:
+            return _media_base + _norm.lstrip('/'), True
+
+        return None, True
 
     def _extract_photo_slots(fd, primary_photo_url, field_defs):
         _fd = fd or {}
@@ -1444,6 +1926,22 @@ def card_list(request, table_id, status):
 
         return ordered
 
+    class_field_name = None
+    section_field_name = None
+    for _field in table_fields:
+        _fname = str(_field.get('name', '')).strip()
+        _ftype = str(_field.get('type', '')).strip().lower()
+        _norm = _fname.lower().replace('_', ' ').replace('-', ' ').replace('.', ' ')
+        _norm = ' '.join(_norm.split())
+        if class_field_name is None and (
+            _ftype == 'class' or _norm in ('class', 'class name', 'std', 'standard', 'designation', 'grade')
+        ):
+            class_field_name = _fname
+        if section_field_name is None and (
+            _ftype == 'section' or _norm in ('section', 'section name', 'sec', 'division', 'div')
+        ):
+            section_field_name = _fname
+
     cards = []
     for idx, card in enumerate(cards_batch):
         fd = card.field_data or {}
@@ -1451,8 +1949,8 @@ def card_list(request, table_id, status):
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or fd.get('ID') or ''
         father_name = fd.get('FATHER NAME') or fd.get("FATHER'S NAME") or fd.get('FATHER_NAME') or fd.get('father_name') or ''
         mother_name = fd.get('MOTHER NAME') or fd.get("MOTHER'S NAME") or fd.get('MOTHER_NAME') or fd.get('mother_name') or ''
-        class_name = fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
-        section = fd.get('SECTION') or fd.get('section') or ''
+        class_name = (fd.get(class_field_name) if class_field_name else None) or fd.get('CLASS') or fd.get('class') or fd.get('DESIGNATION') or ''
+        section = (fd.get(section_field_name) if section_field_name else None) or fd.get('SECTION') or fd.get('section') or ''
         dob = fd.get('DOB') or fd.get('dob') or fd.get('DATE OF BIRTH') or fd.get('DATE_OF_BIRTH') or ''
 
         primary_photo_url = card.photo.url if card.photo else None
@@ -1474,24 +1972,15 @@ def card_list(request, table_id, status):
             'photo_slots': photo_slots,
             'has_photo': bool(photo_urls),
             'status': card.status,
+            'downloaded_date': card.downloaded_at.strftime('%Y-%m-%d') if card.downloaded_at else '',
             'field_data': fd,
             'display_fields': _build_display_fields(fd, table_fields),
         })
 
-    # Apply class/section filters for client_staff if restrictions are set
-    if allowed_classes:
-        cards = [c for c in cards if c['class_name'] in allowed_classes]
-    if allowed_sections:
-        cards = [c for c in cards if c['section'] in allowed_sections]
-
-    # Re-number sr_no after filtering
-    for i, c in enumerate(cards):
-        c['sr_no'] = i + 1
-
     total_count = len(cards)
 
-    # has_more: only meaningful when no client-side class/section filtering is applied
-    has_more = _has_more_raw and not (allowed_classes or allowed_sections)
+    # Row-scope is applied directly in queryset, so pagination stays accurate for scoped users.
+    has_more = _has_more_raw
 
     # Build and cache filter options from full table data to avoid repeated full-table scans.
     filter_meta = _get_table_filter_metadata(table, table_fields)
@@ -1500,19 +1989,23 @@ def card_list(request, table_id, status):
     class_to_sections = dict(filter_meta.get('class_to_sections') or {})
 
     # Respect explicit client_staff restrictions in filter options.
-    if allowed_classes:
-        _allowed_set = set(allowed_classes)
-        all_classes = [c for c in all_classes if c in _allowed_set]
+    _allowed_norm_classes = {
+        normalize_class_value(value)
+        for value in (allowed_classes or [])
+        if normalize_class_value(value)
+    }
+
+    if _allowed_norm_classes:
+        all_classes = [c for c in all_classes if normalize_class_value(c) in _allowed_norm_classes]
     if allowed_sections:
         _allowed_set = set(allowed_sections)
         all_sections = [s for s in all_sections if s in _allowed_set]
 
-    if allowed_classes:
-        _allowed_cls_set = set(allowed_classes)
+    if _allowed_norm_classes:
         class_to_sections = {
             _cls: _sections
             for _cls, _sections in class_to_sections.items()
-            if _cls in _allowed_cls_set
+            if normalize_class_value(_cls) in _allowed_norm_classes
         }
     if allowed_sections:
         _allowed_sec_set = set(allowed_sections)
@@ -1540,6 +2033,38 @@ def card_list(request, table_id, status):
             if _row['status'] in reprint_counts:
                 reprint_counts[_row['status']] = _row['n']
 
+    has_any_list_actions = bool(perms.get('perm_idcard_info') or perms.get('perm_idcard_bulk_download'))
+    if status == 'pending':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_add') or
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_verify') or
+            perms.get('perm_idcard_delete')
+        )
+    elif status == 'verified':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_approve') or
+            perms.get('perm_idcard_verify')
+        )
+    elif status == 'approved':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_bulk_download') or
+            perms.get('perm_idcard_approve')
+        )
+    elif status == 'download':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_edit') or
+            perms.get('perm_idcard_retrieve') or
+            perms.get('perm_idcard_reprint_list')
+        )
+    elif status == 'pool':
+        has_any_list_actions = has_any_list_actions or bool(
+            perms.get('perm_idcard_retrieve') or
+            perms.get('perm_idcard_delete_from_pool')
+        )
+
     response = render(request, 'mobile_app/list_page.html', {
         'user_name': user.get_full_name() or user.username,
         # Always show the table owner in list subtitle to avoid stale fallback client labels.
@@ -1549,7 +2074,6 @@ def card_list(request, table_id, status):
         'first_table_id': table.id,
         'group': table.group,
         'students': cards,
-        'students_json': json.dumps(cards, default=str),
         'total_count': total_count,
         'has_more': has_more,
         'list_type': status,
@@ -1559,10 +2083,15 @@ def card_list(request, table_id, status):
         'table_fields': json.dumps(table_fields, default=str),
         # View-only mode: clients on approved/download lists can only view, not act
         'view_only_list': status in ('approved', 'download') and not PermissionService.is_any_admin(user),
+        'pool_edit_locked': status == 'pool' and not PermissionService.is_any_admin(user),
         'tab_counts': tab_counts,
         'reprint_counts': reprint_counts,
         'can_reprint_request_list': can_reprint_request_list,
         'can_reprint_confirmed_list': can_reprint_confirmed_list,
+        'has_any_list_actions': has_any_list_actions,
+        'from_date': from_date if status == 'download' else '',
+        'to_date': to_date if status == 'download' else '',
+        'search_scope_table_id': table.id,
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
@@ -1943,10 +2472,21 @@ def camera_capture(request, table_id, card_id=None):
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('mobile_app:home')
 
+    if not PermissionService.has(user, 'perm_idcard_edit'):
+        return redirect('mobile_app:home')
+
+    if card_id is not None:
+        scoped_card = IDCard.objects.select_related('table__group').filter(id=card_id, table_id=table.id).first()
+        if not scoped_card or not _can_access_card_with_row_scope(user, scoped_card):
+            return redirect('mobile_app:home')
+
     # If no specific card_id provided, show card picker with all cards for name-based search
     all_cards = []
     if card_id is None:
-        cards_qs = IDCard.objects.filter(table=table).only('id', 'field_data').order_by('id')[:300]
+        cards_qs = IDCard.objects.filter(table=table).only('id', 'field_data').order_by('id')
+        if PermissionService.is_client_staff(user):
+            cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
+        cards_qs = cards_qs[:300]
         for card in cards_qs:
             fd = card.field_data or {}
             name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
@@ -1965,40 +2505,39 @@ def camera_capture(request, table_id, card_id=None):
 
 @require_mobile_client
 def notifications(request):
-    """Notifications — shows real recent activity."""
+    """Notifications page backed by the same source used in Settings."""
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
         return redirect('/app/login/')
 
-    result = ClientDashboardService.get_dashboard_data(user, client=client)
-    activities = []
-    if result.success:
-        for act in result.data.get('recent_activity', []):
-            status = act.get('status', '')
-            icon_map = {
-                'pending': 'fa-clock', 'verified': 'fa-check-circle',
-                'approved': 'fa-check-double', 'download': 'fa-download',
-                'pool': 'fa-layer-group', 'reprint': 'fa-redo',
-            }
-            color_map = {
-                'pending': 'yellow', 'verified': 'green',
-                'approved': 'blue', 'download': 'purple',
-                'pool': 'red', 'reprint': 'orange',
-            }
-            activities.append({
-                'title': f"{act.get('name', 'Card')} — {act.get('status_display', status)}",
-                'message': f"Table: {act.get('table_name', '')}",
-                'time': act.get('updated_at', ''),
-                'read': True,
-                'icon': icon_map.get(status, 'fa-info-circle'),
-                'color': color_map.get(status, 'gray'),
-            })
+    system_notifications, _ = _get_system_notifications(
+        user,
+        limit=40,
+        mark_visible_as_read=True,
+    )
+    priority_to_color = {
+        'critical': 'red',
+        'high': 'orange',
+        'normal': 'blue',
+        'low': 'gray',
+    }
+    notifications_payload = [
+        {
+            'title': n['title'],
+            'message': n['message'],
+            'time': n['created_at'],
+            'read': n['is_read'],
+            'icon': n['icon_class'],
+            'color': priority_to_color.get(n['priority'], 'gray'),
+        }
+        for n in system_notifications
+    ]
 
     return render(request, 'mobile_app/notifications.html', {
         'user_name': user.get_full_name() or user.username,
         'client': client,
-        'notifications': activities,
+        'notifications': notifications_payload,
         **perms,
     })
 
@@ -2089,13 +2628,18 @@ def api_upload_photo(request, table_id):
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid card_id'}, status=400)
 
+    if not PermissionService.has(request.user, 'perm_idcard_edit'):
+        return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
+
     _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
     if not _ok:
         return JsonResponse({'success': False, 'message': _err}, status=400)
     try:
         card = IDCard.objects.select_related('table__group').get(id=card_id_int, table_id=table_id)
-        if not ClientAccessService.can_access_card(request.user, card):
+        if not _can_access_card_with_row_scope(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+        if _is_mobile_client_edit_locked(request.user, card.status):
+            return _mobile_client_edit_locked_response()
 
         # Keep mobile + desktop lists in sync by writing through the same
         # field_data/CardMedia image pipeline used by idcard-actions tables.
@@ -2203,7 +2747,12 @@ def api_card_detail(request, card_id):
     result = ClientCardService.get_card_detail(request.user, card_id)
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})
-    return JsonResponse({'success': False, 'message': result.message}, status=404)
+    msg = (result.message or '').lower()
+    if 'permission' in msg or 'access denied' in msg or 'access' in msg:
+        status_code = 403
+    else:
+        status_code = 404
+    return JsonResponse({'success': False, 'message': result.message}, status=status_code)
 
 
 @require_mobile_client
@@ -2212,6 +2761,8 @@ def api_cards(request, table_id):
     """Get cards for a table (paginated)."""
     status_filter = request.GET.get('status', '')
     search = _sanitize_search_query(request.GET.get('search', ''))
+    from_date = (request.GET.get('from') or '').strip()
+    to_date = (request.GET.get('to') or '').strip()
     try:
         page = max(int(request.GET.get('page', 1)), 1)
         per_page = max(1, min(int(request.GET.get('per_page', 50)), 200))
@@ -2223,6 +2774,8 @@ def api_cards(request, table_id):
         request.user, table_id,
         status_filter or None, offset, per_page,
         search or None,
+        from_date=from_date,
+        to_date=to_date,
     )
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})
@@ -2249,22 +2802,42 @@ def api_card_add(request, table_id):
         if not isinstance(field_data, dict):
             field_data = {}
 
-        # Validate photo BEFORE writing card to DB
-        photo = request.FILES.get('photo')
-        if photo:
-            _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
-            if not _ok:
-                return JsonResponse({'success': False, 'message': _err}, status=400)
+        legacy_photo = request.FILES.get('photo')
+        image_files = {}
+        for file_key in request.FILES:
+            uploaded = request.FILES.get(file_key)
+            if not uploaded:
+                continue
 
-        card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+            key_l = str(file_key).strip().lower()
+            if key_l == 'photo' or key_l.startswith('image_'):
+                _ok, _err, validated_file = _unpack_validate_image_result(_validate_image(uploaded), uploaded)
+                if not _ok:
+                    return JsonResponse({'success': False, 'message': _err}, status=400)
 
-        if photo:
-            import os, uuid
-            ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
-            safe_name = f'{uuid.uuid4().hex}{ext}'
-            card.photo.save(safe_name, photo, save=True)
+                if key_l == 'photo':
+                    legacy_photo = validated_file
+                elif key_l.startswith('image_'):
+                    image_files[file_key] = validated_file
+
+        with transaction.atomic():
+            card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+
+            if image_files or legacy_photo:
+                update_result = IDCardService.update_card(
+                    card_id=card.id,
+                    field_data={},
+                    image_files=image_files,
+                    uploaded_by=request.user,
+                    legacy_photo_file=legacy_photo,
+                    modified_by=getattr(request.user, 'username', '') or None,
+                )
+                if not update_result.success:
+                    raise ValueError(update_result.message or 'Image upload failed')
 
         return JsonResponse({'success': True, 'message': 'Card added successfully', 'card_id': card.id})
+    except ValueError as err:
+        return JsonResponse({'success': False, 'message': str(err)}, status=400)
     except Exception:
         import logging as _log
         _log.getLogger(__name__).exception('Card add error')
@@ -2277,10 +2850,12 @@ def api_card_update(request, table_id, card_id):
     """Update an existing card."""
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id, table_id=table_id)
-        if not ClientAccessService.can_access_card(request.user, card):
+        if not _can_access_card_with_row_scope(request.user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
         if not PermissionService.has(request.user, 'perm_idcard_edit'):
             return JsonResponse({'success': False, 'message': 'No permission to edit cards'}, status=403)
+        if _is_mobile_client_edit_locked(request.user, card.status):
+            return _mobile_client_edit_locked_response()
 
         field_data_raw = request.POST.get('field_data', '{}')
         try:
@@ -2290,22 +2865,35 @@ def api_card_update(request, table_id, card_id):
         if not isinstance(field_data, dict):
             field_data = {}
 
-        if field_data:
-            existing = card.field_data or {}
-            existing.update(field_data)
-            card.field_data = existing
+        legacy_photo = request.FILES.get('photo')
+        image_files = {}
+        for file_key in request.FILES:
+            uploaded = request.FILES.get(file_key)
+            if not uploaded:
+                continue
 
-        photo = request.FILES.get('photo')
-        if photo:
-            _ok, _err, photo = _unpack_validate_image_result(_validate_image(photo), photo)
-            if not _ok:
-                return JsonResponse({'success': False, 'message': _err}, status=400)
-            import os, uuid
-            ext = os.path.splitext(photo.name.lower())[1] or '.jpg'
-            safe_name = f'{uuid.uuid4().hex}{ext}'
-            card.photo.save(safe_name, photo, save=False)
+            key_l = str(file_key).strip().lower()
+            if key_l == 'photo' or key_l.startswith('image_'):
+                _ok, _err, validated_file = _unpack_validate_image_result(_validate_image(uploaded), uploaded)
+                if not _ok:
+                    return JsonResponse({'success': False, 'message': _err}, status=400)
 
-        card.save()
+                if key_l == 'photo':
+                    legacy_photo = validated_file
+                elif key_l.startswith('image_'):
+                    image_files[file_key] = validated_file
+
+        update_result = IDCardService.update_card(
+            card_id=card.id,
+            field_data=field_data,
+            image_files=image_files,
+            uploaded_by=request.user,
+            legacy_photo_file=legacy_photo,
+            modified_by=getattr(request.user, 'username', '') or None,
+        )
+        if not update_result.success:
+            return JsonResponse({'success': False, 'message': update_result.message or 'Update failed'}, status=400)
+
         return JsonResponse({'success': True, 'message': 'Card updated successfully'})
     except Exception:
         logger.exception('Card update error')
@@ -2322,9 +2910,9 @@ def api_table_update_fields(request, table_id):
         table = get_object_or_404(IDCardTable, id=table_id)
         if not ClientAccessService.can_access_table(request.user, table):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-        # Require edit permission to modify table fields
-        if not PermissionService.has(request.user, 'perm_idcard_edit'):
-            return JsonResponse({'success': False, 'message': 'Edit permission required'}, status=403)
+        # Table schema changes must follow settings permission, not card-value edit permission.
+        if not PermissionService.has(request.user, 'perm_idcard_setting_edit'):
+            return JsonResponse({'success': False, 'message': 'Settings edit permission required'}, status=403)
 
         body = json.loads(request.body or '{}')
         raw_fields = body.get('fields', [])
@@ -2406,8 +2994,9 @@ def staff_manage(request):
     if not client:
         return redirect('/app/login/')
 
-    # Only client and super_admin can manage staff from mobile.
-    if not PermissionService.is_client(user) and not PermissionService.is_super_admin(user):
+    # Super admin can always manage admin staff.
+    # Client role must also hold Manage Client permission (website parity).
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return redirect('mobile_app:home')
 
     # For client role, use the service; super_admin sees admin staff only.
@@ -2418,24 +3007,7 @@ def staff_manage(request):
             staff_list = result.data.get('staff', [])
     elif PermissionService.is_super_admin(user):
         # Admin management view should only include admin_staff.
-        all_staff = (
-            Staff.objects
-            .filter(staff_type='admin_staff')
-            .select_related('user')
-            .order_by('-created_at')[:200]
-        )
-        for s in all_staff:
-            staff_list.append({
-                'id': s.id,
-                'name': s.user.get_full_name() or s.user.username,
-                'email': s.user.email,
-                'phone': getattr(s.user, 'phone', '') or '',
-                'department': s.department or '',
-                'designation': s.designation or '',
-                'is_active': s.user.is_active,
-                'staff_type': s.get_staff_type_display(),
-                'created_at': s.created_at.strftime('%d %b %Y'),
-            })
+        staff_list = _list_mobile_admin_staff(limit=200)
 
     # Get groups for assignment dropdown
     groups = IDCardGroup.objects.filter(client=client).values('id', 'name')
@@ -2457,18 +3029,35 @@ def groups_overview(request):
     user = request.user
     client, perms = _client_ctx(user)
     if not client:
-        return redirect('/app/login/')
+        return _mobile_no_client_redirect()
 
-    groups = IDCardGroup.objects.filter(client=client).annotate(
-        table_count=Count('tables'),
-        total_cards=Count('tables__id_cards'),
-        pending_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='pending')),
-        verified_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='verified')),
-        approved_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='approved')),
-        download_cards=Count('tables__id_cards', filter=Q(tables__id_cards__status='download')),
+    tables = IDCardTable.objects.filter(group__client=client).select_related('group')
+
+    if PermissionService.is_client_staff(user):
+        staff = getattr(user, 'staff_profile', None)
+        if staff:
+            assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+            assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+            if assigned_table_ids and assigned_group_ids:
+                tables = tables.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+            elif assigned_table_ids:
+                tables = tables.filter(id__in=assigned_table_ids)
+            elif assigned_group_ids:
+                tables = tables.filter(group_id__in=assigned_group_ids)
+
+    scoped_table_ids = tables.values('id')
+    scoped_group_ids = tables.values('group_id')
+
+    groups = IDCardGroup.objects.filter(id__in=scoped_group_ids).annotate(
+        table_count=Count('tables', filter=Q(tables__id__in=scoped_table_ids), distinct=True),
+        total_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids)),
+        pending_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='pending')),
+        verified_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='verified')),
+        approved_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='approved')),
+        download_cards=Count('tables__id_cards', filter=Q(tables__id__in=scoped_table_ids, tables__id_cards__status='download')),
     ).order_by('name')
 
-    tables = IDCardTable.objects.filter(group__client=client).select_related('group').annotate(
+    tables = tables.annotate(
         total_cards=Count('id_cards'),
         pending_cards=Count('id_cards', filter=Q(id_cards__status='pending')),
         verified_cards=Count('id_cards', filter=Q(id_cards__status='verified')),
@@ -2512,56 +3101,80 @@ def settings_page(request):
         scoped_clients = Client.objects.filter(status='active')
         scoped_tables = IDCardTable.objects.filter(is_active=True)
         scoped_cards = IDCard.objects.all()
+        scoped_staff = Staff.objects.all()
         if accessible_ids is not None:
             scoped_clients = scoped_clients.filter(id__in=accessible_ids)
             scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
             scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+            scoped_staff = scoped_staff.filter(
+                Q(client_id__in=accessible_ids) |
+                Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+            ).distinct()
         ctx['admin_client_count'] = scoped_clients.count()
-        ctx['admin_staff_count'] = Staff.objects.filter(staff_type='admin_staff').count()
+        ctx['admin_staff_count'] = scoped_staff.count()
         ctx['admin_table_count'] = scoped_tables.count()
         ctx['admin_total_cards'] = scoped_cards.count()
 
     # ── TAB: Notifications ───────────────────────────────────────────────
-    from core.models import Notification, NotificationRead
-    user_role = getattr(user, 'role', '')
-    _notif_qs = (
-        Notification.objects
-        .filter(is_active=True)
-        .filter(Q(target='all') | Q(target=user_role) | Q(target='selected', target_users=user))
-        .order_by('-created_at')[:20]
+    ctx['system_notifications'], ctx['unread_system_count'] = _get_system_notifications(
+        user,
+        limit=20,
+        mark_visible_as_read=False,
     )
-    _read_ids = set(
-        NotificationRead.objects.filter(user=user).values_list('notification_id', flat=True)
-    )
-    ctx['system_notifications'] = [
-        {
-            'id': n.id,
-            'title': n.title,
-            'message': n.message,
-            'priority': n.priority,
-            'priority_color': n.priority_color,
-            'category': n.get_category_display(),
-            'icon_class': n.icon_class,
-            'created_at': n.created_at.strftime('%d %b %Y'),
-            'is_read': n.id in _read_ids,
-        }
-        for n in _notif_qs
-    ]
-    ctx['unread_system_count'] = sum(1 for n in ctx['system_notifications'] if not n['is_read'])
 
     # ── TAB: Logs ────────────────────────────────────────────────────────
     from django.utils.timesince import timesince as _timesince
     from django.utils import timezone as _tz
     _now = _tz.now()
-    _cards_scope = (
-        IDCard.objects.all() if PermissionService.is_any_admin(user)
-        else IDCard.objects.filter(table__group__client=client)
-    )
-    if PermissionService.is_admin_staff(user):
-        accessible_ids = _admin_accessible_client_ids(user)
-        _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
+    _cards_for_logs = []
+    can_view_logs = PermissionService.is_any_admin(user) or PermissionService.has(user, 'perm_idcard_info')
+
+    if can_view_logs:
+        if PermissionService.is_any_admin(user):
+            _cards_scope = IDCard.objects.all()
+            if PermissionService.is_admin_staff(user):
+                accessible_ids = _admin_accessible_client_ids(user)
+                _cards_scope = _cards_scope.filter(table__group__client_id__in=accessible_ids)
+            _cards_for_logs = list(
+                _cards_scope.select_related('table', 'table__group').order_by('-updated_at')[:30]
+            )
+        elif PermissionService.is_client_staff(user):
+            _tables_scope = IDCardTable.objects.filter(group__client=client, is_active=True)
+            staff = getattr(user, 'staff_profile', None)
+            if staff:
+                assigned_table_ids = _normalize_positive_int_ids(staff.assigned_table_ids or [])
+                assigned_group_ids = _staff_assigned_group_ids_for_access(staff)
+                if assigned_table_ids and assigned_group_ids:
+                    _tables_scope = _tables_scope.filter(Q(id__in=assigned_table_ids) | Q(group_id__in=assigned_group_ids))
+                elif assigned_table_ids:
+                    _tables_scope = _tables_scope.filter(id__in=assigned_table_ids)
+                elif assigned_group_ids:
+                    _tables_scope = _tables_scope.filter(group_id__in=assigned_group_ids)
+            else:
+                _tables_scope = _tables_scope.none()
+
+            # Pull a larger candidate set, then apply per-card row scope checks.
+            _candidate_cards = (
+                IDCard.objects
+                .filter(table_id__in=_tables_scope.values('id'))
+                .select_related('table', 'table__group')
+                .order_by('-updated_at')[:200]
+            )
+            for _card in _candidate_cards:
+                if _can_access_card_with_row_scope(user, _card):
+                    _cards_for_logs.append(_card)
+                    if len(_cards_for_logs) >= 30:
+                        break
+        else:
+            _cards_for_logs = list(
+                IDCard.objects
+                .filter(table__group__client=client)
+                .select_related('table', 'table__group')
+                .order_by('-updated_at')[:30]
+            )
+
     _log_acts = []
-    for _card in _cards_scope.select_related('table', 'table__group').order_by('-updated_at')[:30]:
+    for _card in _cards_for_logs:
         _fd = _card.field_data or {}
         _name = _fd.get('NAME') or _fd.get('name') or _fd.get('Name') or f'Card #{_card.id}'
         _log_acts.append({
@@ -2600,6 +3213,23 @@ def search_page(request):
         return redirect('/app/login/')
 
     query = _sanitize_search_query(request.GET.get('q', ''))
+    filter_type = str(request.GET.get('filter', 'all') or 'all').strip().lower()
+    if filter_type not in ('all', 'name', 'address', 'mobile'):
+        filter_type = 'all'
+    raw_table_id = (request.GET.get('table_id') or '').strip()
+    table_scope_id = None
+
+    if raw_table_id.isdigit():
+        parsed_table_id = int(raw_table_id)
+        if parsed_table_id > 0:
+            scoped_table = IDCardTable.objects.select_related('group').filter(id=parsed_table_id).first()
+            if scoped_table and PermissionService.can_access_client(user, scoped_table.group.client_id):
+                if user.role in ('client', 'client_staff'):
+                    if ClientAccessService.can_access_table(user, scoped_table):
+                        table_scope_id = parsed_table_id
+                else:
+                    table_scope_id = parsed_table_id
+
     results = []
 
     if query and len(query) >= 2:
@@ -2616,12 +3246,14 @@ def search_page(request):
                 table__group__client=client,
             ).select_related('table', 'table__group').order_by('-updated_at')
 
-        # Prefer key-based JSON search to avoid expensive full JSON text casts.
-        cards_qs = _search_cards_queryset(base_qs, query)[:50]
+        if table_scope_id:
+            base_qs = base_qs.filter(table_id=table_scope_id)
+
+        cards_qs = _search_cards_for_global_results(base_qs, query, limit=50, filter_type=filter_type)
 
         for card in cards_qs:
             fd = card.field_data or {}
-            name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+            name = _card_display_name(card, fd)
             roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
             photo_url = card.photo.url if card.photo else None
             if not photo_url:
@@ -2646,6 +3278,8 @@ def search_page(request):
         'user_name': user.get_full_name() or user.username,
         'client': client,
         'query': query,
+        'filter_type': filter_type,
+        'table_scope_id': table_scope_id,
         'results': results,
         'result_count': len(results),
         **perms,
@@ -2663,18 +3297,27 @@ def api_card_delete(request, card_id):
     try:
         card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
         user = request.user
-        if not ClientAccessService.can_access_card(user, card):
+        if not _can_access_card_with_row_scope(user, card):
             return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-        if not PermissionService.has(user, 'perm_idcard_delete'):
-            return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
-
         data = json.loads(request.body) if request.body else {}
         permanent = data.get('permanent', False)
 
         if permanent:
+            if not PermissionService.has(user, 'perm_idcard_delete_from_pool'):
+                return JsonResponse({'success': False, 'message': 'No permanent delete permission'}, status=403)
+
+            if card.status != 'pool':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only cards in pool can be permanently deleted',
+                }, status=400)
+
             card.delete()
             return JsonResponse({'success': True, 'message': 'Card permanently deleted'})
         else:
+            if not PermissionService.has(user, 'perm_idcard_delete'):
+                return JsonResponse({'success': False, 'message': 'No delete permission'}, status=403)
+
             card.status = 'pool'
             card.save(update_fields=['status'])
             return JsonResponse({'success': True, 'message': 'Card moved to pool'})
@@ -2689,29 +3332,14 @@ def api_staff_list(request):
     """List staff for the client."""
     user = request.user
     if PermissionService.is_client(user):
+        if not _can_manage_client_staff_surface(user):
+            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
         result = ClientStaffService.list_staff(user)
         if result.success:
             return JsonResponse({'success': True, 'data': result.data})
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     elif PermissionService.is_super_admin(user):
-        all_staff = (
-            Staff.objects
-            .filter(staff_type='admin_staff')
-            .select_related('user')
-            .order_by('-created_at')[:200]
-        )
-        staff_data = []
-        for s in all_staff:
-            staff_data.append({
-                'id': s.id,
-                'name': s.user.get_full_name() or s.user.username,
-                'email': s.user.email,
-                'phone': getattr(s.user, 'phone', '') or '',
-                'department': s.department or '',
-                'designation': s.designation or '',
-                'is_active': s.user.is_active,
-                'staff_type': s.get_staff_type_display(),
-            })
+        staff_data = _list_mobile_admin_staff(limit=200)
         return JsonResponse({'success': True, 'data': {'staff': staff_data}})
     return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
@@ -2721,23 +3349,22 @@ def api_staff_list(request):
 def api_staff_create(request):
     """Create a new staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
-    # For admin users, delegate via the client attached to their current context
     if PermissionService.is_super_admin(user):
-        client, _ = _client_ctx(user)
-        if not client:
-            return JsonResponse({'success': False, 'message': 'No client context found for admin'}, status=400)
-        # Use the client's user to drive the service
-        acting_user = getattr(client, 'user', None)
-        if acting_user is None:
-            return JsonResponse({'success': False, 'message': 'Client has no associated user — please create staff from the desktop panel'}, status=400)
-        result = ClientStaffService.create_staff(acting_user, data)
+        payload = dict(data)
+        first_name = str(payload.pop('first_name', '') or '').strip()
+        last_name = str(payload.pop('last_name', '') or '').strip()
+        full_name = f'{first_name} {last_name}'.strip() or str(payload.get('name', '') or '').strip()
+        if not full_name:
+            return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
+        payload['name'] = full_name
+        result = StaffService.create(payload, staff_type='admin_staff', request=request)
     else:
         result = ClientStaffService.create_staff(user, data)
 
@@ -2751,7 +3378,7 @@ def api_staff_create(request):
 def api_staff_update(request, staff_id):
     """Update a staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
     try:
         data = json.loads(request.body)
@@ -2759,11 +3386,21 @@ def api_staff_update(request, staff_id):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
 
     if PermissionService.is_super_admin(user):
-        client, _ = _client_ctx(user)
-        acting_user = getattr(client, 'user', None) if client else None
-        if acting_user is None:
-            return JsonResponse({'success': False, 'message': 'Cannot update staff without client context'}, status=400)
-        result = ClientStaffService.update_staff(acting_user, staff_id, data)
+        if not Staff.objects.filter(id=staff_id, staff_type='admin_staff').exists():
+            return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
+
+        payload = dict(data)
+        has_name_parts = ('first_name' in payload) or ('last_name' in payload)
+        first_name = str(payload.pop('first_name', '') or '').strip()
+        last_name = str(payload.pop('last_name', '') or '').strip()
+        if has_name_parts:
+            full_name = f'{first_name} {last_name}'.strip()
+            if full_name:
+                payload['name'] = full_name
+            elif not str(payload.get('name', '') or '').strip():
+                return JsonResponse({'success': False, 'message': 'First name is required'}, status=400)
+
+        result = StaffService.update(staff_id, payload)
     else:
         result = ClientStaffService.update_staff(user, staff_id, data)
 
@@ -2777,7 +3414,7 @@ def api_staff_update(request, staff_id):
 def api_staff_toggle(request, staff_id):
     """Toggle staff active/inactive."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     if PermissionService.is_client(user):
@@ -2788,7 +3425,7 @@ def api_staff_toggle(request, staff_id):
     else:
         # Admin toggle — directly update the Staff user's is_active
         try:
-            staff = Staff.objects.select_related('user').get(id=staff_id)
+            staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
             staff.user.is_active = not staff.user.is_active
             staff.user.save(update_fields=['is_active'])
             new_state = 'activated' if staff.user.is_active else 'deactivated'
@@ -2805,7 +3442,7 @@ def api_staff_toggle(request, staff_id):
 def api_staff_delete(request, staff_id):
     """Delete a staff member."""
     user = request.user
-    if not (PermissionService.is_client(user) or PermissionService.is_super_admin(user)):
+    if not PermissionService.is_super_admin(user) and not _can_manage_client_staff_surface(user):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
 
     if PermissionService.is_client(user):
@@ -2815,7 +3452,7 @@ def api_staff_delete(request, staff_id):
         return JsonResponse({'success': False, 'message': result.message}, status=400)
     else:
         try:
-            staff = Staff.objects.select_related('user').get(id=staff_id)
+            staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
             name = staff.user.get_full_name() or staff.user.username
             staff.user.delete()  # cascade deletes staff profile
             return JsonResponse({'success': True, 'message': f'{name} deleted'})
@@ -2872,6 +3509,10 @@ def api_search(request):
         return JsonResponse({'success': False, 'message': 'No client'}, status=400)
 
     query = _sanitize_search_query(request.GET.get('q', ''))
+    filter_type = str(request.GET.get('filter', 'all') or 'all').strip().lower()
+    if filter_type not in ('all', 'name', 'address', 'mobile'):
+        return JsonResponse({'success': False, 'message': 'Invalid search filter.'}, status=400)
+    raw_table_id = (request.GET.get('table_id') or '').strip()
     if not query or len(query) < 2:
         return JsonResponse({'success': True, 'data': {'results': [], 'count': 0}})
 
@@ -2890,13 +3531,32 @@ def api_search(request):
             table__group__client=client,
         ).select_related('table', 'table__group').order_by('-updated_at')
 
-    # Prefer key-based JSON search to avoid expensive full JSON text casts.
-    cards_qs = _search_cards_queryset(base_qs, query)[:30]
+    if raw_table_id:
+        if not raw_table_id.isdigit():
+            return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
+
+        scoped_table_id = int(raw_table_id)
+        if scoped_table_id <= 0:
+            return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
+
+        scoped_table = IDCardTable.objects.select_related('group').filter(id=scoped_table_id).first()
+        if not scoped_table:
+            return JsonResponse({'success': False, 'message': 'Table not found.'}, status=404)
+
+        if not PermissionService.can_access_client(user, scoped_table.group.client_id):
+            return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+        if user.role in ('client', 'client_staff') and not ClientAccessService.can_access_table(user, scoped_table):
+            return JsonResponse({'success': False, 'message': 'Access denied.'}, status=403)
+
+        base_qs = base_qs.filter(table_id=scoped_table_id)
+
+    cards_qs = _search_cards_for_global_results(base_qs, query, limit=30, filter_type=filter_type)
 
     results = []
     for card in cards_qs:
         fd = card.field_data or {}
-        name = fd.get('NAME') or fd.get('name') or fd.get('Name') or f'Card #{card.id}'
+        name = _card_display_name(card, fd)
         roll_no = fd.get('ROLL NO') or fd.get('ROLL_NO') or fd.get('roll_no') or ''
         photo_url = get_card_photo_url(card, fd)
         results.append({
@@ -2954,6 +3614,102 @@ def api_server_info(request):
     return JsonResponse({'success': True, 'data': data})
 
 
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_impersonate_users(request):
+    """Return pro-user impersonation targets filtered to mobile-eligible users."""
+    from accounts.services_impersonate import ImpersonateService
+    from django.contrib.auth import get_user_model
+
+    if not ImpersonateService.can_impersonate(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    users = ImpersonateService.get_impersonation_targets(request)
+    if not users:
+        return JsonResponse({'success': True, 'users': []})
+
+    user_ids = [int(item.get('id')) for item in users if str(item.get('id', '')).isdigit()]
+    mobile_allowed_ids = set()
+    if user_ids:
+        UserModel = get_user_model()
+        for target in UserModel.objects.filter(id__in=user_ids):
+            if PermissionService.has(target, 'perm_mobile_app'):
+                mobile_allowed_ids.add(target.id)
+
+    filtered = []
+    for item in users:
+        try:
+            item_id = int(item.get('id') or 0)
+        except (TypeError, ValueError):
+            continue
+        if item_id in mobile_allowed_ids:
+            filtered.append(item)
+    return JsonResponse({'success': True, 'users': filtered})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_impersonate_start(request):
+    """Start impersonation from mobile and keep the session on the mobile surface."""
+    from accounts.services_impersonate import ImpersonateService
+    from django.contrib.auth import get_user_model
+
+    if not ImpersonateService.can_impersonate(request.user):
+        return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    raw_user_id = payload.get('user_id')
+    try:
+        target_user_id = int(raw_user_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
+
+    UserModel = get_user_model()
+    target = UserModel.objects.filter(pk=target_user_id).first()
+    if not target:
+        return JsonResponse({'success': False, 'message': 'User not found.'}, status=404)
+
+    valid_mobile_roles = {'pro_user', 'super_admin', 'admin_staff', 'client', 'client_staff'}
+    if getattr(target, 'role', '') not in valid_mobile_roles:
+        return JsonResponse({'success': False, 'message': 'Target user cannot access the mobile app.'}, status=400)
+
+    if not PermissionService.has(target, 'perm_mobile_app'):
+        return JsonResponse({'success': False, 'message': 'Target user has no mobile app access.'}, status=400)
+
+    result = ImpersonateService.start(request, target_user_id)
+    if not result.get('success'):
+        return JsonResponse(result, status=403)
+
+    request.session['mobile_auth_ok'] = True
+    request.session['_auth_login_surface'] = 'mobile'
+    request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
+    request.session['selected_role'] = getattr(target, 'role', '')
+    result['redirect_url'] = '/app/'
+    return JsonResponse(result)
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_impersonate_stop(request):
+    """Stop impersonation from mobile and return to pro user on mobile surface."""
+    from accounts.services_impersonate import ImpersonateService
+
+    result = ImpersonateService.stop(request)
+    if not result.get('success'):
+        return JsonResponse(result, status=400)
+
+    request.session['mobile_auth_ok'] = True
+    request.session['_auth_login_surface'] = 'mobile'
+    request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
+    request.session['selected_role'] = getattr(request.user, 'role', '')
+    result['redirect_url'] = '/app/'
+    return JsonResponse(result)
+
+
 # ─── Client Management APIs ────────────────────────────────────────────────────
 
 @require_mobile_client
@@ -2961,8 +3717,12 @@ def api_server_info(request):
 def api_client_toggle(request, client_id):
     """Toggle a client between active / inactive."""
     from client.models import Client
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can change client status'}, status=403)
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+    if PermissionService.is_admin_staff(request.user) and not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         client = get_object_or_404(Client, id=client_id)
         if client.status == 'active':
@@ -3044,9 +3804,11 @@ def api_client_detail(request, client_id):
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_client_create(request):
-    """Create a client from mobile app (super_admin only)."""
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can create clients'}, status=403)
+    """Create a client from mobile app for users with Manage Client access."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:
@@ -3055,6 +3817,18 @@ def api_client_create(request):
     result = ClientService.create(data, request=request)
     if not result.success:
         return JsonResponse({'success': False, 'message': result.message or 'Failed to create client'}, status=400)
+
+    if PermissionService.is_admin_staff(request.user):
+        try:
+            created_client_id = ((result.data or {}).get('client') or {}).get('id')
+            if created_client_id:
+                from client.models import Client
+                created_client = Client.objects.filter(id=created_client_id).first()
+                staff = getattr(request.user, 'staff_profile', None)
+                if created_client and staff:
+                    staff.assigned_clients.add(created_client)
+        except Exception:
+            logger.warning('Could not auto-assign newly created client to admin_staff user=%s', request.user.pk)
 
     client_payload = result.data.get('client', {}) if result.data else {}
     return JsonResponse({
@@ -3067,9 +3841,13 @@ def api_client_create(request):
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_client_update(request, client_id):
-    """Update client from mobile app (super_admin only)."""
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Only super admin can update clients'}, status=403)
+    """Update a client from mobile app for users with Manage Client access."""
+    if not PermissionService.is_any_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Admin access required'}, status=403)
+    if not _can_manage_clients_surface(request.user):
+        return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+    if PermissionService.is_admin_staff(request.user) and not PermissionService.can_access_client(request.user, client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:
@@ -3088,57 +3866,67 @@ def api_client_update(request, client_id):
 
 
 # ---------------------------------------------------------------------------
-# WEBSITE MANAGEMENT (Portfolio & Reels — mobile upload)
+# WEBSITE MANAGEMENT (Portfolio Media — mobile upload)
 # ---------------------------------------------------------------------------
 
 @require_mobile_client
 def website_manage(request):
-    """Mobile website management page: portfolio categories + reels upload."""
+    """Mobile website management page: portfolio categories + unified media upload."""
     user = request.user
     if not PermissionService.has(user, 'perm_website_view'):
         return render(request, 'mobile_app/no_access.html', {
             'user_name': user.get_full_name() or user.username,
         }, status=403)
 
-    from website.models import PortfolioCategory, Reel
+    from website.models import PortfolioCategory
 
     # Fetch only the fields needed for JSON serialisation — no full ORM hydration
+    from django.core.cache import cache
+    if not cache.get('portfolio_defaults_ensured'):
+        PortfolioCategory.ensure_defaults()
+        cache.set('portfolio_defaults_ensured', True, 3600)
+
+    bento_rank_case = Case(
+        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(MOBILE_PUBLIC_BENTO_ORDER)],
+        default=Value(len(MOBILE_PUBLIC_BENTO_ORDER)),
+        output_field=IntegerField(),
+    )
+
     categories = (
         PortfolioCategory.objects
         .filter(is_active=True)
         .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
-        .order_by('order', 'name')
-        .only('id', 'name', 'icon', 'order')
-    )
-
-    reels = (
-        Reel.objects
-        .filter(is_active=True)
-        .order_by('order', '-created_at')
-        .only('id', 'title', 'thumbnail', 'order')
+        .annotate(
+            mobile_public_bento=Case(
+                When(slug__in=MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS, then=Value(0)),
+                When(slug__in=MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS, then=Value(1)),
+                When(is_bento=True, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+            mobile_bento_rank=bento_rank_case,
+        )
+        .order_by('-mobile_public_bento', 'mobile_bento_rank', 'order', 'name')
+        .only('id', 'name', 'icon', 'order', 'slug')
     )
 
     # Skip the client lookup — website_manage doesn’t need a client object
     perms = PermissionService.get_permission_context(user)
 
     categories_data = [
-        {'id': c.id, 'name': c.name, 'icon': c.icon, 'count': c.photo_count}
-        for c in categories
-    ]
-    reels_data = [
         {
-            'id': r.id,
-            'title': r.title,
-            'thumbnail_url': r.thumbnail.url if r.thumbnail else '',
-            'video_url': (r.video_file.url if r.video_file else r.video_url),
+            'id': c.id,
+            'name': c.name,
+            'icon': c.icon,
+            'count': c.photo_count,
+            'is_public_bento': bool(getattr(c, 'mobile_public_bento', 0)),
         }
-        for r in reels
+        for c in categories
     ]
 
     return render(request, 'mobile_app/website_manage.html', {
         'user_name': user.get_full_name() or user.username,
         'categories_json': categories_data,
-        'reels_json': reels_data,
         **perms,
     })
 
@@ -3146,7 +3934,7 @@ def website_manage(request):
 @require_mobile_client
 @require_http_methods(['POST'])
 def api_portfolio_upload(request):
-    """Upload one or more images into a portfolio category from mobile."""
+    """Upload one or more media files (images/videos) into a portfolio category from mobile."""
     user = request.user
     # perm_website_edit required — view-only users must not be able to write content
     if not PermissionService.has(user, 'perm_website_edit'):
@@ -3157,14 +3945,21 @@ def api_portfolio_upload(request):
     from django.core.exceptions import ValidationError
 
     category_id = request.POST.get('category_id')
-    files = request.FILES.getlist('images')
+    files = request.FILES.getlist('files') or request.FILES.getlist('images')
 
     if not category_id:
         return JsonResponse({'success': False, 'message': 'category_id required'}, status=400)
     if not files:
-        return JsonResponse({'success': False, 'message': 'No images provided'}, status=400)
+        return JsonResponse({'success': False, 'message': 'No files provided'}, status=400)
     if len(files) > 20:
-        return JsonResponse({'success': False, 'message': 'Maximum 20 images per upload'}, status=400)
+        return JsonResponse({'success': False, 'message': 'Maximum 20 files per upload'}, status=400)
+
+    def _is_video_file(upload):
+        content_type = (getattr(upload, 'content_type', '') or '').lower()
+        if content_type.startswith('video/'):
+            return True
+        name = (getattr(upload, 'name', '') or '').lower()
+        return name.endswith(('.mp4', '.webm', '.mov', '.avi'))
 
     try:
         get_object_or_404(PortfolioCategory, id=category_id, is_active=True)
@@ -3172,14 +3967,39 @@ def api_portfolio_upload(request):
         failed = []
         for f in files:
             try:
-                # Runs full pipeline: watermark → WebP → compress <500 KB
+                is_video = _is_video_file(f)
+                media_type = 'reel' if is_video else 'image'
                 item = PortfolioItemService.create(
                     category_id=category_id,
-                    image=f,
-                    item_type='image',
+                    image=None if is_video else f,
+                    video_file=f if is_video else None,
+                    item_type=media_type,
                     is_active=True,
                 )
-                created.append({'id': item.id, 'url': item.image.url if item.image else ''})
+
+                item_type = getattr(item, 'item_type', media_type)
+                if not isinstance(item_type, str) or not item_type:
+                    item_type = media_type
+
+                image_obj = getattr(item, 'image', None)
+                image_url = getattr(image_obj, 'url', '') if image_obj else ''
+                if not isinstance(image_url, str):
+                    image_url = ''
+
+                video_file_obj = getattr(item, 'video_file', None)
+                video_file_url = getattr(video_file_obj, 'url', '') if video_file_obj else ''
+                if not isinstance(video_file_url, str):
+                    video_file_url = ''
+
+                video_url = getattr(item, 'video_url', '')
+                if not isinstance(video_url, str):
+                    video_url = ''
+
+                created.append({
+                    'id': item.id,
+                    'type': item_type,
+                    'url': image_url or video_file_url or video_url,
+                })
             except ValidationError as exc:
                 msg = '; '.join(exc.messages) if getattr(exc, 'messages', None) else str(exc)
                 failed.append({'name': getattr(f, 'name', 'file'), 'error': msg})
@@ -3211,7 +4031,7 @@ def api_portfolio_upload(request):
 @require_mobile_client
 @require_http_methods(['GET'])
 def api_portfolio_category_items(request, category_id):
-    """List recent uploaded images for a portfolio category (preview in mobile website manager)."""
+    """List recent uploaded portfolio media for a category (preview in mobile website manager)."""
     user = request.user
     if not PermissionService.has(user, 'perm_website_view'):
         return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
@@ -3227,8 +4047,7 @@ def api_portfolio_category_items(request, category_id):
 
     items_qs = (
         PortfolioItem.objects
-        .filter(category=category, is_active=True, image__isnull=False)
-        .exclude(image='')
+        .filter(category=category, is_active=True)
         .order_by('-created_at')[:limit]
     )
 
@@ -3236,59 +4055,13 @@ def api_portfolio_category_items(request, category_id):
         {
             'id': it.id,
             'title': it.title or category.name,
+            'type': it.item_type,
             'url': it.image.url if it.image else '',
+            'video_url': it.video_file.url if it.video_file else (it.video_url or ''),
         }
         for it in items_qs
     ]
 
     return JsonResponse({'success': True, 'category': {'id': category.id, 'name': category.name}, 'items': items})
 
-
-@require_mobile_client
-@require_http_methods(['POST'])
-def api_reel_upload(request):
-    """Create a new reel with a video file (and optional thumbnail)."""
-    user = request.user
-    # perm_website_edit required — view-only users must not be able to write content
-    if not PermissionService.has(user, 'perm_website_edit'):
-        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
-
-    from website.services import ReelService
-
-    # Strip to plain text — prevent script injection via title field
-    import html as _html
-    raw_title = request.POST.get('title', '')
-    title = _html.unescape(raw_title).strip()[:255]
-    # Remove any HTML/script tags
-    import re as _re
-    title = _re.sub(r'<[^>]+>', '', title).strip()
-
-    video_file = request.FILES.get('video')
-    thumbnail = request.FILES.get('thumbnail')
-
-    if not title:
-        return JsonResponse({'success': False, 'message': 'Title is required'}, status=400)
-    if not video_file:
-        return JsonResponse({'success': False, 'message': 'Video file is required'}, status=400)
-
-    try:
-        # Runs full pipeline: compress video to <10 MB + watermark thumbnail
-        reel = ReelService.create(
-            title=title,
-            video_file=video_file,
-            thumbnail=thumbnail,
-            is_active=True,
-        )
-        return JsonResponse({
-            'success': True,
-            'reel': {
-                'id': reel.id,
-                'title': reel.title,
-                'thumbnail_url': reel.thumbnail.url if reel.thumbnail else '',
-                'video_url': (reel.video_file.url if reel.video_file else reel.video_url),
-            },
-        })
-    except Exception as exc:
-        logger.exception('api_reel_upload error: %s', exc)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
 

@@ -12,14 +12,11 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <!-- Page-specific: dashboard cards, stats, activity -->
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-  <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
 
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
 
@@ -41,22 +38,38 @@
 
       <!-- Scrollable Middle -->
       <div class="dashboard-middle-scroll">
-        <!-- Main Grid - Recent Client Updates & Recent Activity -->
-        <div class="dashboard-grid">
-          {% include 'partials/dashboard/recent-updates.html' %}
-          {% include 'partials/dashboard/recent-activity.html' %}
-        </div>
+        <div class="dashboard-workspace">
+          <div class="dashboard-main-column" id="dashboardMainColumn">
+            <section class="dashboard-snap-panel is-active" data-dashboard-panel="recent-clients">
+              {% include 'partials/dashboard/recent-updates.html' %}
+            </section>
 
-        <!-- Print & Reprint Overview (admin only) -->
-        {% include 'partials/dashboard/print-reprint-overview.html' %}
-      </div>
+            <section class="dashboard-snap-panel" data-dashboard-panel="recent-updates">
+              {% include 'partials/dashboard/recent-activity.html' %}
+            </section>
 
-      <!-- Fixed Bottom: Quick Actions, Team Overview & Bulk Actions -->
-      <div class="dashboard-bottom-fixed">
-        <div class="dashboard-grid-3col">
-          {% include 'partials/dashboard/quick-actions.html' %}
-          {% include 'partials/dashboard/team-overview.html' %}
-          {% include 'partials/dashboard/bulk-actions.html' %}
+            <section class="dashboard-snap-panel" data-dashboard-panel="team-overview">
+              {% include 'partials/dashboard/team-overview-panel.html' %}
+            </section>
+
+            {% if is_super_admin or is_admin_staff %}
+            <section class="dashboard-snap-panel" data-dashboard-panel="reprint">
+              {% include 'partials/dashboard/reprint-overview-card.html' %}
+            </section>
+
+            <section class="dashboard-snap-panel" data-dashboard-panel="print">
+              {% include 'partials/dashboard/print-overview-card.html' %}
+            </section>
+            {% endif %}
+          </div>
+
+          <aside class="dashboard-side-column">
+            <div class="dashboard-side-sticky">
+              {% include 'partials/dashboard/section-tabs.html' %}
+              {% include 'partials/dashboard/team-overview.html' %}
+              {% include 'partials/dashboard/quick-actions.html' %}
+            </div>
+          </aside>
         </div>
       </div>
 
@@ -68,12 +81,14 @@
   {% include 'partials/dashboard/delete-modal.html' %}
   {% include 'partials/dashboard/upgrade-modal.html' %}
   {% include 'partials/dashboard/reupload-modal.html' %}
-  {% if is_super_admin %}
-  {% include 'partials/dashboard/backup-modal.html' %}
+  {% if is_super_admin or perm_idcard_client_list %}
+  {% include 'partials/client/group-message-drawer.html' %}
   {% endif %}
 
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/dashboard.min.js' %}"></script>
+  <script defer src="{% static 'js/dashboard-team-overview.js' %}"></script>
+  <script defer src="{% static 'js/dashboard-client-message-drawer.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
   {% include 'partials/dashboard/welcome-notification-js.html' %}
 </body>

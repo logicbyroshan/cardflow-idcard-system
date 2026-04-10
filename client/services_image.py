@@ -1,6 +1,7 @@
 """
 Client Image Service — image upload and card-matching logic.
 """
+import logging
 import os
 from collections import defaultdict
 
@@ -10,6 +11,8 @@ from core.services.base import BaseService, ServiceResult
 from core.services.permission_service import PermissionService
 
 from .services_access import ClientAccessService
+
+logger = logging.getLogger(__name__)
 
 
 class ClientImageService(BaseService):
@@ -134,12 +137,18 @@ class ClientImageService(BaseService):
                     ['field_data', 'updated_at'],
                     batch_size=200,
                 )
+
+            success = matched > 0 or failed == 0
+            summary = f'Reupload complete: {matched} images matched, {failed} failed.'
+            if not success:
+                summary = f'No images were matched. {failed} item(s) failed.'
             
             return ServiceResult(
-                success=True,
-                message=f'Reupload complete: {matched} images matched, {failed} failed.',
+                success=success,
+                message=summary,
                 data={'matched': matched, 'failed': failed}
             )
             
         except Exception as e:
-            return ServiceResult(success=False, message=str(e))
+            logger.exception('ClientImageService.upload_images failed: %s', e)
+            return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')

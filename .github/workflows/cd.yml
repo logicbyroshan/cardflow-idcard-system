@@ -21,8 +21,7 @@ jobs:
   deploy:
     name: Deploy to Production Server
     runs-on: self-hosted
-
-    if: github.event.inputs.confirm == 'DEPLOY'
+    if: ${{ false }}  # TEMP: CD paused
 
     steps:
       - name: Deploy via SSH

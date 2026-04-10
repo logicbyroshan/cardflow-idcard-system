@@ -38,6 +38,64 @@ function layoutState() {
         // ---- Global loading ----
         loading: false,
 
+        // ---- CSP-safe Alpine booleans used by x-show ----
+        get hasToasts() {
+            return Array.isArray(this.toastQueue) && this.toastQueue.length > 0;
+        },
+
+        get sidebarToggleIconClass() {
+            return this.sidebarOpen ? 'fa-xmark' : 'fa-bars';
+        },
+
+        get isCreateXlsxModalOpen() {
+            return this.activeModal === 'createXlsx';
+        },
+
+        get isDownloadAllModalOpen() {
+            return this.activeModal === 'downloadAll';
+        },
+
+        get isDeleteAllModalOpen() {
+            return this.activeModal === 'deleteAll';
+        },
+
+        get isUpgradeAllModalOpen() {
+            return this.activeModal === 'upgradeAll';
+        },
+
+        get isReuploadModalOpen() {
+            return this.activeModal === 'reupload';
+        },
+
+        get isDeleteModalOpen() {
+            return this.activeModal === 'delete';
+        },
+
+        get isStatusModalOpen() {
+            return this.activeModal === 'status';
+        },
+
+        get deleteVerificationCodeDisplay() {
+            return this.deleteCode ? this.deleteCode : '----------';
+        },
+
+        get deleteCodeInputClass() {
+            if (!this.deleteCodeInput) return '';
+            return this.deleteCodeInput === this.deleteCode ? 'valid' : 'invalid';
+        },
+
+        get showDeleteCodeError() {
+            return !!this.deleteCodeInput && this.deleteCodeInput.length === 10 && this.deleteCodeInput !== this.deleteCode;
+        },
+
+        get canDeleteConfirm() {
+            return !!this.deleteCodeInput && this.deleteCodeInput.length === 10 && this.deleteCodeInput === this.deleteCode;
+        },
+
+        get disableDeleteConfirm() {
+            return !this.canDeleteConfirm;
+        },
+
         // ---- Filter / search state (bridged from vanilla JS) ----
         searchQuery: '',
         filterValue: '',
@@ -117,16 +175,6 @@ function layoutState() {
                     this.closeModal();
                     return;
                 }
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-                if (e.key.toLowerCase() === 'c' && this.sidebarOpen) {
-                    this.sidebarOpen = false;
-                    localStorage.setItem('sidebarCollapsed', 'true');
-                    this.applySidebarState();
-                } else if (e.key.toLowerCase() === 'v' && !this.sidebarOpen) {
-                    this.sidebarOpen = true;
-                    localStorage.setItem('sidebarCollapsed', 'false');
-                    this.applySidebarState();
-                }
             });
         },
 
@@ -191,7 +239,13 @@ function layoutState() {
             // Deduplicate: skip if same message is already in the queue
             if (this.toastQueue.some(t => t.message === message)) return;
             const id = Date.now() + Math.random();
-            this.toastQueue.push({ id, message, type });
+            this.toastQueue.push({
+                id,
+                message,
+                type,
+                toastClass: this.getToastClass(type),
+                toastIcon: this.getToastIcon(type)
+            });
             setTimeout(() => {
                 this.toastQueue = this.toastQueue.filter(t => t.id !== id);
             }, 4000);
@@ -297,6 +351,7 @@ function sideModalState() {
 
         initGlobalBindings() {
             const self = this;
+            window.openSideModal = (mode) => self.openModal(mode);
             window.closeSideModal = () => self.closeModal();
             window.addEventListener('openSideModalEvent', (e) => self.openModal(e.detail?.mode));
         }

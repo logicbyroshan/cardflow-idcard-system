@@ -93,6 +93,7 @@ def normalize_image_bytes_for_storage(
             verify_img.verify()
 
         # Canonical storage rule: every uploaded image is stored as JPG.
+        # Also cap dimensions + adaptive quality so large phone photos remain lightweight.
         with Image.open(BytesIO(image_bytes)) as src_img:
             working_img = ImageOps.exif_transpose(src_img)
             try:
@@ -113,9 +114,52 @@ def normalize_image_bytes_for_storage(
                         working_img.close()
                     working_img = converted
 
-                out = BytesIO()
-                working_img.save(out, format='JPEG', quality=92, optimize=True)
-                return out.getvalue(), '.jpg', None
+                max_side = 2400
+                min_side = 900
+                target_max_bytes = 1_800_000
+                quality_steps = (88, 82, 76, 70, 64, 58, 52)
+                resample_filter = getattr(getattr(Image, 'Resampling', Image), 'LANCZOS', Image.LANCZOS)
+
+                def _fit_size(img):
+                    width, height = img.size
+                    current_max = max(width, height)
+                    if current_max <= max_side:
+                        return img
+                    ratio = max_side / float(current_max)
+                    new_w = max(1, int(width * ratio))
+                    new_h = max(1, int(height * ratio))
+                    return img.resize((new_w, new_h), resample_filter)
+
+                candidate = _fit_size(working_img)
+                if candidate is not working_img:
+                    working_img.close()
+                    working_img = candidate
+
+                compressed = None
+                while True:
+                    for quality in quality_steps:
+                        out = BytesIO()
+                        working_img.save(out, format='JPEG', quality=quality, optimize=True, progressive=True)
+                        payload = out.getvalue()
+                        if compressed is None or len(payload) < len(compressed):
+                            compressed = payload
+                        if len(payload) <= target_max_bytes:
+                            return payload, '.jpg', None
+
+                    width, height = working_img.size
+                    if min(width, height) <= min_side:
+                        break
+
+                    next_w = max(min_side, int(width * 0.85))
+                    next_h = max(min_side, int(height * 0.85))
+                    if next_w == width and next_h == height:
+                        break
+                    resized = working_img.resize((next_w, next_h), resample_filter)
+                    if working_img is not src_img:
+                        working_img.close()
+                    working_img = resized
+
+                return compressed or image_bytes, '.jpg', None
             finally:
                 if working_img is not src_img:
                     working_img.close()
@@ -147,7 +191,7 @@ def normalize_uploaded_image(
     allowed_mimes = {str(v).lower() for v in (allowed_mime_types or [])}
 
     if ext and ext not in allowed_exts:
-        return None, 'Only JPG, PNG, WEBP, and HEIC images are allowed'
+        return None, 'Only JPG, PNG, WEBP, GIF, HEIC, and HEIF images are allowed'
     if ct and ct not in allowed_mimes:
         return None, 'Unsupported image content type'
 
@@ -336,8 +380,8 @@ def get_card_photo_url(card, field_data: Optional[dict] = None) -> Optional[str]
     if card.photo:
         try:
             return card.photo.url
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('Failed resolving legacy card.photo URL: %s', exc)
 
     return None
 

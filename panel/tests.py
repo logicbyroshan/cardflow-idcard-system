@@ -8,7 +8,8 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from client.models import Client
-from core.models import BackupTask, EmailLog, Notification, NotificationRead
+from staff.models import Staff
+from core.models import ActivityLog, BackgroundTask, BackupTask, EmailLog, Notification, NotificationRead
 from core.services.notification_service import NotificationService
 
 
@@ -29,10 +30,20 @@ class PanelBaseTestCase(TestCase):
             password='pass1234',
             role='client',
         )
+        self.admin_staff_user = User.objects.create_user(
+            username='panel-admin-staff@test.com',
+            email='panel-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+        )
         self.client_profile = Client.objects.create(
             user=self.client_user,
             name='Panel Client',
             status='active',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff_user,
+            staff_type='admin_staff',
         )
         cache.clear()
 
@@ -41,14 +52,75 @@ class PanelBaseTestCase(TestCase):
 
 
 class PanelAccessTests(PanelBaseTestCase):
-    def test_manage_panel_requires_super_admin(self):
+    def test_manage_panel_denies_client_role(self):
         self.client.login(username='panel-client@test.com', password='pass1234')
         response = self.client.get('/panel/manage-panel/')
         self.assertIn(response.status_code, [302, 403])
 
+    def test_manage_panel_admin_staff_without_new_permissions_is_denied(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertIn(response.status_code, [302, 403])
+
+    def test_manage_panel_admin_staff_with_backup_permission_can_access(self):
+        self.admin_staff_profile.perm_manage_panel_backup = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_backup'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Backups')
+
+    def test_manage_panel_admin_staff_with_email_permission_can_access(self):
+        self.admin_staff_profile.perm_manage_panel_email = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_email'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Email Management')
+
+    def test_manage_panel_admin_staff_with_backup_permission_hides_super_admin_tabs(self):
+        self.admin_staff_profile.perm_manage_panel_backup = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_backup'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-tab="backups"')
+        self.assertNotContains(response, 'data-tab="notifications"')
+        self.assertNotContains(response, 'data-tab="download-templates"')
+
+    def test_manage_panel_admin_staff_with_email_permission_hides_super_admin_tabs(self):
+        self.admin_staff_profile.perm_manage_panel_email = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_email'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-tab="email-logs"')
+        self.assertNotContains(response, 'data-tab="notifications"')
+        self.assertNotContains(response, 'data-tab="download-templates"')
+
     def test_manage_panel_super_admin_can_access(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         response = self.client.get('/panel/manage-panel/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_website_clients_page_allows_manage_website_clients_permission(self):
+        self.admin_staff_profile.perm_manage_website_clients = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_website_clients'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/website/clients/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_website_portfolio_page_allows_manage_website_portfolio_permission(self):
+        self.admin_staff_profile.perm_manage_website_portfolio = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_website_portfolio'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/website/portfolio/')
         self.assertEqual(response.status_code, 200)
 
 
@@ -141,10 +213,9 @@ class PanelNotificationApiTests(PanelBaseTestCase):
 
 class PanelNotificationEmailTemplateTests(PanelBaseTestCase):
     @mock.patch('core.utils.threaded_email.send_html_email_async')
-    @mock.patch('core.services.notification_service.render_to_string')
     @mock.patch('django.conf.settings.EMAIL_HOST_USER', 'smtp-user')
     @mock.patch('django.conf.settings.DEFAULT_FROM_EMAIL', 'Adarsh Admin <noreply@test.com>')
-    def test_send_email_alerts_uses_html_template_with_category_theme(self, mock_render, mock_send_html):
+    def test_send_email_alerts_uses_unified_html_template_with_category_theme(self, mock_send_html):
         self.client_user.email = 'panel-client@test.com'
         self.client_user.save(update_fields=['email'])
 
@@ -158,15 +229,7 @@ class PanelNotificationEmailTemplateTests(PanelBaseTestCase):
         )
         notif.target_users.add(self.client_user)
 
-        mock_render.return_value = '<html><body><span style="color:#991b1b">Alert</span></body></html>'
-
         NotificationService._send_email_alerts(notif)
-
-        self.assertEqual(mock_render.call_count, 1)
-        args, _kwargs = mock_render.call_args
-        self.assertEqual(args[0], 'emails/notification_alert.html')
-        self.assertEqual(args[1]['category_display'], 'Alert')
-        self.assertEqual(args[1]['theme']['accent'], '#dc2626')
 
         mock_send_html.assert_called_once()
         send_kwargs = mock_send_html.call_args.kwargs
@@ -174,7 +237,10 @@ class PanelNotificationEmailTemplateTests(PanelBaseTestCase):
         self.assertEqual(send_kwargs['recipient_list'], ['panel-client@test.com'])
         self.assertIn('Category: Alert', send_kwargs['plain_content'])
         self.assertIn('Database maintenance starts at 11 PM.', send_kwargs['plain_content'])
-        self.assertIn('#991b1b', send_kwargs['html_content'])
+        self.assertIn('Adarsh Admin Notification', send_kwargs['html_content'])
+        self.assertIn('Server notice', send_kwargs['html_content'])
+        self.assertIn('Category', send_kwargs['html_content'])
+        self.assertIn('#dc2626', send_kwargs['html_content'])
 
     @mock.patch('core.utils.threaded_email.send_html_email_async')
     @mock.patch('django.conf.settings.EMAIL_HOST_USER', 'smtp-user')
@@ -194,8 +260,9 @@ class PanelNotificationEmailTemplateTests(PanelBaseTestCase):
 
         mock_send_html.assert_called_once()
         html_content = mock_send_html.call_args.kwargs['html_content']
-        self.assertIn('theme-alert', html_content)
+        self.assertIn('Adarsh Admin Notification', html_content)
         self.assertIn('Immediate action needed', html_content)
+        self.assertIn('Please review suspicious activity logs now.', html_content)
         self.assertIn('Urgent:', html_content)
 
 
@@ -229,6 +296,20 @@ class PanelEmailApiTests(PanelBaseTestCase):
         self.assertEqual(payload['page'], 1)
         self.assertEqual(payload['total'], 1)
         self.assertEqual(len(payload['logs']), 1)
+
+    def test_email_logs_endpoint_denies_admin_staff_without_email_permission(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/email-logs/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_email_logs_endpoint_allows_admin_staff_with_email_permission(self):
+        self.admin_staff_profile.perm_manage_panel_email = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_email'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/email-logs/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
 
     def test_compose_defaults_uses_name(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
@@ -321,6 +402,20 @@ class PanelBackupApiTests(PanelBaseTestCase):
         code = response.json()['code']
         self.assertEqual(len(code), 10)
         self.assertTrue(code.isdigit())
+
+    def test_backup_generate_code_denies_admin_staff_without_backup_permission(self):
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/backup/generate-code/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_backup_generate_code_allows_admin_staff_with_backup_permission(self):
+        self.admin_staff_profile.perm_manage_panel_backup = True
+        self.admin_staff_profile.save(update_fields=['perm_manage_panel_backup'])
+
+        self.client.login(username='panel-admin-staff@test.com', password='pass1234')
+        response = self.client.get('/panel/api/backup/generate-code/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
 
     def test_backup_initiate_validates_confirmation_code(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
@@ -573,3 +668,255 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertTrue(payload['success'])
         self.assertTrue(payload['cached'])
         self.assertEqual(payload['snapshot']['host'], 'cached-host')
+
+    def test_operations_feed_requires_super_admin(self):
+        self.client.login(username='panel-client@test.com', password='pass1234')
+        denied = self.client.get('/panel/api/operations-feed/')
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        allowed = self.client.get('/panel/api/operations-feed/')
+        self.assertEqual(allowed.status_code, 200)
+        self.assertTrue(allowed.json()['success'])
+
+    def test_operations_feed_filters_and_recent_first(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        older_task = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='completed',
+            progress=10,
+            total=10,
+        )
+        processing_task = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='bulk_upload',
+            status='processing',
+            progress=1,
+            total=10,
+        )
+        latest_log = ActivityLog.objects.create(
+            user=self.super_admin,
+            action='settings_update',
+            description='Updated export settings',
+            target_model='SystemSettings',
+            target_name='Export Settings',
+            ip_address='127.0.0.1',
+        )
+
+        now = timezone.now()
+        BackgroundTask.objects.filter(pk=older_task.pk).update(created_at=now - timedelta(hours=3))
+        BackgroundTask.objects.filter(pk=processing_task.pk).update(created_at=now - timedelta(hours=2))
+        ActivityLog.objects.filter(pk=latest_log.pk).update(created_at=now - timedelta(hours=1))
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {'limit': 20, 'source': 'all'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertGreaterEqual(payload['total'], 3)
+        self.assertEqual(payload['items'][0]['source_type'], 'activity_log')
+        self.assertIn('source_counts', payload)
+        self.assertGreaterEqual(payload['source_counts'].get('background_task', 0), 2)
+        self.assertGreaterEqual(payload['source_counts'].get('activity_log', 0), 1)
+
+        task_filtered = self.client.get('/panel/api/operations-feed/', {
+            'source': 'tasks',
+            'task_status': 'processing',
+            'limit': 20,
+        })
+        self.assertEqual(task_filtered.status_code, 200)
+        task_items = task_filtered.json()['items']
+        self.assertTrue(all(item['source_type'] in ('background_task', 'backup_task') for item in task_items))
+        self.assertTrue(all(item['status'] == 'processing' for item in task_items))
+
+        role_filtered = self.client.get('/panel/api/operations-feed/', {
+            'source': 'tasks',
+            'user_role': 'client',
+            'limit': 20,
+        })
+        self.assertEqual(role_filtered.status_code, 200)
+        role_items = role_filtered.json()['items']
+        self.assertTrue(any(item['user'] == self.client_user.username for item in role_items))
+
+    def test_operations_feed_logs_respects_user_and_action_filters(self):
+        ActivityLog.objects.create(
+            user=self.client_user,
+            action='login',
+            description='Panel Client login',
+            ip_address='127.0.0.1',
+        )
+        ActivityLog.objects.create(
+            user=self.client_user,
+            action='settings_update',
+            description='Panel Client settings update',
+            ip_address='127.0.0.1',
+        )
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='login',
+            description='Super admin login',
+            ip_address='127.0.0.1',
+        )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {
+            'source': 'logs',
+            'user_role': 'client',
+            'action': 'login',
+            'limit': 50,
+        })
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertNotIn('clients', payload)
+        self.assertGreaterEqual(payload['source_counts'].get('activity_log', 0), 1)
+
+        items = payload['items']
+        self.assertTrue(items)
+        self.assertTrue(all(item['source_type'] == 'activity_log' for item in items))
+        self.assertTrue(all(item['action'] == 'login' for item in items))
+        self.assertTrue(all(item['user'] == self.client_user.username for item in items))
+
+    def test_operations_feed_rejects_removed_client_logs_source(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {
+            'source': 'client_logs',
+            'limit': 20,
+        })
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+        self.assertIn('Invalid source filter', payload.get('message', ''))
+
+    def test_operations_feed_marks_only_latest_active_task_cancellable_for_pro_user(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        pro_user = User.objects.create_user(
+            username='panel-pro@test.com',
+            email='panel-pro@test.com',
+            password='pass1234',
+            role='pro_user',
+        )
+
+        older_active = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='processing',
+            progress=1,
+            total=10,
+        )
+        latest_active = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_docx',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+        completed_task = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_excel',
+            status='completed',
+            progress=4,
+            total=4,
+        )
+
+        now = timezone.now()
+        BackgroundTask.objects.filter(pk=older_active.pk).update(created_at=now - timedelta(hours=2))
+        BackgroundTask.objects.filter(pk=latest_active.pk).update(created_at=now - timedelta(minutes=5))
+        BackgroundTask.objects.filter(pk=completed_task.pk).update(created_at=now - timedelta(minutes=2))
+
+        self.client.login(username=pro_user.username, password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {'source': 'tasks', 'limit': 50})
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+
+        background_items = [
+            item for item in payload.get('items', [])
+            if item.get('source_type') == 'background_task'
+        ]
+        self.assertTrue(background_items)
+
+        cancelable_ids = [item.get('task_id') for item in background_items if item.get('can_cancel')]
+        self.assertEqual(cancelable_ids, [latest_active.id])
+
+        by_id = {item.get('task_id'): item for item in background_items}
+        self.assertEqual(by_id[older_active.id].get('can_cancel'), False)
+        self.assertEqual(by_id[completed_task.id].get('can_cancel'), False)
+
+    def test_latest_only_cancel_requires_pro_user(self):
+        task = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='processing',
+            progress=2,
+            total=10,
+        )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.post(
+            f'/panel/api/task-cancel/{task.id}/',
+            data=json.dumps({'latest_only': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(response.json().get('success'))
+
+    def test_pro_user_latest_only_cancel_allows_only_latest_active_task(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        pro_user = User.objects.create_user(
+            username='panel-pro-cancel@test.com',
+            email='panel-pro-cancel@test.com',
+            password='pass1234',
+            role='pro_user',
+        )
+
+        older_active = BackgroundTask.objects.create(
+            user=self.client_user,
+            task_type='export_pdf',
+            status='processing',
+            progress=3,
+            total=10,
+        )
+        latest_active = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_docx',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+
+        now = timezone.now()
+        BackgroundTask.objects.filter(pk=older_active.pk).update(created_at=now - timedelta(hours=1))
+        BackgroundTask.objects.filter(pk=latest_active.pk).update(created_at=now - timedelta(minutes=1))
+
+        self.client.login(username=pro_user.username, password='pass1234')
+
+        wrong_response = self.client.post(
+            f'/panel/api/task-cancel/{older_active.id}/',
+            data=json.dumps({'latest_only': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(wrong_response.status_code, 400)
+        self.assertFalse(wrong_response.json().get('success'))
+
+        ok_response = self.client.post(
+            f'/panel/api/task-cancel/{latest_active.id}/',
+            data=json.dumps({'latest_only': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(ok_response.status_code, 200)
+        self.assertTrue(ok_response.json().get('success'))
+
+        latest_active.refresh_from_db()
+        older_active.refresh_from_db()
+        self.assertEqual(latest_active.status, 'cancelled')
+        self.assertEqual(older_active.status, 'processing')

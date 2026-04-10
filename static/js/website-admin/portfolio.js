@@ -1,7 +1,7 @@
 /**
  * Website Admin  Portfolio Module (v3)
  * CRUD for Portfolio items + Category management
- * Type & orientation are auto-detected server-side.
+ * Orientation is auto-detected server-side for image uploads.
  */
 (function () {
     const BASE = '/website/api';
@@ -14,6 +14,7 @@
         document.getElementById('portfolioModalTitle').textContent = id ? 'Edit Portfolio Item' : 'Add Portfolio Item';
         document.getElementById('portfolioForm').reset();
         document.getElementById('portfolioId').value = id || '';
+        document.getElementById('pf_item_type').value = 'image';
         if (id) {
             ApiClient.get(`${BASE}/portfolio/${id}/`)
                 .then(d => {
@@ -21,14 +22,23 @@
                     const p = d.item;
                     document.getElementById('pf_category').value = p.category_id || '';
                     document.getElementById('pf_order').value = p.order || 0;
+                    document.getElementById('pf_item_type').value = p.item_type || 'image';
                     document.getElementById('pf_active').checked = p.is_active;
                     document.getElementById('pf_featured').checked = p.is_featured;
                 });
         }
-        document.getElementById('portfolioModal').classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('portfolioModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('portfolioModal').classList.add('show');
+        }
     };
     window.closePortfolioModal = function () {
-        document.getElementById('portfolioModal').classList.remove('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('portfolioModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('portfolioModal').classList.remove('show');
+        }
     };
     window.editPortfolio = function (id) { openPortfolioModal(id); };
 
@@ -95,10 +105,18 @@
         document.getElementById('bulkFileCount').style.display = 'none';
         document.getElementById('bulkProgress').style.display = 'none';
         document.getElementById('bulkUploadBtn').disabled = false;
-        document.getElementById('bulkUploadModal').classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('bulkUploadModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('bulkUploadModal').classList.add('show');
+        }
     };
     window.closeBulkUploadModal = function () {
-        document.getElementById('bulkUploadModal').classList.remove('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('bulkUploadModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('bulkUploadModal').classList.remove('show');
+        }
     };
 
     // Show file count when user selects files
@@ -296,10 +314,18 @@
         document.getElementById('cat_icon').value = 'fas fa-folder';
         document.getElementById('cat_is_bento').checked = false;
         document.getElementById('cat_bento_size').value = 'normal';
-        document.getElementById('categoryModal').classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('categoryModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('categoryModal').classList.add('show');
+        }
     };
     window.closeCategoryModal = function () {
-        document.getElementById('categoryModal').classList.remove('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
+            window.AdarshModalBridge.close('categoryModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('categoryModal').classList.remove('show');
+        }
     };
 
     window.editCategory = function (id, name, icon, desc, order, isBento, bentoSize) {
@@ -311,7 +337,11 @@
         document.getElementById('cat_order').value = order;
         document.getElementById('cat_is_bento').checked = !!isBento;
         document.getElementById('cat_bento_size').value = bentoSize || 'normal';
-        document.getElementById('categoryModal').classList.add('show');
+        if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
+            window.AdarshModalBridge.open('categoryModal', { overlayClass: 'show' });
+        } else {
+            document.getElementById('categoryModal').classList.add('show');
+        }
     };
 
     window.deleteCategory = async function (id) {

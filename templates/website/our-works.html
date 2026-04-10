@@ -4,8 +4,8 @@
 {% block title %}Our Works{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=140">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=140">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=146">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=146">
 {% endblock %}
 
 {% block content %}
@@ -30,7 +30,7 @@
                 <span class="section-badge">What We Create</span>
                 <h2>Our <span class="highlight">Product Range</span></h2>
             </div>
-            <div class="categories-grid categories-grid-seven">
+            <div class="categories-grid {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
                 {% for cat in bento_categories %}
                 <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
                     <div class="category-bg">
@@ -118,6 +118,15 @@
                 </div>
                 {% endfor %}
             </div>
+            <div id="portfolioLoadSkeleton" class="portfolio-load-skeleton" hidden aria-hidden="true">
+                <div class="portfolio-skeleton-card"></div>
+                <div class="portfolio-skeleton-card"></div>
+                <div class="portfolio-skeleton-card"></div>
+                <div class="portfolio-skeleton-card"></div>
+                <div class="portfolio-skeleton-card"></div>
+                <div class="portfolio-skeleton-card"></div>
+            </div>
+            <div id="portfolioLoadSentinel" class="portfolio-load-sentinel" aria-hidden="true"></div>
         </div>
     </section>
 
@@ -133,7 +142,9 @@
                     <button class="product-gallery-close" id="productGalleryClose" aria-label="Close gallery"><i class="fas fa-times" aria-hidden="true"></i></button>
                 </div>
             </div>
-            <div class="product-gallery-grid" id="productGalleryGrid"></div>
+            <div class="product-gallery-body">
+                <div class="product-gallery-grid" id="productGalleryGrid"></div>
+            </div>
         </div>
     </div>
 
@@ -159,5 +170,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=140"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=146"></script>
 {% endblock %}

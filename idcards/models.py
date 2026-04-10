@@ -11,6 +11,11 @@ from mediafiles.constants import IMAGE_FIELD_TYPES
 logger = logging.getLogger(__name__)
 
 
+def _field_name_tokens(name):
+    """Return normalized alphanumeric tokens from a field label."""
+    return {tok for tok in re.split(r'[^a-z0-9]+', str(name or '').strip().lower()) if tok}
+
+
 # ---------------------------------------------------------------------------
 #   Text sanitizer — strips non-Latin-1 characters that cause ■ in PDF
 # ---------------------------------------------------------------------------
@@ -139,11 +144,35 @@ class IDCardTable(models.Model):
     
     def has_class_field(self):
         """Check if this table has a class field"""
-        return any(f.get('type') == 'class' or f.get('name', '').lower() == 'class' for f in self.fields)
+        class_tokens = {'class', 'std', 'standard', 'grade'}
+        return any(
+            f.get('type') == 'class' or bool(_field_name_tokens(f.get('name', '')) & class_tokens)
+            for f in self.fields
+        )
     
     def has_section_field(self):
         """Check if this table has a section field"""
-        return any(f.get('type') == 'section' or f.get('name', '').lower() == 'section' for f in self.fields)
+        section_tokens = {'section', 'sec', 'div', 'division'}
+        return any(
+            f.get('type') == 'section' or bool(_field_name_tokens(f.get('name', '')) & section_tokens)
+            for f in self.fields
+        )
+
+    def has_course_field(self):
+        """Check if this table has a course field."""
+        course_tokens = {'course', 'program', 'programme'}
+        return any(
+            f.get('type') == 'course' or bool(_field_name_tokens(f.get('name', '')) & course_tokens)
+            for f in self.fields
+        )
+
+    def has_branch_field(self):
+        """Check if this table has a branch/stream field."""
+        branch_tokens = {'branch', 'stream', 'dept', 'department'}
+        return any(
+            f.get('type') == 'branch' or bool(_field_name_tokens(f.get('name', '')) & branch_tokens)
+            for f in self.fields
+        )
     
     def has_image_fields(self):
         """Check if this table has any image fields (uses canonical IMAGE_FIELD_TYPES)"""

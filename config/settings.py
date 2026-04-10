@@ -45,9 +45,16 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
 # Allowed Hosts
-# In DEBUG mode allow everything; in production read from .env
+# In DEBUG mode, default to localhost hosts only. Override via DEBUG_ALLOWED_HOSTS.
 if DEBUG:
-    ALLOWED_HOSTS = ['*']
+    _debug_hosts = os.getenv('DEBUG_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
+    ALLOWED_HOSTS = [
+        host.strip()
+        for host in _debug_hosts.split(',')
+        if host.strip()
+    ]
+    if not ALLOWED_HOSTS:
+        ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 else:
     ALLOWED_HOSTS = [
         host.strip()
@@ -229,6 +236,9 @@ for _domain in (PANEL_DOMAIN, WEBSITE_DOMAIN):
             if _origin not in CSRF_TRUSTED_ORIGINS:
                 CSRF_TRUSTED_ORIGINS.append(_origin)
 
+# Use the same branded error page for CSRF failures (403).
+CSRF_FAILURE_VIEW = 'core.views.errors.csrf_failure'
+
 # ── Reverse-proxy SSL detection ──
 # MUST be set whenever Django is behind Nginx/Apache that terminates SSL,
 # REGARDLESS of DEBUG. Without this, Django thinks requests arrive over HTTP
@@ -302,6 +312,11 @@ SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 
 # Set to 0 to disable. Default: 30 days.
 SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60 * 24 * 30)))
 
+# ── Dashboard live-activity window (seconds) ──
+# Used by dashboard "Live Working Clients". A user is considered live only if
+# their session `_last_activity` is within this recent window.
+DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS = int(os.getenv('DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', '180'))
+
 # ── Session fingerprint validation ──
 # Adds lightweight binding of a session to browser fingerprint material.
 # Include IP binding only when infra has stable client egress IPs.
@@ -322,8 +337,13 @@ PERMISSION_REVALIDATION_INTERVAL = int(os.getenv('PERMISSION_REVALIDATION_INTERV
 # DEBUG alone no longer enables plaintext OTP logs.
 DEV_LOG_OTP = _env_bool('DEV_LOG_OTP', False)
 
-# CSP hardening toggles (defaults preserve current behavior).
+# CSP hardening toggles.
+# IMPORTANT: The current templates still rely on inline <script> blocks and
+# inline event handlers (onclick/oninput). Keep unsafe-inline enabled by
+# default until those scripts are migrated to nonce/hash-safe external files.
 CSP_ALLOW_UNSAFE_INLINE = _env_bool('CSP_ALLOW_UNSAFE_INLINE', True)
+# Alpine full evaluator is required by existing x-show/x-bind expressions
+# that use comparisons and logical operators across desktop/mobile templates.
 CSP_ALLOW_UNSAFE_EVAL = _env_bool('CSP_ALLOW_UNSAFE_EVAL', True)
 CSP_ALLOW_LOCAL_ENGINE_CONNECT = _env_bool('CSP_ALLOW_LOCAL_ENGINE_CONNECT', DEBUG)
 
@@ -338,14 +358,24 @@ PERMISSIONS_POLICY = 'camera=(self), microphone=(self), geolocation=(), payment=
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 # =============================================================================
 
-# Password validation relaxed: passwords can be simple (e.g., mobile numbers).
-# Only enforce minimum length of 8 characters.
+# Password validation baseline.
+# Keeps 8-char minimum while adding low-friction protections against
+# very weak/common passwords and user-attribute similarity.
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
             'min_length': 8,
         }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'OPTIONS': {
+            'max_similarity': 0.7,
+        },
     },
 ]
 

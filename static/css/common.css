@@ -742,6 +742,19 @@ body[style*="overflow:hidden"] {
   border-color: #8b5cf6;
 }
 
+.center-modal-select.center-modal-select-multiple {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  background-image: none;
+  min-height: 132px;
+  height: auto;
+  padding: 8px 10px;
+}
+
+.center-modal-select.center-modal-select-multiple option {
+  padding: 4px 6px;
+}
+
 .center-modal-note {
   color: #9ca3af;
   font-size: 15px;
@@ -936,6 +949,12 @@ body[style*="overflow:hidden"] {
 /* Sidebar-specific avatar styling */
 .sidebar .user-avatar {
   position: relative;
+  border-radius: 8px !important;
+}
+
+.sidebar .user-avatar .user-avatar-placeholder,
+.sidebar .user-avatar img {
+  border-radius: 8px !important;
 }
 
 /* ===========================================
@@ -1114,6 +1133,72 @@ body[style*="overflow:hidden"] {
   border-left: none;
 }
 
+.pro-feature-tabs {
+  display: flex;
+  gap: 0;
+  margin: -16px -20px 8px;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 26;
+  min-height: 43px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.pro-feature-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.pro-feature-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s, background-color .15s;
+}
+
+.pro-feature-tab:hover {
+  color: #334155;
+  background: #f8fafc;
+}
+
+.pro-feature-tab.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: rgba(102, 126, 234, 0.06);
+}
+
+.pro-feature-page .action-bar {
+  top: 47px !important;
+  z-index: 24;
+}
+
+@media (max-width: 768px) {
+  .pro-feature-tabs {
+    margin: -12px -12px 10px;
+    padding: 0 12px;
+    min-height: 39px;
+  }
+
+  .pro-feature-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .pro-feature-page .action-bar {
+    top: 42px !important;
+  }
+}
+
 /* ── Phone / Email table-cell break rules ──────────────────────────
    Phone: no random breaks; only break at the <wbr> we insert (centre).
    Email: only break at <wbr> before the @ symbol.                        */
@@ -1138,6 +1223,42 @@ td.email-col {
 .alpine-toast-wrapper {
   right: auto !important;
   left: 8px !important;
+}
+
+/* ===========================================
+   BULK OPERATION PAGE LOCK
+   Applied only while JS adds body.bulk-operation-active
+   =========================================== */
+body.bulk-operation-active {
+  overflow: hidden;
+}
+
+body.bulk-operation-active > *:not(#blockingOverlay):not(.alpine-toast-wrapper):not(#downloadToastContainer) {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+body.bulk-operation-active .main,
+body.bulk-operation-active .sidebar {
+  filter: blur(2px);
+  pointer-events: none;
+  user-select: none;
+}
+
+body.bulk-operation-active #blockingOverlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(8, 16, 32, 0.44);
+}
+
+body.bulk-operation-active .alpine-toast-wrapper,
+body.bulk-operation-active #downloadToastContainer {
+  z-index: 13000 !important;
+}
+
+body.bulk-operation-active #blockingOverlay,
+body.bulk-operation-active #blockingOverlay * {
+  pointer-events: auto;
 }
 
 @media (max-width: 640px) {
@@ -1328,6 +1449,106 @@ td.email-col {
   box-shadow: 0 0 0 3px rgba(252,165,165,0.2);
 }
 
+.confirm-code-input-wrap {
+  position: relative;
+  width: 100%;
+  margin-bottom: 12px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: text;
+}
+
+.confirm-code-boxes {
+  --confirm-code-size: 38px;
+  display: grid;
+  grid-template-columns: repeat(10, var(--confirm-code-size));
+  gap: 6px;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.confirm-code-box {
+  width: var(--confirm-code-size);
+  height: var(--confirm-code-size);
+  border: 2px solid #d1d5db;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.confirm-code-box.is-filled {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.confirm-code-box.is-active {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+
+.confirm-code-input-wrap.is-valid .confirm-code-box {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.confirm-code-input-wrap.is-invalid .confirm-code-box {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.confirm-code-input-hidden {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.01;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .confirm-code-boxes {
+    --confirm-code-size: 30px;
+    gap: 4px;
+  }
+
+  .confirm-code-box {
+    border-radius: 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .confirm-code-boxes {
+    --confirm-code-size: 26px;
+    gap: 3px;
+  }
+
+  .confirm-code-box {
+    border-radius: 7px;
+    font-size: 13px;
+  }
+}
+
 .verify-error {
   font-size: 12px;
   color: #dc2626;
@@ -1339,6 +1560,61 @@ td.email-col {
 /* ===========================================
    DOWNLOAD MODAL — Enhanced Blocking Overlay
    =========================================== */
+
+.blocking-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 16, 32, 0.65);
+}
+
+.blocking-overlay-content {
+  width: min(560px, calc(100vw - 32px));
+  background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.56);
+}
+
+.blocking-overlay-progress {
+  width: 100%;
+  height: 10px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.blocking-overlay-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #60a5fa, #818cf8);
+  transition: width 0.35s ease;
+}
+
+.blocking-overlay-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.68);
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.blocking-overlay-cancel:hover {
+  background: rgba(51, 65, 85, 0.86);
+  border-color: rgba(148, 163, 184, 0.55);
+}
 
 /* Icon container with state-based colors */
 .blocking-overlay-icon {

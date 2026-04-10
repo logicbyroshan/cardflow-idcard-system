@@ -6,7 +6,7 @@
        x-show="activeModal === 'dashDelete'" x-transition.scale.origin.center>
     <div class="modal-header">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete All ID Cards</h3>
-      <button type="button" class="modal-close" @click="closeModal()" aria-label="Close">
+      <button type="button" class="modal-close" @click="closeModal" aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
@@ -32,18 +32,31 @@
 
         <p class="verify-hint" style="text-align:center;margin-bottom:8px;">Type this code to confirm:</p>
         <div class="verify-code" id="dashDeleteCode">----------</div>
-        <input type="text" id="dashDeleteCodeInput" maxlength="10"
-               inputmode="numeric"
-               pattern="[0-9]{10}"
-               placeholder="_ _ _ _ _ _ _ _ _ _"
-               autocomplete="off"
-               class="verify-input"
-               oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+        <div class="confirm-code-input-wrap" id="dashDeleteCodeWrap" onclick="document.getElementById('dashDeleteCodeInput').focus()">
+          <div class="confirm-code-boxes" id="dashDeleteCodeBoxes" aria-hidden="true">
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+            <span class="confirm-code-box"></span>
+          </div>
+          <input type="text" id="dashDeleteCodeInput" maxlength="10"
+                 inputmode="numeric"
+                 pattern="[0-9]{10}"
+                 autocomplete="off"
+                 class="verify-input confirm-code-input-hidden"
+                 oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+        </div>
       </div>
     </div>
     <div class="modal-footer">
       <button id="dashDeleteCancel" class="btn btn-md btn-neutral" type="button"
-              @click="closeModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+              @click="closeModal"><i class="fa-solid fa-xmark"></i> Cancel</button>
       <button id="dashDeleteConfirm" class="btn btn-md btn-danger" type="button" disabled><i class="fa-solid fa-trash"></i> Delete All Cards</button>
     </div>
   </div>

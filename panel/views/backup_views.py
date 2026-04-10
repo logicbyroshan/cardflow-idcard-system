@@ -24,7 +24,8 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
 
 from core.models import BackupTask
-from core.services.permission_service import require_super_admin
+from core.services.activity_service import ActivityService
+from core.services.permission_service import require_permission, api_require_permission, PermissionService
 from client.models import Client
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def _resolve_media_file(file_path: str):
 # ─── Page views ──────────────────────────────────────────────────────────
 
 @login_required
-@require_super_admin
+@require_permission('perm_manage_panel_backup', redirect_url='/panel/')
 def backup_select_clients(request):
     """Page: shows all clients with sort/filter for backup selection."""
     task_id = request.GET.get('task')
@@ -111,14 +112,14 @@ def backup_select_clients(request):
         'task': task,
         'clients': clients_qs,
         'current_sort': sort,
-        'is_super_admin': True,
+        'is_super_admin': PermissionService.is_super_admin(request.user),
     })
 
 
 # ─── API endpoints ───────────────────────────────────────────────────────
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['POST'])
 def api_backup_initiate(request):
     """Step 1 — modal submits the 10-digit code; creates pending BackupTask."""
@@ -136,6 +137,14 @@ def api_backup_initiate(request):
         confirmation_code=code,
         status='pending',
     )
+    ActivityService.log(
+        'backup_initiate',
+        f'Backup task initiated (#{task.pk})',
+        request=request,
+        target_model='BackupTask',
+        target_id=task.pk,
+        target_name=f'Backup #{task.pk}',
+    )
     return JsonResponse({
         'success': True,
         'task_id': task.pk,
@@ -144,7 +153,7 @@ def api_backup_initiate(request):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['POST'])
 def api_backup_start(request):
     """Step 2 — client-selection page submits chosen client IDs."""
@@ -175,27 +184,37 @@ def api_backup_start(request):
     if BackupTask.objects.filter(status__in=('pending', 'processing')).exclude(pk=task.pk).exists():
         return _json_error('Another backup is already running. Please wait for it to finish.', status=429)
 
-    valid_clients = Client.objects.filter(pk__in=client_ids, status='active')
-    if not valid_clients.exists():
+    valid_clients = list(Client.objects.filter(pk__in=client_ids, status='active').only('pk', 'name'))
+    if not valid_clients:
         return _json_error('No valid active clients selected.')
+    valid_client_count = len(valid_clients)
 
     names = {str(c.pk): c.name for c in valid_clients}
     task.client_ids = [c.pk for c in valid_clients]
     task.client_names = names
-    task.total = valid_clients.count()
+    task.total = valid_client_count
     task.save(update_fields=['client_ids', 'client_names', 'total'])
 
     from panel.services.backup_service import start_backup
     start_backup(task.pk)
 
+    ActivityService.log(
+        'backup_start',
+        f'Backup started for {valid_client_count} client(s) (task #{task.pk})',
+        request=request,
+        target_model='BackupTask',
+        target_id=task.pk,
+        target_name=f'Backup #{task.pk}',
+    )
+
     return JsonResponse({
         'success': True,
-        'message': f'Backup started for {valid_clients.count()} school(s). You can track progress in the Manage Panel.',
+        'message': f'Backup started for {valid_client_count} school(s). You can track progress in the Manage Panel.',
     })
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_status(request, task_id):
     """Poll backup progress."""
@@ -219,7 +238,7 @@ def api_backup_status(request, task_id):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_list(request):
     """List all backup tasks (recent first) for the Manage Panel."""
@@ -243,7 +262,7 @@ def api_backup_list(request):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['POST'])
 def api_backup_delete_now(request, task_id):
     """Immediately delete backup files."""
@@ -253,11 +272,19 @@ def api_backup_delete_now(request, task_id):
 
     from panel.services.backup_service import delete_backup_files
     delete_backup_files(task.pk)
+    ActivityService.log(
+        'backup_delete',
+        f'Backup files deleted for task #{task.pk}',
+        request=request,
+        target_model='BackupTask',
+        target_id=task.pk,
+        target_name=f'Backup #{task.pk}',
+    )
     return JsonResponse({'success': True, 'message': 'Backup files deleted successfully.'})
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_download(request, task_id):
     """Download the combined backup ZIP."""
@@ -285,7 +312,7 @@ def api_backup_download(request, task_id):
 
 
 @login_required
-@require_super_admin
+@api_require_permission('perm_manage_panel_backup')
 @require_http_methods(['GET'])
 def api_backup_generate_code(request):
     """Generate a 10-digit code for the backup confirmation modal."""

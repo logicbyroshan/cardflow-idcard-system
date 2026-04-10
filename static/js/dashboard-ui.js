@@ -5,6 +5,12 @@ window.DashboardPage = window.DashboardPage || {};
 
 // Global: toggle expandable client row
 function toggleClientExpandRow(tr) {
+    var directUrl = tr.getAttribute('data-direct-url');
+    if (directUrl) {
+        window.location.href = directUrl;
+        return;
+    }
+
     var idx = tr.getAttribute('data-idx');
     var subRows = document.querySelectorAll('.expand-group-' + idx);
     if (!subRows.length) return;
@@ -45,6 +51,78 @@ window.DashboardPage.toggleClientExpandRow = toggleClientExpandRow;
 window.DashboardPage.toggleScopedExpandRow = toggleScopedExpandRow;
 
 document.addEventListener('DOMContentLoaded', function() {
+    const dashboardMiddleScroll = document.querySelector('.dashboard-middle-scroll');
+
+    function syncDashboardPanelHeight() {
+        if (!dashboardMiddleScroll) return;
+        const panelHeight = dashboardMiddleScroll.clientHeight;
+        if (panelHeight > 0) {
+            document.documentElement.style.setProperty('--dashboard-panel-height', `${panelHeight}px`);
+        }
+    }
+
+    syncDashboardPanelHeight();
+    window.addEventListener('resize', syncDashboardPanelHeight);
+
+    const dashboardMainColumn = document.getElementById('dashboardMainColumn');
+    const dashboardTabButtons = Array.from(document.querySelectorAll('[data-dashboard-tab]'));
+    const dashboardPanels = dashboardMainColumn
+        ? Array.from(dashboardMainColumn.querySelectorAll('[data-dashboard-panel]'))
+        : [];
+
+    function activateDashboardPanel(panelKey) {
+        if (!dashboardMainColumn || !panelKey) return;
+
+        dashboardTabButtons.forEach(function(tabBtn) {
+            const isActive = tabBtn.getAttribute('data-dashboard-tab') === panelKey;
+            tabBtn.classList.toggle('is-active', isActive);
+            tabBtn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+
+        dashboardPanels.forEach(function(panel) {
+            const isActive = panel.getAttribute('data-dashboard-panel') === panelKey;
+            panel.classList.toggle('is-active', isActive);
+            panel.hidden = !isActive;
+        });
+
+        try {
+            localStorage.setItem('dashboard:active-panel', panelKey);
+        } catch (_err) {}
+
+        requestAnimationFrame(syncDashboardPanelHeight);
+    }
+
+    if (dashboardMainColumn && dashboardTabButtons.length && dashboardPanels.length) {
+        dashboardMainColumn.classList.add('tabbed-layout');
+        const availablePanelKeys = new Set(dashboardPanels.map(function(panel) {
+            return panel.getAttribute('data-dashboard-panel');
+        }));
+        const defaultPanel = dashboardTabButtons.find(function(tabBtn) {
+            return availablePanelKeys.has(tabBtn.getAttribute('data-dashboard-tab'));
+        });
+        let initialPanel = defaultPanel ? defaultPanel.getAttribute('data-dashboard-tab') : null;
+
+        try {
+            const storedPanel = localStorage.getItem('dashboard:active-panel');
+            if (storedPanel && availablePanelKeys.has(storedPanel)) {
+                initialPanel = storedPanel;
+            }
+        } catch (_err2) {}
+
+        if (initialPanel) {
+            activateDashboardPanel(initialPanel);
+        }
+
+        dashboardTabButtons.forEach(function(tabBtn) {
+            tabBtn.addEventListener('click', function() {
+                const panelKey = tabBtn.getAttribute('data-dashboard-tab');
+                if (!availablePanelKeys.has(panelKey)) return;
+                activateDashboardPanel(panelKey);
+            });
+        });
+
+        window.DashboardPage.activateDashboardPanel = activateDashboardPanel;
+    }
     
     // ====================
     // Update Welcome Banner Date/Time
@@ -146,6 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const verifiedCards = document.getElementById('verifiedCards');
         const approvedCards = document.getElementById('approvedCards');
         const downloadedCards = document.getElementById('downloadedCards');
+        const poolCards = document.getElementById('poolCards');
         
         // Read actual values from DOM, then animate from 0 to that value
         if (pendingCards) {
@@ -163,6 +242,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (downloadedCards) {
             const targetValue = parseInt(downloadedCards.textContent.replace(/,/g, '')) || 0;
             animateValue(downloadedCards, 0, targetValue, 1500);
+        }
+        if (poolCards) {
+            const targetValue = parseInt(poolCards.textContent.replace(/,/g, '')) || 0;
+            animateValue(poolCards, 0, targetValue, 1400);
         }
     }, 500);
     
@@ -186,10 +269,12 @@ document.addEventListener('DOMContentLoaded', function() {
     cardOverviewItems.forEach(item => {
         item.style.cursor = 'pointer';
         item.addEventListener('mouseenter', function() {
+            if (this.classList.contains('dashboard-tab-item')) return;
             this.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)';
             this.style.borderColor = 'rgba(102, 126, 234, 0.2)';
         });
         item.addEventListener('mouseleave', function() {
+            if (this.classList.contains('dashboard-tab-item')) return;
             this.style.background = '#fafbfc';
             this.style.borderColor = 'rgba(0, 0, 0, 0.04)';
         });

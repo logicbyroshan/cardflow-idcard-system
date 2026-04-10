@@ -72,7 +72,7 @@
   <div class="filters-bar">
     <div class="filter-group">
       <label for="statusFilter">Status:</label>
-      <select id="statusFilter" onchange="loadCards()">
+      <select id="statusFilter" class="form-select" onchange="loadCards()">
         <option value="">All Status</option>
         {% if perm_idcard_pending_list %}<option value="pending">Pending</option>{% endif %}
         {% if perm_idcard_verified_list %}<option value="verified">Verified</option>{% endif %}

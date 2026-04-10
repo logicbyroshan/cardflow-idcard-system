@@ -14,14 +14,14 @@
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
   <!-- Page-specific: client portal partials -->
   <link rel="stylesheet" href="{% static 'css/partials-common.css' %}">
+  <link rel="stylesheet" href="{% static 'css/client-message-drawer.css' %}">
   {% block extra_css %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
 
   <!-- Skip to main content (a11y) -->
   <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded focus:text-sm focus:font-semibold focus:shadow-lg">Skip to main content</a>
@@ -34,8 +34,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
           {% block breadcrumb %}
@@ -51,8 +51,13 @@
 
   </main>
 
+  {% if is_client or is_client_staff %}
+  {% include 'partials/client-message-drawer.html' %}
+  {% endif %}
+
   <!-- Core JS bundle (api + toast + modal + utils + init + global-search + notification-bell) -->
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+  <script defer src="{% static 'js/client-message-drawer.js' %}"></script>
 
   {% block extra_js %}{% endblock %}
 

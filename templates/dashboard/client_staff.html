@@ -12,12 +12,10 @@
   <!-- Page-specific: dashboard -->
   <link rel="stylesheet" href="{% static 'dist/css/dashboard.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
 
   {% include 'partials/sidebar.html' %}
 
@@ -27,8 +25,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
           <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
@@ -91,6 +89,16 @@
             <div class="stat-label">Downloaded Cards</div>
           </div>
         </div>
+
+        <div class="stat-card">
+          <div class="stat-icon pool">
+            <i class="fa-solid fa-box-archive"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="poolCards">{{ pool_cards|default:0 }}</div>
+            <div class="stat-label">Pool Cards</div>
+          </div>
+        </div>
         
         <div class="stat-card">
           <div class="stat-icon total">
@@ -104,12 +112,24 @@
       </div>
 
       <!-- Main Grid - My Cards & Recent Activity -->
-      <div class="dashboard-grid">
+      <div class="dashboard-grid dashboard-grid-main">
         
-        <!-- My ID Cards - Client Staff view -->
+        <!-- My ID Cards - Assistent view -->
         <div class="dashboard-card">
-          <div class="dashboard-card-header">
+          <div class="dashboard-card-header updates-header">
             <h3><i class="fa-solid fa-id-card"></i> My ID Cards</h3>
+            <div class="recent-updates-search-inline">
+              <div class="recent-updates-search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input
+                  type="text"
+                  id="recentClientUpdatesSearch"
+                  class="recent-updates-search-input"
+                  placeholder="Search card type or status"
+                  autocomplete="off"
+                >
+              </div>
+            </div>
             {% if perm_idcard_setting_list %}
             <a href="{% url 'client_dashboard' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
             {% endif %}
@@ -290,7 +310,7 @@
         </div>
         <div class="search-filter-group">
           <label>Filter:</label>
-          <select id="globalSearchFilter">
+          <select id="globalSearchFilter" class="form-select">
             <option value="all">All Fields</option>
             <option value="name">Name</option>
             <option value="status">Status</option>

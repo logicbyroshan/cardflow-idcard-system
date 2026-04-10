@@ -43,6 +43,7 @@ def permissions(request):
             'is_client_staff': False,
             'is_client_admin': False,  # For backward compatibility
             'is_impersonating': False,
+            'impersonation_original_name': '',
             'user_role': None,
         })
         return base_context
@@ -72,16 +73,33 @@ def permissions(request):
     
     # Add is_client_admin for backward compatibility with client-sidebar.html
     context['is_client_admin'] = context.get('is_client', False)
-    
-    # Add impersonation state
+
+    # Add impersonation session state for template/UI controls.
     context['is_impersonating'] = bool(request.session.get('_pro_original_user_id'))
     context['impersonation_original_name'] = request.session.get('_pro_original_user_name', '')
-
+    
     # Add app version
     context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.1.0')
 
     # Merge subdomain URLs
     context.update(base_context)
+
+    current_client = None
+    try:
+        if context.get('is_client'):
+            current_client = getattr(request.user, 'client_profile', None)
+        elif context.get('is_client_staff'):
+            staff_profile = getattr(request.user, 'staff_profile', None)
+            current_client = getattr(staff_profile, 'client', None)
+    except Exception:
+        current_client = None
+
+    context['current_client'] = current_client
+    context['current_client_logo_url'] = (
+        current_client.website_logo.url
+        if current_client and getattr(current_client, 'website_logo', None)
+        else ''
+    )
     
     # Cache on request for this request lifecycle
     request._cached_permissions = context

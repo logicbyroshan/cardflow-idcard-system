@@ -348,27 +348,30 @@ class WorkflowService:
         if user and not skip_permission:
             # Client-readonly: reject if any card is in locked status
             if user.role in ('client', 'client_staff'):
-                locked = IDCard.objects.filter(
+                locked_exists = IDCard.objects.filter(
                     table=table,
                     id__in=card_ids,
                     status__in=cls.CLIENT_READONLY_STATUSES,
-                ).count()
-                if locked:
+                ).exists()
+                if locked_exists:
                     return ServiceResult(
                         success=False,
                         message='Cards in approved / download status cannot be modified by client users.'
                     )
 
-            # For pool→pending, check perm_idcard_retrieve
-            # The main perm is target-based; pool→pending is special
-            has_pool_cards = IDCard.objects.filter(table=table, id__in=card_ids, status='pool').exists()
-            if target_status == 'pending' and has_pool_cards:
-                if not PermissionService.has(user, 'perm_idcard_retrieve'):
+            # Keep bulk permission checks consistent with single-card transition rules.
+            selected_statuses = set(
+                IDCard.objects.filter(table=table, id__in=card_ids)
+                .values_list('status', flat=True)
+            )
+            required_perms = {
+                cls._get_required_perm(current_status, target_status)
+                for current_status in selected_statuses
+                if target_status in cls.ALLOWED_TRANSITIONS.get(current_status, [])
+            }
+            for required_perm in required_perms:
+                if required_perm and not PermissionService.has(user, required_perm):
                     return ServiceResult(success=False, message='Permission denied')
-
-            required_perm = cls.TRANSITION_PERM_MAP.get(target_status)
-            if required_perm and not PermissionService.has(user, required_perm):
-                return ServiceResult(success=False, message='Permission denied')
 
         # Super admin can bypass required-field/image forward gates.
         enforce_required_validations = not (user and PermissionService.is_super_admin(user))
@@ -454,17 +457,25 @@ class WorkflowService:
         # Set/clear timestamps for download and pool transitions
         if target_status == 'download':
             update_kwargs['downloaded_at'] = timezone.now()
-        elif target_status in ('approved',):  # back from download
+        else:
             update_kwargs['downloaded_at'] = None
 
         if target_status == 'pool':
             update_kwargs['deleted_at'] = timezone.now()
-        elif target_status == 'pending':  # back from pool
+        else:
             update_kwargs['deleted_at'] = None
 
         # Track when status changed — used for default sort so that
         # plain field edits do NOT push a card to the top of the list.
         update_kwargs['status_changed_at'] = timezone.now()
+
+        card_status_pairs = list(
+            IDCard.objects.filter(
+                table=table,
+                id__in=eligible_ids,
+                status__in=valid_from,
+            ).values_list('id', 'status')
+        )
 
         # Re-check status in WHERE clause to handle concurrent modifications
         # safely (a card whose status changed since step 3 will simply not match)
@@ -483,7 +494,7 @@ class WorkflowService:
         )
 
         # ── 7. Activity log ─────────────────────────────────────────
-        cls._log_bulk_transition(table, updated_count, target_status, user, request)
+        cls._log_bulk_transition(table, card_status_pairs, target_status, user, request)
 
         # ── 8. Build response ───────────────────────────────────────
         total_skipped = len(skipped_mandatory_ids) + len(skipped_image_ids)
@@ -520,23 +531,52 @@ class WorkflowService:
             client_name = ''
             try:
                 client_name = card.table.group.client.name
-            except Exception:
-                pass
-            ActivityService.log_card_status(request, new_status, 1, client_name)
+            except Exception as exc:
+                logger.debug('WorkflowService transition client-name resolution failed: %s', exc)
+            status_labels = dict(IDCard.STATUS_CHOICES)
+            old_label = status_labels.get(_old_status, str(_old_status).replace('_', ' ').title())
+            new_label = status_labels.get(new_status, str(new_status).replace('_', ' ').title())
+            client_suffix = f' for {client_name}' if client_name else ''
+            ActivityService.log(
+                'card_status',
+                f'Card moved from {old_label} to {new_label}{client_suffix}',
+                user=_user,
+                request=request,
+                target_model='IDCard',
+                target_id=card.id,
+                target_name=f'Card #{card.id}',
+            )
         except Exception:
             logger.exception('WorkflowService: failed to log transition')
 
     @staticmethod
-    def _log_bulk_transition(table, count, new_status, user, request):
+    def _log_bulk_transition(table, card_status_pairs, new_status, user, request):
         """Log a bulk transition."""
         try:
             from core.services.activity_service import ActivityService
             client_name = ''
             try:
                 client_name = table.group.client.name
-            except Exception:
-                pass
-            ActivityService.log_card_status(request, new_status, count, client_name)
+            except Exception as exc:
+                logger.debug('WorkflowService bulk transition client-name resolution failed: %s', exc)
+            if not card_status_pairs:
+                return
+
+            status_labels = dict(IDCard.STATUS_CHOICES)
+            new_label = status_labels.get(new_status, str(new_status).replace('_', ' ').title())
+            client_suffix = f' for {client_name}' if client_name else ''
+
+            for card_id, old_status in card_status_pairs:
+                old_label = status_labels.get(old_status, str(old_status).replace('_', ' ').title())
+                ActivityService.log(
+                    'card_status',
+                    f'Card moved from {old_label} to {new_label}{client_suffix}',
+                    user=user,
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
         except Exception:
             logger.exception('WorkflowService: failed to log bulk transition')
 

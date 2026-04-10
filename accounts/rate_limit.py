@@ -10,12 +10,65 @@ Usage:
 """
 import functools
 import logging
+import hashlib
+import ipaddress
+import time
+from threading import Lock
 
 from django.conf import settings
 from django.core.cache import cache
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
+
+
+# Process-local fallback when cache backend is unavailable.
+_FALLBACK_LIMITER = {}
+_FALLBACK_LIMITER_LOCK = Lock()
+
+
+def _fallback_limiter_hit(cache_key, window_seconds):
+    """Increment process-local counter and return current hit count."""
+    now = int(time.time())
+    with _FALLBACK_LIMITER_LOCK:
+        # Opportunistic cleanup to keep memory bounded.
+        if len(_FALLBACK_LIMITER) > 5000:
+            expired = [k for k, (_, exp) in _FALLBACK_LIMITER.items() if exp <= now]
+            for key in expired[:2000]:
+                _FALLBACK_LIMITER.pop(key, None)
+
+        count, expires_at = _FALLBACK_LIMITER.get(cache_key, (0, now + window_seconds))
+        if expires_at <= now:
+            count = 0
+            expires_at = now + window_seconds
+
+        count += 1
+        _FALLBACK_LIMITER[cache_key] = (count, expires_at)
+        return count
+
+
+def _normalize_ip(value):
+    """Return canonical IP string or None for invalid/empty values."""
+    if value is None:
+        return None
+    try:
+        return str(ipaddress.ip_address(str(value).strip()))
+    except ValueError:
+        return None
+
+
+def _is_internal_ip(ip_value):
+    """True for private/loopback/link-local/reserved proxy style addresses."""
+    normalized = _normalize_ip(ip_value)
+    if not normalized:
+        return False
+    parsed = ipaddress.ip_address(normalized)
+    return bool(
+        parsed.is_private
+        or parsed.is_loopback
+        or parsed.is_link_local
+        or parsed.is_reserved
+    )
 
 
 def _get_client_ip(request):
@@ -27,22 +80,35 @@ def _get_client_ip(request):
     configured to strip client-supplied X-Forwarded-For values.
     """
     trust_xff = bool(getattr(settings, 'RATE_LIMIT_TRUST_X_FORWARDED_FOR', False))
-    if not trust_xff:
-        return request.META.get('REMOTE_ADDR', '0.0.0.0')
+    remote_addr = _normalize_ip(request.META.get('REMOTE_ADDR'))
+    x_real_ip = _normalize_ip(request.META.get('HTTP_X_REAL_IP'))
 
-    # If running behind a trusted reverse proxy that sets X-Forwarded-For,
-    # take only the *rightmost* IP added by the proxy (last hop).
-    # In a typical single-proxy setup this is the first entry.
-    xff = request.META.get('HTTP_X_FORWARDED_FOR')
-    if xff:
-        # Use the LAST entry (closest to the proxy), which is harder to spoof
-        # than the first entry that a client can freely set.
-        parts = [p.strip() for p in xff.split(',')]
-        if len(parts) >= 2:
-            # Multi-proxy chain: trust the second-to-last (added by our proxy)
-            return parts[-2]
-        return parts[0]
-    return request.META.get('REMOTE_ADDR', '0.0.0.0')
+    xff_raw = request.META.get('HTTP_X_FORWARDED_FOR')
+    xff_ips = []
+    if xff_raw:
+        xff_ips = [
+            ip
+            for ip in (_normalize_ip(part) for part in str(xff_raw).split(','))
+            if ip
+        ]
+
+    if trust_xff:
+        # Trusted proxy mode: first XFF IP is the original client.
+        if xff_ips:
+            return xff_ips[0]
+        if x_real_ip:
+            return x_real_ip
+        return remote_addr or '0.0.0.0'
+
+    # Untrusted proxy mode: preserve REMOTE_ADDR behavior for compatibility.
+    if remote_addr:
+        return remote_addr
+    # Fall back only when REMOTE_ADDR is missing/invalid.
+    if x_real_ip:
+        return x_real_ip
+    if xff_ips:
+        return xff_ips[0]
+    return remote_addr or '0.0.0.0'
 
 
 def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
@@ -56,13 +122,33 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
         @functools.wraps(view_func)
         def wrapper(request, *args, **kwargs):
             ip = _get_client_ip(request)
-            cache_key = f'{key_prefix}:{view_func.__name__}:{ip}'
-            # P3: atomic cache.add + incr pattern to prevent TOCTOU race.
-            # cache.add is a no-op if the key already exists, so it only
-            # sets the key (with TTL) when it is genuinely absent.
-            # cache.incr then atomically bumps the counter in both cases.
-            cache.add(cache_key, 0, window_seconds)
-            hits = cache.incr(cache_key)
+            endpoint_id = ''
+            resolver = getattr(request, 'resolver_match', None)
+            if resolver and getattr(resolver, 'view_name', ''):
+                endpoint_id = resolver.view_name
+            if not endpoint_id:
+                endpoint_id = request.path
+
+            # Hash endpoint identity to keep cache keys backend-safe.
+            endpoint_hash = hashlib.sha256(str(endpoint_id).encode('utf-8')).hexdigest()[:16]
+            cache_key = f'{key_prefix}:{request.method}:{endpoint_hash}:{ip}'
+
+            try:
+                created = cache.add(cache_key, 1, window_seconds)
+                if created:
+                    hits = 1
+                else:
+                    try:
+                        hits = int(cache.incr(cache_key) or 0)
+                    except Exception:
+                        # Fallback for cache backends without atomic incr.
+                        hits = int(cache.get(cache_key, 0) or 0) + 1
+                        cache.set(cache_key, hits, window_seconds)
+            except Exception as exc:
+                # Fail safely: use in-process fallback counter instead of bypassing throttling.
+                logger.warning('Rate limit cache error on %s: %s', endpoint_id, exc)
+                hits = _fallback_limiter_hit(cache_key, window_seconds)
+
             if hits > max_requests:
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)
                 return JsonResponse({

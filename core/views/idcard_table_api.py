@@ -185,6 +185,13 @@ def api_create_table_from_xlsx(request, group_id):
     import openpyxl
     from io import BytesIO
 
+    # Admin-only hard gate: clients/client_staff should never use this flow.
+    if PermissionService.is_client_role(request.user):
+        return JsonResponse({
+            'success': False,
+            'message': 'Create with XLSX is not available for client accounts.'
+        }, status=403)
+
     group, err = _check_client_scope_by_group(request.user, group_id)
     if err:
         return err

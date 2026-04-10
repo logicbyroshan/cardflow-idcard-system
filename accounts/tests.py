@@ -193,13 +193,16 @@ class LoginViewTests(TestCase):
     def tearDown(self):
         cache.clear()
 
-    def _create_authenticated_session(self, browser_fp=''):
+    def _create_authenticated_session(self, browser_fp='', surface='desktop', mobile_auth_ok=False):
         session = SessionStore()
         session['_auth_user_id'] = str(self.user.pk)
         session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
         session['_auth_user_hash'] = self.user.get_session_auth_hash()
         if browser_fp:
             session['_auth_browser_fp'] = browser_fp
+        session['_auth_login_surface'] = surface
+        if mobile_auth_ok or surface == 'mobile':
+            session['mobile_auth_ok'] = True
         session.save()
 
     def test_login_page_loads(self):
@@ -235,8 +238,7 @@ class LoginViewTests(TestCase):
         self.assertTrue(data['success'])
 
     def test_login_api_blocks_when_concurrent_sessions_reach_limit(self):
-        for _ in range(5):
-            self._create_authenticated_session()
+        self._create_authenticated_session(surface='desktop')
 
         response = self.client.post(
             '/panel/api/auth/login/',
@@ -250,7 +252,69 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload['success'])
-        self.assertIn('Maximum 5 active logins', payload['message'])
+        self.assertIn('Maximum 1 active desktop login', payload['message'])
+
+    def test_login_api_allows_super_admin_up_to_three_desktop_sessions(self):
+        super_admin = User.objects.create_user(
+            username='sa-limit@example.com',
+            email='sa-limit@example.com',
+            password='testpass123',
+            role='super_admin',
+        )
+
+        for _ in range(3):
+            session = SessionStore()
+            session['_auth_user_id'] = str(super_admin.pk)
+            session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+            session['_auth_user_hash'] = super_admin.get_session_auth_hash()
+            session['_auth_login_surface'] = 'desktop'
+            session.save()
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'sa-limit@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.25',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('Maximum 3 active desktop login', payload['message'])
+
+    def test_login_api_allows_pro_user_up_to_ten_desktop_sessions(self):
+        pro_user = User.objects.create_user(
+            username='pro-limit@example.com',
+            email='pro-limit@example.com',
+            password='testpass123',
+            role='pro_user',
+        )
+
+        for _ in range(10):
+            session = SessionStore()
+            session['_auth_user_id'] = str(pro_user.pk)
+            session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+            session['_auth_user_hash'] = pro_user.get_session_auth_hash()
+            session['_auth_login_surface'] = 'desktop'
+            session.save()
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'pro-limit@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.26',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload['success'])
+        self.assertIn('Maximum 10 active desktop login', payload['message'])
 
     def test_login_api_logs_cross_browser_activity_for_client(self):
         from accounts.services import AuthService
@@ -259,7 +323,11 @@ class LoginViewTests(TestCase):
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0',
             'en-US',
         )
-        self._create_authenticated_session(browser_fp=existing_fp)
+        self._create_authenticated_session(
+            browser_fp=existing_fp,
+            surface='mobile',
+            mobile_auth_ok=True,
+        )
 
         response = self.client.post(
             '/panel/api/auth/login/',
@@ -318,6 +386,47 @@ class LoginViewTests(TestCase):
         self.assertIsNotNone(log_entry)
         self.assertEqual(log_entry.ip_address, '198.51.100.33')
 
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_login_api_uses_x_real_ip_when_remote_addr_is_internal_proxy(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='10.10.10.10',
+            HTTP_X_REAL_IP='198.51.100.77',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '198.51.100.77')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_login_api_prefers_public_remote_addr_when_not_trusting_proxy_headers(self):
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='8.8.8.8',
+            HTTP_X_FORWARDED_FOR='1.1.1.1',
+            HTTP_X_REAL_IP='9.9.9.9',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        log_entry = ActivityLog.objects.filter(user=self.user, action='login').order_by('-id').first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.ip_address, '8.8.8.8')
+
     def test_login_api_wrong_password(self):
         response = self.client.post(
             '/panel/api/auth/login/',
@@ -371,6 +480,25 @@ class RateLimitTests(TestCase):
         # After exceeding limit, should get 429
         self.assertIn(response.status_code, [200, 429])
 
+    def test_rate_limit_isolated_per_endpoint(self):
+        # Exhaust check-email endpoint bucket first.
+        for _ in range(12):
+            self.client.post(
+                '/panel/api/auth/check-email/',
+                data=json.dumps({'email': 'test@x.com'}),
+                content_type='application/json',
+                REMOTE_ADDR='8.8.8.8',
+            )
+
+        # Login endpoint should still have its own bucket and not be hard-blocked by 429.
+        login_response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({'email': 'test@x.com', 'password': 'x'}),
+            content_type='application/json',
+            REMOTE_ADDR='8.8.8.8',
+        )
+        self.assertNotEqual(login_response.status_code, 429)
+
 
 class LoginLoggingMaskTests(TestCase):
     def test_mask_login_identifier_email(self):
@@ -401,6 +529,16 @@ class RateLimitClientIPTests(TestCase):
             HTTP_X_FORWARDED_FOR='198.51.100.1, 203.0.113.10'
         )
         self.assertEqual(_get_client_ip(request), '198.51.100.1')
+
+    @override_settings(RATE_LIMIT_TRUST_X_FORWARDED_FOR=False)
+    def test_get_client_ip_uses_x_real_ip_when_remote_addr_invalid(self):
+        from accounts.rate_limit import _get_client_ip
+        request = self.factory.get(
+            '/panel/api/auth/login/',
+            REMOTE_ADDR='invalid-ip',
+            HTTP_X_REAL_IP='198.51.100.77',
+        )
+        self.assertEqual(_get_client_ip(request), '198.51.100.77')
 
 
 class AuthServiceRoleEdgeTests(TestCase):
@@ -446,8 +584,8 @@ class AuthServiceRoleEdgeTests(TestCase):
             unblocked = services.AuthService.authenticate_user('locked@example.com', 'lockpass123')
             self.assertTrue(unblocked['success'])
 
-    @mock.patch('accounts.services.send_mail_async')
-    def test_authenticate_sends_failed_login_alert_after_threshold(self, mocked_send_mail):
+    @mock.patch('accounts.services.send_html_email_async')
+    def test_authenticate_sends_failed_login_alert_after_threshold(self, mocked_send_html_email):
         from accounts import services
 
         cache.clear()
@@ -463,7 +601,7 @@ class AuthServiceRoleEdgeTests(TestCase):
             services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
             services.AuthService.authenticate_user('alert@example.com', 'wrongpass')
 
-        self.assertEqual(mocked_send_mail.call_count, 1)
+        self.assertEqual(mocked_send_html_email.call_count, 1)
 
 
 class OTPServiceEdgeTests(TestCase):
@@ -680,7 +818,7 @@ class ProfileApiIntegrationTests(TestCase):
         self.assertIn('no longer available', payload['message'].lower())
 
 
-class ImpersonationApiTests(TestCase):
+class ProUserAuditApiTests(TestCase):
     def setUp(self):
         self.pro_user = User.objects.create_user(
             username='pro-user@example.com',
@@ -700,14 +838,105 @@ class ImpersonationApiTests(TestCase):
             password='testpass123',
             role='client',
         )
+        self.other_admin = User.objects.create_user(
+            username='admin-staff@example.com',
+            email='admin-staff@example.com',
+            password='testpass123',
+            role='admin_staff',
+        )
+
+    def test_user_audit_user_list_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/users/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_user_audit_history_requires_pro_user(self):
+        self.client.login(username='normal-user@example.com', password='testpass123')
+        response = self.client.get(f'/panel/api/auth/user-audit/history/?user_id={self.target_user.id}')
+        self.assertEqual(response.status_code, 403)
+
+    def test_pro_user_can_list_audit_targets(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/users/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertTrue(any(u['id'] == self.target_user.id for u in payload['users']))
+
+    def test_pro_user_can_get_deep_history_for_user(self):
+        from core.services.activity_service import ActivityService
+
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        ActivityService.log(
+            'login',
+            'Target User logged in via Windows Chrome browser',
+            user=self.target_user,
+        )
+        ActivityService.log(
+            'card_bulk_download',
+            'Downloaded 15 cards for Demo Client',
+            user=self.target_user,
+        )
+        ActivityService.log(
+            'staff_update',
+            'Staff profile changed for target user',
+            user=self.other_admin,
+            target_model='User',
+            target_id=self.target_user.id,
+            target_name=self.target_user.get_full_name() or self.target_user.username,
+        )
+
+        response = self.client.get(f'/panel/api/auth/user-audit/history/?user_id={self.target_user.id}&limit=20')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['user']['id'], self.target_user.id)
+        self.assertGreaterEqual(payload['summary']['total_events'], 3)
+        self.assertTrue(any(item['action'] == 'login' for item in payload['logs']))
+        self.assertTrue(any(item['action'] == 'card_bulk_download' for item in payload['logs']))
+
+    def test_user_audit_history_requires_user_id(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/history/')
+        self.assertEqual(response.status_code, 400)
+
+    def test_user_audit_actions_endpoint(self):
+        self.client.login(username='pro-user@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/user-audit/actions/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertTrue(any(entry['value'] == 'login' for entry in payload['actions']))
+
+
+class ImpersonationApiTests(TestCase):
+    def setUp(self):
+        self.pro_user = User.objects.create_user(
+            username='pro-user-imp@example.com',
+            email='pro-user-imp@example.com',
+            password='testpass123',
+            role='pro_user',
+        )
+        self.target_user = User.objects.create_user(
+            username='target-user-imp@example.com',
+            email='target-user-imp@example.com',
+            password='testpass123',
+            role='client',
+        )
+        self.normal_user = User.objects.create_user(
+            username='normal-user-imp@example.com',
+            email='normal-user-imp@example.com',
+            password='testpass123',
+            role='client',
+        )
 
     def test_impersonation_list_requires_pro_user(self):
-        self.client.login(username='normal-user@example.com', password='testpass123')
+        self.client.login(username='normal-user-imp@example.com', password='testpass123')
         response = self.client.get('/panel/api/auth/impersonate/users/')
         self.assertEqual(response.status_code, 403)
 
     def test_impersonation_start_requires_pro_user(self):
-        self.client.login(username='normal-user@example.com', password='testpass123')
+        self.client.login(username='normal-user-imp@example.com', password='testpass123')
         response = self.client.post(
             '/panel/api/auth/impersonate/start/',
             data=json.dumps({'user_id': self.target_user.id}),
@@ -716,7 +945,7 @@ class ImpersonationApiTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_pro_user_can_start_and_stop_impersonation(self):
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
 
         start = self.client.post(
             '/panel/api/auth/impersonate/start/',
@@ -735,7 +964,7 @@ class ImpersonationApiTests(TestCase):
         self.assertNotIn('_pro_original_user_id', self.client.session)
 
     def test_impersonation_start_requires_user_id(self):
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
         response = self.client.post(
             '/panel/api/auth/impersonate/start/',
             data=json.dumps({}),
@@ -744,14 +973,14 @@ class ImpersonationApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_impersonation_stop_without_active_session(self):
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
         response = self.client.post('/panel/api/auth/impersonate/stop/', data='{}', content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
     def test_impersonation_rejects_inactive_target(self):
         self.target_user.is_active = False
         self.target_user.save(update_fields=['is_active'])
-        self.client.login(username='pro-user@example.com', password='testpass123')
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
 
         response = self.client.post(
             '/panel/api/auth/impersonate/start/',

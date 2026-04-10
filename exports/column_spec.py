@@ -121,9 +121,9 @@ _s('age', 2, 3, 4, False, 'center',
 
 # ── Gender ───────────────────────────────────────────────────────────
 _s('gender', 1, 6, 12, False, 'center',
-   2.5, 5.0, 0.8, 1.5,
-   'w-[48px] min-w-[48px]',
-   'w-[48px] text-center whitespace-nowrap')
+   3.0, 5.5, 1.0, 1.8,
+   'w-[52px] min-w-[52px]',
+   'w-[52px] text-center whitespace-nowrap')
 
 # ── Blood Group ──────────────────────────────────────────────────────
 _s('blood_group', 2, 4, 6, False, 'center',
@@ -221,6 +221,13 @@ _s('mobile', 10, 10, 22, True, 'center',
    6.5, 12.5, 2.4, 4.8,
    'min-w-[105px] max-w-[145px]',
    'min-w-[105px] max-w-[145px] text-center whitespace-normal break-words phone-col')
+
+# Emergency contact numbers are typically a single mobile number and should
+# remain on one line in table/PDF cells.
+_s('emergency_mobile', 10, 10, 18, False, 'center',
+   7.0, 13.0, 2.6, 5.0,
+   'min-w-[110px] max-w-[150px]',
+   'min-w-[110px] max-w-[150px] text-center whitespace-nowrap phone-col')
 
 # ── Email ────────────────────────────────────────────────────────────
 _s('email', 10, 22, 40, True, 'left',
@@ -449,11 +456,11 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'valid\s*(from|till|upto)|validity|expiry|expire', 'validity_period'),
     (r'\bdate\b|\bdt\b', 'date'),
 
-    # ── Age ──────────────────────────────────────────────────────
-    (r'^age$|^umar$', 'age'),
+   # ── Age ──────────────────────────────────────────────────────
+   (r'^age$|^umar$', 'age'),
 
-    # ── Gender (sex, gndr, gendr) ────────────────────────────────
-    (r'gender|^sex$|^gndr$|^gendr$', 'gender'),
+   # ── Gender (sex, gndr, gendr, gen der) ───────────────────────
+   (r'gender|gen\s*der|^sex$|^gndr$|^gendr$', 'gender'),
 
     # ── Blood Group (blood gr, bg, bgroup, b.g., bld gr, blood_grup,
     #    bloodgrp, blod, blood grp, blud, blod group, b grp) ──────
@@ -505,26 +512,31 @@ FIELD_ALIASES: List[Tuple[str, str]] = [
     (r'unique\s*(?:no|num|id|code)|^unique$', 'id_number'),
     (r'teacher\s*(?:code|id|no)|^sch\s*no$|\bsch\s*no\b|school\s*(?:no|num|id)', 'id_number'),
 
-    # ── Misc short (BEFORE phone to prevent false matches) ─────
-    (r'hostel|room\s*no', 'hostel_room'),
-   # House / Route labels in school sheets (including common typo: RUTE)
-   (r'^house$|house\s*(?:no|num|number)$', 'class_section'),
-   (r'^route$|^rute$|route\s*(?:no|num|number|code|name)$', 'bus_route'),
-    (r'bus\s*route|bus\s*stop|\bbus\s*no\b', 'bus_route'),
-    (r'stop\s*name|stop\s*no|stop\s*num|route\s*(?:no|num|name)', 'bus_route'),
-    (r'library\s*card|library\s*no', 'library_card'),
-    (r'lab\s*access|lab\s*code', 'lab_access'),
-    # Bus / vehicle staff contact (put BEFORE general phone pattern)
-    (r'driver\s*(?:no\b|numb?\w*|mob|pho?ne?|cell|contact|tel)', 'mobile'),
+      # ── Misc short (BEFORE phone to prevent false matches) ─────
+      (r'hostel|room\s*no', 'hostel_room'),
+      # House / Route labels in school sheets (including common typo: RUTE)
+      (r'^house$|house\s*(?:no|num|number)$', 'class_section'),
+      (r'^route$|^rute$|route\s*(?:no|num|number|code|name)$', 'bus_route'),
+      (r'^transport$|^transpor$|trans\s*port|tran\s*sport|transport\s*(?:mode|type|detail)?', 'bus_route'),
+      (r'bus\s*route|bus\s*stop|\bbus\s*no\b', 'bus_route'),
+      (r'stop\s*name|stop\s*no|stop\s*num|route\s*(?:no|num|name)', 'bus_route'),
+      (r'library\s*card|library\s*no', 'library_card'),
+      (r'lab\s*access|lab\s*code', 'lab_access'),
+      # Bus / vehicle staff contact (put BEFORE general phone pattern)
+      (r'driver\s*(?:no\b|numb?\w*|mob|pho?ne?|cell|contact|tel)', 'mobile'),
 
-    # ── Phone / Mobile (mob, mob no, ph no, fone, contact num) ───
-    (r'mobi?le?|pho?ne?|cell\b|tel\b|whatsapp|^mob\b|^ph\b|fone'
-     r'|emergency\s*contact\s*num'
-     r'|office\s*contact|alternate\s*mob|alt\s*mob'
-     r'|contact\s*no|contact\s*num', 'mobile'),
+      # ── Emergency contact number (abbreviated + full forms) ──────
+      (r'emerg(?:ency)?\s*cont(?:act)?\s*'
+       r'(?:no\.?|num(?:ber)?|mob(?:ile)?|pho?ne?|tel|cell)?', 'emergency_mobile'),
 
-    # ── Email (e-mail, email id, mail id, emailid) ──────────────
-    (r'e?\s*mail|mail\s*id', 'email'),
+      # ── Phone / Mobile (mob, mob no, ph no, fone, contact num) ───
+      (r'mobi?le?|pho?ne?|cell\b|tel\b|whatsapp|^mob\b|^ph\b|fone'
+       r'|emergency\s*contact\s*num'
+       r'|office\s*contact|alternate\s*mob|alt\s*mob'
+       r'|contact\s*no|contact\s*num', 'mobile'),
+
+      # ── Email (e-mail, email id, mail id, emailid) ──────────────
+      (r'e?\s*mail|mail\s*id', 'email'),
 
     # ── Address (addr, addrs, adress, adrs, permanent address) ───
     (r'permane?nt?\s*addr|curre?nt?\s*addr|prese?nt?\s*addr'

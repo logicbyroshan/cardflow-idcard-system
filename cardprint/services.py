@@ -18,6 +18,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.services.base import ServiceResult
+from core.services.activity_service import ActivityService
 from .models import PrintRequest
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,15 @@ class PrintWorkflowService:
     }
 
     VALID_STATUSES = ['generate_list', 'finalized', 'pool']
+
+    @staticmethod
+    def _status_label(status):
+        labels = {
+            'generate_list': 'Generate List',
+            'finalized': 'Finalized',
+            'pool': 'Pool',
+        }
+        return labels.get(status, str(status or '').replace('_', ' ').title())
 
     @classmethod
     def create_requests(cls, table, card_ids, user):
@@ -71,6 +81,17 @@ class PrintWorkflowService:
                 PrintRequest.objects.bulk_create(to_create, ignore_conflicts=True)
 
         created = len(to_create)
+        if created:
+            created_card_ids = [pr.card_id for pr in to_create]
+            for card_id in created_card_ids:
+                ActivityService.log(
+                    'card_status',
+                    'Card moved from Approved to Generate List',
+                    user=user,
+                    target_model='IDCard',
+                    target_id=card_id,
+                    target_name=f'Card #{card_id}',
+                )
         logger.info(
             'PrintWorkflow: created=%d skipped=%d table=%d user=%s',
             created, skipped, table.id, user.username,
@@ -96,6 +117,7 @@ class PrintWorkflowService:
                 id__in=request_ids,
                 status__in=valid_from,
             )
+            transition_rows = list(qs.values('id', 'card_id', 'status'))
             updated = qs.update(status=target_status, updated_at=timezone.now())
 
         skipped = len(request_ids) - updated
@@ -103,6 +125,15 @@ class PrintWorkflowService:
             'PrintWorkflow: finalize updated=%d skipped=%d user=%s',
             updated, skipped, user.username,
         )
+        for row in transition_rows:
+            ActivityService.log(
+                'card_status',
+                f'Card moved from {cls._status_label(row.get("status"))} to {cls._status_label(target_status)}',
+                user=user,
+                target_model='IDCard',
+                target_id=row.get('card_id'),
+                target_name=f'Card #{row.get("card_id")}',
+            )
         if not updated:
             return ServiceResult(
                 success=False,
@@ -129,6 +160,7 @@ class PrintWorkflowService:
                 id__in=request_ids,
                 status__in=valid_from,
             )
+            transition_rows = list(qs.values('id', 'card_id', 'status'))
             updated = qs.update(status=target_status, updated_at=timezone.now())
 
         skipped = len(request_ids) - updated
@@ -136,6 +168,15 @@ class PrintWorkflowService:
             'PrintWorkflow: mark_pool updated=%d skipped=%d user=%s',
             updated, skipped, user.username,
         )
+        for row in transition_rows:
+            ActivityService.log(
+                'card_status',
+                f'Card moved from {cls._status_label(row.get("status"))} to {cls._status_label(target_status)}',
+                user=user,
+                target_model='IDCard',
+                target_id=row.get('card_id'),
+                target_name=f'Card #{row.get("card_id")}',
+            )
         if not updated:
             return ServiceResult(
                 success=False,

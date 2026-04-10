@@ -60,7 +60,7 @@
     </div>
 
     <!-- Client List -->
-    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3"
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2.5"
          style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px)">
 
         <template x-for="c in filteredClients" :key="c.id">
@@ -68,12 +68,20 @@
                       :class="expandedId === c.id ? 'shadow-lg ring-2 ring-indigo-200/70' : 'shadow-sm'">
 
                 <!-- Client Row (tap to expand) -->
-                 <div class="flex items-center gap-3 px-4 py-4 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
+                 <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
                      @click="toggleExpand(c.id)">
-                    <!-- Avatar with gradient -->
-                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm"
-                         :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark)); box-shadow: 0 8px 16px rgba(10,146,221,0.28)' : 'background: linear-gradient(135deg, #94a3b8, #64748b); box-shadow: 0 8px 16px rgba(71,85,105,0.24)'">
-                        <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
+                    <!-- Avatar/logo -->
+                    <div class="w-11 h-11 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 rounded-2xl shadow-sm overflow-hidden"
+                         :style="!c.logo_url && c.status === 'active' ? 'box-shadow: 0 8px 16px rgba(10,146,221,0.28)' : !c.logo_url ? 'box-shadow: 0 8px 16px rgba(71,85,105,0.24)' : ''">
+                        <template x-if="c.logo_url">
+                            <img :src="c.logo_url" :alt="(c.name || 'Client') + ' logo'" class="w-full h-full object-contain bg-white">
+                        </template>
+                        <template x-if="!c.logo_url">
+                            <div class="w-full h-full flex items-center justify-center"
+                                 :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));' : 'background: linear-gradient(135deg, #94a3b8, #64748b);'">
+                                <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
+                            </div>
+                        </template>
                     </div>
                     <!-- Name + meta -->
                     <div class="flex-1 min-w-0">
@@ -107,11 +115,13 @@
                                 :title="c.status === 'active' ? 'Deactivate client' : 'Activate client'">
                             <i class="text-[10px]" :class="c.status === 'active' ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
                         </button>
+                        {% if can_delete_clients %}
                         <button type="button" @click="deleteClient(c)"
                                 class="w-8 h-8 rounded-xl bg-red-100 text-red-700 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
                                 title="Delete client">
                             <i class="fa-solid fa-trash text-[10px]"></i>
                         </button>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -126,10 +136,10 @@
                     <!-- Header row -->
                     <div class="flex items-center px-4 py-2 border-b border-indigo-100/60">
                         <p class="flex-1 text-[9px] font-bold text-indigo-700 uppercase tracking-widest">Table</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-amber-700 uppercase tracking-widest">Pen</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-green-700 uppercase tracking-widest">Ver</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-blue-700 uppercase tracking-widest">App</p>
-                        <p class="w-[54px] text-center text-[9px] font-bold text-violet-700 uppercase tracking-widest">Dwn</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-amber-700 uppercase tracking-wide">Pending</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-emerald-700 uppercase tracking-wide">Verified</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-sky-700 uppercase tracking-wide">Approved</p>
+                        <p class="w-[52px] text-center text-[8px] font-bold text-violet-700 uppercase tracking-wide">Download</p>
                     </div>
 
                     <!-- Loading state -->
@@ -142,10 +152,10 @@
                                         <div class="h-2.5 w-2/3 rounded-lg skeleton-line"></div>
                                         <div class="h-2 w-1/2 rounded-lg skeleton-line"></div>
                                     </div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
-                                    <div class="h-7 w-[54px] rounded-xl skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
+                                    <div class="h-7 w-11 rounded-lg skeleton-line flex-shrink-0"></div>
                                 </div>
                             </template>
                         </div>
@@ -154,10 +164,10 @@
                     <template x-if="!loadingTables[c.id] && c.tables && c.tables.length > 0">
                         <div>
                             <template x-for="t in c.tables" :key="t.id">
-                                <div class="flex items-center gap-2 px-4 py-2.5 border-b border-indigo-50 last:border-b-0">
+                                <div class="flex items-center gap-2 px-4 py-2 border-b border-indigo-50 last:border-b-0">
                                     <!-- Table icon -->
                                     <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-indigo-100">
-                                        <i class="fa-solid fa-table-list text-indigo-700" style="font-size:9px;"></i>
+                                        <i class="fa-solid fa-table-list text-indigo-700 text-[9px]"></i>
                                     </div>
                                     <!-- Table name + group -->
                                     <div class="flex-1 min-w-0">
@@ -166,27 +176,23 @@
                                     </div>
                                     <!-- Pending badge -->
                                     <a :href="'/app/table/' + t.id + '/pending/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-200 text-amber-900 border border-amber-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-clock text-amber-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-amber-800" x-text="t.pending_count"></span>
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-amber-100 text-amber-700 border border-amber-200 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.pending_count"></span>
                                     </a>
                                     <!-- Verified badge -->
                                     <a :href="'/app/table/' + t.id + '/verified/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-200 text-emerald-900 border border-emerald-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-check-circle text-green-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-green-800" x-text="t.verified_count"></span>
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.verified_count"></span>
                                     </a>
                                     <!-- Approved badge -->
                                     <a :href="'/app/table/' + t.id + '/approved/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-200 text-sky-900 border border-sky-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-check-double text-blue-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-blue-800" x-text="t.approved_count || 0"></span>
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-sky-100 text-sky-700 border border-sky-200 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.approved_count || 0"></span>
                                     </a>
                                     <!-- Download badge -->
                                     <a :href="'/app/table/' + t.id + '/download/'"
-                                       class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-200 text-violet-900 border border-violet-300 active:scale-95 transition-all flex-shrink-0">
-                                        <i class="fa-solid fa-download text-violet-700" style="font-size:9px;"></i>
-                                        <span class="text-[11px] font-bold text-violet-800" x-text="t.download_count || 0"></span>
+                                       class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-violet-100 text-violet-700 border border-violet-200 active:scale-95 transition-all flex-shrink-0">
+                                        <span class="mobile-chip-count" x-text="t.download_count || 0"></span>
                                     </a>
                                 </div>
                             </template>
@@ -194,9 +200,9 @@
                     </template>
 
                     <template x-if="!loadingTables[c.id] && (!c.tables || c.tables.length === 0)">
-                        <div class="px-4 py-5 flex flex-col items-center gap-1.5">
-                            <i class="fa-solid fa-table-list text-indigo-500 text-2xl"></i>
-                            <p class="text-xs font-medium text-gray-600">No active tables for this client</p>
+                        <div class="px-4 py-5 flex flex-col items-center gap-1.5 text-center">
+                            <i class="fa-solid fa-table-list text-indigo-300 text-2xl"></i>
+                            <p class="text-[11px] font-semibold text-gray-500">No active tables for this client</p>
                         </div>
                     </template>
                 </div>
@@ -206,12 +212,12 @@
 
         <!-- Empty state -->
         <div x-show="filteredClients.length === 0"
-             class="flex flex-col items-center justify-center py-16 text-gray-600 gap-3">
+             class="flex flex-col items-center justify-center py-14 text-gray-600 gap-3 text-center">
             <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <i class="fa-solid fa-building text-3xl text-gray-500 opacity-70"></i>
+                <i class="fa-solid fa-building text-3xl text-gray-300"></i>
             </div>
-            <p class="text-sm font-semibold text-gray-700">No clients found</p>
-            <p class="text-xs text-gray-500">Try adjusting your search</p>
+            <p class="text-[13px] font-semibold text-gray-400">No clients found</p>
+            <p class="text-[11px] text-gray-300">Try adjusting your search</p>
         </div>
     </div>
 
@@ -350,6 +356,7 @@ function getCookie(name) {
 
 const CSRF = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 const CAN_MANAGE_CLIENTS = {{ can_manage_clients|yesno:"true,false" }};
+const CAN_DELETE_CLIENTS = {{ can_delete_clients|yesno:"true,false" }};
 const CLIENT_PERMISSION_KEYS = [
     'perm_idcard_client_list',
     'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 'perm_idcard_setting_delete', 'perm_idcard_setting_status',
@@ -357,8 +364,8 @@ const CLIENT_PERMISSION_KEYS = [
     'perm_reprint_request_list', 'perm_confirmed_list',
     'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
     'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
-    'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_delete_all_idcard', 'perm_idcard_upgrade_all',
-    'perm_mobile_app',
+    'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+    'perm_mobile_app', 'perm_set_temp_password',
 ];
 
 const CLIENTS_DATA = JSON.parse(document.getElementById('clients-json-data').textContent);
@@ -371,6 +378,7 @@ function clientsApp() {
         loadingTables: {},
         toast: { show: false, message: '', type: 'success' },
         canManageClients: CAN_MANAGE_CLIENTS,
+        canDeleteClients: CAN_DELETE_CLIENTS,
         showForm: false,
         formOverlayToken: null,
         editMode: false,
@@ -434,15 +442,14 @@ function clientsApp() {
                 items: [
                     { key: 'perm_idcard_bulk_upload', label: 'Bulk Upload (XLSX / ZIP)' },
                     { key: 'perm_idcard_bulk_download', label: 'Bulk Download (PDF)' },
-                    { key: 'perm_delete_all_idcard', label: 'Delete All ID Cards' },
-                    { key: 'perm_idcard_upgrade_all', label: 'Upgrade All' },
                 ],
             },
             {
                 title: 'Other Actions',
                 items: [
                     { key: 'perm_mobile_app', label: 'Mobile App Access' },
-                    { key: 'perm_idcard_client_list', label: 'Manage Staff' },
+                    { key: 'perm_idcard_client_list', label: 'Manage Client' },
+                    { key: 'perm_set_temp_password', label: 'Set Temp Password (Staff)' },
                 ],
             },
         ],
@@ -679,7 +686,7 @@ function clientsApp() {
             }
         },
         async deleteClient(client) {
-            if (!this.canManageClients) return;
+            if (!this.canDeleteClients) return;
             if (!confirm(`Delete ${client.name}? This cannot be undone.`)) return;
             try {
                 const res = await fetch(`/app/api/client/${client.id}/delete/`, {

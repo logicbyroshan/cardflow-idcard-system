@@ -19,17 +19,17 @@ JS contract (Alpine bridge):
 {% endcomment %}
 
 <div id="{{ modal_id|default:'delete-modal' }}" class="modal-backdrop"
-     x-show="activeModal === 'delete'" x-transition.opacity
+  x-show="isDeleteModalOpen" x-transition.opacity
      style="display:none"
      role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'delete-modal' }}-title">
   <div class="modal-center modal-danger" @click.stop
-       x-show="activeModal === 'delete'" x-transition.scale.origin.center>
+    x-show="isDeleteModalOpen" x-transition.scale.origin.center>
 
     <!-- Header -->
     <div class="modal-header">
       <h3 id="{{ modal_id|default:'delete-modal' }}-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
       <button type="button" class="modal-close"
-              @click="closeModal()"
+              @click="closeModal"
               aria-label="Close">
         <i class="fa-solid fa-xmark"></i>
       </button>
@@ -62,19 +62,29 @@ JS contract (Alpine bridge):
           <p class="verify-hint">
             To confirm deletion, type this code:
           </p>
-          <div id="delete-confirm-code-alpine" class="verify-code" x-text="deleteCode || '----------'"></div>
-          <input type="text" id="delete-code-input-alpine"
-              x-model="deleteCodeInput"
-              maxlength="10"
-              inputmode="numeric"
-              pattern="[0-9]{10}"
-              placeholder="_ _ _ _ _ _ _ _ _ _"
-              autocomplete="off"
-              class="verify-input"
-              oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-              :class="deleteCodeInput.length===0 ? '' : (deleteCodeInput===deleteCode ? 'valid' : 'invalid')"
-          >
-          <p class="verify-error" x-show="deleteCodeInput.length===10 && deleteCodeInput!==deleteCode">
+            <div id="delete-confirm-code-alpine" class="verify-code" x-text="deleteVerificationCodeDisplay"></div>
+          <div class="confirm-code-input-wrap"
+               :class="{ 'is-valid': canDeleteConfirm, 'is-invalid': showDeleteCodeError }"
+               @click="$refs.deleteCodeInputAlpine.focus()">
+            <div class="confirm-code-boxes" aria-hidden="true">
+              <template x-for="idx in 10" :key="'delete-code-box-' + idx">
+                <span class="confirm-code-box"
+                      :class="{ 'is-filled': !!(deleteCodeInput[idx - 1]), 'is-active': deleteCodeInput.length < 10 && deleteCodeInput.length === (idx - 1) }"
+                      x-text="deleteCodeInput[idx - 1] || ''"></span>
+              </template>
+            </div>
+            <input type="text" id="delete-code-input-alpine"
+                x-ref="deleteCodeInputAlpine"
+                x-model="deleteCodeInput"
+                maxlength="10"
+                inputmode="numeric"
+                pattern="[0-9]{10}"
+                autocomplete="off"
+                class="verify-input confirm-code-input-hidden"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            >
+          </div>
+          <p class="verify-error" x-show="showDeleteCodeError">
             <i class="fa-solid fa-circle-xmark"></i> Incorrect code. Please try again.
           </p>
         </div>
@@ -84,11 +94,11 @@ JS contract (Alpine bridge):
     <!-- Footer -->
     <div class="modal-footer">
       <button type="button" class="btn btn-md btn-neutral" id="cancelDeleteBtn"
-              @click="closeModal()">
+              @click="closeModal">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button type="button" class="btn btn-md btn-danger" id="confirmDeleteBtn"
-              :disabled="!(deleteCodeInput && deleteCodeInput.length===10 && deleteCodeInput===deleteCode)">
+              :disabled="disableDeleteConfirm">
         <i class="fa-solid fa-trash-can"></i> Delete
       </button>
     </div>

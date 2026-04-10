@@ -6,9 +6,13 @@ and staff management.
 """
 from django.urls import reverse
 from django.shortcuts import render, redirect
+from django.core.paginator import Paginator
+from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
 
 from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
+from core.models import ClientMessage, NotificationRead
 
 from .views_decorators import require_client_user, require_client_admin
 from .services import ClientAccessService, ClientDashboardService
@@ -178,3 +182,54 @@ def manage_staff(request):
     }
     
     return render(request, 'client/staff.html', context)
+
+
+@require_client_user
+def messages(request):
+    """Read-only client message history page (admin-originated one-way messages)."""
+    user = request.user
+    client = ClientAccessService.get_client_for_user(user)
+
+    if not client:
+        return redirect('/panel/auth/login/')
+
+    now = timezone.now()
+    base_qs = (
+        ClientMessage.objects
+        .filter(
+            client_id=client.id,
+            notification__is_active=True,
+            notification__target='selected',
+            notification__target_users=user,
+        )
+        .filter(Q(visibility='permanent') | Q(expires_at__gt=now))
+        .annotate(
+            is_read=Exists(
+                NotificationRead.objects.filter(
+                    notification_id=OuterRef('notification_id'),
+                    user=user,
+                )
+            )
+        )
+        .select_related('client', 'sent_by', 'notification')
+        .order_by('-created_at')
+    )
+
+    paginator = Paginator(base_qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+    unread_count = base_qs.filter(is_read=False).count()
+
+    permissions = PermissionService.get_permission_context(user)
+    context = {
+        'user': user,
+        'user_name': user.get_full_name() or user.username,
+        'user_role': 'Client Admin' if PermissionService.is_client(user) else 'Client Staff',
+        'client': client,
+        'is_client_admin': PermissionService.is_client(user),
+        'active_page': 'client_messages',
+        'messages_page': page_obj,
+        'unread_count': unread_count,
+        'total_count': paginator.count,
+        **permissions,
+    }
+    return render(request, 'client/messages.html', context)

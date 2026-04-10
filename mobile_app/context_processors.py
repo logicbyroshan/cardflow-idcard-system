@@ -87,6 +87,7 @@ def mobile_globals(request):
             from staff.models import Staff
             from idcards.models import IDCardTable, IDCard
             from core.services.permission_service import PermissionService
+            from django.db.models import Q
 
             accessible_ids = None
             cache_key = 'mobile:admin:overview:counts:v2:all'
@@ -99,14 +100,19 @@ def mobile_globals(request):
                 scoped_clients = Client.objects.filter(status='active')
                 scoped_tables = IDCardTable.objects.filter(is_active=True)
                 scoped_cards = IDCard.objects.all()
+                scoped_staff = Staff.objects.all()
                 if accessible_ids is not None:
                     scoped_clients = scoped_clients.filter(id__in=accessible_ids)
                     scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
                     scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+                    scoped_staff = scoped_staff.filter(
+                        Q(client_id__in=accessible_ids) |
+                        Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+                    ).distinct()
 
                 cached_counts = {
                     'admin_client_count': scoped_clients.count(),
-                    'admin_staff_count': Staff.objects.count(),
+                    'admin_staff_count': scoped_staff.count(),
                     'admin_table_count': scoped_tables.count(),
                     'admin_total_cards': scoped_cards.count(),
                 }

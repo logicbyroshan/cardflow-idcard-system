@@ -1,0 +1,835 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Deep History - Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --audit-surface: var(--bg-white, #ffffff);
+    --audit-surface-soft: var(--color-gray-50, #f8fafc);
+    --audit-border: var(--color-gray-200, #e0e0e0);
+    --audit-text: var(--text-primary, #2c3e50);
+    --audit-muted: var(--text-secondary, #666);
+  }
+
+  .main.main-scrollable-page {
+    grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
+  }
+
+  .main.main-scrollable-page > .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--color-white, #ffffff) !important;
+    border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  .main.main-scrollable-page > :not(.topbar) {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden !important;
+    overflow-x: hidden;
+    background: var(--color-gray-50, #f8fafc);
+  }
+
+  @keyframes audit-skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .audit-page {
+    padding: 0 0 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .audit-sticky-stack {
+    position: sticky;
+    top: 0;
+    z-index: 28;
+    background: var(--color-gray-50, #f8fafc);
+    padding-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .audit-page .pro-feature-tabs {
+    position: static;
+    top: auto;
+    margin: 0;
+    padding: 0 20px;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    background: #fff;
+  }
+
+  .audit-content-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 20px 8px;
+  }
+
+  .audit-page .action-bar {
+    position: static;
+    top: auto !important;
+    z-index: 22;
+    margin: 0;
+    background: var(--color-white, #ffffff);
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px 20px;
+  }
+
+  .audit-page .action-bar .action-left,
+  .audit-page .action-bar .action-right {
+    align-items: center;
+  }
+  .audit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .audit-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--audit-border);
+    background: transparent;
+    color: var(--audit-muted);
+    transition: all 0.15s;
+  }
+  .audit-pill:hover, .audit-pill.active {
+    color: var(--text-white, #fff);
+    border-color: var(--primary, #667eea);
+    background: var(--primary, #667eea);
+  }
+  .audit-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    border: 1px solid var(--audit-border);
+    background: color-mix(in srgb, var(--audit-muted, #666) 12%, #ffffff 88%);
+    color: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .audit-pill:hover .audit-pill-count,
+  .audit-pill.active .audit-pill-count {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--text-white, #fff);
+  }
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px;
+    margin-top: 0;
+  }
+  .audit-users-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--audit-border);
+    margin-top: 10px;
+    padding: 10px 2px 8px;
+    font-size: 12px;
+    color: var(--audit-muted);
+    flex-wrap: wrap;
+  }
+  .audit-users-pager-info {
+    color: var(--audit-muted);
+    white-space: nowrap;
+  }
+  .audit-users-pager-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .audit-users-pager-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--audit-border);
+    border-radius: 2px;
+    background: #fff;
+    color: var(--audit-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .audit-users-pager-btn:hover:not(:disabled) {
+    border-color: var(--primary, #667eea);
+    color: var(--primary, #667eea);
+  }
+  .audit-users-pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .audit-users-pager-page {
+    min-width: 90px;
+    text-align: center;
+    color: var(--audit-text);
+    font-weight: 600;
+  }
+  .audit-users-pager-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .audit-users-pager-size select {
+    border: 1px solid var(--audit-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--audit-text);
+  }
+  .audit-user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--audit-surface);
+    border: 1px solid var(--audit-border);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .audit-user-card:hover,
+  .audit-user-card.active {
+    background: var(--bg-selected, rgba(102,126,234,0.06));
+    border-color: var(--primary, #667eea);
+    box-shadow: 0 2px 8px rgba(102,126,234,0.12);
+  }
+  .audit-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-white, #fff);
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .audit-user-main { flex: 1; min-width: 0; }
+  .audit-user-name {
+    color: var(--audit-text);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .audit-user-email {
+    color: var(--audit-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .audit-user-client {
+    color: #64748b;
+    font-size: 10px;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .audit-role {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .audit-role.r-super_admin  { background: color-mix(in srgb, var(--color-purple, #8b5cf6) 18%, #ffffff 82%); color: var(--color-purple-dark, #6d28d9); }
+  .audit-role.r-admin_staff  { background: var(--color-warning-bg, #fef3c7); color: var(--color-warning-dark, #d97706); }
+  .audit-role.r-client       { background: var(--color-success-bg, #d1fae5); color: var(--color-success-dark, #065f46); }
+  .audit-role.r-client_staff { background: var(--color-blue-bg, #dbeafe); color: var(--color-blue-dark, #1e40af); }
+  .audit-role.r-pro_user     { background: var(--color-danger-bg, #fee2e2); color: var(--color-danger-dark, #be123c); }
+  .audit-open-btn {
+    display: none;
+    padding: 4px 10px;
+    border-radius: 2px;
+    background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
+    color: var(--text-white, #fff);
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+  }
+  .audit-user-card:hover .audit-open-btn,
+  .audit-user-card.active .audit-open-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .audit-user-card:hover .audit-role,
+  .audit-user-card.active .audit-role {
+    display: none;
+  }
+  .audit-history {
+    margin-top: 12px;
+    background: var(--audit-surface);
+    border: 1px solid var(--audit-border);
+    border-radius: 12px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+  .audit-history-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-gray-100, #edf2f7);
+    background: color-mix(in srgb, var(--audit-surface-soft) 70%, #ffffff 30%);
+  }
+  .audit-user-meta { font-size: 12px; color: var(--color-gray-500, #64748b); }
+  .audit-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-gray-100, #edf2f7);
+    background: color-mix(in srgb, var(--audit-surface-soft) 55%, #ffffff 45%);
+  }
+  .audit-stat {
+    border: 1px solid var(--color-gray-200, #e2e8f0);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .audit-stat-label { font-size: 11px; color: var(--color-gray-500, #64748b); text-transform: uppercase; letter-spacing: 0.03em; }
+  .audit-stat-value { font-size: 18px; font-weight: 700; color: var(--audit-text); line-height: 1.2; }
+  .audit-log-list { max-height: 520px; overflow-y: auto; }
+  .audit-log-item {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
+  }
+  .audit-log-item:last-child { border-bottom: 0; }
+  .audit-log-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-white, #fff);
+    background: var(--primary, #6366f1);
+  }
+  .audit-log-main { min-width: 0; }
+  .audit-log-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--audit-text);
+    margin-bottom: 3px;
+    line-height: 1.35;
+  }
+  .audit-log-sub {
+    font-size: 11px;
+    color: var(--color-gray-500, #64748b);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .audit-log-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--color-blue, #3b82f6) 28%, #ffffff 72%);
+    color: var(--color-blue-dark, #1d4ed8);
+    background: var(--color-blue-bg, #eff6ff);
+  }
+  .audit-empty {
+    text-align: center;
+    padding: 48px 18px;
+    color: var(--color-gray-400, #94a3b8);
+  }
+  .audit-load-more-wrap {
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--color-gray-100, #f1f5f9);
+    text-align: center;
+  }
+  .audit-skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--color-gray-200, #e2e8f0) 25%, var(--color-gray-50, #f8fafc) 37%, var(--color-gray-200, #e2e8f0) 63%);
+    background-size: 200% 100%;
+    animation: audit-skeleton-shimmer 1.35s linear infinite;
+  }
+  .audit-loader-row {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-gray-100, #f1f5f9);
+  }
+  .audit-loader-icon { width: 36px; height: 36px; border-radius: 999px; }
+  .audit-loader-line { height: 12px; margin-bottom: 6px; }
+  .audit-loader-line.short { width: 46%; margin-bottom: 0; }
+  @media (max-width: 768px) {
+    .audit-page .pro-feature-tabs { padding: 0 12px; }
+    .audit-page .action-bar { padding: 8px 12px; }
+    .audit-content-scroll { padding: 8px 12px; }
+    .audit-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">User Deep History</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right">
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="audit-page pro-feature-page">
+
+  <div class="audit-sticky-stack">
+    <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+      <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+        <i class="fa-solid fa-user-secret"></i> Login As User
+      </a>
+      <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
+        <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+      </a>
+    </div>
+
+    <div class="action-bar">
+      <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">
+        <div class="search-box" style="max-width:320px;">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="auditSearch" class="search-input" placeholder="Search by name, email, username, role..." oninput="__auditFilter()" autocomplete="off">
+        </div>
+        <div class="audit-pills" id="auditPills">
+          <button class="audit-pill active" data-role="all" onclick="__auditSetRole('all', this)">All <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="pro_user" onclick="__auditSetRole('pro_user', this)">Pro User <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="super_admin" onclick="__auditSetRole('super_admin', this)">Super Admin <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="admin_staff" onclick="__auditSetRole('admin_staff', this)">Operator <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="client" onclick="__auditSetRole('client', this)">Client <span class="audit-pill-count">0</span></button>
+          <button class="audit-pill" data-role="client_staff" onclick="__auditSetRole('client_staff', this)">Assistant <span class="audit-pill-count">0</span></button>
+        </div>
+      </div>
+      <div class="action-right">
+        <span style="font-size:12px;color:var(--text-muted,#888);" id="auditCount">-</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="audit-content-scroll">
+    <div id="auditUserGrid" class="audit-grid">
+      <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
+    </div>
+    <div id="auditUsersPager" class="audit-users-pager" style="display:none;">
+      <div id="auditUsersPagerInfo" class="audit-users-pager-info">Showing 0-0 of 0</div>
+      <div class="audit-users-pager-controls">
+        <button type="button" id="auditUsersPagerFirst" class="audit-users-pager-btn" onclick="__auditUsersGoPage('first')" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
+        <button type="button" id="auditUsersPagerPrev" class="audit-users-pager-btn" onclick="__auditUsersGoPage('prev')" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+        <span id="auditUsersPagerPage" class="audit-users-pager-page">Page 1/1</span>
+        <button type="button" id="auditUsersPagerNext" class="audit-users-pager-btn" onclick="__auditUsersGoPage('next')" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+        <button type="button" id="auditUsersPagerLast" class="audit-users-pager-btn" onclick="__auditUsersGoPage('last')" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+      </div>
+      <div class="audit-users-pager-size">
+        <label for="auditUsersPerPage">Rows</label>
+        <select id="auditUsersPerPage" onchange="__auditUsersSetPerPage(this.value)">
+          <option value="12">12</option>
+          <option value="24" selected>24</option>
+          <option value="48">48</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="auditHistory" class="audit-history" style="display:none;">
+      <div class="audit-history-head">
+        <div>
+          <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">User History</div>
+          <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="auditActionFilter" class="form-select form-select-sm" onchange="__auditReloadHistory()">
+            <option value="">All Actions</option>
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="__auditReloadHistory()">
+            <i class="fa-solid fa-rotate-right"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="audit-stat-grid">
+        <div class="audit-stat"><div class="audit-stat-label">Total Events</div><div class="audit-stat-value" id="auditTotalEvents">0</div></div>
+        <div class="audit-stat"><div class="audit-stat-label">Logins</div><div class="audit-stat-value" id="auditLogins">0</div></div>
+        <div class="audit-stat"><div class="audit-stat-label">Downloads</div><div class="audit-stat-value" id="auditDownloads">0</div></div>
+        <div class="audit-stat"><div class="audit-stat-label">Approvals</div><div class="audit-stat-value" id="auditApprovals">0</div></div>
+      </div>
+
+      <div id="auditLogList" class="audit-log-list"></div>
+      <div id="auditLoadMoreWrap" class="audit-load-more-wrap" style="display:none;">
+        <button id="auditLoadMoreBtn" type="button" class="btn btn-sm btn-neutral" onclick="__auditLoadMore()">
+          <i class="fa-solid fa-angle-down"></i> Load More
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  var _users = [];
+  var _filteredUsers = [];
+  var _role = 'all';
+  var _text = '';
+  var _usersPage = 1;
+  var _usersPerPage = 24;
+  var _selectedUser = null;
+  var _historyOffset = 0;
+  var _historyLimit = 50;
+  var _hasMore = false;
+  var ROLE_LABELS = { admin_staff: 'Operator', client_staff: 'Assistant' };
+  var COLORS = {
+    pro_user: 'var(--color-danger,#e11d48)',
+    super_admin: 'var(--primary,#667eea)',
+    admin_staff: 'var(--color-warning-dark,#d97706)',
+    client: 'var(--color-success,#38a169)',
+    client_staff: 'var(--color-blue,#3182ce)'
+  };
+
+  function _csrf() {
+    return document.querySelector('meta[name="csrf-token"]')?.content
+      || (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+      || '';
+  }
+
+  function _esc(s) {
+    var d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  function _roleClass(role) {
+    return 'r-' + String(role || '').toLowerCase();
+  }
+
+  function _displayRole(role, fallback) {
+    return ROLE_LABELS[role] || fallback || String(role || '').replace('_', ' ');
+  }
+
+  function _updateRolePillCounts() {
+    var counts = {
+      all: 0,
+      pro_user: 0,
+      super_admin: 0,
+      admin_staff: 0,
+      client: 0,
+      client_staff: 0
+    };
+    _users.forEach(function(u) {
+      counts.all += 1;
+      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+        counts[u.role] += 1;
+      }
+    });
+    document.querySelectorAll('.audit-pill[data-role]').forEach(function(btn) {
+      var role = btn.dataset.role || 'all';
+      var countEl = btn.querySelector('.audit-pill-count');
+      if (countEl) countEl.textContent = String(counts[role] || 0);
+    });
+  }
+
+  function _toggleUsersPager(show) {
+    var pager = document.getElementById('auditUsersPager');
+    if (pager) pager.style.display = show ? '' : 'none';
+  }
+
+  function _renderUsersPager(total) {
+    if (total <= 0) {
+      _toggleUsersPager(false);
+      return;
+    }
+
+    _toggleUsersPager(true);
+    var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
+    if (_usersPage > totalPages) _usersPage = totalPages;
+    if (_usersPage < 1) _usersPage = 1;
+
+    var start = ((_usersPage - 1) * _usersPerPage) + 1;
+    var end = Math.min(total, _usersPage * _usersPerPage);
+
+    var info = document.getElementById('auditUsersPagerInfo');
+    if (info) info.textContent = 'Showing ' + start + '-' + end + ' of ' + total;
+
+    var pageLabel = document.getElementById('auditUsersPagerPage');
+    if (pageLabel) pageLabel.textContent = 'Page ' + _usersPage + '/' + totalPages;
+
+    var firstBtn = document.getElementById('auditUsersPagerFirst');
+    var prevBtn = document.getElementById('auditUsersPagerPrev');
+    var nextBtn = document.getElementById('auditUsersPagerNext');
+    var lastBtn = document.getElementById('auditUsersPagerLast');
+
+    if (firstBtn) firstBtn.disabled = _usersPage <= 1;
+    if (prevBtn) prevBtn.disabled = _usersPage <= 1;
+    if (nextBtn) nextBtn.disabled = _usersPage >= totalPages;
+    if (lastBtn) lastBtn.disabled = _usersPage >= totalPages;
+  }
+
+  function _detailPageUrl(userId) {
+    return '/panel/pro-user/activity-logs/' + encodeURIComponent(String(userId)) + '/';
+  }
+
+  window.__auditLoadUsers = function() {
+    fetch('/panel/api/auth/user-audit/users/', { headers: { 'X-CSRFToken': _csrf() } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>' + _esc(data.message || 'Failed to load users') + '</div></div>';
+          return;
+        }
+        _users = data.users || [];
+        _updateRolePillCounts();
+        __auditRenderUsers();
+      })
+      .catch(function() {
+        document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>Network error while loading users.</div></div>';
+      });
+  };
+
+  window.__auditLoadActions = function() {
+    fetch('/panel/api/auth/user-audit/actions/', { headers: { 'X-CSRFToken': _csrf() } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) return;
+        var select = document.getElementById('auditActionFilter');
+        var actions = data.actions || [];
+        actions.forEach(function(a) {
+          var opt = document.createElement('option');
+          opt.value = a.value;
+          opt.textContent = a.label;
+          select.appendChild(opt);
+        });
+      })
+      .catch(function() {});
+  };
+
+  window.__auditFilter = function() {
+    _text = document.getElementById('auditSearch').value || '';
+    _usersPage = 1;
+    __auditRenderUsers();
+  };
+
+  window.__auditSetRole = function(role, btn) {
+    _role = role;
+    _usersPage = 1;
+    document.querySelectorAll('.audit-pill').forEach(function(p) { p.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    __auditRenderUsers();
+  };
+
+  window.__auditRenderUsers = function() {
+    _filteredUsers = _users.filter(function(u) {
+      if (_role !== 'all' && u.role !== _role) return false;
+      if (_text) {
+        var q = _text.toLowerCase();
+        var roleText = _displayRole(u.role, u.role_display).toLowerCase();
+        return (String(u.name || '').toLowerCase().indexOf(q) !== -1)
+          || (String(u.email || '').toLowerCase().indexOf(q) !== -1)
+          || (String(u.username || '').toLowerCase().indexOf(q) !== -1)
+          || (roleText.indexOf(q) !== -1);
+      }
+      return true;
+    });
+
+    var total = _filteredUsers.length;
+    document.getElementById('auditCount').textContent = total + ' user' + (total === 1 ? '' : 's');
+
+    if (!total) {
+      _toggleUsersPager(false);
+      document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-users-slash"></i><div>No users found</div></div>';
+      return;
+    }
+
+    var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
+    if (_usersPage > totalPages) _usersPage = totalPages;
+    if (_usersPage < 1) _usersPage = 1;
+    var startIndex = (_usersPage - 1) * _usersPerPage;
+    var pageUsers = _filteredUsers.slice(startIndex, startIndex + _usersPerPage);
+
+    var html = '';
+    pageUsers.forEach(function(u) {
+      var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
+      var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
+      var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-danger,#ef4444) 28%, #ffffff 72%);color:var(--color-danger-dark,#b91c1c);background:var(--color-danger-bg,#fef2f2);">Inactive</span>';
+      var roleDisplay = _displayRole(u.role, u.role_display);
+      var showClientMeta = u.role === 'client_staff';
+      var clientMeta = (showClientMeta && u.client_name) ? '<div class="audit-user-client">Client: ' + _esc(u.client_name) + '</div>' : '';
+      html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
+        + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || 'var(--color-gray-500,#64748b)') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
+        + '<div class="audit-user-main">'
+        + '<div class="audit-user-name">' + _esc(u.name) + inactive + '</div>'
+        + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
+        + clientMeta
+        + '</div>'
+        + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(roleDisplay) + '</span>'
+        + '<button class="audit-open-btn"><i class="fa-solid fa-timeline"></i> Open</button>'
+        + '</div>';
+    });
+    document.getElementById('auditUserGrid').innerHTML = html;
+    _renderUsersPager(total);
+  };
+
+  window.__auditUsersSetPerPage = function(v) {
+    var next = parseInt(v, 10);
+    if (!Number.isFinite(next) || next <= 0) return;
+    _usersPerPage = next;
+    _usersPage = 1;
+    __auditRenderUsers();
+  };
+
+  window.__auditUsersGoPage = function(direction) {
+    var total = _filteredUsers.length;
+    var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
+    if (direction === 'first') _usersPage = 1;
+    else if (direction === 'prev') _usersPage = Math.max(1, _usersPage - 1);
+    else if (direction === 'next') _usersPage = Math.min(totalPages, _usersPage + 1);
+    else if (direction === 'last') _usersPage = totalPages;
+    __auditRenderUsers();
+  };
+
+  function _renderHistoryLoading() {
+    var h = '';
+    for (var i = 0; i < 4; i += 1) {
+      h += '<div class="audit-loader-row">'
+        + '<div class="audit-skeleton audit-loader-icon"></div>'
+        + '<div>'
+        + '<div class="audit-skeleton audit-loader-line"></div>'
+        + '<div class="audit-skeleton audit-loader-line short"></div>'
+        + '</div>'
+        + '</div>';
+    }
+    document.getElementById('auditLogList').innerHTML = h;
+  }
+
+  window.__auditSelectUser = function(userId) {
+    window.location.href = _detailPageUrl(userId);
+  };
+
+  window.__auditReloadHistory = function() {
+    if (!_selectedUser) return;
+    _historyOffset = 0;
+    _hasMore = false;
+    _renderHistoryLoading();
+    __auditFetchHistory(true);
+  };
+
+  window.__auditLoadMore = function() {
+    if (!_selectedUser || !_hasMore) return;
+    __auditFetchHistory(false);
+  };
+
+  window.__auditFetchHistory = function(reset) {
+    if (!_selectedUser) return;
+    var action = document.getElementById('auditActionFilter').value || '';
+    var url = '/panel/api/auth/user-audit/history/?user_id=' + encodeURIComponent(_selectedUser.id)
+      + '&limit=' + encodeURIComponent(_historyLimit)
+      + '&offset=' + encodeURIComponent(_historyOffset)
+      + '&action=' + encodeURIComponent(action);
+    fetch(url, { headers: { 'X-CSRFToken': _csrf() } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.success) {
+          document.getElementById('auditLogList').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>' + _esc(data.message || 'Failed to load history') + '</div></div>';
+          document.getElementById('auditLoadMoreWrap').style.display = 'none';
+          return;
+        }
+
+        var summary = data.summary || {};
+        document.getElementById('auditTotalEvents').textContent = summary.total_events || 0;
+        document.getElementById('auditLogins').textContent = summary.login_count || 0;
+        document.getElementById('auditDownloads').textContent = summary.download_count || 0;
+        document.getElementById('auditApprovals').textContent = summary.approve_count || 0;
+
+        var logs = data.logs || [];
+        var html = reset ? '' : document.getElementById('auditLogList').innerHTML;
+        if (reset && !logs.length) {
+          html = '<div class="audit-empty"><i class="fa-solid fa-inbox"></i><div>No activity logs found for this user.</div></div>';
+        } else {
+          logs.forEach(function(l) {
+            var actor = l.actor_name ? ('By ' + _esc(l.actor_name)) : 'System';
+            var role = l.actor_role ? ('Role: ' + _esc(l.actor_role.replace('_', ' '))) : '';
+            var scope = l.scope === 'related'
+              ? '<span class="audit-log-tag">Related</span>'
+              : '<span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-success,#22c55e) 35%, #ffffff 65%);background:var(--color-success-bg,#f0fdf4);color:var(--color-success-dark,#166534);">Performed</span>';
+            var ip = l.ip_address ? ('IP: ' + _esc(l.ip_address)) : 'IP: -';
+            var target = l.target_name ? ('Target: ' + _esc(l.target_name)) : '';
+            html += '<div class="audit-log-item">'
+              + '<div class="audit-log-icon"><i class="fa-solid ' + _esc(l.icon_class || 'fa-circle-info') + '"></i></div>'
+              + '<div class="audit-log-main">'
+              + '<div class="audit-log-title">' + _esc(l.action_display || l.action) + ': ' + _esc(l.description || '') + '</div>'
+              + '<div class="audit-log-sub">'
+              + '<span>' + actor + '</span>'
+              + '<span>' + role + '</span>'
+              + '<span>' + _esc(l.created_date || '') + ' ' + _esc(l.created_time || '') + '</span>'
+              + '<span>' + _esc(l.time_ago || '') + ' ago</span>'
+              + '<span>' + ip + '</span>'
+              + '<span>Device: ' + _esc(l.device_hint || 'Activity Record') + '</span>'
+              + (target ? ('<span>' + target + '</span>') : '')
+              + scope
+              + '</div>'
+              + '</div>'
+              + '</div>';
+          });
+        }
+
+        document.getElementById('auditLogList').innerHTML = html;
+        _historyOffset = Number(data.offset || 0) + Number(data.logs ? data.logs.length : 0);
+        _hasMore = Boolean(data.has_more);
+        document.getElementById('auditLoadMoreWrap').style.display = _hasMore ? '' : 'none';
+      })
+      .catch(function() {
+        document.getElementById('auditLogList').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>Network error while loading history.</div></div>';
+        document.getElementById('auditLoadMoreWrap').style.display = 'none';
+      });
+  };
+
+  // Bootstrap only after global handlers are assigned.
+  window.__auditLoadUsers();
+  window.__auditLoadActions();
+})();
+</script>
+{% endblock %}

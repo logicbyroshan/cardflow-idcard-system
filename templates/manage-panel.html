@@ -10,13 +10,13 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
   <link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
   <link rel="stylesheet" href="{% static 'css/backup.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-lg">Skip to main content</a>
   {% include 'partials/sidebar.html' %}
 
@@ -28,56 +28,44 @@
 
       <!-- Panel Tabs -->
       <div class="panel-tabs">
+        {% if is_super_admin %}
         <button class="panel-tab active" data-tab="notifications" onclick="switchTab('notifications')">
           <i class="fa-solid fa-bell"></i> Notifications
         </button>
-        <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
-          <i class="fa-solid fa-file-arrow-down"></i> Download Templates
-        </button>
-        {% if is_super_admin %}
-        <button class="panel-tab" data-tab="backups" onclick="switchTab('backups')">
-          <i class="fa-solid fa-database"></i> Backups
-        </button>
         {% endif %}
-        <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history')">
-          <i class="fa-solid fa-clock-rotate-left"></i> Log History
-        </button>
-        {% if is_super_admin %}
+        {% if is_super_admin or perm_manage_panel_email %}
         <button class="panel-tab" data-tab="email-logs" onclick="switchTab('email-logs'); loadEmailLogs();">
           <i class="fa-solid fa-envelope"></i> Email Management
         </button>
         {% endif %}
         {% if is_super_admin %}
-        <button class="panel-tab" data-tab="monitoring" onclick="switchTab('monitoring'); loadMonitoring();">
-          <i class="fa-solid fa-chart-line"></i> Monitoring
+        <button class="panel-tab" data-tab="log-history" onclick="switchTab('log-history'); loadOperationsFeed();">
+          <i class="fa-solid fa-wave-square"></i> Operations Hub
+        </button>
+        {% endif %}
+        {% if is_super_admin or perm_manage_panel_backup %}
+        <button class="panel-tab" data-tab="backups" onclick="switchTab('backups')">
+          <i class="fa-solid fa-database"></i> Backups
         </button>
         {% endif %}
         {% if is_super_admin %}
         <button class="panel-tab" data-tab="server-info" onclick="switchTab('server-info'); initServerInfoTab();">
-          <i class="fa-solid fa-hard-drive"></i> Server Info
+          <i class="fa-solid fa-server"></i> System &amp; Server
         </button>
-        {% endif %}
-        <button class="panel-tab" data-tab="system" onclick="switchTab('system')">
-          <i class="fa-solid fa-server"></i> System Info
-        </button>
-        {% if is_super_admin %}
-        <button class="panel-tab" data-tab="maintenance" onclick="switchTab('maintenance'); loadMaintenanceStatus();">
-          <i class="fa-solid fa-gear"></i> Maintenance
+        <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
+          <i class="fa-solid fa-file-arrow-down"></i> Download Templates
         </button>
         {% endif %}
       </div>
 
-      {% include 'partials/panel/tab-notifications.html' %}
-      {% include 'partials/panel/tab-download-templates.html' %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
-      {% include 'partials/panel/tab-log-history.html' %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-monitoring.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-notifications.html' %}{% endif %}
+      {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
+      {% if is_super_admin or perm_manage_panel_backup %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}
-      {% include 'partials/panel/tab-system.html' %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-maintenance.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-download-templates.html' %}{% endif %}
 
-      {% include 'partials/panel/create-notification-modal.html' %}
+      {% if is_super_admin %}{% include 'partials/panel/create-notification-modal.html' %}{% endif %}
 
       <!-- Confirm / delete dialog (replaces browser confirm()  -  used for notifications, templates, etc.) -->
       <div id="panelDeleteConfirmModal" class="modal-backdrop" style="display:none;"
@@ -132,6 +120,11 @@
     window.EMAIL_RESEND_BASE_URL = "{% url 'api_email_resend' log_id=1 %}".replace('/1/', '/');
     window.EMAIL_SEND_NEW_URL    = "{% url 'api_email_send_new' %}";
     window.EMAIL_COMPOSE_DEFAULTS_URL = "{% url 'api_email_compose_defaults' %}";
+    window.MAINTENANCE_TOGGLE_API_URL = "{% url 'api_maintenance_toggle' %}";
+    window.MAINTENANCE_STATUS_API_URL = "{% url 'api_system_maintenance_check' %}";
+    window.WEBSITE_STATUS_SUMMARY_API_URL = "{% url 'website_admin:api_status_summary' %}";
+    window.WEBSITE_NOT_FOUND_TOGGLE_API_URL = "{% url 'website_admin:api_status_not_found' %}";
+    window.WEBSITE_PRO_ACCESS_API_URL = "{% url 'website_admin:api_status_pro_access_link' %}";
   </script>
   <script defer src="{% static 'js/manage-panel.js' %}"></script>
   <script defer src="{% static 'js/backup-panel.js' %}"></script>

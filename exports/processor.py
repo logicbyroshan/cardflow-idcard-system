@@ -30,30 +30,47 @@ from django.http import StreamingHttpResponse
 logger = logging.getLogger(__name__)
 
 
-def _extract_response_bytes(response):
-    """
-    Extract raw bytes from an HttpResponse or StreamingHttpResponse.
-    
-    stream_file_response returns HttpResponse for files <10 MB and
-    StreamingHttpResponse for larger files. This helper handles both
-    so that background export processors can reliably save the content.
-    
-    Returns bytes or None if the response has no content.
-    """
+def _write_response_to_path(response, destination_path: str) -> int:
+    """Write an export HttpResponse/StreamingHttpResponse directly to a file path."""
     if response is None:
-        return None
-    if isinstance(response, StreamingHttpResponse):
-        # Read streaming chunks into bytes
-        chunks = []
-        for chunk in response.streaming_content:
-            if isinstance(chunk, str):
-                chunk = chunk.encode('utf-8')
-            chunks.append(chunk)
-        return b''.join(chunks) if chunks else None
-    # Regular HttpResponse — has .content
-    if hasattr(response, 'content') and response.content:
-        return response.content
-    return None
+        return 0
+
+    bytes_written = 0
+    with open(destination_path, 'wb') as handle:
+        if isinstance(response, StreamingHttpResponse):
+            for chunk in response.streaming_content:
+                if isinstance(chunk, str):
+                    chunk = chunk.encode('utf-8')
+                if not chunk:
+                    continue
+                handle.write(chunk)
+                bytes_written += len(chunk)
+        elif hasattr(response, 'content') and response.content:
+            payload = response.content
+            if isinstance(payload, str):
+                payload = payload.encode('utf-8')
+            handle.write(payload)
+            bytes_written = len(payload)
+
+    return bytes_written
+
+
+def _safe_file_size(path: str) -> int:
+    """Return file size or 0 when file is missing/inaccessible."""
+    try:
+        return int(os.path.getsize(path))
+    except (OSError, TypeError, ValueError):
+        return 0
+
+
+def _safe_remove(path: str, label: str) -> None:
+    """Best-effort removal with logging but no hard failure."""
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        logger.warning('Failed to cleanup %s %s: %s', label, path, exc)
 
 
 def process_export_zip(task):
@@ -197,8 +214,8 @@ def process_export_zip(task):
         if total_images == 0:
             try:
                 os.remove(zip_path)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('Failed to remove empty ZIP %s: %s', zip_path, exc)
             task.mark_failed("No images found to export")
             return
         
@@ -224,8 +241,7 @@ def process_export_zip(task):
         total_bytes = 0
         for zi in zip_files_created:
             full = os.path.join(settings.MEDIA_ROOT, zi['path'])
-            if os.path.exists(full):
-                total_bytes += os.path.getsize(full)
+            total_bytes += _safe_file_size(full)
 
         logger.info(
             "EXPORT_DONE type=zip task_id=%d cards=%d images=%d zips=%d size_mb=%.2f",
@@ -236,20 +252,12 @@ def process_export_zip(task):
     except Exception as e:
         # Cleanup current partial ZIP being written
         if 'zip_path' in locals():
-            try:
-                full_zip = os.path.join(settings.MEDIA_ROOT, zip_path)
-                if os.path.exists(full_zip):
-                    os.remove(full_zip)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial ZIP %s: %s', zip_path, cleanup_err)
+            full_zip = os.path.join(settings.MEDIA_ROOT, zip_path)
+            _safe_remove(full_zip, 'partial ZIP')
         # Cleanup any fully created ZIPs
         for zip_info in zip_files_created:
-            try:
-                full_path = os.path.join(settings.MEDIA_ROOT, zip_info['path'])
-                if os.path.exists(full_path):
-                    os.remove(full_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup ZIP %s: %s', zip_info.get('path', '?'), cleanup_err)
+            full_path = os.path.join(settings.MEDIA_ROOT, zip_info['path'])
+            _safe_remove(full_path, 'ZIP')
         
         logger.exception("ZIP export failed: %s", e)
         task.mark_failed(str(e))
@@ -304,6 +312,24 @@ def process_export_pdf(task):
     font_mode = metadata.get('font_mode', 'auto') or 'auto'
     shorten_titles = bool(metadata.get('shorten_titles', False))
 
+    _last_pdf_progress = 0
+    _pdf_emit_step = max(1, total_cards // 40)
+
+    def _pdf_progress_callback(done, _total):
+        nonlocal _last_pdf_progress
+        if total_cards <= 0:
+            return
+        safe_done = max(0, min(int(done or 0), total_cards))
+        # Keep room for render/write phase by capping row-build progress at ~70%.
+        target = int((safe_done / float(total_cards)) * max(1, int(total_cards * 0.70)))
+        target = max(_last_pdf_progress, min(target, total_cards))
+        if target <= _last_pdf_progress:
+            return
+        if target < total_cards and (target - _last_pdf_progress) < _pdf_emit_step:
+            return
+        _last_pdf_progress = target
+        task.update_progress(target, total_cards)
+
     try:
         # Use existing PDF exporter but save to file
         exporter = PdfExporter()
@@ -313,31 +339,31 @@ def process_export_pdf(task):
             template_id=template_id,
             font_mode=font_mode,
             shorten_titles=shorten_titles,
+            progress_callback=_pdf_progress_callback,
         )
         
         if not result.success:
             task.mark_failed(result.message)
             return
         
-        # Extract bytes from response (handles both HttpResponse and StreamingHttpResponse)
-        pdf_bytes = _extract_response_bytes(result.response)
-        if not pdf_bytes:
-            task.mark_failed("PDF exporter returned empty response")
-            return
-        
-        # Save to file
+        # Stream exporter response directly to disk.
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
         filename = generate_export_filename(table.name, 'pdf', client_name=client_name, status=status_filter)
-        
+
         pdf_path = os.path.join(exports_dir, filename)
-        
-        with open(pdf_path, 'wb') as f:
-            f.write(pdf_bytes)
-        
+
+        size_bytes = _write_response_to_path(result.response, pdf_path)
+        if size_bytes <= 0:
+            task.mark_failed("PDF exporter returned empty response")
+            return
+
+        pre_complete = max(_last_pdf_progress, int(total_cards * 0.92))
+        if pre_complete < total_cards:
+            _last_pdf_progress = pre_complete
+            task.update_progress(pre_complete, total_cards)
+
         relative_path = os.path.relpath(pdf_path, settings.MEDIA_ROOT)
-        
-        size_bytes = len(pdf_bytes)
 
         # Store results
         task.metadata['result'] = {
@@ -358,11 +384,8 @@ def process_export_pdf(task):
         
     except Exception as e:
         # Cleanup partial PDF file on failure (e.g. disk-full)
-        if 'pdf_path' in locals() and os.path.exists(pdf_path):
-            try:
-                os.remove(pdf_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial PDF %s: %s', pdf_path, cleanup_err)
+        if 'pdf_path' in locals():
+            _safe_remove(pdf_path, 'partial PDF')
         logger.exception("PDF export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -418,6 +441,24 @@ def process_export_docx(task):
     
     task.update_progress(0, total_cards)
     
+    _last_docx_progress = 0
+    _docx_emit_step = max(1, total_cards // 35)
+
+    def _docx_progress_callback(done, _total):
+        nonlocal _last_docx_progress
+        if total_cards <= 0:
+            return
+        safe_done = max(0, min(int(done or 0), total_cards))
+        # Row rendering dominates DOCX time, so map rows to ~88% progress.
+        target = int((safe_done / float(total_cards)) * max(1, int(total_cards * 0.88)))
+        target = max(_last_docx_progress, min(target, total_cards))
+        if target <= _last_docx_progress:
+            return
+        if target < total_cards and (target - _last_docx_progress) < _docx_emit_step:
+            return
+        _last_docx_progress = target
+        task.update_progress(target, total_cards)
+
     try:
         # Use existing Word exporter
         from core.services.permission_service import PermissionService
@@ -430,29 +471,31 @@ def process_export_docx(task):
             status=status_filter,
             template_id=template_id,
             allow_large=allow_large,
+            progress_callback=_docx_progress_callback,
         )
         
         if not result.success:
             task.mark_failed(result.message)
             return
         
-        # Extract bytes from response (handles both HttpResponse and StreamingHttpResponse)
-        docx_bytes = _extract_response_bytes(result.response)
-        if not docx_bytes:
-            task.mark_failed("DOCX exporter returned empty response")
-            return
-        
-        # Save to file
+        # Stream exporter response directly to disk.
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
         extension = 'doc' if doc_format == 'doc' else 'docx'
         filename = generate_export_filename(table.name, extension, client_name=client_name, status=status_filter)
-        
+
         docx_path = os.path.join(exports_dir, filename)
-        
-        with open(docx_path, 'wb') as f:
-            f.write(docx_bytes)
-        
+
+        written = _write_response_to_path(result.response, docx_path)
+        if written <= 0:
+            task.mark_failed("DOCX exporter returned empty response")
+            return
+
+        pre_complete = max(_last_docx_progress, int(total_cards * 0.96))
+        if pre_complete < total_cards:
+            _last_docx_progress = pre_complete
+            task.update_progress(pre_complete, total_cards)
+
         relative_path = os.path.relpath(docx_path, settings.MEDIA_ROOT)
         
         # Store results
@@ -466,7 +509,7 @@ def process_export_docx(task):
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
 
-        size_bytes = os.path.getsize(docx_path) if os.path.exists(docx_path) else 0
+        size_bytes = _safe_file_size(docx_path)
         logger.info(
             "EXPORT_DONE type=docx task_id=%d cards=%d size_mb=%.2f",
             task.id, result.card_count, size_bytes / (1024 * 1024),
@@ -474,11 +517,8 @@ def process_export_docx(task):
         
     except Exception as e:
         # Cleanup partial DOCX file on failure (e.g. disk-full)
-        if 'docx_path' in locals() and os.path.exists(docx_path):
-            try:
-                os.remove(docx_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial DOCX %s: %s', docx_path, cleanup_err)
+        if 'docx_path' in locals():
+            _safe_remove(docx_path, 'partial DOCX')
         logger.exception("DOCX export failed: %s", e)
         task.mark_failed(str(e))
 
@@ -526,31 +566,53 @@ def process_export_excel(task):
     
     task.update_progress(0, total_cards)
     
+    _last_excel_progress = 0
+    _excel_emit_step = max(1, total_cards // 40)
+
+    def _excel_progress_callback(done, _total):
+        nonlocal _last_excel_progress
+        if total_cards <= 0:
+            return
+        safe_done = max(0, min(int(done or 0), total_cards))
+        target = int((safe_done / float(total_cards)) * max(1, int(total_cards * 0.90)))
+        target = max(_last_excel_progress, min(target, total_cards))
+        if target <= _last_excel_progress:
+            return
+        if target < total_cards and (target - _last_excel_progress) < _excel_emit_step:
+            return
+        _last_excel_progress = target
+        task.update_progress(target, total_cards)
+
     try:
         # Use existing Excel exporter
         exporter = ExcelExporter()
-        result = exporter.export_cards(table, cards_qs)
+        result = exporter.export_cards(
+            table,
+            cards_qs,
+            progress_callback=_excel_progress_callback,
+        )
         
         if not result.success:
             task.mark_failed(result.message)
             return
         
-        # Extract bytes from response (handles both HttpResponse and StreamingHttpResponse)
-        xlsx_bytes = _extract_response_bytes(result.response)
-        if not xlsx_bytes:
-            task.mark_failed("Excel exporter returned empty response")
-            return
-        
-        # Save to file
+        # Stream exporter response directly to disk.
         exports_dir = ensure_exports_directory()
         client_name = table.group.client.name if table.group and table.group.client else ''
         filename = generate_export_filename(table.name, 'xlsx', client_name=client_name, status=status_filter)
-        
+
         excel_path = os.path.join(exports_dir, filename)
-        
-        with open(excel_path, 'wb') as f:
-            f.write(xlsx_bytes)
-        
+
+        written = _write_response_to_path(result.response, excel_path)
+        if written <= 0:
+            task.mark_failed("Excel exporter returned empty response")
+            return
+
+        pre_complete = max(_last_excel_progress, int(total_cards * 0.96))
+        if pre_complete < total_cards:
+            _last_excel_progress = pre_complete
+            task.update_progress(pre_complete, total_cards)
+
         relative_path = os.path.relpath(excel_path, settings.MEDIA_ROOT)
         
         # Store results (ExcelExportResult uses row_count instead of card_count)
@@ -564,7 +626,7 @@ def process_export_excel(task):
         task.update_progress(total_cards)
         task.mark_completed(result_path=relative_path)
 
-        size_bytes = os.path.getsize(excel_path) if os.path.exists(excel_path) else 0
+        size_bytes = _safe_file_size(excel_path)
         logger.info(
             "EXPORT_DONE type=xlsx task_id=%d rows=%d size_mb=%.2f",
             task.id, result.row_count, size_bytes / (1024 * 1024),
@@ -572,10 +634,7 @@ def process_export_excel(task):
         
     except Exception as e:
         # Cleanup partial Excel file on failure (e.g. disk-full)
-        if 'excel_path' in locals() and os.path.exists(excel_path):
-            try:
-                os.remove(excel_path)
-            except Exception as cleanup_err:
-                logger.warning('Failed to cleanup partial Excel %s: %s', excel_path, cleanup_err)
+        if 'excel_path' in locals():
+            _safe_remove(excel_path, 'partial Excel')
         logger.exception("Excel export failed: %s", e)
         task.mark_failed(str(e))

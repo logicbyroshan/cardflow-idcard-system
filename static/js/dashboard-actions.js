@@ -5,6 +5,7 @@ window.DashboardPage = window.DashboardPage || {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const waitForMinDelay = window.waitForMinDelay || function () { return Promise.resolve(); };
+    const DASHBOARD_LIVE_REFRESH_MS = 30000;
     const panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
     function panelUrl(path) {
         if (!path) return path;
@@ -33,13 +34,445 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML = rows.join('');
     }
 
+    const recentClientUpdatesSearchInput = document.getElementById('recentClientUpdatesSearch');
+    const recentClientUpdatesActiveBadge = document.getElementById('recentClientUpdatesActiveBadge');
+    const recentClientUpdatesSortHeaders = Array.from(document.querySelectorAll('th[data-recent-sort-key]'));
+    const printOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="print"][data-overview-sort-key]'));
+    const reprintOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="reprint"][data-overview-sort-key]'));
+    let recentClientUpdatesLiveOnly = false;
+    let recentClientUpdatesLiveClientIds = new Set();
+    let recentClientUpdatesSortKey = '';
+    let printOverviewSortKey = '';
+    let reprintOverviewSortKey = '';
+    const printOverviewSearchInput = document.getElementById('printOverviewSearch');
+    const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
+    const recentActivityTimeFilter = document.getElementById('recentActivityTimeFilter');
+    const dashboardTabCountRecentClients = document.getElementById('dashboardTabCountRecentClients');
+    const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
+    const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
+    const dashboardTabCountPrint = document.getElementById('dashboardTabCountPrint');
+    const isAdminRecentUpdatesContext = !!recentClientUpdatesActiveBadge;
+    const isAdminDashboardContext = isAdminRecentUpdatesContext
+        || !!document.getElementById('printOverviewBody')
+        || !!document.getElementById('reprintOverviewBody');
+
+    function setDashboardTabCount(element, value) {
+        if (!element) return;
+        const count = Number(value);
+        element.textContent = Number.isFinite(count) ? count.toLocaleString() : '0';
+    }
+
+    function setRecentClientUpdatesActiveBadge(count) {
+        if (!recentClientUpdatesActiveBadge) return;
+        const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+        recentClientUpdatesActiveBadge.textContent = `Live Working Clients: ${safeCount.toLocaleString()}`;
+    }
+
+    function setRecentClientUpdatesLiveFilterUI() {
+        if (!recentClientUpdatesActiveBadge) return;
+        recentClientUpdatesActiveBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveOnly);
+    }
+
+    function setRecentClientUpdatesSortUI() {
+        if (!recentClientUpdatesSortHeaders.length) return;
+        recentClientUpdatesSortHeaders.forEach((header) => {
+            const key = header.getAttribute('data-recent-sort-key') || '';
+            const isActive = key && key === recentClientUpdatesSortKey;
+            header.classList.toggle('is-sort-active', isActive);
+            header.setAttribute('aria-sort', isActive ? 'descending' : 'none');
+
+            const icon = header.querySelector('.recent-sort-icon');
+            if (icon) {
+                icon.classList.remove('fa-sort', 'fa-sort-down');
+                icon.classList.add(isActive ? 'fa-sort-down' : 'fa-sort');
+            }
+        });
+    }
+
+    function getRecentClientSortValue(row, key) {
+        if (!key) return 0;
+        const rawValue = Number(row.getAttribute(`data-sort-${key}`));
+        return Number.isFinite(rawValue) ? rawValue : 0;
+    }
+
+    function applyRecentClientUpdatesSort() {
+        const tbody = document.getElementById('recentClientUpdatesBody');
+        if (!tbody) return;
+
+        const existingNoResultRow = tbody.querySelector('.recent-table-no-search-results');
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const groupedRows = clientRows.map((row) => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll(`tr.expand-group-${idx}`)) : [];
+            const baseOrder = Number(row.getAttribute('data-base-order'));
+            return {
+                row,
+                subRows,
+                baseOrder: Number.isFinite(baseOrder) ? baseOrder : 0,
+            };
+        });
+
+        groupedRows.sort((a, b) => {
+            if (!recentClientUpdatesSortKey) {
+                return a.baseOrder - b.baseOrder;
+            }
+
+            const aValue = getRecentClientSortValue(a.row, recentClientUpdatesSortKey);
+            const bValue = getRecentClientSortValue(b.row, recentClientUpdatesSortKey);
+            if (bValue !== aValue) {
+                return bValue - aValue;
+            }
+            return a.baseOrder - b.baseOrder;
+        });
+
+        const fragment = document.createDocumentFragment();
+        groupedRows.forEach((entry) => {
+            fragment.appendChild(entry.row);
+            entry.subRows.forEach((subRow) => {
+                fragment.appendChild(subRow);
+            });
+        });
+        tbody.appendChild(fragment);
+    }
+
+    function getOverviewSortHeaders(scope) {
+        return scope === 'print' ? printOverviewSortHeaders : reprintOverviewSortHeaders;
+    }
+
+    function getOverviewSortKey(scope) {
+        return scope === 'print' ? printOverviewSortKey : reprintOverviewSortKey;
+    }
+
+    function setOverviewSortKey(scope, nextKey) {
+        if (scope === 'print') {
+            printOverviewSortKey = nextKey;
+            return;
+        }
+        reprintOverviewSortKey = nextKey;
+    }
+
+    function setOverviewSortUI(scope) {
+        const headers = getOverviewSortHeaders(scope);
+        if (!headers.length) return;
+        const activeKey = getOverviewSortKey(scope);
+
+        headers.forEach((header) => {
+            const key = header.getAttribute('data-overview-sort-key') || '';
+            const isActive = key && key === activeKey;
+            header.classList.toggle('is-sort-active', isActive);
+            header.setAttribute('aria-sort', isActive ? 'descending' : 'none');
+
+            const icon = header.querySelector('.recent-sort-icon');
+            if (icon) {
+                icon.classList.remove('fa-sort', 'fa-sort-down');
+                icon.classList.add(isActive ? 'fa-sort-down' : 'fa-sort');
+            }
+        });
+    }
+
+    function applyOverviewSort(scope) {
+        const tbody = scope === 'print'
+            ? document.getElementById('printOverviewBody')
+            : document.getElementById('reprintOverviewBody');
+        if (!tbody) return;
+
+        const noResultClass = `${scope}-table-no-search-results`;
+        const existingNoResultRow = tbody.querySelector('.' + noResultClass);
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const activeKey = getOverviewSortKey(scope);
+        const groupedRows = clientRows.map((row) => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll(`tr.${scope}-expand-group-${idx}`)) : [];
+            const baseOrder = Number(row.getAttribute('data-base-order'));
+            return {
+                row,
+                subRows,
+                baseOrder: Number.isFinite(baseOrder) ? baseOrder : 0,
+            };
+        });
+
+        groupedRows.sort((a, b) => {
+            if (!activeKey) {
+                return a.baseOrder - b.baseOrder;
+            }
+
+            const aValue = Number(a.row.getAttribute(`data-sort-${activeKey}`));
+            const bValue = Number(b.row.getAttribute(`data-sort-${activeKey}`));
+            const safeA = Number.isFinite(aValue) ? aValue : 0;
+            const safeB = Number.isFinite(bValue) ? bValue : 0;
+
+            if (safeB !== safeA) {
+                return safeB - safeA;
+            }
+
+            return a.baseOrder - b.baseOrder;
+        });
+
+        const fragment = document.createDocumentFragment();
+        groupedRows.forEach((entry) => {
+            fragment.appendChild(entry.row);
+            entry.subRows.forEach((subRow) => {
+                fragment.appendChild(subRow);
+            });
+        });
+        tbody.appendChild(fragment);
+    }
+
+    function renderDashboardClientStatusBadge(status, esc) {
+        const normalized = String(status || '').trim().toLowerCase();
+        if (!normalized) return '';
+        let stateClass = 'is-inactive';
+        if (normalized === 'active') {
+            stateClass = 'is-active';
+        } else if (normalized === 'suspended') {
+            stateClass = 'is-suspended';
+        }
+        const displayText = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+        return `<span class="dashboard-client-status-badge ${stateClass}">${esc(displayText)}</span>`;
+    }
+
+    function applyRecentClientUpdatesSearch() {
+        const tbody = document.getElementById('recentClientUpdatesBody');
+        if (!tbody) return;
+        const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
+
+        const existingNoResultRow = tbody.querySelector('.recent-table-no-search-results');
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const query = (recentClientUpdatesSearchInput && recentClientUpdatesSearchInput.value
+            ? recentClientUpdatesSearchInput.value.trim().toLowerCase()
+            : '');
+
+        let visibleClients = 0;
+
+        clientRows.forEach(row => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll('tr.expand-group-' + idx)) : [];
+
+            const clientName = (row.querySelector('.client-name-link')?.textContent || '').trim().toLowerCase();
+            const tableNames = subRows
+                .map(subRow => (subRow.querySelector('.sub-row-name')?.textContent || '').trim().toLowerCase())
+                .join(' ');
+            const searchable = `${clientName} ${tableNames}`.trim();
+            const isSearchMatch = !query || searchable.includes(query);
+            const isLiveMatch = !recentClientUpdatesLiveOnly || row.getAttribute('data-live-active') === '1';
+            const isMatch = isSearchMatch && isLiveMatch;
+
+            if (!isMatch) {
+                row.style.display = 'none';
+                row.classList.remove('expanded');
+                subRows.forEach(subRow => { subRow.style.display = 'none'; });
+                return;
+            }
+
+            visibleClients += 1;
+            row.style.display = '';
+            const isExpanded = row.classList.contains('expanded');
+            subRows.forEach(subRow => {
+                subRow.style.display = isExpanded ? '' : 'none';
+            });
+        });
+
+        if ((!query && !recentClientUpdatesLiveOnly) || visibleClients > 0) return;
+
+        let noResultMessage = 'No clients matched your filters';
+        if (query && recentClientUpdatesLiveOnly) {
+            noResultMessage = `No live working clients matched "${query.replace(/"/g, '&quot;')}"`;
+        } else if (query) {
+            noResultMessage = `No clients matched "${query.replace(/"/g, '&quot;')}"`;
+        } else if (recentClientUpdatesLiveOnly) {
+            noResultMessage = 'No live working clients found right now';
+        }
+
+        tbody.insertAdjacentHTML(
+            'beforeend',
+            `
+                <tr class="recent-table-no-search-results">
+                    <td colspan="${headerColumns}">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        ${noResultMessage}
+                    </td>
+                </tr>
+            `
+        );
+    }
+
+    if (isAdminRecentUpdatesContext && recentClientUpdatesSearchInput) {
+        recentClientUpdatesSearchInput.addEventListener('input', applyRecentClientUpdatesSearch);
+    }
+
+    if (isAdminRecentUpdatesContext && recentClientUpdatesActiveBadge) {
+        recentClientUpdatesActiveBadge.addEventListener('click', function() {
+            recentClientUpdatesLiveOnly = !recentClientUpdatesLiveOnly;
+            setRecentClientUpdatesLiveFilterUI();
+            applyRecentClientUpdatesSearch();
+        });
+    }
+
+    if (isAdminRecentUpdatesContext && recentClientUpdatesSortHeaders.length) {
+        recentClientUpdatesSortHeaders.forEach((header) => {
+            header.addEventListener('click', function() {
+                const key = header.getAttribute('data-recent-sort-key') || '';
+                if (!key) return;
+
+                recentClientUpdatesSortKey = recentClientUpdatesSortKey === key ? '' : key;
+                setRecentClientUpdatesSortUI();
+                applyRecentClientUpdatesSort();
+                applyRecentClientUpdatesSearch();
+            });
+
+            header.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                header.click();
+            });
+        });
+    }
+
+    if (isAdminRecentUpdatesContext) {
+        setRecentClientUpdatesLiveFilterUI();
+        setRecentClientUpdatesSortUI();
+    }
+
+    function applyOverviewSearch(scope) {
+        const tbody = scope === 'print'
+            ? document.getElementById('printOverviewBody')
+            : document.getElementById('reprintOverviewBody');
+        const inputEl = scope === 'print' ? printOverviewSearchInput : reprintOverviewSearchInput;
+        if (!tbody) return;
+
+        const noResultClass = `${scope}-table-no-search-results`;
+        const existingNoResultRow = tbody.querySelector('.' + noResultClass);
+        if (existingNoResultRow) existingNoResultRow.remove();
+
+        const clientRows = Array.from(tbody.querySelectorAll('tr.client-row'));
+        if (!clientRows.length) return;
+
+        const query = (inputEl && inputEl.value ? inputEl.value.trim().toLowerCase() : '');
+        let visibleClients = 0;
+
+        clientRows.forEach(row => {
+            const idx = row.getAttribute('data-idx');
+            const subRows = idx ? Array.from(tbody.querySelectorAll(`tr.${scope}-expand-group-${idx}`)) : [];
+
+            const clientName = (row.querySelector('.client-name-link')?.textContent || '').trim().toLowerCase();
+            const tableNames = subRows
+                .map(subRow => (subRow.querySelector('.sub-row-name')?.textContent || '').trim().toLowerCase())
+                .join(' ');
+            const searchable = `${clientName} ${tableNames}`.trim();
+            const isMatch = !query || searchable.includes(query);
+
+            if (!isMatch) {
+                row.style.display = 'none';
+                row.classList.remove('expanded');
+                subRows.forEach(subRow => { subRow.style.display = 'none'; });
+                return;
+            }
+
+            visibleClients += 1;
+            row.style.display = '';
+            const isExpanded = row.classList.contains('expanded');
+            subRows.forEach(subRow => {
+                subRow.style.display = isExpanded ? '' : 'none';
+            });
+        });
+
+        if (!query || visibleClients > 0) return;
+
+        tbody.insertAdjacentHTML(
+            'beforeend',
+            `
+                <tr class="recent-table-no-search-results ${noResultClass}">
+                    <td colspan="3">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        No ${scope} clients matched "${query.replace(/"/g, '&quot;')}"
+                    </td>
+                </tr>
+            `
+        );
+    }
+
+    if (printOverviewSearchInput) {
+        printOverviewSearchInput.addEventListener('input', function() {
+            applyOverviewSearch('print');
+        });
+    }
+
+    if (reprintOverviewSearchInput) {
+        reprintOverviewSearchInput.addEventListener('input', function() {
+            applyOverviewSearch('reprint');
+        });
+    }
+
+    if (printOverviewSortHeaders.length) {
+        printOverviewSortHeaders.forEach((header) => {
+            header.addEventListener('click', function() {
+                const key = header.getAttribute('data-overview-sort-key') || '';
+                if (!key) return;
+
+                const nextKey = printOverviewSortKey === key ? '' : key;
+                setOverviewSortKey('print', nextKey);
+                setOverviewSortUI('print');
+                applyOverviewSort('print');
+                applyOverviewSearch('print');
+            });
+
+            header.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                header.click();
+            });
+        });
+    }
+
+    if (reprintOverviewSortHeaders.length) {
+        reprintOverviewSortHeaders.forEach((header) => {
+            header.addEventListener('click', function() {
+                const key = header.getAttribute('data-overview-sort-key') || '';
+                if (!key) return;
+
+                const nextKey = reprintOverviewSortKey === key ? '' : key;
+                setOverviewSortKey('reprint', nextKey);
+                setOverviewSortUI('reprint');
+                applyOverviewSort('reprint');
+                applyOverviewSearch('reprint');
+            });
+
+            header.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                header.click();
+            });
+        });
+    }
+
+    setOverviewSortUI('print');
+    setOverviewSortUI('reprint');
+
     // ====================
     // Load Recent Client Updates
     // ====================
     function loadRecentClientUpdates() {
+        if (!isAdminRecentUpdatesContext) return;
+
         const tbody = document.getElementById('recentClientUpdatesBody');
         if (!tbody) return;
-        setDashboardTableSkeleton(tbody, 5, 3);
+        const headerColumns = tbody.closest('table')?.querySelectorAll('thead th')?.length || 5;
+        const showPool = headerColumns >= 6;
+        setDashboardTabCount(dashboardTabCountRecentClients, 0);
+        setRecentClientUpdatesActiveBadge(0);
+        setDashboardTableSkeleton(tbody, headerColumns, 3);
         const skeletonStart = Date.now();
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         
@@ -47,13 +480,36 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 waitForMinDelay(skeletonStart).then(() => {
                     if (data.success && data.clients.length > 0) {
+                        const liveClientIds = Array.isArray(data.active_client_ids)
+                            ? data.active_client_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+                            : [];
+                        recentClientUpdatesLiveClientIds = new Set(liveClientIds);
+                        const liveActiveClients = Number(data.active_clients_now);
+                        setRecentClientUpdatesActiveBadge(Number.isFinite(liveActiveClients) ? liveActiveClients : 0);
+                        setDashboardTabCount(dashboardTabCountRecentClients, data.clients.length);
                         tbody.innerHTML = data.clients.map((client, i) => {
                             const tables = client.tables || [];
-                            const inactiveBadge = client.status && client.status !== 'active'
-                                ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                : '';
-                            // Build sub-rows for each table (same column structure)
-                            const tableSubRows = tables.map(t => `
+                            const statusBadge = renderDashboardClientStatusBadge(client.status, esc);
+                            const hasSingleTable = tables.length === 1;
+                            const singleTable = hasSingleTable ? tables[0] : null;
+                            const clientId = Number(client.client_id);
+                            const isLiveActive = Number.isFinite(clientId) && recentClientUpdatesLiveClientIds.has(clientId);
+                            const pendingCount = Number(client.pending);
+                            const verifiedCount = Number(client.verified);
+                            const approvedCount = Number(client.approved);
+                            const downloadedCount = Number(client.downloaded);
+                            const poolCount = Number(client.pool);
+                            const safePending = Number.isFinite(pendingCount) ? pendingCount : 0;
+                            const safeVerified = Number.isFinite(verifiedCount) ? verifiedCount : 0;
+                            const safeApproved = Number.isFinite(approvedCount) ? approvedCount : 0;
+                            const safeDownloaded = Number.isFinite(downloadedCount) ? downloadedCount : 0;
+                            const safePool = Number.isFinite(poolCount) ? poolCount : 0;
+                            const clientGroupsUrl = panelUrl('/client/' + client.client_id + '/groups/');
+                            const directUrl = hasSingleTable ? panelUrl('/table/' + singleTable.id + '/cards/') : '';
+                            const clientLinkUrl = hasSingleTable ? directUrl : clientGroupsUrl;
+
+                            // Build sub-rows only for clients with multiple tables.
+                            const tableSubRows = tables.length > 1 ? tables.map(t => `
                                 <tr class="client-sub-row expand-group-${i}" style="display:none">
                                     <td>
                                         <a href="${panelUrl('/table/' + t.id + '/cards/')}" class="sub-row-name"><i class="fa-solid fa-table"></i> ${esc(t.name)}</a>
@@ -70,13 +526,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td class="text-center">
                                         <a href="${panelUrl('/table/' + t.id + '/cards/?status=download')}" class="count-badge downloaded">${t.downloaded}</a>
                                     </td>
+                                    ${showPool ? `
+                                    <td class="text-center">
+                                        <a href="${panelUrl('/table/' + t.id + '/cards/?status=pool')}" class="count-badge pool">${t.pool}</a>
+                                    </td>
+                                    ` : ''}
                                 </tr>
-                            `).join('');
+                            `).join('') : '';
 
                             return `
-                            <tr class="client-row" data-idx="${i}" onclick="toggleClientExpandRow(this)">
+                            <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-live-active="${isLiveActive ? '1' : '0'}" data-sort-pending="${safePending}" data-sort-verified="${safeVerified}" data-sort-approved="${safeApproved}" data-sort-downloaded="${safeDownloaded}" data-sort-pool="${safePool}" ${directUrl ? `data-direct-url="${directUrl}"` : ''} onclick="toggleClientExpandRow(this)">
                                 <td>
-                                    <a href="${panelUrl('/client/' + client.client_id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${inactiveBadge}</a>
+                                    <a href="${clientLinkUrl}" class="client-name-link" onclick="event.stopPropagation()">${statusBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                 </td>
                                 <td class="text-center">
                                     <span class="count-badge pending">${client.pending}</span>
@@ -90,36 +551,208 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td class="text-center">
                                     <span class="count-badge downloaded">${client.downloaded}</span>
                                 </td>
+                                ${showPool ? `
+                                <td class="text-center">
+                                    <span class="count-badge pool">${client.pool}</span>
+                                </td>
+                                ` : ''}
                             </tr>
                             ${tableSubRows}
                         `}).join('');
+                        setRecentClientUpdatesLiveFilterUI();
+                        setRecentClientUpdatesSortUI();
+                        applyRecentClientUpdatesSort();
+                        applyRecentClientUpdatesSearch();
                     } else {
+                        recentClientUpdatesLiveClientIds = new Set();
+                        setRecentClientUpdatesActiveBadge(0);
+                        setDashboardTabCount(dashboardTabCountRecentClients, 0);
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                                <td colspan="${headerColumns}" class="text-center" style="padding: 40px; color: #888;">
                                     <i class="fa-solid fa-users-slash"></i> No recent client updates
                                 </td>
                             </tr>
                         `;
+                        setRecentClientUpdatesSortUI();
+                        applyRecentClientUpdatesSearch();
                     }
                 });
             })
             .catch(error => {
                 console.error('Error loading recent client updates:', error);
                 waitForMinDelay(skeletonStart).then(() => {
+                    recentClientUpdatesLiveClientIds = new Set();
+                    setRecentClientUpdatesActiveBadge(0);
+                    setDashboardTabCount(dashboardTabCountRecentClients, 0);
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="text-center" style="padding: 40px; color: #dc2626;">
+                            <td colspan="${headerColumns}" class="text-center" style="padding: 40px; color: #dc2626;">
                                 <i class="fa-solid fa-exclamation-triangle"></i> Error loading data
                             </td>
                         </tr>
                     `;
+                    setRecentClientUpdatesSortUI();
+                    applyRecentClientUpdatesSearch();
                 });
             });
     }
     
     // Load recent client updates on page load
     loadRecentClientUpdates();
+
+    // ====================
+    // Live Dashboard Stats (Auto Refresh)
+    // ====================
+    function setDashboardStatValue(el, value) {
+        if (!el) return;
+        const n = Number(value);
+        el.textContent = Number.isFinite(n) ? n.toLocaleString() : '0';
+    }
+
+    function loadDashboardCardStats() {
+        if (!isAdminDashboardContext) return;
+
+        const pendingEl = document.getElementById('pendingCards');
+        const verifiedEl = document.getElementById('verifiedCards');
+        const approvedEl = document.getElementById('approvedCards');
+        const downloadedEl = document.getElementById('downloadedCards');
+        const poolEl = document.getElementById('poolCards');
+        const totalEl = document.getElementById('totalCards');
+
+        if (!pendingEl && !verifiedEl && !approvedEl && !downloadedEl && !poolEl && !totalEl) return;
+
+        ApiClient.get(panelUrl('/api/dashboard-card-stats/'))
+            .then(data => {
+                if (!data || !data.success || !data.stats) return;
+                const stats = data.stats;
+                setDashboardStatValue(pendingEl, stats.pending);
+                setDashboardStatValue(verifiedEl, stats.verified);
+                setDashboardStatValue(approvedEl, stats.approved);
+                setDashboardStatValue(downloadedEl, stats.downloaded);
+                setDashboardStatValue(poolEl, stats.pool);
+                setDashboardStatValue(totalEl, stats.total);
+            })
+            .catch(error => {
+                console.error('Error loading dashboard card stats:', error);
+            });
+    }
+
+    // ====================
+    // Recent Activity (Auto Refresh)
+    // ====================
+    function loadRecentActivity() {
+        if (!isAdminDashboardContext) return;
+
+        const activityList = document.getElementById('recentActivityList');
+        if (!activityList) return;
+        const timeWindow = (recentActivityTimeFilter && recentActivityTimeFilter.value)
+            ? recentActivityTimeFilter.value
+            : '48';
+
+        const esc = typeof escapeHtml === 'function'
+            ? escapeHtml
+            : (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
+
+        ApiClient.get(panelUrl(`/api/recent-activity/?limit=100&window=${encodeURIComponent(timeWindow)}`))
+            .then(data => {
+                if (!data || !data.success) return;
+
+                const activities = Array.isArray(data.activities) ? data.activities : [];
+                setDashboardTabCount(dashboardTabCountRecentUpdates, activities.length);
+                if (!activities.length) {
+                    activityList.innerHTML = `
+                        <div class="activity-item" id="noActivityMessage">
+                            <div class="activity-icon edit">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">No recent activity to show</div>
+                                <div class="activity-time">Activity will appear here as actions are performed</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                activityList.innerHTML = activities.map(activity => {
+                    const iconColor = esc(activity.icon_color || 'edit');
+                    const iconClass = esc(activity.icon_class || 'fa-circle-info');
+                    const description = esc(activity.display_text || activity.description || 'Activity update');
+                    const rawTimeAgo = String(activity.time_ago || '').trim();
+                    const rawTimestamp = String(activity.created_at_display || '').trim();
+                    const detailUrl = String(activity.url || '').trim();
+                    const timeAgo = rawTimeAgo
+                        ? (/ago$/i.test(rawTimeAgo) ? rawTimeAgo : `${rawTimeAgo} ago`)
+                        : 'just now';
+
+                    const timeMeta = rawTimestamp
+                        ? `${esc(timeAgo)} <span class="activity-time-dot">&bull;</span> <span class="activity-time-absolute">${esc(rawTimestamp)}</span>`
+                        : esc(timeAgo);
+
+                    const itemInner = `
+                        <div class="activity-icon ${iconColor}">
+                            <i class="fa-solid ${iconClass}"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-text">${description}</div>
+                            <div class="activity-time">${timeMeta}</div>
+                        </div>
+                    `;
+
+                    if (detailUrl) {
+                        return `<a href="${esc(detailUrl)}" class="activity-item activity-item-link">${itemInner}</a>`;
+                    }
+
+                    return `
+                        <div class="activity-item">
+                            ${itemInner}
+                        </div>
+                    `;
+                }).join('');
+            })
+            .catch(error => {
+                console.error('Error loading recent activity:', error);
+                setDashboardTabCount(dashboardTabCountRecentUpdates, 0);
+            });
+    }
+
+    if (recentActivityTimeFilter) {
+        recentActivityTimeFilter.addEventListener('change', function() {
+            loadRecentActivity();
+        });
+    }
+
+    function refreshLiveDashboardSections() {
+        loadDashboardCardStats();
+        loadRecentActivity();
+    }
+
+    let liveRefreshTimer = null;
+    function startLiveDashboardRefresh() {
+        if (liveRefreshTimer || document.hidden) return;
+        liveRefreshTimer = setInterval(refreshLiveDashboardSections, DASHBOARD_LIVE_REFRESH_MS);
+    }
+
+    function stopLiveDashboardRefresh() {
+        if (!liveRefreshTimer) return;
+        clearInterval(liveRefreshTimer);
+        liveRefreshTimer = null;
+    }
+
+    if (isAdminDashboardContext && (document.getElementById('recentActivityList') || document.getElementById('pendingCards'))) {
+        refreshLiveDashboardSections();
+        startLiveDashboardRefresh();
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopLiveDashboardRefresh();
+            } else {
+                refreshLiveDashboardSections();
+                startLiveDashboardRefresh();
+            }
+        });
+        window.addEventListener('beforeunload', stopLiveDashboardRefresh);
+    }
     
     // ====================
     // Bulk Actions Panel - Cascading Dropdowns
@@ -212,8 +845,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    function sanitizeCodeInputValue(value) {
+        return String(value || '').replace(/\D/g, '').slice(0, 10);
+    }
+
+    function renderCodeBoxes(container, value) {
+        if (!container) return;
+        const clean = sanitizeCodeInputValue(value);
+        const boxes = container.querySelectorAll('.confirm-code-box');
+        boxes.forEach((box, idx) => {
+            const ch = clean[idx] || '';
+            box.textContent = ch;
+            box.classList.toggle('is-filled', !!ch);
+            box.classList.toggle('is-active', clean.length < 10 && clean.length === idx);
+        });
+    }
+
+    function setCodeWrapState(wrapEl, isMatch, isComplete) {
+        if (!wrapEl) return;
+        wrapEl.classList.remove('is-valid', 'is-invalid');
+        if (!isComplete) return;
+        wrapEl.classList.add(isMatch ? 'is-valid' : 'is-invalid');
+    }
+
     // ====================
-    // Delete All (Secure 6-digit code) on Dashboard
+    // Delete All (Secure 10-digit code) on Dashboard
     // ====================
     let dashDeleteTableId = null;
     let dashDeleteExpectedCode = '';
@@ -222,13 +878,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashDeleteConfirmBtn = document.getElementById('dashDeleteConfirm');
     const dashDeleteCancelBtn = document.getElementById('dashDeleteCancel');
     const dashDeleteCodeDisplay = document.getElementById('dashDeleteCode');
+    const dashDeleteCodeBoxes = document.getElementById('dashDeleteCodeBoxes');
+    const dashDeleteCodeWrap = document.getElementById('dashDeleteCodeWrap');
     const dashDeleteTableNameEl = document.getElementById('dashDeleteTableName');
     const dashDeleteCountEl = document.getElementById('dashDeleteCount');
 
     function dashOpenDeleteAllModal(tableId) {
         dashDeleteTableId = tableId;
         dashDeleteExpectedCode = '';
-        if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
+        if (dashDeleteCodeInput) {
+            dashDeleteCodeInput.value = '';
+            renderCodeBoxes(dashDeleteCodeBoxes, '');
+        }
+        setCodeWrapState(dashDeleteCodeWrap, false, false);
         if (dashDeleteConfirmBtn) { dashDeleteConfirmBtn.disabled = true; dashDeleteConfirmBtn.style.opacity = '0.5'; dashDeleteConfirmBtn.textContent = 'Delete All Cards'; }
 
         ApiClient.post(`/api/table/${tableId}/cards/generate-delete-code/`)
@@ -251,12 +913,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.alpineCloseModal) window.alpineCloseModal();
         dashDeleteTableId = null;
         dashDeleteExpectedCode = '';
-        if (dashDeleteCodeInput) dashDeleteCodeInput.value = '';
+        if (dashDeleteCodeInput) {
+            dashDeleteCodeInput.value = '';
+            renderCodeBoxes(dashDeleteCodeBoxes, '');
+        }
+        setCodeWrapState(dashDeleteCodeWrap, false, false);
     }
 
     if (dashDeleteCodeInput) {
         dashDeleteCodeInput.addEventListener('input', function() {
-            const match = this.value.trim() === dashDeleteExpectedCode;
+            this.value = sanitizeCodeInputValue(this.value);
+            renderCodeBoxes(dashDeleteCodeBoxes, this.value);
+            const isComplete = this.value.length === 10;
+            const match = isComplete && this.value === dashDeleteExpectedCode;
+            setCodeWrapState(dashDeleteCodeWrap, match, isComplete);
             if (dashDeleteConfirmBtn) { dashDeleteConfirmBtn.disabled = !match; dashDeleteConfirmBtn.style.opacity = match ? '1' : '0.5'; }
         });
     }
@@ -323,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====================
-    // Upgrade All Classes (Secure 6-digit code) on Dashboard
+    // Upgrade All Classes (Secure 10-digit code) on Dashboard
     // ====================
     let dashUpgradeTableId = null;
     let dashUpgradeExpectedCode = '';
@@ -332,13 +1002,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashUpgradeConfirmBtn = document.getElementById('dashUpgradeConfirm');
     const dashUpgradeCancelBtn = document.getElementById('dashUpgradeCancel');
     const dashUpgradeCodeDisplay = document.getElementById('dashUpgradeCode');
+    const dashUpgradeCodeBoxes = document.getElementById('dashUpgradeCodeBoxes');
+    const dashUpgradeCodeWrap = document.getElementById('dashUpgradeCodeWrap');
     const dashUpgradeTableNameEl = document.getElementById('dashUpgradeTableName');
     const dashUpgradeCountEl = document.getElementById('dashUpgradeCount');
+
+    function broadcastClassesUpgraded(tableId) {
+        const payload = { tableId: Number(tableId) || null, ts: Date.now() };
+        try {
+            window.dispatchEvent(new CustomEvent('idcard-classes-upgraded', { detail: payload }));
+        } catch (_err) {}
+        try {
+            localStorage.setItem('idcard:classes-upgraded', JSON.stringify(payload));
+        } catch (_err2) {}
+    }
 
     function dashOpenUpgradeAllModal(tableId) {
         dashUpgradeTableId = tableId;
         dashUpgradeExpectedCode = '';
-        if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
+        if (dashUpgradeCodeInput) {
+            dashUpgradeCodeInput.value = '';
+            renderCodeBoxes(dashUpgradeCodeBoxes, '');
+        }
+        setCodeWrapState(dashUpgradeCodeWrap, false, false);
         if (dashUpgradeConfirmBtn) { dashUpgradeConfirmBtn.disabled = true; dashUpgradeConfirmBtn.style.opacity = '0.5'; dashUpgradeConfirmBtn.textContent = 'Upgrade All Classes'; }
 
         ApiClient.post(`/api/table/${tableId}/cards/generate-upgrade-code/`)
@@ -361,12 +1047,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.alpineCloseModal) window.alpineCloseModal();
         dashUpgradeTableId = null;
         dashUpgradeExpectedCode = '';
-        if (dashUpgradeCodeInput) dashUpgradeCodeInput.value = '';
+        if (dashUpgradeCodeInput) {
+            dashUpgradeCodeInput.value = '';
+            renderCodeBoxes(dashUpgradeCodeBoxes, '');
+        }
+        setCodeWrapState(dashUpgradeCodeWrap, false, false);
     }
 
     if (dashUpgradeCodeInput) {
         dashUpgradeCodeInput.addEventListener('input', function() {
-            const match = this.value.trim() === dashUpgradeExpectedCode;
+            this.value = sanitizeCodeInputValue(this.value);
+            renderCodeBoxes(dashUpgradeCodeBoxes, this.value);
+            const isComplete = this.value.length === 10;
+            const match = isComplete && this.value === dashUpgradeExpectedCode;
+            setCodeWrapState(dashUpgradeCodeWrap, match, isComplete);
             if (dashUpgradeConfirmBtn) { dashUpgradeConfirmBtn.disabled = !match; dashUpgradeConfirmBtn.style.opacity = match ? '1' : '0.5'; }
         });
     }
@@ -382,6 +1076,9 @@ document.addEventListener('DOMContentLoaded', function() {
             ApiClient.post(`/api/table/${dashUpgradeTableId}/cards/upgrade-classes/`, { confirmation_code: dashUpgradeCodeInput.value.trim() })
             .then(data => {
                 dashCloseUpgradeAllModal();
+                if (data && data.success) {
+                    broadcastClassesUpgraded(dashUpgradeTableId);
+                }
                 if (typeof showToast === 'function') showToast(data.message || (data.success ? 'Upgraded!' : 'Failed'), data.success ? 'success' : 'error');
             })
             .catch(() => {
@@ -563,6 +1260,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const reprintTotalBadge = document.getElementById('reprintOverviewTotalRequested');
         if (!printBody && !reprintBody) return;
 
+        setDashboardTabCount(dashboardTabCountPrint, 0);
+        setDashboardTabCount(dashboardTabCountReprint, 0);
+
         setDashboardTableSkeleton(printBody, 3, 3);
         setDashboardTableSkeleton(reprintBody, 3, 3);
         const skeletonStart = Date.now();
@@ -576,12 +1276,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     //  Render Print table
                     if (printBody) {
                         const clients = data.print_clients || [];
+                        const totalPrintGenerate = clients.reduce((sum, client) => {
+                            return sum + (Number(client.generate_list) || 0);
+                        }, 0);
+                        setDashboardTabCount(dashboardTabCountPrint, totalPrintGenerate);
                         if (clients.length > 0) {
                             printBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
-                                const iBadge = client.status && client.status !== 'active'
-                                    ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                    : '';
+                                const iBadge = renderDashboardClientStatusBadge(client.status, esc);
+                                const generateList = Number(client.generate_list);
+                                const finalized = Number(client.finalized);
+                                const safeGenerateList = Number.isFinite(generateList) ? generateList : 0;
+                                const safeFinalized = Number.isFinite(finalized) ? finalized : 0;
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row print-expand-group-${i}" style="display:none">
                                         <td>
@@ -592,9 +1298,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </tr>
                                 `).join('');
                                 return `
-                                    <tr class="client-row" data-idx="${i}" data-scope="print" onclick="toggleScopedExpandRow(this)">
+                                    <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="print" data-sort-pending="${safeGenerateList}" data-sort-verified="${safeFinalized}" onclick="toggleScopedExpandRow(this)">
                                         <td>
-                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                         </td>
                                         <td class="text-center"><span class="count-badge pending">${client.generate_list}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.finalized}</span></td>
@@ -602,8 +1308,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${subRows}
                                 `;
                             }).join('');
+                            setOverviewSortUI('print');
+                            applyOverviewSort('print');
+                            applyOverviewSearch('print');
                         } else {
                             printBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No print records</td></tr>`;
+                            setOverviewSortUI('print');
+                            applyOverviewSearch('print');
                         }
                     }
 
@@ -613,12 +1324,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (reprintTotalBadge) {
                             reprintTotalBadge.textContent = String(data.reprint_total_requested || 0);
                         }
+                        setDashboardTabCount(dashboardTabCountReprint, Number(data.reprint_total_requested) || 0);
                         if (clients.length > 0) {
                             reprintBody.innerHTML = clients.map((client, i) => {
                                 const tables = client.tables || [];
-                                const iBadge = client.status && client.status !== 'active'
-                                    ? ` <span class="count-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;">${esc(client.status)}</span>`
-                                    : '';
+                                const iBadge = renderDashboardClientStatusBadge(client.status, esc);
+                                const requested = Number(client.requested);
+                                const confirmed = Number(client.confirmed);
+                                const safeRequested = Number.isFinite(requested) ? requested : 0;
+                                const safeConfirmed = Number.isFinite(confirmed) ? confirmed : 0;
                                 const subRows = tables.map(t => `
                                     <tr class="client-sub-row reprint-expand-group-${i}" style="display:none">
                                         <td>
@@ -629,9 +1343,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </tr>
                                 `).join('');
                                 return `
-                                    <tr class="client-row" data-idx="${i}" data-scope="reprint" onclick="toggleScopedExpandRow(this)">
+                                    <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-scope="reprint" data-sort-pending="${safeRequested}" data-sort-verified="${safeConfirmed}" onclick="toggleScopedExpandRow(this)">
                                         <td>
-                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${esc(client.name)}${iBadge}</a>
+                                            <a href="${panelUrl('/client/' + client.id + '/groups/')}" class="client-name-link" onclick="event.stopPropagation()">${iBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                         </td>
                                         <td class="text-center"><span class="count-badge pending">${client.requested}</span></td>
                                         <td class="text-center"><span class="count-badge verified">${client.confirmed}</span></td>
@@ -639,14 +1353,21 @@ document.addEventListener('DOMContentLoaded', function() {
                                     ${subRows}
                                 `;
                             }).join('');
+                            setOverviewSortUI('reprint');
+                            applyOverviewSort('reprint');
+                            applyOverviewSearch('reprint');
                         } else {
                             reprintBody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding:40px;color:#888;"><i class="fa-solid fa-inbox"></i> No reprint records</td></tr>`;
+                            setOverviewSortUI('reprint');
+                            applyOverviewSearch('reprint');
                         }
                     }
                 });
             })
             .catch(err => {
                 console.error('Error loading print/reprint overview:', err);
+                setDashboardTabCount(dashboardTabCountPrint, 0);
+                setDashboardTabCount(dashboardTabCountReprint, 0);
                 const errHtml = (cols) => `<tr><td colspan="${cols}" class="text-center" style="padding:40px;color:#dc2626;"><i class="fa-solid fa-exclamation-triangle"></i> Error loading data</td></tr>`;
                 waitForMinDelay(skeletonStart).then(() => {
                     if (printBody)   printBody.innerHTML = errHtml(3);
@@ -655,5 +1376,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    loadPrintReprintOverview();
+    if (isAdminDashboardContext) {
+        loadPrintReprintOverview();
+    }
 });

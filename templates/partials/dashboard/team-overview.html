@@ -1,65 +1,47 @@
 {% load static %}
 <!-- Team Overview -->
-<div class="dashboard-card">
+<div class="dashboard-card dashboard-card-blue-accent">
   <div class="dashboard-card-header">
     <h3><i class="fa-solid fa-users"></i> Team Overview</h3>
   </div>
-  <div class="dashboard-card-body">
+  <div class="dashboard-card-body tall-body">
     <div class="cards-overview">
-      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+      <button type="button" class="card-overview-item dashboard-team-scope-item is-active" data-dashboard-team-scope="clients" data-dashboard-target-panel="team-overview" aria-pressed="true">
         <div class="card-overview-left">
           <div class="card-overview-icon clients">
             <i class="fa-solid fa-building"></i>
           </div>
-          <span class="card-overview-label">Total Clients</span>
+          <span class="card-overview-label">Clients</span>
         </div>
         <span class="card-overview-value">{{ total_clients|default:0 }}</span>
-      </a>
-      <a href="{% url 'active_clients' %}" class="card-overview-item">
-        <div class="card-overview-left">
-          <div class="card-overview-icon active-clients">
-            <i class="fa-solid fa-user-check"></i>
-          </div>
-          <span class="card-overview-label">Active Clients</span>
-        </div>
-        <span class="card-overview-value">{{ active_clients|default:0 }}</span>
-      </a>
-      <a href="{% url 'manage_staff' %}" class="card-overview-item">
+      </button>
+      <button type="button" class="card-overview-item dashboard-team-scope-item" data-dashboard-team-scope="operator" data-dashboard-target-panel="team-overview" aria-pressed="false">
         <div class="card-overview-left">
           <div class="card-overview-icon staff">
             <i class="fa-solid fa-user-tie"></i>
           </div>
-          <span class="card-overview-label">Total Staff</span>
+          <span class="card-overview-label">Operator</span>
         </div>
         <span class="card-overview-value">{{ total_staff|default:0 }}</span>
-      </a>
-      <a href="{% url 'manage_staff' %}" class="card-overview-item">
-        <div class="card-overview-left">
-          <div class="card-overview-icon active-staff">
-            <i class="fa-solid fa-user-shield"></i>
-          </div>
-          <span class="card-overview-label">Active Staff</span>
-        </div>
-        <span class="card-overview-value">{{ active_staff|default:0 }}</span>
-      </a>
-      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+      </button>
+      <button type="button" class="card-overview-item dashboard-team-scope-item" data-dashboard-team-scope="assistent" data-dashboard-target-panel="team-overview" aria-pressed="false">
         <div class="card-overview-left">
           <div class="card-overview-icon staff">
             <i class="fa-solid fa-user-gear"></i>
           </div>
-          <span class="card-overview-label">Client Staff</span>
+          <span class="card-overview-label">Assistent</span>
         </div>
         <span class="card-overview-value">{{ client_staff_count|default:0 }}</span>
-      </a>
-      <a href="{% url 'manage_clients' %}" class="card-overview-item">
+      </button>
+      <div class="card-overview-item card-overview-item-static" aria-disabled="true">
         <div class="card-overview-left">
-          <div class="card-overview-icon active-clients">
-            <i class="fa-solid fa-user-check"></i>
+          <div class="card-overview-icon approved">
+            <i class="fa-solid fa-user-shield"></i>
           </div>
-          <span class="card-overview-label">Active Client Staff</span>
+          <span class="card-overview-label">Admins</span>
         </div>
-        <span class="card-overview-value">{{ active_client_staff_count|default:0 }}</span>
-      </a>
+        <span class="card-overview-value">{{ admin_count|default:0 }}</span>
+      </div>
     </div>
   </div>
 </div>

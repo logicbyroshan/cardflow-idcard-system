@@ -3,6 +3,84 @@
 
 {% block title %}Manage Staff - Adarsh Admin{% endblock %}
 
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/card-history-drawer.css' %}">
+  <style>
+    .operator-history-trigger {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 2px;
+      color: #2563eb;
+      background: rgba(37, 99, 235, 0.12);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.16s ease;
+    }
+
+    .operator-history-trigger:hover {
+      background: rgba(37, 99, 235, 0.2);
+      color: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    .operator-history-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .operator-history-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 2px;
+      padding: 3px 9px;
+      font-size: 10.5px;
+      font-weight: 500;
+      line-height: 1.2;
+      border: 1px solid #dbe2ea;
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .operator-history-chip i {
+      width: 15px;
+      height: 15px;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
+    }
+
+    .operator-history-chip--action {
+      color: #1e40af;
+      background: #eaf1ff;
+      border-color: #bfd5ff;
+    }
+
+    .operator-history-chip--action i {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .operator-history-chip--meta {
+      color: #334155;
+      background: #f8fafc;
+      border-color: #dbe2ea;
+    }
+
+    .operator-history-chip--meta i {
+      background: #e2e8f0;
+      color: #475569;
+    }
+  </style>
+{% endblock %}
+
 {% block breadcrumb %}
   <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
   <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
@@ -14,6 +92,7 @@
     {% include 'partials/staff/action-bar.html' %}
 
     <div id="staff-table-container"
+          data-table-skeleton="true"
          hx-trigger="refreshTable from:body"
          hx-get="{% url 'manage_staff' %}"
          hx-target="#staff-table-container"
@@ -32,6 +111,7 @@
 
 {% block page_js %}
   <script defer src="{% static 'dist/js/manage-staff.min.js' %}"></script>
+  <script defer src="{% static 'js/manage-staff-login-history.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       function initStaffPasswordEyeToggleFallback() {

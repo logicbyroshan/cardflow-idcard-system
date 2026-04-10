@@ -24,11 +24,22 @@
             <span class="verification-label">Type this code to confirm:</span>
             <span class="verification-code" id="deleteVerificationCode">----------</span>
           </div>
-          <div class="verification-input-wrapper">
+          <div class="verification-input-wrapper confirm-code-input-wrap" id="deleteVerificationWrap" onclick="document.getElementById('deleteVerificationInput').focus()">
+            <div class="confirm-code-boxes" id="deleteVerificationBoxes" aria-hidden="true">
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+            </div>
             <input type="text" 
                    id="deleteVerificationInput" 
-                   class="verification-input" 
-                   placeholder="_ _ _ _ _ _ _ _ _ _"
+                   class="verification-input confirm-code-input-hidden" 
                    maxlength="10"
                    inputmode="numeric"
                    pattern="[0-9]{10}"

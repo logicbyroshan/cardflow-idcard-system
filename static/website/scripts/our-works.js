@@ -8,47 +8,131 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Load Category Background Images ---
     initCategoryBackgrounds();
     
-    // --- 1. Portfolio Filtering (now uses category IDs) ---
+    // --- 1. Portfolio Filtering + Lazy Batch Rendering ---
     const filterTabs = document.querySelectorAll('.filter-tab');
-    const portfolioItems = document.querySelectorAll('.portfolio-item');
+    const portfolioItems = Array.from(document.querySelectorAll('.portfolio-item'));
     const portfolioGrid = document.getElementById('portfolioGrid');
+    const skeletonWrap = document.getElementById('portfolioLoadSkeleton');
+    const loadSentinel = document.getElementById('portfolioLoadSentinel');
+    const PORTFOLIO_BATCH_SIZE = 20;
+    let currentFilter = 'all';
+    let filteredItems = [];
+    let renderedCount = 0;
+    let isBatchLoading = false;
+    let batchObserver = null;
 
-    filterTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const filter = this.dataset.filter;
-            
-            filterTabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            
-            let visibleCount = 0;
-            
-            portfolioItems.forEach(item => {
-                if (filter === 'all' || item.dataset.category === filter) {
-                    item.style.display = 'block';
-                    setTimeout(() => { item.style.opacity = '1'; item.style.transform = 'scale(1)'; }, 10);
-                    visibleCount++;
-                } else {
-                    item.style.opacity = '0';
-                    item.style.transform = 'scale(0.9)';
-                    setTimeout(() => { item.style.display = 'none'; }, 300);
+    function setSkeletonVisible(visible) {
+        if (!skeletonWrap) return;
+        skeletonWrap.hidden = !visible;
+    }
+
+    function getNoResultMessage() {
+        if (!portfolioGrid) return null;
+        let msg = portfolioGrid.querySelector('.filter-no-results');
+        if (!msg) {
+            msg = document.createElement('div');
+            msg.className = 'filter-no-results';
+            msg.style.cssText = 'column-span: all; text-align: center; padding: 60px 20px; width: 100%; display:none;';
+            msg.innerHTML = '<p style="color: #94a3b8; font-size: 1.1rem; margin: 0;">No items found in this category.</p>';
+            portfolioGrid.appendChild(msg);
+        }
+        return msg;
+    }
+
+    function hideAllPortfolioItems() {
+        portfolioItems.forEach((item) => {
+            item.style.opacity = '0';
+            item.style.transform = 'scale(0.98)';
+            item.style.display = 'none';
+        });
+    }
+
+    function getFilteredItems(filter) {
+        if (filter === 'all') return portfolioItems;
+        return portfolioItems.filter((item) => item.dataset.category === filter);
+    }
+
+    function updateSentinelState() {
+        if (!loadSentinel) return;
+        const hasMore = renderedCount < filteredItems.length;
+        loadSentinel.style.display = hasMore ? 'block' : 'none';
+    }
+
+    function renderPortfolioBatch() {
+        if (isBatchLoading) return;
+        if (renderedCount >= filteredItems.length) {
+            updateSentinelState();
+            return;
+        }
+
+        isBatchLoading = true;
+        setSkeletonVisible(true);
+
+        window.setTimeout(() => {
+            const nextItems = filteredItems.slice(renderedCount, renderedCount + PORTFOLIO_BATCH_SIZE);
+            nextItems.forEach((item) => {
+                item.style.display = 'block';
+                window.setTimeout(() => {
+                    item.style.opacity = '1';
+                    item.style.transform = 'scale(1)';
+                }, 16);
+            });
+            renderedCount += nextItems.length;
+            isBatchLoading = false;
+            setSkeletonVisible(false);
+            updateSentinelState();
+        }, 240);
+    }
+
+    function applyPortfolioFilter(filter) {
+        currentFilter = filter;
+        filteredItems = getFilteredItems(filter);
+        renderedCount = 0;
+
+        hideAllPortfolioItems();
+        updateSentinelState();
+
+        const noResultsMsg = getNoResultMessage();
+        if (noResultsMsg) {
+            noResultsMsg.style.display = filteredItems.length === 0 ? 'block' : 'none';
+        }
+
+        if (filteredItems.length > 0) {
+            renderPortfolioBatch();
+        } else {
+            setSkeletonVisible(false);
+        }
+    }
+
+    if (loadSentinel && 'IntersectionObserver' in window) {
+        batchObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    renderPortfolioBatch();
                 }
             });
-            
-            let noResultsMsg = portfolioGrid ? portfolioGrid.querySelector('.filter-no-results') : null;
-            if (visibleCount === 0 && portfolioItems.length > 0) {
-                if (!noResultsMsg && portfolioGrid) {
-                    noResultsMsg = document.createElement('div');
-                    noResultsMsg.className = 'filter-no-results';
-                    noResultsMsg.style.cssText = 'column-span: all; text-align: center; padding: 60px 20px; width: 100%;';
-                    noResultsMsg.innerHTML = '<p style="color: #94a3b8; font-size: 1.1rem; margin: 0;">No items found in this category.</p>';
-                    portfolioGrid.appendChild(noResultsMsg);
-                }
-                if (noResultsMsg) noResultsMsg.style.display = 'block';
-            } else if (noResultsMsg) {
-                noResultsMsg.style.display = 'none';
+        }, { root: null, rootMargin: '250px 0px 250px 0px', threshold: 0.01 });
+        batchObserver.observe(loadSentinel);
+    } else {
+        window.addEventListener('scroll', () => {
+            if (!loadSentinel) return;
+            const rect = loadSentinel.getBoundingClientRect();
+            if (rect.top <= (window.innerHeight + 250)) {
+                renderPortfolioBatch();
             }
+        }, { passive: true });
+    }
+
+    filterTabs.forEach((tab) => {
+        tab.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            filterTabs.forEach((t) => t.classList.remove('active'));
+            this.classList.add('active');
+            applyPortfolioFilter(filter);
         });
     });
+
+    applyPortfolioFilter(currentFilter);
 
     // --- 2. Category Explore (Opens Modal with filtered items — images + videos) ---
     const exploreButtons = document.querySelectorAll('.explore-btn');
@@ -226,16 +310,120 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Open gallery from URL hash ---
-    function checkHashAndOpen() {
-        const hash = window.location.hash;
-        if (hash.startsWith('#category=')) {
-            const slug = hash.replace('#category=', '');
-            if (slug) {
-                const card = document.querySelector('.category-card[data-slug="' + slug + '"]');
-                const extraTag = document.querySelector('.extra-category-tag[data-slug="' + slug + '"]');
-                const target = card ? card.querySelector('.explore-btn') : extraTag;
-                if (target) setTimeout(() => target.click(), 500);
+    function normalizeHashText(value) {
+        return (value || '')
+            .toLowerCase()
+            .replace(/[-_]+/g, ' ')
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function resolveCategoryTargetBySlug(slug) {
+        const normalizedSlug = normalizeHashText(slug);
+        if (!normalizedSlug) return null;
+
+        const exactCard = document.querySelector('.category-card[data-slug="' + slug + '"]');
+        const exactExtra = document.querySelector('.extra-category-tag[data-slug="' + slug + '"]');
+        if (exactCard) return exactCard.querySelector('.explore-btn');
+        if (exactExtra) return exactExtra;
+
+        const allCategories = document.querySelectorAll('.category-card, .extra-category-tag');
+        let bestNode = null;
+        let bestScore = 0;
+
+        allCategories.forEach((node) => {
+            const nodeSlug = normalizeHashText(node.dataset.slug || '');
+            const nodeLabelEl = node.classList.contains('category-card')
+                ? node.querySelector('h3')
+                : node.querySelector('span');
+            const nodeLabel = normalizeHashText(nodeLabelEl ? nodeLabelEl.textContent : '');
+            const haystack = (nodeSlug + ' ' + nodeLabel).trim();
+            if (!haystack) return;
+
+            let score = 0;
+            if (haystack === normalizedSlug) {
+                score = 100;
+            } else if (haystack.includes(normalizedSlug)) {
+                score = 80 + normalizedSlug.length;
+            } else if (normalizedSlug.includes(nodeSlug) && nodeSlug.length > 2) {
+                score = 50 + nodeSlug.length;
             }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestNode = node;
+            }
+        });
+
+        if (!bestNode) return null;
+        return bestNode.classList.contains('category-card') ? bestNode.querySelector('.explore-btn') : bestNode;
+    }
+
+    function resolveCategoryTargetByExpertise(expertiseKey) {
+        const normalizedKey = normalizeHashText(decodeURIComponent(expertiseKey || ''));
+        if (!normalizedKey) return null;
+
+        const expertiseAliasMap = {
+            'school id cards': ['school id cards', 'school id', 'id cards'],
+            'staff identity cards': ['staff identity cards', 'staff id', 'employee id'],
+            'digital lanyards': ['digital lanyards', 'lanyard'],
+            'printed marksheets': ['printed marksheets', 'marksheet', 'report card'],
+            'certificate design': ['certificate design', 'certificate'],
+            'rfid integration': ['rfid integration', 'rfid', 'smart card']
+        };
+
+        const lookupTerms = (expertiseAliasMap[normalizedKey] || [normalizedKey]).map(normalizeHashText);
+        const allCategories = document.querySelectorAll('.category-card, .extra-category-tag');
+        let bestNode = null;
+        let bestScore = 0;
+
+        allCategories.forEach((node) => {
+            const nodeSlug = normalizeHashText(node.dataset.slug || '');
+            const nodeLabelEl = node.classList.contains('category-card')
+                ? node.querySelector('h3')
+                : node.querySelector('span');
+            const nodeLabel = normalizeHashText(nodeLabelEl ? nodeLabelEl.textContent : '');
+            const haystack = (nodeSlug + ' ' + nodeLabel).trim();
+            if (!haystack) return;
+
+            let score = 0;
+            lookupTerms.forEach((term) => {
+                if (!term) return;
+                if (haystack === term) {
+                    score = Math.max(score, 100);
+                } else if (haystack.includes(term)) {
+                    score = Math.max(score, 80 + term.length);
+                } else if (term.includes(nodeSlug) && nodeSlug.length > 2) {
+                    score = Math.max(score, 50 + nodeSlug.length);
+                }
+            });
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestNode = node;
+            }
+        });
+
+        if (!bestNode) return null;
+        return bestNode.classList.contains('category-card') ? bestNode.querySelector('.explore-btn') : bestNode;
+    }
+
+    function openTargetWithDelay(target) {
+        if (!target) return false;
+        setTimeout(() => target.click(), 500);
+        return true;
+    }
+
+    function checkHashAndOpen() {
+        const hash = window.location.hash || '';
+        if (hash.startsWith('#category=')) {
+            const slug = decodeURIComponent(hash.replace('#category=', ''));
+            if (openTargetWithDelay(resolveCategoryTargetBySlug(slug))) return;
+        }
+        if (hash.startsWith('#expertise=')) {
+            const expertiseKey = hash.replace('#expertise=', '');
+            openTargetWithDelay(resolveCategoryTargetByExpertise(expertiseKey));
         }
     }
     checkHashAndOpen();
@@ -481,12 +669,22 @@ function initCategoryBackgrounds() {
                 // Start auto-rotation if multiple images
                 if (displayImages.length > 1) {
                     let currentIndex = 0;
-                    setInterval(() => {
+                    let isPaused = false;
+                    const rotateInterval = setInterval(() => {
+                        if (isPaused) return;
                         const imgs = slider.querySelectorAll('.slider-img');
                         imgs[currentIndex].classList.remove('active');
                         currentIndex = (currentIndex + 1) % imgs.length;
                         imgs[currentIndex].classList.add('active');
                     }, 3000); // 3 seconds per image
+
+                    card.addEventListener('mouseenter', () => {
+                        isPaused = true;
+                    });
+                    card.addEventListener('mouseleave', () => {
+                        isPaused = false;
+                    });
+                    card.dataset.sliderIntervalActive = String(Boolean(rotateInterval));
                 }
             }
         });

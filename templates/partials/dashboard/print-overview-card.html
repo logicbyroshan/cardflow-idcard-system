@@ -1,0 +1,52 @@
+{% comment %}
+Print Overview Card - Admin Dashboard
+Loaded dynamically via api_print_reprint_overview.
+{% endcomment %}
+
+<div class="dashboard-card">
+  <div class="dashboard-card-header overview-header">
+    <h3><i class="fa-solid fa-print"></i> Recent Print</h3>
+    <div class="overview-search-inline">
+      <div class="recent-updates-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          type="text"
+          id="printOverviewSearch"
+          class="recent-updates-search-input"
+          placeholder="Search print client or table"
+          autocomplete="off"
+        >
+      </div>
+    </div>
+  </div>
+  <div class="dashboard-card-body tall-body p-0 table-scroll-body">
+    <div class="recent-table-wrapper dashboard-scroll-table-wrapper">
+      <table class="recent-table dashboard-scroll-table recent-table-3col">
+        <thead>
+          <tr>
+            <th scope="col">Client</th>
+            <th scope="col" class="text-center recent-updates-sortable" data-overview-sort-scope="print" data-overview-sort-key="pending" aria-sort="none" tabindex="0" title="Sort by highest generate list count. Click again to clear sorting.">Generate List <i class="fa-solid fa-sort recent-sort-icon" aria-hidden="true"></i></th>
+            <th scope="col" class="text-center recent-updates-sortable" data-overview-sort-scope="print" data-overview-sort-key="verified" aria-sort="none" tabindex="0" title="Sort by highest finalized count. Click again to clear sorting.">Finalized <i class="fa-solid fa-sort recent-sort-icon" aria-hidden="true"></i></th>
+          </tr>
+        </thead>
+        <tbody id="printOverviewBody">
+          <tr class="dashboard-table-skeleton-row">
+            <td><span class="dash-skeleton dash-skeleton-line" style="width: 76%;"></span></td>
+            <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+            <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          </tr>
+          <tr class="dashboard-table-skeleton-row">
+            <td><span class="dash-skeleton dash-skeleton-line" style="width: 68%;"></span></td>
+            <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+            <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          </tr>
+          <tr class="dashboard-table-skeleton-row">
+            <td><span class="dash-skeleton dash-skeleton-line" style="width: 72%;"></span></td>
+            <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+            <td><span class="dash-skeleton dash-skeleton-pill"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

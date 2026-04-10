@@ -71,20 +71,20 @@
 
 /* Override table layout for ID Card Group page */
 .idcard-table table {
-    table-layout: fixed;
-    width: 100%;
-    min-width: 900px;
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
     font-family: var(--font-family);
 }
 
 /* Name column */
 .idcard-table th:nth-child(1),
 .idcard-table td:nth-child(1) {
-    width: 100px;
-    min-width: 100px;
+  width: auto;
+  min-width: 220px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
     font-weight: 400;
     font-size: 14px;
     text-align: left;
@@ -94,17 +94,39 @@
 /* Action column */
 .idcard-table th:nth-child(2),
 .idcard-table td:nth-child(2) {
-    width: 440px;
-    min-width: 440px;
+  width: 1%;
+  min-width: max-content;
+  white-space: nowrap;
     text-align: center;
 }
 
 /* Bulk Action column */
 .idcard-table th:nth-child(3),
 .idcard-table td:nth-child(3) {
-    width: 360px;
-    min-width: 360px;
+  width: 1%;
+  min-width: max-content;
+  white-space: nowrap;
     text-align: center;
+}
+
+/* Keep action button groups on one line and let table scroll horizontally if needed */
+.idcard-table .action-cell,
+.idcard-table .bulk-action-cell {
+  white-space: nowrap;
+}
+
+.idcard-table td.action-cell,
+.idcard-table td.bulk-action-cell {
+  padding: 8px 10px !important;
+}
+
+.idcard-table .action-cell .action-buttons,
+.idcard-table .bulk-action-cell .bulk-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 6px;
 }
 
 /* List Buttons - Compact */
@@ -247,8 +269,9 @@
 .bulk-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 4px;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 8px;
     border: none;
     border-radius: 6px;
     font-size: 12px;
@@ -256,8 +279,7 @@
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
-    justify-content: center;
-    min-width: 0;
+  min-width: 100px;
 }
 
 /* Hide icons in bulk buttons */
@@ -267,36 +289,35 @@
 
 /* Reupload Button - Orange/Amber */
 .reupload-btn {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fcd34d;
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fdba74;
 }
 
 .reupload-btn:hover {
-    background: #fde68a;
-    border-color: #fbbf24;
+  background: #fed7aa;
 }
 
-/* Download All ID Card Button - Purple/Primary */
+/* Download All ID Card Button - Indigo */
 .download-all-btn {
-    background: #4f46e5;
-    color: #fff;
-    border: none;
+  background: #e0e7ff;
+  color: #312e81;
+  border: 1px solid #a5b4fc;
 }
 
 .download-all-btn:hover {
-    background: #4338ca;
+  background: #c7d2fe;
 }
 
-/* Delete All ID Cards Button - Red/Danger */
+/* Delete All ID Cards Button - Red */
 .delete-all-btn {
-    background: #ef4444;
-    color: #fff;
-    border: none;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
 }
 
 .delete-all-btn:hover {
-    background: #dc2626;
+  background: #fecaca;
 }
 
 /* Reprint ID Card Bulk Action Button - Cyan/Teal */
@@ -312,13 +333,13 @@
 
 /* Upgrade All Class Button - Green */
 .upgrade-class-btn {
-    background: #22c55e;
-    color: #fff;
-    border: none;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
 }
 
 .upgrade-class-btn:hover {
-    background: #16a34a;
+  background: #bbf7d0;
 }
 
 /* Disabled state for bulk buttons (e.g. no class column) */
@@ -331,33 +352,16 @@
 
 /* Responsive adjustments */
 @media (min-width: 1024px) and (max-width: 1200px) {
-    .idcard-table table {
-        min-width: 880px;
-    }
-    
-    .idcard-table th:nth-child(1),
-    .idcard-table td:nth-child(1) {
-        width: 90px;
-        min-width: 90px;
-        font-size: 13px;
-    }
-    
-    .idcard-table th:nth-child(2),
-    .idcard-table td:nth-child(2) {
-        width: 420px;
-        min-width: 420px;
-    }
-    
-    .idcard-table th:nth-child(3),
-    .idcard-table td:nth-child(3) {
-        width: 340px;
-        min-width: 340px;
-    }
+  .idcard-table th:nth-child(1),
+  .idcard-table td:nth-child(1) {
+    min-width: 180px;
+    font-size: 13px;
+  }
     
     .list-btn {
-        padding: 2px 4px;
+    padding: 2px 6px;
         font-size: 13px;
-        min-width: 60px;
+    min-width: 90px;
     }
     
     .count-badge {
@@ -368,16 +372,17 @@
     }
     
     .bulk-btn {
-        padding: 2px 4px;
+      padding: 2px 6px;
         font-size: 13px;
+      min-width: 90px;
     }
 }
 
 @media (min-width: 1201px) and (max-width: 1400px) {
     .list-btn {
-        padding: 3px 4px;
+    padding: 3px 6px;
         font-size: 13px;
-        min-width: 65px;
+    min-width: 95px;
     }
     
     .count-badge {
@@ -387,8 +392,9 @@
     }
     
     .bulk-btn {
-        padding: 3px 5px;
+      padding: 3px 6px;
         font-size: 13px;
+      min-width: 95px;
     }
 }
 

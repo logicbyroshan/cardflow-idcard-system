@@ -9,23 +9,466 @@
 <span class="breadcrumb-item active">Business Details</span>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .wa-business-page {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0;
+    }
+
+    .wa-dashboard-section {
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .wa-business-live-bar {
+        margin-top: 0;
+        border-radius: 0;
+        border: 1px solid rgba(102, 126, 234, 0.48);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        width: 100%;
+        padding: 9px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .wa-business-live-bar.is-live {
+        border-color: rgba(34, 197, 94, 0.5);
+        background: linear-gradient(135deg, #0ea5a4 0%, #22c55e 100%);
+    }
+
+    .wa-business-live-bar.is-draft {
+        border-color: rgba(245, 158, 11, 0.5);
+        background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    }
+
+    .wa-business-live-left {
+        min-width: 220px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #ffffff;
+    }
+
+    .wa-business-live-left i {
+        font-size: 13px;
+        opacity: 0.94;
+    }
+
+    .wa-business-live-copy {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .wa-business-live-title {
+        font-size: 11.8px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .wa-business-live-sub {
+        font-size: 11px;
+        opacity: 0.94;
+        font-weight: 700;
+    }
+
+    .wa-business-live-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        flex-wrap: wrap;
+    }
+
+    .wa-business-status-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wa-business-status-note a {
+        color: #1d4ed8;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .wa-business-status-note a:hover {
+        text-decoration: underline;
+    }
+
+    .wa-business-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.16);
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+    }
+
+    .wa-business-status-pill.live {
+        border-color: rgba(220, 252, 231, 0.8);
+        background: rgba(20, 83, 45, 0.32);
+        color: #ecfdf5;
+    }
+
+    .wa-business-status-pill.draft {
+        border-color: rgba(255, 237, 213, 0.85);
+        background: rgba(124, 45, 18, 0.34);
+        color: #fff7ed;
+    }
+
+    .wa-business-live-right #toggleWebsiteLiveBtn {
+        border-color: rgba(255, 255, 255, 0.55);
+        color: #ffffff;
+        background: rgba(15, 23, 42, 0.26);
+        min-width: 122px;
+    }
+
+    .wa-business-live-right #toggleWebsiteLiveBtn:hover:not(:disabled) {
+        background: rgba(15, 23, 42, 0.4);
+    }
+
+    .business-form-shell {
+        border: none;
+        border-radius: 0;
+        background: #ffffff;
+        padding: 0;
+        box-shadow: none;
+        margin-top: 0;
+    }
+
+    .business-form-shell .wa-form-group-title {
+        margin-top: 0;
+        margin-bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        width: 100%;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #334155;
+        border-top: 1px solid #dbe3ef;
+        border-bottom: 1px solid #dbe3ef;
+        background: #f8fafc;
+        border-radius: 0;
+        padding: 8px 14px;
+    }
+
+    .business-form-shell .wa-section-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .business-form-shell .wa-section-bar-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .business-form-shell .wa-section-bar-actions {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .business-form-shell .wa-section-save-btn {
+        min-width: 132px;
+    }
+
+    .business-form-shell .wa-form-group-title:first-of-type {
+        margin-top: 0;
+    }
+
+    .business-form-shell .wa-form-group-title .wa-inline-action {
+        margin-left: 0;
+    }
+
+    .business-form-shell .wa-form-row {
+        margin-bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 8px 14px;
+        border-bottom: 1px solid #e8eef7;
+    }
+
+    .business-form-shell .wa-form-row.wa-form-images {
+        border-bottom: 1px solid #dbe3ef;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .business-form-shell .wa-form-row:last-of-type {
+        border-bottom: 1px solid #dbe3ef;
+    }
+
+    .business-form-shell .wa-form-group {
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        padding: 0;
+    }
+
+    .business-form-shell .wa-form-group.full {
+        grid-column: 1 / -1;
+    }
+
+    .business-form-shell label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .business-form-shell .wa-form-actions {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .wa-form-save-meta {
+        font-size: 10.5px;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .wa-form-save-meta.is-dirty {
+        color: #b45309;
+    }
+
+    .wa-form-save-meta.is-error {
+        color: #b91c1c;
+    }
+
+    .business-form-shell input,
+    .business-form-shell textarea,
+    .business-form-shell select {
+        border-color: #cbd5e1;
+        background: #fff;
+        min-height: 34px;
+        border-radius: 4px;
+        width: 100%;
+        padding: 7px 9px;
+        color: #0f172a;
+        font-size: 12px;
+    }
+
+    .business-form-shell textarea {
+        min-height: 84px;
+        line-height: 1.45;
+        resize: vertical;
+    }
+
+    .business-form-shell input:focus,
+    .business-form-shell textarea:focus,
+    .business-form-shell select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+
+    .business-form-shell .wa-toggle-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #dbe3ef;
+        background: #f8fbff;
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 11.5px;
+        color: #1e3a8a;
+        font-weight: 600;
+    }
+
+    #heroImagesGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+    }
+
+    .hero-image-card {
+        border: 1px solid #dbe3ef;
+        border-radius: 6px;
+        background: #fff;
+        padding: 6px;
+        box-shadow: none;
+    }
+
+    .hero-image-card .wa-img-preview {
+        position: relative;
+        border-radius: 5px;
+        overflow: hidden;
+        aspect-ratio: 16 / 10;
+        background: #e2e8f0;
+    }
+
+    .hero-image-card .wa-img-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .hero-order-badge,
+    .hero-inactive-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #1e293b;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    .hero-inactive-badge {
+        left: auto;
+        right: 8px;
+        color: #9a3412;
+        border-color: #fdba74;
+        background: #fff7ed;
+    }
+
+    .hero-remove-btn {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 5px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: rgba(255, 255, 255, 0.94);
+        color: #b91c1c;
+        font-size: 17px;
+        line-height: 1;
+    }
+
+    #noHeroImagesMsg {
+        grid-column: 1 / -1;
+        border: 1px dashed #cbd5e1;
+        border-radius: 0;
+        background: #f8fafc;
+        padding: 10px;
+        text-align: center;
+    }
+
+    #noHeroImagesMsg p {
+        margin: 0;
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    @media (max-width: 960px) {
+        .wa-business-page {
+            padding: 0;
+        }
+
+        .business-form-shell .wa-form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .wa-dashboard-section {
+            padding: 0;
+        }
+
+        .business-form-shell {
+            padding: 0;
+        }
+
+        .wa-business-live-right {
+            width: 100%;
+            margin-left: 0;
+            justify-content: flex-start;
+        }
+
+        .business-form-shell .wa-section-bar {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .business-form-shell .wa-section-bar-actions {
+            width: 100%;
+            margin-left: 0;
+        }
+
+        .business-form-shell .wa-section-save-btn,
+        .business-form-shell .wa-section-bar-actions .wa-inline-action {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="wa-page-container">
+<div class="wa-page-container wa-business-page">
     <div class="wa-dashboard-section">
-        <div class="wa-dashboard-section-header flex items-center justify-between">
-            <h3 class="wa-dashboard-section-title"><i class="fa-solid fa-building"></i> Business Details</h3>
-            {% if business and business.is_active %}
-            <span class="badge badge-success">Active</span>
-            {% elif business %}
-            <span class="badge badge-warning">Inactive</span>
-            {% endif %}
+        <div class="wa-business-live-bar {% if website_status == 'live' %}is-live{% else %}is-draft{% endif %}" id="websiteLiveBar">
+            <div class="wa-business-live-left">
+                <i class="fa-solid fa-globe"></i>
+                <span class="wa-business-live-copy">
+                    <span class="wa-business-live-title">Website Visibility</span>
+                    <span class="wa-business-live-sub">Turn your public website ON or OFF for visitors.</span>
+                </span>
+            </div>
+            <div class="wa-business-live-right">
+                <span class="wa-business-status-pill {% if website_status == 'live' %}live{% else %}draft{% endif %}" id="websiteLiveStatusBadge">
+                    <i class="fa-solid {% if website_status == 'live' %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+                    <span id="websiteLiveStatusText">{% if website_status == 'live' %}ON{% else %}OFF{% endif %}</span>
+                </span>
+                {% if can_publish_website %}
+                <button type="button" class="btn btn-sm {% if website_status == 'live' %}btn-danger{% else %}btn-success{% endif %}" id="toggleWebsiteLiveBtn">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span id="toggleWebsiteLiveBtnText">{% if website_status == 'live' %}Turn OFF{% else %}Turn ON{% endif %}</span>
+                </button>
+                {% endif %}
+            </div>
         </div>
 
-        <form id="businessForm" enctype="multipart/form-data" class="wa-form">
+        <form id="businessForm" enctype="multipart/form-data" class="wa-form business-form-shell">
         {% csrf_token %}
 
         <!-- Basic Info -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-info-circle"></i> Basic Info</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-info-circle"></i> Basic Info</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="site_name,tagline">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label for="site_name">Business Name</label>
@@ -38,7 +481,16 @@
         </div>
 
         <!-- Contact Info -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-phone"></i> Contact Info</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-phone"></i> Contact Info</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="email,phone,address,working_hours">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label for="email">Email</label>
@@ -63,7 +515,16 @@
         </div>
 
         <!-- Social Links -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-share-nodes"></i> Social Links</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-share-nodes"></i> Social Links</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="facebook_url,instagram_url,twitter_url,whatsapp_number">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label for="facebook_url"><i class="fa-brands fa-facebook"></i> Facebook</label>
@@ -86,11 +547,13 @@
         </div>
 
         <!-- Dynamic Hero Images Manager -->
-        <div class="wa-form-group-title mt-3">
-            <i class="fa-solid fa-images"></i> Hero Slider Images
-            <button type="button" class="btn btn-primary btn-sm ml-auto text-sm px-3 py-1" id="addHeroImageBtn">
-                <i class="fa-solid fa-plus"></i> Add Image
-            </button>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-images"></i> Hero Slider Images</span>
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-inline-action" id="addHeroImageBtn">
+                    <i class="fa-solid fa-plus"></i> Add Image
+                </button>
+            </span>
         </div>
         <div id="heroImagesGrid" class="wa-form-row wa-form-images">
             {% for hero in hero_images %}
@@ -114,7 +577,16 @@
         <input type="file" id="heroImageFileInput" accept="image/*" class="hidden">
 
         <!-- Footer & SEO -->
-        <div class="wa-form-group-title"><i class="fa-solid fa-paragraph"></i> Footer & SEO</div>
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-paragraph"></i> Footer & SEO</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="footer_text,meta_description,meta_keywords">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group full">
                 <label for="footer_text">Footer Text</label>
@@ -135,6 +607,16 @@
         </div>
 
         <!-- Active Toggle -->
+        <div class="wa-form-group-title wa-section-bar">
+            <span class="wa-section-bar-left"><i class="fa-solid fa-power-off"></i> Visibility Preference</span>
+            {% if is_super_admin or perm_website_edit %}
+            <span class="wa-section-bar-actions">
+                <button type="button" class="btn btn-primary btn-sm wa-section-save-btn" data-fields="is_active">
+                    <i class="fa-solid fa-save"></i> Save Changes
+                </button>
+            </span>
+            {% endif %}
+        </div>
         <div class="wa-form-row">
             <div class="wa-form-group">
                 <label class="wa-toggle-label">
@@ -144,13 +626,6 @@
             </div>
         </div>
 
-        {% if is_super_admin or perm_website_edit %}
-        <div class="wa-form-actions">
-            <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-save"></i> Save Changes
-            </button>
-        </div>
-        {% endif %}
         </form>
     </div>
 </div>
@@ -160,7 +635,134 @@
 <script>
 (function() {
     const form = document.getElementById('businessForm');
+    const toggleWebsiteLiveBtn = document.getElementById('toggleWebsiteLiveBtn');
+    const liveBar = document.getElementById('websiteLiveBar');
+    const liveStatusBadge = document.getElementById('websiteLiveStatusBadge');
+    const liveStatusText = document.getElementById('websiteLiveStatusText');
+    const toggleWebsiteLiveBtnText = document.getElementById('toggleWebsiteLiveBtnText');
+    const saveStateEl = document.getElementById('businessSaveState');
+
+    function setSaveState(type, message) {
+        if (!saveStateEl) return;
+        saveStateEl.classList.toggle('is-dirty', type === 'dirty');
+        saveStateEl.classList.toggle('is-error', type === 'error');
+        saveStateEl.textContent = message || 'No unsaved changes.';
+    }
+
+    function markDirty() {
+        setSaveState('dirty', 'You have unsaved changes.');
+    }
+
+    function markSaved() {
+        setSaveState('saved', 'Saved just now.');
+    }
+
+    function markSaveError() {
+        setSaveState('error', 'Save failed. Please try again.');
+    }
+
+    function applyWebsiteStatusUi(status) {
+        const isLive = String(status || '').toLowerCase() === 'live';
+
+        if (liveBar) {
+            liveBar.classList.toggle('is-live', isLive);
+            liveBar.classList.toggle('is-draft', !isLive);
+        }
+
+        if (liveStatusBadge) {
+            liveStatusBadge.classList.toggle('live', isLive);
+            liveStatusBadge.classList.toggle('draft', !isLive);
+            const icon = liveStatusBadge.querySelector('i');
+            if (icon) {
+                icon.className = 'fa-solid ' + (isLive ? 'fa-toggle-on' : 'fa-toggle-off');
+            }
+        }
+
+        if (liveStatusText) {
+            liveStatusText.textContent = isLive ? 'ON' : 'OFF';
+        }
+
+        if (toggleWebsiteLiveBtn && toggleWebsiteLiveBtnText) {
+            toggleWebsiteLiveBtn.classList.toggle('btn-danger', isLive);
+            toggleWebsiteLiveBtn.classList.toggle('btn-success', !isLive);
+            toggleWebsiteLiveBtnText.textContent = isLive ? 'Turn OFF' : 'Turn ON';
+            const icon = toggleWebsiteLiveBtn.querySelector('i');
+            if (icon) {
+                icon.className = 'fa-solid fa-power-off';
+            }
+        }
+    }
+
+    applyWebsiteStatusUi('{{ website_status|default:"draft"|lower }}');
+
+    if (toggleWebsiteLiveBtn) {
+        toggleWebsiteLiveBtn.addEventListener('click', async function() {
+            const ok = await waConfirm({
+                title: 'Toggle Website Visibility?',
+                text: 'This will switch your website ON or OFF for visitors.',
+                icon: 'fa-solid fa-globe',
+                confirmLabel: 'Apply',
+                btnClass: 'btn-primary'
+            });
+            if (!ok) return;
+
+            toggleWebsiteLiveBtn.disabled = true;
+            try {
+                const res = await fetch('{% url "website_admin:api_status_toggle" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    applyWebsiteStatusUi(data.status || 'draft');
+                    showToast('Website status updated.', 'success');
+                } else {
+                    showToast(data.message || 'Failed to update website status.', 'error');
+                }
+            } catch(err) {
+                showToast('Network error', 'error');
+            } finally {
+                toggleWebsiteLiveBtn.disabled = false;
+            }
+        });
+    }
+
     if (!form) return;
+
+    async function submitBusinessFormData(formData, saveButton) {
+        const originalHtml = saveButton ? saveButton.innerHTML : '';
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        }
+
+        try {
+            const res = await fetch('{% url "website_admin:api_business_update" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData,
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Business details saved!', 'success');
+                markSaved();
+            } else {
+                showToast(data.message || 'Error saving', 'error');
+                markSaveError();
+            }
+        } catch(err) {
+            showToast('Network error', 'error');
+            markSaveError();
+        } finally {
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalHtml;
+            }
+        }
+    }
+
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -172,21 +774,36 @@
             fd.set('is_active', 'true');
         }
 
-        try {
-            const res = await fetch('{% url "website_admin:api_business_update" %}', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
-                body: fd,
-            });
-            const data = await res.json();
-            if (data.success) {
-                showToast('Business details saved!', 'success');
-            } else {
-                showToast(data.message || 'Error saving', 'error');
+        await submitBusinessFormData(fd, null);
+    });
+
+    const sectionSaveButtons = form.querySelectorAll('.wa-section-save-btn[data-fields]');
+    sectionSaveButtons.forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            const fields = String(btn.getAttribute('data-fields') || '')
+                .split(',')
+                .map(function(name) { return name.trim(); })
+                .filter(Boolean);
+
+            if (!fields.length) {
+                showToast('No fields configured for this section.', 'warning');
+                return;
             }
-        } catch(err) {
-            showToast('Network error', 'error');
-        }
+
+            const fd = new FormData();
+            fields.forEach(function(name) {
+                const fieldEl = form.querySelector('[name="' + name.replace(/"/g, '') + '"]');
+                if (!fieldEl) return;
+
+                if (fieldEl.type === 'checkbox') {
+                    fd.set(name, fieldEl.checked ? 'true' : 'false');
+                } else {
+                    fd.set(name, fieldEl.value || '');
+                }
+            });
+
+            await submitBusinessFormData(fd, btn);
+        });
     });
 
 })();

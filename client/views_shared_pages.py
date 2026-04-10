@@ -86,11 +86,18 @@ def client_idcard_group(request):
                 }
                 table.pending_count = counts_by_status.get('pending', 0)
                 table.verified_count = counts_by_status.get('verified', 0)
-                table.pool_count = counts_by_status.get('pool', 0)
+                table.pool_count = IDCard.objects.filter(table=table, status='pool').count()
                 table.approved_count = counts_by_status.get('approved', 0)
                 table.download_count = counts_by_status.get('download', 0)
                 table.reprint_count = counts_by_status.get('reprint', 0)
-                table.total_cards = sum(counts_by_status.values())
+                table.total_cards = (
+                    table.pending_count
+                    + table.verified_count
+                    + table.pool_count
+                    + table.approved_count
+                    + table.download_count
+                    + table.reprint_count
+                )
                 scoped_tables.append(table)
 
             tables = scoped_tables
@@ -284,16 +291,15 @@ def client_reprint_cards(request, table_id):
     # Real step counts
     source_cards_qs = IDCard.objects.filter(table=table, status='download')
     source_cards_count = source_cards_qs.count()
-    request_count = ReprintRequest.objects.filter(
+    reprint_status_counts = ReprintRequest.objects.filter(
         table=table,
-        status='requested',
         card__status='download',
-    ).count()
-    confirmed_count = ReprintRequest.objects.filter(
-        table=table,
-        status='confirmed',
-        card__status='download',
-    ).count()
+    ).aggregate(
+        request_count=Count('id', filter=Q(status='requested')),
+        confirmed_count=Count('id', filter=Q(status='confirmed')),
+    )
+    request_count = int(reprint_status_counts.get('request_count') or 0)
+    confirmed_count = int(reprint_status_counts.get('confirmed_count') or 0)
     step_counts = {
         'download_list': source_cards_count,
         'reprint_list': source_cards_count,
@@ -323,14 +329,13 @@ def client_reprint_cards(request, table_id):
 
     # Request List — status='requested'
     request_items = []
-    request_total = 0
+    request_total = request_count
     if current_step == 'request_list':
         req_qs = ReprintRequest.objects.filter(
             table=table,
             status='requested',
             card__status='download',
         ).select_related('card', 'requested_by').order_by('-created_at')
-        request_total = req_qs.count()
         req_batch = req_qs[:INITIAL_LOAD_LIMIT]
         for idx, rr in enumerate(req_batch):
             req_by = rr.requested_by
@@ -349,14 +354,13 @@ def client_reprint_cards(request, table_id):
 
     # Confirmed List — status='confirmed'
     confirmed_items = []
-    confirmed_total = 0
+    confirmed_total = confirmed_count
     if current_step == 'confirmed':
         cf_qs = ReprintRequest.objects.filter(
             table=table,
             status='confirmed',
             card__status='download',
         ).select_related('card', 'requested_by').order_by('-updated_at')
-        confirmed_total = cf_qs.count()
         cf_batch = cf_qs[:INITIAL_LOAD_LIMIT]
         for idx, rr in enumerate(cf_batch):
             req_by = rr.requested_by
@@ -421,6 +425,11 @@ def client_print_cards(request, table_id):
     if not ClientAccessService.can_access_table(user, table):
         return redirect(reverse('client:idcard_group'))
 
+    can_print_list = PermissionService.has_permission(user, 'perm_print_list')
+    can_finalized_list = PermissionService.has_permission(user, 'perm_finalized_list')
+    if not (can_print_list or can_finalized_list):
+        return redirect(reverse('client:idcard_group'))
+
     _promote_legacy_print_list(table)
 
     current_step = request.GET.get('step', 'generate_list')
@@ -443,15 +452,14 @@ def client_print_cards(request, table_id):
 
     generate_items = []
     finalized_items = []
-    generate_total = 0
-    finalized_total = 0
+    generate_total = int(step_counts_raw.get('gl') or 0)
+    finalized_total = int(step_counts_raw.get('fn') or 0)
 
     template_obj = CardTemplate.objects.filter(table=table).first()
     selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
 
     if current_step == 'generate_list':
         base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
-        generate_total = base_qs.count()
         pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
         for idx, pr in enumerate(pr_batch):
             card = pr.card
@@ -473,7 +481,6 @@ def client_print_cards(request, table_id):
 
     if current_step == 'finalized':
         base_qs = PrintRequest.objects.filter(table=table, status='finalized')
-        finalized_total = base_qs.count()
         pr_batch = base_qs.select_related('card', 'requested_by').order_by('-updated_at')[:INITIAL_LOAD_LIMIT]
         for idx, pr in enumerate(pr_batch):
             card = pr.card

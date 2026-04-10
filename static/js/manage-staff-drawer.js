@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (preselectedIds === undefined) preselectedIds = [];
         if (!clientAssignmentSection) return;
 
-        // Show the section (always visible for admin staff management)
+        // Show the section (always visible for operator management)
         clientAssignmentSection.style.display = '';
 
         // Fetch clients if not loaded

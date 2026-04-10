@@ -81,6 +81,7 @@ def process_bulk_upload(task):
     all_table_fields = table.fields or []
     table_fields = [f['name'] for f in all_table_fields if not BaseService.is_image_field(f)]
     image_fields = [f['name'] for f in all_table_fields if BaseService.is_image_field(f)]
+    frontend_mapping = metadata.get('field_mapping', {})
     
     # Initialize counters
     cards_created = 0
@@ -92,11 +93,11 @@ def process_bulk_upload(task):
         # Parse XLSX/CSV and get rows
         if file_name.endswith(('.xlsx', '.xls')):
             rows_data, headers, header_to_field, image_ref_columns = _parse_excel_file(
-                file_path, table_fields, image_fields, all_table_fields
+                file_path, table_fields, image_fields, all_table_fields, frontend_mapping
             )
         elif file_name.endswith('.csv'):
             rows_data, headers, header_to_field, image_ref_columns = _parse_csv_file(
-                file_path, table_fields, image_fields, all_table_fields
+                file_path, table_fields, image_fields, all_table_fields, frontend_mapping
             )
         else:
             task.mark_failed("Invalid file format. Expected .xlsx, .xls, or .csv")
@@ -256,7 +257,7 @@ def process_bulk_upload(task):
         _cleanup_task_files(task)
 
 
-def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
+def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields, frontend_mapping=None):
     """
     Parse Excel file and return rows with header mapping.
     
@@ -329,13 +330,13 @@ def _parse_excel_file(file_path, table_fields, image_fields, all_table_fields):
     
     # Map headers to fields
     header_to_field, image_ref_columns = _map_headers_to_fields(
-        headers, table_fields, image_fields, all_table_fields
+        headers, table_fields, image_fields, all_table_fields, frontend_mapping
     )
     
     return rows_data, headers, header_to_field, image_ref_columns
 
 
-def _parse_csv_file(file_path, table_fields, image_fields, all_table_fields):
+def _parse_csv_file(file_path, table_fields, image_fields, all_table_fields, frontend_mapping=None):
     """
     Parse CSV file and return rows with header mapping.
     """
@@ -359,13 +360,13 @@ def _parse_csv_file(file_path, table_fields, image_fields, all_table_fields):
     
     # Map headers to fields
     header_to_field, image_ref_columns = _map_headers_to_fields(
-        headers, table_fields, image_fields, all_table_fields
+        headers, table_fields, image_fields, all_table_fields, frontend_mapping
     )
     
     return rows_data, headers, header_to_field, image_ref_columns
 
 
-def _map_headers_to_fields(headers, table_fields, image_fields, all_table_fields):
+def _map_headers_to_fields(headers, table_fields, image_fields, all_table_fields, frontend_mapping=None):
     """
     Map Excel/CSV headers to table field names.
     """
@@ -375,6 +376,37 @@ def _map_headers_to_fields(headers, table_fields, image_fields, all_table_fields
     image_ref_columns = {}
     available_fields = table_fields.copy()
     unmatched_image_fields = list(image_fields)
+
+    if isinstance(frontend_mapping, dict) and frontend_mapping:
+        header_index = {}
+        for idx, header in enumerate(headers):
+            key = str(header or '').strip()
+            if key and key not in header_index:
+                header_index[key] = idx
+
+        for table_field_name, upload_header in frontend_mapping.items():
+            field_name = str(table_field_name or '').strip()
+            header_name = str(upload_header or '').strip()
+            if not field_name or field_name not in available_fields:
+                continue
+            col_idx = header_index.get(header_name)
+            if col_idx is None:
+                continue
+            header_to_field[col_idx] = field_name
+            available_fields.remove(field_name)
+
+        for idx, header in enumerate(headers):
+            if idx in header_to_field:
+                continue
+            if not header:
+                continue
+
+            matched_img_field = BaseService.find_best_image_field_match(header, unmatched_image_fields)
+            if matched_img_field:
+                image_ref_columns[matched_img_field] = idx
+                unmatched_image_fields.remove(matched_img_field)
+
+        return header_to_field, image_ref_columns
     
     for idx, header in enumerate(headers):
         if not header:

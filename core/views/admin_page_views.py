@@ -5,26 +5,27 @@ Split from base.py for maintainability.
 import logging
 from django.conf import settings as django_settings
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.timesince import timesince as django_timesince
 
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
 from cardprint.models import PrintRequest
-from ..models import User, SystemSettings, Notification, EmailLog
+from ..models import User, Notification, EmailLog, ActivityLog
 from ..services import IDCardService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
     require_any_admin,
-    require_permission,
 )
 from .base_helpers import (
     get_user_role,
@@ -33,16 +34,184 @@ from .base_helpers import (
     _STATUS_LIST_PERM,
     _VALID_STATUSES,
 )
-from .idcard_helpers import _apply_client_staff_row_scope
+from .idcard_helpers import (
+    _apply_client_staff_row_scope,
+    _build_class_filter_q,
+    _get_class_section_course_branch_field_names,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_device_surface(value):
+    normalized = str(value or '').strip().lower()
+    if normalized in {'desktop', 'mobile'}:
+        return normalized
+    return 'unknown'
+
+
+def _infer_device_surface(action, description):
+    text = f"{action or ''} {description or ''}".lower()
+    mobile_tokens = ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')
+    desktop_tokens = ('desktop web', 'desktop', 'browser', 'windows', 'mac', 'linux', 'web app', 'web')
+
+    if any(token in text for token in mobile_tokens):
+        return 'mobile'
+    if any(token in text for token in desktop_tokens):
+        return 'desktop'
+    return 'unknown'
+
+
+def _device_surface_meta(surface):
+    normalized = _normalize_device_surface(surface)
+    if normalized == 'mobile':
+        return {
+            'device_surface': 'mobile',
+            'device_surface_label': 'Mobile',
+            'device_surface_icon': 'fa-mobile-screen-button',
+        }
+    if normalized == 'desktop':
+        return {
+            'device_surface': 'desktop',
+            'device_surface_label': 'Desktop',
+            'device_surface_icon': 'fa-desktop',
+        }
+    return {
+        'device_surface': 'unknown',
+        'device_surface_label': 'Unknown',
+        'device_surface_icon': 'fa-circle-question',
+    }
+
+
+def _active_device_snapshot(user_id):
+    if not user_id:
+        return {
+            'fingerprints': [],
+            'surface_counts': {'desktop': 0, 'mobile': 0},
+        }
+
+    ids = {str(user_id)}
+    fingerprints = set()
+    surface_counts = {'desktop': 0, 'mobile': 0}
+
+    for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+
+        user_id_str = str(data.get('_auth_user_id') or '')
+        if user_id_str not in ids:
+            continue
+
+        surface = _normalize_device_surface(data.get('_auth_login_surface'))
+        if surface in surface_counts:
+            surface_counts[surface] += 1
+
+        fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
+        fingerprints.add(fingerprint)
+
+    return {
+        'fingerprints': sorted(fingerprints),
+        'surface_counts': surface_counts,
+    }
+
+
+def _serialize_login_history_event(entry, action_display_map, now):
+    meta = _device_surface_meta(_infer_device_surface(entry.action, entry.description))
+    event = {
+        'id': entry.pk,
+        'action': entry.action,
+        'action_display': action_display_map.get(entry.action, entry.action),
+        'description': entry.description or '',
+        'ip_address': entry.ip_address or '',
+        'icon_class': entry.icon_class,
+        'icon_color': entry.icon_color,
+        'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
+        'time_ago': django_timesince(entry.created_at, now) + ' ago',
+    }
+    event.update(meta)
+    return event
+
+
+def _build_personal_guide_text(share_url):
+    """Build the downloadable plain-text personal guide content."""
+    lines = [
+        "ADARSH ID CARDS - PERSONAL GUIDE (CLIENT OPERATIONS)",
+        "=" * 62,
+        "",
+        "Student Data Check, Corrections ya New Add karne ke liye is panel se login kare:",
+        "https://panel.adarshbhopal.in/",
+        "",
+        "Client section me login kare:",
+        "email id: client.demo@example.com",
+        "pw: Demo@1234",
+        "(ye sirf example credentials hain; login ke baad apna password zarur change kare)",
+        "",
+        "Share Link (Admin/Superadmin clients ko bhejne ke liye):",
+        share_url,
+        "",
+        "NAYE CLIENT FEATURES (DETAIL):",
+        "1) Kisi bhi class ya section ka PDF me data download kiya ja sakta hai.",
+        "2) Search + filter se class, section, naam, ID ke hisab se records instantly mil jate hain.",
+        "3) Checkbox se bulk verify aur bulk approve dono actions ek saath kiye ja sakte hain.",
+        "4) Aap admin hain: kisi bhi class/section ko particular teacher ko checking ke liye assign kar sakte hain.",
+        "5) Teacher ke liye nayi user ID bana kar use sub-staff role diya ja sakta hai.",
+        "6) Role-based permission se har user ko sirf zaruri access diya ja sakta hai.",
+        "7) Pool List se galat approve/verified record ko Retrieve karke wapas Pending me bheja ja sakta hai.",
+        "8) Reprint workflow se genuine correction cases handle karna easy hota hai.",
+        "9) Export/download flow me final files ko standard naam se archive kar sakte hain.",
+        "10) Notifications aur activity tracking se team handover clear rehta hai.",
+        "11) Google Chrome par panel login ke baad app install option bhi available hota hai.",
+        "12) Table-level workflow se Pending -> Verified -> Approved process clean aur auditable rehta hai.",
+        "",
+        "FEATURES KO KAAM ME KAISE USE KARE:",
+        "A) Daily start: filters lagao, pending backlog nikalo, high-priority classes pe kaam karo.",
+        "B) Mid process: correction complete karke Verify karo; bulk action me checkbox use karo.",
+        "C) Final stage: Verified list se final check karke Approve karo aur export nikalo.",
+        "D) Exception stage: koi galti mile to Pool List + Retrieve se record wapas Pending me lao.",
+        "",
+        "INSTRUCTIONS (STEP BY STEP):",
+        "A) Client section me login karne ke baad Pending List me sabhi data hota hai.",
+        "   - Yahi se data correction kiya jata hai aur new data add kiya ja sakta hai.",
+        "   - Photo change/new upload: photo column me photo ke niche Edit option par click kare,",
+        "     fir Upload Photo par click karke photo upload kare.",
+        "",
+        "B) Pending List me har field me Verify button diya hota hai.",
+        "   - Data correction complete karke Verify kare.",
+        "   - Verify hone ke baad data Verified List me chala jata hai.",
+        "",
+        "C) Verified List me final review karke har record ko Approve kare.",
+        "   - Approve button se record final hota hai.",
+        "   - Bulk action ke liye checkbox se multiple records ek saath approve kar sakte hain.",
+        "",
+        "D) Important Rule:",
+        "   - Data approve hone ke baad normal flow me usme correction nahi kiya ja sakta.",
+        "",
+        "E) Pool List Workflow:",
+        "   - Agar kisi record ko dobara correction ke liye bhejna ho,",
+        "     to Pool List me record select karke Retrieve par click kare.",
+        "   - Record wapas Pending List me shift ho jayega.",
+        "",
+        "F) Daily Best Practice (Recommended):",
+        "   - Day start me Pending backlog clear kare.",
+        "   - Verify aur approve ke beech ek quick final check zarur kare.",
+        "   - Data export/download se pehle class/section filter double-check kare.",
+        "   - Team accounts alag rakhe; ek hi login ko multiple users me share na kare.",
+        "",
+        "G) Support:",
+        "   - Koi bhi doubt ho to 9301199730 par call kijiyega.",
+        "",
+        "Note: Kuch options aapke role/permissions ke hisab se dikhte hain.",
+    ]
+    return "\n".join(lines)
 
 
 # Staff Management
 @super_admin_required
 def manage_staff(request):
     """View to manage admin staff — supports HTMX partial responses."""
-    DEFAULT_PER_PAGE = 10
+    DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
     
     try:
@@ -52,7 +221,6 @@ def manage_staff(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
     
-    page_number = request.GET.get('page', 1)
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
@@ -74,8 +242,11 @@ def manage_staff(request):
     elif status_filter == 'inactive':
         staff_qs = staff_qs.filter(user__is_active=False)
     
+    # This page already uses client-side pagination/search over rendered rows.
+    # Keep server pagination as a single page with the full filtered queryset
+    # to avoid "10 of 10" mismatches when more rows exist.
     paginator = Paginator(staff_qs, per_page)
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
     
     context = {
         'active_page': 'manage_staff',
@@ -95,13 +266,113 @@ def manage_staff(request):
     return render(request, 'manage-staff.html', context)
 
 
+# Client Staff Management
+@login_required
+@require_any_admin
+def manage_client_staff(request):
+    """View to manage client staff globally  supports HTMX partial responses."""
+    user = request.user
+    can_manage_client_staff = (
+        PermissionService.is_super_admin(user)
+        or PermissionService.has(user, 'perm_idcard_client_list')
+        or PermissionService.has(user, 'perm_manage_client_staff')
+    )
+    if PermissionService.is_admin_staff(user) and not can_manage_client_staff:
+        if is_htmx(request):
+            return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
+        return redirect(reverse('admin_staff_dashboard'))
+
+    DEFAULT_PER_PAGE = 25
+    PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
+
+    try:
+        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
+        if per_page not in PER_PAGE_OPTIONS:
+            per_page = DEFAULT_PER_PAGE
+    except (ValueError, TypeError):
+        per_page = DEFAULT_PER_PAGE
+
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    client_filter = request.GET.get('client_id', '').strip()
+
+    staff_qs = (
+        Staff.objects
+        .filter(staff_type='client_staff')
+        .select_related('user', 'client')
+        .order_by('-id')
+    )
+
+    if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
+        accessible_ids = PermissionService.get_accessible_client_ids(user)
+        staff_qs = staff_qs.filter(client_id__in=accessible_ids)
+
+    client_filter_options = list(
+        Client.objects
+        .filter(id__in=staff_qs.values_list('client_id', flat=True).distinct())
+        .order_by('name')
+        .values('id', 'name')
+    )
+    valid_client_ids = {str(item['id']) for item in client_filter_options}
+
+    if search_query:
+        staff_qs = staff_qs.filter(
+            Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+            | Q(user__phone__icontains=search_query)
+            | Q(client__name__icontains=search_query)
+        )
+
+    if status_filter == 'active':
+        staff_qs = staff_qs.filter(user__is_active=True)
+    elif status_filter == 'inactive':
+        staff_qs = staff_qs.filter(user__is_active=False)
+
+    if client_filter:
+        if client_filter in valid_client_ids:
+            staff_qs = staff_qs.filter(client_id=int(client_filter))
+        else:
+            client_filter = ''
+
+    paginator = Paginator(staff_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    context = {
+        'active_page': 'manage_client_staff',
+        'user_role': get_user_role(user),
+        'staff_list': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_range': get_page_range(page_obj),
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'client_filter': client_filter,
+        'client_filter_options': client_filter_options,
+        'show_client_filter': True,
+        'can_manage_clients': can_manage_client_staff,
+    }
+
+    if is_htmx(request):
+        return render(request, 'partials/client_staff/table-container.html', context)
+
+    return render(request, 'manage-client-staff.html', context)
+
+
 # Client Management
 @login_required
 @require_any_admin
 def manage_clients(request):
     """View to manage all clients — supports HTMX partial responses."""
     user = request.user
-    DEFAULT_PER_PAGE = 10
+    can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
+    if PermissionService.is_admin_staff(user) and not can_manage_clients:
+        if is_htmx(request):
+            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
+        return redirect(reverse('admin_staff_dashboard'))
+
+    DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
     
     try:
@@ -111,13 +382,12 @@ def manage_clients(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
     
-    page_number = request.GET.get('page', 1)
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '').strip()
     
-    clients_qs = PermissionService.get_accessible_clients(
-        user, Client.objects.all().select_related('user')
-    ).order_by('-id')
+    # Manage Clients page is a full-capability surface for super_admin and
+    # admin_staff who have the Manage Client permission.
+    clients_qs = Client.objects.all().select_related('user').order_by('-id')
     
     if search_query:
         clients_qs = clients_qs.filter(
@@ -129,7 +399,7 @@ def manage_clients(request):
         clients_qs = clients_qs.filter(status=status_filter)
     
     paginator = Paginator(clients_qs, per_page)
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
     
     context = {
         'active_page': 'manage_clients',
@@ -141,6 +411,7 @@ def manage_clients(request):
         'per_page_options': PER_PAGE_OPTIONS,
         'search_query': search_query,
         'status_filter': status_filter,
+        'can_manage_clients': can_manage_clients,
     }
     
     if is_htmx(request):
@@ -155,9 +426,8 @@ def manage_clients(request):
 def active_clients(request):
     """View clients for ID card management — supports HTMX partial responses.
 
-    Defaults to showing only ACTIVE clients so inactive clients do not appear
-    in the print/reprint navigation.  Admins can pass ?status=inactive (or any
-    other status value) to access and work with clients of that status.
+    Defaults to showing ALL clients. Admins can still filter by status via
+    ?status=active / ?status=inactive / ?status=suspended.
     """
     user = request.user
     search_query = request.GET.get('search', '').strip()
@@ -172,29 +442,53 @@ def active_clients(request):
     except (ValueError, TypeError):
         per_page = DEFAULT_PER_PAGE
 
-    # Default to active clients so inactive ones don't appear in print/reprint
-    # navigation by default.  Admins can filter by any status:
-    #   ?status=inactive  → inactive clients
-    #   ?status=all       → all clients regardless of status
-    #   ?status=active or no param → active clients only
-    # Admin staff default to 'all' since they see only assigned clients and
-    # need visibility into inactive assigned clients as well.
-    if not status_filter and PermissionService.is_admin_staff(user):
+    # Default to all clients.
+    if not status_filter:
         status_filter = 'all'
 
     if status_filter == 'all':
         base_qs = Client.objects.all().select_related('user')
-    elif status_filter in ('inactive', 'suspended'):
+    elif status_filter in ('active', 'inactive', 'suspended'):
         base_qs = Client.objects.filter(status=status_filter).select_related('user')
     else:
-        status_filter = 'active'  # normalise for template awareness
-        base_qs = Client.objects.filter(status='active').select_related('user')
+        status_filter = 'all'  # normalise invalid statuses for template awareness
+        base_qs = Client.objects.all().select_related('user')
 
     clients_qs = PermissionService.get_accessible_clients(
         user, base_qs
     ).prefetch_related('id_card_groups').annotate(
-        group_count=Count('id_card_groups'),
-        table_count=Count('id_card_groups__tables', distinct=True)
+        group_count=Count('id_card_groups', distinct=True),
+        table_count=Count('id_card_groups__tables', distinct=True),
+        pending_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='pending'),
+            distinct=True,
+        ),
+        verified_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='verified'),
+            distinct=True,
+        ),
+        approved_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='approved'),
+            distinct=True,
+        ),
+        download_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='download'),
+            distinct=True,
+        ),
+        pool_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='pool'),
+            distinct=True,
+        ),
+        reprint_count=Count(
+            'id_card_groups__tables__id_cards',
+            filter=Q(id_card_groups__tables__id_cards__status='reprint'),
+            distinct=True,
+        ),
     ).order_by('-id')
     
     if search_query:
@@ -223,6 +517,182 @@ def active_clients(request):
         return render(request, 'partials/active-client/table-container.html', context)
     
     return render(request, 'active-client.html', context)
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
+def api_client_login_history(request, client_id):
+    """Return login/logout timeline for a single client for Active Clients drawer."""
+    client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+
+    if not PermissionService.can_access_client(request.user, client.id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(user=client.user, action__in=['login', 'logout'])
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    device_snapshot = _active_device_snapshot(client.user_id)
+    device_fingerprints = device_snapshot.get('fingerprints') or []
+
+    events = [_serialize_login_history_event(entry, action_display_map, now) for entry in logs_qs]
+
+    return JsonResponse({
+        'success': True,
+        'client': {
+            'id': client.id,
+            'name': client.name,
+            'status': client.status,
+        },
+        'active_devices': len(device_fingerprints),
+        'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
+        'device_fingerprints': device_fingerprints,
+        'events': events,
+    })
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
+def active_client_status_redirect(request, client_id, status):
+    """Open a client's most relevant table for the requested status."""
+    normalized_status = (status or '').strip().lower()
+    allowed_statuses = ('pending', 'verified', 'approved', 'download', 'pool', 'reprint')
+
+    client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
+
+    if not PermissionService.can_access_client(request.user, client.id):
+        return redirect('active_clients')
+
+    if normalized_status not in allowed_statuses:
+        return redirect('idcard_group', client_id=client.id)
+
+    table = (
+        IDCardTable.objects
+        .filter(group__client=client)
+        .annotate(
+            status_card_count=Count('id_cards', filter=Q(id_cards__status=normalized_status))
+        )
+        .order_by('-status_card_count', '-updated_at', '-id')
+        .first()
+    )
+
+    if not table:
+        return redirect('idcard_group', client_id=client.id)
+
+    return redirect(f"{reverse('idcard_actions', args=[table.id])}?status={normalized_status}")
+
+
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
+def api_client_staff_login_history(request, staff_id):
+    """Return login/logout timeline for a single client staff user."""
+    can_manage_client_staff = (
+        PermissionService.is_super_admin(request.user)
+        or PermissionService.has(request.user, 'perm_idcard_client_list')
+        or PermissionService.has(request.user, 'perm_manage_client_staff')
+    )
+    if PermissionService.is_admin_staff(request.user) and not can_manage_client_staff:
+        return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
+
+    staff = get_object_or_404(
+        Staff.objects.select_related('user', 'client'),
+        id=staff_id,
+        staff_type='client_staff',
+    )
+
+    if staff.client_id and not PermissionService.can_access_client(request.user, staff.client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(user=staff.user, action__in=['login', 'logout'])
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    device_snapshot = _active_device_snapshot(staff.user_id)
+    device_fingerprints = device_snapshot.get('fingerprints') or []
+
+    events = [_serialize_login_history_event(entry, action_display_map, now) for entry in logs_qs]
+
+    staff_name = staff.user.get_full_name() or staff.user.username
+    return JsonResponse({
+        'success': True,
+        'staff': {
+            'id': staff.id,
+            'name': staff_name,
+            'status': 'active' if staff.user.is_active else 'inactive',
+            'client_name': staff.client.name if staff.client_id else '',
+        },
+        'active_devices': len(device_fingerprints),
+        'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
+        'device_fingerprints': device_fingerprints,
+        'events': events,
+    })
+
+
+@super_admin_required
+@require_http_methods(['GET'])
+def api_staff_login_history(request, staff_id):
+    """Return login/logout timeline for a single admin staff (operator)."""
+    staff = get_object_or_404(
+        Staff.objects.select_related('user'),
+        id=staff_id,
+        staff_type='admin_staff',
+    )
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(user=staff.user, action__in=['login', 'logout'])
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    device_snapshot = _active_device_snapshot(staff.user_id)
+    device_fingerprints = device_snapshot.get('fingerprints') or []
+
+    events = [_serialize_login_history_event(entry, action_display_map, now) for entry in logs_qs]
+
+    staff_name = staff.user.get_full_name() or staff.user.username
+    return JsonResponse({
+        'success': True,
+        'staff': {
+            'id': staff.id,
+            'name': staff_name,
+            'status': 'active' if staff.user.is_active else 'inactive',
+        },
+        'active_devices': len(device_fingerprints),
+        'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
+        'device_fingerprints': device_fingerprints,
+        'events': events,
+    })
 
 
 # ID Card Group
@@ -289,6 +759,8 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
     search_query = request.GET.get('search', '').strip()
     class_filter = request.GET.get('class', '').strip()
     section_filter = request.GET.get('section', '').strip()
+    course_filter = request.GET.get('course', '').strip()
+    branch_filter = request.GET.get('branch', '').strip()
 
     # ── Base queryset — newest action first in each status list ──
     # Pending/Verified/Approved/Reprint are sorted by last status movement,
@@ -309,25 +781,38 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         id_cards_query = id_cards_query.filter(status=status_filter)
 
     # Enforce client_staff data partitioning by group/class/section/branch.
-    id_cards_query = _apply_client_staff_row_scope(id_cards_query, request.user, table)
+    # Pool list is intentionally unscoped for class/section/branch visibility.
+    id_cards_query = _apply_client_staff_row_scope(
+        id_cards_query,
+        request.user,
+        table,
+        status_filter=status_filter,
+    )
 
     # ── Search ──
     if search_query:
         id_cards_query = IDCardService._apply_search_filter(id_cards_query, search_query, table=table)
 
-    # ── Exact class/section filter ──
-    if class_filter or section_filter:
+    # ── Class/section/course/branch filters ──
+    if class_filter or section_filter or course_filter or branch_filter:
         from django.db.models.fields.json import KeyTextTransform
-        from core.views.idcard_api import _get_class_section_field_names
-        class_field_name, section_field_name = _get_class_section_field_names(table)
+        class_field_name, section_field_name, course_field_name, branch_field_name = (
+            _get_class_section_course_branch_field_names(table)
+        )
         if class_filter and class_field_name:
-            id_cards_query = id_cards_query.annotate(
-                _cls=KeyTextTransform(class_field_name, 'field_data')
-            ).filter(_cls__iexact=class_filter)
+            id_cards_query = _build_class_filter_q(id_cards_query, class_filter, class_field_name)
         if section_filter and section_field_name:
             id_cards_query = id_cards_query.annotate(
                 _sec=KeyTextTransform(section_field_name, 'field_data')
             ).filter(_sec__iexact=section_filter)
+        if course_filter and course_field_name:
+            id_cards_query = id_cards_query.annotate(
+                _course=KeyTextTransform(course_field_name, 'field_data')
+            ).filter(_course__iexact=course_filter)
+        if branch_filter and branch_field_name:
+            id_cards_query = id_cards_query.annotate(
+                _branch=KeyTextTransform(branch_field_name, 'field_data')
+            ).filter(_branch__iexact=branch_filter)
 
     # ── Date range (download only) ──
     from_date = request.GET.get('from', '').strip()
@@ -372,6 +857,16 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
             if st in status_counts:
                 status_counts[st] = ct
                 status_counts['total'] += ct
+
+        status_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+        status_counts['total'] = (
+            status_counts.get('pending', 0)
+            + status_counts.get('verified', 0)
+            + status_counts.get('pool', 0)
+            + status_counts.get('approved', 0)
+            + status_counts.get('download', 0)
+            + status_counts.get('reprint', 0)
+        )
 
         reprint_counts = {
             'request_list': ReprintRequest.objects.filter(
@@ -445,6 +940,8 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
         'search_query': search_query,
         'class_filter': class_filter,
         'section_filter': section_filter,
+        'course_filter': course_filter,
+        'branch_filter': branch_filter,
         'from_date': from_date,
         'to_date': to_date,
     }
@@ -457,7 +954,7 @@ def idcard_actions(request, table_id):
     """View and manage ID cards in a table, optionally filtered by status.
     
     Supports HTMX partial responses for pagination, filtering, and status tabs.
-    Query params: status, page, per_page, search, class, section
+    Query params: status, page, per_page, search, class, section, course, branch
     """
     table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
     
@@ -551,10 +1048,15 @@ def group_settings(request, client_id):
 
 # Website Management → redirect to new website admin dashboard
 @login_required
-@require_permission('perm_website_view')
 def manage_website(request):
     """Redirect legacy manage-website URL to new website admin dashboard."""
-    from django.shortcuts import redirect
+    can_access_website = (
+        PermissionService.has(request.user, 'perm_website_view')
+        or PermissionService.has(request.user, 'perm_manage_website_clients')
+        or PermissionService.has(request.user, 'perm_manage_website_portfolio')
+    )
+    if not can_access_website:
+        return redirect('/panel/')
     return redirect('/panel/website/')
 
 
@@ -578,26 +1080,84 @@ from panel.views.manage_panel_views import (  # noqa: F401
 @login_required
 def settings(request):
     """User settings/profile view - accessible by all user types"""
-    export_settings = SystemSettings.get_export_settings()
     context = {
         'active_page': 'settings',
         'user_role': get_user_role(request.user),
-        'export_settings': export_settings,
     }
     return render(request, 'settings.html', context)
 
 
+def _resolve_tutorial_scope(user):
+    """Return the tutorial content scope key for the logged-in user role."""
+    role = str(getattr(user, 'role', '') or '').strip().lower()
+    if role == 'client_staff':
+        return 'client_staff'
+    if role == 'admin_staff':
+        return 'admin_staff'
+    if role in ('super_admin', 'pro_user'):
+        return 'admin'
+    return 'client'
+
+
+def _resolve_tutorial_video_url(scope):
+    """Resolve role-specific tutorial video URL with client URL fallback."""
+    client_url = getattr(django_settings, 'CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/')
+    if scope == 'client_staff':
+        return getattr(django_settings, 'CLIENT_STAFF_TUTORIAL_VIDEO_URL', client_url)
+    if scope == 'admin_staff':
+        return getattr(django_settings, 'ADMIN_STAFF_TUTORIAL_VIDEO_URL', client_url)
+    if scope == 'admin':
+        return getattr(django_settings, 'ADMIN_TUTORIAL_VIDEO_URL', client_url)
+    return client_url
+
+
 @login_required
 def tutorial(request):
-    """Client-facing tutorial and usage guide page."""
+    """Role-aware tutorial and usage guide page."""
     tutorial_lang = str(request.GET.get('lang', 'en')).strip().lower()
     if tutorial_lang not in ('en', 'hi'):
         tutorial_lang = 'en'
+    tutorial_scope = _resolve_tutorial_scope(request.user)
 
     context = {
         'active_page': 'tutorial',
         'user_role': get_user_role(request.user),
-        'tutorial_video_url': getattr(django_settings, 'CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/'),
+        'tutorial_scope': tutorial_scope,
+        'tutorial_video_url': _resolve_tutorial_video_url(tutorial_scope),
         'tutorial_lang': tutorial_lang,
     }
     return render(request, 'tutorial.html', context)
+
+
+@login_required
+def tutorial_personal_guide(request):
+    """Formatted personal guide page for client operations and sharing."""
+    tutorial_lang = str(request.GET.get('lang', 'hi')).strip().lower()
+    if tutorial_lang not in ('en', 'hi'):
+        tutorial_lang = 'hi'
+
+    tutorial_scope = _resolve_tutorial_scope(request.user)
+    personal_guide_share_url = request.build_absolute_uri(reverse('tutorial_personal_guide'))
+
+    context = {
+        'active_page': 'tutorial',
+        'user_role': get_user_role(request.user),
+        'tutorial_scope': tutorial_scope,
+        'tutorial_lang': tutorial_lang,
+        'personal_guide_share_url': personal_guide_share_url,
+        'personal_guide_download_url': reverse('tutorial_personal_guide_download'),
+        'can_share_personal_guide': tutorial_scope == 'admin',
+    }
+    return render(request, 'tutorial-personal-guide.html', context)
+
+
+@login_required
+def tutorial_personal_guide_download(request):
+    """Download Personal Guide as plain text for admin/client sharing."""
+    personal_guide_share_url = request.build_absolute_uri(reverse('tutorial_personal_guide'))
+    response = HttpResponse(
+        _build_personal_guide_text(personal_guide_share_url),
+        content_type='text/plain; charset=utf-8',
+    )
+    response['Content-Disposition'] = 'attachment; filename="adarsh-personal-guide.txt"'
+    return response

@@ -36,6 +36,8 @@ function _moveCardsToDownloadIfApproved(cardIds) {
         if (filters.search) params.push('search=' + encodeURIComponent(filters.search));
         if (filters['class']) params.push('class=' + encodeURIComponent(filters['class']));
         if (filters.section) params.push('section=' + encodeURIComponent(filters.section));
+        if (filters.course) params.push('course=' + encodeURIComponent(filters.course));
+        if (filters.branch) params.push('branch=' + encodeURIComponent(filters.branch));
         if (params.length) idsUrl += '&' + params.join('&');
 
         fetch(idsUrl, {
@@ -90,7 +92,7 @@ function _doBulkMoveToDownload(tableId, cardIds) {
 
 /**
  * Build filter params object for download request bodies.
- * Includes search, class, and section so backend fallback respects active filters.
+ * Includes search/class/section/course/branch so backend fallback respects active filters.
  */
 function _getActiveFilters() {
     const filters = {};
@@ -98,6 +100,8 @@ function _getActiveFilters() {
     if (searchInput && searchInput.value.trim()) filters.search = searchInput.value.trim();
     if (IDCardApp.currentClassFilter) filters['class'] = IDCardApp.currentClassFilter;
     if (IDCardApp.currentSectionFilter) filters.section = IDCardApp.currentSectionFilter;
+    if (IDCardApp.currentCourseFilter) filters.course = IDCardApp.currentCourseFilter;
+    if (IDCardApp.currentBranchFilter) filters.branch = IDCardApp.currentBranchFilter;
     // DateTime range (download list)
     const fromDate = document.getElementById('fromDateFilter');
     const toDate = document.getElementById('toDateFilter');
@@ -140,16 +144,110 @@ function _getEffectiveExportCount(cardIds) {
     return (cardIds && cardIds.length > 0) ? cardIds.length : totalCards;
 }
 
+function _resolveAsyncExportKind(options, data) {
+    var fromOptions = String((options && options.exportType) || '').trim().toLowerCase();
+    if (fromOptions) return fromOptions;
+
+    var taskType = String((data && data.task_type) || '').trim().toLowerCase();
+    if (!taskType) return 'export';
+    if (taskType.indexOf('docx') !== -1 || taskType.indexOf('doc') !== -1) return 'docx';
+    if (taskType.indexOf('excel') !== -1 || taskType.indexOf('xlsx') !== -1) return 'xlsx';
+    if (taskType.indexOf('zip') !== -1) return 'zip';
+    if (taskType.indexOf('pdf') !== -1) return 'pdf';
+    return 'export';
+}
+
+function _estimateAsyncExportSeconds(exportType, cardCount) {
+    var n = Math.max(1, Number(cardCount || 0));
+    if (exportType === 'docx') return Math.max(50, Math.min(2400, 70 + (n * 0.24)));
+    if (exportType === 'xlsx') return Math.max(20, Math.min(1200, 22 + (n * 0.08)));
+    if (exportType === 'zip') return Math.max(35, Math.min(1800, 38 + (n * 0.13)));
+    if (exportType === 'pdf') return Math.max(35, Math.min(2400, 50 + (n * 0.18)));
+    return Math.max(30, Math.min(1800, 35 + (n * 0.12)));
+}
+
+function _formatEtaLabel(totalSeconds) {
+    var seconds = Math.max(0, Math.round(Number(totalSeconds || 0)));
+    var mins = Math.floor(seconds / 60);
+    var rem = seconds % 60;
+    if (mins >= 60) {
+        var hours = Math.floor(mins / 60);
+        var remMins = mins % 60;
+        return hours + 'h ' + remMins + 'm';
+    }
+    if (mins > 0) return mins + 'm ' + rem + 's';
+    return rem + 's';
+}
+
+function _consumeNextBulkUiLockFlag() {
+    window.IDCardApp = window.IDCardApp || {};
+    if (window.IDCardApp._nextBulkUiLock === true) {
+        window.IDCardApp._nextBulkUiLock = false;
+        return true;
+    }
+    return false;
+}
+
+function _setBulkUiLock(active) {
+    if (window.IDCardApp && typeof window.IDCardApp.applyBulkUiLock === 'function') {
+        window.IDCardApp.applyBulkUiLock(!!active);
+        return;
+    }
+    if (!document || !document.body) return;
+    document.body.classList.toggle('bulk-operation-active', !!active);
+}
+
 /**
  * Start a generic async export task (xlsx/docx/zip) and poll task-status.
  */
 function _downloadExportAsync(tableId, exportType, cardIds, options) {
     options = options || {};
     var _asyncCancelled = false;
+    var _activeTaskId = null;
+    var _cancelRequested = false;
+    var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
+    if (options.lockUi !== false) _bulkUiLockActive = true;
+
+    function _releaseBulkUiLock() {
+        if (!_bulkUiLockActive) return;
+        _setBulkUiLock(false);
+        _bulkUiLockActive = false;
+    }
+
+    if (_bulkUiLockActive) _setBulkUiLock(true);
+
+    var _effectiveCount = _getEffectiveExportCount(cardIds);
+    var _pollOptions = Object.assign({}, options, {
+        exportType: options.exportType || exportType,
+        cardCount: options.cardCount || _effectiveCount,
+        onFinalize: _releaseBulkUiLock
+    });
 
     var cancelFn = function () {
         _asyncCancelled = true;
-        if (typeof showToast === 'function') {
+        _releaseBulkUiLock();
+        if (_activeTaskId && !_cancelRequested) {
+            _cancelRequested = true;
+            fetch('/api/task-cancel/' + _activeTaskId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (typeof showToast === 'function') {
+                        showToast((data && data.message) || ((options.cancelLabel || 'Export') + ' cancelled'), 'info');
+                    }
+                })
+                .catch(function (err) {
+                    if (typeof showToast === 'function') {
+                        showToast((options.cancelLabel || 'Export') + ' cancel request sent', 'info');
+                    }
+                    console.error('Cancel export task failed:', err);
+                });
+        } else if (typeof showToast === 'function') {
             showToast((options.cancelLabel || 'Export') + ' cancelled', 'info');
         }
     };
@@ -161,7 +259,8 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
     var body = Object.assign({
         export_type: exportType,
         card_ids: cardIds,
-        status: _getCurrentStatus()
+        status: _getCurrentStatus(),
+        replace_active: true
     }, _getActiveFilters(), (options.extraPayload || {}));
 
     var startReq;
@@ -182,15 +281,45 @@ function _downloadExportAsync(tableId, exportType, cardIds, options) {
         .then(function (data) {
             if (!data || !data.success || !data.task_id) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
+
+                if (data && data.active_task_id) {
+                    _activeTaskId = data.active_task_id;
+                    if (typeof showToast === 'function') {
+                        showToast((data.message || 'An export is already running. Tracking existing task.'), 'info');
+                    }
+                    if (typeof showProgressToast === 'function') {
+                        showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
+                    }
+                    _pollGenericTaskStatus(data.active_task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
+                    return;
+                }
+
                 if (typeof showToast === 'function') showToast((data && data.message) || 'Failed to start export task', false);
+                _releaseBulkUiLock();
                 return;
             }
-            _pollGenericTaskStatus(data.task_id, options, function () { return _asyncCancelled; }, cancelFn);
+            _activeTaskId = data.task_id;
+            _pollGenericTaskStatus(data.task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
         })
         .catch(function (err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
-            if (typeof showToast === 'function') showToast('Failed to start export. Please try again.', false);
+
+            var errData = (err && err.data && typeof err.data === 'object') ? err.data : null;
+            var errMessage = (errData && errData.message) || (err && err.message) || 'Failed to start export. Please try again.';
+
+            if (errData && errData.active_task_id) {
+                _activeTaskId = errData.active_task_id;
+                if (typeof showToast === 'function') showToast(errMessage, 'info');
+                if (typeof showProgressToast === 'function') {
+                    showProgressToast(options.startMessage || 'Resuming export...', 5, cancelFn);
+                }
+                _pollGenericTaskStatus(errData.active_task_id, _pollOptions, function () { return _asyncCancelled; }, cancelFn);
+                return;
+            }
+
+            if (typeof showToast === 'function') showToast(errMessage, false);
             console.error('Async export start error:', err);
+            _releaseBulkUiLock();
         });
 }
 
@@ -201,10 +330,26 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
     options = options || {};
     var pollCount = 0;
     var maxPolls = options.maxPolls || 300; // up to 10 minutes at 2s interval
+    var pollStartedAt = Date.now();
+    var displayPct = 5;
+    var lastBackendPct = 0;
+    var lastBackendUpdateAt = pollStartedAt;
+    var exportKind = _resolveAsyncExportKind(options, null);
+    var estimatedTotalSec = _estimateAsyncExportSeconds(exportKind, options.cardCount || 0);
+    var finalized = false;
+
+    function finalizeOnce() {
+        if (finalized) return;
+        finalized = true;
+        if (typeof options.onFinalize === 'function') {
+            try { options.onFinalize(); } catch (e) { console.error(e); }
+        }
+    }
 
     function poll() {
         if (typeof isCancelled === 'function' && isCancelled()) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
+            finalizeOnce();
             return;
         }
 
@@ -212,6 +357,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
         if (pollCount > maxPolls) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast(options.timeoutMessage || 'Export timed out. Please try again with fewer cards.', false);
+            finalizeOnce();
             return;
         }
 
@@ -225,6 +371,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                 if (!data || !data.success) {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Export task not found', false);
+                    finalizeOnce();
                     return;
                 }
 
@@ -232,6 +379,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                     if (!data.download_url) {
                         if (typeof hideProgressToast === 'function') hideProgressToast();
                         if (typeof showToast === 'function') showToast('Export completed but download link is missing', false);
+                        finalizeOnce();
                         return;
                     }
 
@@ -254,6 +402,7 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                         if (typeof options.onComplete === 'function') {
                             try { options.onComplete(); } catch (e) { console.error(e); }
                         }
+                        finalizeOnce();
                     }, 400);
                     return;
                 }
@@ -261,15 +410,53 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
                 if (data.status === 'failed' || data.status === 'cancelled') {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast(data.error_message || options.failMessage || 'Export failed', false);
+                    finalizeOnce();
                     return;
                 }
 
-                var pct = Math.max(5, Math.min(data.progress_percentage || 0, 95));
+                exportKind = _resolveAsyncExportKind(options, data);
+
+                var backendPct = Number(data.progress_percentage || 0);
+                if (!isFinite(backendPct)) backendPct = 0;
+                backendPct = Math.max(0, Math.min(95, backendPct));
+
+                if (backendPct > lastBackendPct + 0.1) {
+                    lastBackendPct = backendPct;
+                    lastBackendUpdateAt = Date.now();
+                }
+
+                var elapsedSec = Math.max(1, (Date.now() - pollStartedAt) / 1000);
+                if (backendPct >= 8) {
+                    var observedTotal = elapsedSec / Math.max(backendPct / 100, 0.08);
+                    estimatedTotalSec = Math.max(estimatedTotalSec, observedTotal);
+                }
+
+                var timeDrivenPct = Math.min(92, (elapsedSec / Math.max(estimatedTotalSec, 1)) * 100);
+                var stalledSec = Math.max(0, (Date.now() - lastBackendUpdateAt) / 1000);
+                var stalledBoost = stalledSec > 8 ? Math.min(10, (stalledSec - 8) * 0.8) : 0;
+
+                var blendedPct = Math.max(
+                    backendPct,
+                    timeDrivenPct,
+                    Math.min(94, backendPct + stalledBoost)
+                );
+                displayPct = Math.max(displayPct, Math.min(95, blendedPct));
+
+                var baseRemaining = Math.max(0, estimatedTotalSec - elapsedSec);
+                if (displayPct >= 10) {
+                    var paceBasedTotal = elapsedSec / (displayPct / 100);
+                    baseRemaining = Math.max(baseRemaining, paceBasedTotal - elapsedSec);
+                }
+                // Show slightly conservative ETA so users have a safe wait window.
+                var bufferedEta = Math.max(5, Math.ceil((baseRemaining * 1.18) + 12));
+
                 var msg = options.processingMessage
-                    ? options.processingMessage(data)
+                    ? options.processingMessage(data, Math.round(displayPct), bufferedEta)
                     : ('Processing export... ' + (data.progress || 0) + '/' + (data.total || '?'));
+                msg = msg + ' | Est. wait: ' + _formatEtaLabel(bufferedEta);
+
                 if (typeof showProgressToast === 'function') {
-                    showProgressToast(msg, pct, cancelFn);
+                    showProgressToast(msg, Math.round(displayPct), cancelFn);
                 }
                 setTimeout(poll, _POLL_INTERVAL);
             })
@@ -312,8 +499,11 @@ function downloadImages(cardIds, renameOptions) {
             failMessage: 'Image export failed',
             cancelLabel: 'Image export',
             fallbackFilename: 'images.zip',
-            processingMessage: function (data) {
-                return data.status_display || ('Preparing image ZIP... ' + (data.progress_percentage || 0) + '%');
+            processingMessage: function (data, displayPct) {
+                var progressText = (data.total && data.total > 0)
+                    ? (data.progress || 0) + '/' + data.total
+                    : (data.progress || 0) + '/?';
+                return (data.status_display || 'Preparing image ZIP...') + ' ' + Math.round(displayPct || 0) + '% (' + progressText + ')';
             }
         });
         return;
@@ -325,6 +515,7 @@ function downloadImages(cardIds, renameOptions) {
             name: isPdfZipMode ? 'Images PDF ZIP' : 'Images ZIP',
             url: `/api/table/${tableId}/cards/download-images/`,
             body: requestBody,
+            lockUi: true,
             onComplete: function() {
                 // Image export: do NOT move cards to download list
             },
@@ -483,8 +674,11 @@ function downloadDocx(cardIds, format, templateId) {
             onComplete: function() {
                 _moveCardsToDownloadIfApproved(cardIds);
             },
-            processingMessage: function (data) {
-                return data.status_display || ('Preparing ' + format.toUpperCase() + '... ' + (data.progress_percentage || 0) + '%');
+            processingMessage: function (data, displayPct) {
+                var progressText = (data.total && data.total > 0)
+                    ? (data.progress || 0) + '/' + data.total
+                    : (data.progress || 0) + '/?';
+                return (data.status_display || ('Preparing ' + format.toUpperCase() + '...')) + ' ' + Math.round(displayPct || 0) + '% (' + progressText + ')';
             }
         });
         return;
@@ -496,6 +690,7 @@ function downloadDocx(cardIds, format, templateId) {
             name: format.toUpperCase() + ' Document',
             url: `/api/table/${tableId}/cards/download-docx/`,
             body: Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters()),
+            lockUi: true,
             fallbackExt: format,
             completeMessage: 'Document downloaded successfully!',
             onComplete: function() {
@@ -577,7 +772,9 @@ function downloadDocx(cardIds, format, templateId) {
 // Uses DownloadManager for blob-based response
 // ==========================================
 
-function downloadXlsx(cardIds) {
+function downloadXlsx(cardIds, options) {
+    options = options || {};
+    const includeImagesZip = !!options.includeImagesZip;
     const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
@@ -595,13 +792,16 @@ function downloadXlsx(cardIds) {
             cancelLabel: 'Excel export',
             fallbackFilename: 'export.xlsx',
             onComplete: function() {
-                if (_getCurrentStatus() === 'approved') {
+                if (includeImagesZip) {
                     downloadImages(cardIds);
                 }
                 _moveCardsToDownloadIfApproved(cardIds);
             },
-            processingMessage: function (data) {
-                return data.status_display || ('Preparing Excel... ' + (data.progress_percentage || 0) + '%');
+            processingMessage: function (data, displayPct) {
+                var progressText = (data.total && data.total > 0)
+                    ? (data.progress || 0) + '/' + data.total
+                    : (data.progress || 0) + '/?';
+                return (data.status_display || 'Preparing Excel...') + ' ' + Math.round(displayPct || 0) + '% (' + progressText + ')';
             }
         });
         return;
@@ -613,11 +813,11 @@ function downloadXlsx(cardIds) {
             name: 'Excel Spreadsheet',
             url: `/api/table/${tableId}/cards/download-xlsx/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters()),
+            lockUi: true,
             fallbackExt: 'xlsx',
             completeMessage: 'Excel file downloaded successfully!',
             onComplete: function() {
-                // From Approved: also trigger separate ZIP photo download, then move to Download list
-                if (_getCurrentStatus() === 'approved') {
+                if (includeImagesZip) {
                     downloadImages(cardIds);
                 }
                 _moveCardsToDownloadIfApproved(cardIds);
@@ -664,8 +864,7 @@ function downloadXlsx(cardIds) {
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Excel file downloaded successfully!');
-            // From Approved: also trigger separate ZIP photo download, then move to Download list
-            if (_getCurrentStatus() === 'approved') {
+            if (includeImagesZip) {
                 downloadImages(cardIds);
             }
             _moveCardsToDownloadIfApproved(cardIds);
@@ -749,6 +948,7 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
             name: 'PDF Document',
             url: `/api/table/${tableId}/cards/download-pdf/`,
             body: Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode, shorten_titles: shortenTitles }, _getActiveFilters()),
+            lockUi: true,
             fallbackExt: 'pdf',
             completeMessage: 'PDF file downloaded successfully!',
             onComplete: function() {
@@ -772,9 +972,20 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles) {
 function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles) {
     // Cancellation flag for the polling loop
     var _pdfAsyncCancelled = false;
+    var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
+    _bulkUiLockActive = true;
+
+    function _releaseBulkUiLock() {
+        if (!_bulkUiLockActive) return;
+        _setBulkUiLock(false);
+        _bulkUiLockActive = false;
+    }
+
+    if (_bulkUiLockActive) _setBulkUiLock(true);
 
     var cancelFn = function () {
         _pdfAsyncCancelled = true;
+        _releaseBulkUiLock();
         if (typeof showToast === 'function') showToast('PDF export cancelled', 'info');
     };
 
@@ -797,15 +1008,17 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
                 if (!data.success) {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
+                    _releaseBulkUiLock();
                     return;
                 }
                 // Start polling for completion
-                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn);
+                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, _releaseBulkUiLock);
             })
             .catch(function(err) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast('Failed to start PDF export. Please try again.', false);
                 console.error('Async PDF start error:', err);
+                _releaseBulkUiLock();
             });
     } else {
         // Fallback: use fetch
@@ -822,14 +1035,16 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
             if (!data.success) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'Failed to start PDF export', false);
+                _releaseBulkUiLock();
                 return;
             }
-            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn);
+            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, _releaseBulkUiLock);
         })
         .catch(function(err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast('Failed to start PDF export. Please try again.', false);
             console.error('Async PDF start error:', err);
+            _releaseBulkUiLock();
         });
     }
 }
@@ -842,17 +1057,27 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
  * @param {Function} isCancelled - returns true if user cancelled
  * @param {Function} cancelFn - passed to showProgressToast for cancel button
  */
-function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
+function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize) {
     var pollCount = 0;
     var maxPolls = 300; // 300 * 2s = 10 minutes max
     var _pollStartTime = Date.now();
     // Estimate processing time: ~0.3s per card for PDF, min 10s, max 300s
     var _estSeconds = Math.max(10, Math.min(300, (cardCount || 100) * 0.3));
+    var finalized = false;
+
+    function finalizeOnce() {
+        if (finalized) return;
+        finalized = true;
+        if (typeof onFinalize === 'function') {
+            try { onFinalize(); } catch (e) { console.error(e); }
+        }
+    }
 
     function poll() {
         // Check if user cancelled
         if (typeof isCancelled === 'function' && isCancelled()) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
+            finalizeOnce();
             return;
         }
 
@@ -860,6 +1085,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
         if (pollCount > maxPolls) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             if (typeof showToast === 'function') showToast('PDF generation timed out. Please try again with fewer cards.', false);
+            finalizeOnce();
             return;
         }
 
@@ -873,6 +1099,7 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
             if (!data.success) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'Export task not found', false);
+                finalizeOnce();
                 return;
             }
 
@@ -900,10 +1127,12 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn) {
                             : 'PDF file downloaded successfully!';
                         showDownloadComplete(doneMessage);
                     }
+                    finalizeOnce();
                 }, 500);
             } else if (data.state === 'failed') {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'PDF generation failed', false);
+                finalizeOnce();
             } else {
                 // Still processing  compute display progress
                 var serverPct = data.progress || 0;

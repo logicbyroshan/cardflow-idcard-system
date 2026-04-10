@@ -57,47 +57,70 @@ function initCreateWithXlsx(opts) {
     return 'text';
   }
 
+  function getByIdLatest(id) {
+    var nodes = document.querySelectorAll('[id="' + id + '"]');
+    return nodes.length ? nodes[nodes.length - 1] : null;
+  }
+
   // Elements  Step 1
-  var dropzone   = document.getElementById('cxDropzone');
-  var browse     = document.getElementById('cxBrowse');
-  var fileInput  = document.getElementById('cxFileInput');
-  var fileInfo   = document.getElementById('cxFileInfo');
-  var fileName   = document.getElementById('cxFileName');
-  var fileRemove = document.getElementById('cxFileRemove');
-  var nextBtn    = document.getElementById('cxNextBtn');
-  var tableNameInput = document.getElementById('cxTableName');
+  var dropzone   = getByIdLatest('cxDropzone');
+  var browse     = getByIdLatest('cxBrowse');
+  var fileInput  = getByIdLatest('cxFileInput');
+  var fileInfo   = getByIdLatest('cxFileInfo');
+  var fileName   = getByIdLatest('cxFileName');
+  var fileRemove = getByIdLatest('cxFileRemove');
+  var nextBtn    = getByIdLatest('cxNextBtn');
+  var tableNameInput = getByIdLatest('cxTableName');
 
   // Elements  Step 2 (Field Preview)
-  var fieldsBody     = document.getElementById('cxFieldsBody');
-  var dataRowsCount  = document.getElementById('cxDataRowsCount');
-  var backToStep1Btn = document.getElementById('cxBackToStep1');
-  var nextToStep3Btn = document.getElementById('cxNextToStep3');
+  var fieldsBody     = getByIdLatest('cxFieldsBody');
+  var dataRowsCount  = getByIdLatest('cxDataRowsCount');
+  var backToStep1Btn = getByIdLatest('cxBackToStep1');
+  var nextToStep3Btn = getByIdLatest('cxNextToStep3');
 
   // Elements  Step 3 (ZIP)
-  var zipDropzone = document.getElementById('cxZipDropzone');
-  var zipBrowse   = document.getElementById('cxZipBrowse');
-  var zipInput    = document.getElementById('cxZipInput');
-  var zipList     = document.getElementById('cxZipList');
-  var backBtn     = document.getElementById('cxBackBtn');
-  var skipBtn     = document.getElementById('cxSkipBtn');
-  var uploadBtn   = document.getElementById('cxUploadBtn');
+  var zipDropzone = getByIdLatest('cxZipDropzone');
+  var zipBrowse   = getByIdLatest('cxZipBrowse');
+  var zipInput    = getByIdLatest('cxZipInput');
+  var zipList     = getByIdLatest('cxZipList');
+  var backBtn     = getByIdLatest('cxBackBtn');
+  var skipBtn     = getByIdLatest('cxSkipBtn');
+  var uploadBtn   = getByIdLatest('cxUploadBtn');
 
   // Step indicators (3-step)
-  var step1Dot       = document.getElementById('cxStep1Dot');
-  var step2Dot       = document.getElementById('cxStep2Dot');
-  var step3Dot       = document.getElementById('cxStep3Dot');
-  var stepLineFill1  = document.getElementById('cxStepLineFill1');
-  var stepLineFill2  = document.getElementById('cxStepLineFill2');
+  var step1Dot       = getByIdLatest('cxStep1Dot');
+  var step2Dot       = getByIdLatest('cxStep2Dot');
+  var step3Dot       = getByIdLatest('cxStep3Dot');
+  var stepLineFill1  = getByIdLatest('cxStepLineFill1');
+  var stepLineFill2  = getByIdLatest('cxStepLineFill2');
 
   // Progress
-  var progress     = document.getElementById('cxProgress');
-  var progressText = document.getElementById('cxProgressText');
+  var progress     = getByIdLatest('cxProgress');
+  var progressText = getByIdLatest('cxProgressText');
 
-  var step1El = document.getElementById('cxStep1');
-  var step2El = document.getElementById('cxStep2');
-  var step3El = document.getElementById('cxStep3');
+  var step1El = getByIdLatest('cxStep1');
+  var step2El = getByIdLatest('cxStep2');
+  var step3El = getByIdLatest('cxStep3');
+
+  function bindTriggerButtons() {
+    document.querySelectorAll('[id="createFromXlsxBtn"]').forEach(function(btn) {
+      if (btn.dataset.cxTriggerBound === '1') return;
+      btn.dataset.cxTriggerBound = '1';
+      btn.addEventListener('click', function() {
+        if (typeof window.__cxResetModal === 'function') {
+          window.__cxResetModal();
+        }
+        if (window.alpineOpenModal) window.alpineOpenModal('createXlsx');
+      });
+    });
+  }
 
   if (!dropzone || !fileInput) return;
+  if (dropzone.dataset.cxInitBound === '1') {
+    bindTriggerButtons();
+    return;
+  }
+  dropzone.dataset.cxInitBound = '1';
 
   var selectedFile = null;
   var zipFiles = [];
@@ -134,6 +157,7 @@ function initCreateWithXlsx(opts) {
     if (tableNameInput) tableNameInput.value = '';
     showStep(1);
   }
+  window.__cxResetModal = resetModal;
 
   function setFile(file) {
     if (!file) return;
@@ -320,9 +344,9 @@ function initCreateWithXlsx(opts) {
     progress.style.display = '';
     progressText.textContent = 'Preparing upload';
 
-    var progressBar = document.getElementById('cxProgressBar');
-    var progressPct = document.getElementById('cxProgressPct');
-    var progressIcon = document.getElementById('cxProgressIcon');
+    var progressBar = getByIdLatest('cxProgressBar');
+    var progressPct = getByIdLatest('cxProgressPct');
+    var progressIcon = getByIdLatest('cxProgressIcon');
 
     if (progressBar) progressBar.style.width = '0%';
     if (progressPct) progressPct.textContent = '';
@@ -505,11 +529,58 @@ function initCreateWithXlsx(opts) {
   uploadBtn.addEventListener('click', function() { doUpload(); });
 
   //  Button trigger 
-  var btn = document.getElementById('createFromXlsxBtn');
-  if (btn) {
-    btn.addEventListener('click', function() {
-      resetModal();
-      if (window.alpineOpenModal) window.alpineOpenModal('createXlsx');
+  bindTriggerButtons();
+}
+
+(function bootstrapCreateWithXlsx() {
+  function safeParseJson(el) {
+    if (!el) return {};
+    try {
+      return JSON.parse(el.textContent || '{}');
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function resolveApiConfig() {
+    var cfg = safeParseJson(document.getElementById('page-config'));
+    var isClientRole = !!(cfg.isClientRole || cfg.isClient || cfg.isClientStaff);
+    var groupId = cfg.groupId;
+    var apiUrl = isClientRole
+      ? '/client/api/create-from-xlsx/'
+      : (groupId ? ('/api/group/' + groupId + '/table/create-from-xlsx/') : null);
+    var csrf = cfg.csrfToken
+      || (window.getCSRFToken ? window.getCSRFToken() : '')
+      || (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '');
+    return { apiUrl: apiUrl, csrfToken: csrf };
+  }
+
+  function defaultRefreshBridge() {
+    if (window.IDCardGroup && typeof window.IDCardGroup.refreshTable === 'function') {
+      window.IDCardGroup.refreshTable();
+    }
+    if (typeof htmx !== 'undefined') {
+      htmx.trigger(document.body, 'refreshTable');
+    }
+  }
+
+  function maybeInit() {
+    if (!document.querySelector('[id="cxDropzone"]')) return;
+    if (!document.querySelector('[id="createFromXlsxBtn"]')) return;
+    var cfg = resolveApiConfig();
+    if (!cfg.apiUrl) return;
+    initCreateWithXlsx({
+      apiUrl: cfg.apiUrl,
+      csrfToken: cfg.csrfToken || '',
+      onSuccess: defaultRefreshBridge,
     });
   }
-}
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', maybeInit);
+  } else {
+    maybeInit();
+  }
+
+  document.body.addEventListener('htmx:afterSwap', maybeInit);
+})();

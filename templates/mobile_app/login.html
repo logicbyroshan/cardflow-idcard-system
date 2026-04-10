@@ -11,7 +11,10 @@
     <title>Sign In - Adarsh ID Cards</title>
 
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
     <link rel="manifest" href="/app/manifest.json">
     <link rel="apple-touch-icon" href="{% static 'mobile/images/icon-192.png' %}">
 
@@ -243,7 +246,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCsrf(),
                 },
-                body: JSON.stringify({ email: email, password: password, role: null }),
+                body: JSON.stringify({ email: email, password: password }),
             });
 
             var data = await resp.json();

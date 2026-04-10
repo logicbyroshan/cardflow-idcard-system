@@ -6,9 +6,13 @@ from .base import (
     super_admin_required,
     adarsh_cropper,
     login_as_user_page,
+    pro_user_activity_logs_page,
+    pro_user_activity_logs_detail_page,
     dashboard,
     api_global_search,
+    api_dashboard_card_stats,
     api_recent_client_updates,
+    api_dashboard_team_overview,
     api_print_reprint_overview,
     api_recent_activity,
     api_health,
@@ -17,8 +21,13 @@ from .base import (
     api_debug_image_integrity,
     api_card_allowed_transitions,
     manage_staff,
+    manage_client_staff,
     manage_clients,
     active_clients,
+    active_client_status_redirect,
+    api_staff_login_history,
+    api_client_login_history,
+    api_client_staff_login_history,
     idcard_group,
     idcard_actions,
     group_settings,
@@ -30,6 +39,8 @@ from .base import (
     api_email_compose_defaults,
     settings,
     tutorial,
+    tutorial_personal_guide,
+    tutorial_personal_guide_download,
     api_export_settings_get,
     api_export_settings_update,
     api_export_templates_list,
@@ -57,6 +68,9 @@ from .auth import (
     api_impersonate_start,
     api_impersonate_stop,
     api_impersonate_users,
+    api_user_audit_users,
+    api_user_audit_history,
+    api_user_audit_actions,
 )
 
 from .client_api import (
@@ -69,6 +83,18 @@ from .client_api import (
     api_client_staff_toggle_status,
     api_client_staff_permissions,
     api_client_set_temp_password,
+    api_client_messages,
+    api_client_message_send,
+    api_client_message_targets,
+    api_client_messages_group_send,
+    api_client_message_delete,
+    api_admin_client_staff_clients,
+    api_admin_client_staff_get,
+    api_admin_client_staff_create,
+    api_admin_client_staff_update,
+    api_admin_client_staff_delete,
+    api_admin_client_staff_toggle_status,
+    api_admin_client_staff_set_temp_password,
 )
 
 from .staff_api import (
@@ -95,6 +121,7 @@ from .idcard_api import (
     api_idcard_cards_json,
     api_idcard_create,
     api_idcard_get,
+    api_idcard_history,
     api_idcard_update,
     api_idcard_update_field,
     api_idcard_delete,
@@ -118,6 +145,7 @@ from .settings_api import (
     api_get_profile,
     api_update_profile,
     api_change_password,
+    api_update_security_settings,
     api_upload_profile_image,
     api_remove_profile_image,
 )
@@ -137,7 +165,9 @@ from .task_api import (
 
 from .monitoring_api import (
     api_client_errors,
+    api_clear_activity_logs,
     api_monitoring_data,
+    api_operations_feed,
     api_server_info_snapshot,
 )
 
@@ -187,6 +217,7 @@ from .notification_api import (
     api_notifications_unread_count,
     api_notification_mark_read,
     api_notifications_mark_all_read,
+    api_client_message_strip,
     api_panel_notifications_list,
     api_panel_notification_create,
     api_panel_notification_delete,

@@ -13,7 +13,9 @@
             <i class="fa-solid fa-arrow-rotate-left"></i>
             <span class="btn-text">Retrieve</span>
         </button>
+        {% if perm_idcard_bulk_download %}
         <div class="action-divider"></div>
+        {% if not is_client and not is_client_staff %}
         <button class="btn action-btn btn-purple" id="finalizedDownloadImgBtn" disabled title="Download images as ZIP">
             <i class="fa-solid fa-images"></i>
             <span class="btn-text">Download Images</span>
@@ -26,10 +28,12 @@
             <i class="fa-solid fa-file-excel"></i>
             <span class="btn-text">Download Excel</span>
         </button>
+        {% endif %}
         <button class="btn action-btn btn-purple" id="finalizedDownloadPdfBtn" disabled title="Download as PDF">
             <i class="fa-solid fa-file-pdf"></i>
             <span class="btn-text">Download PDF</span>
         </button>
+        {% endif %}
     </div>
     <div class="action-nav-group">
         <a class="btn action-btn btn-blue print-approved-tab" id="finalizedGoToApprovedListBtn" href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=approved" title="Open Approved List">

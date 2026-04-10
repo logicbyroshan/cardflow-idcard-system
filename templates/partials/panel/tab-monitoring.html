@@ -1,5 +1,5 @@
 <!-- === MONITORING TAB === -->
-<div class="panel-tab-content" id="tab-monitoring">
+<div class="panel-tab-content monitor-panel-theme" id="tab-monitoring">
 
   <style>
     @keyframes monitoring-skeleton-shimmer {
@@ -29,6 +29,7 @@
   <!-- Header bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
+      <span class="monitor-panel-kicker"><i class="fa-solid fa-wave-square"></i> Ops Pulse</span>
       <span class="panel-title">
         <i class="fa-solid fa-chart-line"></i>
         Background Task Monitor
@@ -40,6 +41,11 @@
         <i class="fa-solid fa-arrows-rotate"></i> Refresh
       </button>
     </div>
+  </div>
+
+  <div class="panel-section-strip panel-section-strip-monitor">
+    <span class="panel-section-strip-title"><i class="fa-solid fa-heart-pulse"></i> Queue Health Snapshot</span>
+    <span class="panel-section-strip-sub">Live status of background processing and failure trends.</span>
   </div>
 
   <!-- Stats cards -->
@@ -76,6 +82,11 @@
       <div class="system-card-header"><i class="fa-solid fa-database"></i> Active Backup Tasks</div>
       <div class="system-card-body" id="monitoringBackupBody" style="padding:6px 0;"></div>
     </div>
+  </div>
+
+  <div class="panel-section-strip panel-section-strip-monitor panel-section-strip-monitor-compact">
+    <span class="panel-section-strip-title"><i class="fa-solid fa-list-check"></i> Recent Execution Timeline</span>
+    <span class="panel-section-strip-sub">Latest task outcomes and runtime progress at a glance.</span>
   </div>
 
   <!-- Recent Background Tasks table -->

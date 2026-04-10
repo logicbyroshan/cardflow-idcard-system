@@ -67,19 +67,13 @@
     color: var(--text-secondary, #a0aec0);
   }
   
-  .filter-group select,
   .filter-group input {
     padding: 8px 12px;
-    background: var(--card-bg, #1e2030);
-    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
-    border-radius: 6px;
-    color: var(--text-primary, #f8fafc);
     font-size: 13px;
     min-width: 140px;
     min-height: 36px;
   }
   
-  .filter-group select:focus,
   .filter-group input:focus {
     outline: none;
     border-color: #48bb78;

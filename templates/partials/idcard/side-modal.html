@@ -1,8 +1,8 @@
 {% load static %}
 {% load custom_filters %}
 <!-- Side Modal for Add/Edit/View - Alpine.js powered -->
-<div x-data="sideModalState()" 
-x-init="initGlobalBindings()"
+<div x-data="sideModalState" 
+x-init="initGlobalBindings"
 x-cloak
 @keydown.escape.window="if(isOpen) closeModal()"
 class="side-modal-overlay" 
@@ -23,7 +23,7 @@ id="sideModalOverlay"
         <i class="fa-solid fa-plus"></i>
         <span>Add New Card</span>
       </h3>
-      <button class="side-modal-close" id="closeSideModal" title="Close" aria-label="Close" @click="closeModal()">
+      <button class="side-modal-close" id="closeSideModal" title="Close" aria-label="Close" @click="closeModal">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
@@ -163,7 +163,7 @@ id="sideModalOverlay"
     </div>
     
     <div class="side-modal-footer">
-      <button class="btn btn-md btn-neutral" id="cancelSideModal" @click="closeModal()" type="button">
+      <button class="btn btn-md btn-neutral" id="cancelSideModal" @click="closeModal" type="button">
         <i class="fa-solid fa-xmark"></i> Cancel
       </button>
       <button class="btn btn-md btn-primary" id="saveSideModal" type="button">

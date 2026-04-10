@@ -3,7 +3,7 @@ ID Card API — shared helpers, scoping, and field utilities.
 
 Contains:
 - Error helpers: _safe_error
-- Query helpers: _build_class_filter_q, _get_class_section_field_names
+- Query helpers: _build_class_filter_q, _get_class_section_field_names, _get_class_section_course_branch_field_names
 - Scoping helpers: _access_denied_response, _check_client_scope_by_group/table/card
 - Client readonly helpers: _CLIENT_READONLY_STATUSES, _client_readonly_response, _is_client_readonly
 - Field utility re-exports from core.utils.field_utils
@@ -224,6 +224,18 @@ def invalidate_class_variant_cache(table_id):
 def invalidate_filter_options_cache(table_id):
     """Invalidate class/section filter-options cache for a table."""
     try:
+        version_key = f'filter_options_version:{table_id}'
+        try:
+            django_cache.incr(version_key)
+        except Exception:
+            current = django_cache.get(version_key, 1)
+            try:
+                current = int(current)
+            except Exception:
+                current = 1
+            django_cache.set(version_key, current + 1, None)
+
+        # Best-effort cleanup for any non-versioned key readers.
         django_cache.delete(f'filter_options:{table_id}')
     except Exception:
         pass  # Best effort
@@ -286,10 +298,25 @@ def _get_class_section_field_names(table):
     Matches by type OR by name (mirrors IDCardTable.has_class_field / has_section_field).
     Returns (class_field_name, section_field_name) — either may be None.
     """
+    class_field, section_field, _course_field, _branch_field = _get_class_section_course_branch_field_names(table)
+    return class_field, section_field
+
+
+def _get_class_section_course_branch_field_names(table):
+    """Extract class, section, course, and branch field names from table fields.
+
+    Matching is based on explicit field types when present, otherwise tokenized
+    field-name variants commonly used in school/college datasets.
+    """
     class_field = None
     section_field = None
+    course_field = None
+    branch_field = None
+
     class_tokens = {'class', 'std', 'standard', 'grade'}
     section_tokens = {'section', 'sec', 'div', 'division'}
+    course_tokens = {'course', 'program', 'programme'}
+    branch_tokens = {'branch', 'stream', 'dept', 'department'}
 
     for field in (table.fields or []):
         ftype = str(field.get('type', '') or '').strip().lower()
@@ -302,7 +329,16 @@ def _get_class_section_field_names(table):
 
         if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
             section_field = fname
-    return class_field, section_field
+            continue
+
+        if not course_field and (ftype == 'course' or bool(tokens & course_tokens)):
+            course_field = fname
+            continue
+
+        if not branch_field and (ftype == 'branch' or bool(tokens & branch_tokens)):
+            branch_field = fname
+
+    return class_field, section_field, course_field, branch_field
 
 
 def _get_class_section_branch_field_names(table):
@@ -311,44 +347,24 @@ def _get_class_section_branch_field_names(table):
     Branch-like fields are matched by type='branch' OR common field-name
     variants used by college datasets (branch/stream/course).
     """
-    class_field = None
-    section_field = None
-    branch_field = None
+    class_field, section_field, course_field, branch_field = _get_class_section_course_branch_field_names(table)
 
-    class_tokens = {'class', 'std', 'standard', 'grade'}
-    section_tokens = {'section', 'sec', 'div', 'division'}
-    branch_tokens = {'branch', 'stream', 'course'}
-
-    for field in (table.fields or []):
-        ftype = str(field.get('type', '') or '').strip().lower()
-        fname = str(field.get('name', '') or '').strip()
-        tokens = _normalized_field_tokens(fname)
-
-        if not class_field and (ftype == 'class' or bool(tokens & class_tokens)):
-            class_field = fname
-            continue
-
-        if not section_field and (ftype == 'section' or bool(tokens & section_tokens)):
-            section_field = fname
-            continue
-
-        if branch_field:
-            continue
-
-        if ftype == 'branch' or bool(tokens & branch_tokens):
-            branch_field = fname
-            continue
+    # Backward compatibility: legacy branch scope may target course-like fields.
+    if not branch_field:
+        branch_field = course_field
 
     return class_field, section_field, branch_field
 
 
-def _apply_client_staff_row_scope(qs, user, table):
+def _apply_client_staff_row_scope(qs, user, table, status_filter=None):
     """Apply client_staff-specific row-level scope to an IDCard queryset.
 
     Scope rules:
     - assigned_groups restrict table/group visibility (empty = all groups)
     - allowed_classes/allowed_sections/allowed_branches restrict rows when the
       corresponding field exists in the table
+        - when status_filter='pool', row-level class/section/branch scope is
+            intentionally bypassed so pool visibility is shared across client_staff.
     """
     if not PermissionService.is_client_staff(user):
         return qs
@@ -359,6 +375,9 @@ def _apply_client_staff_row_scope(qs, user, table):
 
     if not _table_is_assigned_to_staff(staff, table):
         return qs.none()
+
+    if str(status_filter or '').strip().lower() == 'pool':
+        return qs
 
     allowed_classes, allowed_sections, allowed_branches = _table_scope_filters_for_staff(staff, table)
 
@@ -374,8 +393,27 @@ def _apply_client_staff_row_scope(qs, user, table):
     if allowed_classes:
         if not class_field:
             return qs.none()
+        from core.utils.field_utils import normalize_class_value
+
         qs = qs.annotate(_scope_cls=Cast(KeyTextTransform(class_field, 'field_data'), CharField()))
-        qs = qs.filter(_scope_cls__in=allowed_classes)
+        normalized_allowed = {
+            normalize_class_value(value)
+            for value in allowed_classes
+            if normalize_class_value(value)
+        }
+        if not normalized_allowed:
+            return qs.none()
+
+        raw_values = list(
+            qs.exclude(_scope_cls__isnull=True)
+            .exclude(_scope_cls='')
+            .values_list('_scope_cls', flat=True)
+            .distinct()
+        )
+        matching_raw = [raw for raw in raw_values if normalize_class_value(raw) in normalized_allowed]
+        if not matching_raw:
+            return qs.none()
+        qs = qs.filter(_scope_cls__in=matching_raw)
 
     if allowed_sections:
         if not section_field:
@@ -386,8 +424,31 @@ def _apply_client_staff_row_scope(qs, user, table):
     if allowed_branches:
         if not branch_field:
             return qs.none()
+        from core.utils.field_utils import normalize_compact_text_value
+
         qs = qs.annotate(_scope_branch=Cast(KeyTextTransform(branch_field, 'field_data'), CharField()))
-        qs = qs.filter(_scope_branch__in=allowed_branches)
+        normalized_allowed = {
+            normalize_compact_text_value(value)
+            for value in allowed_branches
+            if normalize_compact_text_value(value)
+        }
+        if not normalized_allowed:
+            return qs.none()
+
+        raw_values = list(
+            qs.exclude(_scope_branch__isnull=True)
+            .exclude(_scope_branch='')
+            .values_list('_scope_branch', flat=True)
+            .distinct()
+        )
+        matching_raw = [
+            raw for raw in raw_values
+            if normalize_compact_text_value(raw) in normalized_allowed
+        ]
+        if not matching_raw:
+            return qs.none()
+
+        qs = qs.filter(_scope_branch__in=matching_raw)
 
     return qs
 
@@ -467,6 +528,7 @@ def _check_client_scope_by_card(user, card_id):
 # can only VIEW — no edit, delete, status change, or image reupload.
 
 _CLIENT_READONLY_STATUSES = frozenset({'approved', 'download', 'reprint'})
+_CLIENT_EDIT_LOCK_STATUSES = frozenset({'approved', 'download', 'reprint'})
 
 def _client_readonly_response():
     """Fresh 403 response for each request."""
@@ -478,6 +540,19 @@ def _client_readonly_response():
 def _is_client_readonly(user, card_status):
     """Return True when client/client_staff tries to modify a card in a locked status."""
     return user.role in ('client', 'client_staff') and card_status in _CLIENT_READONLY_STATUSES
+
+
+def _client_edit_locked_response():
+    """Fresh 403 response for readonly edit operations."""
+    return JsonResponse(
+        {'success': False, 'message': 'Cards in approved / download / reprint status cannot be edited by client users.'},
+        status=403,
+    )
+
+
+def _is_client_edit_locked(user, card_status):
+    """Return True when client/client_staff tries to edit a card in an edit-locked status."""
+    return user.role in ('client', 'client_staff') and card_status in _CLIENT_EDIT_LOCK_STATUSES
 
 
 # ==================== FIELD HELPERS (canonical: core.utils.field_utils) ====================

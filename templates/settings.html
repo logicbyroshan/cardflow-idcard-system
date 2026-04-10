@@ -13,12 +13,10 @@
   <!-- Page-specific: settings panels -->
   <link rel="stylesheet" href="{% static 'css/settings.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <!-- Alpine.js State Module (MUST load before Alpine) -->
-  <script defer src="{% static 'js/alpine-state.js' %}"></script>
-  <!-- Alpine.js -->
-  <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+  <!-- Shared Alpine runtime loader -->
+  {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
 
   {% include 'partials/sidebar.html' %}
 
@@ -28,8 +26,8 @@
     <!-- Top Navbar -->
     <header class="topbar">
       <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
-          <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
+        <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars" :class="sidebarToggleIconClass"></i>
         </button>
         <div class="breadcrumb">
             {% if is_super_admin %}
@@ -63,7 +61,11 @@
           <div class="profile-avatar-section">
             <div class="profile-avatar-wrapper">
               <div class="profile-avatar" id="profileAvatar">
+                {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
+                <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" style="width:100%;height:100%;object-fit:contain;background:#fff;">
+                {% else %}
                 {% include 'partials/components/user-avatar.html' with role=user.role size='large' %}
+                {% endif %}
               </div>
               <!-- Avatar upload removed - using role-based placeholders -->
             </div>
@@ -232,109 +234,17 @@
                 <h4>Session Timeout</h4>
                 <p>Automatically logout after inactivity</p>
               </div>
-              <select class="session-select" id="sessionTimeout">
+              <select class="form-select session-select" id="sessionTimeout">
                 <option value="15">15 minutes</option>
-                <option value="30" selected>30 minutes</option>
+                <option value="30">30 minutes</option>
                 <option value="60">1 hour</option>
                 <option value="120">2 hours</option>
+                <option value="10080" selected>7 days (default)</option>
                 <option value="0">Never</option>
               </select>
             </div>
           </div>
         </div>
-
-        {% if user_role == 'pro_user' or user_role == 'super_admin' or user_role == 'admin_staff' %}
-        <!-- Export Document Settings -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon export">
-              <i class="fa-solid fa-file-export"></i>
-            </div>
-            <div class="section-title">
-              <h3>Export Document Settings</h3>
-              <p>Customize the footer messages that appear on Word and PDF exports</p>
-            </div>
-          </div>
-          <div class="section-body">
-            <form id="exportSettingsForm">
-              <div class="form-group">
-                <label for="exportNoteLine">Note Line</label>
-                <p class="form-hint">Appears as the first line in the document footer (e.g. disclaimer or instruction)</p>
-                <textarea id="exportNoteLine" rows="2">{{ export_settings.export_note_line }}</textarea>
-              </div>
-              <div class="form-group">
-                <label for="exportCopyrightLine">Copyright / Branding Line</label>
-                <p class="form-hint">Appears alongside the timestamp in the second footer line</p>
-                <textarea id="exportCopyrightLine" rows="2">{{ export_settings.export_copyright_line }}</textarea>
-              </div>
-              <div class="form-actions settings-export-actions">
-                <button type="submit" class="btn btn-save" id="saveExportSettingsBtn">
-                  <i class="fa-solid fa-save"></i> Save Export Settings
-                </button>
-                <span id="exportSettingsStatus" class="settings-export-status"></span>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Export Templates Management -->
-        <div class="settings-section">
-          <div class="section-header">
-            <div class="section-icon purple">
-              <i class="fa-solid fa-scroll"></i>
-            </div>
-            <div class="section-title">
-              <h3>Export Templates</h3>
-              <p>Create templates with custom footer instructions for PDF &amp; Word downloads</p>
-            </div>
-          </div>
-          <div class="section-body">
-            <!-- Template List -->
-            <div id="exportTemplateList" class="settings-template-list">
-              <div class="settings-template-skeleton" aria-hidden="true">
-                {% for _ in "123" %}
-                <div class="settings-template-skeleton-row">
-                  <div class="settings-template-skeleton-main">
-                    <div class="settings-template-skeleton-block settings-template-skeleton-title"></div>
-                    <div class="settings-template-skeleton-block settings-template-skeleton-line"></div>
-                    <div class="settings-template-skeleton-block settings-template-skeleton-line settings-template-skeleton-line-short"></div>
-                  </div>
-                  <div class="settings-template-skeleton-actions">
-                    <div class="settings-template-skeleton-block settings-template-skeleton-btn"></div>
-                    <div class="settings-template-skeleton-block settings-template-skeleton-btn"></div>
-                  </div>
-                </div>
-                {% endfor %}
-              </div>
-            </div>
-
-            <!-- Add New Template Form -->
-            <div class="settings-template-create-box">
-              <h4 class="settings-template-create-title">
-                <i class="fa-solid fa-plus settings-template-create-title-icon"></i>Add New Template
-              </h4>
-              <form id="addExportTemplateForm">
-                <div class="form-group">
-                  <label for="newTplName">Template Name</label>
-                  <input type="text" id="newTplName" maxlength="100" placeholder="e.g. School Template">
-                </div>
-                <div class="form-group">
-                  <label for="newTplInstructions">Footer Instructions</label>
-                  <textarea id="newTplInstructions" rows="3" placeholder="Instructions that will appear at the bottom of the exported document..."></textarea>
-                </div>
-                <div class="form-actions settings-template-add-actions">
-                  <label class="settings-template-default-label">
-                    <input type="checkbox" id="newTplDefault"> Set as default
-                  </label>
-                  <button type="submit" class="btn btn-save settings-template-submit-btn">
-                    <i class="fa-solid fa-plus"></i> Add Template
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-        {% endif %}
 
       </div>
     </div>

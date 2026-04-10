@@ -3,6 +3,84 @@
 
 {% block title %}Manage Clients - Adarsh ID Cards{% endblock %}
 
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/card-history-drawer.css' %}">
+  <style>
+    .client-history-trigger {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 2px;
+      color: #2563eb;
+      background: rgba(37, 99, 235, 0.12);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.16s ease;
+    }
+
+    .client-history-trigger:hover {
+      background: rgba(37, 99, 235, 0.2);
+      color: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    .client-history-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .client-history-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 2px;
+      padding: 3px 9px;
+      font-size: 10.5px;
+      font-weight: 500;
+      line-height: 1.2;
+      border: 1px solid #dbe2ea;
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .client-history-chip i {
+      width: 15px;
+      height: 15px;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
+    }
+
+    .client-history-chip--action {
+      color: #1e40af;
+      background: #eaf1ff;
+      border-color: #bfd5ff;
+    }
+
+    .client-history-chip--action i {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .client-history-chip--meta {
+      color: #334155;
+      background: #f8fafc;
+      border-color: #dbe2ea;
+    }
+
+    .client-history-chip--meta i {
+      background: #e2e8f0;
+      color: #475569;
+    }
+  </style>
+{% endblock %}
+
 {% block breadcrumb %}
   {% if is_super_admin %}
   <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
@@ -18,6 +96,7 @@
     {% include 'partials/client/action-bar.html' %}
 
     <div id="client-table-container"
+          data-table-skeleton="true"
          hx-trigger="refreshTable from:body"
          hx-get="{% url 'manage_clients' %}"
          hx-target="#client-table-container"
@@ -26,27 +105,38 @@
         <table class="data-table" id="clientsTable">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Mobile</th>
-              <th scope="col">Status</th>
-              <th scope="col">Created At</th>
-              <th scope="col">Updated At</th>
+              <th scope="col" class="text-left">Name</th>
+              <th scope="col" class="text-left">Email</th>
+              <th scope="col" class="text-center">Mobile</th>
+              <th scope="col" class="text-center">Status</th>
+              <th scope="col" class="text-center">Created At</th>
+              <th scope="col" class="text-center">Updated At</th>
+              <th scope="col" class="text-center" title="Client login history"><i class="fa-solid fa-circle-info"></i></th>
             </tr>
           </thead>
           <tbody id="client-table-body">
             {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
-              <td>{{ client.name }}</td>
-              <td>{{ client.user.email }}</td>
-              <td>{{ client.user.phone|default:"-" }}</td>
-              <td><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
-              <td>{{ client.created_at|date:"d-m-Y H:i" }}</td>
-              <td>{{ client.updated_at|date:"d-m-Y H:i" }}</td>
+            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}">
+              <td class="text-left">{{ client.name }}</td>
+              <td class="text-left">{{ client.user.email }}</td>
+              <td class="text-center">{{ client.user.phone|default:"-" }}</td>
+              <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
+              <td class="text-center">{{ client.created_at|date:"d-m-Y H:i" }}</td>
+              <td class="text-center">{{ client.updated_at|date:"d-m-Y H:i" }}</td>
+              <td class="text-center">
+                <button type="button"
+                        class="client-history-trigger"
+                        data-client-id="{{ client.id }}"
+                        data-client-name="{{ client.name|escape }}"
+                        title="View client login history"
+                        aria-label="View client login history">
+                  <i class="fa-solid fa-circle-info"></i>
+                </button>
+              </td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="6">
+              <td colspan="7">
                 {% include 'components/empty-state.html' with id="client-empty" icon="fa-building-slash" title="No Clients Found" message="No clients match your current filters. Try adjusting your search." hidden=False %}
               </td>
             </tr>
@@ -55,7 +145,7 @@
         </table>
       </div>
 
-      {% include 'components/pagination.html' %}
+      {% include 'components/pagination.html' with default_rows=per_page %}
     </div>
   </div>
 {% endblock %}
@@ -67,14 +157,19 @@
   {% include 'partials/client/status-modal.html' %}
   {% include 'partials/staff/temp-password-modal.html' %}
   {% include 'partials/client/staff-drawer.html' %}
+  {% include 'partials/client/group-message-drawer.html' %}
 {% endblock %}
 
 {% block page_vars %}
-  <script>window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');</script>
+  <script>
+    window.isSuperAdmin = JSON.parse('{{ is_super_admin|yesno:"true,false" }}');
+    window.canManageClients = JSON.parse('{{ can_manage_clients|yesno:"true,false" }}');
+  </script>
 {% endblock %}
 
 {% block page_js %}
   <script defer src="{% static 'dist/js/manage-client.min.js' %}"></script>
+  <script defer src="{% static 'js/manage-client-login-history.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // Fallback: ensure custom client-password eye toggle is always visible and functional.

@@ -21,6 +21,7 @@ urlpatterns = [
     # ==========================================================================
     # API — Website Status
     # ==========================================================================
+    path('api/status/summary/', admin_views.api_website_status_summary, name='api_status_summary'),
     path('api/status/toggle/', admin_views.api_toggle_website_status, name='api_status_toggle'),
     path('api/status/not-found/', admin_views.api_set_website_not_found_mode, name='api_status_not_found'),
     path('api/status/pro-access-link/', admin_views.api_send_pro_panel_access_link, name='api_status_pro_access_link'),
@@ -32,7 +33,7 @@ urlpatterns = [
     path('api/business/toggle-status/', admin_views.api_business_toggle_status, name='api_business_toggle'),
 
     # ==========================================================================
-    # API — Trusted Clients
+    # API — Client Logos (main Client model)
     # ==========================================================================
     path('api/clients/', admin_views.api_client_list, name='api_client_list'),
     path('api/clients/create/', admin_views.api_client_create, name='api_client_create'),

@@ -29,6 +29,9 @@ urlpatterns = [
     
     # Staff Management (Client Admin only)
     path('staff/', views.manage_staff, name='staff'),
+
+    # One-way admin messages (read-only for client/client staff)
+    path('messages/', views.messages, name='messages'),
     
     # --- Shared admin-template pages (client context) ---
     # ID Card Group (shows all tables with status counts)
@@ -51,6 +54,7 @@ urlpatterns = [
     # ==========================================================================
     
     path('api/dashboard/', views.api_dashboard_data, name='api_dashboard'),
+    path('api/messages/drawer/', views.api_messages_drawer, name='api_messages_drawer'),
     path('api/dashboard/reprint-stats/', views.api_reprint_stats, name='api_reprint_stats'),
     path('api/dashboard/reprint-history/', views.api_reprint_history, name='api_reprint_history'),
     path('api/groups/', views.api_groups_list, name='api_groups'),

@@ -15,7 +15,7 @@
 
 /* Fixed column widths: Client gets remaining space, status cols are equal */
 .recent-table th:nth-child(1),
-.recent-table td:nth-child(1) { width: 28%; }
+.recent-table td:nth-child(1) { width: 40%; }
 .recent-table th:nth-child(2),
 .recent-table td:nth-child(2),
 .recent-table th:nth-child(3),
@@ -23,12 +23,21 @@
 .recent-table th:nth-child(4),
 .recent-table td:nth-child(4),
 .recent-table th:nth-child(5),
-.recent-table td:nth-child(5) { width: 18%; }
+.recent-table td:nth-child(5) { width: 15%; }
 
-.recent-table thead {
-    position: sticky;
-    top: 0;
-}
+.recent-table.recent-table-6col th:nth-child(1),
+.recent-table.recent-table-6col td:nth-child(1) { width: 35%; }
+
+.recent-table.recent-table-6col th:nth-child(2),
+.recent-table.recent-table-6col td:nth-child(2),
+.recent-table.recent-table-6col th:nth-child(3),
+.recent-table.recent-table-6col td:nth-child(3),
+.recent-table.recent-table-6col th:nth-child(4),
+.recent-table.recent-table-6col td:nth-child(4),
+.recent-table.recent-table-6col th:nth-child(5),
+.recent-table.recent-table-6col td:nth-child(5),
+.recent-table.recent-table-6col th:nth-child(6),
+.recent-table.recent-table-6col td:nth-child(6) { width: 13%; }
 
 .recent-table th {
     padding: 6px 12px;
@@ -121,6 +130,118 @@
     color: #667eea;
 }
 
+.recent-table tbody tr.client-row.expanded td {
+    background: #eef4ff;
+    box-shadow: inset 0 1px 0 #d3dffd, inset 0 -1px 0 #d3dffd;
+}
+
+.recent-table tbody tr.client-row.expanded td:first-child {
+    box-shadow: inset 2px 0 0 #7b94f9, inset 0 1px 0 #d3dffd, inset 0 -1px 0 #d3dffd;
+}
+
+.recent-table tbody tr.client-row.expanded .client-name-link {
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+/* Keep top-row chips subtle unless the row is actively expanded */
+.recent-table tbody tr.client-row .count-badge {
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.recent-table tbody tr.client-row .count-badge.pending,
+.recent-table tbody tr.client-row .count-badge.verified,
+.recent-table tbody tr.client-row .count-badge.approved,
+.recent-table tbody tr.client-row .count-badge.downloaded,
+.recent-table tbody tr.client-row .count-badge.pool {
+    border-width: 1px;
+    border-style: solid;
+}
+
+.recent-table tbody tr.client-row .count-badge.pending {
+    background: #fff4dc;
+    color: #a16207;
+    border-color: #f8d89a;
+}
+
+.recent-table tbody tr.client-row .count-badge.verified {
+    background: #e8fdf3;
+    color: #065f46;
+    border-color: #9fe8c9;
+}
+
+.recent-table tbody tr.client-row .count-badge.approved {
+    background: #e3efff;
+    color: #1e40af;
+    border-color: #bbd4ff;
+}
+
+.recent-table tbody tr.client-row .count-badge.downloaded {
+    background: #f9fafb;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+.recent-table tbody tr.client-row .count-badge.pool {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.recent-table tbody tr.client-row.expanded .count-badge.pending {
+    background: #fde8bb;
+    color: #b45309;
+    border-color: #f2c880;
+}
+
+.recent-table tbody tr.client-row.expanded .count-badge.verified {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.recent-table tbody tr.client-row.expanded .count-badge.approved {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.recent-table tbody tr.client-row.expanded .count-badge.downloaded {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+.recent-table tbody tr.client-row.expanded .count-badge.pool {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.client-sub-row .count-badge {
+    border: 1px solid transparent;
+}
+
+.client-sub-row .count-badge.pending {
+    border-color: #f3d18a;
+}
+
+.client-sub-row .count-badge.verified {
+    border-color: #6ee7b7;
+}
+
+.client-sub-row .count-badge.approved {
+    border-color: #93c5fd;
+}
+
+.client-sub-row .count-badge.downloaded {
+    border-color: #d1d5db;
+}
+
+.client-sub-row .count-badge.pool {
+    border-color: #fca5a5;
+}
+
 /* ====================
    View All Link
    ==================== */
@@ -143,6 +264,9 @@
    Client Name Link (clickable in tables)
    ==================== */
 .client-name-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: #374151;
     text-decoration: none;
     font-weight: 600;
@@ -150,7 +274,45 @@
 }
 .client-name-link:hover {
     color: #667eea;
-    text-decoration: underline;
+    text-decoration: none;
+}
+
+.client-name-text {
+    white-space: nowrap;
+}
+
+.dashboard-client-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 62px;
+    height: 18px;
+    padding: 0 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    text-transform: capitalize;
+    vertical-align: middle;
+}
+
+.dashboard-client-status-badge.is-active {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+.dashboard-client-status-badge.is-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.dashboard-client-status-badge.is-suspended {
+    background: #fff7ed;
+    color: #9a3412;
+    border-color: #fdba74;
 }
 
 /* ====================
@@ -168,6 +330,371 @@
 .recent-table-wrapper::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.15);
     border-radius: 3px;
+}
+
+/* ====================
+   Dashboard scroll-table mode
+   Only table rows scroll, header stays fixed
+   ==================== */
+.dashboard-card-body.table-scroll-body {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.recent-updates-search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+.recent-updates-search-box {
+    position: relative;
+}
+
+.recent-updates-search-box i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.recent-updates-search-input {
+    width: 100%;
+    height: 34px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #374151;
+    padding: 0 10px 0 30px;
+    background: #ffffff;
+}
+
+.recent-updates-search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+
+.recent-table-no-search-results td {
+    text-align: center;
+    color: #6b7280;
+    padding: 24px 12px;
+    background: #ffffff;
+}
+
+.dashboard-scroll-table-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.dashboard-scroll-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+
+.dashboard-scroll-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.dashboard-scroll-table thead th:first-child,
+.dashboard-scroll-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+}
+
+.dashboard-scroll-table thead th:first-child {
+    z-index: 3;
+}
+
+.dashboard-scroll-table tbody td:first-child {
+    z-index: 1;
+}
+
+.dashboard-scroll-table tbody tr:nth-child(odd) td:first-child {
+    background: #f9fafb;
+}
+
+.dashboard-scroll-table tbody tr:nth-child(even) td:first-child {
+    background: #ffffff;
+}
+
+.dashboard-scroll-table tbody tr:hover td:first-child {
+    background: #f3f4f6;
+}
+
+.dashboard-scroll-table tbody tr.client-sub-row td:first-child {
+    background: #f8f9ff !important;
+}
+
+.dashboard-scroll-table tbody tr.client-sub-row:hover td:first-child {
+    background: #eef1ff !important;
+}
+
+.dashboard-scroll-table-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dashboard-scroll-table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
+
+/* Fixed column widths for targeted dashboard tables */
+.recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(1),
+.recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(1) { width: 40%; }
+
+.recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(5) { width: 15%; }
+
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(1),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(1) { width: 35%; }
+
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(6),
+.recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(6) { width: 13%; }
+
+.recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(1),
+.recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(1) { width: 44%; }
+
+.recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(3) { width: 28%; }
+
+.recent-table.recent-table-4col th:nth-child(1),
+.recent-table.recent-table-4col td:nth-child(1) { width: 34%; }
+
+.recent-table.recent-table-4col th:nth-child(2),
+.recent-table.recent-table-4col td:nth-child(2),
+.recent-table.recent-table-4col th:nth-child(3),
+.recent-table.recent-table-4col td:nth-child(3),
+.recent-table.recent-table-4col th:nth-child(4),
+.recent-table.recent-table-4col td:nth-child(4) { width: 22%; }
+
+.team-overview-panel-body {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.dashboard-card-header.team-overview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+}
+
+.dashboard-card-header.team-overview-header h3 {
+    margin: 0;
+    font-size: 13px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.team-overview-panel-body .dashboard-scroll-table-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-top: 1px solid #bfdbfe;
+    border-left: 1px solid #bfdbfe;
+    border-right: 1px solid #bfdbfe;
+    border-bottom: 1px solid #bfdbfe;
+}
+
+.team-overview-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.team-overview-toolbar-search {
+    margin-left: auto;
+    flex: 0 1 340px;
+    min-width: 190px;
+    max-width: 420px;
+}
+
+.team-overview-toolbar-search .recent-updates-search-box {
+    width: 100%;
+}
+
+.team-overview-toolbar-search .recent-updates-search-input {
+    height: 28px;
+    font-size: 11px;
+}
+
+.team-overview-toolbar .action-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #1f2937;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.team-overview-toolbar .action-btn:hover:not(:disabled) {
+    background: #eef2ff;
+    border-color: #93c5fd;
+    color: #1e3a8a;
+}
+
+.team-overview-toolbar .action-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.team-overview-row {
+    cursor: pointer;
+}
+
+.team-overview-row.is-selected td {
+    background: #e7f1ff !important;
+}
+
+.team-overview-row:hover td {
+    background: #f0f7ff;
+}
+
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(1),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(1) {
+    width: 31%;
+}
+
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(2),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(2) {
+    width: 26%;
+}
+
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(3),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(3) {
+    width: 14ch;
+    min-width: 14ch;
+    max-width: 14ch;
+    text-align: center;
+}
+
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(4),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table th:nth-child(5),
+.recent-table.dashboard-scroll-table.recent-table-5col.team-overview-table td:nth-child(5) {
+    width: 14%;
+}
+
+.team-overview-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.team-overview-name-cell .dashboard-client-status-badge {
+    flex: 0 0 auto;
+}
+
+.team-overview-name-text {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.team-overview-mobile-cell {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.team-overview-staff-panel {
+    display: grid;
+    gap: 10px;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.team-overview-staff-panel .dashboard-scroll-table-wrapper {
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.team-overview-staff-panel h3 {
+    margin: 0;
+    width: fit-content;
+}
+
+@media (max-width: 900px) {
+    .dashboard-card-header.team-overview-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-card-header.team-overview-header h3 {
+        white-space: normal;
+    }
+
+    .team-overview-toolbar {
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .team-overview-toolbar-search {
+        order: 10;
+        margin-left: 0;
+        flex: 1 1 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .team-overview-toolbar .action-btn {
+        font-size: 11px;
+        padding: 5px 9px;
+    }
 }
 
 /* ====================
@@ -197,7 +724,7 @@
     width: 88px;
 }
 
-/* Client staff dashboard uses a 4-column recent table where Created holds date+time. */
+/* Assistent dashboard uses a 4-column recent table where Created holds date+time. */
 .recent-table.client-staff-recent-table th:nth-child(1),
 .recent-table.client-staff-recent-table td:nth-child(1) { width: 40%; }
 

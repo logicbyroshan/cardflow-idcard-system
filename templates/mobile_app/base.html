@@ -14,24 +14,21 @@
     <link rel="apple-touch-icon" href="{% static 'mobile/images/icon-192.png' %}">
     <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
 
-    <!-- DNS preconnect hints  reduce font latency on first load -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
     <!-- Tailwind CSS (pre-built, brand colours + all utilities) -->
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
-    <!-- Alpine.js (self-hosted for offline reliability) -->
-    <script defer src="{% static 'js/vendor/alpine.min.js' %}"></script>
+    <!-- Alpine.js for mobile pages (full evaluator to support existing modal expressions) -->
+    {% include 'partials/common/alpine-loader.html' with include_state=False %}
 
     <!-- Font Awesome (self-hosted for offline reliability) -->
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'css/vendor/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
 
     <script>
         // Capture install prompt early so it is not missed before UI script initializes.
@@ -86,27 +83,60 @@
             <h1 class="text-3xl font-bold mb-4">Mobile Only</h1>
             <p class="text-lg opacity-90 mb-6">This application is designed for mobile devices only.<br>Please open it on your phone or tablet.</p>
             <div class="flex flex-col items-center gap-3">
-                <div class="bg-white rounded-xl p-3 shadow-lg">
-                    <img id="desktop-block-qr"
-                         src=""
-                         alt="QR code to open app on mobile"
-                         width="160" height="160"
-                         class="block rounded">
+                <div class="bg-white rounded-xl p-3 shadow-lg w-[260px] max-w-full">
+                    <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Open this link on your phone</p>
+                    <p id="desktop-block-app-url" class="text-[12px] leading-snug text-gray-700 break-all"></p>
+                    <button id="desktop-block-copy-link"
+                            type="button"
+                            class="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white text-[12px] font-semibold active:scale-[0.99] transition-all">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>Copy Link</span>
+                    </button>
                 </div>
                 <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-6 py-3">
-                    <i class="fa-solid fa-qrcode"></i>
-                    <span>Scan to open on your phone</span>
+                    <i class="fa-solid fa-link"></i>
+                    <span>Open this link on your phone browser</span>
                 </div>
             </div>
         </div>
     </div>
     <script>
     (function(){
-        var qrImg = document.getElementById('desktop-block-qr');
-        if (qrImg) {
-            var appUrl = window.location.origin + '/app/';
-            qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(appUrl);
+        var urlEl = document.getElementById('desktop-block-app-url');
+        var copyBtn = document.getElementById('desktop-block-copy-link');
+        var appUrl = window.location.origin + '/app/';
+
+        if (urlEl) {
+            urlEl.textContent = appUrl;
         }
+
+        if (!copyBtn) return;
+        copyBtn.addEventListener('click', function() {
+            var onSuccess = function() {
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i><span>Copied</span>';
+                setTimeout(function() {
+                    copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i><span>Copy Link</span>';
+                }, 1400);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(appUrl).then(onSuccess).catch(function() {});
+                return;
+            }
+
+            var ta = document.createElement('textarea');
+            ta.value = appUrl;
+            ta.setAttribute('readonly', 'readonly');
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                onSuccess();
+            } catch (e) {}
+            document.body.removeChild(ta);
+        });
     })();
     </script>
 
@@ -147,6 +177,24 @@
         </div>
     </div>
 
+    <div id="mobile-update-screen"
+         class="hidden fixed inset-0 bg-white z-[10060] flex items-center justify-center px-6"
+         aria-hidden="true">
+        <div class="w-full max-w-[360px] text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                <i class="fa-solid fa-rotate text-xl"></i>
+            </div>
+            <p class="text-[16px] font-bold text-gray-800">Updating App</p>
+            <p id="mobile-update-message" class="text-[11px] text-gray-500 mt-1">Preparing update...</p>
+            <div class="mt-5 w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div id="mobile-update-progress"
+                     class="h-full bg-gradient-to-r from-brand-light to-brand-dark rounded-full transition-all duration-300"
+                     style="width:0%;"></div>
+            </div>
+            <p id="mobile-update-percent" class="text-[11px] text-gray-500 mt-2">0%</p>
+        </div>
+    </div>
+
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}"></script>
     <script>
@@ -175,6 +223,105 @@
         form.submit();
         return false;
     };
+
+    (function setupMobileAppUpdateFlow() {
+        var updateScreen = document.getElementById('mobile-update-screen');
+        var updateMessage = document.getElementById('mobile-update-message');
+        var updateProgress = document.getElementById('mobile-update-progress');
+        var updatePercent = document.getElementById('mobile-update-percent');
+        var inProgress = false;
+
+        function setUpdateProgress(percent, message) {
+            var safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+            if (updateProgress) updateProgress.style.width = safePercent + '%';
+            if (updatePercent) updatePercent.textContent = Math.round(safePercent) + '%';
+            if (message && updateMessage) updateMessage.textContent = message;
+        }
+
+        async function activateWaitingWorker(registration) {
+            if (!registration || !registration.waiting) return;
+            try {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } catch (err) {
+                return;
+            }
+
+            await new Promise(function(resolve) {
+                var done = false;
+                function finish() {
+                    if (done) return;
+                    done = true;
+                    try {
+                        navigator.serviceWorker.removeEventListener('controllerchange', finish);
+                    } catch (err) {}
+                    resolve();
+                }
+                try {
+                    navigator.serviceWorker.addEventListener('controllerchange', finish);
+                } catch (err) {
+                    finish();
+                    return;
+                }
+                setTimeout(finish, 1200);
+            });
+        }
+
+        window.mobileUpdateApp = async function mobileUpdateApp(event) {
+            if (event) event.preventDefault();
+            if (inProgress) return false;
+            inProgress = true;
+
+            if (updateScreen) {
+                updateScreen.classList.remove('hidden');
+                updateScreen.setAttribute('aria-hidden', 'false');
+            }
+
+            try {
+                setUpdateProgress(8, 'Checking for latest files...');
+
+                var registrations = [];
+                if ('serviceWorker' in navigator) {
+                    registrations = await navigator.serviceWorker.getRegistrations();
+                    for (var i = 0; i < registrations.length; i++) {
+                        try {
+                            await registrations[i].update();
+                            await activateWaitingWorker(registrations[i]);
+                        } catch (err) {}
+                    }
+                }
+
+                setUpdateProgress(42, 'Clearing cached assets...');
+                if ('caches' in window) {
+                    var keys = await caches.keys();
+                    var total = keys.length || 1;
+                    for (var k = 0; k < keys.length; k++) {
+                        try { await caches.delete(keys[k]); } catch (err) {}
+                        setUpdateProgress(42 + ((k + 1) / total) * 28, 'Clearing cached assets...');
+                    }
+                }
+
+                setUpdateProgress(78, 'Refreshing service worker...');
+                if (registrations.length) {
+                    for (var r = 0; r < registrations.length; r++) {
+                        try { await registrations[r].unregister(); } catch (err) {}
+                    }
+                }
+
+                setUpdateProgress(94, 'Opening latest app...');
+                var nextUrl = '/app/?updated=' + Date.now();
+                setTimeout(function() {
+                    window.location.replace(nextUrl);
+                }, 450);
+            } catch (err) {
+                setUpdateProgress(100, 'Update failed. Reloading...');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 700);
+            }
+
+            return false;
+        };
+    })();
 
     (function setupMobileOverlayManager() {
         var overlayStack = [];
@@ -291,6 +438,23 @@
             if (event) event.preventDefault();
             var fallback = fallbackUrl || '/app/';
             goBackOnce(fallback);
+            return false;
+        };
+
+        // Prefer opening drawers via custom events; if listeners are missing,
+        // navigate to a safe page so taps never feel dead.
+        window.mobileTriggerDrawer = function mobileTriggerDrawer(event, eventName, fallbackUrl) {
+            if (event) event.preventDefault();
+            var opened = false;
+            try {
+                window.dispatchEvent(new CustomEvent(eventName));
+                opened = !!(window.mobileOverlay && window.mobileOverlay.isActive());
+            } catch (e) {
+                opened = false;
+            }
+            if (!opened && fallbackUrl) {
+                window.location.href = fallbackUrl;
+            }
             return false;
         };
     })();

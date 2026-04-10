@@ -3,12 +3,15 @@ Dashboard views — dashboard page, cropper page, and dashboard API endpoints.
 Split from base.py for maintainability.
 """
 import logging
+import re
+from django.conf import settings as django_settings
 from django.core.cache import cache
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
@@ -33,6 +36,17 @@ from .base_helpers import (
 )
 
 logger = logging.getLogger(__name__)
+_ACTIVITY_STATUS_TO_QUERY = {
+    'pending': 'pending',
+    'verified': 'verified',
+    'approved': 'approved',
+    'download': 'download',
+    'downloaded': 'download',
+    'pool': 'pool',
+    'reprint': 'reprint',
+}
+_ACTIVITY_MOVE_TO_RE = re.compile(r'\bmoved\s+from\s+.+?\s+to\s+([a-zA-Z_\- ]+)', re.IGNORECASE)
+_ACTIVITY_CLIENT_SUFFIX_RE = re.compile(r'\bfor\s+"?([^"\n]+?)"?\s*$', re.IGNORECASE)
 
 
 def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
@@ -42,6 +56,301 @@ def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
     except (ValueError, TypeError):
         limit = default
     return min(max(limit, 1), max_limit)
+
+
+def _parse_recent_activity_window(raw_window):
+    """Parse recent activity time window query; defaults to last 48 hours."""
+    token = str(raw_window or '48').strip().lower()
+    if token in ('all', '48', '48h', '48hr', '48hour', '2d', '2day', '2days', 'last_2d', 'last2d', 'last_48h', 'last48h'):
+        return 48
+    if token in ('1', '1h', '1hr', '1hour', 'last_1h', 'last1h'):
+        return 1
+    if token in ('12', '12h', '12hr', '12hour', 'last_12h', 'last12h'):
+        return 12
+    if token in ('24', '24h', '24hr', '24hour', 'last_24h', 'last24h'):
+        return 24
+    return 48
+
+
+def _format_dashboard_datetime(value):
+    """Return a compact dashboard-friendly datetime string."""
+    if not value:
+        return ''
+    try:
+        return timezone.localtime(value).strftime('%d-%m-%Y %H:%M')
+    except Exception:
+        return ''
+
+
+def _safe_public_email(value):
+    """Hide placeholder service emails from dashboard lists."""
+    email = str(value or '').strip()
+    if email.endswith('@noemail.local'):
+        return ''
+    return email
+
+
+def _get_live_active_client_ids_for_dashboard(user):
+    """
+    Return client IDs with recent authenticated activity.
+    Includes direct client users and client_staff users mapped to their clients.
+
+    A session is considered "live" only when it has a recent `_last_activity`
+    stamp (written by SessionIdleTimeoutMiddleware), so stale open sessions are
+    excluded shortly after a browser/app is closed.
+    """
+    now = timezone.now()
+    live_window_seconds = max(int(getattr(django_settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 180) or 0), 30)
+    live_cutoff_epoch = now.timestamp() - live_window_seconds
+    active_user_ids = set()
+
+    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
+        try:
+            data = session.get_decoded()
+        except Exception:
+            continue
+
+        raw_last_activity = data.get('_last_activity')
+        try:
+            last_activity = float(raw_last_activity)
+        except (TypeError, ValueError):
+            continue
+
+        if last_activity < live_cutoff_epoch:
+            continue
+
+        raw_user_id = data.get('_auth_user_id')
+        if not raw_user_id:
+            continue
+
+        try:
+            active_user_ids.add(int(raw_user_id))
+        except (TypeError, ValueError):
+            continue
+
+    if not active_user_ids:
+        return set()
+
+    direct_client_ids = set(
+        Client.objects.filter(
+            user_id__in=active_user_ids,
+            status='active',
+            user__is_active=True,
+        ).values_list('id', flat=True)
+    )
+
+    staff_client_ids = set(
+        Staff.objects.filter(
+            user_id__in=active_user_ids,
+            staff_type='client_staff',
+            user__is_active=True,
+            client_id__isnull=False,
+            client__status='active',
+        ).values_list('client_id', flat=True)
+    )
+
+    active_client_ids = direct_client_ids | staff_client_ids
+    if PermissionService.is_admin_staff(user):
+        allowed_ids = set(PermissionService.get_accessible_client_ids(user))
+        active_client_ids &= allowed_ids
+
+    return active_client_ids
+
+
+def _get_dashboard_recent_activities(*, user, limit, hours=None):
+    """Return recent activity entries for the requested time window."""
+    return ActivityService.get_recent(limit=limit, hours=hours, user=user)
+
+
+def _normalize_activity_name(value):
+    """Normalize names for case-insensitive matching."""
+    return ' '.join(str(value or '').strip().lower().split())
+
+
+def _extract_activity_client_name(activity):
+    """Best-effort client name extraction from activity fields/description."""
+    client_context = str(activity.get('client_context') or '').strip()
+    if client_context:
+        return client_context
+
+    description = str(activity.get('description') or '').strip()
+    match = _ACTIVITY_CLIENT_SUFFIX_RE.search(description)
+    if match:
+        return match.group(1).strip()
+
+    return ''
+
+
+def _extract_activity_status_query(activity):
+    """Map activity text/action to an ID card status query value."""
+    action = str(activity.get('action') or '').strip().lower()
+    description = str(activity.get('description') or '').strip().lower()
+
+    if action in ('reprint_request', 'reprint_status'):
+        return 'reprint'
+
+    move_match = _ACTIVITY_MOVE_TO_RE.search(description)
+    if move_match:
+        token = move_match.group(1).strip().lower().replace('-', ' ').replace('_', ' ')
+        token = ' '.join(token.split())
+        if token in _ACTIVITY_STATUS_TO_QUERY:
+            return _ACTIVITY_STATUS_TO_QUERY[token]
+
+    for token, mapped in _ACTIVITY_STATUS_TO_QUERY.items():
+        if re.search(rf'\b{re.escape(token)}\b', description):
+            return mapped
+
+    return ''
+
+
+def _build_recent_activity_link(activity, *, staff_type_map, card_meta_map, client_id_by_name, first_table_by_client):
+    """Return best destination URL for clicking a recent activity chip."""
+    action = str(activity.get('action') or '').strip().lower()
+    target_model = str(activity.get('target_model') or '').strip().lower()
+    target_id = activity.get('target_id')
+    actor_role = str(activity.get('actor_role') or '').strip().lower()
+
+    try:
+        target_id_int = int(target_id) if target_id is not None else None
+    except (TypeError, ValueError):
+        target_id_int = None
+
+    if target_model == 'idcard' and target_id_int and target_id_int in card_meta_map:
+        card_meta = card_meta_map[target_id_int]
+        table_id = card_meta.get('table_id')
+        if table_id:
+            status = card_meta.get('status') or _extract_activity_status_query(activity)
+            status_query = f'?status={status}' if status else ''
+            highlight = f'&highlight={target_id_int}' if status_query else f'?highlight={target_id_int}'
+            return f'{reverse("idcard_actions", args=[table_id])}{status_query}{highlight}'
+
+    if target_model == 'staff' and target_id_int:
+        staff_type = staff_type_map.get(target_id_int)
+        if staff_type == 'client_staff':
+            return reverse('manage_client_staff')
+        if staff_type == 'admin_staff':
+            return reverse('manage_staff')
+
+    if target_model == 'client':
+        return reverse('manage_clients')
+
+    if action.startswith('client_'):
+        return reverse('manage_clients')
+    if action.startswith('staff_'):
+        return reverse('manage_client_staff') if target_model == 'staff' and target_id_int and staff_type_map.get(target_id_int) == 'client_staff' else reverse('manage_staff')
+
+    if action in ('login', 'logout'):
+        if actor_role == 'client':
+            return reverse('manage_clients')
+        if actor_role == 'client_staff':
+            return reverse('manage_client_staff')
+        if actor_role in ('admin_staff', 'super_admin'):
+            return reverse('manage_staff')
+
+    if action.startswith('card_') or action.startswith('reprint_') or action in ('bulk_upgrade', 'bulk_delete', 'image_upload', 'image_reupload'):
+        client_name = _extract_activity_client_name(activity)
+        client_id = client_id_by_name.get(_normalize_activity_name(client_name)) if client_name else None
+        if client_id:
+            status = _extract_activity_status_query(activity)
+            table_id = first_table_by_client.get(client_id)
+            if table_id and status:
+                return f'{reverse("idcard_actions", args=[table_id])}?status={status}'
+            return reverse('idcard_group', args=[client_id])
+        return reverse('active_clients')
+
+    return ''
+
+
+def _enrich_recent_activities_for_dashboard(user, activities):
+    """Attach click targets + fallback timestamp display for dashboard feed items."""
+    if not activities:
+        return []
+
+    activity_list = list(activities)
+
+    staff_ids = set()
+    card_ids = set()
+    client_names = set()
+
+    for activity in activity_list:
+        target_model = str(activity.get('target_model') or '').strip().lower()
+        target_id = activity.get('target_id')
+        try:
+            target_id_int = int(target_id) if target_id is not None else None
+        except (TypeError, ValueError):
+            target_id_int = None
+
+        if target_model == 'staff' and target_id_int:
+            staff_ids.add(target_id_int)
+        elif target_model == 'idcard' and target_id_int:
+            card_ids.add(target_id_int)
+
+        extracted_client_name = _extract_activity_client_name(activity)
+        if extracted_client_name:
+            client_names.add(_normalize_activity_name(extracted_client_name))
+
+        if target_model == 'client':
+            target_name = str(activity.get('target_name') or '').strip()
+            if target_name:
+                client_names.add(_normalize_activity_name(target_name))
+
+    staff_type_map = {}
+    if staff_ids:
+        staff_type_map = {
+            row['id']: row['staff_type']
+            for row in Staff.objects.filter(id__in=staff_ids).values('id', 'staff_type')
+        }
+
+    card_meta_map = {}
+    if card_ids:
+        card_meta_map = {
+            row['id']: {'table_id': row.get('table_id'), 'status': row.get('status')}
+            for row in IDCard.objects.filter(id__in=card_ids).values('id', 'table_id', 'status')
+        }
+
+    client_id_by_name = {}
+    if client_names:
+        accessible_clients = PermissionService.get_accessible_clients(user, Client.objects.all()).only('id', 'name')
+        for client in accessible_clients:
+            key = _normalize_activity_name(client.name)
+            if key in client_names and key not in client_id_by_name:
+                client_id_by_name[key] = client.id
+
+    first_table_by_client = {}
+    if client_id_by_name:
+        client_ids = list(client_id_by_name.values())
+        first_table_rows = (
+            IDCardTable.objects
+            .filter(group__client_id__in=client_ids)
+            .values('group__client_id')
+            .annotate(first_table_id=Min('id'))
+        )
+        first_table_by_client = {
+            row['group__client_id']: row['first_table_id']
+            for row in first_table_rows
+        }
+
+    for activity in activity_list:
+        if not activity.get('created_at_display'):
+            created_raw = str(activity.get('created_at') or '').strip()
+            try:
+                created_dt = timezone.datetime.fromisoformat(created_raw.replace('Z', '+00:00')) if created_raw else None
+                if created_dt is not None:
+                    if timezone.is_naive(created_dt):
+                        created_dt = timezone.make_aware(created_dt, timezone.get_current_timezone())
+                    activity['created_at_display'] = timezone.localtime(created_dt).strftime('%d-%m-%Y %H:%M')
+            except Exception:
+                activity['created_at_display'] = ''
+
+        activity['url'] = _build_recent_activity_link(
+            activity,
+            staff_type_map=staff_type_map,
+            card_meta_map=card_meta_map,
+            client_id_by_name=client_id_by_name,
+            first_table_by_client=first_table_by_client,
+        )
+
+    return activity_list
 
 
 # ── Services ─────────────────────────────────────────────────────────────
@@ -56,10 +365,10 @@ def adarsh_cropper(request):
     return render(request, 'services/adarsh-cropper.html', context)
 
 
-# ── Login As User (Pro User only) ──────────────────────────────────────
+# ── Login As User (Pro User only) ─────────────────────────────────────
 @login_required
 def login_as_user_page(request):
-    """Dedicated page for Pro User impersonation — pick a user to login as."""
+    """Dedicated page for Pro User impersonation."""
     if request.user.role != 'pro_user':
         return redirect('dashboard')
     context = {
@@ -67,6 +376,39 @@ def login_as_user_page(request):
         'user_role': get_user_role(request.user),
     }
     return render(request, 'impersonate/login-as-user.html', context)
+
+
+# ── Pro User Deep History (Pro User only) ─────────────────────────────
+@login_required
+def pro_user_activity_logs_page(request):
+    """Dedicated page for Pro User deep user-history audit."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+    context = {
+        'active_page': 'pro_user_activity_logs',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'pro_user/user-deep-history.html', context)
+
+
+@login_required
+def pro_user_activity_logs_detail_page(request, user_id):
+    """Dedicated detail page for a selected user's deep history (Pro User only)."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+
+    target_user = get_object_or_404(User, id=user_id)
+    context = {
+        'active_page': 'pro_user_activity_logs',
+        'user_role': get_user_role(request.user),
+        'audit_target': {
+            'id': target_user.id,
+            'name': (target_user.get_full_name() or target_user.username or target_user.email or f'User {target_user.id}').strip(),
+            'email_or_username': target_user.email or target_user.username or '-',
+            'role_display': target_user.get_role_display() if hasattr(target_user, 'get_role_display') else (target_user.role or '-'),
+        },
+    }
+    return render(request, 'pro_user/user-deep-history-detail.html', context)
 
 
 # Dashboard
@@ -104,6 +446,7 @@ def dashboard(request):
             verified=Count('id', filter=Q(status='verified')),
             approved=Count('id', filter=Q(status='approved')),
             downloaded=Count('id', filter=Q(status='download')),
+            pool=Count('id', filter=Q(status='pool')),
         )
         cache.set(card_cache_key, card_stats, 30)
 
@@ -115,6 +458,7 @@ def dashboard(request):
         'verified_cards': card_stats['verified'],
         'approved_cards': card_stats['approved'],
         'downloaded_cards': card_stats['downloaded'],
+        'pool_cards': card_stats.get('pool', 0),
     }
     # Consolidate count queries with aggregate (cached 60s)
     client_cache_key = f'dashboard_client_stats{cache_suffix}'
@@ -132,9 +476,8 @@ def dashboard(request):
     staff_cache_key = f'dashboard_staff_stats{cache_suffix}'
     staff_stats = cache.get(staff_cache_key)
     if staff_stats is None:
-        staff_qs = Staff.objects.all()
-        if is_scoped:
-            staff_qs = staff_qs.filter(client_id__in=accessible_ids)
+        # Team Overview "Total/Active Staff" should represent admin staff only.
+        staff_qs = Staff.objects.filter(staff_type='admin_staff')
         staff_stats = staff_qs.aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(user__is_active=True)),
@@ -144,17 +487,26 @@ def dashboard(request):
     cs_cache_key = f'dashboard_cs_stats{cache_suffix}'
     cs_stats = cache.get(cs_cache_key)
     if cs_stats is None:
-        cs_qs = User.objects.filter(role='client_staff')
+        cs_qs = Staff.objects.filter(staff_type='client_staff')
         if is_scoped:
-            from staff.models import Staff as StaffModel
-            cs_qs = cs_qs.filter(
-                staff_profile__client_id__in=accessible_ids
-            )
+            cs_qs = cs_qs.filter(client_id__in=accessible_ids)
         cs_stats = cs_qs.aggregate(
             total=Count('id'),
-            active=Count('id', filter=Q(is_active=True)),
+            active=Count('id', filter=Q(user__is_active=True)),
         )
         cache.set(cs_cache_key, cs_stats, 60)
+
+    admin_cache_key = f'dashboard_admin_stats{cache_suffix}'
+    admin_stats = cache.get(admin_cache_key)
+    if admin_stats is None:
+        admin_stats = User.objects.filter(role='super_admin').aggregate(total=Count('id'))
+        cache.set(admin_cache_key, admin_stats, 60)
+
+    recent_activities = _enrich_recent_activities_for_dashboard(
+        request.user,
+        _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX, hours=48),
+    )
+
     context.update({
         'total_clients': client_stats['total'],
         'active_clients': client_stats['active'],
@@ -162,10 +514,53 @@ def dashboard(request):
         'active_staff': staff_stats['active'],
         'client_staff_count': cs_stats['total'],
         'active_client_staff_count': cs_stats['active'],
-        # Role-based activity filtering - admin_staff gets filtered by assigned clients
-        'recent_activities': ActivityService.get_recent(limit=ACTIVITY_FEED_MAX, user=request.user),
+        'admin_count': admin_stats.get('total', 0),
+        # Default dashboard feed shows last 48 hours (max API limit entries).
+        'recent_activities': recent_activities,
     })
     return render(request, 'index.html', context)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_dashboard_card_stats(request):
+    """API endpoint for live dashboard card stats refresh."""
+    try:
+        user = request.user
+        is_scoped = PermissionService.is_admin_staff(user)
+        cache_suffix = f':{user.pk}' if is_scoped else ':sa'
+        cache_key = f'dash_card_stats_api{cache_suffix}'
+
+        stats = cache.get(cache_key)
+        if stats is None:
+            accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
+
+            card_qs = IDCard.objects.all()
+            if is_scoped:
+                card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+
+            agg = card_qs.aggregate(
+                total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+                pending=Count('id', filter=Q(status='pending')),
+                verified=Count('id', filter=Q(status='verified')),
+                approved=Count('id', filter=Q(status='approved')),
+                downloaded=Count('id', filter=Q(status='download')),
+                pool=Count('id', filter=Q(status='pool')),
+            )
+            stats = {
+                'total': agg.get('total', 0),
+                'pending': agg.get('pending', 0),
+                'verified': agg.get('verified', 0),
+                'approved': agg.get('approved', 0),
+                'downloaded': agg.get('downloaded', 0),
+                'pool': agg.get('pool', 0),
+            }
+            cache.set(cache_key, stats, 20)
+
+        return JsonResponse({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.exception('api_dashboard_card_stats error: %s', e)
+        return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -176,55 +571,74 @@ def api_recent_client_updates(request):
         limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
 
-        # Cache per-user with 20-second TTL — tolerable staleness for a dashboard poll.
+        # Cache per-user with 20-second TTL for client rows.
+        # Live-active count is recomputed on every request to keep refreshes accurate.
         # admin_staff sees a scoped view (their assigned clients only), so the key
         # must include user.pk to prevent cross-user data leakage.
         is_scoped = PermissionService.is_admin_staff(user)
         cache_key = f'dash_rcu:{user.pk if is_scoped else "sa"}:{limit}'
         cached = cache.get(cache_key)
         if cached is not None:
-            return JsonResponse({'success': True, 'clients': cached})
+            cached_clients = cached.get('clients', []) if isinstance(cached, dict) else cached
+            live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+            return JsonResponse({
+                'success': True,
+                'clients': cached_clients,
+                'active_clients_now': len(live_active_client_ids),
+                'active_client_ids': sorted(live_active_client_ids),
+            })
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
-        # Order by most-recently-approved card data (latest approved update first)
+        # Order by most-recently-approved card data, then newest-created client.
         base_qs = Client.objects.all()
-        clients = PermissionService.get_accessible_clients(
+        clients_qs = PermissionService.get_accessible_clients(
             user, base_qs
-        ).annotate(
+        ).values('id', 'name', 'status', 'created_at').annotate(
             latest_approved=Max(
                 'id_card_groups__tables__id_cards__updated_at',
                 filter=Q(id_card_groups__tables__id_cards__status='approved')
             )
-        ).order_by(F('latest_approved').desc(nulls_last=True))[:limit]
+        ).order_by(
+            F('latest_approved').desc(nulls_last=True),
+            F('created_at').desc(nulls_last=True),
+            F('id').desc(),
+        )[:limit]
+
+        # Materialize only fields needed by dashboard to keep compatibility with
+        # DBs that may not yet have newer optional Client columns.
+        clients = list(clients_qs)
+        client_ids = [c['id'] for c in clients]
         
         results = []
         
         # Batch-fetch card counts for all clients in 1 query (instead of N)
         card_counts_qs = IDCard.objects.filter(
-            table__group__client__in=clients
+            table__group__client_id__in=client_ids
         ).values('table__group__client_id').annotate(
             pending=Count('id', filter=Q(status='pending')),
             verified=Count('id', filter=Q(status='verified')),
             approved=Count('id', filter=Q(status='approved')),
             downloaded=Count('id', filter=Q(status='download')),
+            pool=Count('id', filter=Q(status='pool')),
         )
         counts_map = {item['table__group__client_id']: item for item in card_counts_qs}
         
         # Batch-fetch first table IDs in 1 query (instead of N)
         first_table_qs = IDCardTable.objects.filter(
-            group__client__in=clients
+            group__client_id__in=client_ids
         ).values('group__client_id').annotate(first_table_id=Min('id'))
         first_table_map = {item['group__client_id']: item['first_table_id'] for item in first_table_qs}
         
         # Batch-fetch all tables with per-table card counts
         tables_qs = IDCardTable.objects.filter(
-            group__client__in=clients
+            group__client_id__in=client_ids
         ).values('id', 'name', 'group__client_id').annotate(
             pending=Count('id_cards', filter=Q(id_cards__status='pending')),
             verified=Count('id_cards', filter=Q(id_cards__status='verified')),
             approved=Count('id_cards', filter=Q(id_cards__status='approved')),
             downloaded=Count('id_cards', filter=Q(id_cards__status='download')),
+            pool=Count('id_cards', filter=Q(id_cards__status='pool')),
         ).order_by('id')
         tables_map = {}
         for t in tables_qs:
@@ -238,31 +652,222 @@ def api_recent_client_updates(request):
                 'verified': t['verified'],
                 'approved': t['approved'],
                 'downloaded': t['downloaded'],
+                'pool': t['pool'],
             })
         
         for client in clients:
-            cc = counts_map.get(client.id, {})
+            client_id = client['id']
+            cc = counts_map.get(client_id, {})
+            client_name = client.get('name') or ''
             results.append({
-                'id': client.id,
-                'client_id': client.id,
-                'name': client.name,
-                'status': client.status,
-                'initial': client.name[0].upper() if client.name else 'C',
-                'first_table_id': first_table_map.get(client.id),
-                'tables': tables_map.get(client.id, []),
+                'id': client_id,
+                'client_id': client_id,
+                'name': client_name,
+                'status': client.get('status'),
+                'initial': client_name[0].upper() if client_name else 'C',
+                'first_table_id': first_table_map.get(client_id),
+                'tables': tables_map.get(client_id, []),
                 'pending': cc.get('pending', 0),
                 'verified': cc.get('verified', 0),
                 'approved': cc.get('approved', 0),
                 'downloaded': cc.get('downloaded', 0),
+                'pool': cc.get('pool', 0),
             })
 
-        cache.set(cache_key, results, 20)
+        live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+        active_clients_now = len(live_active_client_ids)
+        payload = {
+            'clients': results,
+            'active_clients_now': active_clients_now,
+            'active_client_ids': sorted(live_active_client_ids),
+        }
+
+        cache.set(cache_key, {'clients': results}, 20)
         return JsonResponse({
             'success': True,
-            'clients': results
+            **payload,
         })
     except Exception as e:
         logger.exception('api_recent_client_updates error: %s', e)
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred. Please try again.'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_dashboard_team_overview(request):
+    """API endpoint for dashboard-native Team Overview lists."""
+    try:
+        user = request.user
+        scope = str(request.GET.get('scope') or 'clients').strip().lower()
+        if scope not in ('clients', 'operator', 'assistent'):
+            scope = 'clients'
+
+        query = str(request.GET.get('search') or '').strip()
+        status = str(request.GET.get('status') or '').strip().lower()
+        limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
+
+        is_super_admin = PermissionService.is_super_admin(user)
+        can_manage_clients = bool(is_super_admin or PermissionService.has(user, 'perm_idcard_client_list'))
+        can_manage_staff = bool(is_super_admin)
+        can_manage_client_staff = bool(
+            is_super_admin
+            or PermissionService.has(user, 'perm_manage_client_staff')
+            or PermissionService.has(user, 'perm_idcard_client_list')
+        )
+
+        items = []
+
+        if scope == 'clients':
+            qs = PermissionService.get_accessible_clients(
+                user,
+                Client.objects.all()
+            )
+
+            if query:
+                qs = qs.filter(
+                    Q(name__icontains=query)
+                    | Q(user__email__icontains=query)
+                    | Q(user__phone__icontains=query)
+                )
+
+            if status in ('active', 'inactive', 'suspended'):
+                qs = qs.filter(status=status)
+
+            rows = qs.values(
+                'id',
+                'name',
+                'status',
+                'created_at',
+                'updated_at',
+                'user__email',
+                'user__phone',
+            ).order_by('-id')[:limit]
+
+            for row in rows:
+                items.append({
+                    'id': row['id'],
+                    'kind': 'client',
+                    'name': row.get('name') or '',
+                    'email': _safe_public_email(row.get('user__email') or ''),
+                    'mobile': row.get('user__phone') or '',
+                    'status': row.get('status') or 'inactive',
+                    'created_at': _format_dashboard_datetime(row.get('created_at')),
+                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
+                    'client_id': row['id'],
+                    'client_name': row.get('name') or '',
+                })
+
+        elif scope == 'operator':
+            qs = Staff.objects.filter(
+                staff_type='admin_staff'
+            )
+
+            if query:
+                qs = qs.filter(
+                    Q(user__first_name__icontains=query)
+                    | Q(user__last_name__icontains=query)
+                    | Q(user__email__icontains=query)
+                    | Q(user__phone__icontains=query)
+                )
+
+            if status in ('active', 'inactive'):
+                qs = qs.filter(user__is_active=(status == 'active'))
+
+            rows = qs.values(
+                'id',
+                'created_at',
+                'updated_at',
+                'user__email',
+                'user__first_name',
+                'user__last_name',
+                'user__username',
+                'user__phone',
+                'user__is_active',
+            ).order_by('-id')[:limit]
+
+            for row in rows:
+                full_name = f"{(row.get('user__first_name') or '').strip()} {(row.get('user__last_name') or '').strip()}".strip()
+                display_name = full_name or (row.get('user__username') or '') or (row.get('user__email') or '')
+                items.append({
+                    'id': row['id'],
+                    'kind': 'operator',
+                    'name': display_name,
+                    'email': _safe_public_email(row.get('user__email') or ''),
+                    'mobile': row.get('user__phone') or '',
+                    'status': 'active' if row.get('user__is_active') else 'inactive',
+                    'created_at': _format_dashboard_datetime(row.get('created_at')),
+                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
+                    'client_id': None,
+                    'client_name': '',
+                })
+
+        else:
+            qs = Staff.objects.filter(
+                staff_type='client_staff'
+            )
+
+            if PermissionService.is_admin_staff(user) and not PermissionService.has(user, 'perm_idcard_client_list'):
+                accessible_ids = PermissionService.get_accessible_client_ids(user)
+                qs = qs.filter(client_id__in=accessible_ids)
+
+            if query:
+                qs = qs.filter(
+                    Q(user__first_name__icontains=query)
+                    | Q(user__last_name__icontains=query)
+                    | Q(user__email__icontains=query)
+                    | Q(user__phone__icontains=query)
+                    | Q(client__name__icontains=query)
+                )
+
+            if status in ('active', 'inactive'):
+                qs = qs.filter(user__is_active=(status == 'active'))
+
+            rows = qs.values(
+                'id',
+                'created_at',
+                'updated_at',
+                'client_id',
+                'client__name',
+                'user__email',
+                'user__first_name',
+                'user__last_name',
+                'user__username',
+                'user__phone',
+                'user__is_active',
+            ).order_by('-id')[:limit]
+
+            for row in rows:
+                full_name = f"{(row.get('user__first_name') or '').strip()} {(row.get('user__last_name') or '').strip()}".strip()
+                display_name = full_name or (row.get('user__username') or '') or (row.get('user__email') or '')
+                items.append({
+                    'id': row['id'],
+                    'kind': 'assistant',
+                    'name': display_name,
+                    'email': _safe_public_email(row.get('user__email') or ''),
+                    'mobile': row.get('user__phone') or '',
+                    'status': 'active' if row.get('user__is_active') else 'inactive',
+                    'created_at': _format_dashboard_datetime(row.get('created_at')),
+                    'updated_at': _format_dashboard_datetime(row.get('updated_at')),
+                    'client_id': row.get('client_id'),
+                    'client_name': row.get('client__name') or '',
+                })
+
+        return JsonResponse({
+            'success': True,
+            'scope': scope,
+            'items': items,
+            'count': len(items),
+            'capabilities': {
+                'can_manage_clients': can_manage_clients,
+                'can_manage_staff': can_manage_staff,
+                'can_manage_client_staff': can_manage_client_staff,
+            },
+        })
+    except Exception as e:
+        logger.exception('api_dashboard_team_overview error: %s', e)
         return JsonResponse({
             'success': False,
             'error': 'An error occurred. Please try again.'
@@ -294,14 +899,29 @@ def api_print_reprint_overview(request):
         base_qs = Client.objects.all()
         accessible_clients = PermissionService.get_accessible_clients(user, base_qs)
 
-        # Keep print workflow clients alphabetical, but order reprint by latest update first.
-        print_clients_qs = accessible_clients.order_by('name')[:limit]
-        reprint_clients_qs = accessible_clients.annotate(
-            latest_reprint_update=Max(
-                'id_card_groups__tables__reprint_requests__updated_at',
-                filter=Q(id_card_groups__tables__reprint_requests__status__in=['requested', 'confirmed'])
+        # Order print clients by latest generate-list activity, then newest client.
+        print_clients_qs = accessible_clients.annotate(
+            latest_generate_update=Max(
+                'id_card_groups__tables__print_requests__updated_at',
+                filter=Q(id_card_groups__tables__print_requests__status='generate_list')
             )
-        ).order_by(F('latest_reprint_update').desc(nulls_last=True), 'name')[:limit]
+        ).order_by(
+            F('latest_generate_update').desc(nulls_last=True),
+            F('created_at').desc(nulls_last=True),
+            F('id').desc(),
+        )[:limit]
+
+        # Order reprint clients by latest request-list activity, then newest client.
+        reprint_clients_qs = accessible_clients.annotate(
+            latest_request_update=Max(
+                'id_card_groups__tables__reprint_requests__updated_at',
+                filter=Q(id_card_groups__tables__reprint_requests__status='requested')
+            )
+        ).order_by(
+            F('latest_request_update').desc(nulls_last=True),
+            F('created_at').desc(nulls_last=True),
+            F('id').desc(),
+        )[:limit]
 
         print_clients_list = list(print_clients_qs)
         reprint_clients_list = list(reprint_clients_qs)
@@ -320,10 +940,11 @@ def api_print_reprint_overview(request):
         # ── Print counts per table ───────────────────────────────────
         print_table_qs = PrintRequest.objects.filter(
             table__group__client_id__in=client_ids
-        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+        ).values('table__id', 'table__name', 'table__group__client_id', 'table__created_at').annotate(
             generate_list=Count('id', filter=Q(status='generate_list')),
             finalized=Count('id', filter=Q(status='finalized')),
             pool=Count('id', filter=Q(status='pool')),
+            latest_generate_update=Max('updated_at', filter=Q(status='generate_list')),
         ).order_by('table__id')
         print_tables_map = {}
         for t in print_table_qs:
@@ -336,7 +957,20 @@ def api_print_reprint_overview(request):
                 'generate_list': t['generate_list'],
                 'finalized': t['finalized'],
                 'pool': t['pool'],
+                'latest_generate_update': t.get('latest_generate_update'),
+                'table_created_at': t.get('table__created_at'),
             })
+
+        for cid, tables in print_tables_map.items():
+            tables.sort(
+                key=lambda x: (
+                    x.get('latest_generate_update') is not None,
+                    x.get('latest_generate_update') or x.get('table_created_at'),
+                    x.get('table_created_at'),
+                    x.get('id') or 0,
+                ),
+                reverse=True,
+            )
 
         # ── Reprint source counts per client (Download cards only) ─
         reprint_source_qs = IDCard.objects.filter(
@@ -361,7 +995,7 @@ def api_print_reprint_overview(request):
         reprint_source_table_qs = IDCard.objects.filter(
             table__group__client_id__in=client_ids,
             status='download',
-        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+        ).values('table__id', 'table__name', 'table__group__client_id', 'table__created_at').annotate(
             download_list=Count('id')
         ).order_by('table__id')
         reprint_source_table_map = {}
@@ -375,16 +1009,18 @@ def api_print_reprint_overview(request):
                 'download_list': t['download_list'],
                 'requested': 0,
                 'confirmed': 0,
+                'latest_update': None,
+                'table_created_at': t.get('table__created_at'),
             }
 
         # ── Reprint request/confirmed counts per table ───────────────
         reprint_table_qs = ReprintRequest.objects.filter(
             table__group__client_id__in=client_ids,
             card__status='download',
-        ).values('table__id', 'table__name', 'table__group__client_id').annotate(
+        ).values('table__id', 'table__name', 'table__group__client_id', 'table__created_at').annotate(
             requested=Count('id', filter=Q(status='requested')),
             confirmed=Count('id', filter=Q(status='confirmed')),
-            latest_update=Max('updated_at', filter=Q(status__in=['requested', 'confirmed'])),
+            latest_update=Max('updated_at', filter=Q(status='requested')),
         ).order_by('table__id')
 
         for t in reprint_table_qs:
@@ -398,15 +1034,27 @@ def api_print_reprint_overview(request):
                     'download_list': 0,
                     'requested': 0,
                     'confirmed': 0,
+                    'latest_update': None,
+                    'table_created_at': t.get('table__created_at'),
                 }
             reprint_source_table_map[cid][t['table__id']]['requested'] = t['requested']
             reprint_source_table_map[cid][t['table__id']]['confirmed'] = t['confirmed']
             reprint_source_table_map[cid][t['table__id']]['latest_update'] = t['latest_update']
+            if not reprint_source_table_map[cid][t['table__id']].get('table_created_at'):
+                reprint_source_table_map[cid][t['table__id']]['table_created_at'] = t.get('table__created_at')
 
         reprint_tables_map = {}
         for cid, table_map in reprint_source_table_map.items():
             tables = list(table_map.values())
-            tables.sort(key=lambda x: (x.get('latest_update') is not None, x.get('latest_update')), reverse=True)
+            tables.sort(
+                key=lambda x: (
+                    x.get('latest_update') is not None,
+                    x.get('latest_update') or x.get('table_created_at'),
+                    x.get('table_created_at'),
+                    x.get('id') or 0,
+                ),
+                reverse=True,
+            )
             reprint_tables_map[cid] = tables
 
         # Total requested should represent all accessible clients, not just the limited list.
@@ -429,7 +1077,16 @@ def api_print_reprint_overview(request):
                 'generate_list': pc.get('generate_list', 0),
                 'finalized': pc.get('finalized', 0),
                 'pool': pc.get('pool', 0),
-                'tables': print_tables_map.get(c.id, []),
+                'tables': [
+                    {
+                        'id': t['id'],
+                        'name': t['name'],
+                        'generate_list': t['generate_list'],
+                        'finalized': t['finalized'],
+                        'pool': t['pool'],
+                    }
+                    for t in print_tables_map.get(c.id, [])
+                ],
             })
 
 
@@ -444,7 +1101,16 @@ def api_print_reprint_overview(request):
                 'reprint_list': source.get('download_list', 0),
                 'requested': rc.get('requested', 0),
                 'confirmed': rc.get('confirmed', 0),
-                'tables': reprint_tables_map.get(c.id, []),
+                'tables': [
+                    {
+                        'id': t['id'],
+                        'name': t['name'],
+                        'download_list': t.get('download_list', 0),
+                        'requested': t.get('requested', 0),
+                        'confirmed': t.get('confirmed', 0),
+                    }
+                    for t in reprint_tables_map.get(c.id, [])
+                ],
             })
 
         payload = {
@@ -472,10 +1138,16 @@ def api_print_reprint_overview(request):
 def api_recent_activity(request):
     """API endpoint for the Recent Activity feed on the dashboard."""
     try:
-        limit = int(request.GET.get('limit', ACTIVITY_FEED_MAX))
-        limit = min(limit, ACTIVITY_FEED_MAX)  # Cap at max for 24hr feed
-        # Role-based activity filtering
-        activities = ActivityService.get_recent(limit=limit, user=request.user)
+        limit = _parse_dashboard_limit(
+            request.GET.get('limit', ACTIVITY_FEED_MAX),
+            default=ACTIVITY_FEED_MAX,
+            max_limit=ACTIVITY_FEED_MAX,
+        )
+        hours = _parse_recent_activity_window(request.GET.get('window', '48'))
+        activities = _enrich_recent_activities_for_dashboard(
+            request.user,
+            _get_dashboard_recent_activities(user=request.user, limit=limit, hours=hours),
+        )
         return JsonResponse({'success': True, 'activities': activities})
     except Exception as e:
         logger.exception('api_recent_activity error: %s', e)

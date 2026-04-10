@@ -14,13 +14,13 @@ import json
 import logging
 
 from django.core.exceptions import ValidationError
-from django.shortcuts import render, get_object_or_404
+from django.core.paginator import Paginator
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 
 from core.services.permission_service import (
     PermissionService,
-    api_require_permission,
 )
 from core.services.activity_service import ActivityService
 from core.models import SystemSettings
@@ -29,6 +29,7 @@ from core.utils.email_utils import (
     send_emergency_panel_access_email,
     send_not_found_mode_enabled_broadcast,
 )
+from client.models import Client as PanelClient
 
 from .models import (
     BusinessDetails,
@@ -36,7 +37,6 @@ from .models import (
     HeroImage,
     PortfolioCategory,
     PortfolioItem,
-    TrustedClient,
     Testimonial,
     Reel,
     FAQ,
@@ -46,7 +46,7 @@ from .models import (
 from .services import (
     WebsiteStatusService,
     BusinessDetailsService,
-    TrustedClientService,
+    WebsiteClientLogoService,
     TestimonialService,
     PortfolioItemService,
     PortfolioCategoryService,
@@ -55,31 +55,110 @@ from .services import (
     ContactSubmissionService,
     _parse_bool,
 )
+from .views import BENTO_FORCE_INCLUDE_SLUGS, BENTO_FORCE_EXCLUDE_SLUGS
 
 
 # =============================================================================
 # DECORATORS — thin wrappers delegating to PermissionService (single authority)
 # =============================================================================
 
-def website_admin_required(view_func):
-    """Require perm_website_view (super_admin auto-passes via PermissionService.has)."""
+def _is_ajax_or_api_request(request) -> bool:
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.path.startswith('/panel/website/api/')
+    )
+
+
+def _permission_denied_for_website(request, message='Website access denied'):
+    if _is_ajax_or_api_request(request):
+        return JsonResponse({'success': False, 'message': message}, status=403)
+    return redirect('/panel/')
+
+
+def _auth_required_for_website(request):
+    if _is_ajax_or_api_request(request):
+        return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
+    return redirect('/panel/auth/login/')
+
+
+def _website_permission_required(*permission_names, denied_message='Website access denied'):
     from functools import wraps
 
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        if not user.is_authenticated:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-            from django.shortcuts import redirect
-            return redirect('/panel/auth/login/')
-        if not PermissionService.has(user, 'perm_website_view'):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'message': 'Website access denied'}, status=403)
-            from django.shortcuts import redirect
-            return redirect('/panel/')
-        return view_func(request, *args, **kwargs)
-    return wrapper
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            user = request.user
+            if not user.is_authenticated:
+                return _auth_required_for_website(request)
+            if not any(PermissionService.has(user, perm) for perm in permission_names):
+                return _permission_denied_for_website(request, denied_message)
+            return view_func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def website_admin_required(view_func):
+    """Require any website area access permission."""
+    return _website_permission_required(
+        'perm_website_view',
+        'perm_manage_website_clients',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_view_required(view_func):
+    """Require general website admin access permission."""
+    return _website_permission_required('perm_website_view')(view_func)
+
+
+def website_clients_read_required(view_func):
+    """Require Clients tab read access permission."""
+    return _website_permission_required(
+        'perm_website_view',
+        'perm_manage_website_clients',
+    )(view_func)
+
+
+def website_clients_manage_required(view_func):
+    """Require Clients tab manage permission."""
+    return _website_permission_required(
+        'perm_website_edit',
+        'perm_manage_website_clients',
+    )(view_func)
+
+
+def website_portfolio_read_required(view_func):
+    """Require Portfolio tab read access permission."""
+    return _website_permission_required(
+        'perm_website_view',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_portfolio_add_required(view_func):
+    """Require Portfolio tab create/add permission."""
+    return _website_permission_required(
+        'perm_website_add',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_portfolio_edit_required(view_func):
+    """Require Portfolio tab edit/toggle permission."""
+    return _website_permission_required(
+        'perm_website_edit',
+        'perm_manage_website_portfolio',
+    )(view_func)
+
+
+def website_portfolio_delete_required(view_func):
+    """Require Portfolio tab delete permission."""
+    return _website_permission_required(
+        'perm_website_delete',
+        'perm_manage_website_portfolio',
+    )(view_func)
 
 
 def website_edit_required(view_func):
@@ -146,7 +225,7 @@ def website_publish_required(view_func):
 # HELPER
 # =============================================================================
 
-def _get_base_context(request, active_tab='overview'):
+def _get_base_context(request, active_tab='business'):
     """Common context for all website admin pages."""
     perms = PermissionService.get_permission_context(request.user)
     perms.update({
@@ -163,90 +242,120 @@ def _get_base_context(request, active_tab='overview'):
 
 @website_admin_required
 def website_dashboard(request):
-    """Website Admin Dashboard — overview with stat cards."""
-    context = _get_base_context(request, 'overview')
-
-    # Consolidated stats — one aggregate per model instead of 15 separate .count() queries
-    from django.db.models import Count, Q
-
-    portfolio_agg = PortfolioItem.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_portfolio'] = portfolio_agg['total']
-    context['active_portfolio'] = portfolio_agg['active']
-
-    review_agg = Testimonial.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_reviews'] = review_agg['total']
-    context['active_reviews'] = review_agg['active']
-
-    client_agg = TrustedClient.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_clients'] = client_agg['total']
-    context['active_clients'] = client_agg['active']
-
-    context['total_features'] = Feature.objects.count()
-    context['total_reels'] = Reel.objects.count()
-
-    contact_agg = ContactSubmission.objects.aggregate(
-        total=Count('id'),
-        new=Count('id', filter=Q(status='new')),
-    )
-    context['total_contacts'] = contact_agg['total']
-    context['new_contacts'] = contact_agg['new']
-
-    context['website_status'] = WebsiteStatus.get_status()
-    context['website_not_found_mode'] = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
-
-    hero_agg = HeroImage.objects.aggregate(
-        total=Count('id'),
-        active=Count('id', filter=Q(is_active=True)),
-    )
-    context['total_hero_images'] = hero_agg['total']
-    context['active_hero_images'] = hero_agg['active']
-
-    cat_agg = PortfolioCategory.objects.aggregate(
-        total=Count('id'),
-        bento=Count('id', filter=Q(is_bento=True)),
-    )
-    context['total_categories'] = cat_agg['total']
-    context['bento_categories_count'] = cat_agg['bento']
-
-    return render(request, 'website/admin/dashboard.html', context)
+    """Route Website root to the first allowed tab for this user."""
+    user = request.user
+    if PermissionService.has(user, 'perm_website_view'):
+        return redirect('website_admin:business')
+    if PermissionService.has(user, 'perm_manage_website_clients'):
+        return redirect('website_admin:clients')
+    if PermissionService.has(user, 'perm_manage_website_portfolio'):
+        return redirect('website_admin:portfolio')
+    return redirect('/panel/')
 
 
-@website_admin_required
+@website_view_required
 def business_details_page(request):
     """Business Details management page."""
     context = _get_base_context(request, 'business')
     business = BusinessDetails.objects.first()
     context['business'] = business
     context['hero_images'] = HeroImage.objects.order_by('order', 'pk')
+    context['website_status'] = WebsiteStatus.get_status()
+    context['website_not_found_mode'] = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+    context['can_publish_website'] = PermissionService.has(request.user, 'perm_website_publish')
+    context['can_send_pro_access_link'] = PermissionService.is_pro_user(request.user)
     return render(request, 'website/admin/business-details.html', context)
 
 
-@website_admin_required
+@website_clients_read_required
 def clients_page(request):
-    """Trusted Clients / Partners management page."""
+    """Website client logo management page (uses main Client records)."""
     context = _get_base_context(request, 'clients')
-    context['clients_list'] = TrustedClient.objects.all().order_by('order')
+
+    visibility_filter = (
+        request.GET.get('visibility', '')
+        or request.GET.get('status', '')
+        or ''
+    ).strip().lower()
+    if visibility_filter not in ('visible', 'hidden'):
+        visibility_filter = ''
+
+    clients_qs = PanelClient.objects.select_related('user').all().order_by('website_display_order', 'name', 'id')
+    if visibility_filter == 'visible':
+        clients_qs = clients_qs.filter(website_is_visible=True)
+    elif visibility_filter == 'hidden':
+        clients_qs = clients_qs.filter(website_is_visible=False)
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(clients_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['clients_list'] = page_obj.object_list
+    context['current_visibility'] = visibility_filter
+    context['current_status'] = visibility_filter
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_clients_count'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/clients.html', context)
 
 
-@website_admin_required
+@website_view_required
 def reviews_page(request):
     """Reviews / Testimonials management page."""
     context = _get_base_context(request, 'reviews')
-    context['reviews'] = Testimonial.objects.all().order_by('-created_at')
+
+    reviews_qs = Testimonial.objects.all().order_by('-created_at')
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(reviews_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['reviews'] = page_obj.object_list
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_reviews_count'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/reviews.html', context)
 
 
-@website_admin_required
+@website_portfolio_read_required
 def portfolio_page(request):
     """Our Works / Portfolio management page."""
     from django.db.models import Count
@@ -256,14 +365,57 @@ def portfolio_page(request):
     if not cache.get('portfolio_defaults_ensured'):
         PortfolioCategory.ensure_defaults()
         cache.set('portfolio_defaults_ensured', True, 3600)
-    context['items'] = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
+
+    items_qs = PortfolioItem.objects.select_related('category').all().order_by('order', '-created_at')
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(items_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['items'] = page_obj.object_list
     context['categories'] = PortfolioCategory.objects.annotate(item_count=Count('items')).order_by('order')
+    context['public_bento_include_slugs'] = list(BENTO_FORCE_INCLUDE_SLUGS)
+    context['public_bento_exclude_slugs'] = list(BENTO_FORCE_EXCLUDE_SLUGS)
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_items_count'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/portfolio.html', context)
 
 
 # =============================================================================
 # API — WEBSITE STATUS
 # =============================================================================
+
+@require_GET
+@website_publish_required
+def api_website_status_summary(request):
+    """Return website status summary used by website controls in panel UI."""
+    not_found_mode = SystemSettings.get_value('website_not_found_mode', 'false') == 'true'
+    return JsonResponse({
+        'success': True,
+        'website_status': WebsiteStatus.get_status(),
+        'website_not_found_mode': not_found_mode,
+        'can_send_pro_access_link': PermissionService.is_pro_user(request.user),
+    })
 
 @require_POST
 @website_publish_required
@@ -391,46 +543,44 @@ def api_business_toggle_status(request):
 
 
 # =============================================================================
-# API — TRUSTED CLIENTS
+# API — CLIENT LOGOS (MAIN CLIENT MODEL)
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_clients_read_required
 def api_client_list(request):
-    """List trusted clients."""
-    qs = TrustedClientService.list_all()
+    """List panel clients for website logo management."""
+    qs = WebsiteClientLogoService.list_all()
     data = [{
         'id': c.id,
         'name': c.name,
-        'logo': c.logo.url if c.logo else None,
-        'order': c.order,
-        'is_active': c.is_active,
+        'logo': c.website_logo.url if c.website_logo else None,
+        'website_is_visible': bool(c.website_is_visible),
+        'website_display_order': int(c.website_display_order or 0),
+        'website_visibility_display': 'Visible' if c.website_is_visible else 'Hidden',
+        'status': c.status,
+        'status_display': c.get_status_display(),
+        'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else '',
     } for c in qs]
     return JsonResponse({'success': True, 'clients': data})
 
 
 @require_POST
-@website_add_required
+@website_clients_manage_required
 def api_client_create(request):
-    """Create a trusted client."""
-    try:
-        client = TrustedClientService.create(
-            name=request.POST.get('name', ''),
-            order=int(request.POST.get('order', 0)),
-            is_active=_parse_bool(request.POST.get('is_active', 'true')),
-            logo=request.FILES.get('logo'),
-        )
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': e.message}, status=400)
-    return JsonResponse({'success': True, 'message': 'Client created', 'id': client.id})
+    """Clients are created from Manage Clients panel, not Website tab."""
+    return JsonResponse(
+        {'success': False, 'message': 'Create client from Manage Clients page.'},
+        status=400,
+    )
 
 
 @require_GET
-@website_admin_required
+@website_clients_read_required
 def api_client_get(request, pk):
-    """Get a single trusted client."""
+    """Get a single panel client for logo edit modal."""
     try:
-        c = TrustedClientService.get(pk)
+        c = WebsiteClientLogoService.get(pk)
     except Http404:
         return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
     return JsonResponse({
@@ -438,52 +588,76 @@ def api_client_get(request, pk):
         'client': {
             'id': c.id,
             'name': c.name,
-            'logo': c.logo.url if c.logo else None,
-            'order': c.order,
-            'is_active': c.is_active,
+            'logo': c.website_logo.url if c.website_logo else None,
+            'website_is_visible': bool(c.website_is_visible),
+            'website_display_order': int(c.website_display_order or 0),
+            'website_visibility_display': 'Visible' if c.website_is_visible else 'Hidden',
+            'status': c.status,
+            'status_display': c.get_status_display(),
         }
     })
 
 
 @require_POST
-@website_edit_required
+@website_clients_manage_required
 def api_client_update(request, pk):
-    """Update a trusted client."""
+    """Update website logo for a panel client."""
     try:
-        TrustedClientService.update(
+        logo = request.FILES.get('logo')
+        remove_logo = _parse_bool(request.POST.get('remove_logo', 'false'))
+        visibility_raw = request.POST.get('website_is_visible', None)
+        website_is_visible = None
+        if visibility_raw is not None and str(visibility_raw).strip() != '':
+            website_is_visible = _parse_bool(visibility_raw)
+
+        order_raw = request.POST.get('website_display_order', None)
+        website_display_order = None
+        if order_raw is not None and str(order_raw).strip() != '':
+            try:
+                website_display_order = int(str(order_raw).strip())
+            except (TypeError, ValueError):
+                return JsonResponse({'success': False, 'message': 'Display order must be a valid number.'}, status=400)
+
+            if website_display_order < 0:
+                return JsonResponse({'success': False, 'message': 'Display order cannot be negative.'}, status=400)
+            if website_display_order > 9999:
+                return JsonResponse({'success': False, 'message': 'Display order is too large.'}, status=400)
+
+        if logo is None and not remove_logo and website_is_visible is None and website_display_order is None:
+            return JsonResponse({'success': False, 'message': 'No changes submitted.'}, status=400)
+
+        WebsiteClientLogoService.update_logo(
             pk,
-            name=request.POST.get('name'),
-            order=request.POST.get('order'),
-            is_active=request.POST.get('is_active'),
-            logo=request.FILES.get('logo'),
+            logo=logo,
+            remove_logo=remove_logo,
+            website_is_visible=website_is_visible,
+            website_display_order=website_display_order,
         )
     except ValidationError as e:
         return JsonResponse({'success': False, 'message': e.message}, status=400)
-    return JsonResponse({'success': True, 'message': 'Client updated'})
+    except Http404:
+        return JsonResponse({'success': False, 'message': 'Client not found'}, status=404)
+    return JsonResponse({'success': True, 'message': 'Client settings updated'})
 
 
 @require_POST
-@website_delete_required
+@website_clients_manage_required
 def api_client_delete(request, pk):
-    """Delete a trusted client."""
-    try:
-        TrustedClientService.delete(pk)
-        return JsonResponse({'success': True, 'message': 'Client deleted'})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Client delete error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+    """Clients are deleted from Manage Clients panel, not Website tab."""
+    return JsonResponse(
+        {'success': False, 'message': 'Delete client from Manage Clients page.'},
+        status=400,
+    )
 
 
 @require_POST
-@website_edit_required
+@website_clients_manage_required
 def api_client_toggle(request, pk):
-    """Toggle trusted client active/inactive."""
-    try:
-        is_active = TrustedClientService.toggle(pk)
-        return JsonResponse({'success': True, 'is_active': is_active})
-    except Exception as e:
-        logging.getLogger(__name__).exception("Client toggle error: %s", e)
-        return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)
+    """Client status is managed from Manage Clients panel."""
+    return JsonResponse(
+        {'success': False, 'message': 'Client status can be changed from Manage Clients page.'},
+        status=400,
+    )
 
 
 # =============================================================================
@@ -491,7 +665,7 @@ def api_client_toggle(request, pk):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_review_list(request):
     """List testimonials."""
     qs = TestimonialService.list_all()
@@ -531,7 +705,7 @@ def api_review_create(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_review_get(request, pk):
     """Get a single review."""
     try:
@@ -604,7 +778,7 @@ def api_review_toggle(request, pk):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_portfolio_read_required
 def api_portfolio_list(request):
     """List portfolio items."""
     qs = PortfolioItemService.list_all()
@@ -626,7 +800,7 @@ def api_portfolio_list(request):
 
 
 @require_POST
-@website_add_required
+@website_portfolio_add_required
 def api_portfolio_create(request):
     """Create a portfolio item."""
     try:
@@ -648,7 +822,7 @@ def api_portfolio_create(request):
 
 @require_POST
 @rate_limit(max_requests=5, window_seconds=60, key_prefix='portfolio_bulk')
-@website_add_required
+@website_portfolio_add_required
 def api_portfolio_bulk_upload(request):
     """
     Bulk upload portfolio images (max 50).
@@ -658,7 +832,7 @@ def api_portfolio_bulk_upload(request):
       - category: category ID
     """
     MAX_BULK_IMAGES = 50
-    MAX_SINGLE_IMAGE_SIZE = 20 * 1024 * 1024  # 20 MB per image
+    MAX_SINGLE_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB per image (matches service validation)
     ALLOWED_IMAGE_TYPES = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
     
     category_id = request.POST.get('category', '')
@@ -685,7 +859,7 @@ def api_portfolio_bulk_upload(request):
             size_mb = img_file.size / (1024 * 1024)
             return JsonResponse({
                 'success': False,
-                'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 20 MB per image.'
+                'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 10 MB per image.'
             }, status=400)
     
     created = 0
@@ -723,7 +897,7 @@ def api_portfolio_bulk_upload(request):
 
 
 @require_GET
-@website_admin_required
+@website_portfolio_read_required
 def api_portfolio_get(request, pk):
     """Get a single portfolio item."""
     try:
@@ -748,7 +922,7 @@ def api_portfolio_get(request, pk):
 
 
 @require_POST
-@website_edit_required
+@website_portfolio_edit_required
 def api_portfolio_update(request, pk):
     """Update a portfolio item."""
     try:
@@ -770,7 +944,7 @@ def api_portfolio_update(request, pk):
 
 
 @require_POST
-@website_delete_required
+@website_portfolio_delete_required
 def api_portfolio_delete(request, pk):
     """Delete a portfolio item."""
     try:
@@ -782,7 +956,7 @@ def api_portfolio_delete(request, pk):
 
 
 @require_POST
-@website_edit_required
+@website_portfolio_edit_required
 def api_portfolio_toggle(request, pk):
     """Toggle portfolio item active/inactive."""
     try:
@@ -798,7 +972,7 @@ def api_portfolio_toggle(request, pk):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_portfolio_read_required
 def api_portfolio_category_list(request):
     """List portfolio categories."""
     from django.db.models import Count
@@ -820,7 +994,7 @@ def api_portfolio_category_list(request):
 
 
 @require_POST
-@website_add_required
+@website_portfolio_add_required
 def api_portfolio_category_create(request):
     """Create a portfolio category."""
     try:
@@ -839,7 +1013,7 @@ def api_portfolio_category_create(request):
 
 
 @require_POST
-@website_edit_required
+@website_portfolio_edit_required
 def api_portfolio_category_update(request, pk):
     """Update a portfolio category."""
     try:
@@ -860,7 +1034,7 @@ def api_portfolio_category_update(request, pk):
 
 
 @require_POST
-@website_delete_required
+@website_portfolio_delete_required
 def api_portfolio_category_delete(request, pk):
     """Delete a portfolio category (only non-default)."""
     try:
@@ -968,12 +1142,10 @@ def api_hero_image_reorder(request):
 # PAGE VIEW — REELS
 # =============================================================================
 
-@website_admin_required
+@website_view_required
 def reels_page(request):
-    """Reels management page."""
-    context = _get_base_context(request, 'reels')
-    context['reels'] = Reel.objects.all().order_by('order', '-created_at')
-    return render(request, 'website/admin/reels.html', context)
+    """Legacy reels page redirects to portfolio where reels are managed as portfolio media."""
+    return redirect('website_admin:portfolio')
 
 
 # =============================================================================
@@ -981,7 +1153,7 @@ def reels_page(request):
 # =============================================================================
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_reel_list(request):
     """List all reels."""
     qs = ReelService.list_all()
@@ -1017,7 +1189,7 @@ def api_reel_create(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_reel_get(request, pk):
     """Get a single reel."""
     try:
@@ -1086,25 +1258,55 @@ def api_reel_toggle(request, pk):
 # CONTACT SUBMISSIONS — Page + API
 # =============================================================================
 
-@website_admin_required
+@website_view_required
 def contacts_page(request):
     """Contact Messages management page."""
     context = _get_base_context(request, 'contacts')
-    
-    status_filter = request.GET.get('status', '')
-    if status_filter and status_filter in ['new', 'read', 'replied', 'closed']:
-        contacts = ContactSubmissionService.list_by_status(status_filter)
+
+    allowed_statuses = ['new', 'read', 'replied', 'closed']
+    status_filter = (request.GET.get('status', '') or '').strip().lower()
+    if status_filter not in allowed_statuses:
+        status_filter = ''
+
+    if status_filter:
+        contacts_qs = ContactSubmissionService.list_by_status(status_filter)
     else:
-        contacts = ContactSubmissionService.list_all()
-    
-    context['contacts'] = contacts
+        contacts_qs = ContactSubmissionService.list_all()
+
+    per_page_options = [10, 25, 50, 100]
+    default_per_page = 25
+    try:
+        per_page = int(request.GET.get('per_page', default_per_page))
+        if per_page not in per_page_options:
+            per_page = default_per_page
+    except (TypeError, ValueError):
+        per_page = default_per_page
+
+    paginator = Paginator(contacts_qs, per_page)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    page_count = len(page_obj.object_list)
+    if paginator.count:
+        page_start = ((page_obj.number - 1) * per_page) + 1
+        page_end = page_start + page_count - 1
+    else:
+        page_start = 0
+        page_end = 0
+
+    context['contacts'] = page_obj.object_list
     context['stats'] = ContactSubmissionService.get_stats()
     context['current_status'] = status_filter
+    context['page_obj'] = page_obj
+    context['per_page'] = per_page
+    context['per_page_options'] = per_page_options
+    context['total_contacts'] = paginator.count
+    context['page_start'] = page_start
+    context['page_end'] = page_end
     return render(request, 'website/admin/contacts.html', context)
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_contact_list(request):
     """List all contact submissions as JSON."""
     status_filter = request.GET.get('status', '')
@@ -1133,7 +1335,7 @@ def api_contact_list(request):
 
 
 @require_GET
-@website_admin_required
+@website_view_required
 def api_contact_get(request, pk):
     """Get a single contact submission."""
     try:

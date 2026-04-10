@@ -85,6 +85,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         status: str = '',
         template_id: int = None,
         allow_large: bool = False,
+        progress_callback=None,
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -169,7 +170,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             )
             
             # Sort cards for export (Class → Name, or Name only)
-            cards_list = sort_cards_for_export(list(cards), table.fields)
+            cards_list = sort_cards_for_export(cards, table.fields)
             num_cols = 1 + len(ordered_fields)  # Sr No + fields
             column_widths = self._calculate_column_widths(
                 ordered_fields, cards_list, num_cols
@@ -186,7 +187,8 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                 doc, cards_list, ordered_fields, column_widths, num_cols,
                 Cm, Pt, RGBColor, WD_TABLE_ALIGNMENT, WD_ALIGN_PARAGRAPH,
                 parse_xml, nsdecls, OxmlElement, qn, Image, ImageOps,
-                class_field_name=class_field_name
+                class_field_name=class_field_name,
+                progress_callback=progress_callback,
             )
             
             # Add template instructions (if a template was selected)

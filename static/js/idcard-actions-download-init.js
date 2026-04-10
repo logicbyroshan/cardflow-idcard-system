@@ -16,6 +16,15 @@ function _getCurrentStatus() {
     return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '';
 }
 
+function _setBulkUiLock(active) {
+    if (window.IDCardApp && typeof window.IDCardApp.applyBulkUiLock === 'function') {
+        window.IDCardApp.applyBulkUiLock(!!active);
+        return;
+    }
+    if (!document || !document.body) return;
+    document.body.classList.toggle('bulk-operation-active', !!active);
+}
+
 // ==========================================
 // EXPORT TEMPLATE MANAGEMENT
 // ==========================================
@@ -150,6 +159,13 @@ function initReuploadHandlers() {
     reuploadActionsProgress = document.getElementById('reuploadActionsProgress');
     reuploadActionsBar = document.getElementById('reuploadActionsBar');
     reuploadActionsStatus = document.getElementById('reuploadActionsStatus');
+    let reuploadTaskLockActive = false;
+
+    function _releaseReuploadTaskLock() {
+        if (!reuploadTaskLockActive) return;
+        _setBulkUiLock(false);
+        reuploadTaskLockActive = false;
+    }
 
     // Drop zone  click opens file picker
     if (reuploadActionsDropZone) {
@@ -234,6 +250,7 @@ function initReuploadHandlers() {
                         if (typeof showToast === 'function') showToast(msg, true);
                         setTimeout(function() {
                             closeReuploadActionsModal();
+                            _releaseReuploadTaskLock();
                             if (window.IDCardApp && typeof window.IDCardApp.refreshCardTable === 'function') {
                                 window.IDCardApp.refreshCardTable();
                             } else if (window.IDCardPage && typeof window.IDCardPage.navigateStatusNoReload === 'function') {
@@ -248,6 +265,7 @@ function initReuploadHandlers() {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = errMsg;
                         if (typeof showToast === 'function') showToast(errMsg, false);
                         _setReuploadButton('Start Reupload', false);
+                        _releaseReuploadTaskLock();
                     } else {
                         const pct = 80 + Math.round((t.progress_percentage || 0) * 0.19);
                         if (reuploadActionsBar) reuploadActionsBar.style.width = Math.min(pct, 99) + '%';
@@ -262,6 +280,7 @@ function initReuploadHandlers() {
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Lost connection to server. Task may still be running  refresh to check.';
                         if (typeof showToast === 'function') showToast('Lost connection while tracking progress. Please refresh.', false);
                         _setReuploadButton('Start Reupload', false);
+                        _releaseReuploadTaskLock();
                     }
                 });
         }, 2000);
@@ -270,6 +289,8 @@ function initReuploadHandlers() {
     function _startReuploadTask(tableId) {
         if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
 
+        reuploadTaskLockActive = true;
+        _setBulkUiLock(true);
         _setReuploadButton('Uploading ZIP...', true);
         if (reuploadActionsProgress) reuploadActionsProgress.style.display = 'block';
         if (reuploadActionsBar) reuploadActionsBar.style.width = '10%';
@@ -304,12 +325,14 @@ function initReuploadHandlers() {
                 if (reuploadActionsStatus) reuploadActionsStatus.textContent = msg;
                 if (typeof showToast === 'function') showToast(msg, false);
                 _setReuploadButton('Start Reupload', false);
+                _releaseReuploadTaskLock();
             })
             .catch(function(err) {
                 console.error('Error creating reupload task:', err);
                 if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Network error while creating task.';
                 if (typeof showToast === 'function') showToast('Network error while creating reupload task.', false);
                 _setReuploadButton('Start Reupload', false);
+                _releaseReuploadTaskLock();
             });
     }
 

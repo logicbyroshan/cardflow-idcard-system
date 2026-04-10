@@ -77,5 +77,5 @@ class Command(BaseCommand):
             f'  Username: {user.username}\n'
             f'  Email:    {user.email}\n'
             f'  Role:     {user.get_role_display()}\n'
-            f'\nLogin at the panel using "Super Admin" role selection with this email.'
+            f'\nLogin at the panel using this email and password.'
         ))

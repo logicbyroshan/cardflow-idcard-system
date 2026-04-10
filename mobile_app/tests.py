@@ -1,14 +1,18 @@
 import json
 from unittest import mock
+from datetime import timedelta
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.backends.db import SessionStore
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
 from staff.models import Staff
-from website.models import PortfolioCategory
+from website.models import PortfolioCategory, PortfolioItem
 
 
 User = get_user_model()
@@ -24,6 +28,13 @@ class MobileAppBaseTestCase(TestCase):
 			email='mob-super@test.com',
 			password='pass1234',
 			role='super_admin',
+		)
+
+		self.pro_user = User.objects.create_user(
+			username='mob-pro@test.com',
+			email='mob-pro@test.com',
+			password='pass1234',
+			role='pro_user',
 		)
 
 		self.client_user = User.objects.create_user(
@@ -73,6 +84,20 @@ class MobileAppBaseTestCase(TestCase):
 			perm_idcard_pending_list=True,
 		)
 
+		self.admin_staff_manage_user = User.objects.create_user(
+			username='mob-admin-manage@test.com',
+			email='mob-admin-manage@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		self.admin_staff_manage_profile = Staff.objects.create(
+			user=self.admin_staff_manage_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+			perm_idcard_pending_list=True,
+			perm_idcard_client_list=True,
+		)
+
 		self.group = IDCardGroup.objects.create(client=self.client_profile, name='Group A')
 		self.table = IDCardTable.objects.create(
 			group=self.group,
@@ -88,6 +113,21 @@ class MobileAppBaseTestCase(TestCase):
 			field_data={'NAME': 'Student One', 'ROLL NO': '101'},
 			status='pending',
 		)
+		self.admin_staff_manage_profile.assigned_clients.add(self.client_profile)
+
+		self.client_staff_user = User.objects.create_user(
+			username='mob-client-staff@test.com',
+			email='mob-client-staff@test.com',
+			password='pass1234',
+			role='client_staff',
+		)
+		self.client_staff_profile = Staff.objects.create(
+			user=self.client_staff_user,
+			staff_type='client_staff',
+			client=self.client_profile,
+			perm_mobile_app=True,
+			perm_idcard_pending_list=True,
+		)
 
 	def _set_mobile_auth_checkpoint(self):
 		session = self.client.session
@@ -98,6 +138,10 @@ class MobileAppBaseTestCase(TestCase):
 		self.client.login(username='mob-super@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
 
+	def _login_mobile_pro_user(self):
+		self.client.login(username='mob-pro@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
 	def _login_mobile_client(self):
 		self.client.login(username='mob-client@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
@@ -105,6 +149,44 @@ class MobileAppBaseTestCase(TestCase):
 	def _login_mobile_admin_staff(self):
 		self.client.login(username='mob-admin-staff@test.com', password='pass1234')
 		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_admin_staff_manager(self):
+		self.client.login(username='mob-admin-manage@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_client_with_add_perm(self):
+		self.client.login(username='mob-client-add@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _login_mobile_client_staff(self):
+		self.client.login(username='mob-client-staff@test.com', password='pass1234')
+		self._set_mobile_auth_checkpoint()
+
+	def _create_authenticated_session_for_user(self, user, *, surface='desktop', mobile_auth_ok=False, browser_fp=''):
+		session = SessionStore()
+		session['_auth_user_id'] = str(user.pk)
+		session['_auth_user_backend'] = 'django.contrib.auth.backends.ModelBackend'
+		session['_auth_user_hash'] = user.get_session_auth_hash()
+		session['_auth_login_surface'] = surface
+		if browser_fp:
+			session['_auth_browser_fp'] = browser_fp
+		if mobile_auth_ok or surface == 'mobile':
+			session['mobile_auth_ok'] = True
+		session.save()
+		return session.session_key
+
+	def _enable_mobile_photo_edit_for_all_roles(self):
+		"""Ensure every test role can open camera/upload flows on the same table."""
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.save(update_fields=['perm_idcard_edit'])
+
+		self.client_staff_profile.perm_idcard_edit = True
+		self.client_staff_profile.save(update_fields=['perm_idcard_edit'])
+		self.client_staff_profile.assigned_groups.set([self.group])
+
+		self.admin_staff_profile.perm_idcard_edit = True
+		self.admin_staff_profile.save(update_fields=['perm_idcard_edit'])
+		self.admin_staff_profile.assigned_clients.set([self.client_profile])
 
 
 class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
@@ -121,6 +203,9 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response['Service-Worker-Allowed'], '/app/')
 		self.assertIn('application/javascript', response['Content-Type'])
+		content = response.content.decode('utf-8')
+		self.assertRegex(content, r"const STATIC_CACHE = 'adarsh-static-v\d+';")
+		self.assertIn("/static/css/vendor/webfonts/fa-solid-900.woff2", content)
 
 	def test_mobile_page_redirects_without_mobile_auth_checkpoint(self):
 		self.client.login(username='mob-super@test.com', password='pass1234')
@@ -164,6 +249,60 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertEqual(self.client.session.get('mobile_auth_ok'), True)
 		mock_log_login.assert_called_once()
 
+	@mock.patch('mobile_app.views.ActivityService.log_login')
+	@mock.patch('mobile_app.views.AuthService.authenticate_user')
+	def test_mobile_login_allows_client_when_desktop_session_exists(self, mock_authenticate, mock_log_login):
+		self._create_authenticated_session_for_user(self.client_user, surface='desktop')
+		mock_authenticate.return_value = {
+			'success': True,
+			'user': self.client_user,
+			'message': 'ok',
+		}
+
+		response = self.client.post(
+			'/app/api/auth/login/',
+			data=json.dumps({'email': 'mob-client@test.com', 'password': 'pass1234'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		mock_log_login.assert_called_once()
+
+	@mock.patch('mobile_app.views.ActivityService.log_login')
+	@mock.patch('mobile_app.views.AuthService.authenticate_user')
+	def test_mobile_login_blocks_client_when_mobile_session_limit_reached(self, mock_authenticate, mock_log_login):
+		self._create_authenticated_session_for_user(self.client_user, surface='mobile', mobile_auth_ok=True)
+		mock_authenticate.return_value = {
+			'success': True,
+			'user': self.client_user,
+			'message': 'ok',
+		}
+
+		response = self.client.post(
+			'/app/api/auth/login/',
+			data=json.dumps({'email': 'mob-client@test.com', 'password': 'pass1234'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('Maximum 1 active mobile login', response.json().get('message', ''))
+		mock_log_login.assert_not_called()
+
+	def test_mobile_login_redirects_to_no_access_when_no_active_client_exists(self):
+		self._login_mobile_super_admin()
+		Client.objects.update(status='inactive')
+
+		home_response = self.client.get('/app/')
+		self.assertEqual(home_response.status_code, 302)
+		self.assertIn('/app/no-access/?reason=no-client-context', home_response.url)
+
+		login_response = self.client.get('/app/login/', follow=True)
+		self.assertGreaterEqual(len(login_response.redirect_chain), 1)
+		self.assertEqual(login_response.redirect_chain[0][0], '/app/no-access/?reason=no-client-context')
+		self.assertEqual(login_response.status_code, 403)
+
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):
 	def test_bulk_status_rejects_non_list_card_ids(self):
@@ -199,6 +338,24 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 			data={'field_data': json.dumps({'NAME': 'Edited'})},
 		)
 		self.assertEqual(response.status_code, 403)
+
+	def test_card_update_blocks_client_edit_in_pool_status(self):
+		self.card.status = 'pool'
+		self.card.save(update_fields=['status'])
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.save(update_fields=['perm_idcard_edit'])
+
+		self._login_mobile_client()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{self.card.id}/update/',
+			data={'field_data': json.dumps({'NAME': 'Edited In Pool'})},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('pool status', response.json().get('message', '').lower())
+		self.card.refresh_from_db()
+		self.assertEqual(self.card.field_data.get('NAME'), 'Student One')
 
 	def test_card_delete_requires_delete_permission_for_client_role(self):
 		self._login_mobile_client()
@@ -293,8 +450,409 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		)
 		self.assertEqual(response.status_code, 404)
 
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_upload_photo_blocks_client_edit_in_pool_status(self, _mock_validate):
+		self.card.status = 'pool'
+		self.card.save(update_fields=['status'])
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.save(update_fields=['perm_idcard_edit'])
+
+		self._login_mobile_client()
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('pool status', response.json().get('message', '').lower())
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_upload_photo_requires_edit_permission_for_client_role(self, mock_validate):
+		self._login_mobile_client()
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('permission', response.json().get('message', '').lower())
+		mock_validate.assert_not_called()
+
+	@mock.patch('mobile_app.views.ThumbnailService.ensure_thumbnail_exists')
+	@mock.patch('mobile_app.views.ImageService.process_image_field')
+	def test_upload_photo_normalizes_png_to_jpg_before_storage(self, mock_process_image, _mock_thumb):
+		from io import BytesIO
+		from PIL import Image
+
+		captured = {}
+
+		def _capture_uploaded_file(**kwargs):
+			uploaded = kwargs.get('uploaded_file')
+			captured['name'] = getattr(uploaded, 'name', '')
+			captured['content_type'] = getattr(uploaded, 'content_type', '')
+			captured['size'] = getattr(uploaded, 'size', 0)
+			return mock.Mock(success=True, message='ok', data={'final_value': 'adarshimg/TST/student.jpg'})
+
+		mock_process_image.side_effect = _capture_uploaded_file
+
+		self._login_mobile_super_admin()
+		buf = BytesIO()
+		Image.new('RGB', (1600, 1200), color='orange').save(buf, format='PNG')
+		photo = SimpleUploadedFile('iphone-photo.png', buf.getvalue(), content_type='image/png')
+
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		self.assertTrue(captured.get('name', '').lower().endswith('.jpg'))
+		self.assertEqual(captured.get('content_type'), 'image/jpeg')
+		self.assertGreater(captured.get('size', 0), 0)
+
+	def test_camera_ui_is_consistent_across_mobile_roles(self):
+		self._enable_mobile_photo_edit_for_all_roles()
+
+		role_logins = [
+			('super_admin', self._login_mobile_super_admin),
+			('pro_user', self._login_mobile_pro_user),
+			('admin_staff', self._login_mobile_admin_staff),
+			('client', self._login_mobile_client),
+			('client_staff', self._login_mobile_client_staff),
+		]
+		markers = [
+			'x-data="cameraApp()"',
+			'Capture Photo',
+			'new Cropper(',
+			'@click="applyCrop()"',
+			'@click="savePhoto()"',
+		]
+
+		baseline = None
+		for role_name, login_fn in role_logins:
+			self.client.logout()
+			login_fn()
+			response = self.client.get(f'/app/camera/{self.table.id}/')
+			self.assertEqual(response.status_code, 200, msg=f'{role_name} camera view should load')
+			content = response.content.decode('utf-8')
+
+			presence = {marker: (marker in content) for marker in markers}
+			if baseline is None:
+				baseline = presence
+			else:
+				self.assertEqual(presence, baseline, msg=f'camera UI markers mismatch for {role_name}')
+
+	def test_profile_update_button_is_visible_for_mobile_roles(self):
+		self._enable_mobile_photo_edit_for_all_roles()
+
+		role_logins = [
+			self._login_mobile_super_admin,
+			self._login_mobile_pro_user,
+			self._login_mobile_admin_staff,
+			self._login_mobile_client,
+			self._login_mobile_client_staff,
+		]
+		for login_fn in role_logins:
+			self.client.logout()
+			login_fn()
+			response = self.client.get('/app/profile/')
+			self.assertEqual(response.status_code, 200)
+			self.assertIn('Update App', response.content.decode('utf-8'))
+
+	@mock.patch('mobile_app.views.IDCardService.update_card')
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_card_update_accepts_multiple_image_field_upload_keys(self, _mock_validate, mock_update_card):
+		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {'id': self.card.id}})
+
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'mother_photo', 'order': 2},
+			{'name': 'FATHER PHOTO', 'type': 'father_photo', 'order': 3},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{self.card.id}/update/',
+			data={
+				'field_data': json.dumps({'NAME': 'Student One Updated'}),
+				'image_PHOTO': SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+				'image_MOTHER PHOTO': SimpleUploadedFile('mother.jpg', b'mother-bytes', content_type='image/jpeg'),
+				'image_FATHER PHOTO': SimpleUploadedFile('father.jpg', b'father-bytes', content_type='image/jpeg'),
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		mock_update_card.assert_called_once()
+		kwargs = mock_update_card.call_args.kwargs
+		self.assertIn('image_PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_MOTHER PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_FATHER PHOTO', kwargs.get('image_files', {}))
+
+	@mock.patch('mobile_app.views.IDCardService.update_card')
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_card_add_accepts_multiple_image_field_upload_keys(self, _mock_validate, mock_update_card):
+		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {}})
+
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'mother_photo', 'order': 2},
+			{'name': 'FATHER PHOTO', 'type': 'father_photo', 'order': 3},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self._login_mobile_super_admin()
+		before = IDCard.objects.filter(table=self.table).count()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/add/',
+			data={
+				'field_data': json.dumps({'NAME': 'Multi Image Card'}),
+				'image_PHOTO': SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+				'image_MOTHER PHOTO': SimpleUploadedFile('mother.jpg', b'mother-bytes', content_type='image/jpeg'),
+				'image_FATHER PHOTO': SimpleUploadedFile('father.jpg', b'father-bytes', content_type='image/jpeg'),
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		after = IDCard.objects.filter(table=self.table).count()
+		self.assertEqual(after, before + 1)
+		mock_update_card.assert_called_once()
+		kwargs = mock_update_card.call_args.kwargs
+		self.assertIn('image_PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_MOTHER PHOTO', kwargs.get('image_files', {}))
+		self.assertIn('image_FATHER PHOTO', kwargs.get('image_files', {}))
+
+	def _setup_client_staff_row_scope(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'CLASS', 'type': 'class', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self.client_profile.perm_idcard_edit = True
+		self.client_profile.perm_idcard_delete = True
+		self.client_profile.perm_idcard_info = True
+		self.client_profile.save(update_fields=['perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info'])
+
+		self.client_staff_profile.perm_idcard_edit = True
+		self.client_staff_profile.perm_idcard_delete = True
+		self.client_staff_profile.perm_idcard_info = True
+		self.client_staff_profile.allowed_classes = ['10']
+		self.client_staff_profile.allowed_sections = []
+		self.client_staff_profile.save(update_fields=[
+			'perm_idcard_edit',
+			'perm_idcard_delete',
+			'perm_idcard_info',
+			'allowed_classes',
+			'allowed_sections',
+		])
+		self.client_staff_profile.assigned_groups.set([self.group])
+
+		in_scope_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'In Scope Student', 'ROLL NO': '201', 'CLASS': '10'},
+			status='pending',
+		)
+		out_of_scope_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Out Scope Student', 'ROLL NO': '202', 'CLASS': '11'},
+			status='pending',
+		)
+		return in_scope_card, out_of_scope_card
+
+	def test_client_staff_update_card_blocked_outside_row_scope(self):
+		_, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{out_of_scope_card.id}/update/',
+			data={'field_data': json.dumps({'NAME': 'Should Not Update'})},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	def test_client_staff_delete_card_blocked_outside_row_scope(self):
+		_, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.post(
+			f'/app/api/card/{out_of_scope_card.id}/delete/',
+			data=json.dumps({'permanent': False}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_client_staff_upload_photo_blocked_outside_row_scope(self, _mock_validate):
+		_, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		photo = SimpleUploadedFile('ok.jpg', b'fake-image', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(out_of_scope_card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	def test_camera_picker_filters_cards_outside_client_staff_row_scope(self):
+		in_scope_card, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/camera/{self.table.id}/')
+		self.assertEqual(response.status_code, 200)
+
+		card_ids = [row['id'] for row in response.context.get('all_cards_json', [])]
+		self.assertIn(in_scope_card.id, card_ids)
+		self.assertNotIn(out_of_scope_card.id, card_ids)
+
+	def test_client_staff_pending_list_loads_scoped_rows_beyond_initial_window(self):
+		in_scope_card, _ = self._setup_client_staff_row_scope()
+
+		for idx in range(60):
+			IDCard.objects.create(
+				table=self.table,
+				field_data={'NAME': f'Out Scope Bulk {idx}', 'ROLL NO': str(300 + idx), 'CLASS': '11'},
+				status='pending',
+			)
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/table/{self.table.id}/pending/')
+
+		self.assertEqual(response.status_code, 200)
+		students = response.context.get('students', [])
+		student_ids = [row['id'] for row in students]
+		self.assertIn(in_scope_card.id, student_ids)
+
+	def test_mobile_card_detail_requires_card_info_permission(self):
+		self.client_profile.perm_idcard_info = False
+		self.client_profile.save(update_fields=['perm_idcard_info'])
+
+		self._login_mobile_client()
+		response = self.client.get(f'/app/api/card/{self.card.id}/detail/')
+
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json().get('success'))
+
+	def test_settings_logs_hide_out_of_scope_cards_for_client_staff(self):
+		in_scope_card, out_of_scope_card = self._setup_client_staff_row_scope()
+
+		self._login_mobile_client_staff()
+		response = self.client.get('/app/settings/')
+
+		self.assertEqual(response.status_code, 200)
+		log_names = [row.get('name') for row in response.context.get('log_activities', [])]
+		self.assertIn(in_scope_card.field_data.get('NAME'), log_names)
+		self.assertNotIn(out_of_scope_card.field_data.get('NAME'), log_names)
+
+	def test_settings_logs_require_card_info_permission_for_client_role(self):
+		self.client_profile.perm_idcard_info = False
+		self.client_profile.save(update_fields=['perm_idcard_info'])
+
+		self._login_mobile_client()
+		response = self.client.get('/app/settings/')
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('log_activities', []), [])
+
+	def test_mobile_notifications_hide_expired_items(self):
+		from core.models import Notification
+
+		Notification.objects.create(
+			title='Visible Notice',
+			message='Visible message',
+			target='client',
+			expires_at=timezone.now() + timedelta(hours=1),
+		)
+		Notification.objects.create(
+			title='Expired Notice',
+			message='Expired message',
+			target='client',
+			expires_at=timezone.now() - timedelta(minutes=5),
+		)
+
+		self._login_mobile_client()
+		response = self.client.get('/app/notifications/')
+
+		self.assertEqual(response.status_code, 200)
+		titles = [item.get('title') for item in response.context.get('notifications', [])]
+		self.assertIn('Visible Notice', titles)
+		self.assertNotIn('Expired Notice', titles)
+
 
 class MobileAppManagementApiTests(MobileAppBaseTestCase):
+	def test_mobile_impersonation_users_requires_pro_user(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/impersonate/users/')
+		self.assertEqual(response.status_code, 403)
+		self.assertFalse(response.json()['success'])
+
+	def test_mobile_impersonation_start_and_stop_keeps_mobile_session(self):
+		self._login_mobile_pro_user()
+
+		start = self.client.post(
+			'/app/api/impersonate/start/',
+			data=json.dumps({'user_id': self.client_user.id}),
+			content_type='application/json',
+		)
+		self.assertEqual(start.status_code, 200)
+		self.assertTrue(start.json()['success'])
+		self.assertEqual(start.json().get('redirect_url'), '/app/')
+		self.assertTrue(self.client.session.get('mobile_auth_ok'))
+		self.assertTrue(self.client.session.get('_pro_original_user_id'))
+
+		home = self.client.get('/app/')
+		self.assertEqual(home.status_code, 200)
+
+		stop = self.client.post(
+			'/app/api/impersonate/stop/',
+			data=json.dumps({}),
+			content_type='application/json',
+		)
+		self.assertEqual(stop.status_code, 200)
+		self.assertTrue(stop.json()['success'])
+		self.assertEqual(stop.json().get('redirect_url'), '/app/')
+		self.assertTrue(self.client.session.get('mobile_auth_ok'))
+		self.assertFalse(self.client.session.get('_pro_original_user_id'))
+
+	def test_mobile_impersonation_start_rejects_target_without_mobile_access(self):
+		target_user = User.objects.create_user(
+			username='mob-no-mobile@test.com',
+			email='mob-no-mobile@test.com',
+			password='pass1234',
+			role='client',
+		)
+		Client.objects.create(
+			user=target_user,
+			name='No Mobile Access Client',
+			status='active',
+			perm_mobile_app=False,
+		)
+
+		self._login_mobile_pro_user()
+		response = self.client.post(
+			'/app/api/impersonate/start/',
+			data=json.dumps({'user_id': target_user.id}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+		self.assertIn('mobile app access', response.json().get('message', '').lower())
+
 	def test_server_info_requires_super_admin(self):
 		self._login_mobile_client()
 		denied = self.client.get('/app/api/server-info/')
@@ -310,11 +868,26 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
 		self.assertEqual(response.status_code, 403)
 
+		self._login_mobile_admin_staff()
+		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
+		self.assertEqual(response.status_code, 403)
+
 	def test_client_toggle_allowed_for_super_admin(self):
 		self._login_mobile_super_admin()
 		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
 		self.assertEqual(response.status_code, 200)
 		self.assertTrue(response.json()['success'])
+
+	def test_client_toggle_allowed_for_admin_staff_with_manage_client_permission(self):
+		self._login_mobile_admin_staff_manager()
+		response = self.client.post(f'/app/api/client/{self.client_profile.id}/toggle/')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+
+	def test_client_delete_stays_super_admin_only_for_admin_staff_with_manage_permission(self):
+		self._login_mobile_admin_staff_manager()
+		response = self.client.post(f'/app/api/client/{self.client_profile.id}/delete/')
+		self.assertEqual(response.status_code, 403)
 
 	def test_client_tables_requires_admin_role(self):
 		self._login_mobile_client()
@@ -333,6 +906,118 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		payload = response.json()
 		self.assertTrue(payload['success'])
 		self.assertEqual(payload['data']['count'], 0)
+
+	def test_search_matches_dynamic_field_like_desktop_global_search(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'ADMISSION CODE', 'type': 'text', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+		card = IDCard.objects.create(
+			table=self.table,
+			field_data={
+				'NAME': 'Student Two',
+				'ROLL NO': '202',
+				'ADMISSION CODE': 'MOB-GLOBAL-SEARCH-777',
+			},
+			status='verified',
+		)
+
+		response = self.client.get('/app/api/search/?q=MOB-GLOBAL-SEARCH-777')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['results']]
+		self.assertIn(card.id, ids)
+
+	def test_mobile_list_api_search_matches_dynamic_table_field(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'ADMISSION CODE', 'type': 'text', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		card = IDCard.objects.create(
+			table=self.table,
+			field_data={
+				'NAME': 'Student Three',
+				'ROLL NO': '303',
+				'ADMISSION CODE': 'MOB-LIST-SEARCH-919',
+			},
+			status='pending',
+		)
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&search=MOB-LIST-SEARCH-919')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(card.id, ids)
+
+	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
+		self._login_mobile_super_admin()
+
+		old_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Old Download', 'ROLL NO': '401', 'DOB': '2099-01-01'},
+			status='download',
+		)
+		new_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'New Download', 'ROLL NO': '402', 'DOB': '2000-01-01'},
+			status='download',
+		)
+
+		now = timezone.now()
+		old_card.downloaded_at = now - timedelta(days=3)
+		old_card.save(update_fields=['downloaded_at'])
+		new_card.downloaded_at = now
+		new_card.save(update_fields=['downloaded_at'])
+
+		from_date = now.date().isoformat()
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=download&from={from_date}')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(new_card.id, ids)
+		self.assertNotIn(old_card.id, ids)
+
+	def test_mobile_global_search_supports_filter_and_table_scope(self):
+		self._login_mobile_super_admin()
+
+		other_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Table Scope B',
+			fields=[
+				{'name': 'NAME', 'type': 'text', 'order': 0},
+				{'name': 'MOBILE', 'type': 'text', 'order': 1},
+			],
+			is_active=True,
+		)
+
+		in_scope = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Scoped Person', 'MOBILE': '9990011111'},
+			status='verified',
+		)
+		out_scope = IDCard.objects.create(
+			table=other_table,
+			field_data={'NAME': 'Scoped Person', 'MOBILE': '9990022222'},
+			status='verified',
+		)
+
+		response = self.client.get(f'/app/api/search/?q=Scoped Person&filter=name&table_id={self.table.id}')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['results']]
+		self.assertIn(in_scope.id, ids)
+		self.assertNotIn(out_scope.id, ids)
 
 	def test_table_picker_admin_staff_without_assigned_clients_sees_empty_list(self):
 		self._login_mobile_admin_staff()
@@ -366,6 +1051,155 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertTrue(response.json()['success'])
 		self.assertEqual(response.json()['client']['id'], 999)
+
+	@mock.patch('mobile_app.views.ClientService.create')
+	def test_client_create_forbidden_for_admin_staff_without_manage_client_permission(self, mock_create):
+		self._login_mobile_admin_staff()
+		response = self.client.post(
+			'/app/api/client/create/',
+			data=json.dumps({'name': 'Denied Create', 'email': 'denied@test.com'}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 403)
+		mock_create.assert_not_called()
+
+	@mock.patch('mobile_app.views.ClientService.create')
+	def test_client_create_auto_assigns_new_client_for_admin_staff_with_manage_permission(self, mock_create):
+		from core.services.base import ServiceResult
+
+		target_client = self.client_profile_with_add_perm
+		self.assertFalse(self.admin_staff_manage_profile.assigned_clients.filter(id=target_client.id).exists())
+
+		mock_create.return_value = ServiceResult(
+			success=True,
+			message='Client created',
+			data={'client': {'id': target_client.id, 'name': target_client.name}},
+		)
+
+		self._login_mobile_admin_staff_manager()
+		response = self.client.post(
+			'/app/api/client/create/',
+			data=json.dumps({'name': target_client.name, 'email': 'new-client@test.com'}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		self.admin_staff_manage_profile.refresh_from_db()
+		self.assertTrue(self.admin_staff_manage_profile.assigned_clients.filter(id=target_client.id).exists())
+
+	def test_staff_manage_page_requires_manage_client_permission_for_client_role(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/staff/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self.client_profile.perm_idcard_client_list = True
+		self.client_profile.save(update_fields=['perm_idcard_client_list'])
+		allowed = self.client.get('/app/staff/')
+		self.assertEqual(allowed.status_code, 200)
+
+	def test_groups_overview_limits_client_staff_to_assigned_groups(self):
+		other_group = IDCardGroup.objects.create(client=self.client_profile, name='Group B')
+		other_table = IDCardTable.objects.create(
+			group=other_group,
+			name='Table B',
+			fields=[{'name': 'NAME', 'type': 'text', 'order': 0}],
+			is_active=True,
+		)
+		IDCard.objects.create(table=other_table, field_data={'NAME': 'Hidden'}, status='pending')
+
+		self.client_staff_profile.assigned_groups.set([self.group])
+		self._login_mobile_client_staff()
+
+		response = self.client.get('/app/groups/')
+		self.assertEqual(response.status_code, 200)
+
+		group_ids = {group.id for group in response.context['groups']}
+		table_ids = {table.id for table in response.context['tables']}
+		self.assertEqual(group_ids, {self.group.id})
+		self.assertEqual(table_ids, {self.table.id})
+
+	def test_staff_api_list_requires_manage_client_permission_for_client_role(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/api/staff/')
+		self.assertEqual(denied.status_code, 403)
+		self.assertFalse(denied.json()['success'])
+
+		self.client_profile.perm_idcard_client_list = True
+		self.client_profile.save(update_fields=['perm_idcard_client_list'])
+		allowed = self.client.get('/app/api/staff/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertTrue(allowed.json()['success'])
+
+	def test_staff_api_list_for_super_admin_includes_permission_flags(self):
+		managed_user = User.objects.create_user(
+			username='mob-admin-perm-list@test.com',
+			email='mob-admin-perm-list@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		managed_staff = Staff.objects.create(
+			user=managed_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+			perm_print_list=True,
+			perm_idcard_bulk_reupload=True,
+		)
+
+		self._login_mobile_super_admin()
+		response = self.client.get('/app/api/staff/')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+
+		staff_row = next((item for item in payload['data']['staff'] if item['id'] == managed_staff.id), None)
+		self.assertIsNotNone(staff_row)
+		self.assertTrue(staff_row['perm_print_list'])
+		self.assertTrue(staff_row['perm_idcard_bulk_reupload'])
+
+	def test_staff_api_update_for_super_admin_updates_admin_staff_permissions(self):
+		managed_user = User.objects.create_user(
+			username='mob-admin-perm-update@test.com',
+			email='mob-admin-perm-update@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		managed_staff = Staff.objects.create(
+			user=managed_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+			perm_print_list=False,
+		)
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/staff/{managed_staff.id}/update/',
+			data=json.dumps({
+				'first_name': 'Mobile',
+				'last_name': 'Updated',
+				'perm_print_list': True,
+				'perm_idcard_bulk_reupload': True,
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		managed_staff.refresh_from_db()
+		self.assertTrue(managed_staff.perm_print_list)
+		self.assertTrue(managed_staff.perm_idcard_bulk_reupload)
+
+	def test_clients_list_status_chips_do_not_use_single_letter_prefixes(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'clients_list.html'
+		html = template_path.read_text(encoding='utf-8')
+		self.assertIn('Pending', html)
+		self.assertIn('Verified', html)
+		self.assertIn('Approved', html)
+		self.assertIn('Download', html)
+		self.assertNotIn('class="mobile-chip-label">P</span>', html)
+		self.assertNotIn('class="mobile-chip-label">V</span>', html)
+		self.assertNotIn('class="mobile-chip-label">A</span>', html)
+		self.assertNotIn('class="mobile-chip-label">D</span>', html)
 
 	def test_website_upload_requires_website_edit_permission(self):
 		self._login_mobile_client()
@@ -438,3 +1272,250 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 		response = self.client.get(f'/app/reprint/table/{self.table.id}/?step=request_list&q=alpha')
 		self.assertEqual(response.status_code, 200)
+
+	def test_add_form_sheet_renders_multi_image_field_loop(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'add_form_sheet.html'
+		html = template_path.read_text(encoding='utf-8')
+		self.assertIn('x-for="fieldName in imageFormFields"', html)
+		self.assertIn('@click="if(!viewMode) startImageSelection(fieldName)"', html)
+		self.assertIn('@click="openCropForField(fieldName)"', html)
+
+	def test_home_and_groups_templates_keep_sections_open_by_default(self):
+		base = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app'
+		home_html = (base / 'home.html').read_text(encoding='utf-8')
+		groups_html = (base / 'groups.html').read_text(encoding='utf-8')
+
+		self.assertNotIn('toggle(', home_html)
+		self.assertNotIn('expanded ===', home_html)
+		self.assertNotIn('expandedGroup', groups_html)
+
+	def test_reprint_table_prefers_field_data_photo_url(self):
+		from reprintcard.models import ReprintRequest
+
+		self._login_mobile_super_admin()
+		download_card = IDCard.objects.create(
+			table=self.table,
+			field_data={
+				'NAME': 'Photo Card',
+				'PHOTO': 'adarshimg/mobile-photo/photo-card.webp',
+			},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			card=download_card,
+			table=self.table,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		response = self.client.get(f'/app/reprint/table/{self.table.id}/?step=request_list')
+		self.assertEqual(response.status_code, 200)
+		items = response.context.get('items', [])
+		self.assertTrue(items)
+		matched = next((row for row in items if row.get('card_id') == download_card.id), None)
+		self.assertIsNotNone(matched)
+		self.assertEqual(matched.get('photo_url'), '/media/adarshimg/mobile-photo/photo-card.webp')
+
+
+class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
+	def test_desktop_required_page_renders_status_context(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/desktop-required/?status=download')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('status'), 'download')
+
+	def test_profile_page_and_profile_update_api_work_for_mobile_client(self):
+		self._login_mobile_client()
+
+		profile_response = self.client.get('/app/profile/')
+		self.assertEqual(profile_response.status_code, 200)
+		self.assertEqual(profile_response.context.get('user_email'), 'mob-client@test.com')
+
+		update_response = self.client.post(
+			'/app/api/profile/update/',
+			data=json.dumps({'name': 'Updated Mobile User'}),
+			content_type='application/json',
+		)
+		self.assertEqual(update_response.status_code, 200)
+		self.assertTrue(update_response.json().get('success'))
+
+		self.client_user.refresh_from_db()
+		self.assertEqual(self.client_user.first_name, 'Updated')
+		self.assertEqual(self.client_user.last_name, 'Mobile User')
+
+	def test_profile_update_api_rejects_invalid_json(self):
+		self._login_mobile_client()
+		response = self.client.post(
+			'/app/api/profile/update/',
+			data='bad-json',
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json().get('success'))
+
+	def test_search_page_renders_and_honors_table_scope(self):
+		self._login_mobile_super_admin()
+		response = self.client.get(f'/app/search/?q=Student&filter=name&table_id={self.table.id}')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('table_scope_id'), self.table.id)
+		self.assertGreaterEqual(response.context.get('result_count', 0), 1)
+
+	def test_clients_list_requires_admin_and_loads_for_super_admin(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/clients/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get('/app/clients/')
+		self.assertEqual(allowed.status_code, 200)
+		client_ids = [row['id'] for row in allowed.context.get('clients_json', [])]
+		self.assertIn(self.client_profile.id, client_ids)
+
+	def test_client_groups_requires_admin_and_super_admin_can_view(self):
+		self._login_mobile_client()
+		denied = self.client.get(f'/app/clients/{self.client_profile.id}/groups/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get(f'/app/clients/{self.client_profile.id}/groups/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertEqual(allowed.context.get('client').id, self.client_profile.id)
+
+	def test_reprint_lists_requires_permission_and_renders_for_super_admin(self):
+		from reprintcard.models import ReprintRequest
+
+		download_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Reprint Scope', 'ROLL NO': '909'},
+			status='download',
+		)
+		ReprintRequest.objects.create(
+			card=download_card,
+			table=self.table,
+			status='requested',
+			requested_by=self.super_admin,
+		)
+
+		self._login_mobile_client()
+		denied = self.client.get(f'/app/reprint/{self.client_profile.id}/')
+		self.assertEqual(denied.status_code, 302)
+		self.assertIn('/app/', denied.url)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get(f'/app/reprint/{self.client_profile.id}/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertEqual(allowed.context.get('request_total'), 1)
+
+	def test_website_manage_page_requires_permission_and_renders_for_super_admin(self):
+		self._login_mobile_client()
+		denied = self.client.get('/app/website/')
+		self.assertEqual(denied.status_code, 403)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get('/app/website/')
+		self.assertEqual(allowed.status_code, 200)
+		self.assertIn('categories_json', allowed.context)
+
+	@mock.patch('mobile_app.views.StaffService.create')
+	def test_api_staff_create_for_super_admin_uses_staff_service(self, mock_create):
+		from core.services.base import ServiceResult
+
+		mock_create.return_value = ServiceResult(success=True, message='Staff created', data={'staff': {'id': 321}})
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			'/app/api/staff/create/',
+			data=json.dumps({'first_name': 'Mob', 'last_name': 'Manager', 'email': 'mob-manager@test.com'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		mock_create.assert_called_once()
+		self.assertEqual(mock_create.call_args.kwargs.get('staff_type'), 'admin_staff')
+
+	def test_api_staff_toggle_and_delete_work_for_super_admin(self):
+		managed_user = User.objects.create_user(
+			username='mob-manage-staff@test.com',
+			email='mob-manage-staff@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		managed_staff = Staff.objects.create(
+			user=managed_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+		)
+
+		self._login_mobile_super_admin()
+		toggle_response = self.client.post(f'/app/api/staff/{managed_staff.id}/toggle/')
+		self.assertEqual(toggle_response.status_code, 200)
+		managed_user.refresh_from_db()
+		self.assertFalse(managed_user.is_active)
+
+		delete_response = self.client.post(f'/app/api/staff/{managed_staff.id}/delete/')
+		self.assertEqual(delete_response.status_code, 200)
+		self.assertFalse(User.objects.filter(id=managed_user.id).exists())
+
+	@mock.patch('mobile_app.views.ClientService.get')
+	def test_api_client_detail_for_super_admin_returns_service_payload(self, mock_get):
+		from core.services.base import ServiceResult
+
+		mock_get.return_value = ServiceResult(
+			success=True,
+			message='ok',
+			data={'client': {'id': self.client_profile.id, 'name': self.client_profile.name}},
+		)
+
+		self._login_mobile_super_admin()
+		response = self.client.get(f'/app/api/client/{self.client_profile.id}/')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		self.assertEqual(response.json().get('client', {}).get('id'), self.client_profile.id)
+		mock_get.assert_called_once_with(self.client_profile.id, include_permissions=True)
+
+	@mock.patch('mobile_app.views.ClientService.update')
+	def test_api_client_update_for_super_admin_returns_service_payload(self, mock_update):
+		from core.services.base import ServiceResult
+
+		mock_update.return_value = ServiceResult(
+			success=True,
+			message='updated',
+			data={'client': {'id': self.client_profile.id, 'name': 'Updated Client'}},
+		)
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/client/{self.client_profile.id}/update/',
+			data=json.dumps({'name': 'Updated Client'}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+		self.assertEqual(response.json().get('client', {}).get('name'), 'Updated Client')
+		mock_update.assert_called_once_with(self.client_profile.id, {'name': 'Updated Client'})
+
+	def test_api_portfolio_category_items_requires_view_permission_and_returns_items(self):
+		category = PortfolioCategory.objects.create(name='Mobile Category', icon='fas fa-image', is_active=True, order=5)
+		item = PortfolioItem.objects.create(
+			title='Mobile Clip',
+			category=category,
+			item_type='video',
+			video_url='https://example.com/mobile-clip.mp4',
+			is_active=True,
+			order=1,
+		)
+
+		self._login_mobile_client()
+		denied = self.client.get(f'/app/api/website/portfolio/category/{category.id}/items/')
+		self.assertEqual(denied.status_code, 403)
+
+		self._login_mobile_super_admin()
+		allowed = self.client.get(f'/app/api/website/portfolio/category/{category.id}/items/?limit=5')
+		self.assertEqual(allowed.status_code, 200)
+		payload = allowed.json()
+		self.assertTrue(payload.get('success'))
+		item_ids = [row['id'] for row in payload.get('items', [])]
+		self.assertIn(item.id, item_ids)

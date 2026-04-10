@@ -23,7 +23,7 @@ from .excel import ExcelExporter, ExcelExportResult
 from .word import WordExporter, WordExportResult
 from .pdf import PdfExporter, PdfExportResult
 from .zip import ZipExporter, ZipExportResult
-from .utils import get_text_fields, get_image_fields, sort_cards_for_export
+from .utils import get_text_fields, get_image_fields
 
 
 @dataclass
@@ -149,6 +149,8 @@ class ExportService:
             staff = getattr(self.user, 'staff_profile', None)
             if staff and staff.client:
                 cards = cards.filter(table__group__client=staff.client)
+                from core.views.idcard_helpers import _apply_client_staff_row_scope
+                cards = _apply_client_staff_row_scope(cards, self.user, table)
             else:
                 cards = cards.none()
         
@@ -198,14 +200,11 @@ class ExportService:
         # Get scoped cards
         cards = self.get_scoped_cards(table, card_ids)
 
-        # Sort cards: class → section → name ascending
-        sorted_cards = sort_cards_for_export(cards, table.fields)
-
-        if not sorted_cards:
+        if not cards.exists():
             return ExportContext(
                 user=self.user,
                 table=table,
-                cards=sorted_cards,
+                cards=cards,
                 has_permission=True,
                 error_message='No cards available for export'
             )
@@ -213,7 +212,7 @@ class ExportService:
         return ExportContext(
             user=self.user,
             table=table,
-            cards=sorted_cards,
+            cards=cards,
             has_permission=True
         )
     

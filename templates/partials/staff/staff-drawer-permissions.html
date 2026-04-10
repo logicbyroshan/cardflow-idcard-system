@@ -201,7 +201,7 @@ Partial for all staff permission toggles (group settings, card lists, card actio
                     <input type="checkbox" name="perm_idcard_delete_from_pool" id="perm-idcard-delete-from-pool">
                     <span class="toggle-slider"></span>
                 </label>
-                <span class="permission-label">Retrieve from Pool</span>
+                <span class="permission-label">Permanent Delete from Pool</span>
             </div>
             <div class="permission-row">
                 <label class="toggle-switch">
@@ -268,7 +268,60 @@ Partial for all staff permission toggles (group settings, card lists, card actio
                     <input type="checkbox" name="perm_idcard_client_list" id="perm-idcard-client-list">
                     <span class="toggle-slider"></span>
                 </label>
-                <span class="permission-label">Access Clients Page</span>
+                <span class="permission-label">Manage Client</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_manage_client_staff" id="perm-manage-client-staff">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Manage Assistent</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Panel -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-sliders"></i> Manage Panel
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_manage_panel_backup" id="perm-manage-panel-backup">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Backup</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_manage_panel_email" id="perm-manage-panel-email">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Email Management</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Website -->
+    <div class="permission-category">
+        <div class="category-title">
+            <i class="fa-solid fa-globe"></i> Manage Website
+        </div>
+        <div class="permissions-grid">
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_manage_website_clients" id="perm-manage-website-clients">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Clients</span>
+            </div>
+            <div class="permission-row">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="perm_manage_website_portfolio" id="perm-manage-website-portfolio">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="permission-label">Portfolio</span>
             </div>
         </div>
     </div>
