@@ -719,8 +719,8 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
     perm_error = _check_export_permission(request)
     if perm_error:
         return perm_error
-    
-    # Client/client_staff can only download PDF
+
+    # Client/client_staff can only download PDF for spreadsheet exports.
     pdf_only = _check_client_pdf_only(request)
     if pdf_only:
         return pdf_only
@@ -1108,11 +1108,6 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     perm_error = _check_export_permission(request)
     if perm_error:
         return perm_error
-    
-    # Client/client_staff can only download PDF
-    pdf_only = _check_client_pdf_only(request)
-    if pdf_only:
-        return pdf_only
     
     # Check client scope for admin_staff
     scope_error = _check_export_client_scope(request, table_id)

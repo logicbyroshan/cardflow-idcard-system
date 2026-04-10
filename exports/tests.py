@@ -1060,7 +1060,16 @@ class ExportDeepLimitAndRoleTests(TestCase):
         return type('Res', (), {'success': True, 'response': HttpResponse(b'ok')})
 
     def test_role_matrix_client_and_client_staff_pdf_only(self):
-        # Client: PDF allowed, non-PDF exports blocked.
+        from staff.models import Staff
+
+        # Align with real UI flow: pending-list export calls include status='pending'.
+        self.client_obj.perm_idcard_pending_list = True
+        self.client_obj.save(update_fields=['perm_idcard_pending_list'])
+        client_staff_profile = Staff.objects.get(user=self.client_staff_user)
+        client_staff_profile.perm_idcard_pending_list = True
+        client_staff_profile.save(update_fields=['perm_idcard_pending_list'])
+
+        # Client: PDF and Images allowed; xlsx/docx/download-all blocked.
         self.client.login(username='deep-client@test.com', password='pass1234')
         with mock.patch('exports.views.ExportService.export_pdf', return_value=self._mock_file_response()):
             pdf_resp = self.client.post(
@@ -1084,12 +1093,15 @@ class ExportDeepLimitAndRoleTests(TestCase):
         )
         self.assertEqual(docx_resp.status_code, 403)
 
-        images_resp = self.client.post(
-            f'/panel/exports/images/{self.table.id}/',
-            data=json.dumps({'card_ids': [self.card.id]}),
-            content_type='application/json',
-        )
-        self.assertEqual(images_resp.status_code, 403)
+        fake_zip_result = type('ZipResult', (), {'success': True, 'message': ''})()
+        with mock.patch('exports.views.ExportService.export_images', return_value=fake_zip_result):
+            with mock.patch('exports.views.zip_result_to_dict', return_value={'success': True, 'zip_files': []}):
+                images_resp = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({'card_ids': [self.card.id], 'status': 'pending'}),
+                    content_type='application/json',
+                )
+        self.assertEqual(images_resp.status_code, 200)
 
         download_all_resp = self.client.post(
             f'/panel/exports/download-all/{self.table.id}/',
@@ -1098,7 +1110,7 @@ class ExportDeepLimitAndRoleTests(TestCase):
         )
         self.assertEqual(download_all_resp.status_code, 403)
 
-        # Client staff: same PDF-only policy.
+        # Client staff: same policy as client for images.
         self.client.logout()
         self.client.login(username='deep-clientstaff@test.com', password='pass1234')
         with mock.patch('exports.views.ExportService.export_pdf', return_value=self._mock_file_response()):
@@ -1109,12 +1121,15 @@ class ExportDeepLimitAndRoleTests(TestCase):
             )
         self.assertEqual(pdf_staff_resp.status_code, 200)
 
-        images_staff_resp = self.client.post(
-            f'/panel/exports/images/{self.table.id}/',
-            data=json.dumps({'card_ids': [self.card.id]}),
-            content_type='application/json',
-        )
-        self.assertEqual(images_staff_resp.status_code, 403)
+        fake_zip_staff_result = type('ZipResult', (), {'success': True, 'message': ''})()
+        with mock.patch('exports.views.ExportService.export_images', return_value=fake_zip_staff_result):
+            with mock.patch('exports.views.zip_result_to_dict', return_value={'success': True, 'zip_files': []}):
+                images_staff_resp = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({'card_ids': [self.card.id], 'status': 'pending'}),
+                    content_type='application/json',
+                )
+        self.assertEqual(images_staff_resp.status_code, 200)
 
     def test_download_all_success_for_admin_staff(self):
         fake_xlsx = type('X', (), {'success': True, 'response': HttpResponse(b'xlsx-bytes')})()
