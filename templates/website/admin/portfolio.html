@@ -488,6 +488,12 @@
                 </div>
             </div>
 
+            <div class="wa-filter-row" style="margin-top:0;border-top:0;padding-top:6px;padding-bottom:8px;">
+                <span class="wa-cell-sub" style="font-size:11px;">
+                    Public bento overrides are active: School Stationery and Office Stationery stay out of bento; Certificates, Marksheets, Mugs and T-Shirts stay in bento.
+                </span>
+            </div>
+
             <div class="wa-table-wrap">
                 <table class="wa-table" id="portfolioCategoryTable">
                     <colgroup>
@@ -522,6 +528,8 @@
                                     <div class="portfolio-category-meta">
                                         {% if cat.is_default %}<span class="portfolio-note-badge default">Default</span>{% endif %}
                                         {% if cat.is_bento %}<span class="portfolio-note-badge bento">Bento {{ cat.bento_size|default:'normal' }}</span>{% endif %}
+                                        {% if cat.slug in public_bento_include_slugs %}<span class="portfolio-note-badge bento">Public Bento Forced</span>{% endif %}
+                                        {% if cat.slug in public_bento_exclude_slugs %}<span class="portfolio-note-badge default">Public Bento Excluded</span>{% endif %}
                                     </div>
                                 </div>
                             </td>
@@ -535,7 +543,9 @@
                             <td><span class="wa-order-badge">{{ cat.item_count }}</span></td>
                             <td><span class="wa-order-badge">{{ cat.order }}</span></td>
                             <td>
-                                {% if cat.is_bento %}
+                                {% if cat.slug in public_bento_exclude_slugs %}
+                                <span class="wa-status-badge inactive" style="cursor:default;">No</span>
+                                {% elif cat.slug in public_bento_include_slugs or cat.is_bento %}
                                 <span class="wa-status-badge active" style="cursor:default;">Yes</span>
                                 {% else %}
                                 <span class="wa-status-badge inactive" style="cursor:default;">No</span>
@@ -602,7 +612,7 @@
                         <input type="checkbox" id="cat_is_bento" name="is_bento">
                         <span>Show in Bento Grid</span>
                     </label>
-                    <small class="form-hint">Display this category in the bento layout on the public site.</small>
+                    <small class="form-hint">Display this category in the bento layout on the public site. Public overrides keep Certificates/Marksheets/Mugs/T-Shirts in bento, and School/Office Stationery out.</small>
                 </div>
                 <div class="wa-form-group">
                     <label for="cat_bento_size">Bento Size</label>

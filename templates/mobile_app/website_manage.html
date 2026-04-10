@@ -27,7 +27,7 @@
         <!--  PORTFOLIO MEDIA  -->
         <div>
             <div class="px-3 pt-3 pb-24">
-            <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos or reels{% else %}Your portfolio categories{% endif %}</p>
+            <p class="text-[11px] text-gray-400 mb-3 font-medium">{% if perm_website_edit %}Tap a category to upload photos or reels. Bento categories are shown first.{% else %}Your portfolio categories{% endif %}</p>
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="cat in categories" :key="cat.id">
                         <button {% if perm_website_edit %}@click="openUploadSheet(cat)"{% endif %}
@@ -41,6 +41,12 @@
                             <p class="text-[12px] font-bold text-gray-800 leading-tight truncate" x-text="cat.name"></p>
                             <!-- count badge -->
                             <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' item' + (cat.count !== 1 ? 's' : '')"></p>
+                            <template x-if="cat.is_public_bento">
+                                <span class="inline-flex items-center gap-1 mt-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide">
+                                    <i class="fa-solid fa-grip text-[7px]"></i>
+                                    Bento
+                                </span>
+                            </template>
                             <!-- upload arrow -->
                             {% if perm_website_edit %}
                             <div class="absolute top-3 right-3 w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center">

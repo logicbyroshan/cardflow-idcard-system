@@ -52,7 +52,7 @@ body {
 /* ===== Top Bar ===== */
 .top-bar {
     background: var(--white);
-    padding: 10px 0;
+    padding: 6px 0;
     position: relative;
     z-index: 1001;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -62,15 +62,15 @@ body {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 30px;
+    gap: 20px;
 }
 
 .top-bar-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: var(--text-color);
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     text-decoration: none;
     transition: all 0.3s ease;
     border: none;
@@ -86,9 +86,9 @@ body {
 
 .top-bar-item i {
     color: var(--white);
-    font-size: 0.75rem;
-    width: 28px;
-    height: 28px;
+    font-size: 0.68rem;
+    width: 22px;
+    height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -104,9 +104,9 @@ body {
 
 /* Copy icon in top-bar */
 .copy-icon {
-    font-size: 0.65rem !important;
-    width: 20px !important;
-    height: 20px !important;
+    font-size: 0.58rem !important;
+    width: 17px !important;
+    height: 17px !important;
     background: rgba(10, 146, 221, 0.08) !important;
     box-shadow: none !important;
     color: var(--primary-color) !important;
@@ -168,7 +168,7 @@ body {
 /* ===== Navbar ===== */
 .navbar {
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
-    padding: 1rem 0;
+    padding: 0.72rem 0;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -185,8 +185,8 @@ body {
 .logo {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 1.5rem;
+    gap: 8px;
+    font-size: 1.35rem;
     font-weight: bold;
     color: var(--white);
     cursor: pointer;
@@ -196,15 +196,15 @@ body {
 }
 
 .logo-img {
-    width: 50px;
-    height: 50px;
+    width: 34px;
+    height: 34px;
     border-radius: 8px;
     object-fit: contain;
     display: block;
     opacity: 1 !important;
     visibility: visible !important;
     flex-shrink: 0;
-    padding: 4px;
+    padding: 2px;
     animation: logoSpin 1s ease-in-out;
     animation-delay: 5s;
     animation-iteration-count: 1;
@@ -221,9 +221,9 @@ body {
 
 /* Logo 3D box wrapper */
 .logo-box {
-    width: 54px;
-    height: 54px;
-    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
     background: linear-gradient(135deg, #fef9c3 0%, #fde68a 50%, #fcd34d 100%);
     display: flex;
     align-items: center;
@@ -241,7 +241,7 @@ body {
 
 /* Logo text animation */
 .logo-text {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 800;
     color: var(--white);
     letter-spacing: 0.5px;
@@ -273,7 +273,7 @@ body {
 .nav-links {
     display: flex;
     list-style: none;
-    gap: 2rem;
+    gap: 1.5rem;
     align-items: center;
     margin: 0;
     padding: 0;
@@ -305,11 +305,11 @@ body {
 .btn-cta {
     background: linear-gradient(135deg, #0a92dd 0%, #667eea 100%) !important;
     color: white !important;
-    padding: 12px 28px !important;
-    border-radius: 50px;
+    padding: 8px 18px !important;
+    border-radius: 13px;
     transition: all 0.3s ease;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.86rem;
     box-shadow: 0 4px 15px rgba(10, 146, 221, 0.3);
     border: none;
     position: relative;
@@ -333,7 +333,7 @@ body {
 
 .btn-cta:hover {
     background: linear-gradient(135deg, #667eea 0%, #0a92dd 100%) !important;
-    transform: translateY(-3px);
+    transform: translateY(-1px);
     box-shadow: 0 8px 25px rgba(10, 146, 221, 0.4);
 }
 
@@ -345,8 +345,8 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 10px 24px !important;
-    font-size: 0.9rem;
+    padding: 7px 14px !important;
+    font-size: 0.82rem;
     backdrop-filter: blur(4px);
 }
 
@@ -354,7 +354,7 @@ body {
     background: rgba(255, 255, 255, 0.2) !important;
     border-color: rgba(255, 255, 255, 0.6) !important;
     color: white !important;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
 }
 
@@ -533,9 +533,9 @@ body {
 }
 
 .btn {
-    padding: 10px 28px;
+    padding: 8px 20px;
     border: none;
-    border-radius: 50px;
+    border-radius: 14px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -572,7 +572,7 @@ body {
 }
 
 .btn-primary:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: 0 15px 35px rgba(10, 146, 221, 0.45);
 }
 
@@ -588,7 +588,7 @@ body {
     background: var(--white);
     color: var(--primary-color);
     border-color: var(--white);
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: 0 15px 35px rgba(255, 255, 255, 0.2);
 }
 
@@ -613,8 +613,8 @@ body {
     border: none;
     position: relative;
     padding: 3px;
-    background: conic-gradient(from var(--glow-angle, 0deg), #3498db, #e74c3c, #f1c40f, #2ecc71, #9b59b6, #3498db);
-    animation: glowBorderRotate 3s linear infinite;
+    background: conic-gradient(from var(--glow-angle, 0deg), #0a92dd, #34b5f3, #1f7fd6, #5ca5ef, #0a92dd);
+    animation: glowBorderRotate 3.5s linear infinite;
 }
 .slide-card::before {
     content: '';
@@ -1914,7 +1914,44 @@ body {
 .footer-section h4 {
     margin-bottom: 1rem;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: #f8fbff;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.28);
+}
+
+.footer-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+}
+
+.footer-brand-logo-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(10, 146, 221, 0.28) 0%, rgba(255, 255, 255, 0.16) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+}
+
+.footer-brand-logo-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    display: block;
+}
+
+.footer-brand-name {
+    font-size: 1.12rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #ffffff;
+    letter-spacing: 0.01em;
 }
 
 .footer-section p {

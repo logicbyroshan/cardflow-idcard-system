@@ -207,8 +207,8 @@
     }
 
     .filter-tab {
-        padding: 10px 16px;
-        font-size: 0.85rem;
+        padding: 7px 12px;
+        font-size: 0.8rem;
     }
 
     .filter-tab i {
@@ -331,8 +331,8 @@
 
     .filter-tab {
         flex-shrink: 0;
-        padding: 10px 16px;
-        font-size: 0.85rem;
+        padding: 7px 12px;
+        font-size: 0.78rem;
         white-space: nowrap;
     }
 
@@ -490,8 +490,17 @@
     }
 
     .filter-tab {
-        padding: 8px 14px;
-        font-size: 0.8rem;
+        padding: 6px 10px;
+        font-size: 0.74rem;
+    }
+
+    .portfolio-load-skeleton {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .portfolio-skeleton-card {
+        height: 145px;
     }
 
     .portfolio-grid {

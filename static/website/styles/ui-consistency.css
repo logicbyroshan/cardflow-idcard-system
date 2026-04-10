@@ -100,9 +100,9 @@ h6 {
 .filter-tabs .filter-tab,
 .extra-categories-bar .extra-category-tag,
 .more-categories .mini-category {
-    min-height: 38px;
+    min-height: 32px;
     border-radius: var(--wa-chip-radius);
-    font-size: 0.86rem;
+    font-size: 0.8rem;
     font-weight: 600;
     line-height: 1.2;
     letter-spacing: 0.01em;
@@ -113,7 +113,7 @@ h6 {
 .filter-tabs .filter-tab i,
 .extra-categories-bar .extra-category-tag i,
 .more-categories .mini-category i {
-    font-size: 0.82rem;
+    font-size: 0.74rem;
     line-height: 1;
 }
 
@@ -137,16 +137,16 @@ h6 {
 .extra-categories-bar .extra-category-tag:hover,
 .extra-categories-bar .extra-category-tag.active,
 .more-categories .mini-category:hover {
-    transform: translateY(-0.5px);
-    box-shadow: 0 3px 10px rgba(16, 15, 87, 0.10);
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(16, 15, 87, 0.08);
 }
 
 .portfolio-filters .filter-tab:active,
 .filter-tabs .filter-tab:active,
 .extra-categories-bar .extra-category-tag:active,
 .more-categories .mini-category:active {
-    transform: translateY(-0.5px);
-    box-shadow: 0 2px 8px rgba(16, 15, 87, 0.09);
+    transform: translateY(0);
+    box-shadow: 0 2px 7px rgba(16, 15, 87, 0.08);
 }
 
 .extra-categories-bar .extra-category-tag:hover,
@@ -177,16 +177,16 @@ h6 {
     .filter-tabs .filter-tab,
     .extra-categories-bar .extra-category-tag,
     .more-categories .mini-category {
-        min-height: 34px;
-        font-size: 0.82rem;
-        padding-top: 8px;
-        padding-bottom: 8px;
+        min-height: 30px;
+        font-size: 0.76rem;
+        padding-top: 6px;
+        padding-bottom: 6px;
     }
 
     .portfolio-filters .filter-tab i,
     .filter-tabs .filter-tab i,
     .extra-categories-bar .extra-category-tag i,
     .more-categories .mini-category i {
-        font-size: 0.78rem;
+        font-size: 0.7rem;
     }
 }

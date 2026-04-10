@@ -25,7 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
-from django.db.models import Count, Q, Max, CharField, F
+from django.db.models import Count, Q, Max, CharField, F, Case, When, Value, IntegerField
 from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
 from django.utils.dateparse import parse_date, parse_datetime
@@ -59,6 +59,25 @@ MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MAX_REPRINT_ACTION_IDS = 200
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
+
+MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS = [
+    'certificates',
+    'marksheets',
+    'mugs',
+    't-shirts',
+]
+MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS = [
+    'school-stationery',
+    'office-stationery',
+]
+MOBILE_PUBLIC_BENTO_ORDER = [
+    'id-cards',
+    'lanyards',
+    'badges',
+    'student-diaries',
+    'pamphlets',
+    *MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS,
+]
 
 
 # ---------------------------------------------------------------------------
@@ -3862,19 +3881,46 @@ def website_manage(request):
     from website.models import PortfolioCategory
 
     # Fetch only the fields needed for JSON serialisation — no full ORM hydration
+    from django.core.cache import cache
+    if not cache.get('portfolio_defaults_ensured'):
+        PortfolioCategory.ensure_defaults()
+        cache.set('portfolio_defaults_ensured', True, 3600)
+
+    bento_rank_case = Case(
+        *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(MOBILE_PUBLIC_BENTO_ORDER)],
+        default=Value(len(MOBILE_PUBLIC_BENTO_ORDER)),
+        output_field=IntegerField(),
+    )
+
     categories = (
         PortfolioCategory.objects
         .filter(is_active=True)
         .annotate(photo_count=Count('items', filter=Q(items__is_active=True)))
-        .order_by('order', 'name')
-        .only('id', 'name', 'icon', 'order')
+        .annotate(
+            mobile_public_bento=Case(
+                When(slug__in=MOBILE_PUBLIC_BENTO_EXCLUDE_SLUGS, then=Value(0)),
+                When(slug__in=MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS, then=Value(1)),
+                When(is_bento=True, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+            mobile_bento_rank=bento_rank_case,
+        )
+        .order_by('-mobile_public_bento', 'mobile_bento_rank', 'order', 'name')
+        .only('id', 'name', 'icon', 'order', 'slug')
     )
 
     # Skip the client lookup — website_manage doesn’t need a client object
     perms = PermissionService.get_permission_context(user)
 
     categories_data = [
-        {'id': c.id, 'name': c.name, 'icon': c.icon, 'count': c.photo_count}
+        {
+            'id': c.id,
+            'name': c.name,
+            'icon': c.icon,
+            'count': c.photo_count,
+            'is_public_bento': bool(getattr(c, 'mobile_public_bento', 0)),
+        }
         for c in categories
     ]
 

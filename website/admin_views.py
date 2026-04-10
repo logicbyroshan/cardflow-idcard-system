@@ -55,6 +55,7 @@ from .services import (
     ContactSubmissionService,
     _parse_bool,
 )
+from .views import BENTO_FORCE_INCLUDE_SLUGS, BENTO_FORCE_EXCLUDE_SLUGS
 
 
 # =============================================================================
@@ -389,6 +390,8 @@ def portfolio_page(request):
 
     context['items'] = page_obj.object_list
     context['categories'] = PortfolioCategory.objects.annotate(item_count=Count('items')).order_by('order')
+    context['public_bento_include_slugs'] = list(BENTO_FORCE_INCLUDE_SLUGS)
+    context['public_bento_exclude_slugs'] = list(BENTO_FORCE_EXCLUDE_SLUGS)
     context['page_obj'] = page_obj
     context['per_page'] = per_page
     context['per_page_options'] = per_page_options

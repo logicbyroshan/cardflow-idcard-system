@@ -141,22 +141,22 @@ h2 {
     }
 
     .logo {
-        font-size: clamp(1.25rem, 1.05vw, 1.45rem);
+        font-size: clamp(1.12rem, 0.95vw, 1.3rem);
         gap: clamp(8px, 0.8vw, 10px);
     }
 
     .logo-box {
-        width: clamp(48px, 4vw, 54px);
-        height: clamp(48px, 4vw, 54px);
+        width: clamp(40px, 3.2vw, 45px);
+        height: clamp(40px, 3.2vw, 45px);
     }
 
     .logo-img {
-        width: clamp(44px, 3.6vw, 50px);
-        height: clamp(44px, 3.6vw, 50px);
+        width: clamp(31px, 2.5vw, 36px);
+        height: clamp(31px, 2.5vw, 36px);
     }
 
     .logo-text {
-        font-size: clamp(1.05rem, 1.05vw, 1.25rem);
+        font-size: clamp(0.98rem, 0.9vw, 1.12rem);
     }
 
     .nav-links {
@@ -168,8 +168,8 @@ h2 {
     }
 
     .btn-cta {
-        padding: clamp(10px, 0.85vw, 12px) clamp(20px, 1.8vw, 28px) !important;
-        font-size: clamp(0.84rem, 0.8vw, 0.95rem);
+        padding: clamp(7px, 0.65vw, 9px) clamp(16px, 1.4vw, 20px) !important;
+        font-size: clamp(0.8rem, 0.74vw, 0.88rem);
         white-space: nowrap;
     }
 
@@ -212,13 +212,18 @@ h2 {
 
     /* Navbar adjustments */
     .logo {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         gap: 8px;
     }
 
+    .logo-box {
+        width: 40px;
+        height: 40px;
+    }
+
     .logo-img {
-        width: 42px;
-        height: 42px;
+        width: 32px;
+        height: 32px;
     }
 
     .nav-links {
@@ -230,9 +235,9 @@ h2 {
     }
 
     .btn-cta {
-        padding: 10px 22px !important;
-        font-size: 0.9rem;
-        border-radius: 50px !important;
+        padding: 8px 16px !important;
+        font-size: 0.84rem;
+        border-radius: 12px !important;
     }
 
     /* Hero Section */
@@ -255,7 +260,7 @@ h2 {
     }
 
     .btn {
-        padding: 14px 28px;
+        padding: 8px 18px;
         font-size: 0.95rem;
     }
 

@@ -141,7 +141,12 @@
             <div class="footer-content">
                 <!-- About Section -->
                 <div class="footer-section">
-                    <h4>Adarsh ID Cards</h4>
+                    <div class="footer-brand" aria-label="Brand identity">
+                        <span class="footer-brand-logo-box" aria-hidden="true">
+                            <img src="{% static 'website/images/adarsh.png' %}" alt="" class="footer-brand-logo-img">
+                        </span>
+                        <span class="footer-brand-name">{{ site_name }}</span>
+                    </div>
                     <p>Your trusted partner for professional ID card solutions with 20+ years of excellence.</p>
                     <div class="social-links">
                         <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
