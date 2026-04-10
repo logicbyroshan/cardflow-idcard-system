@@ -323,6 +323,10 @@ function _dlSyncImageWizardUi() {
     const renameStepEl = document.getElementById('downloadImgRenameFieldsSection');
     const generateStepEl = document.getElementById('downloadImgWizardStep3Generate');
     const previewStepEl = document.getElementById('downloadImgWizardStep4');
+    const wizardProgressEl = document.getElementById('downloadImgWizardProgress');
+    const wizardNavEl = document.querySelector('#downloadImgRenamePanel .download-img-wizard-nav');
+    const step1HeadingEl = document.querySelector('#downloadImgWizardStep1 .download-img-section-heading');
+    const modeHelperEl = document.querySelector('#downloadImgWizardStep1 .download-img-mode-helper');
     const stepLabelEl = document.getElementById('downloadImgWizardStepLabel');
     const backBtn = document.getElementById('downloadImgWizardBack');
     const nextBtn = document.getElementById('downloadImgWizardNext');
@@ -330,16 +334,28 @@ function _dlSyncImageWizardUi() {
     const chips = document.querySelectorAll('[data-dl-wizard-chip]');
 
     const mode = _dlGetActiveImageMode();
+    const hasMode = !!mode;
     const maxStep = _dlGetImageWizardMaxStep();
 
     if (_dlImageWizardStep > maxStep) _dlImageWizardStep = maxStep;
     if (_dlImageWizardStep < 1) _dlImageWizardStep = 1;
 
-    if (step1El) step1El.style.display = _dlImageWizardStep === 1 ? 'block' : 'none';
+    if (step1El) step1El.style.display = hasMode ? (_dlImageWizardStep === 1 ? 'block' : 'none') : 'block';
     if (step2El) step2El.style.display = (mode && _dlImageWizardStep === 2) ? 'block' : 'none';
     if (renameStepEl) renameStepEl.style.display = (mode === 'rename' && _dlImageWizardStep === 3) ? 'block' : 'none';
     if (generateStepEl) generateStepEl.style.display = (mode === 'generate' && _dlImageWizardStep === 3) ? 'block' : 'none';
     if (previewStepEl) previewStepEl.style.display = (mode && _dlImageWizardStep === 4) ? 'block' : 'none';
+
+    if (wizardProgressEl) wizardProgressEl.style.display = hasMode ? 'grid' : 'none';
+    if (wizardNavEl) wizardNavEl.style.display = hasMode ? 'flex' : 'none';
+    if (step1HeadingEl) {
+        step1HeadingEl.textContent = hasMode ? 'Step 1: Choose Mode' : 'Optional: Choose Mode';
+    }
+    if (modeHelperEl) {
+        modeHelperEl.textContent = hasMode
+            ? 'Choose one mode. Use Next to continue to base settings.'
+            : 'Leave both unchecked to download all image columns normally.';
+    }
 
     chips.forEach(function(chip) {
         const rawStep = chip.getAttribute('data-dl-wizard-chip');
@@ -352,7 +368,7 @@ function _dlSyncImageWizardUi() {
     });
 
     if (stepLabelEl) {
-        stepLabelEl.textContent = 'Step ' + _dlImageWizardStep + ' of ' + maxStep;
+        stepLabelEl.textContent = hasMode ? ('Step ' + _dlImageWizardStep + ' of ' + maxStep) : '';
     }
 
     if (backBtn) {
@@ -365,7 +381,8 @@ function _dlSyncImageWizardUi() {
     }
 
     if (confirmBtn) {
-        confirmBtn.disabled = !(mode && _dlImageWizardStep === maxStep);
+        confirmBtn.disabled = hasMode ? !(_dlImageWizardStep === maxStep) : false;
+        confirmBtn.textContent = hasMode ? 'Download' : 'Download All Images';
     }
 }
 
@@ -2275,24 +2292,27 @@ function initDownloadImagesHandlers() {
     }
 
     document.getElementById('downloadImgConfirm')?.addEventListener('click', function() {
-        const maxStep = _dlGetImageWizardMaxStep();
-        if (_dlImageWizardStep < maxStep) {
-            if (typeof showToast === 'function') {
-                showToast('Please complete all steps before downloading.', 'warning');
+        const mode = _dlGetActiveImageMode();
+        if (mode) {
+            const maxStep = _dlGetImageWizardMaxStep();
+            if (_dlImageWizardStep < maxStep) {
+                if (typeof showToast === 'function') {
+                    showToast('Please complete all steps before downloading.', 'warning');
+                }
+                return;
             }
-            return;
-        }
 
-        const validationError = _dlValidateImageWizardStep(Math.max(1, maxStep - 1));
-        if (validationError) {
-            if (typeof showToast === 'function') {
-                showToast(validationError, 'warning');
+            const validationError = _dlValidateImageWizardStep(Math.max(1, maxStep - 1));
+            if (validationError) {
+                if (typeof showToast === 'function') {
+                    showToast(validationError, 'warning');
+                }
+                return;
             }
-            return;
         }
 
         const selectedCardIds = Array.isArray(pendingDownloadCardIds) ? pendingDownloadCardIds.slice() : [];
-        const renameOptions = _dlGetImageRenameOptionsFromModal();
+        const renameOptions = mode ? _dlGetImageRenameOptionsFromModal() : null;
 
         if (renameOptions && renameOptions.__error) {
             if (typeof showToast === 'function') {

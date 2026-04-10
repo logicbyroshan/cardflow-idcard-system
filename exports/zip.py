@@ -943,17 +943,30 @@ class ZipExporter:
 
         if prefer_narrow:
             font_candidates.extend([
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-500.ttf'),
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-400.ttf'),
                 os.path.join(static_fonts_dir, 'arialn.ttf'),
                 os.path.join(static_fonts_dir, 'ArialN.ttf'),
                 os.path.join(static_fonts_dir, 'arial.ttf'),
             ])
         else:
             font_candidates.extend([
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-600.ttf'),
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-700.ttf'),
+                os.path.join(static_fonts_dir, 'arialbd.ttf'),
                 os.path.join(static_fonts_dir, 'arial.ttf'),
                 os.path.join(static_fonts_dir, 'arialn.ttf'),
             ])
 
-        font_candidates.extend(['arialn.ttf', 'Arial Narrow.ttf', 'arial.ttf', 'Arial.ttf'])
+        font_candidates.extend([
+            'saira-semi-condensed-500.ttf',
+            'saira-semi-condensed-600.ttf',
+            'arialn.ttf',
+            'Arial Narrow.ttf',
+            'arialbd.ttf',
+            'arial.ttf',
+            'Arial.ttf',
+        ])
 
         for candidate in font_candidates:
             try:
@@ -1156,7 +1169,7 @@ class ZipExporter:
         """Use configured font size by default; reduce by 1pt only for very extreme name lengths."""
         normalized_name = re.sub(r'\s+', ' ', str(name_text or '')).strip()
         base_size = max(1, int(base_font_px or 1))
-        base_font = self._load_generate_font(base_size, prefer_narrow=True)
+        base_font = self._load_generate_font(base_size, prefer_narrow=False)
         if not normalized_name:
             return base_font
 
@@ -1168,7 +1181,7 @@ class ZipExporter:
         reduced_size = max(1, base_size - one_pt_px)
         if reduced_size >= base_size:
             return base_font
-        return self._load_generate_font(reduced_size, prefer_narrow=True)
+        return self._load_generate_font(reduced_size, prefer_narrow=False)
 
     def _build_generated_passport_image(
         self,
@@ -1231,23 +1244,47 @@ class ZipExporter:
 
                 name_font_size_px = max(10, int(layout['name_font_px']))
                 detail_font_size_px = max(8, int(layout['detail_font_px']))
-                name_font = self._resolve_name_font_for_generate(
-                    draw=draw,
-                    name_text=raw_name_value,
-                    base_font_px=name_font_size_px,
-                    max_text_width=max_text_width,
-                )
-                detail_font = self._load_generate_font(detail_font_size_px, prefer_narrow=True)
+                min_name_font_px = max(8, self._pt_to_px(4.8))
+                min_detail_font_px = max(7, self._pt_to_px(4.0))
+                desired_line_gap_px = max(2, int(line_gap_px) + 2)
 
-                detail_text = self._truncate_text_to_width(draw, detail_line, detail_font, max_text_width) if detail_line else ''
-                name_height = self._text_height(draw, raw_name_value or 'A', name_font) if raw_name_value else 0
-                detail_height = self._text_height(draw, detail_text or 'A', detail_font) if detail_text else 0
-
+                detail_text = ''
+                name_height = 0
+                detail_height = 0
                 line_gap_draw_px = 0
-                if raw_name_value and detail_text:
-                    preferred_gap = max(1, line_gap_px)
-                    max_allowed_gap = max(0, available_text_height - (name_height + detail_height))
-                    line_gap_draw_px = min(preferred_gap, max_allowed_gap)
+
+                while True:
+                    name_font = self._resolve_name_font_for_generate(
+                        draw=draw,
+                        name_text=raw_name_value,
+                        base_font_px=name_font_size_px,
+                        max_text_width=max_text_width,
+                    )
+                    detail_font = self._load_generate_font(detail_font_size_px, prefer_narrow=True)
+
+                    detail_text = self._truncate_text_to_width(draw, detail_line, detail_font, max_text_width) if detail_line else ''
+                    name_height = self._text_height(draw, raw_name_value or 'A', name_font) if raw_name_value else 0
+                    detail_height = self._text_height(draw, detail_text or 'A', detail_font) if detail_text else 0
+
+                    if raw_name_value and detail_text:
+                        max_allowed_gap = max(0, available_text_height - (name_height + detail_height))
+                        line_gap_draw_px = min(desired_line_gap_px, max_allowed_gap)
+                    else:
+                        line_gap_draw_px = 0
+
+                    required_height = name_height + line_gap_draw_px + detail_height
+                    if required_height <= available_text_height:
+                        break
+
+                    can_reduce_name = name_font_size_px > min_name_font_px
+                    can_reduce_detail = detail_font_size_px > min_detail_font_px
+                    if not can_reduce_name and not can_reduce_detail:
+                        break
+
+                    if can_reduce_name and (not can_reduce_detail or name_font_size_px >= detail_font_size_px):
+                        name_font_size_px -= 1
+                    elif can_reduce_detail:
+                        detail_font_size_px -= 1
 
                 required_height = name_height + line_gap_draw_px + detail_height
                 vertical_offset = max(0, int(round((available_text_height - required_height) / 2.0)))
