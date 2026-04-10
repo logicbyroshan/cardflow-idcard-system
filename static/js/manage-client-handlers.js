@@ -683,6 +683,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm_reprint_request_list': 'Reprint Request List',
         'perm_confirmed_list': 'Confirmed List',
         'perm_idcard_bulk_download': 'Bulk Download',
+        'perm_idcard_download_image_rename_mode': 'Download Images Rename Mode',
+        'perm_idcard_download_image_generate_mode': 'Download Images Generate Mode',
         'perm_idcard_add': 'Add Card',
         'perm_idcard_edit': 'Edit Card',
         'perm_idcard_delete': 'Delete Card',

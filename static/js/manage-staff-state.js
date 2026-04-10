@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm-idcard-delete-from-pool', 'perm-delete-all-idcard',
         'perm-idcard-retrieve',
         'perm-mobile-app',
+        'perm-idcard-download-image-rename-mode', 'perm-idcard-download-image-generate-mode',
         // Manage Panel
         'perm-manage-panel-backup', 'perm-manage-panel-email',
         // Manage Website sections

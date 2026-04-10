@@ -23,6 +23,20 @@ function _getStatusLabel() {
     return STATUS_LABELS[typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending'] || 'Current';
 }
 
+function _dlHasPermissionFlag(key) {
+    if (!window.PERMS || typeof window.PERMS !== 'object') return true;
+    if (!Object.prototype.hasOwnProperty.call(window.PERMS, key)) return true;
+    return !!window.PERMS[key];
+}
+
+function _dlCanUseRenameMode() {
+    return _dlHasPermissionFlag('idcard_download_image_rename_mode');
+}
+
+function _dlCanUseGenerateMode() {
+    return _dlHasPermissionFlag('idcard_download_image_generate_mode');
+}
+
 // ==========================================
 // DOWNLOAD MODAL STATE
 // ==========================================
@@ -253,8 +267,8 @@ function _dlSyncGenerateFieldUi() {
 function _dlGetActiveImageMode() {
     const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
     const renameToggleEl = document.getElementById('downloadImgRenameToggle');
-    if (generateToggleEl && generateToggleEl.checked) return 'generate';
-    if (renameToggleEl && renameToggleEl.checked) return 'rename';
+    if (generateToggleEl && !generateToggleEl.disabled && generateToggleEl.checked && _dlCanUseGenerateMode()) return 'generate';
+    if (renameToggleEl && !renameToggleEl.disabled && renameToggleEl.checked && _dlCanUseRenameMode()) return 'rename';
     return '';
 }
 
@@ -262,11 +276,15 @@ function _dlSetActiveImageMode(mode) {
     const renameToggleEl = document.getElementById('downloadImgRenameToggle');
     const generateToggleEl = document.getElementById('downloadImgGenerateByFieldToggle');
 
-    if (renameToggleEl) renameToggleEl.checked = mode === 'rename';
-    if (generateToggleEl) generateToggleEl.checked = mode === 'generate';
-    _dlImageRenameState.mode = mode;
+    let resolvedMode = mode;
+    if (resolvedMode === 'rename' && !_dlCanUseRenameMode()) resolvedMode = '';
+    if (resolvedMode === 'generate' && !_dlCanUseGenerateMode()) resolvedMode = '';
 
-    if (!mode) {
+    if (renameToggleEl) renameToggleEl.checked = resolvedMode === 'rename';
+    if (generateToggleEl) generateToggleEl.checked = resolvedMode === 'generate';
+    _dlImageRenameState.mode = resolvedMode;
+
+    if (!resolvedMode) {
         _dlImageWizardStep = 1;
     } else if (_dlImageWizardStep < 2) {
         _dlImageWizardStep = 2;
@@ -398,8 +416,12 @@ function _dlSyncModeUi() {
     const mode = _dlGetActiveImageMode();
     _dlImageRenameState.mode = mode;
 
-    const hasRenameData = !((renameToggleEl && renameToggleEl.disabled) && (generateToggleEl && generateToggleEl.disabled));
-    if (panelEl) panelEl.style.display = hasRenameData ? 'block' : 'none';
+    const hasAnyModeToggle = !!renameToggleEl || !!generateToggleEl;
+    const hasUsableModeToggle = !!(
+        (renameToggleEl && !renameToggleEl.disabled) ||
+        (generateToggleEl && !generateToggleEl.disabled)
+    );
+    if (panelEl) panelEl.style.display = (hasAnyModeToggle && hasUsableModeToggle) ? 'block' : 'none';
 
     if (helpTextEl) {
         helpTextEl.textContent = mode === 'generate'
@@ -789,18 +811,27 @@ function _dlInitializeImageRenamePanel() {
     const generateSectionFieldEl = document.getElementById('downloadImgGenerateSectionField');
     const generateCustomDateEl = document.getElementById('downloadImgGenerateCustomDate');
 
-    if (!renameToggleEl || !generateToggleEl || !panelEl || !targetSelect) return;
+    if (!panelEl || !targetSelect) return;
 
     _dlImageRenameState.imageFields = _dlGetRenameTargetImageFields();
     _dlImageRenameState.textFields = _dlGetTextFields();
 
+    const canRenameMode = !!renameToggleEl && _dlCanUseRenameMode();
+    const canGenerateMode = !!generateToggleEl && _dlCanUseGenerateMode();
     const hasRenameData = _dlImageRenameState.imageFields.length > 0 && _dlImageRenameState.textFields.length > 0;
-    renameToggleEl.disabled = !hasRenameData;
-    generateToggleEl.disabled = !hasRenameData;
 
-    if (!hasRenameData) {
-        renameToggleEl.checked = false;
-        generateToggleEl.checked = false;
+    if (renameToggleEl) {
+        renameToggleEl.disabled = !hasRenameData || !canRenameMode;
+        if (!canRenameMode) renameToggleEl.checked = false;
+    }
+    if (generateToggleEl) {
+        generateToggleEl.disabled = !hasRenameData || !canGenerateMode;
+        if (!canGenerateMode) generateToggleEl.checked = false;
+    }
+
+    if ((!canRenameMode && !canGenerateMode) || !hasRenameData) {
+        if (renameToggleEl) renameToggleEl.checked = false;
+        if (generateToggleEl) generateToggleEl.checked = false;
         _dlImageWizardStep = 1;
         panelEl.style.display = 'none';
         _dlImageRenameState.selectedImageField = '';

@@ -530,6 +530,27 @@ def _check_client_pdf_only(request):
     return None
 
 
+def _check_image_mode_permission(request, rename_options):
+    """Validate mode-specific permissions for image export advanced flows."""
+    if not isinstance(rename_options, dict):
+        return None
+
+    mode = str(rename_options.get('mode') or '').strip().lower()
+    if mode == 'rename' and not PermissionService.can_use_image_rename_mode(request.user):
+        return JsonResponse({
+            'success': False,
+            'message': 'Permission denied: Rename mode is not enabled for your account'
+        }, status=403)
+
+    if mode == 'generate' and not PermissionService.can_use_image_generate_mode(request.user):
+        return JsonResponse({
+            'success': False,
+            'message': 'Permission denied: Generate mode is not enabled for your account'
+        }, status=403)
+
+    return None
+
+
 def _check_export_client_scope(request, table_id):
     """
     Check if user has access to the client owning this table.
@@ -1116,6 +1137,9 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     try:
         service = ExportService(request.user)
         rename_options = _get_image_rename_options_from_request(request)
+        mode_perm_error = _check_image_mode_permission(request, rename_options)
+        if mode_perm_error:
+            return mode_perm_error
         is_pdf_zip_mode = bool(rename_options and rename_options.get('output_format') == 'pdf_zip')
         result = service.export_images(
             table_id,

@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'perm_reprint_request_list', 'perm_confirmed_list',
         'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info', 'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_reprint_list',
         'perm_idcard_updated_at', 'perm_idcard_delete_from_pool', 'perm_idcard_retrieve',
-        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_upgrade_all',
+        'perm_idcard_bulk_upload', 'perm_idcard_bulk_download', 'perm_idcard_download_image_rename_mode', 'perm_idcard_download_image_generate_mode', 'perm_idcard_upgrade_all',
         'perm_mobile_app', 'perm_set_temp_password'
       ];
 
@@ -381,6 +381,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'perm_idcard_reprint_list': 'Reprint Cards',
             'perm_idcard_updated_at': 'Last Updated & Updated By',
             'perm_idcard_retrieve': 'Retrieve from Pool',
+            'perm_idcard_download_image_rename_mode': 'Download Images Rename Mode',
+            'perm_idcard_download_image_generate_mode': 'Download Images Generate Mode',
             'perm_idcard_upgrade_all': 'Batch Class Upgrade',
             'perm_mobile_app': 'Mobile App Access', 'perm_idcard_client_list': 'Manage Client'
           };

@@ -62,6 +62,7 @@ class ClientService(BaseService):
         'perm_idcard_retrieve',
         # ID Card Bulk Action Permissions (work across all lists)
         'perm_idcard_bulk_upload', 'perm_idcard_bulk_download',
+        'perm_idcard_download_image_rename_mode', 'perm_idcard_download_image_generate_mode',
         'perm_delete_all_idcard',
         'perm_idcard_upgrade_all',
         # Mobile App

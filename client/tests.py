@@ -941,6 +941,61 @@ class ClientStaffServicePermissionTests(TestCase):
         staff = Staff.objects.get(id=staff_id)
         self.assertTrue(staff.perm_idcard_bulk_download)
 
+    def test_create_staff_image_mode_perms_not_granted_even_if_client_has_permission(self):
+        from client.services import ClientStaffService
+        from staff.models import Staff
+
+        self.client_obj.perm_idcard_download_image_rename_mode = True
+        self.client_obj.perm_idcard_download_image_generate_mode = True
+        self.client_obj.save(update_fields=[
+            'perm_idcard_download_image_rename_mode',
+            'perm_idcard_download_image_generate_mode',
+        ])
+
+        result = ClientStaffService.create_staff(self.owner, {
+            'email': 'image-mode-blocked@test.com',
+            'first_name': 'Image',
+            'last_name': 'Blocked',
+            'phone': '5555555555',
+            'perm_idcard_download_image_rename_mode': True,
+            'perm_idcard_download_image_generate_mode': True,
+        })
+        self.assertTrue(result.success)
+
+        staff = Staff.objects.select_related('user').get(id=result.data['staff_id'])
+        self.assertFalse(staff.perm_idcard_download_image_rename_mode)
+        self.assertFalse(staff.perm_idcard_download_image_generate_mode)
+
+    def test_update_staff_image_mode_perms_forced_off(self):
+        from client.services import ClientStaffService
+        from staff.models import Staff
+
+        self.client_obj.perm_idcard_download_image_rename_mode = True
+        self.client_obj.perm_idcard_download_image_generate_mode = True
+        self.client_obj.save(update_fields=[
+            'perm_idcard_download_image_rename_mode',
+            'perm_idcard_download_image_generate_mode',
+        ])
+
+        created = ClientStaffService.create_staff(self.owner, {
+            'email': 'image-mode-update@test.com',
+            'first_name': 'Image',
+            'last_name': 'Update',
+            'phone': '4444444444',
+        })
+        self.assertTrue(created.success)
+
+        staff_id = created.data['staff_id']
+        updated = ClientStaffService.update_staff(self.owner, staff_id, {
+            'perm_idcard_download_image_rename_mode': True,
+            'perm_idcard_download_image_generate_mode': True,
+        })
+        self.assertTrue(updated.success)
+
+        staff = Staff.objects.get(id=staff_id)
+        self.assertFalse(staff.perm_idcard_download_image_rename_mode)
+        self.assertFalse(staff.perm_idcard_download_image_generate_mode)
+
     def test_create_staff_allows_custom_password_without_phone_or_email(self):
         from client.services import ClientStaffService
         from staff.models import Staff

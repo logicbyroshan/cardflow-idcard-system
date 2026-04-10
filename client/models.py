@@ -140,6 +140,8 @@ class Client(models.Model):
     # ID Card Bulk Action Permissions (work across all lists)
     perm_idcard_bulk_upload = models.BooleanField(default=False)
     perm_idcard_bulk_download = models.BooleanField(default=False)
+    perm_idcard_download_image_rename_mode = models.BooleanField(default=False)
+    perm_idcard_download_image_generate_mode = models.BooleanField(default=False)
     perm_idcard_bulk_reupload = models.BooleanField(default=False)  # Bulk reupload for all lists
     perm_delete_all_idcard = models.BooleanField(default=False)
     perm_idcard_upgrade_all = models.BooleanField(default=False)  # Upgrade All Class

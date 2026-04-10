@@ -621,6 +621,17 @@ class ExportApiIntegrationAdvancedTests(TestCase):
             perm_idcard_bulk_download=True,
         )
 
+        self.staff_assigned = User.objects.create_user(
+            username='exstaffa@test.com', email='exstaffa@test.com',
+            password='pass1234', role='admin_staff',
+        )
+        self.staff_assigned_profile = Staff.objects.create(
+            user=self.staff_assigned,
+            staff_type='admin_staff',
+            perm_idcard_bulk_download=True,
+        )
+        self.staff_assigned_profile.assigned_clients.add(self.client_obj)
+
     def tearDown(self):
         cache.clear()
 
@@ -707,6 +718,103 @@ class ExportApiIntegrationAdvancedTests(TestCase):
         self.assertTrue(response.json()['success'])
         rename_opts = mocked_export.call_args.kwargs['rename_options']
         self.assertEqual(rename_opts['image_name_fields'], {'PHOTO': ['Name', 'Father']})
+
+    def test_images_export_rename_mode_requires_permission(self):
+        self.client.login(username='exstaffa@test.com', password='pass1234')
+
+        response = self.client.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'card_ids': [1],
+                'rename_options': {
+                    'enabled': True,
+                    'mode': 'rename',
+                    'selected_image_field': 'PHOTO',
+                    'image_name_fields': {'PHOTO': 'Name'},
+                },
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('Rename mode', response.json().get('message', ''))
+
+    def test_images_export_generate_mode_requires_permission(self):
+        self.client.login(username='exstaffa@test.com', password='pass1234')
+
+        response = self.client.post(
+            f'/panel/exports/images/{self.table.id}/',
+            data=json.dumps({
+                'card_ids': [1],
+                'rename_options': {
+                    'enabled': True,
+                    'mode': 'generate',
+                    'selected_image_field': 'PHOTO',
+                    'image_name_fields': {'PHOTO': ['Name', 'Class']},
+                    'generate_options': {
+                        'enabled': True,
+                        'name_field': 'Name',
+                        'detail_fields': ['Class'],
+                    },
+                },
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('Generate mode', response.json().get('message', ''))
+
+    def test_images_export_generate_mode_allowed_with_permission(self):
+        self.staff_assigned_profile.perm_idcard_download_image_generate_mode = True
+        self.staff_assigned_profile.save(update_fields=['perm_idcard_download_image_generate_mode'])
+        self.client.login(username='exstaffa@test.com', password='pass1234')
+
+        fake_zip_result = object()
+        with mock.patch('exports.views.ExportService.export_images', return_value=fake_zip_result) as mocked_export:
+            with mock.patch('exports.views.zip_result_to_dict', return_value={'success': True, 'zip_files': []}):
+                response = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({
+                        'card_ids': [1],
+                        'rename_options': {
+                            'enabled': True,
+                            'mode': 'generate',
+                            'selected_image_field': 'PHOTO',
+                            'image_name_fields': {'PHOTO': ['Name', 'Class']},
+                            'generate_options': {
+                                'enabled': True,
+                                'name_field': 'Name',
+                                'detail_fields': ['Class'],
+                            },
+                        },
+                    }),
+                    content_type='application/json',
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.assertEqual(mocked_export.call_args.kwargs['rename_options']['mode'], 'generate')
+
+    def test_images_export_normal_download_still_allowed_without_mode_permissions(self):
+        self.client.login(username='exstaffa@test.com', password='pass1234')
+
+        fake_zip_result = type('ZipResult', (), {
+            'success': True,
+            'message': '',
+        })()
+        with mock.patch('exports.views.ExportService.export_images', return_value=fake_zip_result) as mocked_export:
+            with mock.patch('exports.views.zip_result_to_dict', return_value={'success': True, 'zip_files': []}):
+                response = self.client.post(
+                    f'/panel/exports/images/{self.table.id}/',
+                    data=json.dumps({
+                        'card_ids': [1],
+                    }),
+                    content_type='application/json',
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.assertIsNone(mocked_export.call_args.kwargs.get('rename_options'))
 
     def test_images_export_large_inline_falls_back_to_disk_urls(self):
         from staff.models import Staff

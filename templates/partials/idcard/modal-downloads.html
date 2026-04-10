@@ -154,8 +154,13 @@
         <strong id="downloadImgCardCount">0</strong>
       </div>
     </div>
-    <p class="center-modal-note mt-0 download-img-intro-note">Download images as ZIP or PDF ZIP. Leave both modes unchecked for default all-image download, or select a mode to use guided steps.</p>
+    {% if perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
+    <p class="center-modal-note mt-0 download-img-intro-note">Download images as ZIP or PDF ZIP. Leave modes unchecked for default all-image download, or select an available mode to use guided steps.</p>
+    {% else %}
+    <p class="center-modal-note mt-0 download-img-intro-note">Download all image columns in one ZIP using default settings.</p>
+    {% endif %}
 
+    {% if perm_idcard_download_image_rename_mode or perm_idcard_download_image_generate_mode %}
     <div id="downloadImgRenamePanel" class="download-img-main-panel mt-2 p-3 rounded-lg border border-purple-200 bg-purple-50" style="display:none;">
       <div class="download-img-wizard-progress" id="downloadImgWizardProgress">
         <div class="download-img-wizard-chip is-active" data-dl-wizard-chip="1">
@@ -179,16 +184,26 @@
       <div id="downloadImgWizardStep1" class="download-img-wizard-step">
         <div class="download-img-section-heading">Optional: Choose Mode</div>
         <div class="mb-2 text-left download-img-toggle-group">
+          {% if perm_idcard_download_image_rename_mode %}
           <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
             <input type="checkbox" id="downloadImgRenameToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
             Rename Image By Fields
           </label>
+          {% endif %}
+          {% if perm_idcard_download_image_generate_mode %}
           <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none download-img-toggle-label download-img-mode-pill">
             <input type="checkbox" id="downloadImgGenerateByFieldToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
             Generate Image by Field Name
           </label>
+          {% endif %}
         </div>
+        {% if perm_idcard_download_image_rename_mode and perm_idcard_download_image_generate_mode %}
         <p class="download-img-mode-helper mt-1 mb-0">Leave both unchecked to download normally. Select one mode to continue with guided settings.</p>
+        {% elif perm_idcard_download_image_rename_mode %}
+        <p class="download-img-mode-helper mt-1 mb-0">Rename mode is enabled. Leave it unchecked to download all image columns normally.</p>
+        {% else %}
+        <p class="download-img-mode-helper mt-1 mb-0">Generate mode is enabled. Leave it unchecked to download all image columns normally.</p>
+        {% endif %}
       </div>
 
       <div id="downloadImgWizardStep2" class="download-img-wizard-step" style="display:none;">
@@ -299,6 +314,7 @@
         <button type="button" id="downloadImgWizardNext" class="download-img-wizard-nav-btn is-primary">Next</button>
       </div>
     </div>
+    {% endif %}
 
     <div id="downloadImgProgress" class="center-modal-progress">
       <div class="center-modal-progress-track">

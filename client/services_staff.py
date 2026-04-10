@@ -50,6 +50,8 @@ class ClientStaffService(BaseService):
     NON_DELEGABLE_CLIENT_STAFF_PERMS = [
         'perm_idcard_approve',
         'perm_idcard_delete_from_pool',
+        'perm_idcard_download_image_rename_mode',
+        'perm_idcard_download_image_generate_mode',
     ]
 
     @staticmethod

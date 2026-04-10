@@ -16,6 +16,8 @@
     idcard_retrieve: {{ perm_idcard_retrieve|yesno:"true,false" }},
     idcard_delete_from_pool: {{ perm_idcard_delete_from_pool|yesno:"true,false" }},
     idcard_bulk_download: {{ perm_idcard_bulk_download|yesno:"true,false" }},
+    idcard_download_image_rename_mode: {{ perm_idcard_download_image_rename_mode|yesno:"true,false" }},
+    idcard_download_image_generate_mode: {{ perm_idcard_download_image_generate_mode|yesno:"true,false" }},
     reupload_idcard_image: {{ perm_reupload_idcard_image|yesno:"true,false" }} || {{ perm_idcard_bulk_reupload|yesno:"true,false" }},
     idcard_updated_at: {{ perm_idcard_updated_at|yesno:"true,false" }},
   };
