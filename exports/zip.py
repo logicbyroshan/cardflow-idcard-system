@@ -104,8 +104,8 @@ class ZipExporter:
             'photo_mm': (19.0, 25.0),
             'padding_mm': 2.0,
             'gap_below_photo_mm': 2.0,
-            'name_font_pt': 8.0,
-            'detail_font_pt': 6.0,
+            'name_font_pt': 7.0,
+            'detail_font_pt': 5.0,
             'line_gap_mm': 0.6,
         },
         'size_37x53': {
@@ -935,7 +935,7 @@ class ZipExporter:
         }
 
     def _load_generate_font(self, size: int, prefer_narrow: bool = True):
-        """Load Arial/Arial Narrow style font with graceful fallback."""
+        """Load Arial/Arial Narrow first, then fall back to bundled condensed fonts."""
         from PIL import ImageFont
 
         font_candidates = []
@@ -943,29 +943,29 @@ class ZipExporter:
 
         if prefer_narrow:
             font_candidates.extend([
-                os.path.join(static_fonts_dir, 'saira-semi-condensed-500.ttf'),
-                os.path.join(static_fonts_dir, 'saira-semi-condensed-400.ttf'),
                 os.path.join(static_fonts_dir, 'arialn.ttf'),
                 os.path.join(static_fonts_dir, 'ArialN.ttf'),
                 os.path.join(static_fonts_dir, 'arial.ttf'),
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-500.ttf'),
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-400.ttf'),
             ])
         else:
             font_candidates.extend([
-                os.path.join(static_fonts_dir, 'saira-semi-condensed-600.ttf'),
-                os.path.join(static_fonts_dir, 'saira-semi-condensed-700.ttf'),
                 os.path.join(static_fonts_dir, 'arialbd.ttf'),
                 os.path.join(static_fonts_dir, 'arial.ttf'),
                 os.path.join(static_fonts_dir, 'arialn.ttf'),
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-600.ttf'),
+                os.path.join(static_fonts_dir, 'saira-semi-condensed-700.ttf'),
             ])
 
         font_candidates.extend([
-            'saira-semi-condensed-500.ttf',
-            'saira-semi-condensed-600.ttf',
             'arialn.ttf',
             'Arial Narrow.ttf',
             'arialbd.ttf',
             'arial.ttf',
             'Arial.ttf',
+            'saira-semi-condensed-500.ttf',
+            'saira-semi-condensed-600.ttf',
         ])
 
         for candidate in font_candidates:
@@ -1244,9 +1244,9 @@ class ZipExporter:
 
                 name_font_size_px = max(10, int(layout['name_font_px']))
                 detail_font_size_px = max(8, int(layout['detail_font_px']))
-                min_name_font_px = max(8, self._pt_to_px(4.8))
-                min_detail_font_px = max(7, self._pt_to_px(4.0))
-                desired_line_gap_px = max(2, int(line_gap_px) + 2)
+                min_name_font_px = max(11, self._pt_to_px(3.4))
+                min_detail_font_px = max(9, self._pt_to_px(2.8))
+                desired_line_gap_px = max(2, int(line_gap_px))
 
                 detail_text = ''
                 name_height = 0
@@ -1265,10 +1265,13 @@ class ZipExporter:
                     detail_text = self._truncate_text_to_width(draw, detail_line, detail_font, max_text_width) if detail_line else ''
                     name_height = self._text_height(draw, raw_name_value or 'A', name_font) if raw_name_value else 0
                     detail_height = self._text_height(draw, detail_text or 'A', detail_font) if detail_text else 0
+                    minimum_gap_px = 2 if (raw_name_value and detail_text) else 0
 
                     if raw_name_value and detail_text:
                         max_allowed_gap = max(0, available_text_height - (name_height + detail_height))
                         line_gap_draw_px = min(desired_line_gap_px, max_allowed_gap)
+                        if line_gap_draw_px < minimum_gap_px:
+                            line_gap_draw_px = minimum_gap_px
                     else:
                         line_gap_draw_px = 0
 
