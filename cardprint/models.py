@@ -11,6 +11,7 @@ import logging
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -101,10 +102,122 @@ def validate_field_mappings(mappings):
     return None
 
 
+def default_template_json():
+    return {
+        'canvas': {
+            'width': 350,
+            'height': 200,
+            'unit': 'px',
+            'realWidthMM': 85.6,
+            'realHeightMM': 54.0,
+            'safeMargin': 10,
+            'bleed': 5,
+            'printLayout': {
+                'mode': '1',
+                'columns': 1,
+                'rows': 1,
+                'marginMM': 8,
+                'gapXMM': 4,
+                'gapYMM': 4,
+                'pageSize': 'a4',
+            },
+        },
+        'elements': [],
+    }
+
+
+def validate_template_json(template_json):
+    """Validate template_json structure. Returns error string or None if valid.
+
+    Expected shape:
+    {
+            "canvas": {
+                "width": 350,
+                "height": 200,
+                "unit": "px",
+                "realWidthMM": 85.6,
+                "realHeightMM": 54,
+                "safeMargin": 10,
+                "bleed": 5
+            },
+      "elements": [
+        {
+                    "type": "text" | "image" | "background",
+          "field": "name",
+          "label": "Name",
+          "x": 20,
+          "y": 40,
+          "width": 120,
+          "height": 24,
+          "fontSize": 12,
+          "align": "left" | "center" | "right",
+          "color": "#111111",
+                    "side": "front" | "back" | "both",
+                    "src": "/media/template-bg.png",
+                    "locked": true
+        }
+      ]
+    }
+    """
+    if not isinstance(template_json, dict):
+        return 'template_json must be a JSON object'
+
+    canvas = template_json.get('canvas')
+    if canvas is None:
+        return None
+    if not isinstance(canvas, dict):
+        return 'template_json.canvas must be a JSON object'
+    for key in ('width', 'height', 'realWidthMM', 'realHeightMM', 'safeMargin', 'bleed'):
+        if key in canvas and not isinstance(canvas.get(key), (int, float)):
+            return f'template_json.canvas.{key} must be a number'
+    if 'unit' in canvas and str(canvas.get('unit') or '').strip().lower() not in ('', 'px'):
+        return 'template_json.canvas.unit must be px'
+
+    elements = template_json.get('elements')
+    if elements is None:
+        return None
+    if not isinstance(elements, list):
+        return 'template_json.elements must be an array'
+
+    for idx, elem in enumerate(elements):
+        if not isinstance(elem, dict):
+            return f'template_json.elements[{idx}] must be an object'
+
+        elem_type = str(elem.get('type') or '').strip().lower()
+        if elem_type not in ('text', 'image', 'background'):
+            return f'template_json.elements[{idx}].type must be text, image, or background'
+
+        field_name = str(elem.get('field') or '').strip()
+        if elem_type in ('text', 'image') and not field_name:
+            return f'template_json.elements[{idx}].field is required'
+
+        if elem_type == 'background':
+            src = str(elem.get('src') or '').strip()
+            if not src:
+                return f'template_json.elements[{idx}].src is required for background'
+
+        for key in ('x', 'y', 'width', 'height'):
+            if key in elem and not isinstance(elem.get(key), (int, float)):
+                return f'template_json.elements[{idx}].{key} must be a number'
+
+        if 'fontSize' in elem and not isinstance(elem.get('fontSize'), (int, float)):
+            return f'template_json.elements[{idx}].fontSize must be a number'
+
+        if 'side' in elem:
+            side = str(elem.get('side') or '').strip().lower()
+            if side not in ('front', 'back', 'both'):
+                return f'template_json.elements[{idx}].side must be front, back, or both'
+
+        if 'locked' in elem and not isinstance(elem.get('locked'), bool):
+            return f'template_json.elements[{idx}].locked must be a boolean'
+
+    return None
+
+
 class CardTemplate(models.Model):
     """
     Stores design PDFs and coordinate mappings for Generate Card.
-    One template per IDCardTable (one-to-one).
+    Multiple templates can exist per IDCardTable.
 
     field_mappings format:
     {
@@ -118,10 +231,28 @@ class CardTemplate(models.Model):
         ('Helvetica', 'Arial Regular'),
     ]
 
-    table = models.OneToOneField(
+    table = models.ForeignKey(
         'core.IDCardTable',
         on_delete=models.CASCADE,
-        related_name='card_template',
+        related_name='card_templates',
+    )
+    name = models.CharField(max_length=120, default='Default Template')
+    version = models.PositiveIntegerField(default=1, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_default = models.BooleanField(default=False, db_index=True)
+    parent_template = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='child_versions',
+    )
+    usage_count = models.PositiveIntegerField(default=0)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    template_json = models.JSONField(
+        default=default_template_json,
+        blank=True,
+        help_text='Template-driven canvas data for field elements rendering.',
     )
     front_pdf = models.FileField(
         upload_to='card_templates/front/',
@@ -153,10 +284,18 @@ class CardTemplate(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f'Template for {self.table.name}'
+        return f'{self.name} v{self.version} ({self.table.name})'
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['table', 'version'], name='uniq_template_version_per_table'),
+            models.UniqueConstraint(
+                fields=['table'],
+                condition=Q(is_default=True),
+                name='uniq_default_template_per_table',
+            ),
+        ]
 
 
 class CardTemplateDoc(models.Model):

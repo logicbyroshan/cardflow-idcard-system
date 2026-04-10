@@ -254,6 +254,44 @@ class CardPrintApiIntegrationTests(TestCase):
 
 		return reverse(f'cardprint:{name}', args=[self.table.id])
 
+	def _valid_template_json(self, field_name='Name'):
+		return {
+			'canvas': {
+				'width': 350,
+				'height': 200,
+				'unit': 'px',
+				'realWidthMM': 85.6,
+				'realHeightMM': 54.0,
+				'safeMargin': 10,
+				'bleed': 5,
+				'printLayout': {
+					'mode': '1',
+					'columns': 1,
+					'rows': 1,
+					'marginMM': 8,
+					'gapXMM': 4,
+					'gapYMM': 4,
+					'pageSize': 'a4',
+				},
+			},
+			'elements': [
+				{
+					'type': 'text',
+					'field': field_name,
+					'label': field_name,
+					'x': 20,
+					'y': 20,
+					'width': 100,
+					'height': 20,
+					'fontSize': 12,
+					'align': 'left',
+					'color': '#111111',
+					'side': 'front',
+					'locked': False,
+				},
+			],
+		}
+
 	def test_step_counts_denied_for_unassigned_staff(self):
 		self.client.force_login(self.unassigned_staff_user)
 		response = self.client.get(self._url('api_print_step_counts'))
@@ -352,6 +390,80 @@ class CardPrintApiIntegrationTests(TestCase):
 			content_type='application/json',
 		)
 		self.assertEqual(response.status_code, 400)
+
+	def test_template_save_creates_new_version(self):
+		from cardprint.models import CardTemplate
+
+		self.client.force_login(self.assigned_staff_user)
+		initial = self.client.get(self._url('api_template_get'))
+		self.assertEqual(initial.status_code, 200)
+		base_template_id = initial.json()['template']['id']
+
+		before_count = CardTemplate.objects.filter(table=self.table).count()
+
+		response = self.client.post(
+			self._url('api_template_save'),
+			data=json.dumps({
+				'template_id': base_template_id,
+				'name': 'Versioned Template',
+				'is_two_sided': False,
+				'font_size': 10,
+				'font_family': 'Helvetica',
+				'template_json': self._valid_template_json('Name'),
+				'front_fields': ['Name'],
+			}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertEqual(payload['status'], 'ok')
+
+		new_template_id = payload['template']['id']
+		self.assertNotEqual(new_template_id, base_template_id)
+		self.assertEqual(CardTemplate.objects.filter(table=self.table).count(), before_count + 1)
+
+		new_tmpl = CardTemplate.objects.get(id=new_template_id)
+		base_tmpl = CardTemplate.objects.get(id=base_template_id)
+		self.assertEqual(new_tmpl.version, base_tmpl.version + 1)
+		self.assertEqual(new_tmpl.parent_template_id, base_tmpl.id)
+
+	def test_template_save_rejects_unknown_template_field(self):
+		self.client.force_login(self.assigned_staff_user)
+		response = self.client.post(
+			self._url('api_template_save'),
+			data=json.dumps({
+				'template_json': self._valid_template_json('UnknownField'),
+			}),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('does not exist in table schema', response.json().get('message', ''))
+
+	def test_template_duplicate_can_become_default(self):
+		from cardprint.models import CardTemplate
+		from django.urls import reverse
+
+		self.client.force_login(self.assigned_staff_user)
+
+		current = self.client.get(self._url('api_template_get'))
+		self.assertEqual(current.status_code, 200)
+		base_template_id = current.json()['template']['id']
+
+		duplicate_url = reverse('cardprint:api_template_duplicate', args=[base_template_id])
+		dup = self.client.post(
+			duplicate_url,
+			data=json.dumps({'name': 'Template Copy', 'activate': True, 'is_default': True}),
+			content_type='application/json',
+		)
+		self.assertEqual(dup.status_code, 200)
+		self.assertEqual(dup.json()['status'], 'ok')
+
+		new_template_id = dup.json()['template']['id']
+		new_template = CardTemplate.objects.get(id=new_template_id)
+		base_template = CardTemplate.objects.get(id=base_template_id)
+		self.assertTrue(new_template.is_default)
+		self.assertTrue(new_template.is_active)
+		self.assertFalse(base_template.is_default)
 
 	def test_mark_pool_moves_finalized_items(self):
 		from cardprint.models import PrintRequest
