@@ -57,11 +57,11 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
-            {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadImgBtn" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtn" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
                 <span class="btn-text">Download Word</span>
@@ -111,11 +111,11 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
-            {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadImgBtnV" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtnV" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
                 <span class="btn-text">Download Word</span>
@@ -182,6 +182,10 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if is_client or is_client_staff %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnA" title="Download images as ZIP">
+                <i class="fa-solid fa-images"></i>
+                <span class="btn-text">Download Images</span>
+            </button>
             <button class="btn action-btn btn-purple" id="downloadPdfBtnA" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
                 <span class="btn-text">Download PDF</span>
@@ -239,6 +243,10 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% if is_client or is_client_staff %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
+            <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
+                <i class="fa-solid fa-images"></i>
+                <span class="btn-text">Download Images</span>
+            </button>
             <button class="btn action-btn btn-purple" id="downloadPdfBtnD" title="Download as PDF">
                 <i class="fa-solid fa-file-pdf"></i>
                 <span class="btn-text">Download PDF</span>
@@ -267,11 +275,11 @@ Context: current_status, perm_*, is_client, is_client_staff, is_super_admin, is_
             {% endif %}
             {% if perm_idcard_bulk_download %}
             <div class="action-divider"></div>
-            {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadImgBtnP" title="Download images as ZIP">
                 <i class="fa-solid fa-images"></i>
                 <span class="btn-text">Download Images</span>
             </button>
+            {% if not is_client and not is_client_staff %}
             <button class="btn action-btn btn-purple" id="downloadDocxBtnP" title="Download as Word document">
                 <i class="fa-solid fa-file-word"></i>
                 <span class="btn-text">Download Word</span>
