@@ -1,0 +1,54 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: radial-gradient(circle at top, #e2e8f0, #f8fafc 56%);
+  color: #0f172a;
+}
+
+.shell-wrap {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+}
+
+.shell-wrap h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.shell-wrap p {
+  margin: 0;
+  max-width: 420px;
+  color: #334155;
+}
+
+button {
+  border: 1px solid #0f172a;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:active {
+  transform: translateY(1px);
+}

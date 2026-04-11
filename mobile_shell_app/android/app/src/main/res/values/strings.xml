@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Adarsh ID Cards</string>
+    <string name="title_activity_main">Adarsh ID Cards</string>
+    <string name="package_name">in.adarshbhopal.idcards</string>
+    <string name="custom_url_scheme">in.adarshbhopal.idcards</string>
+</resources>
