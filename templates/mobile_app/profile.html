@@ -220,14 +220,15 @@ function profileApp() {
                     credentials: 'same-origin',
                 });
                 const data = await res.json();
+                const payload = (data && data.success && data.data) ? data.data : null;
 
                 this.appUpdate.currentBuild = appBuild ? ('Build ' + String(appBuild)) : 'Unknown';
-                this.appUpdate.latestVersion = (data && data.latest_version) ? String(data.latest_version) : '-';
+                this.appUpdate.latestVersion = (payload && payload.latest_version) ? String(payload.latest_version) : '-';
 
-                if (data && data.requires_update) {
+                if (payload && payload.update_required) {
                     this.appUpdate.statusText = 'Update Required';
                     this.appUpdate.statusType = 'warn';
-                } else if (data && data.recommended_update) {
+                } else if (payload && payload.update_recommended) {
                     this.appUpdate.statusText = 'Update Available';
                     this.appUpdate.statusType = 'warn';
                 } else {

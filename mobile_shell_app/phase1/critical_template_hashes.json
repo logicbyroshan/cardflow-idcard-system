@@ -1,47 +1,47 @@
 {
-  "generated_on": "2026-04-11",
-  "branch": "feature/mobile-pwa-shell-phase1",
-  "notes": "Phase 1 critical template hash baseline for visual drift detection.",
-  "templates": [
-    {
-      "path": "templates/mobile_app/base.html",
-      "sha256": "BA9B88B75CFEA4D414CA2435EDF87B6DFCD6A16070A2FF505509C533E5C548FA"
-    },
-    {
-      "path": "templates/mobile_app/login.html",
-      "sha256": "0F0DE87A34878D4A39460362F51C423F1888F4FBA48A7825BD3D578D570A5236"
-    },
-    {
-      "path": "templates/mobile_app/home.html",
-      "sha256": "0F71C83CD9250958269701608386215009CF4208D1246621263FB230BE7E0CC6"
-    },
-    {
-      "path": "templates/mobile_app/list_page.html",
-      "sha256": "405B240168F092B5681F452D9C89E57F7F68C2A5E4D90CD6548711C6D4014648"
-    },
-    {
-      "path": "templates/mobile_app/card_detail.html",
-      "sha256": "B4BA6AB75FEEF8314FD8F0B124BDA10BEBC8DB7FFF90239A2F1F571285B2C734"
-    },
-    {
-      "path": "templates/mobile_app/settings.html",
-      "sha256": "BF61E73A2ED4538FA75D355B666A0CC146348F88D426F190FFD2D9B9D0E3F14B"
-    },
-    {
-      "path": "templates/mobile_app/partials/navbar.html",
-      "sha256": "78C2C6724DC9FDEB85AFA4923BB0C68224CFB2A7C4A5A7EAB86B7A7D55B0620E"
-    },
-    {
-      "path": "templates/mobile_app/partials/hamburger_drawer.html",
-      "sha256": "DB8A7AA64875A2A60A6B9C6D54314B04C2542A26E8B6552092805E8B0697537C"
-    },
-    {
-      "path": "templates/mobile_app/partials/bottom_nav.html",
-      "sha256": "947A98E827782C68AAD7DA7FF56263A32B8D22B6F8FDBE047EE81D3BB1E8B87B"
-    },
-    {
-      "path": "templates/mobile_app/partials/add_form_sheet.html",
-      "sha256": "65A3B8E789CB537B0BC6E3136D007B3B0BD61D818C2B315602FEE147C3D53974"
-    }
-  ]
+    "generated_on":  "2026-04-11",
+    "branch":  "feature/mobile-pwa-shell-phase1",
+    "notes":  "Phase 1 critical template hash baseline for visual drift detection.",
+    "templates":  [
+                      {
+                          "path":  "templates/mobile_app/base.html",
+                          "sha256":  "7195E4B85593C539F862A5220F3B738DA7B0D0EAC2A11095D363C71B7D07491F"
+                      },
+                      {
+                          "path":  "templates/mobile_app/login.html",
+                          "sha256":  "8881C367D23571050ABD6F2DF30864299F3C98E5BB53CCF10F6BFA598D0CBBB6"
+                      },
+                      {
+                          "path":  "templates/mobile_app/home.html",
+                          "sha256":  "0F71C83CD9250958269701608386215009CF4208D1246621263FB230BE7E0CC6"
+                      },
+                      {
+                          "path":  "templates/mobile_app/list_page.html",
+                          "sha256":  "405B240168F092B5681F452D9C89E57F7F68C2A5E4D90CD6548711C6D4014648"
+                      },
+                      {
+                          "path":  "templates/mobile_app/card_detail.html",
+                          "sha256":  "B4BA6AB75FEEF8314FD8F0B124BDA10BEBC8DB7FFF90239A2F1F571285B2C734"
+                      },
+                      {
+                          "path":  "templates/mobile_app/settings.html",
+                          "sha256":  "BF61E73A2ED4538FA75D355B666A0CC146348F88D426F190FFD2D9B9D0E3F14B"
+                      },
+                      {
+                          "path":  "templates/mobile_app/partials/navbar.html",
+                          "sha256":  "78C2C6724DC9FDEB85AFA4923BB0C68224CFB2A7C4A5A7EAB86B7A7D55B0620E"
+                      },
+                      {
+                          "path":  "templates/mobile_app/partials/hamburger_drawer.html",
+                          "sha256":  "DB8A7AA64875A2A60A6B9C6D54314B04C2542A26E8B6552092805E8B0697537C"
+                      },
+                      {
+                          "path":  "templates/mobile_app/partials/bottom_nav.html",
+                          "sha256":  "947A98E827782C68AAD7DA7FF56263A32B8D22B6F8FDBE047EE81D3BB1E8B87B"
+                      },
+                      {
+                          "path":  "templates/mobile_app/partials/add_form_sheet.html",
+                          "sha256":  "65A3B8E789CB537B0BC6E3136D007B3B0BD61D818C2B315602FEE147C3D53974"
+                      }
+                  ]
 }

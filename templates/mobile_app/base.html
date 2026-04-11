@@ -258,6 +258,30 @@
             if (message && updateMessage) updateMessage.textContent = message;
         }
 
+        function wait(ms) {
+            return new Promise(function(resolve) {
+                setTimeout(resolve, Math.max(0, Number(ms) || 0));
+            });
+        }
+
+        async function rampUpdateProgress(from, to, durationMs, message) {
+            var start = Math.max(0, Math.min(100, Number(from) || 0));
+            var end = Math.max(0, Math.min(100, Number(to) || 0));
+            var totalMs = Math.max(0, Number(durationMs) || 0);
+
+            if (end <= start || totalMs <= 0) {
+                setUpdateProgress(end, message);
+                return;
+            }
+
+            var steps = Math.max(1, Math.round(totalMs / 80));
+            for (var i = 1; i <= steps; i++) {
+                await wait(Math.max(40, Math.round(totalMs / steps)));
+                var pct = start + ((end - start) * (i / steps));
+                setUpdateProgress(pct, message);
+            }
+        }
+
         function getCapacitorPlugins() {
             var cap = window.Capacitor;
             if (!cap) return {};
@@ -302,18 +326,36 @@
             return updateUrl || supportUrl || '';
         }
 
-        async function openUpdateLink(link) {
+        async function openUpdateLink(link, options) {
             if (!link) return false;
             var targetUrl = String(link || '').trim();
             if (!targetUrl) return false;
+            var opts = options || {};
+            var preferExternalForApk = opts.preferExternalForApk !== false;
 
             var isLikelyApk = /\.apk(?:\?|#|$)/i.test(targetUrl);
             var isSameOrigin = false;
             try {
                 var resolved = new URL(targetUrl, window.location.href);
+                if (isLikelyApk) {
+                    resolved.searchParams.set('_ts', String(Date.now()));
+                }
                 targetUrl = resolved.toString();
                 isSameOrigin = resolved.origin === window.location.origin;
             } catch (err) {}
+
+            var plugins = getCapacitorPlugins();
+            var browser = plugins.Browser;
+            var nativeShell = shouldUseNativeUpdateUi();
+
+            // APK downloads are more reliable when opened in the external browser
+            // from Capacitor native shell.
+            if (isLikelyApk && preferExternalForApk && nativeShell && browser && typeof browser.open === 'function') {
+                try {
+                    await browser.open({ url: targetUrl });
+                    return true;
+                } catch (err) {}
+            }
 
             // Prefer direct navigation for same-origin APK links so Android handles
             // download/install from app context without forcing an external browser first.
@@ -324,8 +366,6 @@
                 } catch (err) {}
             }
 
-            var plugins = getCapacitorPlugins();
-            var browser = plugins.Browser;
             if (browser && typeof browser.open === 'function') {
                 try {
                     await browser.open({ url: targetUrl });
@@ -387,21 +427,31 @@
             }
 
             try {
-                setUpdateProgress(8, 'Checking latest app release...');
+                setUpdateProgress(4, 'Checking latest app release...');
+                await rampUpdateProgress(4, 18, 320, 'Checking latest app release...');
 
                 var configData = await fetchMobileShellConfig();
                 var updateLink = resolveUpdateLink(configData);
                 if (updateLink) {
-                    setUpdateProgress(46, 'Preparing update package...');
-                    var opened = await openUpdateLink(updateLink);
+                    await rampUpdateProgress(18, 42, 420, 'Contacting secure update server...');
+                    var opened = await openUpdateLink(updateLink, { preferExternalForApk: true });
                     if (opened) {
-                        setUpdateProgress(100, 'Approve APK install prompt, then reopen the app.');
+                        await rampUpdateProgress(42, 76, 560, 'Opening Android installer...');
+                        setUpdateProgress(90, 'APK opened. Download and install, then reopen the app.');
+                        setTimeout(function() {
+                            if (updateScreen) {
+                                updateScreen.classList.add('hidden');
+                                updateScreen.setAttribute('aria-hidden', 'true');
+                            }
+                        }, 7000);
                         inProgress = false;
                         return false;
                     }
+
+                    setUpdateProgress(38, 'Could not open installer directly. Trying in-app refresh...');
                 }
 
-                setUpdateProgress(16, 'Refreshing in-app assets...');
+                await rampUpdateProgress(38, 52, 260, 'Refreshing in-app assets...');
 
                 var registrations = [];
                 if ('serviceWorker' in navigator) {
@@ -414,24 +464,24 @@
                     }
                 }
 
-                setUpdateProgress(42, 'Clearing cached assets...');
+                setUpdateProgress(58, 'Clearing cached assets...');
                 if ('caches' in window) {
                     var keys = await caches.keys();
                     var total = keys.length || 1;
                     for (var k = 0; k < keys.length; k++) {
                         try { await caches.delete(keys[k]); } catch (err) {}
-                        setUpdateProgress(42 + ((k + 1) / total) * 28, 'Clearing cached assets...');
+                        setUpdateProgress(58 + ((k + 1) / total) * 22, 'Clearing cached assets...');
                     }
                 }
 
-                setUpdateProgress(78, 'Refreshing service worker...');
+                setUpdateProgress(84, 'Refreshing service worker...');
                 if (registrations.length) {
                     for (var r = 0; r < registrations.length; r++) {
                         try { await registrations[r].unregister(); } catch (err) {}
                     }
                 }
 
-                setUpdateProgress(94, 'Opening latest app...');
+                setUpdateProgress(96, 'Opening latest app...');
                 var nextUrl = '/app/?updated=' + Date.now();
                 setTimeout(function() {
                     window.location.replace(nextUrl);

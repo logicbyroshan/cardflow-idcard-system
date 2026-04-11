@@ -2306,9 +2306,11 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 		self.assertIn('async function fetchMobileShellConfig()', content)
 		self.assertIn('function resolveUpdateLink(configData)', content)
 		self.assertIn('var isLikelyApk = /\\.apk(?:\\?|#|$)/i.test(targetUrl);', content)
+		self.assertIn('resolved.searchParams.set(\'_ts\', String(Date.now()));', content)
 		self.assertIn('window.location.assign(targetUrl);', content)
 		self.assertIn('var updateLink = resolveUpdateLink(configData);', content)
-		self.assertIn('await openUpdateLink(updateLink);', content)
+		self.assertIn('await openUpdateLink(updateLink, { preferExternalForApk: true });', content)
+		self.assertIn('setUpdateProgress(90, \'APK opened. Download and install, then reopen the app.\');', content)
 
 	def test_profile_template_shows_update_status_card_and_runtime_check(self):
 		profile_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'profile.html'
@@ -2318,6 +2320,9 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 		self.assertIn('Refresh Update Status', content)
 		self.assertIn('async loadUpdateStatus()', content)
 		self.assertIn("fetch('/app/api/mobile-shell/config/'", content)
+		self.assertIn('const payload = (data && data.success && data.data) ? data.data : null;', content)
+		self.assertIn('payload.update_required', content)
+		self.assertIn('payload.update_recommended', content)
 
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
