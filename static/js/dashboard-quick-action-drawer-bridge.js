@@ -21,14 +21,19 @@
     if (!overlay || !drawer || !frame) return;
 
     var actionMeta = {
-      'add-client': 'Create Client',
-      'add-operator': 'Create Operator',
-      'add-assistent': 'Create Assistent'
+      'add-client': { title: 'Create Client', hideOuterChrome: true },
+      'add-operator': { title: 'Create Operator', hideOuterChrome: true },
+      'add-assistent': { title: 'Create Assistent', hideOuterChrome: true }
     };
+
+    function setOuterDrawerChromeHidden(hidden) {
+      drawer.classList.toggle('dashboard-quick-action-drawer--compact', !!hidden);
+    }
 
     function closeQuickActionDrawer() {
       overlay.classList.remove('active');
       document.body.style.overflow = '';
+      setOuterDrawerChromeHidden(false);
       window.setTimeout(function () {
         if (!overlay.classList.contains('active')) {
           frame.src = 'about:blank';
@@ -36,8 +41,10 @@
       }, 220);
     }
 
-    function openQuickActionDrawer(url, title) {
-      if (titleEl) titleEl.textContent = title || 'Quick Action';
+    function openQuickActionDrawer(url, meta) {
+      var resolvedMeta = meta || {};
+      if (titleEl) titleEl.textContent = resolvedMeta.title || 'Quick Action';
+      setOuterDrawerChromeHidden(!!resolvedMeta.hideOuterChrome);
       frame.src = withEmbedParam(url);
       overlay.classList.add('active');
       document.body.style.overflow = 'hidden';

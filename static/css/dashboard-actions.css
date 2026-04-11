@@ -243,3 +243,11 @@
     border: 0;
     background: #f8fafc;
 }
+
+.dashboard-quick-action-drawer.dashboard-quick-action-drawer--compact .dashboard-quick-action-drawer-head {
+    display: none;
+}
+
+.dashboard-quick-action-drawer.dashboard-quick-action-drawer--compact .dashboard-quick-action-frame {
+    height: 100vh;
+}
