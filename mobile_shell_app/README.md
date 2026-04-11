@@ -67,6 +67,15 @@ Current scope: Android-first rollout. iOS work is intentionally deferred.
      - Latest APK policy path: `static/website/apk/adarsh-admin.apk`
      - Versioned rollback archive: `static/website/apk/archive/adarsh-admin-<release-label>.apk|.aab`
 
+### Rollout Guard Automation (Phase 7)
+1. Evaluate release gates before promotion:
+   - `python manage.py mobile_rollout_guard --crash-free-sessions <value> --anr-rate <value> --auth-failure-rate <value> --auth-failure-baseline <value> --upload-failure-rate <value> --upload-failure-baseline <value> --strict`
+2. Optional stale-device cap:
+   - add `--max-stale-30d <count>`.
+3. For broader trend audits:
+   - add `--include-inactive`.
+4. Command outputs JSON for release notes and incident triage.
+
 ## Backend dependencies
 The shell bridge expects these endpoints in Django mobile app:
 1. `GET /app/api/mobile-shell/config/`

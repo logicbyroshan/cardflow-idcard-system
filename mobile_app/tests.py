@@ -8,6 +8,7 @@ from io import StringIO
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import TestCase, override_settings
+from django.core.management.base import CommandError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.utils import timezone
@@ -556,6 +557,81 @@ class MobileDeviceCleanupCommandTests(MobileAppBaseTestCase):
 		)
 
 		self.assertFalse(MobileDevice.objects.filter(pk=old_inactive.pk).exists())
+
+
+class MobileRolloutGuardCommandTests(MobileAppBaseTestCase):
+	def test_rollout_guard_reports_healthy_when_metrics_are_within_threshold(self):
+		MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='guard-healthy-0001',
+			is_active=True,
+			app_build=12,
+			app_version='1.2.0',
+		)
+
+		out = StringIO()
+		call_command(
+			'mobile_rollout_guard',
+			'--crash-free-sessions',
+			'99.6',
+			'--anr-rate',
+			'0.30',
+			'--auth-failure-rate',
+			'0.8',
+			'--auth-failure-baseline',
+			'0.5',
+			'--upload-failure-rate',
+			'1.4',
+			'--upload-failure-baseline',
+			'1.0',
+			'--max-stale-30d',
+			'5',
+			stdout=out,
+		)
+
+		report = json.loads(out.getvalue())
+		self.assertTrue(report.get('healthy'))
+		self.assertEqual(report['device_snapshot']['total_devices'], 1)
+		self.assertEqual(report['device_snapshot']['stale_30d'], 0)
+
+	def test_rollout_guard_strict_mode_fails_on_bad_metrics(self):
+		out = StringIO()
+		with self.assertRaises(CommandError):
+			call_command(
+				'mobile_rollout_guard',
+				'--crash-free-sessions',
+				'98.1',
+				'--anr-rate',
+				'0.80',
+				'--strict',
+				stdout=out,
+			)
+
+	def test_rollout_guard_can_include_inactive_devices(self):
+		now = timezone.now()
+		active = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='guard-active-0001',
+			is_active=True,
+		)
+		inactive = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='guard-inactive-0001',
+			is_active=False,
+		)
+
+		MobileDevice.objects.filter(pk=active.pk).update(last_seen_at=now - timedelta(hours=3))
+		MobileDevice.objects.filter(pk=inactive.pk).update(last_seen_at=now - timedelta(days=90))
+
+		out = StringIO()
+		call_command('mobile_rollout_guard', '--include-inactive', stdout=out)
+
+		report = json.loads(out.getvalue())
+		self.assertEqual(report['device_snapshot']['total_devices'], 2)
+		self.assertEqual(report['device_snapshot']['stale_30d'], 1)
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):
@@ -2021,6 +2097,51 @@ class MobileAppPhase6ReleasePipelineContractTests(TestCase):
 		self.assertIn('## Phase 6 Completion (2026-04-11)', content)
 		self.assertIn('release_pipeline_contract.md', content)
 		self.assertIn('MobileAppPhase6ReleasePipelineContractTests', content)
+
+
+class MobileAppPhase7RolloutGuardAutomationTests(TestCase):
+	def test_phase7_command_exists_and_has_phase_thresholds(self):
+		cmd_path = Path(__file__).resolve().parent.parent / 'mobile_app' / 'management' / 'commands' / 'mobile_rollout_guard.py'
+		content = cmd_path.read_text(encoding='utf-8')
+
+		self.assertIn('CRASH_FREE_SESSIONS_MIN = 99.0', content)
+		self.assertIn('ANR_RATE_MAX = 0.47', content)
+		self.assertIn('FAILURE_RATE_MULTIPLIER_MAX = 2.0', content)
+		self.assertIn('--strict', content)
+
+	def test_phase7_artifacts_include_guard_and_incident_docs(self):
+		project_root = Path(__file__).resolve().parent.parent
+		phase7_dir = project_root / 'mobile_shell_app' / 'phase7'
+
+		required_files = [
+			phase7_dir / 'rollout_gate_check_contract.md',
+			phase7_dir / 'incident_response_runbook.md',
+			phase7_dir / 'PHASE7_EXECUTION_LOG.md',
+			phase7_dir / 'PHASE7_COMPLETION_REPORT.md',
+		]
+		for file_path in required_files:
+			self.assertTrue(file_path.exists(), f'Missing phase7 artifact: {file_path.name}')
+
+		contract = (phase7_dir / 'rollout_gate_check_contract.md').read_text(encoding='utf-8')
+		self.assertIn('python manage.py mobile_rollout_guard', contract)
+		self.assertIn('Crash-free sessions', contract)
+		self.assertIn('ANR rate', contract)
+
+	def test_phase7_pipeline_doc_has_rollout_guard_step(self):
+		doc_path = Path(__file__).resolve().parent.parent / 'docs' / 'mobile-shell' / 'ANDROID_RELEASE_PIPELINE.md'
+		content = doc_path.read_text(encoding='utf-8')
+
+		self.assertIn('Phase 7 Rollout Guard Automation', content)
+		self.assertIn('mobile_rollout_guard', content)
+		self.assertIn('--strict', content)
+
+	def test_plan_tracks_phase7_completion(self):
+		plan_path = Path(__file__).resolve().parent.parent / 'mobile_shell_app' / 'ANDROID_NATIVE_CONVERSION_PLAN.md'
+		content = plan_path.read_text(encoding='utf-8')
+
+		self.assertIn('## Phase 7 Completion (2026-04-11)', content)
+		self.assertIn('rollout_gate_check_contract.md', content)
+		self.assertIn('MobileAppPhase7RolloutGuardAutomationTests', content)
 
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):

@@ -71,6 +71,15 @@
    - No P0/P1 regression in smoke checklist
    - Crash and ANR trend stable for 24 hours at current stage
 
+## 11. Phase 7 Rollout Guard Automation
+1. Run executable gate check before each stage promotion:
+   - `python manage.py mobile_rollout_guard --crash-free-sessions <value> --anr-rate <value> --auth-failure-rate <value> --auth-failure-baseline <value> --upload-failure-rate <value> --upload-failure-baseline <value> --strict`
+2. Optional heartbeat guard:
+   - add `--max-stale-30d <count>` to cap stale-device drift.
+3. Use `--include-inactive` for broader trend review when triaging incidents.
+4. Command emits JSON report for release notes evidence.
+5. In strict mode, any failed gate returns non-zero and blocks promotion.
+
 ## 8. Device Lifecycle Cleanup
 1. Dry-run audit:
    - `python manage.py cleanup_mobile_devices --stale-days 30 --delete-days 120 --delete-inactive --dry-run`
