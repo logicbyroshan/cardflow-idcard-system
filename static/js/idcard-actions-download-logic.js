@@ -339,6 +339,8 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
     options = options || {};
     var pollCount = 0;
     var maxPolls = options.maxPolls || 300; // up to 10 minutes at 2s interval
+    var pollErrorCount = 0;
+    var maxPollErrors = options.maxPollErrors || 6;
     var pollStartedAt = Date.now();
     var displayPct = 5;
     var lastBackendPct = 0;
@@ -377,6 +379,8 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
+                pollErrorCount = 0;
+
                 if (!data || !data.success) {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast((data && data.message) || 'Export task not found', false);
@@ -471,6 +475,13 @@ function _pollGenericTaskStatus(taskId, options, isCancelled, cancelFn) {
             })
             .catch(function (err) {
                 console.error('Task status poll error:', err);
+                pollErrorCount++;
+                if (pollErrorCount >= maxPollErrors) {
+                    if (typeof hideProgressToast === 'function') hideProgressToast();
+                    if (typeof showToast === 'function') showToast('Lost connection while tracking export progress. Please refresh to verify result.', 'warning');
+                    finalizeOnce();
+                    return;
+                }
                 setTimeout(poll, _POLL_INTERVAL * 2);
             });
     }
@@ -1024,6 +1035,8 @@ function downloadPdf(cardIds, templateId, fontMode, shortenTitles, breakMode) {
 function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode) {
     // Cancellation flag for the polling loop
     var _pdfAsyncCancelled = false;
+    var _pdfCancelRequested = false;
+    var _pdfActiveTaskId = null;
     var _bulkUiLockActive = _consumeNextBulkUiLockFlag();
     _bulkUiLockActive = true;
 
@@ -1035,10 +1048,38 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
 
     if (_bulkUiLockActive) _setBulkUiLock(true);
 
+    function _requestPdfTaskCancel(taskId) {
+        if (!taskId) return;
+        fetch('/api/task-cancel/' + taskId + '/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (typeof showToast === 'function') {
+                    showToast((data && data.message) || 'PDF export cancelled', 'info');
+                }
+            })
+            .catch(function (err) {
+                if (typeof showToast === 'function') showToast('PDF cancel request sent', 'info');
+                console.error('Cancel PDF export task failed:', err);
+            });
+    }
+
     var cancelFn = function () {
+        if (_pdfCancelRequested) return;
+        _pdfCancelRequested = true;
         _pdfAsyncCancelled = true;
         _releaseBulkUiLock();
-        if (typeof showToast === 'function') showToast('PDF export cancelled', 'info');
+
+        if (_pdfActiveTaskId) {
+            _requestPdfTaskCancel(_pdfActiveTaskId);
+        } else if (typeof showToast === 'function') {
+            showToast('PDF export cancelled', 'info');
+        }
     };
 
     if (typeof showProgressToast === 'function') {
@@ -1064,8 +1105,19 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
                     _releaseBulkUiLock();
                     return;
                 }
+
+                _pdfActiveTaskId = data.task_id;
+                if (_pdfAsyncCancelled) {
+                    _requestPdfTaskCancel(data.task_id);
+                    return;
+                }
+
                 // Start polling for completion
-                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, _releaseBulkUiLock);
+                _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, function() {
+                    _pdfActiveTaskId = null;
+                    _pdfCancelRequested = false;
+                    _releaseBulkUiLock();
+                });
             })
             .catch(function(err) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -1091,7 +1143,18 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
                 _releaseBulkUiLock();
                 return;
             }
-            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, _releaseBulkUiLock);
+
+            _pdfActiveTaskId = data.task_id;
+            if (_pdfAsyncCancelled) {
+                _requestPdfTaskCancel(data.task_id);
+                return;
+            }
+
+            _pollExportStatus(data.task_id, data.card_count || 0, function() { return _pdfAsyncCancelled; }, cancelFn, function() {
+                _pdfActiveTaskId = null;
+                _pdfCancelRequested = false;
+                _releaseBulkUiLock();
+            });
         })
         .catch(function(err) {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -1113,6 +1176,8 @@ function _downloadPdfAsync(tableId, cardIds, templateId, fontMode, shortenTitles
 function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize) {
     var pollCount = 0;
     var maxPolls = 300; // 300 * 2s = 10 minutes max
+    var pollErrorCount = 0;
+    var maxPollErrors = 6;
     var _pollStartTime = Date.now();
     // Estimate processing time: ~0.3s per card for PDF, min 10s, max 300s
     var _estSeconds = Math.max(10, Math.min(300, (cardCount || 100) * 0.3));
@@ -1149,6 +1214,8 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            pollErrorCount = 0;
+
             if (!data.success) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast(data.message || 'Export task not found', false);
@@ -1182,9 +1249,11 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
                     }
                     finalizeOnce();
                 }, 500);
-            } else if (data.state === 'failed') {
+            } else if (data.state === 'failed' || data.state === 'cancelled') {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
-                if (typeof showToast === 'function') showToast(data.message || 'PDF generation failed', false);
+                if (typeof showToast === 'function') {
+                    showToast(data.message || (data.state === 'cancelled' ? 'PDF export cancelled' : 'PDF generation failed'), data.state === 'cancelled' ? 'info' : false);
+                }
                 finalizeOnce();
             } else {
                 // Still processing  compute display progress
@@ -1205,7 +1274,14 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
         })
         .catch(function(err) {
             console.error('Export status poll error:', err);
-            // Retry on network error (server might be busy)
+            pollErrorCount++;
+            if (pollErrorCount >= maxPollErrors) {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast('Lost connection while tracking PDF export. Please refresh to verify result.', 'warning');
+                finalizeOnce();
+                return;
+            }
+            // Retry on transient network errors.
             setTimeout(poll, _POLL_INTERVAL * 2);
         });
     }

@@ -110,6 +110,11 @@ let reuploadActionsCardCount = null;
 let reuploadActionsProgress = null;
 let reuploadActionsBar = null;
 let reuploadActionsStatus = null;
+let reuploadActiveTaskId = null;
+let reuploadPollTimer = null;
+let reuploadInProgress = false;
+let reuploadCancelRequested = false;
+let reuploadPollErrorCount = 0;
 
 const STATUS_LABELS = {
     pending: 'Pending',
@@ -149,6 +154,9 @@ function openReuploadActionsModal() {
 }
 
 function closeReuploadActionsModal() {
+    if (window.IDCardApp && typeof window.IDCardApp.cancelActiveReupload === 'function') {
+        window.IDCardApp.cancelActiveReupload({ notify: false, closeModal: false });
+    }
     if (!reuploadActionsModal) return;
     reuploadActionsModal.style.display = 'none';
     if (reuploadActionsFileInput) reuploadActionsFileInput.value = '';
@@ -175,6 +183,49 @@ function initReuploadHandlers() {
         _setBulkUiLock(false);
         reuploadTaskLockActive = false;
     }
+
+    function _clearReuploadPollTimer() {
+        if (reuploadPollTimer) {
+            clearTimeout(reuploadPollTimer);
+            reuploadPollTimer = null;
+        }
+    }
+
+    function _cancelActiveReupload(options) {
+        var opts = options || {};
+
+        if (!reuploadInProgress && !reuploadActiveTaskId && !reuploadPollTimer) {
+            if (opts.closeModal) closeReuploadActionsModal();
+            return;
+        }
+
+        reuploadCancelRequested = true;
+        _clearReuploadPollTimer();
+
+        if (reuploadActiveTaskId) {
+            fetch('/api/task-cancel/' + reuploadActiveTaskId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': (typeof getCSRFToken === 'function' ? getCSRFToken() : ''),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).catch(function(err) {
+                console.error('Cancel reupload task failed:', err);
+            });
+        }
+
+        reuploadActiveTaskId = null;
+        reuploadInProgress = false;
+        reuploadPollErrorCount = 0;
+        _setReuploadButton('Start Reupload', false);
+        _releaseReuploadTaskLock();
+
+        if (opts.closeModal) closeReuploadActionsModal();
+        if (opts.notify !== false && typeof showToast === 'function') showToast('Reupload cancelled', 'warning');
+    }
+
+    window.IDCardApp = window.IDCardApp || {};
+    window.IDCardApp.cancelActiveReupload = _cancelActiveReupload;
 
     // Drop zone  click opens file picker
     if (reuploadActionsDropZone) {
@@ -243,14 +294,40 @@ function initReuploadHandlers() {
     }
 
     function _pollReuploadTask(taskId) {
-        let pollErrors = 0;
-        const pollInterval = setInterval(function() {
+        reuploadActiveTaskId = taskId;
+        reuploadPollErrorCount = 0;
+
+        function pollOnce() {
+            if (reuploadCancelRequested || !reuploadInProgress) return;
+
             fetch('/api/task-status/' + taskId + '/')
                 .then(function(r) { return r.json(); })
                 .then(function(t) {
-                    pollErrors = 0;
+                    if (reuploadCancelRequested || !reuploadInProgress) return;
+
+                    if (!t || t.success === false) {
+                        reuploadPollErrorCount++;
+                        if (reuploadPollErrorCount >= 6) {
+                            if (reuploadActionsStatus) reuploadActionsStatus.textContent = (t && t.message) || 'Could not read reupload status. Please refresh to verify.';
+                            if (typeof showToast === 'function') showToast((t && t.message) || 'Lost connection while tracking reupload progress.', false);
+                            _setReuploadButton('Start Reupload', false);
+                            reuploadInProgress = false;
+                            reuploadCancelRequested = false;
+                            reuploadActiveTaskId = null;
+                            _releaseReuploadTaskLock();
+                            return;
+                        }
+                        reuploadPollTimer = setTimeout(pollOnce, 3000);
+                        return;
+                    }
+
+                    reuploadPollErrorCount = 0;
+
                     if (t.status === 'completed') {
-                        clearInterval(pollInterval);
+                        _clearReuploadPollTimer();
+                        reuploadInProgress = false;
+                        reuploadCancelRequested = false;
+                        reuploadActiveTaskId = null;
                         if (reuploadActionsBar) reuploadActionsBar.style.width = '100%';
                         const matched = (t.result && t.result.matched_count != null) ? t.result.matched_count : '';
                         const updated = (t.result && t.result.updated_count != null) ? t.result.updated_count : '';
@@ -269,7 +346,10 @@ function initReuploadHandlers() {
                             }
                         }, 1500);
                     } else if (t.status === 'failed' || t.status === 'cancelled') {
-                        clearInterval(pollInterval);
+                        _clearReuploadPollTimer();
+                        reuploadInProgress = false;
+                        reuploadCancelRequested = false;
+                        reuploadActiveTaskId = null;
                         const errMsg = t.error_message || 'Reupload failed. Please try again.';
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = errMsg;
                         if (typeof showToast === 'function') showToast(errMsg, false);
@@ -279,24 +359,44 @@ function initReuploadHandlers() {
                         const pct = 80 + Math.round((t.progress_percentage || 0) * 0.19);
                         if (reuploadActionsBar) reuploadActionsBar.style.width = Math.min(pct, 99) + '%';
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing: ' + (t.progress || 0) + '/' + (t.total || '?') + ' images...';
+                        reuploadPollTimer = setTimeout(pollOnce, 2000);
                     }
                 })
                 .catch(function(err) {
-                    pollErrors++;
-                    console.warn('[Reupload] Poll error #' + pollErrors + ':', err);
-                    if (pollErrors >= 5) {
-                        clearInterval(pollInterval);
+                    if (reuploadCancelRequested || !reuploadInProgress) return;
+
+                    reuploadPollErrorCount++;
+                    console.warn('[Reupload] Poll error #' + reuploadPollErrorCount + ':', err);
+                    if (reuploadPollErrorCount >= 6) {
+                        _clearReuploadPollTimer();
+                        reuploadInProgress = false;
+                        reuploadCancelRequested = false;
+                        reuploadActiveTaskId = null;
                         if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Lost connection to server. Task may still be running  refresh to check.';
                         if (typeof showToast === 'function') showToast('Lost connection while tracking progress. Please refresh.', false);
                         _setReuploadButton('Start Reupload', false);
                         _releaseReuploadTaskLock();
+                        return;
                     }
+                    reuploadPollTimer = setTimeout(pollOnce, 4000);
                 });
-        }, 2000);
+        }
+
+        reuploadPollTimer = setTimeout(pollOnce, 1200);
     }
 
     function _startReuploadTask(tableId) {
         if (!reuploadActionsFileInput || !reuploadActionsFileInput.files.length) return;
+        if (reuploadInProgress) {
+            if (typeof showToast === 'function') showToast('Reupload already in progress.', 'warning');
+            return;
+        }
+
+        reuploadCancelRequested = false;
+        reuploadInProgress = true;
+        reuploadActiveTaskId = null;
+        reuploadPollErrorCount = 0;
+        _clearReuploadPollTimer();
 
         reuploadTaskLockActive = true;
         _setBulkUiLock(true);
@@ -325,6 +425,24 @@ function initReuploadHandlers() {
             })
             .then(function(result) {
                 if (result.status === 200 && result.data && result.data.success) {
+                    if (reuploadCancelRequested) {
+                        if (result.data.task_id) {
+                            fetch('/api/task-cancel/' + result.data.task_id + '/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': (typeof getCSRFToken === 'function' ? getCSRFToken() : ''),
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            }).catch(function(err) {
+                                console.error('Cancel delayed reupload task failed:', err);
+                            });
+                        }
+                        reuploadInProgress = false;
+                        _setReuploadButton('Start Reupload', false);
+                        _releaseReuploadTaskLock();
+                        return;
+                    }
+
                     if (reuploadActionsBar) reuploadActionsBar.style.width = '80%';
                     if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Processing images...';
                     _pollReuploadTask(result.data.task_id);
@@ -334,6 +452,9 @@ function initReuploadHandlers() {
                 if (reuploadActionsStatus) reuploadActionsStatus.textContent = msg;
                 if (typeof showToast === 'function') showToast(msg, false);
                 _setReuploadButton('Start Reupload', false);
+                reuploadInProgress = false;
+                reuploadCancelRequested = false;
+                reuploadActiveTaskId = null;
                 _releaseReuploadTaskLock();
             })
             .catch(function(err) {
@@ -341,6 +462,9 @@ function initReuploadHandlers() {
                 if (reuploadActionsStatus) reuploadActionsStatus.textContent = 'Network error while creating task.';
                 if (typeof showToast === 'function') showToast('Network error while creating reupload task.', false);
                 _setReuploadButton('Start Reupload', false);
+                reuploadInProgress = false;
+                reuploadCancelRequested = false;
+                reuploadActiveTaskId = null;
                 _releaseReuploadTaskLock();
             });
     }
