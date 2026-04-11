@@ -1986,6 +1986,16 @@ class MobileAppPhase2LifecycleContractTests(TestCase):
 		self.assertIn("App.addListener('appStateChange'", content)
 		self.assertIn('userInteractedAt = 0;', content)
 
+	def test_mobile_bridge_cleans_stale_page_leave_blur_state(self):
+		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
+		content = js_path.read_text(encoding='utf-8')
+
+		self.assertIn("var ENTERING_CLASS = 'mobile-page-entering';", content)
+		self.assertIn("var LEAVE_CLASS = 'mobile-page-leave';", content)
+		self.assertIn('setTimeout(clearLeaveClass, LEAVE_GUARD_MS);', content)
+		self.assertIn("window.addEventListener('pageshow'", content)
+		self.assertIn("window.addEventListener('pagehide'", content)
+
 	def test_mobile_bridge_has_external_link_and_deep_link_handlers(self):
 		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
 		content = js_path.read_text(encoding='utf-8')

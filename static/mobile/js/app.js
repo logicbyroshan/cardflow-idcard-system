@@ -54,10 +54,21 @@ window.showConfirm = function showConfirm(options) {
     } catch (err) {}
     if (prefersReducedMotion) return;
 
-    document.body.classList.add('mobile-page-enter');
-    requestAnimationFrame(function() {
-        document.body.classList.add('mobile-page-enter-active');
-    });
+    var ENTERING_CLASS = 'mobile-page-entering';
+    var LEAVE_CLASS = 'mobile-page-leave';
+    var ENTER_ANIM_MS = 320;
+    var LEAVE_GUARD_MS = 900;
+
+    function clearEnterClass() {
+        document.body.classList.remove(ENTERING_CLASS);
+    }
+
+    function clearLeaveClass() {
+        document.body.classList.remove(LEAVE_CLASS);
+    }
+
+    document.body.classList.add(ENTERING_CLASS);
+    setTimeout(clearEnterClass, ENTER_ANIM_MS);
 
     document.addEventListener('click', function(event) {
         var target = event.target;
@@ -82,11 +93,26 @@ window.showConfirm = function showConfirm(options) {
             return;
         }
 
-        document.body.classList.add('mobile-page-leave');
+        document.body.classList.remove(ENTERING_CLASS);
+        document.body.classList.add(LEAVE_CLASS);
+
+        // If navigation is prevented or cancelled by app handlers,
+        // remove stale blur state automatically.
+        setTimeout(clearLeaveClass, LEAVE_GUARD_MS);
     }, true);
 
     window.addEventListener('pageshow', function() {
-        document.body.classList.remove('mobile-page-leave');
+        clearLeaveClass();
+    });
+
+    window.addEventListener('pagehide', function() {
+        clearLeaveClass();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            clearLeaveClass();
+        }
     });
 })();
 
