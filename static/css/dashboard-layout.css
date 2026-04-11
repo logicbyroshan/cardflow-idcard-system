@@ -442,6 +442,10 @@
         padding: 8px 10px;
     }
 
+    .dashboard-side-sticky .dashboard-card-body.p-0 {
+        padding: 0;
+    }
+
     .dashboard-side-sticky .card-overview-item,
     .dashboard-side-sticky .quick-action-btn {
         padding: 6px 8px;

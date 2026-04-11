@@ -4,7 +4,7 @@
   <div class="dashboard-card-header">
     <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
   </div>
-  <div class="dashboard-card-body">
+  <div class="dashboard-card-body p-0">
     <div class="quick-actions">
       {% if is_super_admin or perm_idcard_client_list %}
       <a href="{% url 'manage_clients' %}?add=1" class="quick-action-btn" data-dashboard-quick-action="add-client">
