@@ -44,6 +44,13 @@ from .idcard_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _apply_drawer_embed_frame_headers(request, response):
+    """Allow same-origin iframe embedding only for dashboard drawer embed mode."""
+    if request.GET.get('embed') == 'drawer':
+        response['X-Frame-Options'] = 'SAMEORIGIN'
+    return response
+
+
 def _normalize_device_surface(value):
     normalized = str(value or '').strip().lower()
     if normalized in {'desktop', 'mobile'}:
@@ -272,9 +279,11 @@ def manage_staff(request):
     }
     
     if is_htmx(request):
-        return render(request, 'partials/staff/table-container.html', context)
-    
-    return render(request, 'manage-staff.html', context)
+        response = render(request, 'partials/staff/table-container.html', context)
+        return _apply_drawer_embed_frame_headers(request, response)
+
+    response = render(request, 'manage-staff.html', context)
+    return _apply_drawer_embed_frame_headers(request, response)
 
 
 # Client Staff Management
@@ -366,9 +375,11 @@ def manage_client_staff(request):
     }
 
     if is_htmx(request):
-        return render(request, 'partials/client_staff/table-container.html', context)
+        response = render(request, 'partials/client_staff/table-container.html', context)
+        return _apply_drawer_embed_frame_headers(request, response)
 
-    return render(request, 'manage-client-staff.html', context)
+    response = render(request, 'manage-client-staff.html', context)
+    return _apply_drawer_embed_frame_headers(request, response)
 
 
 # Client Management
@@ -426,9 +437,11 @@ def manage_clients(request):
     }
     
     if is_htmx(request):
-        return render(request, 'partials/client/table-container.html', context)
-    
-    return render(request, 'manage-client.html', context)
+        response = render(request, 'partials/client/table-container.html', context)
+        return _apply_drawer_embed_frame_headers(request, response)
+
+    response = render(request, 'manage-client.html', context)
+    return _apply_drawer_embed_frame_headers(request, response)
 
 
 # Active Clients (ID Card Management)
