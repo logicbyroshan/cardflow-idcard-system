@@ -43,6 +43,34 @@
 2. Backend gate runs `mobile_app.tests.MobileAppShellApiTests` to validate config/register/ping/summary behavior.
 3. Merge only when both Android build and backend mobile-shell tests pass.
 
+## 9. Signed Release Automation (Phase 6)
+1. Use `workflow_dispatch` on `Android Mobile Shell CI` with `release_build=true`.
+2. Configure repository secrets:
+   - `ANDROID_KEYSTORE_B64`
+   - `ANDROID_KEYSTORE_PASSWORD`
+   - `ANDROID_KEY_ALIAS`
+   - `ANDROID_KEY_PASSWORD`
+3. Workflow builds signed outputs:
+   - `app-release.apk`
+   - `app-release.aab`
+4. Optional policy path promotion (`promote_latest_apk=true`):
+   - Latest: `static/website/apk/adarsh-admin.apk`
+   - Rollback archive: `static/website/apk/archive/adarsh-admin-<release-label>.apk|.aab`
+
+## 10. Staged Rollout and Monitoring Targets
+1. Stage percentages:
+   - 5% (4-6 hours)
+   - 20% (24 hours)
+   - 50% (24 hours)
+   - 100% after stability checks
+2. Halt criteria:
+   - Crash-free sessions < 99.0%
+   - ANR rate > 0.47%
+   - Login/auth API failures > 2x baseline
+3. Promotion criteria:
+   - No P0/P1 regression in smoke checklist
+   - Crash and ANR trend stable for 24 hours at current stage
+
 ## 8. Device Lifecycle Cleanup
 1. Dry-run audit:
    - `python manage.py cleanup_mobile_devices --stale-days 30 --delete-days 120 --delete-inactive --dry-run`

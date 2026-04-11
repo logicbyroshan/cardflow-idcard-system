@@ -50,6 +50,23 @@ Current scope: Android-first rollout. iOS work is intentionally deferred.
 3. Build signed `AAB` in Android Studio.
 4. Upload to Play Console internal testing.
 
+### GitHub Actions signed release (Phase 6)
+1. Run workflow: `Android Mobile Shell CI` via `workflow_dispatch`.
+2. Set `release_build=true`.
+3. Optionally set:
+   - `release_version` (example: `1.0.0-build12`)
+   - `promote_latest_apk=true`
+4. Required repository secrets:
+   - `ANDROID_KEYSTORE_B64`
+   - `ANDROID_KEYSTORE_PASSWORD`
+   - `ANDROID_KEY_ALIAS`
+   - `ANDROID_KEY_PASSWORD`
+5. Workflow outputs:
+   - Signed release APK + AAB artifact upload.
+   - When promotion is enabled:
+     - Latest APK policy path: `static/website/apk/adarsh-admin.apk`
+     - Versioned rollback archive: `static/website/apk/archive/adarsh-admin-<release-label>.apk|.aab`
+
 ## Backend dependencies
 The shell bridge expects these endpoints in Django mobile app:
 1. `GET /app/api/mobile-shell/config/`

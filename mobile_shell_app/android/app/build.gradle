@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+import java.io.FileInputStream
+import java.util.Properties
+
+def releaseKeystorePropsFile = rootProject.file('key.properties')
+def releaseKeystoreProps = new Properties()
+if (releaseKeystorePropsFile.exists()) {
+    releaseKeystoreProps.load(new FileInputStream(releaseKeystorePropsFile))
+}
+
 android {
     namespace "in.adarshbhopal.panel1804"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,10 +25,26 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (releaseKeystorePropsFile.exists()) {
+                def storeFilePath = releaseKeystoreProps['storeFile'] ?: ''
+                if (storeFilePath) {
+                    storeFile file(storeFilePath)
+                    storePassword releaseKeystoreProps['storePassword']
+                    keyAlias releaseKeystoreProps['keyAlias']
+                    keyPassword releaseKeystoreProps['keyPassword']
+                }
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (releaseKeystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

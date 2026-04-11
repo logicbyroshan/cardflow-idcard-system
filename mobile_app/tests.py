@@ -1974,6 +1974,55 @@ class MobileAppPhase5OfflineCachingContractTests(TestCase):
 		self.assertEqual(len(payload.get('route_policies', [])), 55)
 
 
+class MobileAppPhase6ReleasePipelineContractTests(TestCase):
+	def test_android_workflow_supports_signed_release_and_aab(self):
+		project_root = Path(__file__).resolve().parent.parent
+		workflow_path = project_root / '.github' / 'workflows' / 'mobile-shell-android.yml'
+		content = workflow_path.read_text(encoding='utf-8')
+
+		self.assertIn('release_build:', content)
+		self.assertIn('promote_latest_apk:', content)
+		self.assertIn('ANDROID_KEYSTORE_B64', content)
+		self.assertIn('./gradlew assembleRelease bundleRelease', content)
+		self.assertIn('mobile_shell_app/android/app/build/outputs/bundle/release/app-release.aab', content)
+
+	def test_android_workflow_has_latest_apk_policy_paths(self):
+		project_root = Path(__file__).resolve().parent.parent
+		workflow_path = project_root / '.github' / 'workflows' / 'mobile-shell-android.yml'
+		content = workflow_path.read_text(encoding='utf-8')
+
+		self.assertIn('static/website/apk/adarsh-admin.apk', content)
+		self.assertIn('static/website/apk/archive/adarsh-admin-${RELEASE_LABEL}.apk', content)
+		self.assertIn('static/website/apk/archive/adarsh-admin-${RELEASE_LABEL}.aab', content)
+
+	def test_phase6_artifacts_include_smoke_and_monitoring_guidance(self):
+		project_root = Path(__file__).resolve().parent.parent
+		phase6_dir = project_root / 'mobile_shell_app' / 'phase6'
+
+		required_files = [
+			phase6_dir / 'release_pipeline_contract.md',
+			phase6_dir / 'release_smoke_checklist.md',
+			phase6_dir / 'rollout_monitoring_plan.md',
+			phase6_dir / 'PHASE6_EXECUTION_LOG.md',
+			phase6_dir / 'PHASE6_COMPLETION_REPORT.md',
+		]
+		for file_path in required_files:
+			self.assertTrue(file_path.exists(), f'Missing phase6 artifact: {file_path.name}')
+
+		monitoring = (phase6_dir / 'rollout_monitoring_plan.md').read_text(encoding='utf-8')
+		self.assertIn('Crash-free sessions', monitoring)
+		self.assertIn('ANR rate', monitoring)
+		self.assertIn('5% for 4-6 hours', monitoring)
+
+	def test_plan_tracks_phase6_completion(self):
+		plan_path = Path(__file__).resolve().parent.parent / 'mobile_shell_app' / 'ANDROID_NATIVE_CONVERSION_PLAN.md'
+		content = plan_path.read_text(encoding='utf-8')
+
+		self.assertIn('## Phase 6 Completion (2026-04-11)', content)
+		self.assertIn('release_pipeline_contract.md', content)
+		self.assertIn('MobileAppPhase6ReleasePipelineContractTests', content)
+
+
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 	def _post_json(self, url, payload):
 		return self.client.post(
