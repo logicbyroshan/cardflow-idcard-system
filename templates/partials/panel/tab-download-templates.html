@@ -39,7 +39,7 @@
         <tr>
           <th scope="col" style="width:5%">#</th>
           <th scope="col" style="width:22%">Name</th>
-          <th scope="col" style="width:41%">Instructions / Footer Text</th>
+          <th scope="col" style="width:41%">Footer Text</th>
           <th scope="col" style="width:12%">Style</th>
           <th scope="col" style="width:10%">Default</th>
           <th scope="col" style="width:10%">Actions</th>
@@ -81,7 +81,7 @@
       <label class="panel-form-label" for="templateName">Template Name *</label>
       <input type="text" id="templateName" class="panel-form-input" placeholder="e.g. School ID Card Footer" maxlength="100">
 
-      <label class="panel-form-label" for="templateInstructions">Instructions / Footer Text *</label>
+      <label class="panel-form-label" for="templateInstructions">Footer Text *</label>
 
       <div class="template-modal-toolbar">
         <select id="templateFontName" class="form-select panel-form-select template-font-select">
@@ -98,19 +98,8 @@
       </div>
 
       <textarea id="templateInstructions" class="panel-form-input" rows="5"
-        placeholder="Footer text printed at the bottom of PDF/Word exports..."
+        placeholder="Footer text printed on every PDF/Word page footer..."
         maxlength="5000" style="transition:font-family .2s,font-weight .2s;"></textarea>
-
-      <div class="template-modal-divider"></div>
-
-      <div class="template-modal-subheading"><i class="fa-solid fa-copyright"></i> Export Footer Branding</div>
-      <p class="template-modal-subcopy">These lines are shared export settings and can be updated while creating or editing a template.</p>
-
-      <label class="panel-form-label" for="templateExportNoteLine">Note Line</label>
-      <textarea id="templateExportNoteLine" class="panel-form-input" rows="2" maxlength="1000" placeholder="Appears as the first footer line in PDF/Word exports"></textarea>
-
-      <label class="panel-form-label" for="templateExportCopyrightLine">Copyright / Branding Line</label>
-      <textarea id="templateExportCopyrightLine" class="panel-form-input" rows="2" maxlength="1000" placeholder="Appears with timestamp in footer"></textarea>
     </div>
     <!-- Footer -->
     <div class="center-modal-footer-area">

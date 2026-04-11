@@ -73,7 +73,7 @@ function _populateTemplateDropdowns(templates) {
         if (!sel) return;
         // Preserve current selection
         const prev = sel.value;
-        sel.innerHTML = '<option value="">Default (No Footer Instructions)</option>';
+        sel.innerHTML = '<option value="">Default (No Footer Text)</option>';
         templates.forEach(function(tpl) {
             const opt = document.createElement('option');
             opt.value = String(tpl.id);

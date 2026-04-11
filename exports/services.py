@@ -268,7 +268,7 @@ class ExportService:
             card_ids: Optional list of specific card IDs
             doc_format: 'docx' or 'doc'
             status: Current status tab label
-            template_id: Optional ExportTemplate ID for footer instructions
+            template_id: Optional ExportTemplate ID for footer text
             
         Returns:
             WordExportResult with HttpResponse if successful
@@ -310,7 +310,7 @@ class ExportService:
             table_id: ID of the table to export
             card_ids: Optional list of specific card IDs
             status: Current status tab label
-            template_id: Optional ExportTemplate ID for footer instructions
+            template_id: Optional ExportTemplate ID for footer text
             font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
             shorten_titles: Replace long column headings with short abbreviations
             break_mode: 'class_section' | 'class_only' page grouping mode

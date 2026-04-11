@@ -99,26 +99,42 @@ class WordStylesMixin:
             self._remove_cell_borders(cell, parse_xml, nsdecls)
     
     def _add_footer(self, doc, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                    parse_xml, nsdecls, OxmlElement, qn):
-        """Add document footer with note and page numbers."""
-        from core.models import SystemSettings
-        export_settings = SystemSettings.get_export_settings()
+                    parse_xml, nsdecls, OxmlElement, qn, template_id=None):
+        """Add document footer with selected-template text and page numbers."""
+        from core.models import ExportTemplate
         
         section = doc.sections[0]
         footer = section.footer
         footer.is_linked_to_previous = False
         
-        # Line 1: Note (dynamic from settings)
-        note_line = export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.')
-        footer_para1 = footer.add_paragraph()
-        footer_run1 = footer_para1.add_run(note_line)
-        footer_run1.font.name = 'Arial'
-        footer_run1.font.size = Pt(7)
-        footer_run1.font.color.rgb = RGBColor(0, 0, 0)
-        footer_para1.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        self._set_para_spacing(footer_para1, parse_xml, nsdecls, line=180)
+        note_line = ''
+        note_font_name = 'Arial'
+        note_is_bold = False
+        if template_id:
+            try:
+                tpl = ExportTemplate.objects.get(id=template_id)
+                note_line = (tpl.instructions or '').strip()
+                note_font_name = 'AbbasiNatraj' if tpl.font_name == 'hindi' else 'Arial'
+                note_is_bold = bool(tpl.is_bold)
+            except ExportTemplate.DoesNotExist:
+                pass
+
+        # Line 1: Selected template footer text (left side, can wrap up to multiple lines)
+        if note_line:
+            footer_para1 = footer.add_paragraph()
+            lines = note_line.splitlines() or [note_line]
+            for idx, line_text in enumerate(lines):
+                if idx > 0:
+                    footer_para1.add_run().add_break()
+                footer_run = footer_para1.add_run(line_text)
+                footer_run.bold = note_is_bold
+                footer_run.font.name = note_font_name
+                footer_run.font.size = Pt(7)
+                footer_run.font.color.rgb = RGBColor(0, 0, 0)
+            footer_para1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            self._set_para_spacing(footer_para1, parse_xml, nsdecls, line=180)
         
-        # Line 2: Generated date and page numbers
+        # Line 2: Page numbers on the right
         footer_para2 = footer.add_paragraph()
         self._set_para_spacing(footer_para2, parse_xml, nsdecls, line=180)
         
@@ -128,16 +144,6 @@ class WordStylesMixin:
             r'<w:tabs {}><w:tab w:val="right" w:pos="14400"/></w:tabs>'.format(nsdecls('w'))
         )
         pPr.append(tabs)
-        
-        # Left: Generated timestamp + copyright (dynamic from settings)
-        copyright_line = export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System - All Rights Reserved')
-        timestamp = timezone.localtime(timezone.now()).strftime('%d-%b-%Y %H:%M')
-        left_run = footer_para2.add_run(
-            f'Generated on: {timestamp} | {copyright_line}'
-        )
-        left_run.font.name = 'Arial'
-        left_run.font.size = Pt(7)
-        left_run.font.color.rgb = RGBColor(0, 0, 0)
         
         # Tab
         footer_para2.add_run('\t')

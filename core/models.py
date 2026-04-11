@@ -214,7 +214,7 @@ class SystemSettings(models.Model):
 
 class ExportTemplate(models.Model):
     """
-    User-defined export templates with custom footer instructions.
+    User-defined export templates with custom footer text.
     Admins create templates in Settings → Export Templates, then choose
     one when downloading PDF or Word files.
     """
@@ -224,7 +224,7 @@ class ExportTemplate(models.Model):
     ]
     name = models.CharField(max_length=100, unique=True, help_text='Template name shown in the download dropdown')
     instructions = models.TextField(
-        help_text='Footer instructions printed at the bottom of PDF/Word exports'
+        help_text='Footer text printed on each PDF/Word page when this template is selected'
     )
     font_name = models.CharField(
         max_length=10, choices=FONT_CHOICES, default='arial',

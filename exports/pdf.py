@@ -307,7 +307,7 @@ class PdfExporter:
             table: IDCardTable instance
             cards: QuerySet of IDCard instances
             status: Status label for filename
-            template_id: Optional ExportTemplate ID
+            template_id: Optional ExportTemplate ID for footer text
             font_mode: 'auto' | 'normal' | 'compact' | 'condensed'
                        'auto' uses normal for ≤15 cols, compact for >15
             shorten_titles: When True, long column headings are replaced with
@@ -440,18 +440,15 @@ class PdfExporter:
             if table.group and table.group.client:
                 institution_name = table.group.client.name
 
-            # Get dynamic export settings
-            from core.models import SystemSettings, ExportTemplate
-            export_settings = SystemSettings.get_export_settings()
-
-            # Fetch template instructions if template_id provided
-            template_instructions = ''
+            # Fetch template footer text if template_id provided
+            from core.models import ExportTemplate
+            template_footer_text = ''
             template_font = 'arial'
             template_bold = False
             if template_id:
                 try:
                     tpl = ExportTemplate.objects.get(id=template_id)
-                    template_instructions = tpl.instructions
+                    template_footer_text = (tpl.instructions or '').strip()
                     template_font = tpl.font_name or 'arial'
                     template_bold = tpl.is_bold
                 except ExportTemplate.DoesNotExist:
@@ -490,11 +487,7 @@ class PdfExporter:
                 'table_name': table.name,
                 'center_list_name': self._build_center_header_title(table.name, status),
                 'current_date': _now.strftime('%d-%m-%Y'),
-                'current_year': _now.strftime('%Y'),
-                'generated_at': _now.strftime('%d-%b-%Y %H:%M'),
-                'export_note_line': export_settings.get('export_note_line', 'Note: This document is computer generated. Please verify all details before printing ID cards.'),
-                'export_copyright_line': export_settings.get('export_copyright_line', '© Adarsh ID Cards Management System'),
-                'template_instructions': template_instructions,
+                'template_footer_text': template_footer_text,
                 'template_font': template_font,
                 'template_bold': template_bold,
                 'row_height_cm': row_height_cm,

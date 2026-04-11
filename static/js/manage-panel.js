@@ -75,7 +75,6 @@ function _loadInitialManagePanelTabData(tabName) {
     return;
   }
   if (tabName === 'download-templates') {
-    loadExportSettings();
     loadTemplates();
     return;
   }
@@ -132,7 +131,6 @@ function switchTab(tabName) {
     loadDomainNotFoundStatus();
   }
   if (tabName === 'download-templates') {
-    loadExportSettings();
     loadTemplates();
   }
   _saveManagePanelTab(tabName);
@@ -1230,66 +1228,6 @@ let _templateSearchText = '';
 let _templatePage = 1;
 let _templatePerPage = 25;
 let _templatePagerBound = false;
-let _templateSettingsCache = {
-  export_note_line: '',
-  export_copyright_line: '',
-};
-let _templateSettingsLoaded = false;
-let _templateSettingsLoadingPromise = null;
-
-function _syncTemplateSettingsToModal() {
-  const noteEl = document.getElementById('templateExportNoteLine');
-  const copyrightEl = document.getElementById('templateExportCopyrightLine');
-  if (!noteEl || !copyrightEl) return;
-
-  noteEl.value = _templateSettingsCache.export_note_line || '';
-  copyrightEl.value = _templateSettingsCache.export_copyright_line || '';
-}
-
-async function loadExportSettings(forceRefresh) {
-  if (!forceRefresh && _templateSettingsLoaded) {
-    _syncTemplateSettingsToModal();
-    return _templateSettingsCache;
-  }
-
-  if (!forceRefresh && _templateSettingsLoadingPromise) {
-    await _templateSettingsLoadingPromise;
-    _syncTemplateSettingsToModal();
-    return _templateSettingsCache;
-  }
-
-  _templateSettingsLoadingPromise = (async function () {
-    try {
-      const res = await fetch('/api/export-settings/');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data || !data.success) return;
-      const settings = data.data || {};
-      _templateSettingsCache = {
-        export_note_line: settings.export_note_line || '',
-        export_copyright_line: settings.export_copyright_line || '',
-      };
-      _templateSettingsLoaded = true;
-      _syncTemplateSettingsToModal();
-    } catch (err) {
-      console.error('loadExportSettings:', err);
-    } finally {
-      _templateSettingsLoadingPromise = null;
-    }
-  })();
-
-  await _templateSettingsLoadingPromise;
-  return _templateSettingsCache;
-}
-
-function _readTemplateSettingsFromModal() {
-  const noteEl = document.getElementById('templateExportNoteLine');
-  const copyrightEl = document.getElementById('templateExportCopyrightLine');
-  return {
-    export_note_line: (noteEl ? noteEl.value : '').trim(),
-    export_copyright_line: (copyrightEl ? copyrightEl.value : '').trim(),
-  };
-}
 
 function _setTemplateRowsDropdownValue(value) {
   const rowsText = document.getElementById('templateRowsSelectedText');
@@ -1602,8 +1540,6 @@ async function openCreateTemplateModal() {
   document.getElementById('templateInstructions').value = '';
   document.getElementById('templateIsDefault').checked = false;
   document.getElementById('templateFontName').value = 'arial';
-  await loadExportSettings();
-  _syncTemplateSettingsToModal();
   _templateBoldState = false;
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
@@ -1624,8 +1560,6 @@ async function editTemplate(id) {
   document.getElementById('templateInstructions').value = t.instructions;
   document.getElementById('templateIsDefault').checked = t.is_default;
   document.getElementById('templateFontName').value = t.font_name || 'arial';
-  await loadExportSettings();
-  _syncTemplateSettingsToModal();
   _templateBoldState = !!t.is_bold;
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
@@ -1647,47 +1581,6 @@ function closeTemplateModal() {
   }
 }
 
-async function _saveTemplateSettingsIfChanged() {
-  const payload = _readTemplateSettingsFromModal();
-  const cachedNote = String(_templateSettingsCache.export_note_line || '');
-  const cachedCopyright = String(_templateSettingsCache.export_copyright_line || '');
-
-  if (payload.export_note_line === cachedNote && payload.export_copyright_line === cachedCopyright) {
-    return { success: true, skipped: true };
-  }
-
-  try {
-    const res = await fetch('/api/export-settings/update/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-      },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok || !data || !data.success) {
-      return {
-        success: false,
-        message: (data && data.message) || 'Failed to save export footer settings',
-      };
-    }
-
-    _templateSettingsCache = {
-      export_note_line: payload.export_note_line,
-      export_copyright_line: payload.export_copyright_line,
-    };
-    _templateSettingsLoaded = true;
-    return { success: true };
-  } catch (err) {
-    console.error('_saveTemplateSettingsIfChanged:', err);
-    return {
-      success: false,
-      message: 'Network error saving export footer settings',
-    };
-  }
-}
-
 async function saveTemplate() {
   const editId = document.getElementById('templateEditId').value;
   const name = document.getElementById('templateName').value.trim();
@@ -1699,7 +1592,7 @@ async function saveTemplate() {
   const originalSaveHtml = saveBtn ? saveBtn.innerHTML : '';
 
   if (!name) { if (window.showToast) showToast('Template name is required', 'error'); return; }
-  if (!instructions) { if (window.showToast) showToast('Instructions text is required', 'error'); return; }
+  if (!instructions) { if (window.showToast) showToast('Footer text is required', 'error'); return; }
 
   const url = editId
     ? `/api/export-templates/${editId}/update/`
@@ -1722,13 +1615,8 @@ async function saveTemplate() {
       return;
     }
 
-    const settingsResult = await _saveTemplateSettingsIfChanged();
-    if (!settingsResult.success) {
-      if (window.showToast) {
-        showToast((editId ? 'Template updated' : 'Template created') + ' but export footer settings were not saved: ' + settingsResult.message, 'warning');
-      }
-    } else if (window.showToast) {
-      showToast(editId ? 'Template and settings updated' : 'Template and settings created', 'success');
+    if (window.showToast) {
+      showToast(editId ? 'Template updated' : 'Template created', 'success');
     }
 
     closeTemplateModal();

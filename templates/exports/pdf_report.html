@@ -126,12 +126,12 @@
 }
 #ftr-left {
     position: running(ftr-left);
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: {% if template_font == 'hindi' %}AbbasiNatraj, AbbasiNagari, Arial, sans-serif{% else %}Arial, Helvetica, sans-serif{% endif %};
     font-size: 9pt;
-    font-weight: 600;
+    font-weight: {% if template_bold %}700{% else %}600{% endif %};
     color: #333;
     line-height: 1.55;
-    white-space: normal;
+    white-space: pre-line;
     overflow-wrap: break-word;
     word-break: normal;
 }
@@ -264,26 +264,6 @@ table.data-table td.img-cell.placeholder-cell img {
     opacity: 0.35;
 }
 
-/* --- Instructions block (last page only) ------------------------- */
-.instructions-block {
-    margin-top: 0.3cm;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 9pt;
-    color: #333;
-    border: 0.3pt solid #bbb;
-    padding: 0.2cm 0.25cm;
-    line-height: 1.5;
-}
-
-/* --- Copyright / generated line ----------------------------------- */
-.footer-line {
-    margin-top: 0.12cm;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 7pt;
-    color: #666;
-    text-align: center;
-}
-
 </style>
 </head>
 <body>
@@ -295,8 +275,8 @@ table.data-table td.img-cell.placeholder-cell img {
 <div id="hdr-center">{{ center_list_name|default:table_name|upper }}{% if current_date %} ({{ current_date }}){% endif %}</div>
 {# RIGHT: Branding #}
 <div id="hdr-right">ADARSH ID CARDS</div>
-{# FOOTER LEFT: Instruction/note text  -  naturally wraps into ~3 lines at 9pt #}
-<div id="ftr-left">{{ export_note_line }}</div>
+{# FOOTER LEFT: Selected template footer text, repeated on each page #}
+<div id="ftr-left">{{ template_footer_text }}</div>
 
 {# -- Pages -------------------------------------------------------------------- #}
 {% for page_rows in pages %}
@@ -336,18 +316,6 @@ table.data-table td.img-cell.placeholder-cell img {
             {% endfor %}
         </tbody>
     </table>
-
-    {% if forloop.last and template_instructions %}
-    <div class="instructions-block" style="{% if template_font == 'hindi' %}font-family: AbbasiNatraj, AbbasiNagari, Arial, sans-serif;{% endif %}{% if template_bold %}font-weight: bold;{% endif %}">
-        <strong>Instructions:</strong> {{ template_instructions }}
-    </div>
-    {% endif %}
-
-    {% if forloop.last %}
-    <div class="footer-line">
-        {{ export_copyright_line }} &nbsp;|&nbsp; Generated: {{ generated_at }}
-    </div>
-    {% endif %}
 
 </div>
 {% endfor %}

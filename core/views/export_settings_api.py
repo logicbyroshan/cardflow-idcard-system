@@ -104,9 +104,9 @@ def api_export_template_create(request):
     if not name:
         return JsonResponse({'success': False, 'message': 'Template name is required'}, status=400)
     if not instructions:
-        return JsonResponse({'success': False, 'message': 'Instructions text is required'}, status=400)
+        return JsonResponse({'success': False, 'message': 'Footer text is required'}, status=400)
     if len(instructions) > 5000:
-        return JsonResponse({'success': False, 'message': 'Instructions must be 5000 characters or less'}, status=400)
+        return JsonResponse({'success': False, 'message': 'Footer text must be 5000 characters or less'}, status=400)
     if len(name) > 100:
         return JsonResponse({'success': False, 'message': 'Name must be 100 characters or less'}, status=400)
 
@@ -150,7 +150,7 @@ def api_export_template_update(request, template_id):
         tpl.name = name
     if instructions:
         if len(instructions) > 5000:
-            return JsonResponse({'success': False, 'message': 'Instructions must be 5000 characters or less'}, status=400)
+            return JsonResponse({'success': False, 'message': 'Footer text must be 5000 characters or less'}, status=400)
         tpl.instructions = instructions
     if is_default is not None:
         tpl.is_default = bool(is_default)

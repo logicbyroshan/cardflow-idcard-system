@@ -166,7 +166,8 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             # Add footer
             self._add_footer(
                 doc, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                parse_xml, nsdecls, OxmlElement, qn
+                parse_xml, nsdecls, OxmlElement, qn,
+                template_id=template_id,
             )
             
             # Sort cards for export (Class → Name, or Name only)
@@ -190,13 +191,6 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
                 class_field_name=class_field_name,
                 progress_callback=progress_callback,
             )
-            
-            # Add template instructions (if a template was selected)
-            if template_id:
-                self._add_template_instructions(
-                    doc, template_id, Pt, RGBColor, WD_ALIGN_PARAGRAPH,
-                    parse_xml, nsdecls
-                )
             
             # Set Word 97-2003 compatibility mode
             self._set_compatibility_mode(doc)
