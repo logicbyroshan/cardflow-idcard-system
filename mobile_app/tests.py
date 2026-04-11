@@ -1885,6 +1885,43 @@ class MobileAppPhase3EnvironmentGateContractTests(TestCase):
 		self.assertIn('if (!cap || !isNativeShellContext()) {', content)
 
 
+class MobileAppPhase4DeviceBridgeContractTests(TestCase):
+	def test_device_bridge_exposes_native_picker_and_retry_queue(self):
+		bridge_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'device-bridge.js'
+		content = bridge_path.read_text(encoding='utf-8')
+
+		self.assertIn("QUEUE_KEY = 'adarsh.mobile.critical.retry.queue.v1'", content)
+		self.assertIn('async function enqueueCriticalJson(url, payload, options)', content)
+		self.assertIn('async function uploadFormDataWithRetry(url, formDataFactory, options)', content)
+		self.assertIn('async function pickImage(options)', content)
+
+	def test_mobile_bridge_uses_critical_queue_and_push_refresh_hooks(self):
+		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
+		content = js_path.read_text(encoding='utf-8')
+
+		self.assertIn('var bridge = window.adarshDeviceBridge || null;', content)
+		self.assertIn('async function enqueueCriticalJson(url, payload, dedupeKey)', content)
+		self.assertIn("enqueueCriticalJson('/app/api/mobile-shell/device/ping/'", content)
+		self.assertIn("PushNotifications.addListener('registrationError'", content)
+		self.assertIn("App.addListener('appStateChange'", content)
+
+	def test_camera_template_uses_native_picker_and_retryable_upload(self):
+		camera_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'camera.html'
+		content = camera_path.read_text(encoding='utf-8')
+
+		self.assertIn('@click="openGalleryPicker()"', content)
+		self.assertIn('async tryCameraRecovery()', content)
+		self.assertIn('bridge.uploadFormDataWithRetry(uploadUrl, buildUploadFormData', content)
+
+	def test_website_upload_template_uses_native_picker_and_retryable_batches(self):
+		website_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'website_manage.html'
+		content = website_path.read_text(encoding='utf-8')
+
+		self.assertIn('@click.prevent="pickPortfolioFromCamera($event)"', content)
+		self.assertIn('async pickPortfolioFromGallery()', content)
+		self.assertIn('bridge.uploadFormDataWithRetry(', content)
+
+
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 	def _post_json(self, url, payload):
 		return self.client.post(

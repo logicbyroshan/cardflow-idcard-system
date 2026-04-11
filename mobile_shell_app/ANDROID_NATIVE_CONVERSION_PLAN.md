@@ -179,3 +179,15 @@ Automated coverage added in `mobile_app/tests.py`:
 2. `MobileAppPhase3EnvironmentGateContractTests.test_base_template_uses_environment_gate_for_install_and_update`
 3. `MobileAppPhase3EnvironmentGateContractTests.test_login_template_hides_install_prompt_in_native_shell`
 4. `MobileAppPhase3EnvironmentGateContractTests.test_mobile_bridge_uses_environment_gate_for_native_detection`
+
+## Phase 4 Completion (2026-04-11)
+Artifacts created under `mobile_shell_app/phase4/`:
+1. `device_bridge_contract.md` (native picker + critical queue + upload retry contract)
+2. `PHASE4_EXECUTION_LOG.md` (implemented changes + validation commands)
+3. `PHASE4_COMPLETION_REPORT.md` (final implementation + validation summary)
+
+Automated coverage added in `mobile_app/tests.py`:
+1. `MobileAppPhase4DeviceBridgeContractTests.test_device_bridge_exposes_native_picker_and_retry_queue`
+2. `MobileAppPhase4DeviceBridgeContractTests.test_mobile_bridge_uses_critical_queue_and_push_refresh_hooks`
+3. `MobileAppPhase4DeviceBridgeContractTests.test_camera_template_uses_native_picker_and_retryable_upload`
+4. `MobileAppPhase4DeviceBridgeContractTests.test_website_upload_template_uses_native_picker_and_retryable_batches`

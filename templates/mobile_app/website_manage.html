@@ -109,24 +109,24 @@
                 <!-- Source buttons -->
                 <div class="grid grid-cols-2 gap-3">
                     <!-- Camera -->
-                    <label class="flex flex-col items-center justify-center gap-2 rounded-xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-indigo-200 bg-indigo-50">
+                    <label @click.prevent="pickPortfolioFromCamera($event)" class="flex flex-col items-center justify-center gap-2 rounded-xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-indigo-200 bg-indigo-50">
                         <div class="w-11 h-11 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
                             <i class="fa-solid fa-camera text-white text-base"></i>
                         </div>
                         <span class="text-[12px] font-bold text-indigo-700">Camera</span>
                            <span class="text-[10px] text-indigo-400">Take a photo</span>
-                        <input type="file" class="hidden" accept="image/*" capture="environment"
+                           <input type="file" x-ref="portfolioCameraInput" class="hidden" accept="image/*" capture="environment"
                                @change="handlePortfolioFiles($event)">
                     </label>
 
                     <!-- Gallery -->
-                    <label class="flex flex-col items-center justify-center gap-2 rounded-xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-teal-200 bg-teal-50">
+                    <label @click.prevent="pickPortfolioFromGallery($event)" class="flex flex-col items-center justify-center gap-2 rounded-xl p-5 cursor-pointer active:scale-95 transition-transform border-2 border-dashed border-teal-200 bg-teal-50">
                         <div class="w-11 h-11 rounded-2xl bg-teal-500 flex items-center justify-center shadow-md shadow-teal-200">
                             <i class="fa-solid fa-images text-white text-base"></i>
                         </div>
                         <span class="text-[12px] font-bold text-teal-700">Gallery</span>
                         <span class="text-[10px] text-teal-400">Photos or videos</span>
-                        <input type="file" class="hidden" accept="image/*,video/*" multiple
+                           <input type="file" x-ref="portfolioGalleryInput" class="hidden" accept="image/*,video/*" multiple
                                @change="handlePortfolioFiles($event)">
                     </label>
                 </div>
@@ -340,16 +340,19 @@ function websiteManageApp() {
             this.pendingFiles = [];
         },
         handlePortfolioFiles(e) {
+            this.addPortfolioFiles(Array.from((e && e.target && e.target.files) || []));
+            if (e && e.target) e.target.value = '';
+        },
+        addPortfolioFiles(files) {
             const MAX_FILES = 20;
             const MAX_IMAGE_MB = 15;
             const MAX_VIDEO_MB = 100;
-            const files = Array.from(e.target.files || []);
-            if (this.pendingFiles.length + files.length > MAX_FILES) {
+            const incoming = Array.isArray(files) ? files : [];
+            if (this.pendingFiles.length + incoming.length > MAX_FILES) {
                 this.showToast(`Maximum ${MAX_FILES} files per upload`, false);
-                e.target.value = '';
                 return;
             }
-            const oversized = files.filter(f => {
+            const oversized = incoming.filter(f => {
                 const isVideo = (f.type || '').toLowerCase().startsWith('video/');
                 const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
                 return f.size > maxBytes;
@@ -357,7 +360,7 @@ function websiteManageApp() {
             if (oversized.length) {
                 this.showToast(`${oversized.length} file(s) exceeded size limits and were skipped`, false);
             }
-            files.filter(f => {
+            incoming.filter(f => {
                 const isVideo = (f.type || '').toLowerCase().startsWith('video/');
                 const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
                 return f.size <= maxBytes;
@@ -371,7 +374,32 @@ function websiteManageApp() {
                     objectUrl,
                 });
             });
-            e.target.value = '';
+        },
+        async pickPortfolioFromCamera() {
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
+                const picked = await bridge.pickImage({ source: 'camera', quality: 92 });
+                if (picked) {
+                    this.addPortfolioFiles([picked]);
+                    return;
+                }
+            }
+            if (this.$refs.portfolioCameraInput) {
+                this.$refs.portfolioCameraInput.click();
+            }
+        },
+        async pickPortfolioFromGallery() {
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
+                const picked = await bridge.pickImage({ source: 'gallery', quality: 92 });
+                if (picked) {
+                    this.addPortfolioFiles([picked]);
+                    return;
+                }
+            }
+            if (this.$refs.portfolioGalleryInput) {
+                this.$refs.portfolioGalleryInput.click();
+            }
         },
         removeFile(idx) {
             const removed = this.pendingFiles.splice(idx, 1);
@@ -400,9 +428,29 @@ function websiteManageApp() {
             this.categoryPreview.open = false;
         },
         async uploadPortfolioBatch(files, timeoutMs = 120000) {
-            const fd = new FormData();
-            fd.append('category_id', this.activeCategory.id);
-            files.forEach(pf => fd.append('files', pf.file));
+            const categoryId = this.activeCategory.id;
+
+            const buildFormData = () => {
+                const fd = new FormData();
+                fd.append('category_id', categoryId);
+                files.forEach(pf => fd.append('files', pf.file));
+                return fd;
+            };
+
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.uploadFormDataWithRetry === 'function') {
+                const uploadResult = await bridge.uploadFormDataWithRetry(
+                    '/app/api/website/portfolio/upload/',
+                    buildFormData,
+                    {
+                        headers: { 'X-CSRFToken': CSRF_TOKEN },
+                        retries: 2,
+                        retryDelayMs: 900,
+                        queueKey: 'portfolio_upload_' + categoryId,
+                    }
+                );
+                return uploadResult && uploadResult.data ? uploadResult.data : {};
+            }
 
             const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
             const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -410,7 +458,7 @@ function websiteManageApp() {
                 const res = await fetch('/app/api/website/portfolio/upload/', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': CSRF_TOKEN },
-                    body: fd,
+                    body: buildFormData(),
                     signal: controller ? controller.signal : undefined,
                 });
                 const data = await res.json();
