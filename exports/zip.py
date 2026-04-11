@@ -103,7 +103,8 @@ class ZipExporter:
             'canvas_mm': (23.0, 34.0),
             'photo_mm': (19.0, 25.0),
             'padding_mm': 2.0,
-            'gap_below_photo_mm': 2.0,
+            'gap_below_photo_mm': 1.5,
+            'detail_bottom_gap_mm': 2.0,
             'name_font_pt': 7.0,
             'detail_font_pt': 5.0,
             'line_gap_mm': 0.6,
@@ -112,7 +113,8 @@ class ZipExporter:
             'canvas_mm': (37.0, 53.0),
             'photo_mm': (30.0, 40.0),
             'padding_mm': 3.0,
-            'gap_below_photo_mm': 3.0,
+            'gap_below_photo_mm': 2.0,
+            'detail_bottom_gap_mm': 3.0,
             'name_font_pt': 12.0,
             'detail_font_pt': 9.0,
             'line_gap_mm': 0.9,
@@ -1048,12 +1050,14 @@ class ZipExporter:
         photo_mm = preset['photo_mm']
         padding_mm = float(preset['padding_mm'])
         gap_below_photo_mm = float(preset['gap_below_photo_mm'])
+        detail_bottom_gap_mm = float(preset.get('detail_bottom_gap_mm', padding_mm))
         line_gap_mm = float(preset['line_gap_mm'])
 
         canvas_px = (self._mm_to_px(canvas_mm[0]), self._mm_to_px(canvas_mm[1]))
         photo_px = (self._mm_to_px(photo_mm[0]), self._mm_to_px(photo_mm[1]))
         padding_px = self._mm_to_px(padding_mm)
         gap_below_photo_px = self._mm_to_px(gap_below_photo_mm)
+        detail_bottom_gap_px = self._mm_to_px(detail_bottom_gap_mm)
         line_gap_px = max(1, self._mm_to_px(line_gap_mm))
 
         max_photo_w = max(1, canvas_px[0] - (2 * padding_px))
@@ -1073,6 +1077,7 @@ class ZipExporter:
             'photo_origin_px': (photo_x, photo_y),
             'padding_px': padding_px,
             'gap_below_photo_px': gap_below_photo_px,
+            'detail_bottom_gap_px': detail_bottom_gap_px,
             'line_gap_px': line_gap_px,
             'photo_border_px': max(1, self._pt_to_px(self.PHOTO_BORDER_PT)),
             'name_font_px': self._pt_to_px(preset['name_font_pt']),
@@ -1206,7 +1211,7 @@ class ZipExporter:
                 photo_x, photo_y = layout['photo_origin_px']
                 padding_px = layout['padding_px']
                 gap_below_photo_px = layout['gap_below_photo_px']
-                line_gap_px = layout['line_gap_px']
+                detail_bottom_gap_px = layout.get('detail_bottom_gap_px', padding_px)
                 photo_border_px = max(1, int(layout.get('photo_border_px', 1)))
 
                 canvas = Image.new('RGB', (canvas_width, canvas_height), (255, 255, 255))
@@ -1240,18 +1245,18 @@ class ZipExporter:
                 detail_line = self._build_generate_detail_line(card, generate_options, rename_source_fields)
 
                 text_start_y = photo_y + photo_height + gap_below_photo_px
-                available_text_height = max(1, (canvas_height - padding_px) - text_start_y)
+                text_bottom_y = max(text_start_y + 1, canvas_height - int(detail_bottom_gap_px))
+                available_text_height = max(1, text_bottom_y - text_start_y)
 
                 name_font_size_px = max(10, int(layout['name_font_px']))
                 detail_font_size_px = max(8, int(layout['detail_font_px']))
                 min_name_font_px = max(11, self._pt_to_px(3.4))
                 min_detail_font_px = max(9, self._pt_to_px(2.8))
-                desired_line_gap_px = max(2, int(line_gap_px))
 
                 detail_text = ''
                 name_height = 0
                 detail_height = 0
-                line_gap_draw_px = 0
+                minimum_gap_px = 2
 
                 while True:
                     name_font = self._resolve_name_font_for_generate(
@@ -1265,17 +1270,10 @@ class ZipExporter:
                     detail_text = self._truncate_text_to_width(draw, detail_line, detail_font, max_text_width) if detail_line else ''
                     name_height = self._text_height(draw, raw_name_value or 'A', name_font) if raw_name_value else 0
                     detail_height = self._text_height(draw, detail_text or 'A', detail_font) if detail_text else 0
-                    minimum_gap_px = 2 if (raw_name_value and detail_text) else 0
 
+                    required_height = name_height + detail_height
                     if raw_name_value and detail_text:
-                        max_allowed_gap = max(0, available_text_height - (name_height + detail_height))
-                        line_gap_draw_px = min(desired_line_gap_px, max_allowed_gap)
-                        if line_gap_draw_px < minimum_gap_px:
-                            line_gap_draw_px = minimum_gap_px
-                    else:
-                        line_gap_draw_px = 0
-
-                    required_height = name_height + line_gap_draw_px + detail_height
+                        required_height += minimum_gap_px
                     if required_height <= available_text_height:
                         break
 
@@ -1289,10 +1287,17 @@ class ZipExporter:
                     elif can_reduce_detail:
                         detail_font_size_px -= 1
 
-                required_height = name_height + line_gap_draw_px + detail_height
-                vertical_offset = max(0, int(round((available_text_height - required_height) / 2.0)))
+                name_y = text_start_y
+                detail_y = text_start_y
+                if detail_text:
+                    detail_y = max(text_start_y, text_bottom_y - detail_height)
+                    if raw_name_value:
+                        min_detail_y = name_y + name_height + minimum_gap_px
+                        if detail_y < min_detail_y:
+                            detail_y = min_detail_y
+                    detail_y = min(detail_y, max(text_start_y, canvas_height - detail_height))
 
-                cursor_y = text_start_y + vertical_offset
+                cursor_y = name_y
                 if raw_name_value:
                     name_drawn_height = self._draw_name_with_squeeze(
                         canvas=canvas,
@@ -1304,13 +1309,11 @@ class ZipExporter:
                         max_width=max_text_width,
                     )
                     cursor_y += name_drawn_height
-                    if detail_text:
-                        cursor_y += line_gap_draw_px
 
                 if detail_text:
                     detail_width = self._text_width(draw, detail_text, detail_font)
                     detail_x = int(round(text_left + max(0.0, (float(max_text_width) - float(detail_width)) / 2.0)))
-                    draw.text((detail_x, cursor_y), detail_text, fill=self.GENERATED_TEXT_COLOR, font=detail_font)
+                    draw.text((detail_x, detail_y), detail_text, fill=self.GENERATED_TEXT_COLOR, font=detail_font)
 
                 compress_enabled = generate_options.get('compress_enabled') is True
                 target_size_kb = int(generate_options.get('target_size_kb', 40) or 40)
