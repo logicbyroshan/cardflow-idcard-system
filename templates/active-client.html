@@ -80,27 +80,47 @@
     }
 
     .active-client-stats-row {
-      --stat-badge-width: 100px;
+      --stat-gap: 4px;
+      --stat-w-pending: 92px;
+      --stat-w-verified: 95px;
+      --stat-w-approved: 96px;
+      --stat-w-downloaded: 98px;
+      --stat-w-pool: 80px;
       display: flex;
       flex-wrap: nowrap;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      width: calc((var(--stat-badge-width) * 5) + 16px);
-      min-width: calc((var(--stat-badge-width) * 5) + 16px);
+      gap: var(--stat-gap);
+      width: calc(
+        var(--stat-w-pending) +
+        var(--stat-w-verified) +
+        var(--stat-w-approved) +
+        var(--stat-w-downloaded) +
+        var(--stat-w-pool) +
+        (var(--stat-gap) * 4)
+      );
+      min-width: calc(
+        var(--stat-w-pending) +
+        var(--stat-w-verified) +
+        var(--stat-w-approved) +
+        var(--stat-w-downloaded) +
+        var(--stat-w-pool) +
+        (var(--stat-gap) * 4)
+      );
       margin: 0 auto;
       padding: 2px 0;
     }
 
     .active-client-stats-row .count-badge {
+      --badge-width: 92px;
       display: inline-flex;
       align-items: center;
       justify-content: space-between;
       gap: 4px;
       height: 22px;
-      width: var(--stat-badge-width);
-      flex: 0 0 var(--stat-badge-width);
-      min-width: var(--stat-badge-width);
+      width: var(--badge-width);
+      flex: 0 0 var(--badge-width);
+      min-width: var(--badge-width);
       max-width: none;
       padding: 0 8px;
       border-radius: 6px;
@@ -119,30 +139,35 @@
     }
 
     .active-client-stats-row .count-badge.pending {
+      --badge-width: var(--stat-w-pending);
       background: #fff4dc;
       color: #a16207;
       border-color: #f8d89a;
     }
 
     .active-client-stats-row .count-badge.verified {
+      --badge-width: var(--stat-w-verified);
       background: #e8fdf3;
       color: #065f46;
       border-color: #9fe8c9;
     }
 
     .active-client-stats-row .count-badge.approved {
+      --badge-width: var(--stat-w-approved);
       background: #e3efff;
       color: #1e40af;
       border-color: #bbd4ff;
     }
 
     .active-client-stats-row .count-badge.downloaded {
+      --badge-width: var(--stat-w-downloaded);
       background: #f9fafb;
       color: #374151;
       border-color: #d1d5db;
     }
 
     .active-client-stats-row .count-badge.pool {
+      --badge-width: var(--stat-w-pool);
       background: #fee2e2;
       color: #991b1b;
       border-color: #fca5a5;
@@ -174,7 +199,11 @@
 
     @media (max-width: 1280px) {
       .active-client-stats-row {
-        --stat-badge-width: 96px;
+        --stat-w-pending: 88px;
+        --stat-w-verified: 90px;
+        --stat-w-approved: 92px;
+        --stat-w-downloaded: 94px;
+        --stat-w-pool: 76px;
       }
 
       .active-client-stats-row .count-badge {
@@ -185,9 +214,11 @@
 
     @media (max-width: 900px) {
       .active-client-stats-row {
-        --stat-badge-width: 94px;
-        width: calc((var(--stat-badge-width) * 5) + 16px);
-        min-width: calc((var(--stat-badge-width) * 5) + 16px);
+        --stat-w-pending: 84px;
+        --stat-w-verified: 86px;
+        --stat-w-approved: 88px;
+        --stat-w-downloaded: 90px;
+        --stat-w-pool: 72px;
       }
     }
   </style>

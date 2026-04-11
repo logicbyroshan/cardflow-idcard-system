@@ -22,7 +22,7 @@ JS contract (Alpine bridge):
   x-show="isDeleteModalOpen" x-transition.opacity
      style="display:none"
      role="dialog" aria-modal="true" aria-labelledby="{{ modal_id|default:'delete-modal' }}-title">
-  <div class="modal-center modal-danger" @click.stop
+  <div class="modal-center modal-danger modal-compact" @click.stop
     x-show="isDeleteModalOpen" x-transition.scale.origin.center>
 
     <!-- Header -->

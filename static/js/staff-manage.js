@@ -2,6 +2,7 @@ const API_BASE = '/staff/api';
 let availablePermissions = [];
 let availableClients = [];
 let confirmAction = null;
+let _staffFormStep = 1;
 
 // Permission categories
 const PERMISSION_CATEGORIES = {
@@ -152,6 +153,66 @@ async function loadStaff() {
   }
 }
 
+function setStaffFormStep(step) {
+  _staffFormStep = step === 2 ? 2 : 1;
+  const isAccessStep = _staffFormStep === 2;
+
+  const step1Panel = document.getElementById('staffStep1Panel');
+  const step2Panel = document.getElementById('staffStep2Panel');
+  const step1Badge = document.getElementById('staffStep1Badge');
+  const step2Badge = document.getElementById('staffStep2Badge');
+  const backBtn = document.getElementById('staffStepBackBtn');
+  const nextBtn = document.getElementById('staffStepNextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+
+  if (step1Panel) step1Panel.style.display = isAccessStep ? 'none' : 'block';
+  if (step2Panel) step2Panel.style.display = isAccessStep ? 'block' : 'none';
+  if (step1Badge) step1Badge.classList.add('is-active');
+  if (step2Badge) step2Badge.classList.toggle('is-active', isAccessStep);
+  if (backBtn) backBtn.style.display = isAccessStep ? 'inline-flex' : 'none';
+  if (nextBtn) nextBtn.style.display = isAccessStep ? 'none' : 'inline-flex';
+  if (submitBtn) submitBtn.style.display = isAccessStep ? 'inline-flex' : 'none';
+}
+
+function _validateStaffStepOne() {
+  const requiredFieldIds = ['firstName', 'lastName', 'email'];
+  for (const fieldId of requiredFieldIds) {
+    const field = document.getElementById(fieldId);
+    if (!field) continue;
+    if (!String(field.value || '').trim()) {
+      field.focus();
+      showAlert('Fill all required basic details before continuing.', 'error');
+      return false;
+    }
+    if (fieldId === 'email' && !field.disabled && !field.checkValidity()) {
+      field.focus();
+      showAlert('Enter a valid email before continuing.', 'error');
+      return false;
+    }
+  }
+  return true;
+}
+
+function _bindStaffWizardControls() {
+  const nextBtn = document.getElementById('staffStepNextBtn');
+  const backBtn = document.getElementById('staffStepBackBtn');
+
+  if (nextBtn && !nextBtn.dataset.wizardBound) {
+    nextBtn.dataset.wizardBound = '1';
+    nextBtn.addEventListener('click', function () {
+      if (!_validateStaffStepOne()) return;
+      setStaffFormStep(2);
+    });
+  }
+
+  if (backBtn && !backBtn.dataset.wizardBound) {
+    backBtn.dataset.wizardBound = '1';
+    backBtn.addEventListener('click', function () {
+      setStaffFormStep(1);
+    });
+  }
+}
+
 // Open create modal
 function openCreateModal() {
   document.getElementById('modalTitle').textContent = 'Add Operator';
@@ -159,6 +220,8 @@ function openCreateModal() {
   document.getElementById('staffId').value = '';
   document.getElementById('staffForm').reset();
   document.getElementById('email').removeAttribute('disabled');
+  _bindStaffWizardControls();
+  setStaffFormStep(1);
   document.querySelectorAll('input[name="permissions"]').forEach(cb => cb.checked = false);
   document.querySelectorAll('input[name="clients"]').forEach(cb => cb.checked = false);
   if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
@@ -174,6 +237,8 @@ async function editStaff(id) {
     const data = await ApiClient.get(`${API_BASE}/admin-staff/${id}/`);
     
     if (data.success) {
+      _bindStaffWizardControls();
+      setStaffFormStep(1);
       const staff = data.staff;
       document.getElementById('modalTitle').textContent = 'Edit Operator';
       document.getElementById('submitBtn').textContent = 'Update Staff';
@@ -211,6 +276,7 @@ async function editStaff(id) {
 
 // Close modal
 function closeModal() {
+  setStaffFormStep(1);
   if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
     window.AdarshModalBridge.close('staffModal', { overlayClass: 'show' });
   } else {
@@ -224,6 +290,11 @@ async function handleSubmit(event) {
   
   const staffId = document.getElementById('staffId').value;
   const isEdit = !!staffId;
+  if (_staffFormStep !== 2) {
+    if (!_validateStaffStepOne()) return;
+    setStaffFormStep(2);
+    return;
+  }
   
   const permissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
     .map(cb => cb.value);
@@ -352,4 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPermissions();
   loadClients();
   loadStaff();
+  _bindStaffWizardControls();
+  setStaffFormStep(1);
 });

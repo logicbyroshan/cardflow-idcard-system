@@ -8,47 +8,74 @@
     </div>
 
     <div class="backup-modal-body">
-      <!-- Guidelines -->
-      <div class="backup-guidelines">
-        <h3><i class="fa-solid fa-circle-info"></i> Important Guidelines</h3>
-        <ul>
-          <li>Backup will create a single <strong>"Adarsh Backup {date}.zip"</strong> containing all selected schools.</li>
-          <li>Each school gets its own folder with <strong>XLSX files per status</strong> (Pending, Verified, etc.) and an <strong>images</strong> folder.</li>
-          <li>Backup runs in the <strong>background</strong>  -  you can close this page and track progress in the <strong>Manage Panel</strong>.</li>
-          <li>Backup files will be <strong>automatically deleted after 24 hours</strong>. You can cancel auto-delete or delete manually from the Manage Panel.</li>
-          <li>Download your backup before the timer expires.</li>
-        </ul>
+      <div class="modal-stepper modal-stepper--wide" aria-hidden="true">
+        <div class="modal-step is-active" id="backupStep1Badge">
+          <span class="modal-step-dot">1</span>
+          <span class="modal-step-label">Review</span>
+        </div>
+        <div class="modal-stepper-line"></div>
+        <div class="modal-step" id="backupStep2Badge">
+          <span class="modal-step-dot">2</span>
+          <span class="modal-step-label">Verify</span>
+        </div>
       </div>
 
-      <!-- Code section -->
-      <div class="backup-code-section">
-        <p class="backup-code-label">Type this code to confirm:</p>
-        <div class="backup-code-display" id="backupCodeDisplay">Loading...</div>
-        <div class="confirm-code-input-wrap" id="backupCodeWrap" onclick="document.getElementById('backupCodeInput').focus()">
-          <div class="confirm-code-boxes" id="backupCodeBoxes" aria-hidden="true">
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
+      <div class="confirm-flow">
+        <div id="backupStep1Panel" class="confirm-flow-meta">
+          <p><strong>Review this backup flow</strong> before continuing.</p>
+          <div class="alert-box alert-box--info">
+            <p class="alert-box-heading"><i class="fa-solid fa-database"></i> What You Will Get</p>
+            <ul class="alert-box-list">
+              <li>A single <strong>"Adarsh Backup {date}.zip"</strong> with all selected schools</li>
+              <li>Each school includes <strong>XLSX files by status</strong> and an <strong>images</strong> folder</li>
+              <li>The backup runs in the <strong>background</strong> and can be tracked from the <strong>Manage Panel</strong></li>
+            </ul>
           </div>
-          <input type="text" id="backupCodeInput" class="backup-code-input confirm-code-input-hidden" maxlength="10"
-                 autocomplete="off"
-                 inputmode="numeric" pattern="[0-9]{10}"
-                 oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          <div class="alert-box alert-box--warning">
+            <p class="alert-box-heading"><i class="fa-solid fa-clock"></i> Retention & Safety</p>
+            <ul class="alert-box-list">
+              <li>Backup files are <strong>auto-deleted after 24 hours</strong></li>
+              <li>You can cancel auto-delete or remove manually from Manage Panel</li>
+              <li>Download before the timer expires</li>
+            </ul>
+          </div>
         </div>
-        <p class="backup-code-hint" id="backupCodeError" style="display:none;"></p>
+
+        <div id="backupStep2Panel" class="confirm-flow-verify backup-code-section" style="display:none;">
+          <p class="verify-hint">Type this code to confirm:</p>
+          <div class="backup-code-display" id="backupCodeDisplay">Loading...</div>
+          <div class="confirm-code-input-wrap" id="backupCodeWrap" onclick="document.getElementById('backupCodeInput').focus()">
+            <div class="confirm-code-boxes" id="backupCodeBoxes" aria-hidden="true">
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+              <span class="confirm-code-box"></span>
+            </div>
+            <input type="text" id="backupCodeInput" class="backup-code-input confirm-code-input-hidden" maxlength="10"
+                   autocomplete="off"
+                   inputmode="numeric" pattern="[0-9]{10}"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          </div>
+          <p class="backup-code-hint" id="backupCodeError" style="display:none;"></p>
+        </div>
       </div>
     </div>
 
     <div class="backup-modal-footer">
       <button type="button" class="btn btn-md btn-neutral" onclick="closeBackupModal()">Cancel</button>
-      <button type="button" class="btn btn-md btn-primary" id="backupConfirmBtn" onclick="confirmBackup()">
+      <button type="button" class="btn btn-md btn-neutral" id="backupStepBackBtn" style="display:none;">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+      <button type="button" class="btn btn-md btn-primary" id="backupStepNextBtn">
+        Next <i class="fa-solid fa-arrow-right"></i>
+      </button>
+      <button type="button" class="btn btn-md btn-primary" id="backupConfirmBtn" style="display:none;" onclick="confirmBackup()">
         <i class="fa-solid fa-arrow-right"></i> Proceed to Select Clients
       </button>
     </div>
@@ -58,6 +85,35 @@
 <script>
 (function(){
   let _backupCode = '';
+  let _backupStep = 1;
+
+  function setBackupStep(step) {
+    _backupStep = step === 2 ? 2 : 1;
+    const isVerify = _backupStep === 2;
+
+    const step1Panel = document.getElementById('backupStep1Panel');
+    const step2Panel = document.getElementById('backupStep2Panel');
+    const step1Badge = document.getElementById('backupStep1Badge');
+    const step2Badge = document.getElementById('backupStep2Badge');
+    const nextBtn = document.getElementById('backupStepNextBtn');
+    const backBtn = document.getElementById('backupStepBackBtn');
+    const confirmBtn = document.getElementById('backupConfirmBtn');
+
+    if (step1Panel) step1Panel.style.display = isVerify ? 'none' : 'grid';
+    if (step2Panel) step2Panel.style.display = isVerify ? 'block' : 'none';
+    if (step1Badge) step1Badge.classList.add('is-active');
+    if (step2Badge) step2Badge.classList.toggle('is-active', isVerify);
+    if (nextBtn) nextBtn.style.display = isVerify ? 'none' : 'inline-flex';
+    if (backBtn) backBtn.style.display = isVerify ? 'inline-flex' : 'none';
+    if (confirmBtn) confirmBtn.style.display = isVerify ? 'inline-flex' : 'none';
+
+    if (isVerify) {
+      const input = document.getElementById('backupCodeInput');
+      if (input) {
+        window.setTimeout(() => input.focus(), 0);
+      }
+    }
+  }
 
   function sanitizeCodeInput(value) {
     return String(value || '').replace(/\D/g, '').slice(0, 10);
@@ -85,7 +141,9 @@
   window.openBackupModal = function() {
     const modal = document.getElementById('backupModal');
     modal.style.display = 'flex';
+    setBackupStep(1);
     document.getElementById('backupCodeInput').value = '';
+    document.getElementById('backupCodeDisplay').textContent = 'Loading...';
     renderBackupCodeBoxes('');
     setBackupWrapState('');
     document.getElementById('backupCodeError').style.display = 'none';
@@ -105,8 +163,23 @@
 
   window.closeBackupModal = function() {
     document.getElementById('backupModal').style.display = 'none';
+    setBackupStep(1);
     setBackupWrapState('');
   };
+
+  const backupStepNextBtn = document.getElementById('backupStepNextBtn');
+  if (backupStepNextBtn) {
+    backupStepNextBtn.addEventListener('click', function() {
+      setBackupStep(2);
+    });
+  }
+
+  const backupStepBackBtn = document.getElementById('backupStepBackBtn');
+  if (backupStepBackBtn) {
+    backupStepBackBtn.addEventListener('click', function() {
+      setBackupStep(1);
+    });
+  }
 
   const backupCodeInput = document.getElementById('backupCodeInput');
   if (backupCodeInput) {

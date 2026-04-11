@@ -11,6 +11,7 @@ let _notifPerPage = 25;
 let _notifTotalPages = 1;
 let allUsers = {};       // { role: [{id, name, username, role_display}] }
 let selectedUserIds = new Set();
+let _createNotifStep = 1;
 let searchTimer = null;
 let serverInfoSnapshot = null;
 let serverInfoHasFetched = false;
@@ -907,7 +908,69 @@ async function deleteNotification(id) {
 }
 
 /* ============ Create Modal ============ */
+function setCreateNotifStep(step) {
+  _createNotifStep = step === 2 ? 2 : 1;
+  const isAudienceStep = _createNotifStep === 2;
+
+  const step1Panel = document.getElementById('createNotifStep1Panel');
+  const step2Panel = document.getElementById('createNotifStep2Panel');
+  const step1Badge = document.getElementById('createNotifStep1Badge');
+  const step2Badge = document.getElementById('createNotifStep2Badge');
+  const backBtn = document.getElementById('createNotifBackBtn');
+  const actionBtn = document.getElementById('createNotifBtn');
+
+  if (step1Panel) step1Panel.style.display = isAudienceStep ? 'none' : 'block';
+  if (step2Panel) step2Panel.style.display = isAudienceStep ? 'block' : 'none';
+  if (step1Badge) step1Badge.classList.add('is-active');
+  if (step2Badge) step2Badge.classList.toggle('is-active', isAudienceStep);
+  if (backBtn) backBtn.style.display = isAudienceStep ? 'inline-flex' : 'none';
+
+  if (actionBtn) {
+    actionBtn.dataset.mode = isAudienceStep ? 'submit' : 'next';
+    actionBtn.innerHTML = isAudienceStep
+      ? '<i class="fa-solid fa-paper-plane"></i> Send Notification'
+      : 'Next <i class="fa-solid fa-arrow-right"></i>';
+  }
+}
+
+function _bindCreateNotifWizardControls() {
+  const actionBtn = document.getElementById('createNotifBtn');
+  const backBtn = document.getElementById('createNotifBackBtn');
+
+  if (actionBtn && !actionBtn.dataset.wizardBound) {
+    actionBtn.dataset.wizardBound = '1';
+    actionBtn.addEventListener('click', function () {
+      if ((actionBtn.dataset.mode || 'next') === 'next') {
+        const title = document.getElementById('notifTitle')?.value.trim() || '';
+        const message = document.getElementById('notifMessage')?.value.trim() || '';
+        if (!title || !message) {
+          if (window.showToast) showToast('Add title and message before continuing.', 'error');
+          if (!title) {
+            document.getElementById('notifTitle')?.focus();
+          } else {
+            document.getElementById('notifMessage')?.focus();
+          }
+          return;
+        }
+        setCreateNotifStep(2);
+        return;
+      }
+
+      const form = document.getElementById('createNotifForm');
+      if (form) form.requestSubmit();
+    });
+  }
+
+  if (backBtn && !backBtn.dataset.wizardBound) {
+    backBtn.dataset.wizardBound = '1';
+    backBtn.addEventListener('click', function () {
+      setCreateNotifStep(1);
+    });
+  }
+}
+
 function openCreateModal() {
+  _bindCreateNotifWizardControls();
   if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
     window.AdarshModalBridge.open('createNotifModal', { overlayClass: 'show' });
   } else {
@@ -920,9 +983,11 @@ function openCreateModal() {
   if (visibilityInput) visibilityInput.value = '24';
   selectedUserIds.clear();
   renderSelectedChips();
+  setCreateNotifStep(1);
 }
 
 function closeCreateModal() {
+  setCreateNotifStep(1);
   if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
     window.AdarshModalBridge.close('createNotifModal', { overlayClass: 'show' });
   } else {
@@ -1081,6 +1146,9 @@ function renderSelectedChips() {
 /* ============ Submit Create ============ */
 async function handleCreateNotif(e) {
   e.preventDefault();
+  if (_createNotifStep !== 2) {
+    return false;
+  }
   const btn = document.getElementById('createNotifBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
@@ -1135,7 +1203,9 @@ async function handleCreateNotif(e) {
     if (window.showToast) showToast('Network error.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Notification';
+    btn.innerHTML = _createNotifStep === 2
+      ? '<i class="fa-solid fa-paper-plane"></i> Send Notification'
+      : 'Next <i class="fa-solid fa-arrow-right"></i>';
   }
   return false;
 }

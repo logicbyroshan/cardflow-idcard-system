@@ -2,7 +2,7 @@
 <div id="dashDeleteAllModal" class="modal-backdrop"
      x-show="activeModal === 'dashDelete'" x-transition.opacity
      style="display:none">
-  <div class="modal-center modal-danger" @click.stop
+  <div class="modal-center modal-danger modal-compact" @click.stop
        x-show="activeModal === 'dashDelete'" x-transition.scale.origin.center>
     <div class="modal-header">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete All ID Cards</h3>
@@ -12,45 +12,59 @@
     </div>
     <div class="modal-body">
       <div class="modal-body-centered">
-        <div class="modal-icon-circle modal-icon-circle--danger">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-        </div>
-        <p class="modal-body-title">Delete All ID Cards?</p>
-        <p class="text-sm text-gray-600" style="margin-bottom:6px">Table: <strong id="dashDeleteTableName"></strong></p>
-        <p class="text-sm text-gray-600" style="margin-bottom:12px">This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
-
-        <div class="alert-box alert-box--danger" style="margin-bottom:14px">
-          <p class="alert-box-heading">
-            <i class="fa-solid fa-circle-exclamation"></i> Warning
-          </p>
-          <ul class="alert-box-list">
-            <li>All ID cards will be permanently deleted</li>
-            <li>Cards from all lists (Pool, Active, Printed) will be removed</li>
-            <li>This action <strong>CANNOT</strong> be undone</li>
-          </ul>
-        </div>
-
-        <p class="verify-hint" style="text-align:center;margin-bottom:8px;">Type this code to confirm:</p>
-        <div class="verify-code" id="dashDeleteCode">----------</div>
-        <div class="confirm-code-input-wrap" id="dashDeleteCodeWrap" onclick="document.getElementById('dashDeleteCodeInput').focus()">
-          <div class="confirm-code-boxes" id="dashDeleteCodeBoxes" aria-hidden="true">
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
-            <span class="confirm-code-box"></span>
+        <div class="confirm-flow">
+          <div class="modal-stepper" aria-hidden="true">
+            <div class="modal-step is-active">
+              <span class="modal-step-dot">1</span>
+              <span class="modal-step-label">Review</span>
+            </div>
+            <div class="modal-stepper-line"></div>
+            <div class="modal-step is-active">
+              <span class="modal-step-dot">2</span>
+              <span class="modal-step-label">Verify</span>
+            </div>
           </div>
-          <input type="text" id="dashDeleteCodeInput" maxlength="10"
-                 inputmode="numeric"
-                 pattern="[0-9]{10}"
-                 autocomplete="off"
-                 class="verify-input confirm-code-input-hidden"
-                 oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+
+          <div class="confirm-flow-meta">
+            <p>Table: <strong id="dashDeleteTableName"></strong></p>
+            <p>This will permanently delete <strong id="dashDeleteCount"></strong> cards from <strong>ALL lists</strong>.</p>
+          </div>
+
+          <div class="alert-box alert-box--danger">
+            <p class="alert-box-heading">
+              <i class="fa-solid fa-circle-exclamation"></i> Warning
+            </p>
+            <ul class="alert-box-list">
+              <li>All ID cards will be permanently deleted</li>
+              <li>Cards from all lists (Pool, Active, Printed) will be removed</li>
+              <li>This action <strong>CANNOT</strong> be undone</li>
+            </ul>
+          </div>
+
+          <div class="confirm-flow-verify">
+            <p class="verify-hint">Type this code to confirm:</p>
+            <div class="verify-code" id="dashDeleteCode">----------</div>
+            <div class="confirm-code-input-wrap" id="dashDeleteCodeWrap" onclick="document.getElementById('dashDeleteCodeInput').focus()">
+              <div class="confirm-code-boxes" id="dashDeleteCodeBoxes" aria-hidden="true">
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+                <span class="confirm-code-box"></span>
+              </div>
+              <input type="text" id="dashDeleteCodeInput" maxlength="10"
+                     inputmode="numeric"
+                     pattern="[0-9]{10}"
+                     autocomplete="off"
+                     class="verify-input confirm-code-input-hidden"
+                     oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+            </div>
+          </div>
         </div>
       </div>
     </div>

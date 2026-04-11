@@ -14,8 +14,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 .backup-modal {
+  --backup-accent: #3b82f6;
+  --backup-accent-dark: #2563eb;
   background: #fff;
   width: 650px;
   max-width: 95vw;
@@ -36,8 +40,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  /* Gradient header matching project theme */
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--backup-accent-dark) 0%, var(--backup-accent) 100%);
   border-bottom: none;
   border-radius: 10px 10px 0 0;
   flex-shrink: 0;
@@ -104,7 +107,7 @@
   align-items: center;
   gap: 6px;
 }
-.backup-guidelines h3 i { color: #667eea; }
+.backup-guidelines h3 i { color: var(--backup-accent); }
 .backup-guidelines ul {
   list-style: none;
   padding: 0;
@@ -121,7 +124,7 @@
   content: '•';
   position: absolute;
   left: 4px;
-  color: #667eea;
+  color: var(--backup-accent);
   font-weight: 700;
 }
 
@@ -137,11 +140,11 @@
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 3px;
-  color: #667eea;
-  background: #eef2ff;
+  color: var(--backup-accent);
+  background: #eff6ff;
   padding: 12px 16px;
   margin-bottom: 12px;
-  border: 2px dashed #c7d2fe;
+  border: 2px dashed #93c5fd;
   border-radius: 10px;
   font-family: monospace;
   user-select: all;
@@ -166,7 +169,7 @@
   box-sizing: border-box;
   transition: border-color .15s, box-shadow .15s;
 }
-.backup-code-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+.backup-code-input:focus { border-color: var(--backup-accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
 .backup-code-hint {
   font-size: 11.5px;
   color: #ef4444;
@@ -203,14 +206,14 @@
   font-size: 12.5px;
   font-weight: 600;
   color: #fff;
-  background: #667eea;
-  border: 1px solid #667eea;
+  background: var(--backup-accent);
+  border: 1px solid var(--backup-accent);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.backup-btn-confirm:hover { background: #5a6fd6; }
+.backup-btn-confirm:hover { background: var(--backup-accent-dark); }
 .backup-btn-confirm:disabled { opacity: .55; cursor: not-allowed; }
 
 .backup-btn-danger {
@@ -245,9 +248,9 @@
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
-  color: #667eea;
+  color: var(--backup-accent);
   background: #fff;
-  border: 1px solid #667eea;
+  border: 1px solid var(--backup-accent);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
