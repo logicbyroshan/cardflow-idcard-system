@@ -1819,6 +1819,34 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn(item.id, item_ids)
 
 
+class MobileAppPhase2LifecycleContractTests(TestCase):
+	def test_mobile_bridge_has_startup_back_guardrails(self):
+		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
+		content = js_path.read_text(encoding='utf-8')
+
+		self.assertIn('backHandlerReadyAt = Date.now() + 2200', content)
+		self.assertIn('if (now < backHandlerReadyAt)', content)
+		self.assertIn('if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000)', content)
+
+	def test_mobile_bridge_has_external_link_and_deep_link_handlers(self):
+		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
+		content = js_path.read_text(encoding='utf-8')
+
+		self.assertIn('function setupExternalLinkBridge()', content)
+		self.assertIn('Browser.open({ url: href })', content)
+		self.assertIn("App.addListener('appUrlOpen'", content)
+		self.assertIn("if (!path.startsWith('/app')) return '/app/';", content)
+
+	def test_shell_runtime_has_back_and_deep_link_guardrails(self):
+		shell_path = Path(__file__).resolve().parent.parent / 'mobile_shell_app' / 'www' / 'shell.js'
+		shell_content = shell_path.read_text(encoding='utf-8')
+
+		self.assertIn('backHandlerReadyAt = Date.now() + 2200', shell_content)
+		self.assertIn('if (!lastUserInteractionMs || (now - lastUserInteractionMs) > (12 * 60 * 1000))', shell_content)
+		self.assertIn("App.addListener('appUrlOpen'", shell_content)
+		self.assertIn("if (!path.startsWith('/app')) return APP_ROOT_PATH;", shell_content)
+
+
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 	def _post_json(self, url, payload):
 		return self.client.post(

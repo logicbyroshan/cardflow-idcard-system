@@ -7,8 +7,46 @@ import { Toast } from '@capacitor/toast';
 
 let lastBackTapMs = 0;
 let reconnectReloadTimer = null;
+let backHandlerReadyAt = Date.now() + 2200;
+let lastUserInteractionMs = 0;
+let androidBackHandlerAttached = false;
+let deepLinkHandlerAttached = false;
 
 const LAST_ONLINE_STORAGE_KEY = 'adarsh.shell.lastOnlineAt';
+const APP_ROOT_PATH = '/app/';
+
+function markUserInteraction() {
+  lastUserInteractionMs = Date.now();
+}
+
+function setupUserInteractionTracking() {
+  ['pointerdown', 'touchstart', 'keydown'].forEach((evt) => {
+    window.addEventListener(evt, markUserInteraction, { capture: true, passive: true });
+  });
+}
+
+function normalizeDeepLinkPath(urlValue) {
+  if (!urlValue) return '';
+  try {
+    const parsed = new URL(String(urlValue), window.location.origin);
+    if (parsed.origin !== window.location.origin) return '';
+
+    const path = String(parsed.pathname || '');
+    if (!path.startsWith('/app')) return APP_ROOT_PATH;
+    return path + String(parsed.search || '') + String(parsed.hash || '');
+  } catch (err) {
+    return '';
+  }
+}
+
+function routeToDeepLink(urlValue) {
+  const targetPath = normalizeDeepLinkPath(urlValue);
+  if (!targetPath) return;
+
+  const currentPath = window.location.pathname + window.location.search + window.location.hash;
+  if (currentPath === targetPath) return;
+  window.location.href = targetPath;
+}
 
 function byId(id) {
   return document.getElementById(id);
@@ -173,15 +211,26 @@ async function loadCurrentNetworkState() {
 }
 
 function setupAndroidBackHandler() {
-  if (Capacitor.getPlatform() !== 'android') return;
+  if (Capacitor.getPlatform() !== 'android' || androidBackHandlerAttached) return;
+  androidBackHandlerAttached = true;
 
   App.addListener('backButton', ({ canGoBack }) => {
+    const now = Date.now();
+    if (now < backHandlerReadyAt) {
+      return;
+    }
+
     if (canGoBack) {
       window.history.back();
       return;
     }
 
-    const now = Date.now();
+    // Ignore stale/phantom back events unless user interacted recently.
+    if (!lastUserInteractionMs || (now - lastUserInteractionMs) > (12 * 60 * 1000)) {
+      lastBackTapMs = 0;
+      return;
+    }
+
     if (now - lastBackTapMs < 1200) {
       App.exitApp();
       return;
@@ -192,11 +241,24 @@ function setupAndroidBackHandler() {
   });
 }
 
+function setupDeepLinkRouting() {
+  if (!App || typeof App.addListener !== 'function' || deepLinkHandlerAttached) return;
+  deepLinkHandlerAttached = true;
+
+  App.addListener('appUrlOpen', (event) => {
+    const incomingUrl = event && event.url ? String(event.url) : '';
+    if (!incomingUrl) return;
+    routeToDeepLink(incomingUrl);
+  });
+}
+
 setupOfflineRetry();
 setupOpenWebButton();
 setupSupportButton();
 setupBootStallFallback();
 setupAppAndDeviceMeta();
+setupUserInteractionTracking();
+setupDeepLinkRouting();
 loadCurrentNetworkState();
 setupNetworkStateLogger();
 setupAndroidBackHandler();

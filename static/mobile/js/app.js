@@ -64,6 +64,16 @@ window.showConfirm = function showConfirm(options) {
     var INSTALL_ID_KEY = 'adarsh.mobile.installation.id';
     var pingIntervalId = null;
     var backPressedAt = 0;
+    var backHandlerReadyAt = Date.now() + 2200;
+    var userInteractedAt = 0;
+
+    function markUserInteraction() {
+        userInteractedAt = Date.now();
+    }
+
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function(evtName) {
+        window.addEventListener(evtName, markUserInteraction, { passive: true, capture: true });
+    });
 
     function getCsrfToken() {
         var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
@@ -262,12 +272,21 @@ window.showConfirm = function showConfirm(options) {
     function setupAndroidBackBehavior() {
         if (!App || typeof App.addListener !== 'function') return;
         App.addListener('backButton', function(evt) {
+            var now = Date.now();
+            if (now < backHandlerReadyAt) {
+                return;
+            }
+
             if (evt && evt.canGoBack) {
                 window.history.back();
                 return;
             }
 
-            var now = Date.now();
+            if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000) {
+                backPressedAt = 0;
+                return;
+            }
+
             if (now - backPressedAt < 1200) {
                 if (typeof App.exitApp === 'function') App.exitApp();
                 return;
@@ -277,6 +296,35 @@ window.showConfirm = function showConfirm(options) {
             if (Toast && typeof Toast.show === 'function') {
                 Toast.show({ text: 'Press back again to exit' }).catch(function() {});
             }
+        });
+    }
+
+    function normalizeInAppDeepLink(urlValue) {
+        if (!urlValue) return '';
+        try {
+            var parsed = new URL(String(urlValue), window.location.origin);
+            if (parsed.origin !== window.location.origin) return '';
+
+            var path = String(parsed.pathname || '');
+            if (!path.startsWith('/app')) return '/app/';
+            return path + String(parsed.search || '') + String(parsed.hash || '');
+        } catch (err) {
+            return '';
+        }
+    }
+
+    function setupDeepLinkBridge() {
+        if (!App || typeof App.addListener !== 'function') return;
+        App.addListener('appUrlOpen', function(event) {
+            var incomingUrl = event && event.url ? String(event.url) : '';
+            if (!incomingUrl) return;
+
+            var nextPath = normalizeInAppDeepLink(incomingUrl);
+            if (!nextPath) return;
+
+            var currentPath = window.location.pathname + window.location.search + window.location.hash;
+            if (currentPath === nextPath) return;
+            window.location.href = nextPath;
         });
     }
 
@@ -329,6 +377,7 @@ window.showConfirm = function showConfirm(options) {
 
     async function bootstrap() {
         setupExternalLinkBridge();
+        setupDeepLinkBridge();
         setupAndroidBackBehavior();
 
         var installId = getInstallationId();
