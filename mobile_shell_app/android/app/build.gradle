@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "in.adarshbhopal.idcards"
+    namespace "in.adarshbhopal.panel1804"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "in.adarshbhopal.idcards"
+        applicationId "in.adarshbhopal.panel1804"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
