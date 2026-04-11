@@ -16,7 +16,7 @@ Uses Tailwind CSS component classes.
                 <th scope="col" class="w-24 text-center">Status</th>
                 <th scope="col" class="text-center">Created At</th>
                 <th scope="col" class="text-center">Updated At</th>
-                <th scope="col" class="text-center" title="Operator login history"><i class="fa-solid fa-circle-info"></i></th>
+                <th scope="col" class="text-left" style="min-width: 250px;">Assigned Classes &amp; Sections</th>
             </tr>
         </thead>
         <tbody id="staff-table-body">
@@ -32,15 +32,35 @@ Uses Tailwind CSS component classes.
                 </td>
                 <td class="text-gray-500 text-center">{{ staff.created_at|date:"d-m-Y H:i" }}</td>
                 <td class="text-gray-500 text-center">{{ staff.updated_at|date:"d-m-Y H:i" }}</td>
-                <td class="text-center">
-                    <button type="button"
-                            class="operator-history-trigger"
-                            data-staff-id="{{ staff.id }}"
-                            data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
-                            title="View operator login history"
-                            aria-label="View operator login history">
-                        <i class="fa-solid fa-circle-info"></i>
-                    </button>
+                <td class="text-left" style="min-width: 250px;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px;">
+                            <span style="font-size: 10px; font-weight: 700; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 2px 7px;">Classes</span>
+                            {% if staff.allowed_classes %}
+                                {% for class_name in staff.allowed_classes|slice:":4" %}
+                                    <span style="font-size: 10px; font-weight: 700; color: #1e3a8a; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 999px; padding: 2px 7px;">{{ class_name }}</span>
+                                {% endfor %}
+                                {% if staff.allowed_classes|length > 4 %}
+                                    <span style="font-size: 10px; font-weight: 700; color: #334155; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px 7px;">+{{ staff.allowed_classes|length|add:"-4" }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="font-size: 10px; font-weight: 700; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 2px 7px;">All Classes</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px;">
+                            <span style="font-size: 10px; font-weight: 700; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 999px; padding: 2px 7px;">Sections</span>
+                            {% if staff.allowed_sections %}
+                                {% for section_name in staff.allowed_sections|slice:":4" %}
+                                    <span style="font-size: 10px; font-weight: 700; color: #9a3412; background: #ffedd5; border: 1px solid #fdba74; border-radius: 999px; padding: 2px 7px;">{{ section_name }}</span>
+                                {% endfor %}
+                                {% if staff.allowed_sections|length > 4 %}
+                                    <span style="font-size: 10px; font-weight: 700; color: #334155; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px 7px;">+{{ staff.allowed_sections|length|add:"-4" }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="font-size: 10px; font-weight: 700; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 2px 7px;">All Sections</span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </td>
             </tr>
             {% empty %}
