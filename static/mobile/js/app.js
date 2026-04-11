@@ -76,6 +76,8 @@ window.showConfirm = function showConfirm(options) {
     var bridge = window.adarshDeviceBridge || null;
 
     var INSTALL_ID_KEY = 'adarsh.mobile.installation.id';
+    var LOGIN_BACK_SUPPRESS_KEY = 'adarsh.mobile.justLoggedInAt';
+    var LOGIN_BACK_SUPPRESS_MS = 45 * 1000;
     var pingIntervalId = null;
     var pushRefreshIntervalId = null;
     var pushListenersBound = false;
@@ -94,6 +96,17 @@ window.showConfirm = function showConfirm(options) {
 
     function markUserInteraction() {
         userInteractedAt = Date.now();
+    }
+
+    function shouldSuppressHistoryBackForRecentLogin(now) {
+        try {
+            var raw = sessionStorage.getItem(LOGIN_BACK_SUPPRESS_KEY) || '';
+            var loginTs = parseInt(raw, 10) || 0;
+            if (!loginTs) return false;
+            if ((now - loginTs) <= LOGIN_BACK_SUPPRESS_MS) return true;
+            sessionStorage.removeItem(LOGIN_BACK_SUPPRESS_KEY);
+        } catch (err) {}
+        return false;
     }
 
     ['pointerdown', 'touchstart', 'keydown'].forEach(function(evtName) {
@@ -325,6 +338,10 @@ window.showConfirm = function showConfirm(options) {
                 window.mobileOverlay.close();
                 return;
             }
+            if (shouldSuppressHistoryBackForRecentLogin(now)) {
+                backPressedAt = 0;
+                return;
+            }
             if (evt && evt.canGoBack) {
                 window.history.back();
                 return;
@@ -371,8 +388,14 @@ window.showConfirm = function showConfirm(options) {
         });
     }
 
-    async function registerPushToken(payloadBase) {
+    async function registerPushToken(payloadBase, configPayload) {
         if (!PushNotifications || typeof PushNotifications.requestPermissions !== 'function') {
+            return;
+        }
+
+        var pushEnabledRaw = configPayload && configPayload.push_enabled;
+        var pushEnabled = pushEnabledRaw === true || String(pushEnabledRaw || '').toLowerCase() === 'true' || String(pushEnabledRaw || '') === '1';
+        if (!pushEnabled) {
             return;
         }
 
@@ -469,6 +492,7 @@ window.showConfirm = function showConfirm(options) {
             os_version: nativeInfo.osVersion,
             device_language: nativeInfo.deviceLanguage,
         };
+        var configPayload = null;
 
         try {
             var registerResult = await enqueueCriticalJson(
@@ -477,7 +501,7 @@ window.showConfirm = function showConfirm(options) {
                 'device_register_' + installId
             );
             var registerResp = registerResult && registerResult.data ? registerResult.data : null;
-            var configPayload = registerResp && registerResp.data && registerResp.data.config;
+            configPayload = registerResp && registerResp.data && registerResp.data.config;
             if (configPayload && configPayload.update_required) {
                 showUpdateRequiredOverlay(configPayload);
             } else if (configPayload && configPayload.update_recommended) {
@@ -486,7 +510,7 @@ window.showConfirm = function showConfirm(options) {
         } catch (err) {}
 
         setupHeartbeat(payloadBase);
-        registerPushToken(payloadBase);
+        registerPushToken(payloadBase, configPayload);
     }
 
     if (document.readyState === 'loading') {

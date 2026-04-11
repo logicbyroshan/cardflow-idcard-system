@@ -316,7 +316,10 @@
 
             if (data.success) {
                 // Always land in the mobile app after login
-                window.location.href = '/app/';
+                try {
+                    sessionStorage.setItem('adarsh.mobile.justLoggedInAt', String(Date.now()));
+                } catch (e) {}
+                window.location.replace('/app/');
             } else {
                 if (data.no_mobile_access) {
                     window.location.href = '/app/no-access/';

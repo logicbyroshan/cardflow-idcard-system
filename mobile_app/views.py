@@ -127,6 +127,7 @@ def _mobile_shell_app_config_payload(*, app_build=0, request=None):
         request=request,
         fallback='/app/profile/',
     )
+    push_enabled = bool(getattr(settings, 'MOBILE_SHELL_PUSH_ENABLED', False))
 
     return {
         'platform': 'android',
@@ -137,6 +138,7 @@ def _mobile_shell_app_config_payload(*, app_build=0, request=None):
         'update_required': update_required,
         'update_recommended': update_recommended,
         'update_url': update_url,
+        'push_enabled': push_enabled,
         'privacy_url': str(getattr(settings, 'MOBILE_SHELL_PRIVACY_URL', '') or ''),
         'support_url': support_url,
         'server_app_version': str(getattr(settings, 'APP_VERSION', '') or ''),

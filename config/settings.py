@@ -631,6 +631,9 @@ MOBILE_SHELL_ANDROID_LATEST_BUILD = max(
 MOBILE_SHELL_ANDROID_LATEST_VERSION = os.getenv('MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0').strip() or '1.0.0'
 MOBILE_SHELL_ANDROID_FORCE_UPDATE = _env_bool('MOBILE_SHELL_ANDROID_FORCE_UPDATE', False)
 MOBILE_SHELL_ANDROID_UPDATE_URL = os.getenv('MOBILE_SHELL_ANDROID_UPDATE_URL', '/static/website/apk/adarsh-admin.apk').strip()
+# Keep push bootstrap disabled by default until Firebase is correctly wired
+# in the Android app (google-services.json + FCM project).
+MOBILE_SHELL_PUSH_ENABLED = _env_bool('MOBILE_SHELL_PUSH_ENABLED', False)
 MOBILE_SHELL_PRIVACY_URL = os.getenv('MOBILE_SHELL_PRIVACY_URL', WEBSITE_URL or SITE_URL).strip()
 MOBILE_SHELL_SUPPORT_URL = os.getenv('MOBILE_SHELL_SUPPORT_URL', WEBSITE_URL or SITE_URL).strip()
 

@@ -355,6 +355,8 @@ class MobileAppShellApiTests(MobileAppBaseTestCase):
 		self.assertEqual(body['data']['platform'], 'android')
 		self.assertIn('min_supported_build', body['data'])
 		self.assertIn('update_url', body['data'])
+		self.assertIn('push_enabled', body['data'])
+		self.assertFalse(body['data']['push_enabled'])
 		self.assertIn('/static/website/apk/adarsh-admin.apk', body['data'].get('update_url', ''))
 
 	@override_settings(MOBILE_SHELL_ANDROID_UPDATE_URL='https://downloads.example.com/adarsh-admin.apk')
@@ -1977,8 +1979,10 @@ class MobileAppPhase2LifecycleContractTests(TestCase):
 		content = js_path.read_text(encoding='utf-8')
 
 		self.assertIn('backHandlerReadyAt = Date.now() + 2200', content)
+		self.assertIn("LOGIN_BACK_SUPPRESS_KEY = 'adarsh.mobile.justLoggedInAt'", content)
 		self.assertIn('if (now < backHandlerReadyAt)', content)
 		self.assertIn('if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000)', content)
+		self.assertIn('if (shouldSuppressHistoryBackForRecentLogin(now)) {', content)
 		self.assertIn("App.addListener('appStateChange'", content)
 		self.assertIn('userInteractedAt = 0;', content)
 
@@ -2057,6 +2061,7 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 
 		self.assertIn('var bridge = window.adarshDeviceBridge || null;', content)
 		self.assertIn('async function enqueueCriticalJson(url, payload, dedupeKey)', content)
+		self.assertIn('var pushEnabledRaw = configPayload && configPayload.push_enabled;', content)
 		self.assertIn("enqueueCriticalJson('/app/api/mobile-shell/device/ping/'", content)
 		self.assertIn("PushNotifications.addListener('registrationError'", content)
 		self.assertIn("App.addListener('appStateChange'", content)
