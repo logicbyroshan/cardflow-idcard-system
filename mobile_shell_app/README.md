@@ -76,6 +76,12 @@ Current scope: Android-first rollout. iOS work is intentionally deferred.
    - add `--include-inactive`.
 4. Command outputs JSON for release notes and incident triage.
 
+### Final Preflight Automation (Phase 8)
+1. Run release preflight before production promotion:
+   - `python manage.py mobile_release_preflight --strict --require-local-apk`
+2. This command validates build/version policy and update URL readiness.
+3. Store output JSON with rollout gate evidence for signoff.
+
 ### Profile Update Button Runtime
 1. Mobile profile page `Update App` button calls `/app/api/mobile-shell/config/`.
 2. Native shell opens `update_url` from config (backed by `MOBILE_SHELL_ANDROID_UPDATE_URL`).

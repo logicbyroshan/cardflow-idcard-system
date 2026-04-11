@@ -86,6 +86,13 @@
 4. Command emits JSON report for release notes evidence.
 5. In strict mode, any failed gate returns non-zero and blocks promotion.
 
+## 12. Phase 8 Final Preflight and Nice-to-Have Closure
+1. Run final preflight immediately before production stage promotion:
+   - `python manage.py mobile_release_preflight --strict --require-local-apk`
+2. Archive JSON output in release notes with rollout guard output.
+3. Keep profile-page update status card enabled for operator self-check.
+4. If preflight fails, block promotion and fix env/build policy mismatch first.
+
 ## 8. Device Lifecycle Cleanup
 1. Dry-run audit:
    - `python manage.py cleanup_mobile_devices --stale-days 30 --delete-days 120 --delete-inactive --dry-run`

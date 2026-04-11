@@ -648,6 +648,50 @@ class MobileRolloutGuardCommandTests(MobileAppBaseTestCase):
 		self.assertEqual(report['device_snapshot']['stale_30d'], 1)
 
 
+@override_settings(
+	MOBILE_SHELL_ANDROID_MIN_BUILD=12,
+	MOBILE_SHELL_ANDROID_LATEST_BUILD=14,
+	MOBILE_SHELL_ANDROID_LATEST_VERSION='1.4.0',
+	MOBILE_SHELL_ANDROID_UPDATE_URL='https://panel.adarshbhopal.in/static/website/apk/adarsh-admin.apk',
+	MOBILE_SHELL_SUPPORT_URL='https://panel.adarshbhopal.in/support/',
+)
+class MobileReleasePreflightCommandTests(MobileAppBaseTestCase):
+	def test_release_preflight_reports_healthy_for_valid_remote_update_url(self):
+		out = StringIO()
+		call_command('mobile_release_preflight', stdout=out)
+
+		report = json.loads(out.getvalue())
+		self.assertTrue(report.get('healthy'))
+		self.assertEqual(report['settings_snapshot']['min_supported_build'], 12)
+		self.assertEqual(report['settings_snapshot']['latest_build'], 14)
+		self.assertEqual(report['settings_snapshot']['latest_version'], '1.4.0')
+
+	def test_release_preflight_strict_fails_when_build_order_is_invalid(self):
+		out = StringIO()
+		with self.assertRaises(CommandError):
+			with override_settings(
+				MOBILE_SHELL_ANDROID_MIN_BUILD=30,
+				MOBILE_SHELL_ANDROID_LATEST_BUILD=20,
+				MOBILE_SHELL_ANDROID_UPDATE_URL='https://panel.adarshbhopal.in/static/website/apk/adarsh-admin.apk',
+			):
+				call_command('mobile_release_preflight', '--strict', stdout=out)
+
+	def test_release_preflight_warns_for_missing_local_apk_path_without_strict(self):
+		out = StringIO()
+		with override_settings(MOBILE_SHELL_ANDROID_UPDATE_URL='/static/website/apk/does-not-exist.apk'):
+			call_command('mobile_release_preflight', stdout=out)
+
+		report = json.loads(out.getvalue())
+		resolution_check = next(c for c in report['checks'] if c['metric'] == 'update_url_resolves')
+		self.assertEqual(resolution_check['status'], 'warn')
+
+	def test_release_preflight_strict_can_require_local_apk_presence(self):
+		out = StringIO()
+		with self.assertRaises(CommandError):
+			with override_settings(MOBILE_SHELL_ANDROID_UPDATE_URL='/static/website/apk/does-not-exist.apk'):
+				call_command('mobile_release_preflight', '--strict', '--require-local-apk', stdout=out)
+
+
 class MobileAppCardApiTests(MobileAppBaseTestCase):
 	def test_bulk_status_rejects_non_list_card_ids(self):
 		self._login_mobile_super_admin()
@@ -2158,6 +2202,48 @@ class MobileAppPhase7RolloutGuardAutomationTests(TestCase):
 		self.assertIn('MobileAppPhase7RolloutGuardAutomationTests', content)
 
 
+class MobileAppPhase8ReleasePreflightCompletionTests(TestCase):
+	def test_phase8_command_exists_and_has_strict_preflight_flags(self):
+		cmd_path = Path(__file__).resolve().parent.parent / 'mobile_app' / 'management' / 'commands' / 'mobile_release_preflight.py'
+		content = cmd_path.read_text(encoding='utf-8')
+
+		self.assertIn('Run Android mobile-shell release preflight checks', content)
+		self.assertIn('--strict', content)
+		self.assertIn('--require-local-apk', content)
+
+	def test_phase8_artifacts_include_preflight_contract_and_reports(self):
+		project_root = Path(__file__).resolve().parent.parent
+		phase8_dir = project_root / 'mobile_shell_app' / 'phase8'
+
+		required_files = [
+			phase8_dir / 'release_preflight_contract.md',
+			phase8_dir / 'nice_to_have_backlog.md',
+			phase8_dir / 'PHASE8_EXECUTION_LOG.md',
+			phase8_dir / 'PHASE8_COMPLETION_REPORT.md',
+		]
+		for file_path in required_files:
+			self.assertTrue(file_path.exists(), f'Missing phase8 artifact: {file_path.name}')
+
+		contract = (phase8_dir / 'release_preflight_contract.md').read_text(encoding='utf-8')
+		self.assertIn('python manage.py mobile_release_preflight', contract)
+		self.assertIn('--strict', contract)
+
+	def test_phase8_pipeline_doc_has_preflight_step(self):
+		doc_path = Path(__file__).resolve().parent.parent / 'docs' / 'mobile-shell' / 'ANDROID_RELEASE_PIPELINE.md'
+		content = doc_path.read_text(encoding='utf-8')
+
+		self.assertIn('Phase 8 Final Preflight and Nice-to-Have Closure', content)
+		self.assertIn('mobile_release_preflight', content)
+
+	def test_plan_tracks_phase8_completion(self):
+		plan_path = Path(__file__).resolve().parent.parent / 'mobile_shell_app' / 'ANDROID_NATIVE_CONVERSION_PLAN.md'
+		content = plan_path.read_text(encoding='utf-8')
+
+		self.assertIn('## Phase 8 Completion (2026-04-11)', content)
+		self.assertIn('release_preflight_contract.md', content)
+		self.assertIn('MobileAppPhase8ReleasePreflightCompletionTests', content)
+
+
 class MobileAppProfileUpdateFlowContractTests(TestCase):
 	def test_profile_template_has_update_button_hooked_to_mobile_update_flow(self):
 		profile_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'profile.html'
@@ -2174,6 +2260,15 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 		self.assertIn('function resolveUpdateLink(configData)', content)
 		self.assertIn('var updateLink = resolveUpdateLink(configData);', content)
 		self.assertIn('await openUpdateLink(updateLink);', content)
+
+	def test_profile_template_shows_update_status_card_and_runtime_check(self):
+		profile_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'profile.html'
+		content = profile_path.read_text(encoding='utf-8')
+
+		self.assertIn('App Update Status', content)
+		self.assertIn('Refresh Update Status', content)
+		self.assertIn('async loadUpdateStatus()', content)
+		self.assertIn("fetch('/app/api/mobile-shell/config/'", content)
 
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):

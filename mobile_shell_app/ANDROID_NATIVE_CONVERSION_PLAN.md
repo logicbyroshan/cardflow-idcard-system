@@ -117,6 +117,17 @@ Deliverables:
 1. Automated rollout guard command.
 2. Incident response runbook with clear escalation criteria.
 
+### Phase 8: Final Preflight and Nice-to-Have Closure
+1. Add final preflight command for release readiness signoff.
+2. Validate update URL/build policy consistency before promotion.
+3. Close high-value nice-to-have items that do not alter UI architecture.
+4. Publish final completion artifacts for release audit trail.
+
+Deliverables:
+1. Automated release preflight command.
+2. Phase 8 completion report and execution log.
+3. Nice-to-have closure notes.
+
 ## "No UI Change" Guardrails
 To maintain exact look and behavior:
 
@@ -247,3 +258,23 @@ Automated coverage added in `mobile_app/tests.py`:
 5. `MobileAppPhase7RolloutGuardAutomationTests.test_phase7_artifacts_include_guard_and_incident_docs`
 6. `MobileAppPhase7RolloutGuardAutomationTests.test_phase7_pipeline_doc_has_rollout_guard_step`
 7. `MobileAppPhase7RolloutGuardAutomationTests.test_plan_tracks_phase7_completion`
+
+## Phase 8 Completion (2026-04-11)
+Artifacts created under `mobile_shell_app/phase8/`:
+1. `release_preflight_contract.md` (executable final preflight gate contract)
+2. `nice_to_have_backlog.md` (implemented and deferred closure list)
+3. `PHASE8_EXECUTION_LOG.md` (implemented changes + validation commands)
+4. `PHASE8_COMPLETION_REPORT.md` (final implementation + validation summary)
+
+Automation added in `mobile_app/management/commands/`:
+1. `mobile_release_preflight.py` (JSON release preflight evaluator with strict fail mode)
+
+Automated coverage added in `mobile_app/tests.py`:
+1. `MobileReleasePreflightCommandTests.test_release_preflight_reports_healthy_for_valid_remote_update_url`
+2. `MobileReleasePreflightCommandTests.test_release_preflight_strict_fails_when_build_order_is_invalid`
+3. `MobileReleasePreflightCommandTests.test_release_preflight_warns_for_missing_local_apk_path_without_strict`
+4. `MobileReleasePreflightCommandTests.test_release_preflight_strict_can_require_local_apk_presence`
+5. `MobileAppPhase8ReleasePreflightCompletionTests.test_phase8_command_exists_and_has_strict_preflight_flags`
+6. `MobileAppPhase8ReleasePreflightCompletionTests.test_phase8_artifacts_include_preflight_contract_and_reports`
+7. `MobileAppPhase8ReleasePreflightCompletionTests.test_phase8_pipeline_doc_has_preflight_step`
+8. `MobileAppPhase8ReleasePreflightCompletionTests.test_plan_tracks_phase8_completion`
