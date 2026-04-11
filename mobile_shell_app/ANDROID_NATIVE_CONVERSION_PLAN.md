@@ -144,3 +144,15 @@ Artifacts created under `mobile_shell_app/phase0/`:
 2. `mobile_assets_baseline.json` (SHA256 freeze for CSS/JS/fonts)
 3. `mobile_screenshot_checklist.md` (route-role-device capture plan)
 4. `PHASE0_EXECUTION_LOG.md` (what was done, no-runtime-change proof)
+
+## Phase 1 Completion (2026-04-11)
+Artifacts created under `mobile_shell_app/phase1/`:
+1. `route_smoke_matrix.json` (route classification + smoke execution matrix)
+2. `critical_template_hashes.json` (critical template visual baseline hashes)
+3. `PHASE1_COMPLETION_REPORT.md` (execution + validation summary)
+
+Automated coverage added in `mobile_app/tests.py`:
+1. `MobileAppPhase1SmokeAndVisualTests.test_phase1_auth_login_api_smoke_success`
+2. `MobileAppPhase1SmokeAndVisualTests.test_phase1_page_routes_smoke_matrix`
+3. `MobileAppPhase1SmokeAndVisualTests.test_phase1_api_routes_smoke_matrix`
+4. `MobileAppPhase1SmokeAndVisualTests.test_phase1_visual_baseline_critical_templates`

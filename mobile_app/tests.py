@@ -1,4 +1,5 @@
 import json
+import hashlib
 from unittest import mock
 from datetime import timedelta
 from pathlib import Path
@@ -1816,3 +1817,188 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertTrue(payload.get('success'))
 		item_ids = [row['id'] for row in payload.get('items', [])]
 		self.assertIn(item.id, item_ids)
+
+
+class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
+	def _post_json(self, url, payload):
+		return self.client.post(
+			url,
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+
+	@mock.patch('mobile_app.views.ActivityService.log_login')
+	@mock.patch('mobile_app.views.AuthService.authenticate_user')
+	def test_phase1_auth_login_api_smoke_success(self, mock_authenticate, _mock_log_login):
+		mock_authenticate.return_value = {
+			'success': True,
+			'user': self.super_admin,
+			'message': 'ok',
+		}
+
+		response = self._post_json('/app/api/auth/login/', {
+			'email': self.super_admin.email,
+			'password': 'pass1234',
+			'role': 'super_admin',
+		})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json().get('success'))
+
+	def test_phase1_page_routes_smoke_matrix(self):
+		self._login_mobile_super_admin()
+
+		page_cases = [
+			'/app/login/',
+			'/app/no-access/',
+			'/app/desktop-required/',
+			'/app/',
+			'/app/clients/',
+			f'/app/clients/{self.client_profile.id}/groups/',
+			'/app/groups/',
+			'/app/tables/pending/',
+			f'/app/table/{self.table.id}/pending/',
+			f'/app/card/{self.card.id}/',
+			f'/app/reprint/{self.client_profile.id}/',
+			f'/app/reprint/table/{self.table.id}/',
+			f'/app/camera/{self.table.id}/',
+			f'/app/camera/{self.table.id}/{self.card.id}/',
+			'/app/notifications/',
+			'/app/profile/',
+			'/app/staff/',
+			'/app/settings/',
+			f'/app/search/?q=Student&filter=name&table_id={self.table.id}',
+			'/app/website/',
+		]
+
+		for url in page_cases:
+			response = self.client.get(url)
+			self.assertIn(
+				response.status_code,
+				(200, 302, 403),
+				msg=f'Unexpected status for page route {url}: {response.status_code}',
+			)
+			self.assertLess(response.status_code, 500, msg=f'5xx on page route {url}')
+
+	def test_phase1_api_routes_smoke_matrix(self):
+		self._login_mobile_super_admin()
+
+		managed_staff_user = User.objects.create_user(
+			username='phase1-manage-staff@test.com',
+			email='phase1-manage-staff@test.com',
+			password='pass1234',
+			role='admin_staff',
+		)
+		managed_staff = Staff.objects.create(
+			user=managed_staff_user,
+			staff_type='admin_staff',
+			perm_mobile_app=True,
+		)
+
+		temp_card_for_delete = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Phase1 Delete', 'ROLL NO': '9801'},
+			status='pending',
+		)
+
+		managed_client_user = User.objects.create_user(
+			username='phase1-client@test.com',
+			email='phase1-client@test.com',
+			password='pass1234',
+			role='client',
+		)
+		managed_client = Client.objects.create(
+			user=managed_client_user,
+			name='Phase1 Client',
+			status='active',
+			perm_mobile_app=True,
+		)
+
+		portfolio_category = PortfolioCategory.objects.create(
+			name='Phase1 Category',
+			icon='fas fa-image',
+			is_active=True,
+			order=11,
+		)
+
+		api_cases = [
+			{'method': 'get', 'url': f'/app/api/card/{self.card.id}/detail/', 'allowed': (200, 403)},
+			{'method': 'post', 'url': f'/app/api/card/{self.card.id}/status/', 'payload': {'status': 'verified'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/card/{temp_card_for_delete.id}/delete/', 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': f'/app/api/table/{self.table.id}/cards/', 'allowed': (200, 403)},
+			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/bulk-status/', 'payload': {'ids': [self.card.id], 'status': 'verified'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/upload-photo/', 'payload': {'card_id': self.card.id, 'field_name': 'PHOTO'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/card/add/', 'payload': {'field_data': {'NAME': 'Phase1 Add', 'ROLL NO': '501'}}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/card/{self.card.id}/update/', 'payload': {'field_data': {'NAME': 'Phase1 Update'}}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/table/{self.table.id}/update-fields/', 'payload': {'fields': ['NAME', 'ROLL NO']}, 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': '/app/api/staff/', 'allowed': (200, 403)},
+			{'method': 'post', 'url': '/app/api/staff/create/', 'payload': {'first_name': 'Phase', 'last_name': 'Staff', 'email': 'phase1-staff-create@test.com'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/staff/{managed_staff.id}/update/', 'payload': {'first_name': 'Phase1', 'last_name': 'Updated'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/staff/{managed_staff.id}/toggle/', 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/staff/{managed_staff.id}/delete/', 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': '/app/api/profile/update/', 'payload': {'name': 'Phase One User'}, 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': f'/app/api/search/?q=Student&filter=name&table_id={self.table.id}', 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': '/app/api/server-info/', 'allowed': (200, 403)},
+			{'method': 'get', 'url': '/app/api/mobile-shell/config/', 'allowed': (200, 403)},
+			{'method': 'post', 'url': '/app/api/mobile-shell/device/register/', 'payload': {'platform': 'android', 'installation_id': 'instphase1abc12345', 'app_build': 1, 'app_version': '1.0.0', 'device_model': 'Pixel', 'os_version': '14', 'device_language': 'en'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': '/app/api/mobile-shell/device/ping/', 'payload': {'installation_id': 'instphase1abc12345', 'app_build': 1, 'app_version': '1.0.0'}, 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': '/app/api/mobile-shell/device/summary/', 'allowed': (200, 403)},
+			{'method': 'get', 'url': '/app/api/impersonate/users/', 'allowed': (200, 403)},
+			{'method': 'post', 'url': '/app/api/impersonate/start/', 'payload': {'target_user_id': self.client_user.id}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': '/app/api/impersonate/stop/', 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': '/app/api/client/create/', 'payload': {'name': 'Phase1 Created Client', 'email': 'phase1-created-client@test.com'}, 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': f'/app/api/client/{managed_client.id}/', 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/client/{managed_client.id}/update/', 'payload': {'name': 'Phase1 Client Updated'}, 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/client/{managed_client.id}/toggle/', 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': f'/app/api/client/{self.client_profile.id}/tables/', 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': f'/app/api/client/{managed_client.id}/delete/', 'allowed': (200, 400, 403)},
+			{'method': 'post', 'url': '/app/api/website/portfolio/upload/', 'payload': {'category_id': portfolio_category.id}, 'allowed': (200, 400, 403)},
+			{'method': 'get', 'url': f'/app/api/website/portfolio/category/{portfolio_category.id}/items/?limit=5', 'allowed': (200, 400, 403)},
+		]
+
+		self.assertEqual(len(api_cases), 32)
+
+		for case in api_cases:
+			method = case['method']
+			url = case['url']
+			payload = case.get('payload', {})
+
+			if method == 'get':
+				response = self.client.get(url)
+			else:
+				response = self._post_json(url, payload)
+
+			self.assertIn(
+				response.status_code,
+				case['allowed'],
+				msg=f'Unexpected status for API route {url}: {response.status_code}',
+			)
+			self.assertLess(response.status_code, 500, msg=f'5xx on API route {url}')
+
+			if 'application/json' in (response.get('Content-Type', '') or ''):
+				try:
+					response.json()
+				except ValueError:
+					self.fail(f'Expected JSON payload for API route {url}')
+
+	def test_phase1_visual_baseline_critical_templates(self):
+		project_root = Path(__file__).resolve().parent.parent
+		baseline_path = project_root / 'mobile_shell_app' / 'phase1' / 'critical_template_hashes.json'
+		self.assertTrue(baseline_path.exists(), 'Missing phase1 visual baseline file')
+
+		baseline = json.loads(baseline_path.read_text(encoding='utf-8'))
+		templates = baseline.get('templates', [])
+		self.assertTrue(templates, 'No templates found in visual baseline file')
+
+		for entry in templates:
+			rel_path = entry['path']
+			expected_hash = entry['sha256'].upper()
+			file_path = project_root / rel_path
+			self.assertTrue(file_path.exists(), f'Missing template: {rel_path}')
+
+			actual_hash = hashlib.sha256(file_path.read_bytes()).hexdigest().upper()
+			self.assertEqual(
+				actual_hash,
+				expected_hash,
+				msg=f'Visual baseline drift detected for {rel_path}',
+			)
