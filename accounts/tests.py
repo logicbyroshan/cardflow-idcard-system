@@ -252,7 +252,35 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload['success'])
+        self.assertTrue(payload.get('session_limit_hit'))
+        self.assertTrue(payload.get('can_force_logout_other'))
         self.assertIn('Maximum 1 active desktop login', payload['message'])
+
+    def test_login_api_force_logout_other_device_allows_handoff(self):
+        from accounts.services import AuthService
+
+        self._create_authenticated_session(surface='desktop')
+
+        response = self.client.post(
+            '/panel/api/auth/login/',
+            data=json.dumps({
+                'email': 'view@example.com',
+                'password': 'testpass123',
+                'force_logout_other': True,
+            }),
+            content_type='application/json',
+            REMOTE_ADDR='203.0.113.24',
+            HTTP_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0',
+            HTTP_ACCEPT_LANGUAGE='en-US',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        inspection = AuthService.inspect_active_sessions_for_user(self.user.id)
+        surface_counts = inspection.get('surface_counts') or {}
+        self.assertEqual(int(surface_counts.get('desktop', 0) or 0), 1)
 
     def test_login_api_allows_super_admin_up_to_three_desktop_sessions(self):
         super_admin = User.objects.create_user(

@@ -117,6 +117,28 @@
     return { icon: fallbackIcon, label: fallbackLabel };
   }
 
+  function renderActiveDeviceChips(payload, chipClass) {
+    var surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
+    var activeDesktop = Number(surfaceCounts.desktop || 0);
+    var activeMobile = Number(surfaceCounts.mobile || 0);
+    var rows = [
+      '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>',
+      '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>'
+    ];
+
+    var devices = Array.isArray(payload.active_devices_info) ? payload.active_devices_info : [];
+    devices.slice(0, 6).forEach(function(device) {
+      var label = escapeHtml((device && device.device_label) || 'Unknown device');
+      var ip = escapeHtml((device && device.ip_address) || '');
+      var surface = String((device && device.surface) || '').toLowerCase();
+      var icon = surface === 'mobile' ? 'fa-mobile-screen-button' : 'fa-desktop';
+      var text = label + (ip ? ' [' + ip + ']' : '');
+      rows.push('<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid ' + icon + '"></i> ' + text + '</span>');
+    });
+
+    return rows.join('');
+  }
+
   function renderClientHistory(clientName, payload) {
     var subtitle = document.getElementById('clientHistorySubtitle');
     var body = document.getElementById('clientHistoryBody');
@@ -135,6 +157,12 @@
       body.innerHTML = '<div class="card-history-empty">No login history available for this client yet.</div>';
       return;
     }
+
+    var activeSummaryHtml = '' +
+      '<div class="card-history-item">' +
+        '<div class="card-history-what">Currently active sessions</div>' +
+        '<div class="client-history-chip-row">' + renderActiveDeviceChips(payload, 'client-history-chip') + '</div>' +
+      '</div>';
 
     var fps = Array.isArray(payload.device_fingerprints) ? payload.device_fingerprints : [];
 
@@ -166,13 +194,14 @@
             '<span class="client-history-chip client-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
             deviceChip +
             '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ' + ip + '</span>' +
-            '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Active: ' + activeDevices + '</span>' +
+            '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>' +
+            '<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>' +
             fpChips +
           '</div>' +
         '</div>';
     }).join('');
 
-    body.innerHTML = '<div class="card-history-list">' + html + '</div>';
+    body.innerHTML = '<div class="card-history-list">' + activeSummaryHtml + html + '</div>';
   }
 
   function openClientHistory(clientId, clientName) {

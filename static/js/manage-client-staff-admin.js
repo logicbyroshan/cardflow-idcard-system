@@ -170,6 +170,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return { icon: fallbackIcon, label: fallbackLabel };
     }
 
+    function renderActiveDeviceChips(payload, chipClass) {
+        var surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
+        var activeDesktop = Number(surfaceCounts.desktop || 0);
+        var activeMobile = Number(surfaceCounts.mobile || 0);
+        var rows = [
+            '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>',
+            '<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>'
+        ];
+
+        var devices = Array.isArray(payload.active_devices_info) ? payload.active_devices_info : [];
+        devices.slice(0, 6).forEach(function(device) {
+            var label = escapeHtml((device && device.device_label) || 'Unknown device');
+            var ip = escapeHtml((device && device.ip_address) || '');
+            var surface = String((device && device.surface) || '').toLowerCase();
+            var icon = surface === 'mobile' ? 'fa-mobile-screen-button' : 'fa-desktop';
+            var text = label + (ip ? ' [' + ip + ']' : '');
+            rows.push('<span class="' + chipClass + ' ' + chipClass + '--meta"><i class="fa-solid ' + icon + '"></i> ' + text + '</span>');
+        });
+
+        return rows.join('');
+    }
+
     function renderStaffHistory(staffName, payload) {
         var subtitle = document.getElementById('staffHistorySubtitle');
         var body = document.getElementById('staffHistoryBody');
@@ -188,6 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
             body.innerHTML = '<div class="card-history-empty">No login history available for this assistent yet.</div>';
             return;
         }
+
+        var activeSummaryHtml = '' +
+            '<div class="card-history-item">' +
+                '<div class="card-history-what">Currently active sessions</div>' +
+                '<div class="staff-history-chip-row">' + renderActiveDeviceChips(payload, 'staff-history-chip') + '</div>' +
+            '</div>';
 
         var fps = Array.isArray(payload.device_fingerprints) ? payload.device_fingerprints : [];
 
@@ -219,13 +247,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<span class="staff-history-chip staff-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
                         deviceChip +
                         '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ' + ip + '</span>' +
-                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Active: ' + activeDevices + '</span>' +
+                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-desktop"></i> Website: ' + activeDesktop + '</span>' +
+                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ' + activeMobile + '</span>' +
                         fpChips +
                     '</div>' +
                 '</div>';
         }).join('');
 
-        body.innerHTML = '<div class="card-history-list">' + html + '</div>';
+        body.innerHTML = '<div class="card-history-list">' + activeSummaryHtml + html + '</div>';
     }
 
     function openStaffHistory(staffId, staffName) {

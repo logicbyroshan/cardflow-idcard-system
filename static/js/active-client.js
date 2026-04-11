@@ -134,14 +134,60 @@
         }
     }
 
+    function resolveDeviceSurface(item) {
+        var surface = String((item && item.device_surface) || '').trim().toLowerCase();
+        if (!surface || surface === 'unknown') {
+            var text = String((item && item.description) || '').toLowerCase();
+            if (/(mobile app|android|iphone|ipad|ipod|\bmobile\b|\bios\b)/.test(text)) {
+                surface = 'mobile';
+            } else if (/(desktop|browser|windows|mac|linux|\bweb\b)/.test(text)) {
+                surface = 'desktop';
+            }
+        }
+        if (surface === 'mobile') {
+            return { icon: 'fa-mobile-screen-button', label: 'Mobile' };
+        }
+        if (surface === 'desktop') {
+            return { icon: 'fa-desktop', label: 'Website' };
+        }
+        var fallbackLabel = String((item && item.device_surface_label) || '').trim() || 'Unknown';
+        var fallbackIcon = String((item && item.device_surface_icon) || '').trim() || 'fa-circle-question';
+        return { icon: fallbackIcon, label: fallbackLabel };
+    }
+
+    function renderActiveDeviceChips(payload) {
+        var surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
+        var activeDesktop = Number(surfaceCounts.desktop || 0);
+        var activeMobile = Number(surfaceCounts.mobile || 0);
+        var chips = [
+            `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-desktop"></i> Website: ${activeDesktop}</span>`,
+            `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ${activeMobile}</span>`
+        ];
+
+        var devices = Array.isArray(payload.active_devices_info) ? payload.active_devices_info : [];
+        devices.slice(0, 6).forEach(function(device) {
+            var label = escapeHtml((device && device.device_label) || 'Unknown device');
+            var ip = escapeHtml((device && device.ip_address) || '');
+            var surface = String((device && device.surface) || '').toLowerCase();
+            var icon = surface === 'mobile' ? 'fa-mobile-screen-button' : 'fa-desktop';
+            var text = ip ? `${label} [${ip}]` : label;
+            chips.push(`<span class="client-history-chip client-history-chip--meta"><i class="fa-solid ${icon}"></i> ${text}</span>`);
+        });
+
+        return chips.join('');
+    }
+
     function renderClientHistory(clientName, payload) {
         const subtitle = document.getElementById('clientHistorySubtitle');
         const body = document.getElementById('clientHistoryBody');
         if (!body) return;
 
         const activeDevices = Number(payload.active_devices || 0);
+        const surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
+        const activeDesktop = Number(surfaceCounts.desktop || 0);
+        const activeMobile = Number(surfaceCounts.mobile || 0);
         if (subtitle) {
-            subtitle.textContent = `${clientName || 'Client'} - Active devices: ${activeDevices}`;
+            subtitle.textContent = `${clientName || 'Client'} - Active devices: ${activeDevices} (Website: ${activeDesktop}, Mobile: ${activeMobile})`;
         }
 
         const events = Array.isArray(payload.events) ? payload.events : [];
@@ -151,6 +197,11 @@
         }
 
         const fps = Array.isArray(payload.device_fingerprints) ? payload.device_fingerprints : [];
+        const activeSummaryHtml = '' +
+            '<div class="card-history-item">' +
+                '<div class="card-history-what">Currently active sessions</div>' +
+                `<div class="client-history-chip-row">${renderActiveDeviceChips(payload)}</div>` +
+            '</div>';
 
         const html = events.map(function(item) {
             const actionLabel = escapeHtml(item.action_display || item.action || 'Event');
@@ -159,6 +210,7 @@
             const when = escapeHtml(item.created_at || '');
             const ago = escapeHtml(item.time_ago || '');
             const icon = escapeHtml(item.icon_class || 'fa-circle-info');
+            const surfaceMeta = resolveDeviceSurface(item);
 
             let fpChips = '';
             if (fps.length) {
@@ -175,14 +227,16 @@
                     `<div class="card-history-meta">${ago}</div>` +
                     '<div class="client-history-chip-row">' +
                         `<span class="client-history-chip client-history-chip--action"><i class="fa-solid ${icon}"></i> ${actionLabel}</span>` +
+                        `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid ${escapeHtml(surfaceMeta.icon)}"></i> ${escapeHtml(surfaceMeta.label)}</span>` +
                         `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-network-wired"></i> ${ip}</span>` +
-                        `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Active: ${activeDevices}</span>` +
+                        `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-desktop"></i> Website: ${activeDesktop}</span>` +
+                        `<span class="client-history-chip client-history-chip--meta"><i class="fa-solid fa-mobile-screen-button"></i> Mobile: ${activeMobile}</span>` +
                         fpChips +
                     '</div>' +
                 '</div>';
         }).join('');
 
-        body.innerHTML = `<div class="card-history-list">${html}</div>`;
+        body.innerHTML = `<div class="card-history-list">${activeSummaryHtml}${html}</div>`;
     }
 
     function openClientHistory(clientId, clientName) {

@@ -2811,6 +2811,37 @@ function renderServerInfo(snapshot, fromCache) {
   const otherRows = document.getElementById('serverOtherBreakdownRows');
   if (!rows || !otherRows) return;
 
+  const formatBytesHuman = (sizeBytes) => {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    let value = Number(sizeBytes || 0);
+    if (!Number.isFinite(value) || value < 0) value = 0;
+    let idx = 0;
+    while (value >= 1024 && idx < units.length - 1) {
+      value /= 1024;
+      idx += 1;
+    }
+    return `${value.toFixed(1)} ${units[idx]}`;
+  };
+
+  const setUsageTotalBadge = (id, totalBytes) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (totalBytes == null) {
+      el.textContent = 'Total Used: -';
+      return;
+    }
+    el.textContent = `Total Used: ${formatBytesHuman(totalBytes)}`;
+  };
+
+  const systemTotalBytes = systemUsageDetails.reduce((acc, item) => {
+    return acc + Number((item && item.size_bytes) || 0);
+  }, 0);
+  const panelTotalBytes = panelUsageDetails.reduce((acc, item) => {
+    return acc + Number((item && item.size_bytes) || 0);
+  }, 0);
+  setUsageTotalBadge('serverSystemUsageTotalBadge', systemUsageDetails.length ? systemTotalBytes : null);
+  setUsageTotalBadge('serverPanelUsageTotalBadge', panelUsageDetails.length ? panelTotalBytes : null);
+
   const usedPct = Number(storage.used_pct || 0);
   const donut = document.getElementById('serverStorageDonut');
   const donutPct = document.getElementById('serverStoragePct');

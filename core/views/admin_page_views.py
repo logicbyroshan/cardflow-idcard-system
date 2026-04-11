@@ -17,6 +17,7 @@ from django.utils.timesince import timesince as django_timesince
 
 from client.models import Client
 from staff.models import Staff
+from accounts.services import AuthService
 from idcards.models import IDCardGroup, IDCard, IDCardTable
 from reprintcard.models import ReprintRequest
 from cardprint.models import PrintRequest
@@ -88,11 +89,13 @@ def _active_device_snapshot(user_id):
         return {
             'fingerprints': [],
             'surface_counts': {'desktop': 0, 'mobile': 0},
+            'devices': [],
         }
 
     ids = {str(user_id)}
     fingerprints = set()
     surface_counts = {'desktop': 0, 'mobile': 0}
+    devices = []
 
     for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
         try:
@@ -111,9 +114,17 @@ def _active_device_snapshot(user_id):
         fingerprint = str(data.get('_auth_browser_fp') or '').strip() or f'session:{session.session_key}'
         fingerprints.add(fingerprint)
 
+        session_info = AuthService.session_device_info(data, session_key=session.session_key)
+        if session_info.get('surface') == 'desktop' and surface == 'mobile':
+            session_info['surface'] = 'mobile'
+        devices.append(session_info)
+
+    devices.sort(key=lambda item: int(item.get('login_ts') or 0), reverse=True)
+
     return {
         'fingerprints': sorted(fingerprints),
         'surface_counts': surface_counts,
+        'devices': devices,
     }
 
 
@@ -558,6 +569,7 @@ def api_client_login_history(request, client_id):
         'active_devices': len(device_fingerprints),
         'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
+        'active_devices_info': device_snapshot.get('devices') or [],
         'events': events,
     })
 
@@ -647,6 +659,7 @@ def api_client_staff_login_history(request, staff_id):
         'active_devices': len(device_fingerprints),
         'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
+        'active_devices_info': device_snapshot.get('devices') or [],
         'events': events,
     })
 
@@ -691,6 +704,7 @@ def api_staff_login_history(request, staff_id):
         'active_devices': len(device_fingerprints),
         'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
+        'active_devices_info': device_snapshot.get('devices') or [],
         'events': events,
     })
 

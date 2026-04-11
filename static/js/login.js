@@ -81,6 +81,15 @@ document.addEventListener('DOMContentLoaded', function() {
             messageBox.className = 'message';
         }, 5000);
     }
+
+    function formatActiveDeviceList(devices) {
+        if (!Array.isArray(devices) || !devices.length) return '';
+        return devices.slice(0, 3).map(function(item) {
+            var label = String((item && item.device_label) || 'Unknown device').trim();
+            var ip = String((item && item.ip_address) || '').trim();
+            return ip ? (label + ' [' + ip + ']') : label;
+        }).join(', ');
+    }
     
     function goToStep(step) {
         steps.forEach(s => s.classList.remove('active'));
@@ -157,7 +166,24 @@ document.addEventListener('DOMContentLoaded', function() {
         setButtonLoading(this, true);
         
         try {
-            const data = await safePost('/api/auth/login/', { email, password });
+            let data = await safePost('/api/auth/login/', { email, password });
+
+            if (!data.success && data.session_limit_hit && data.can_force_logout_other) {
+                const deviceText = formatActiveDeviceList(data.active_session_devices);
+                const promptText = deviceText
+                    ? ('Already logged in on: ' + deviceText + '. Logout other device and continue here?')
+                    : 'Already logged in on another device. Logout other device and continue here?';
+
+                const shouldTakeover = window.confirm(promptText);
+                if (shouldTakeover) {
+                    data = await safePost('/api/auth/login/', {
+                        email,
+                        password,
+                        force_logout_other: true,
+                    });
+                }
+            }
+
             if (data.success) {
                 showMessage('Login successful! Redirecting...', 'success');
                 // Respect ?next= param (e.g. from PWA  login redirect)

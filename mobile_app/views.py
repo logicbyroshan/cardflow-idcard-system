@@ -45,6 +45,7 @@ from reprintcard.models import ReprintRequest
 from mediafiles.utils import get_card_photo_url
 from staff.models import Staff
 from accounts.rate_limit import rate_limit
+from accounts.rate_limit import _get_client_ip
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
 from core.services import StaffService, IDCardService
@@ -59,6 +60,10 @@ MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MAX_REPRINT_ACTION_IDS = 200
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
+
+
+def _truthy(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS = [
     'certificates',
@@ -783,6 +788,8 @@ def api_mobile_login(request):
         data = json.loads(request.body or '{}')
         identifier = (data.get('email') or '').strip()
         password = data.get('password', '')
+        force_logout_other = _truthy(data.get('force_logout_other'))
+        client_ip = _get_client_ip(request)
 
         if not identifier or not password:
             return JsonResponse({'success': False, 'message': 'Email and password are required.'}, status=400)
@@ -818,17 +825,47 @@ def api_mobile_login(request):
         )
         surface_counts = session_inspection.get('surface_counts') or {}
         active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
+
+        if active_mobile_sessions >= max_mobile_sessions and force_logout_other:
+            revoke_needed = max(1, active_mobile_sessions - max_mobile_sessions + 1)
+            AuthService.revoke_active_sessions_for_user(
+                user.id,
+                surface='mobile',
+                exclude_session_key=current_session_key,
+                max_revoke=revoke_needed,
+            )
+            session_inspection = AuthService.inspect_active_sessions_for_user(
+                user.id,
+                browser_fingerprint=browser_fingerprint,
+                exclude_session_key=current_session_key,
+                stop_after=max_mobile_sessions + 1,
+            )
+            surface_counts = session_inspection.get('surface_counts') or {}
+            active_mobile_sessions = int(surface_counts.get('mobile', 0) or 0)
+
         if active_mobile_sessions >= max_mobile_sessions:
+            active_session_devices = AuthService.list_active_sessions_for_user(
+                user.id,
+                surface='mobile',
+                exclude_session_key=current_session_key,
+                limit=4,
+            )
             return JsonResponse({
                 'success': False,
-                'message': f'Maximum {max_mobile_sessions} active mobile login(s) are allowed for this account. Please logout from another mobile device and try again.',
+                'session_limit_hit': True,
+                'can_force_logout_other': True,
+                'takeover_surface': 'mobile',
+                'active_session_devices': active_session_devices,
+                'message': f'Maximum {max_mobile_sessions} active mobile login(s) are allowed for this account. Logout from the other mobile to continue.',
             }, status=200)
 
         auth_login(request, user)
         request.session['selected_role'] = getattr(user, 'role', '')
-        request.session['_auth_browser_fp'] = browser_fingerprint
-        request.session['_auth_login_surface'] = 'mobile'
-        request.session['mobile_auth_ok'] = True
+        AuthService.apply_session_auth_context(
+            request,
+            surface='mobile',
+            ip_address=client_ip,
+        )
         ActivityService.log_login(request, user)
         return JsonResponse({'success': True, 'redirect_url': '/app/', 'message': 'Login successful'})
     except json.JSONDecodeError:

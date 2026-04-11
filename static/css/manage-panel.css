@@ -2137,6 +2137,33 @@ textarea.panel-form-input {
   border-radius: 0;
   box-shadow: none;
 }
+.server-detail-grid .system-card-header {
+  justify-content: space-between;
+  text-align: left;
+}
+.server-detail-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+.server-detail-header-title i {
+  color: var(--server-brand-primary);
+}
+.server-usage-total-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border: 1px solid var(--server-brand-border);
+  background: var(--server-brand-soft-2);
+  color: var(--server-brand-text);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .server-detail-grid .system-card:nth-child(2n) {
   border-right: 1px solid var(--server-brand-border);
 }

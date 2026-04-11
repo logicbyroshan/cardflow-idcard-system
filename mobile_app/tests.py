@@ -287,8 +287,41 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 
 		self.assertEqual(response.status_code, 200)
 		self.assertFalse(response.json()['success'])
+		self.assertTrue(response.json().get('session_limit_hit'))
+		self.assertTrue(response.json().get('can_force_logout_other'))
 		self.assertIn('Maximum 1 active mobile login', response.json().get('message', ''))
 		mock_log_login.assert_not_called()
+
+	@mock.patch('mobile_app.views.ActivityService.log_login')
+	@mock.patch('mobile_app.views.AuthService.authenticate_user')
+	def test_mobile_login_force_logout_other_device_allows_handoff(self, mock_authenticate, mock_log_login):
+		from accounts.services import AuthService
+
+		self._create_authenticated_session_for_user(self.client_user, surface='mobile', mobile_auth_ok=True)
+		mock_authenticate.return_value = {
+			'success': True,
+			'user': self.client_user,
+			'message': 'ok',
+		}
+
+		response = self.client.post(
+			'/app/api/auth/login/',
+			data=json.dumps({
+				'email': 'mob-client@test.com',
+				'password': 'pass1234',
+				'force_logout_other': True,
+			}),
+			content_type='application/json',
+			HTTP_USER_AGENT='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+
+		inspection = AuthService.inspect_active_sessions_for_user(self.client_user.id)
+		surface_counts = inspection.get('surface_counts') or {}
+		self.assertEqual(int(surface_counts.get('mobile', 0) or 0), 1)
+		mock_log_login.assert_called_once()
 
 	def test_mobile_login_redirects_to_no_access_when_no_active_client_exists(self):
 		self._login_mobile_super_admin()

@@ -44,6 +44,10 @@ def _mask_login_identifier(identifier):
     return value[:1] + '***'
 
 
+def _truthy(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
 # =============================================================================
 # PAGE VIEWS (Template-based)
 # =============================================================================
@@ -250,6 +254,7 @@ class LoginAPIView(View):
             data = json.loads(request.body)
             identifier = data.get('email', '').strip()
             password = data.get('password', '')
+            force_logout_other = _truthy(data.get('force_logout_other'))
             
             if not identifier or not password:
                 return JsonResponse({
@@ -278,7 +283,32 @@ class LoginAPIView(View):
                 surface_counts = session_inspection.get('surface_counts') or {}
                 active_sessions = int(surface_counts.get('desktop', 0) or 0)
                 has_different_browser_session = bool(session_inspection.get('has_different_browser'))
+
+                if active_sessions >= max_desktop_sessions and force_logout_other:
+                    revoke_needed = max(1, active_sessions - max_desktop_sessions + 1)
+                    AuthService.revoke_active_sessions_for_user(
+                        user.id,
+                        surface='desktop',
+                        exclude_session_key=current_session_key,
+                        max_revoke=revoke_needed,
+                    )
+                    session_inspection = AuthService.inspect_active_sessions_for_user(
+                        user.id,
+                        browser_fingerprint=browser_fingerprint,
+                        exclude_session_key=current_session_key,
+                        stop_after=max_desktop_sessions + 1,
+                    )
+                    surface_counts = session_inspection.get('surface_counts') or {}
+                    active_sessions = int(surface_counts.get('desktop', 0) or 0)
+                    has_different_browser_session = bool(session_inspection.get('has_different_browser'))
+
                 if active_sessions >= max_desktop_sessions:
+                    active_session_devices = AuthService.list_active_sessions_for_user(
+                        user.id,
+                        surface='desktop',
+                        exclude_session_key=current_session_key,
+                        limit=4,
+                    )
                     logger.warning(
                         "Login blocked by desktop session limit: user=%s role=%s ip=%s active_desktop_sessions=%s desktop_limit=%s",
                         _mask_login_identifier(identifier),
@@ -289,7 +319,11 @@ class LoginAPIView(View):
                     )
                     return JsonResponse({
                         'success': False,
-                        'message': f'Maximum {max_desktop_sessions} active desktop login(s) are allowed for this account. Please logout from another desktop/browser and try again.'
+                        'session_limit_hit': True,
+                        'can_force_logout_other': True,
+                        'takeover_surface': 'desktop',
+                        'active_session_devices': active_session_devices,
+                        'message': f'Maximum {max_desktop_sessions} active desktop login(s) are allowed for this account. Logout from the other desktop/browser to continue.'
                     })
 
                 # Log the user in
@@ -297,8 +331,11 @@ class LoginAPIView(View):
                 
                 # Store actual role resolved from user identity (email/username)
                 request.session['selected_role'] = resolved_role
-                request.session['_auth_browser_fp'] = browser_fingerprint
-                request.session['_auth_login_surface'] = 'desktop'
+                AuthService.apply_session_auth_context(
+                    request,
+                    surface='desktop',
+                    ip_address=client_ip,
+                )
                 
                 # Log activity
                 if user.role in ('client', 'client_staff') and has_different_browser_session:

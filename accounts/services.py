@@ -189,6 +189,205 @@ class AuthService:
         return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:20]
 
     @staticmethod
+    def _surface_default_device_label(surface: str) -> str:
+        return 'Mobile Device' if AuthService.normalize_login_surface(surface) == 'mobile' else 'Desktop Browser'
+
+    @staticmethod
+    def _detect_platform_from_user_agent(user_agent: str, surface: str = 'desktop') -> str:
+        ua = str(user_agent or '').lower()
+        if 'android' in ua:
+            return 'Android'
+        if 'iphone' in ua:
+            return 'iPhone'
+        if 'ipad' in ua:
+            return 'iPad'
+        if 'ipod' in ua:
+            return 'iPod'
+        if 'windows' in ua:
+            return 'Windows'
+        if 'mac os x' in ua or 'macintosh' in ua:
+            return 'Mac'
+        if 'linux' in ua:
+            return 'Linux'
+        if AuthService.normalize_login_surface(surface) == 'mobile':
+            return 'Mobile'
+        return 'Desktop'
+
+    @staticmethod
+    def _detect_browser_from_user_agent(user_agent: str, surface: str = 'desktop') -> str:
+        ua = str(user_agent or '').lower()
+        if 'edg/' in ua or 'edge/' in ua:
+            return 'Edge'
+        if 'opr/' in ua or 'opera' in ua:
+            return 'Opera'
+        if 'firefox/' in ua:
+            return 'Firefox'
+        if 'chrome/' in ua and 'edg/' not in ua:
+            return 'Chrome'
+        if 'safari/' in ua and 'chrome/' not in ua and 'crios/' not in ua:
+            return 'Safari'
+        return 'App' if AuthService.normalize_login_surface(surface) == 'mobile' else 'Browser'
+
+    @staticmethod
+    def device_label_from_user_agent(user_agent: str, *, surface: str = 'desktop') -> str:
+        """Create a concise, human-readable device label from User-Agent."""
+        normalized_surface = AuthService.normalize_login_surface(surface)
+        ua = str(user_agent or '').strip()
+        if not ua:
+            return AuthService._surface_default_device_label(normalized_surface)
+
+        platform = AuthService._detect_platform_from_user_agent(ua, normalized_surface)
+        browser = AuthService._detect_browser_from_user_agent(ua, normalized_surface)
+        return f'{platform} {browser}'.strip() or AuthService._surface_default_device_label(normalized_surface)
+
+    @staticmethod
+    def device_label_from_request(request, *, surface: str = 'desktop') -> str:
+        if request is None:
+            return AuthService._surface_default_device_label(surface)
+        ua = str(getattr(request, 'META', {}).get('HTTP_USER_AGENT', '') or '')
+        return AuthService.device_label_from_user_agent(ua, surface=surface)
+
+    @staticmethod
+    def session_device_info(session_data: dict, *, session_key: str = '') -> dict:
+        data = session_data or {}
+        surface = AuthService.session_surface_from_payload(data)
+        fingerprint = str(data.get('_auth_browser_fp') or '').strip()
+        device_label = str(data.get('_auth_device_label') or '').strip()
+        if not device_label:
+            device_label = AuthService._surface_default_device_label(surface)
+
+        ip_address = str(data.get('_auth_login_ip') or '').strip()
+        login_ts_raw = data.get('_auth_login_ts')
+        try:
+            login_ts = int(float(login_ts_raw)) if login_ts_raw is not None else 0
+        except (TypeError, ValueError):
+            login_ts = 0
+
+        safe_session_key = str(session_key or '')
+        session_tail = safe_session_key[-8:] if safe_session_key else ''
+
+        return {
+            'surface': surface,
+            'device_label': device_label,
+            'ip_address': ip_address,
+            'fingerprint': fingerprint,
+            'session_tail': session_tail,
+            'login_ts': login_ts,
+        }
+
+    @staticmethod
+    def apply_session_auth_context(request, *, surface: str = 'desktop', ip_address: str = '') -> None:
+        """Persist normalized login metadata to session for audit and device visibility."""
+        if request is None:
+            return
+
+        normalized_surface = AuthService.normalize_login_surface(surface)
+        request.session['_auth_browser_fp'] = AuthService.browser_fingerprint_from_request(request)
+        request.session['_auth_login_surface'] = normalized_surface
+        request.session['_auth_device_label'] = AuthService.device_label_from_request(
+            request,
+            surface=normalized_surface,
+        )
+        request.session['_auth_login_ip'] = str(ip_address or '').strip()
+        request.session['_auth_login_ts'] = int(timezone.now().timestamp())
+        if normalized_surface == 'mobile':
+            request.session['mobile_auth_ok'] = True
+
+    @staticmethod
+    def list_active_sessions_for_user(
+        user_id,
+        *,
+        surface: str = '',
+        exclude_session_key: str = '',
+        limit: int = 5,
+    ) -> list:
+        """Return active sessions for user with best-effort device metadata."""
+        if not user_id:
+            return []
+
+        from django.contrib.sessions.models import Session
+
+        normalized_surface = str(surface or '').strip().lower()
+        rows = []
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            if exclude_session_key and session.session_key == exclude_session_key:
+                continue
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+
+            if str(data.get('_auth_user_id')) != str(user_id):
+                continue
+
+            info = AuthService.session_device_info(data, session_key=session.session_key)
+            if normalized_surface and info.get('surface') != normalized_surface:
+                continue
+
+            rows.append(info)
+
+        rows.sort(key=lambda item: int(item.get('login_ts') or 0), reverse=True)
+        max_items = max(1, int(limit or 1))
+        return rows[:max_items]
+
+    @staticmethod
+    def revoke_active_sessions_for_user(
+        user_id,
+        *,
+        surface: str = '',
+        exclude_session_key: str = '',
+        max_revoke=None,
+    ) -> dict:
+        """Revoke active sessions for user, optionally constrained by surface."""
+        if not user_id:
+            return {'revoked_count': 0, 'revoked_sessions': []}
+
+        from django.contrib.sessions.models import Session
+
+        normalized_surface = str(surface or '').strip().lower()
+        candidates = []
+
+        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
+            if exclude_session_key and session.session_key == exclude_session_key:
+                continue
+
+            try:
+                data = session.get_decoded()
+            except Exception:
+                continue
+
+            if str(data.get('_auth_user_id')) != str(user_id):
+                continue
+
+            info = AuthService.session_device_info(data, session_key=session.session_key)
+            if normalized_surface and info.get('surface') != normalized_surface:
+                continue
+
+            candidates.append((int(info.get('login_ts') or 0), session, info))
+
+        # Revoke oldest sessions first when max_revoke is provided.
+        candidates.sort(key=lambda row: row[0])
+        if max_revoke is not None:
+            try:
+                cap = max(1, int(max_revoke))
+            except (TypeError, ValueError):
+                cap = len(candidates)
+            candidates = candidates[:cap]
+
+        revoked_sessions = []
+        for _, session, info in candidates:
+            try:
+                session.delete()
+                revoked_sessions.append(info)
+            except Exception:
+                continue
+
+        return {
+            'revoked_count': len(revoked_sessions),
+            'revoked_sessions': revoked_sessions,
+        }
+
+    @staticmethod
     def browser_fingerprint_from_request(request) -> str:
         if request is None:
             return ''
@@ -204,6 +403,8 @@ class AuthService:
         browser_fingerprint: str = '',
         exclude_session_key: str = '',
         stop_after=None,
+        include_device_info: bool = True,
+        device_info_limit: int = 5,
     ) -> dict:
         """
         Inspect active sessions for a user and detect concurrent logins from other browsers.
@@ -221,6 +422,7 @@ class AuthService:
         has_different_browser = False
         known_browser_fingerprints = set()
         surface_counts = {'desktop': 0, 'mobile': 0}
+        active_sessions = []
         current_fp = str(browser_fingerprint or '').strip()
 
         for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator(chunk_size=200):
@@ -238,6 +440,12 @@ class AuthService:
             active += 1
             surface = AuthService.session_surface_from_payload(data)
             surface_counts[surface] = surface_counts.get(surface, 0) + 1
+
+            if include_device_info and len(active_sessions) < max(1, int(device_info_limit or 1)):
+                active_sessions.append(
+                    AuthService.session_device_info(data, session_key=session.session_key)
+                )
+
             fp = str(data.get('_auth_browser_fp') or '').strip()
             if fp:
                 known_browser_fingerprints.add(fp)
@@ -251,6 +459,7 @@ class AuthService:
             'count': active,
             'has_different_browser': has_different_browser,
             'known_browser_fingerprints': sorted(known_browser_fingerprints),
+            'active_sessions': active_sessions,
             'surface_counts': {
                 'desktop': int(surface_counts.get('desktop', 0) or 0),
                 'mobile': int(surface_counts.get('mobile', 0) or 0),

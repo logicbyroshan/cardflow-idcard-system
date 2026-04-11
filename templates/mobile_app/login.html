@@ -169,6 +169,15 @@
         else     { sp.classList.add('hidden');    txt.textContent = 'Sign In'; }
     }
 
+    function formatActiveDeviceList(devices) {
+        if (!Array.isArray(devices) || !devices.length) return '';
+        return devices.slice(0, 3).map(function(item) {
+            var label = String((item && item.device_label) || 'Unknown device').trim();
+            var ip = String((item && item.ip_address) || '').trim();
+            return ip ? (label + ' [' + ip + ']') : label;
+        }).join(', ');
+    }
+
     var deferredInstallPrompt = null;
     var installBtn = document.getElementById('install-app-btn');
     var installBtnText = document.getElementById('install-app-btn-text');
@@ -240,16 +249,38 @@
 
         setLoading(true);
         try {
+            var body = { email: email, password: password };
             var resp = await fetch('/app/api/auth/login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCsrf(),
                 },
-                body: JSON.stringify({ email: email, password: password }),
+                body: JSON.stringify(body),
             });
 
             var data = await resp.json();
+
+            if (!data.success && data.session_limit_hit && data.can_force_logout_other) {
+                var deviceText = formatActiveDeviceList(data.active_session_devices);
+                var promptText = deviceText
+                    ? ('Already logged in on: ' + deviceText + '. Logout other device and continue here?')
+                    : 'Already logged in on another mobile. Logout other device and continue here?';
+
+                if (window.confirm(promptText)) {
+                    body.force_logout_other = true;
+                    resp = await fetch('/app/api/auth/login/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCsrf(),
+                        },
+                        body: JSON.stringify(body),
+                    });
+                    data = await resp.json();
+                }
+            }
+
             if (data.success) {
                 // Always land in the mobile app after login
                 window.location.href = '/app/';
