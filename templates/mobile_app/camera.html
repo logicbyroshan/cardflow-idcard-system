@@ -111,7 +111,7 @@
                 <i class="fa-solid fa-camera-slash text-4xl text-gray-500 mb-4"></i>
                 <p class="text-white text-sm font-medium mb-2">Camera Access Required</p>
                 <p class="text-gray-400 text-xs mb-4">Please allow camera access to capture photos</p>
-                <button @click="startCamera()" class="px-6 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-semibold rounded-lg">Try Again</button>
+                <button @click="tryCameraRecovery()" class="px-6 py-2 bg-gradient-to-r from-brand-light to-brand-dark text-white text-xs font-semibold rounded-lg">Try Again</button>
             </div>
         </div>
     </div>
@@ -119,7 +119,7 @@
     <!-- Camera Controls -->
     <div class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md py-5">
         <div class="max-w-[430px] mx-auto flex items-center justify-center gap-5">
-            <button @click="$refs.galleryFile.click()" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
+            <button @click="openGalleryPicker()" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
                 <i class="fa-solid fa-images text-lg"></i>
             </button>
             <input type="file" x-ref="galleryFile" accept="image/*" class="hidden" @change="onGalleryPick($event)">
@@ -252,6 +252,15 @@ function cameraApp() {
 
         onGalleryPick(e) {
             const file = e.target.files[0];
+            if (!file) {
+                e.target.value = '';
+                return;
+            }
+            this.loadImageFile(file);
+            e.target.value = '';
+        },
+
+        loadImageFile(file) {
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
@@ -265,7 +274,31 @@ function cameraApp() {
                 img.src = ev.target.result;
             };
             reader.readAsDataURL(file);
-            e.target.value = '';
+        },
+
+        async openGalleryPicker() {
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
+                const picked = await bridge.pickImage({ source: 'gallery', quality: 92 });
+                if (picked) {
+                    this.loadImageFile(picked);
+                    return;
+                }
+            }
+            this.$refs.galleryFile.click();
+        },
+
+        async tryCameraRecovery() {
+            const bridge = window.adarshDeviceBridge;
+            if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
+                const picked = await bridge.pickImage({ source: 'camera', quality: 92 });
+                if (picked) {
+                    this.cameraError = false;
+                    this.loadImageFile(picked);
+                    return;
+                }
+            }
+            await this.startCamera();
         },
 
         openCropper() {
@@ -307,6 +340,7 @@ function cameraApp() {
             }
             this.uploading = true;
             try {
+                const self = this;
                 const blob = await new Promise((resolve, reject) => {
                     this.$refs.canvas.toBlob((b) => {
                         if (b) {
@@ -316,24 +350,48 @@ function cameraApp() {
                         reject(new Error('Unable to prepare image. Please retake photo.'));
                     }, 'image/jpeg', 0.9);
                 });
-                const fd = new FormData();
-                fd.append('photo', blob, 'capture_' + Date.now() + '.jpg');
-                fd.append('card_id', String(this.selectedCardId));
                 const csrf = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-                const res = await fetch('/app/api/table/' + this.tableId + '/upload-photo/', {
-                    method: 'POST', headers: { 'X-CSRFToken': csrf }, body: fd
-                });
-                const raw = await res.text();
+                const fileName = 'capture_' + Date.now() + '.jpg';
+                const uploadUrl = '/app/api/table/' + this.tableId + '/upload-photo/';
+
+                function buildUploadFormData() {
+                    const formData = new FormData();
+                    formData.append('photo', blob, fileName);
+                    formData.append('card_id', String(self.selectedCardId));
+                    return formData;
+                }
+
                 let data = {};
-                try {
-                    data = raw ? JSON.parse(raw) : {};
-                } catch (parseErr) {
-                    data = {
-                        success: false,
-                        message: res.status === 401
-                            ? 'Session expired. Please login again.'
-                            : 'Server returned an invalid response. Please try again.'
-                    };
+                let responseOk = false;
+                const bridge = window.adarshDeviceBridge;
+
+                if (bridge && typeof bridge.uploadFormDataWithRetry === 'function') {
+                    const uploadResult = await bridge.uploadFormDataWithRetry(uploadUrl, buildUploadFormData, {
+                        headers: { 'X-CSRFToken': csrf },
+                        retries: 2,
+                        retryDelayMs: 700,
+                        queueKey: 'camera_upload_' + this.tableId + '_' + this.selectedCardId,
+                    });
+                    data = uploadResult && uploadResult.data ? uploadResult.data : {};
+                    responseOk = true;
+                } else {
+                    const res = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrf },
+                        body: buildUploadFormData(),
+                    });
+                    const raw = await res.text();
+                    try {
+                        data = raw ? JSON.parse(raw) : {};
+                    } catch (parseErr) {
+                        data = {
+                            success: false,
+                            message: res.status === 401
+                                ? 'Session expired. Please login again.'
+                                : 'Server returned an invalid response. Please try again.'
+                        };
+                    }
+                    responseOk = !!res.ok;
                 }
 
                 if (data.success) {
@@ -346,7 +404,7 @@ function cameraApp() {
                     /* Navigate back after brief delay */
                     setTimeout(() => { this.goBack(); }, 900);
                 } else {
-                    const msg = data.message || (res.ok ? 'Upload failed' : ('Upload failed (' + res.status + ')'));
+                    const msg = data.message || (responseOk ? 'Upload failed' : 'Upload failed');
                     this.showMsg(msg, 'error');
                 }
             } catch (e) {

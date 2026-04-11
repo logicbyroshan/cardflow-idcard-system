@@ -46,11 +46,24 @@ window.showConfirm = function showConfirm(options) {
 };
 
 (function initAndroidShellBridge() {
+    var envGate = window.adarshMobileEnv || null;
+    function isNativeShellContext() {
+        if (envGate && typeof envGate.isNativeShell === 'function') {
+            return envGate.isNativeShell();
+        }
+        var cap = window.Capacitor;
+        return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+    }
+
     var cap = window.Capacitor;
-    if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) {
+    if (!cap || !isNativeShellContext()) {
         return;
     }
-    if (typeof cap.getPlatform === 'function' && cap.getPlatform() !== 'android') {
+
+    var runtimePlatform = envGate && typeof envGate.getPlatform === 'function'
+        ? envGate.getPlatform()
+        : (typeof cap.getPlatform === 'function' ? cap.getPlatform() : '');
+    if (String(runtimePlatform || '').toLowerCase() !== 'android') {
         return;
     }
 
@@ -60,9 +73,14 @@ window.showConfirm = function showConfirm(options) {
     var Browser = plugins.Browser;
     var PushNotifications = plugins.PushNotifications;
     var Toast = plugins.Toast;
+    var bridge = window.adarshDeviceBridge || null;
 
     var INSTALL_ID_KEY = 'adarsh.mobile.installation.id';
     var pingIntervalId = null;
+    var pushRefreshIntervalId = null;
+    var pushListenersBound = false;
+    var lastKnownPushToken = '';
+    var lastPushRegisterAttemptAt = 0;
     var backPressedAt = 0;
     var backHandlerReadyAt = Date.now() + 2200;
     var userInteractedAt = 0;
@@ -138,6 +156,19 @@ window.showConfirm = function showConfirm(options) {
         return response.json();
     }
 
+    async function enqueueCriticalJson(url, payload, dedupeKey) {
+        if (bridge && typeof bridge.enqueueCriticalJson === 'function') {
+            return bridge.enqueueCriticalJson(url, payload, { dedupeKey: dedupeKey || '' });
+        }
+
+        try {
+            var data = await postJson(url, payload);
+            return { queued: false, data: data };
+        } catch (err) {
+            return { queued: true, error: err && err.message ? err.message : 'request_failed' };
+        }
+    }
+
     async function getNativeInfo() {
         var appInfo = { version: '', build: '0' };
         var deviceInfo = { model: '', osVersion: '', languageCode: '' };
@@ -179,7 +210,7 @@ window.showConfirm = function showConfirm(options) {
         wrap.style.padding = '20px';
 
         var latestVersion = (configPayload && configPayload.latest_version) || '';
-        var supportUrl = (configPayload && configPayload.support_url) || '/app/profile/';
+        var updateUrl = (configPayload && configPayload.update_url) || (configPayload && configPayload.support_url) || '/app/profile/';
 
         wrap.innerHTML = '' +
             '<div style="max-width:360px;width:100%;text-align:center;">' +
@@ -188,7 +219,7 @@ window.showConfirm = function showConfirm(options) {
             'Your Adarsh Panel app version is no longer supported. Please update to continue.' +
             '</p>' +
             (latestVersion ? '<p style="font-size:12px;opacity:.82;margin:0 0 16px;">Latest version: ' + latestVersion + '</p>' : '') +
-            '<a href="' + supportUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;background:#fff;color:#0f172a;text-decoration:none;font-size:13px;font-weight:700;">Open Support</a>' +
+            '<a href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;background:#fff;color:#0f172a;text-decoration:none;font-size:13px;font-weight:700;">Update Now</a>' +
             '</div>';
 
         document.body.appendChild(wrap);
@@ -200,7 +231,7 @@ window.showConfirm = function showConfirm(options) {
 
         var latestBuild = parseInt(configPayload && configPayload.latest_build, 10) || 0;
         var latestVersion = String(configPayload && configPayload.latest_version || '').trim();
-        var supportUrl = String(configPayload && configPayload.support_url || '/app/profile/').trim();
+        var updateUrl = String(configPayload && (configPayload.update_url || configPayload.support_url) || '/app/profile/').trim();
         var reminderKey = 'adarsh.mobile.recommended.' + String(latestBuild || latestVersion || 'unknown');
 
         try {
@@ -236,7 +267,7 @@ window.showConfirm = function showConfirm(options) {
                 : '') +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-            '<a id="mobile-shell-recommended-open" href="' + supportUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#fff;color:#0f172a;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
+            '<a id="mobile-shell-recommended-open" href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#fff;color:#0f172a;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
             '<button id="mobile-shell-recommended-dismiss" type="button" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:600;">Later</button>' +
             '</div>' +
             '</div>';
@@ -281,7 +312,6 @@ window.showConfirm = function showConfirm(options) {
                 window.mobileOverlay.close();
                 return;
             }
-
             if (evt && evt.canGoBack) {
                 window.history.back();
                 return;
@@ -305,6 +335,35 @@ window.showConfirm = function showConfirm(options) {
         });
     }
 
+    function normalizeInAppDeepLink(urlValue) {
+        if (!urlValue) return '';
+        try {
+            var parsed = new URL(String(urlValue), window.location.origin);
+            if (parsed.origin !== window.location.origin) return '';
+
+            var path = String(parsed.pathname || '');
+            if (!path.startsWith('/app')) return '/app/';
+            return path + String(parsed.search || '') + String(parsed.hash || '');
+        } catch (err) {
+            return '';
+        }
+    }
+
+    function setupDeepLinkBridge() {
+        if (!App || typeof App.addListener !== 'function') return;
+        App.addListener('appUrlOpen', function(event) {
+            var incomingUrl = event && event.url ? String(event.url) : '';
+            if (!incomingUrl) return;
+
+            var nextPath = normalizeInAppDeepLink(incomingUrl);
+            if (!nextPath) return;
+
+            var currentPath = window.location.pathname + window.location.search + window.location.hash;
+            if (currentPath === nextPath) return;
+            window.location.href = nextPath;
+        });
+    }
+
     async function registerPushToken(payloadBase) {
         if (!PushNotifications || typeof PushNotifications.requestPermissions !== 'function') {
             return;
@@ -314,26 +373,58 @@ window.showConfirm = function showConfirm(options) {
             var perm = await PushNotifications.requestPermissions();
             if (!perm || perm.receive !== 'granted') return;
 
-            PushNotifications.addListener('registration', function(token) {
-                var pushToken = token && token.value ? String(token.value) : '';
-                if (!pushToken) return;
+            if (!pushListenersBound) {
+                PushNotifications.addListener('registration', function(token) {
+                    var pushToken = token && token.value ? String(token.value) : '';
+                    if (!pushToken) return;
+                    if (pushToken === lastKnownPushToken) return;
+                    lastKnownPushToken = pushToken;
 
-                postJson('/app/api/mobile-shell/device/register/', Object.assign({}, payloadBase, {
-                    push_token: pushToken,
-                })).catch(function() {});
-            });
+                    enqueueCriticalJson(
+                        '/app/api/mobile-shell/device/register/',
+                        Object.assign({}, payloadBase, { push_token: pushToken }),
+                        'device_register_push_' + payloadBase.installation_id
+                    ).catch(function() {});
+                });
 
-            PushNotifications.addListener('pushNotificationActionPerformed', function(notification) {
-                var data = notification && notification.notification && notification.notification.data || {};
-                var targetUrl = String(data.url || data.path || '').trim();
-                if (!targetUrl) return;
+                PushNotifications.addListener('registrationError', function() {
+                    // Keep silent for users; retry happens on resume/interval.
+                });
 
-                if (/^https?:\/\//i.test(targetUrl) || targetUrl.startsWith('/')) {
-                    window.location.href = targetUrl;
+                PushNotifications.addListener('pushNotificationActionPerformed', function(notification) {
+                    var data = notification && notification.notification && notification.notification.data || {};
+                    var targetUrl = String(data.url || data.path || '').trim();
+                    if (!targetUrl) return;
+
+                    if (/^https?:\/\//i.test(targetUrl) || targetUrl.startsWith('/')) {
+                        window.location.href = targetUrl;
+                    }
+                });
+
+                if (App && typeof App.addListener === 'function') {
+                    App.addListener('appStateChange', function(state) {
+                        if (state && state.isActive) {
+                            var now = Date.now();
+                            if (now - lastPushRegisterAttemptAt > 20000) {
+                                lastPushRegisterAttemptAt = now;
+                                PushNotifications.register().catch(function() {});
+                            }
+                        }
+                    });
                 }
-            });
 
+                pushListenersBound = true;
+            }
+
+            lastPushRegisterAttemptAt = Date.now();
             await PushNotifications.register();
+
+            if (!pushRefreshIntervalId) {
+                pushRefreshIntervalId = window.setInterval(function() {
+                    lastPushRegisterAttemptAt = Date.now();
+                    PushNotifications.register().catch(function() {});
+                }, 15 * 60 * 1000);
+            }
         } catch (err) {}
     }
 
@@ -341,11 +432,11 @@ window.showConfirm = function showConfirm(options) {
         if (pingIntervalId) return;
 
         var sendPing = function() {
-            postJson('/app/api/mobile-shell/device/ping/', {
+            enqueueCriticalJson('/app/api/mobile-shell/device/ping/', {
                 installation_id: payloadBase.installation_id,
                 app_build: payloadBase.app_build,
                 app_version: payloadBase.app_version,
-            }).catch(function() {});
+            }, 'device_ping_' + payloadBase.installation_id).catch(function() {});
         };
 
         sendPing();
@@ -354,6 +445,7 @@ window.showConfirm = function showConfirm(options) {
 
     async function bootstrap() {
         setupExternalLinkBridge();
+        setupDeepLinkBridge();
         setupAndroidBackBehavior();
 
         var installId = getInstallationId();
@@ -369,7 +461,12 @@ window.showConfirm = function showConfirm(options) {
         };
 
         try {
-            var registerResp = await postJson('/app/api/mobile-shell/device/register/', payloadBase);
+            var registerResult = await enqueueCriticalJson(
+                '/app/api/mobile-shell/device/register/',
+                payloadBase,
+                'device_register_' + installId
+            );
+            var registerResp = registerResult && registerResult.data ? registerResult.data : null;
             var configPayload = registerResp && registerResp.data && registerResp.data.config;
             if (configPayload && configPayload.update_required) {
                 showUpdateRequiredOverlay(configPayload);

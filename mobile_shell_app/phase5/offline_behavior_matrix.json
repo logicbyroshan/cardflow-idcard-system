@@ -1,0 +1,346 @@
+{
+    "generated_on":  "2026-04-11",
+    "branch":  "feature/mobile-pwa-shell-phase1",
+    "source_manifest":  "mobile_shell_app/phase0/mobile_routes_manifest.json",
+    "policy_definitions":  {
+                               "read_only_cached":  "Route is allowed to fall back to cached GET response when offline.",
+                               "online_required":  "Route must be fetched from network and returns deterministic offline response when unavailable."
+                           },
+    "counts":  {
+                   "total_routes":  55,
+                   "read_only_cached":  4,
+                   "online_required":  51
+               },
+    "route_policies":  [
+                           {
+                               "path":  "/app/manifest.json",
+                               "category":  "infra",
+                               "policy":  "read_only_cached",
+                               "reason":  "Manifest is safe to read from cache for install/offline bootstrap metadata."
+                           },
+                           {
+                               "path":  "/app/sw.js",
+                               "category":  "infra",
+                               "policy":  "online_required",
+                               "reason":  "Service worker script must come from network to support deterministic release updates."
+                           },
+                           {
+                               "path":  "/app/login/",
+                               "category":  "page",
+                               "policy":  "read_only_cached",
+                               "reason":  "Static or low-volatility shell page can be served from cache when offline."
+                           },
+                           {
+                               "path":  "/app/no-access/",
+                               "category":  "page",
+                               "policy":  "read_only_cached",
+                               "reason":  "Static or low-volatility shell page can be served from cache when offline."
+                           },
+                           {
+                               "path":  "/app/desktop-required/",
+                               "category":  "page",
+                               "policy":  "read_only_cached",
+                               "reason":  "Static or low-volatility shell page can be served from cache when offline."
+                           },
+                           {
+                               "path":  "/app/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/clients/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/clients/\u003cint:client_id\u003e/groups/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/tables/\u003cstr:status\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/table/\u003cint:table_id\u003e/\u003cstr:status\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/reprint/\u003cint:client_id\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/reprint/table/\u003cint:table_id\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/camera/\u003cint:table_id\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/camera/\u003cint:table_id\u003e/\u003cint:card_id\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/notifications/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/profile/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/card/\u003cint:card_id\u003e/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/staff/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/groups/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/settings/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/search/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/website/",
+                               "category":  "page",
+                               "policy":  "online_required",
+                               "reason":  "Page depends on authenticated live data and should require connectivity."
+                           },
+                           {
+                               "path":  "/app/api/auth/login/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/card/\u003cint:card_id\u003e/status/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/card/\u003cint:card_id\u003e/detail/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/card/\u003cint:card_id\u003e/delete/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/table/\u003cint:table_id\u003e/cards/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/table/\u003cint:table_id\u003e/bulk-status/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/table/\u003cint:table_id\u003e/upload-photo/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/table/\u003cint:table_id\u003e/card/add/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/table/\u003cint:table_id\u003e/card/\u003cint:card_id\u003e/update/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/table/\u003cint:table_id\u003e/update-fields/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/staff/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/staff/create/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/staff/\u003cint:staff_id\u003e/update/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/staff/\u003cint:staff_id\u003e/toggle/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/staff/\u003cint:staff_id\u003e/delete/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/profile/update/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/search/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/server-info/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/mobile-shell/config/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/mobile-shell/device/register/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/mobile-shell/device/ping/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/mobile-shell/device/summary/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/impersonate/users/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/impersonate/start/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/impersonate/stop/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/client/create/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/client/\u003cint:client_id\u003e/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/client/\u003cint:client_id\u003e/update/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/client/\u003cint:client_id\u003e/toggle/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/client/\u003cint:client_id\u003e/delete/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/client/\u003cint:client_id\u003e/tables/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/website/portfolio/upload/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           },
+                           {
+                               "path":  "/app/api/website/portfolio/category/\u003cint:category_id\u003e/items/",
+                               "category":  "api",
+                               "policy":  "online_required",
+                               "reason":  "API writes/reads must stay server-authoritative and return deterministic offline errors when disconnected."
+                           }
+                       ]
+}

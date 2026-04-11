@@ -608,6 +608,16 @@ def _get_app_version() -> str:
 
 APP_VERSION = _get_app_version()
 
+try:
+    MOBILE_PWA_CACHE_GENERATION = max(1, int(os.getenv('MOBILE_PWA_CACHE_GENERATION', '1')))
+except ValueError:
+    MOBILE_PWA_CACHE_GENERATION = 1
+
+try:
+    MOBILE_PWA_CACHE_ROLLBACK_WINDOW = max(1, int(os.getenv('MOBILE_PWA_CACHE_ROLLBACK_WINDOW', '2')))
+except ValueError:
+    MOBILE_PWA_CACHE_ROLLBACK_WINDOW = 2
+
 
 # =============================================================================
 # ANDROID MOBILE SHELL POLICY
@@ -620,6 +630,7 @@ MOBILE_SHELL_ANDROID_LATEST_BUILD = max(
 )
 MOBILE_SHELL_ANDROID_LATEST_VERSION = os.getenv('MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0').strip() or '1.0.0'
 MOBILE_SHELL_ANDROID_FORCE_UPDATE = _env_bool('MOBILE_SHELL_ANDROID_FORCE_UPDATE', False)
+MOBILE_SHELL_ANDROID_UPDATE_URL = os.getenv('MOBILE_SHELL_ANDROID_UPDATE_URL', '/static/website/apk/adarsh-admin.apk').strip()
 MOBILE_SHELL_PRIVACY_URL = os.getenv('MOBILE_SHELL_PRIVACY_URL', WEBSITE_URL or SITE_URL).strip()
 MOBILE_SHELL_SUPPORT_URL = os.getenv('MOBILE_SHELL_SUPPORT_URL', WEBSITE_URL or SITE_URL).strip()
 

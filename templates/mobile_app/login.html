@@ -10,13 +10,14 @@
     <meta name="apple-mobile-web-app-title" content="Adarsh IDs">
     <title>Sign In - Adarsh ID Cards</title>
 
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v={{ APP_VERSION|urlencode }}">
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
-    <link rel="manifest" href="/app/manifest.json">
+    <link rel="manifest" href="/app/manifest.json?v={{ APP_VERSION|urlencode }}">
     <link rel="apple-touch-icon" href="{% static 'mobile/images/icon-192.png' %}">
+    <script src="{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}"></script>
 
     <style>
         * { -webkit-tap-highlight-color: transparent; }
@@ -181,23 +182,32 @@
     var deferredInstallPrompt = null;
     var installBtn = document.getElementById('install-app-btn');
     var installBtnText = document.getElementById('install-app-btn-text');
-    var nativeShell = isNativeShell();
+    var envGate = window.adarshMobileEnv || null;
 
     function isNativeShell() {
+        if (envGate && typeof envGate.isNativeShell === 'function') {
+            return envGate.isNativeShell();
+        }
         var cap = window.Capacitor;
         return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+    }
+
+    function isStandalonePwa() {
+        if (envGate && typeof envGate.isStandalonePwa === 'function') {
+            return envGate.isStandalonePwa();
+        }
+        return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
     }
 
     function isIosSafariInstallPath() {
         var ua = navigator.userAgent || '';
         var isIOS = /iPhone|iPad|iPod/i.test(ua);
         var isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
-        var isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-        return isIOS && isSafari && !isStandalone;
+        return isIOS && isSafari && !isStandalonePwa();
     }
 
     function refreshInstallBtnState() {
-        if (nativeShell) {
+        if (isNativeShell()) {
             installBtn.classList.add('hidden');
             return;
         }
@@ -207,23 +217,25 @@
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
+            navigator.serviceWorker.register('/app/sw.js?v={{ APP_VERSION|urlencode }}', { scope: '/app/' }).catch(function () {});
         });
     }
 
-    window.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        deferredInstallPrompt = e;
-        refreshInstallBtnState();
-    });
+    if (!isNativeShell()) {
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            refreshInstallBtnState();
+        });
 
-    window.addEventListener('appinstalled', function () {
-        deferredInstallPrompt = null;
-        refreshInstallBtnState();
-    });
+        window.addEventListener('appinstalled', function () {
+            deferredInstallPrompt = null;
+            refreshInstallBtnState();
+        });
+    }
 
     installBtn.addEventListener('click', async function () {
-        if (nativeShell) {
+        if (isNativeShell()) {
             return;
         }
         if (deferredInstallPrompt) {

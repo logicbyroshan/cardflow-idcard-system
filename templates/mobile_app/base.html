@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0A92DD">
     <!-- PWA Manifest  -  enables 'Add to Home Screen' on Android/Chrome -->
-    <link rel="manifest" href="/app/manifest.json">
+    <link rel="manifest" href="/app/manifest.json?v={{ APP_VERSION|urlencode }}">
     <!-- iOS PWA meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,7 +15,7 @@
     <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
 
     <!-- Tailwind CSS (pre-built, brand colours + all utilities) -->
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}?v={{ APP_VERSION|urlencode }}">
 
     <!-- Alpine.js for mobile pages (full evaluator to support existing modal expressions) -->
     {% include 'partials/common/alpine-loader.html' with include_state=False %}
@@ -27,21 +27,27 @@
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v=5">
-    <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
+    <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v={{ APP_VERSION|urlencode }}">
+    <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}?v={{ APP_VERSION|urlencode }}">
+    <script src="{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}"></script>
+    <script src="{% static 'mobile/js/device-bridge.js' %}?v={{ APP_VERSION|urlencode }}"></script>
 
     <script>
         // Capture install prompt early so it is not missed before UI script initializes.
         window.__deferredInstallPrompt = null;
-        window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            window.__deferredInstallPrompt = e;
-            window.dispatchEvent(new CustomEvent('adarsh:beforeinstallprompt'));
-        });
-        window.addEventListener('appinstalled', function() {
-            window.__deferredInstallPrompt = null;
-            window.dispatchEvent(new CustomEvent('adarsh:appinstalled'));
-        });
+        var envGate = window.adarshMobileEnv;
+        var isNativeShell = !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+        if (!isNativeShell) {
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__deferredInstallPrompt = e;
+                window.dispatchEvent(new CustomEvent('adarsh:beforeinstallprompt'));
+            });
+            window.addEventListener('appinstalled', function() {
+                window.__deferredInstallPrompt = null;
+                window.dispatchEvent(new CustomEvent('adarsh:appinstalled'));
+            });
+        }
     </script>
 
 
@@ -50,11 +56,16 @@
     <script>
         // Block non-mobile devices (but allow PWA standalone mode)
         function checkDevice() {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-                || (window.innerWidth <= 768);
-            const isStandalone = window.navigator.standalone === true
-                || window.matchMedia('(display-mode: standalone)').matches;
-            if (!isMobile && !isStandalone) {
+            var env = window.adarshMobileEnv || null;
+            var isMobile = env && typeof env.isLikelyMobileBrowserContext === 'function'
+                ? env.isLikelyMobileBrowserContext()
+                : (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768);
+            var isStandalone = env && typeof env.isStandalonePwa === 'function'
+                ? env.isStandalonePwa()
+                : (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
+            var isNativeShell = env && typeof env.isNativeShell === 'function' ? env.isNativeShell() : false;
+
+            if (!isMobile && !isStandalone && !isNativeShell) {
                 document.getElementById('mobile-app').style.display = 'none';
                 document.getElementById('desktop-block').style.display = 'flex';
             } else {
@@ -196,7 +207,7 @@
     </div>
 
     <!-- Custom JS -->
-    <script src="{% static 'mobile/js/app.js' %}"></script>
+    <script src="{% static 'mobile/js/app.js' %}?v={{ APP_VERSION|urlencode }}"></script>
     <script>
     window.mobileLogout = function mobileLogout(event) {
         if (event) event.preventDefault();
@@ -225,17 +236,89 @@
     };
 
     (function setupMobileAppUpdateFlow() {
+        var envGate = window.adarshMobileEnv || null;
         var updateScreen = document.getElementById('mobile-update-screen');
         var updateMessage = document.getElementById('mobile-update-message');
         var updateProgress = document.getElementById('mobile-update-progress');
         var updatePercent = document.getElementById('mobile-update-percent');
         var inProgress = false;
 
+        function shouldUseNativeUpdateUi() {
+            if (envGate && typeof envGate.shouldUseNativeUpdateUi === 'function') {
+                return envGate.shouldUseNativeUpdateUi();
+            }
+            var cap = window.Capacitor;
+            return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+        }
+
         function setUpdateProgress(percent, message) {
             var safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
             if (updateProgress) updateProgress.style.width = safePercent + '%';
             if (updatePercent) updatePercent.textContent = Math.round(safePercent) + '%';
             if (message && updateMessage) updateMessage.textContent = message;
+        }
+
+        function getCapacitorPlugins() {
+            var cap = window.Capacitor;
+            if (!cap) return {};
+            return cap.Plugins || {};
+        }
+
+        async function getNativeBuildNumber() {
+            var plugins = getCapacitorPlugins();
+            var appPlugin = plugins.App;
+            if (!appPlugin || typeof appPlugin.getInfo !== 'function') return 0;
+            try {
+                var info = await appPlugin.getInfo();
+                var parsed = parseInt(info && info.build, 10);
+                return Number.isFinite(parsed) ? parsed : 0;
+            } catch (err) {
+                return 0;
+            }
+        }
+
+        async function fetchMobileShellConfig() {
+            try {
+                var buildNum = await getNativeBuildNumber();
+                var url = '/app/api/mobile-shell/config/';
+                if (buildNum > 0) {
+                    url += '?app_build=' + encodeURIComponent(String(buildNum));
+                }
+
+                var response = await fetch(url, { credentials: 'same-origin' });
+                if (!response.ok) return null;
+                var payload = await response.json();
+                if (!payload || !payload.success) return null;
+                return payload.data || null;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function resolveUpdateLink(configData) {
+            if (!configData) return '';
+            var updateUrl = String(configData.update_url || '').trim();
+            var supportUrl = String(configData.support_url || '').trim();
+            return updateUrl || supportUrl || '';
+        }
+
+        async function openUpdateLink(link) {
+            if (!link) return false;
+            var plugins = getCapacitorPlugins();
+            var browser = plugins.Browser;
+            if (browser && typeof browser.open === 'function') {
+                try {
+                    await browser.open({ url: link });
+                    return true;
+                } catch (err) {}
+            }
+
+            try {
+                window.location.href = link;
+                return true;
+            } catch (err) {
+                return false;
+            }
         }
 
         async function activateWaitingWorker(registration) {
@@ -269,6 +352,13 @@
         window.mobileUpdateApp = async function mobileUpdateApp(event) {
             if (event) event.preventDefault();
             if (inProgress) return false;
+
+            if (!shouldUseNativeUpdateUi()) {
+                var browserNextUrl = '/app/?updated=' + Date.now();
+                window.location.replace(browserNextUrl);
+                return false;
+            }
+
             inProgress = true;
 
             if (updateScreen) {
@@ -277,7 +367,21 @@
             }
 
             try {
-                setUpdateProgress(8, 'Checking for latest files...');
+                setUpdateProgress(8, 'Checking latest app release...');
+
+                var configData = await fetchMobileShellConfig();
+                var updateLink = resolveUpdateLink(configData);
+                if (updateLink) {
+                    setUpdateProgress(46, 'Opening update package...');
+                    var opened = await openUpdateLink(updateLink);
+                    if (opened) {
+                        setUpdateProgress(100, 'Install update, then reopen the app.');
+                        inProgress = false;
+                        return false;
+                    }
+                }
+
+                setUpdateProgress(16, 'Refreshing in-app assets...');
 
                 var registrations = [];
                 if ('serviceWorker' in navigator) {
@@ -501,13 +605,14 @@
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).catch(function () {});
+            navigator.serviceWorker.register('/app/sw.js?v={{ APP_VERSION|urlencode }}', { scope: '/app/' }).catch(function () {});
         });
     }
     </script>
 
     <script>
     (function () {
+        var envGate = window.adarshMobileEnv || null;
         var STORAGE_KEY = 'pwa_install_sheet_dismissed_at';
         var DISMISS_TTL_MS = 60 * 60 * 1000; // remind again after 1 hour
         var installEvent = null;
@@ -542,14 +647,31 @@
             openSheet();
         }
 
+        function isNativeShell() {
+            return !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+        }
+
         function isMobileBrowser() {
+            if (envGate && typeof envGate.isMobileBrowser === 'function') {
+                return envGate.isMobileBrowser();
+            }
             var ua = navigator.userAgent || '';
             var mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
             return mobileUa || window.innerWidth <= 768;
         }
 
-        function isStandalone() {
+        function isStandalonePwa() {
+            if (envGate && typeof envGate.isStandalonePwa === 'function') {
+                return envGate.isStandalonePwa();
+            }
             return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+        }
+
+        function canShowInstallCta() {
+            if (envGate && typeof envGate.canShowInstallCta === 'function') {
+                return envGate.canShowInstallCta();
+            }
+            return isMobileBrowser() && !isStandalonePwa() && !isNativeShell();
         }
 
         function wasDismissed() {
@@ -576,7 +698,7 @@
         }
 
         function openSheet() {
-            if (nativeShell || !isInstallPage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
+            if (!isInstallPage || !canShowInstallCta() || wasDismissed()) return;
             refreshCtaState();
             overlay.classList.remove('hidden');
             sheet.classList.remove('hidden');
@@ -592,7 +714,14 @@
             var ua = navigator.userAgent || '';
             var isIOS = /iPhone|iPad|iPod/i.test(ua);
             var isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
-            return isIOS && isSafari && !isStandalone();
+            return isIOS && isSafari && !isStandalonePwa();
+        }
+
+        if (isNativeShell()) {
+            overlay.classList.add('hidden');
+            sheet.classList.add('hidden');
+            cta.classList.add('hidden');
+            return;
         }
 
         window.addEventListener('adarsh:beforeinstallprompt', syncDeferredPrompt);
@@ -636,7 +765,7 @@
         // Fallback: show sheet on mobile browser home dashboard when prompt is unavailable.
         window.addEventListener('load', function () {
             setTimeout(function () {
-                if (isInstallPage && isMobileBrowser() && !wasDismissed() && !isStandalone()) {
+                if (isInstallPage && canShowInstallCta() && !wasDismissed()) {
                     refreshCtaState();
                     openSheet();
                 }
@@ -645,7 +774,7 @@
             // Long-open sessions: check every minute so reminder appears again
             // after the 1-hour cooldown without requiring a page reload.
             setInterval(function () {
-                if (isInstallPage && isMobileBrowser() && !isStandalone() && wasDismissed()) {
+                if (isInstallPage && canShowInstallCta() && wasDismissed()) {
                     var raw = localStorage.getItem(STORAGE_KEY);
                     var ts = parseInt(raw || '0', 10);
                     if (ts && (Date.now() - ts) >= DISMISS_TTL_MS) {

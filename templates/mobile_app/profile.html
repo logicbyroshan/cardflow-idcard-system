@@ -123,6 +123,34 @@
         </div>
     </div>
 
+    <!-- Update Status -->
+    <div class="px-4 pb-3">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">App Update Status</p>
+        <div class="bg-gradient-to-br from-white via-white to-blue-50/35 rounded-2xl shadow-sm border border-blue-100 p-3.5">
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-gray-50 rounded-xl py-2 px-1">
+                    <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Current</p>
+                    <p class="text-[12px] font-semibold text-gray-700 mt-1" x-text="appUpdate.currentBuild"></p>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2 px-1">
+                    <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Latest</p>
+                    <p class="text-[12px] font-semibold text-gray-700 mt-1" x-text="appUpdate.latestVersion"></p>
+                </div>
+                <div class="bg-gray-50 rounded-xl py-2 px-1">
+                    <p class="text-[9px] text-gray-400 uppercase tracking-widest font-bold">Status</p>
+                    <p class="text-[11px] font-semibold mt-1"
+                       :class="appUpdate.statusType === 'ok' ? 'text-green-600' : appUpdate.statusType === 'warn' ? 'text-amber-600' : 'text-blue-600'"
+                       x-text="appUpdate.statusText"></p>
+                </div>
+            </div>
+            <button type="button" @click="loadUpdateStatus()" :disabled="appUpdate.loading"
+                    class="mt-3 w-full py-2.5 text-[12px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition flex items-center justify-center gap-2 disabled:opacity-70">
+                <i class="fa-solid fa-spinner fa-spin" x-show="appUpdate.loading"></i>
+                <span>Refresh Update Status</span>
+            </button>
+        </div>
+    </div>
+
     <!-- App Update + Logout -->
     <div class="px-4 pb-8 space-y-2.5">
         <button type="button"
@@ -166,9 +194,66 @@ function profileApp() {
         editing: false,
         saving: false,
         toast: { show: false, message: '', type: 'info' },
+        appUpdate: {
+            loading: false,
+            currentBuild: '-',
+            latestVersion: '-',
+            statusText: 'Checking...',
+            statusType: 'info',
+        },
         editForm: {
             name: '{{ user_name|escapejs }}',
             phone: '{{ user_phone|escapejs }}',
+        },
+
+        init() {
+            this.loadUpdateStatus();
+        },
+
+        async loadUpdateStatus() {
+            this.appUpdate.loading = true;
+            try {
+                const appBuild = await this.getNativeBuildNumber();
+                const query = appBuild ? ('?app_build=' + encodeURIComponent(String(appBuild))) : '';
+                const res = await fetch('/app/api/mobile-shell/config/' + query, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                });
+                const data = await res.json();
+
+                this.appUpdate.currentBuild = appBuild ? ('Build ' + String(appBuild)) : 'Unknown';
+                this.appUpdate.latestVersion = (data && data.latest_version) ? String(data.latest_version) : '-';
+
+                if (data && data.requires_update) {
+                    this.appUpdate.statusText = 'Update Required';
+                    this.appUpdate.statusType = 'warn';
+                } else if (data && data.recommended_update) {
+                    this.appUpdate.statusText = 'Update Available';
+                    this.appUpdate.statusType = 'warn';
+                } else {
+                    this.appUpdate.statusText = 'Up to Date';
+                    this.appUpdate.statusType = 'ok';
+                }
+            } catch (e) {
+                this.appUpdate.statusText = 'Unable to Check';
+                this.appUpdate.statusType = 'info';
+            }
+            this.appUpdate.loading = false;
+        },
+
+        async getNativeBuildNumber() {
+            try {
+                const cap = window.Capacitor;
+                const appPlugin = cap && cap.Plugins && cap.Plugins.App;
+                if (!appPlugin || typeof appPlugin.getInfo !== 'function') return null;
+                const info = await appPlugin.getInfo();
+                if (!info) return null;
+                const raw = info.build || info.versionCode || info.version || null;
+                const parsed = Number(raw);
+                return Number.isFinite(parsed) ? Math.floor(parsed) : null;
+            } catch (e) {
+                return null;
+            }
         },
 
         toggleEdit() {

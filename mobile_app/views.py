@@ -86,7 +86,29 @@ def _mobile_shell_safe_bool(raw_value, default=False):
     return _truthy(raw_value)
 
 
-def _mobile_shell_app_config_payload(*, app_build=0):
+def _mobile_shell_resolve_url(url_value, *, request=None, fallback=''):
+    raw = str(url_value or '').strip() or str(fallback or '').strip()
+    if not raw:
+        return ''
+
+    if raw.startswith('http://') or raw.startswith('https://'):
+        return raw
+
+    if raw.startswith('/'):
+        if request is not None:
+            try:
+                return request.build_absolute_uri(raw)
+            except Exception:
+                pass
+
+        base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+        if base:
+            return f'{base}{raw}'
+
+    return raw
+
+
+def _mobile_shell_app_config_payload(*, app_build=0, request=None):
     app_build = max(0, _mobile_shell_safe_int(app_build, 0))
     min_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_MIN_BUILD', 1) or 1)
     latest_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_BUILD', min_build) or min_build)
@@ -95,6 +117,16 @@ def _mobile_shell_app_config_payload(*, app_build=0):
 
     update_required = force_toggle or (app_build > 0 and app_build < min_build)
     update_recommended = app_build > 0 and app_build < latest_build
+    update_url = _mobile_shell_resolve_url(
+        getattr(settings, 'MOBILE_SHELL_ANDROID_UPDATE_URL', ''),
+        request=request,
+        fallback='/static/website/apk/adarsh-admin.apk',
+    )
+    support_url = _mobile_shell_resolve_url(
+        getattr(settings, 'MOBILE_SHELL_SUPPORT_URL', ''),
+        request=request,
+        fallback='/app/profile/',
+    )
 
     return {
         'platform': 'android',
@@ -104,8 +136,9 @@ def _mobile_shell_app_config_payload(*, app_build=0):
         'latest_version': str(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0') or '1.0.0'),
         'update_required': update_required,
         'update_recommended': update_recommended,
+        'update_url': update_url,
         'privacy_url': str(getattr(settings, 'MOBILE_SHELL_PRIVACY_URL', '') or ''),
-        'support_url': str(getattr(settings, 'MOBILE_SHELL_SUPPORT_URL', '') or ''),
+        'support_url': support_url,
         'server_app_version': str(getattr(settings, 'APP_VERSION', '') or ''),
     }
 
@@ -982,39 +1015,148 @@ def pwa_service_worker(request):
     A service worker is required by Chrome/Android to enable the PWA install prompt.
     """
     from django.http import HttpResponse
-    sw_content = """\
-/* Adarsh ID Cards — PWA Service Worker */
-const APP_CACHE = 'adarsh-app-v5';
-const STATIC_CACHE = 'adarsh-static-v5';
-const SHELL = ['/app/login/', '/app/manifest.json'];
-const STATIC_ASSETS = [
-    '/static/css/tailwind.css',
-    '/static/css/vendor/fontawesome/all.min.css?v=2',
-    '/static/css/vendor/webfonts/fa-solid-900.woff2',
-    '/static/css/vendor/webfonts/fa-regular-400.woff2',
-    '/static/css/vendor/webfonts/fa-brands-400.woff2',
-    '/static/mobile/css/mobile.css?v=5',
-    '/static/mobile/js/app.js',
-];
+    app_version = str(getattr(settings, 'APP_VERSION', 'v1.0.0') or 'v1.0.0')
+    version_seed = app_version.strip() or 'v1.0.0'
+    normalized_version = re.sub(r'[^a-zA-Z0-9._-]+', '-', version_seed).strip('-').lower() or 'v1.0.0'
 
-function shouldCache(response) {
-    return !!response && (response.status === 200 || response.type === 'opaque');
+    try:
+        cache_generation = max(1, int(getattr(settings, 'MOBILE_PWA_CACHE_GENERATION', 1) or 1))
+    except (TypeError, ValueError):
+        cache_generation = 1
+
+    try:
+        rollback_window = max(1, int(getattr(settings, 'MOBILE_PWA_CACHE_ROLLBACK_WINDOW', 2) or 2))
+    except (TypeError, ValueError):
+        rollback_window = 2
+
+    cache_namespace = f'g{cache_generation}-{normalized_version}'
+    asset_version = f'{normalized_version}.g{cache_generation}'
+    cache_group = 'adarsh-mobile'
+
+    shell_routes = [
+        '/app/login/',
+        '/app/no-access/',
+        '/app/desktop-required/',
+        '/app/manifest.json',
+    ]
+    static_assets = [
+        f'/static/css/tailwind.css?v={asset_version}',
+        '/static/css/vendor/fontawesome/all.min.css?v=2',
+        '/static/css/vendor/webfonts/fa-solid-900.woff2',
+        '/static/css/vendor/webfonts/fa-regular-400.woff2',
+        '/static/css/vendor/webfonts/fa-brands-400.woff2',
+        f'/static/mobile/css/mobile.css?v={asset_version}',
+        f'/static/css/dropdown-unified.css?v={asset_version}',
+        f'/static/mobile/js/environment-gate.js?v={asset_version}',
+        f'/static/mobile/js/device-bridge.js?v={asset_version}',
+        f'/static/mobile/js/app.js?v={asset_version}',
+    ]
+    read_only_cacheable_paths = [
+        '/app/login/',
+        '/app/no-access/',
+        '/app/desktop-required/',
+        '/app/manifest.json',
+    ]
+    online_required_prefixes = [
+        '/app/api/',
+        '/app/camera/',
+        '/app/table/',
+        '/app/reprint/',
+        '/app/clients/',
+        '/app/website/',
+        '/app/staff/',
+        '/app/groups/',
+        '/app/profile/',
+        '/app/settings/',
+        '/app/notifications/',
+        '/app/search/',
+    ]
+
+    sw_template = """\
+/* Adarsh ID Cards — PWA Service Worker (Phase 5) */
+const CACHE_GROUP = '__CACHE_GROUP__';
+const CACHE_NAMESPACE = '__CACHE_NAMESPACE__';
+const CACHE_GENERATION = __CACHE_GENERATION__;
+const ROLLBACK_WINDOW = __ROLLBACK_WINDOW__;
+const APP_CACHE = CACHE_GROUP + '-app-' + CACHE_NAMESPACE;
+const STATIC_CACHE = CACHE_GROUP + '-static-' + CACHE_NAMESPACE;
+const SHELL = __SHELL_JSON__;
+const STATIC_ASSETS = __STATIC_ASSETS_JSON__;
+const READ_ONLY_CACHEABLE_PATHS = __READ_ONLY_PATHS_JSON__;
+const ONLINE_REQUIRED_PREFIXES = __ONLINE_REQUIRED_PREFIXES_JSON__;
+const OFFLINE_HTML = [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<title>Offline - Adarsh IDs</title>',
+    '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#f8fafc;color:#1f2937;} .card{max-width:420px;margin:8vh auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;box-shadow:0 8px 20px rgba(15,23,42,.08);} h1{font-size:20px;margin:0 0 8px;} p{font-size:14px;line-height:1.45;color:#4b5563;margin:0;} a{display:inline-block;margin-top:12px;font-size:13px;text-decoration:none;color:#0a92dd;font-weight:600;}</style>',
+    '</head><body><div class="card"><h1>Offline Mode</h1><p>This page requires internet right now. Reconnect and try again.</p><a href="/app/login/">Open Login</a></div></body></html>'
+].join('');
+
+function shouldCacheResponse(response) {
+    return !!response && response.status === 200;
 }
 
-self.addEventListener('install', function(e) {
-    e.waitUntil(
+function parseGeneration(cacheName) {
+    if (!cacheName) return null;
+    var match = cacheName.match(/-g(\d+)-/);
+    if (!match) return null;
+    var parsed = parseInt(match[1], 10);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isLegacyCache(cacheName) {
+    return /^adarsh-(app|static)-v\d+$/.test(cacheName || '');
+}
+
+function shouldDeleteStaleCache(cacheName, activeCaches) {
+    if (activeCaches.indexOf(cacheName) !== -1) return false;
+    if (isLegacyCache(cacheName)) return true;
+    if ((cacheName || '').indexOf(CACHE_GROUP + '-') !== 0) return false;
+    var generation = parseGeneration(cacheName);
+    if (generation === null) return true;
+    return generation < (CACHE_GENERATION - ROLLBACK_WINDOW);
+}
+
+function isOnlineRequiredPath(pathname) {
+    if (!pathname) return false;
+    return ONLINE_REQUIRED_PREFIXES.some(function(prefix) {
+        return pathname.indexOf(prefix) === 0;
+    });
+}
+
+function isReadOnlyCacheablePath(pathname) {
+    return READ_ONLY_CACHEABLE_PATHS.indexOf(pathname) !== -1;
+}
+
+function offlineJsonResponse() {
+    return new Response(JSON.stringify({ success: false, offline: true, message: 'Network connection required.' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
+
+function offlineHtmlResponse() {
+    return new Response(OFFLINE_HTML, {
+        status: 503,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+}
+
+self.addEventListener('install', function(event) {
+    event.waitUntil(
         Promise.all([
-            caches.open(APP_CACHE).then(async function(c) {
+            caches.open(APP_CACHE).then(async function(cache) {
                 await Promise.allSettled(
                     SHELL.map(function(url) {
-                        return c.add(url);
+                        return cache.add(url);
                     })
                 );
             }),
-            caches.open(STATIC_CACHE).then(async function(c) {
+            caches.open(STATIC_CACHE).then(async function(cache) {
                 await Promise.allSettled(
                     STATIC_ASSETS.map(function(url) {
-                        return c.add(url);
+                        return cache.add(url);
                     })
                 );
             }),
@@ -1023,15 +1165,18 @@ self.addEventListener('install', function(e) {
     self.skipWaiting();
 });
 
-self.addEventListener('activate', function(e) {
-    e.waitUntil(
-        caches.keys().then(function(keys) {
+self.addEventListener('activate', function(event) {
+    var activeCaches = [APP_CACHE, STATIC_CACHE];
+    event.waitUntil(
+        caches.keys().then(function(cacheNames) {
             return Promise.all(
-                keys
-                    .filter(function(k) {
-                        return k !== APP_CACHE && k !== STATIC_CACHE;
+                cacheNames
+                    .filter(function(cacheName) {
+                        return shouldDeleteStaleCache(cacheName, activeCaches);
                     })
-                    .map(function(k) { return caches.delete(k); })
+                    .map(function(cacheName) {
+                        return caches.delete(cacheName);
+                    })
             );
         })
     );
@@ -1044,24 +1189,26 @@ self.addEventListener('message', function(event) {
     }
 });
 
-self.addEventListener('fetch', function(e) {
-    if (e.request.method !== 'GET') return;
+self.addEventListener('fetch', function(event) {
+    if (event.request.method !== 'GET') return;
 
-    var url = new URL(e.request.url);
+    var url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
 
-    if (url.pathname.startsWith('/static/')) {
-        e.respondWith(
-            caches.open(STATIC_CACHE).then(function(c) {
-                return c.match(e.request).then(function(cached) {
-                    var networkFetch = fetch(e.request).then(function(resp) {
-                        if (shouldCache(resp)) {
-                            c.put(e.request, resp.clone());
-                        }
-                        return resp;
-                    }).catch(function() {
-                        return cached;
-                    });
+    if (url.pathname.indexOf('/static/') === 0) {
+        event.respondWith(
+            caches.open(STATIC_CACHE).then(function(cache) {
+                return cache.match(event.request).then(function(cached) {
+                    var networkFetch = fetch(event.request)
+                        .then(function(response) {
+                            if (shouldCacheResponse(response)) {
+                                cache.put(event.request, response.clone());
+                            }
+                            return response;
+                        })
+                        .catch(function() {
+                            return cached;
+                        });
 
                     return cached || networkFetch;
                 });
@@ -1070,17 +1217,65 @@ self.addEventListener('fetch', function(e) {
         return;
     }
 
+    if (url.pathname.indexOf('/app/api/') === 0) {
+        event.respondWith(
+            fetch(event.request).catch(function() {
+                return offlineJsonResponse();
+            })
+        );
+        return;
+    }
+
+    if (isOnlineRequiredPath(url.pathname)) {
+        event.respondWith(
+            fetch(event.request).catch(function() {
+                return offlineHtmlResponse();
+            })
+        );
+        return;
+    }
+
     if (!url.pathname.startsWith('/app/')) return;
 
-    e.respondWith(
-        fetch(e.request).catch(function() {
-            return caches.match(e.request).then(function(cached) {
-                return cached || caches.match('/app/login/');
-            });
+    if (isReadOnlyCacheablePath(url.pathname)) {
+        event.respondWith(
+            caches.open(APP_CACHE).then(function(cache) {
+                return fetch(event.request)
+                    .then(function(response) {
+                        if (shouldCacheResponse(response)) {
+                            cache.put(event.request, response.clone());
+                        }
+                        return response;
+                    })
+                    .catch(function() {
+                        return cache.match(event.request).then(function(cached) {
+                            return cached || cache.match('/app/login/');
+                        });
+                    });
+            })
+        );
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request).catch(function() {
+            return offlineHtmlResponse();
         })
     );
 });
 """
+
+    sw_content = (
+        sw_template
+        .replace('__CACHE_GROUP__', cache_group)
+        .replace('__CACHE_NAMESPACE__', cache_namespace)
+        .replace('__CACHE_GENERATION__', json.dumps(cache_generation))
+        .replace('__ROLLBACK_WINDOW__', json.dumps(rollback_window))
+        .replace('__SHELL_JSON__', json.dumps(shell_routes))
+        .replace('__STATIC_ASSETS_JSON__', json.dumps(static_assets))
+        .replace('__READ_ONLY_PATHS_JSON__', json.dumps(read_only_cacheable_paths))
+        .replace('__ONLINE_REQUIRED_PREFIXES_JSON__', json.dumps(online_required_prefixes))
+    )
     response = HttpResponse(sw_content, content_type='application/javascript')
     response['Service-Worker-Allowed'] = '/app/'
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -3665,7 +3860,7 @@ def api_search(request):
 def api_mobile_shell_config(request):
     """Returns Android shell policy (version/update/support URLs) for runtime checks."""
     app_build = _mobile_shell_safe_int(request.GET.get('app_build'), 0)
-    payload = _mobile_shell_app_config_payload(app_build=app_build)
+    payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({'success': True, 'data': payload})
 
 
@@ -3711,7 +3906,7 @@ def api_mobile_shell_device_register(request):
         defaults=defaults,
     )
 
-    config_payload = _mobile_shell_app_config_payload(app_build=app_build)
+    config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({
         'success': True,
         'data': {
@@ -3764,7 +3959,7 @@ def api_mobile_shell_device_ping(request):
             is_active=True,
         )
 
-    config_payload = _mobile_shell_app_config_payload(app_build=app_build)
+    config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({'success': True, 'data': {'config': config_payload}})
 
 

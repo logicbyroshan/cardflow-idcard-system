@@ -50,6 +50,43 @@ Current scope: Android-first rollout. iOS work is intentionally deferred.
 3. Build signed `AAB` in Android Studio.
 4. Upload to Play Console internal testing.
 
+### GitHub Actions signed release (Phase 6)
+1. Run workflow: `Android Mobile Shell CI` via `workflow_dispatch`.
+2. Set `release_build=true`.
+3. Optionally set:
+   - `release_version` (example: `1.0.0-build12`)
+   - `promote_latest_apk=true`
+4. Required repository secrets:
+   - `ANDROID_KEYSTORE_B64`
+   - `ANDROID_KEYSTORE_PASSWORD`
+   - `ANDROID_KEY_ALIAS`
+   - `ANDROID_KEY_PASSWORD`
+5. Workflow outputs:
+   - Signed release APK + AAB artifact upload.
+   - When promotion is enabled:
+     - Latest APK policy path: `static/website/apk/adarsh-admin.apk`
+     - Versioned rollback archive: `static/website/apk/archive/adarsh-admin-<release-label>.apk|.aab`
+
+### Rollout Guard Automation (Phase 7)
+1. Evaluate release gates before promotion:
+   - `python manage.py mobile_rollout_guard --crash-free-sessions <value> --anr-rate <value> --auth-failure-rate <value> --auth-failure-baseline <value> --upload-failure-rate <value> --upload-failure-baseline <value> --strict`
+2. Optional stale-device cap:
+   - add `--max-stale-30d <count>`.
+3. For broader trend audits:
+   - add `--include-inactive`.
+4. Command outputs JSON for release notes and incident triage.
+
+### Final Preflight Automation (Phase 8)
+1. Run release preflight before production promotion:
+   - `python manage.py mobile_release_preflight --strict --require-local-apk`
+2. This command validates build/version policy and update URL readiness.
+3. Store output JSON with rollout gate evidence for signoff.
+
+### Profile Update Button Runtime
+1. Mobile profile page `Update App` button calls `/app/api/mobile-shell/config/`.
+2. Native shell opens `update_url` from config (backed by `MOBILE_SHELL_ANDROID_UPDATE_URL`).
+3. Fallback behavior keeps cache-refresh flow if update URL cannot be opened.
+
 ## Backend dependencies
 The shell bridge expects these endpoints in Django mobile app:
 1. `GET /app/api/mobile-shell/config/`
