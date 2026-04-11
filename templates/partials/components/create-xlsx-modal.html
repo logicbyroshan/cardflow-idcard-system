@@ -38,7 +38,7 @@ and the JS block at the bottom which wires up the logic.
     <!-- Header -->
     <div class="center-modal-header">
       <h3><i class="fa-solid fa-file-excel"></i> Create Table from XLSX</h3>
-      <button type="button" class="center-modal-header-close" @click="closeModal" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button type="button" id="cxHeaderClose" class="center-modal-header-close" @click="closeModal" title="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <!-- Body -->
     <div class="center-modal-body-area" style="text-align:left;">
@@ -166,6 +166,9 @@ and the JS block at the bottom which wires up the logic.
         <div id="cxProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--color-success,#22c55e),#16a34a);border-radius:4px;transition:width 0.3s;"></div>
       </div>
       <p style="margin:6px 0 0;font-size:11px;color:var(--color-gray-400,#9ca3af);" id="cxProgressPct"></p>
+      <div style="margin-top:14px;">
+        <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxProgressCancelBtn">Cancel Upload</button>
+      </div>
     </div>
     </div><!-- end body-area -->
   </div>

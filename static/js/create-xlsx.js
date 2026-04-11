@@ -97,6 +97,8 @@ function initCreateWithXlsx(opts) {
   // Progress
   var progress     = getByIdLatest('cxProgress');
   var progressText = getByIdLatest('cxProgressText');
+  var progressCancelBtn = getByIdLatest('cxProgressCancelBtn');
+  var headerCloseBtn = getByIdLatest('cxHeaderClose');
 
   var step1El = getByIdLatest('cxStep1');
   var step2El = getByIdLatest('cxStep2');
@@ -126,6 +128,11 @@ function initCreateWithXlsx(opts) {
   var zipFiles = [];
   var detectedFields = [];
   var parsedDataRowCount = 0;
+  var activeXhr = null;
+  var retryTimer = null;
+  var processingTimer = null;
+  var isUploading = false;
+  var cancelRequested = false;
 
   //  Helpers 
   function showStep(n) {
@@ -142,7 +149,47 @@ function initCreateWithXlsx(opts) {
     if (stepLineFill2) stepLineFill2.style.width = n >= 3 ? '100%' : '0%';
   }
 
+  function clearUploadTimers() {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+    if (processingTimer) {
+      clearInterval(processingTimer);
+      processingTimer = null;
+    }
+  }
+
+  function finishUploadFlow() {
+    clearUploadTimers();
+    activeXhr = null;
+    isUploading = false;
+    cancelRequested = false;
+  }
+
+  function abortCurrentUpload(options) {
+    var opts = options || {};
+    if (!isUploading && !activeXhr && !retryTimer) return;
+
+    cancelRequested = true;
+    clearUploadTimers();
+
+    if (activeXhr) {
+      try {
+        activeXhr.abort();
+      } catch (_err) {
+        // no-op
+      }
+      activeXhr = null;
+    }
+
+    isUploading = false;
+    if (opts.returnToStep) showStep(opts.returnToStep);
+    if (!opts.silent && window.showToast) showToast('Upload cancelled.', 'warning');
+  }
+
   function resetModal() {
+    abortCurrentUpload({ silent: true });
     selectedFile = null;
     zipFiles = [];
     detectedFields = [];
@@ -338,6 +385,12 @@ function initCreateWithXlsx(opts) {
   }
 
   function doUpload() {
+    if (!selectedFile || isUploading) return;
+
+    cancelRequested = false;
+    isUploading = true;
+    clearUploadTimers();
+
     step1El.style.display = 'none';
     step2El.style.display = 'none';
     step3El.style.display = 'none';
@@ -384,16 +437,19 @@ function initCreateWithXlsx(opts) {
 
     var _createRetryCount = 0;
     var MAX_RETRIES = 2;
-    var _processingTimer = null;
 
     function attemptUpload() {
+      if (cancelRequested) return;
+
       var xhr = new XMLHttpRequest();
+      activeXhr = xhr;
       xhr.open('POST', apiUrl, true);
       xhr.setRequestHeader('X-CSRFToken', csrfToken);
       xhr.timeout = 600000; // 10-minute timeout
 
       // Phase 1: Upload progress (0%  70%)
       xhr.upload.onprogress = function(e) {
+        if (cancelRequested) return;
         if (e.lengthComputable) {
           var uploadPct = Math.round((e.loaded / e.total) * 70);
           if (progressBar) progressBar.style.width = uploadPct + '%';
@@ -404,11 +460,12 @@ function initCreateWithXlsx(opts) {
 
       // Phase 2: Upload complete  server processing (70%  95%)
       xhr.upload.onloadend = function() {
+        if (cancelRequested) return;
         if (progressBar) progressBar.style.width = '70%';
         if (progressPct) progressPct.textContent = '';
         progressText.textContent = 'Creating table and importing data';
         var _procStart = Date.now();
-        _processingTimer = setInterval(function() {
+        processingTimer = setInterval(function() {
           var el = (Date.now() - _procStart) / 1000;
           var pct = 70 + Math.round(25 * (1 - Math.exp(-el / 10)));
           if (progressBar) progressBar.style.width = Math.min(pct, 95) + '%';
@@ -416,10 +473,16 @@ function initCreateWithXlsx(opts) {
       };
 
       xhr.onload = function() {
-        if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
+        clearUploadTimers();
+        activeXhr = null;
+        if (cancelRequested) {
+          finishUploadFlow();
+          return;
+        }
         try {
           var result = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300 && result.success) {
+            finishUploadFlow();
             waitForProgressSkeleton().then(function() {
               if (progressBar) progressBar.style.width = '100%';
               if (progressPct) progressPct.textContent = 'Done!';
@@ -429,12 +492,14 @@ function initCreateWithXlsx(opts) {
               if (window.alpineCloseModal) window.alpineCloseModal();
               setTimeout(onSuccess, 800);
             });
-          } else if (xhr.status === 429 && _createRetryCount < MAX_RETRIES) {
-            _createRetryCount++;
-            if (progressBar) progressBar.style.width = '0%';
-            progressText.textContent = (result.message || 'Server busy') + ' Retrying...';
-            setTimeout(attemptUpload, 5000);
+          } else if (xhr.status === 429) {
+            finishUploadFlow();
+            waitForProgressSkeleton().then(function() {
+              if (window.showToast) showToast(result.message || 'Another upload is already running. Please wait for it to finish.', 'warning');
+              showStep(1);
+            });
           } else {
+            finishUploadFlow();
             waitForProgressSkeleton().then(function() {
               if (window.showToast) showToast(result.message || 'Failed to create table.', result.level || 'error');
               showStep(1);
@@ -442,6 +507,7 @@ function initCreateWithXlsx(opts) {
           }
         } catch (e) {
           console.error('Create from XLSX parse error:', e);
+          finishUploadFlow();
           waitForProgressSkeleton().then(function() {
             if (window.showToast) showToast('Failed to process server response.', 'error');
             showStep(1);
@@ -450,23 +516,48 @@ function initCreateWithXlsx(opts) {
       };
 
       xhr.onerror = function() {
-        if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
+        clearUploadTimers();
+        activeXhr = null;
+        if (cancelRequested) {
+          finishUploadFlow();
+          return;
+        }
         if (_createRetryCount < MAX_RETRIES) {
           _createRetryCount++;
           if (progressBar) progressBar.style.width = '0%';
           progressText.textContent = 'Network error. Retrying in 5s...';
           if (window.showToast) showToast('Network error. Retrying automatically...', 'error');
-          setTimeout(attemptUpload, 5000);
+          retryTimer = setTimeout(attemptUpload, 5000);
           return;
         }
+        finishUploadFlow();
         waitForProgressSkeleton().then(function() {
           if (window.showToast) showToast('Network error. Please try again.', 'error');
           showStep(1);
         });
       };
 
+      xhr.onabort = function() {
+        clearUploadTimers();
+        activeXhr = null;
+        if (cancelRequested) {
+          cancelRequested = false;
+          isUploading = false;
+          return;
+        }
+        finishUploadFlow();
+        if (window.showToast) showToast('Upload cancelled.', 'warning');
+        showStep(3);
+      };
+
       xhr.ontimeout = function() {
-        if (_processingTimer) { clearInterval(_processingTimer); _processingTimer = null; }
+        clearUploadTimers();
+        activeXhr = null;
+        if (cancelRequested) {
+          finishUploadFlow();
+          return;
+        }
+        finishUploadFlow();
         waitForProgressSkeleton().then(function() {
           if (window.showToast) showToast('Upload timed out  server took too long. Try a smaller file.', 'error');
           showStep(1);
@@ -527,6 +618,16 @@ function initCreateWithXlsx(opts) {
   backBtn.addEventListener('click', function() { showStep(2); });
   skipBtn.addEventListener('click', function() { zipFiles = []; doUpload(); });
   uploadBtn.addEventListener('click', function() { doUpload(); });
+  if (progressCancelBtn) {
+    progressCancelBtn.addEventListener('click', function() {
+      abortCurrentUpload({ returnToStep: 3 });
+    });
+  }
+  if (headerCloseBtn) {
+    headerCloseBtn.addEventListener('click', function() {
+      abortCurrentUpload({ silent: true });
+    });
+  }
 
   //  Button trigger 
   bindTriggerButtons();

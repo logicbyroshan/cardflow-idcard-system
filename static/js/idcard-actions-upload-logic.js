@@ -41,9 +41,89 @@ function initXlsxUpload() {
     var nextBtn = document.getElementById('nextToStep2');
     var backBtn = document.getElementById('backToStep1');
 
+    // Upload lifecycle state (shared across handlers)
+    var _uploadXhr = null;
+    var _uploadTaskId = null;
+    var _taskPollTimer = null;
+    var _retryTimer = null;
+    var _uploadRetryCount = 0;
+    var _pollErrorCount = 0;
+    var _uploadInProgress = false;
+    var _cancelRequested = false;
+    var _activeResetUploadState = null;
+
+    function _clearAsyncTimers() {
+        if (_taskPollTimer) {
+            clearTimeout(_taskPollTimer);
+            _taskPollTimer = null;
+        }
+        if (_retryTimer) {
+            clearTimeout(_retryTimer);
+            _retryTimer = null;
+        }
+    }
+
+    function _cancelActiveUpload(options) {
+        var opts = options || {};
+        if (!_uploadInProgress && !_uploadXhr && !_taskPollTimer && !_retryTimer && !_uploadTaskId) {
+            if (opts.closeModal) closeUploadModalFn();
+            return;
+        }
+
+        _cancelRequested = true;
+        _clearAsyncTimers();
+
+        if (_uploadXhr) {
+            try {
+                _uploadXhr.abort();
+            } catch (_err) {
+                // no-op
+            }
+            _uploadXhr = null;
+        }
+
+        if (_uploadTaskId) {
+            fetch('/api/task-cancel/' + _uploadTaskId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).catch(function(err) {
+                console.error('Cancel upload task failed:', err);
+            });
+        }
+
+        _uploadTaskId = null;
+        _uploadRetryCount = 0;
+        _pollErrorCount = 0;
+        _uploadInProgress = false;
+
+        if (typeof _activeResetUploadState === 'function') {
+            _activeResetUploadState();
+            _activeResetUploadState = null;
+        } else if (typeof hideBlockingOverlay === 'function') {
+            hideBlockingOverlay();
+        }
+
+        _cancelRequested = false;
+        if (opts.closeModal) closeUploadModalFn();
+        if (opts.notify !== false && typeof showToast === 'function') showToast('Upload cancelled', 'warning');
+    }
+
+    window.IDCardApp.cancelActiveUpload = _cancelActiveUpload;
+
+    function handleModalCloseClick() {
+        if (_uploadInProgress || _uploadXhr || _taskPollTimer || _retryTimer || _uploadTaskId) {
+            _cancelActiveUpload({ notify: true, closeModal: true });
+            return;
+        }
+        closeUploadModalFn();
+    }
+
     // Modal close handlers
-    if (closeUploadModal) closeUploadModal.addEventListener('click', closeUploadModalFn);
-    if (cancelUploadModal) cancelUploadModal.addEventListener('click', closeUploadModalFn);
+    if (closeUploadModal) closeUploadModal.addEventListener('click', handleModalCloseClick);
+    if (cancelUploadModal) cancelUploadModal.addEventListener('click', handleModalCloseClick);
     if (uploadModalOverlay) {
         // Disabled  prevent accidental closure on outside click
     }
@@ -222,16 +302,23 @@ function initXlsxUpload() {
 
     //  UPLOAD button (Step 2  send to server) 
     if (confirmUploadModal) {
-        var _uploadXhr = null; // Store current XHR for cancel support
-        var _uploadTaskId = null;
-        var _taskPollTimer = null;
-        
         confirmUploadModal.addEventListener('click', async function() {
+            if (_uploadInProgress) {
+                if (typeof showToast === 'function') showToast('Upload already in progress.', 'warning');
+                return;
+            }
+
             if (!_us.pendingUploadFile) {
                 if (typeof showToast === 'function') showToast('No file to upload', false);
                 closeUploadModalFn();
                 return;
             }
+
+            _uploadInProgress = true;
+            _cancelRequested = false;
+            _uploadRetryCount = 0;
+            _pollErrorCount = 0;
+            _clearAsyncTimers();
 
             var progressSection = document.getElementById('uploadProgressSection');
             var progressBar = document.getElementById('uploadProgressBar');
@@ -244,7 +331,6 @@ function initXlsxUpload() {
             var originalText = this.innerHTML;
             this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
             this.disabled = true;
-            if (cancelBtn) cancelBtn.disabled = true;
             if (backBtnEl) backBtnEl.disabled = true;
 
             if (progressSection) progressSection.style.display = 'block';
@@ -252,21 +338,7 @@ function initXlsxUpload() {
             // Show blocking overlay with cancel support
             if (typeof showBlockingOverlay === 'function') {
                 showBlockingOverlay('Uploading data...', function() {
-                    if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
-                    if (_taskPollTimer) { clearTimeout(_taskPollTimer); _taskPollTimer = null; }
-                    if (_uploadTaskId) {
-                        fetch('/api/task-cancel/' + _uploadTaskId + '/', {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        }).catch(function(err) {
-                            console.error('Cancel upload task failed:', err);
-                        });
-                    }
-                    resetUploadState();
-                    if (typeof showToast === 'function') showToast('Upload cancelled', 'warning');
+                    _cancelActiveUpload({ notify: true, closeModal: false });
                 });
             }
 
@@ -307,6 +379,8 @@ function initXlsxUpload() {
 
             function _pollBulkUploadTask(taskId) {
                 function _pollOnce() {
+                    if (_cancelRequested || !_uploadInProgress) return;
+
                     fetch('/api/task-status/' + taskId + '/', {
                         headers: {
                             'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : '',
@@ -315,11 +389,20 @@ function initXlsxUpload() {
                     })
                         .then(function(r) { return r.json(); })
                         .then(function(taskData) {
+                            if (_cancelRequested || !_uploadInProgress) return;
+
                             if (!taskData || !taskData.success) {
-                                if (typeof showToast === 'function') showToast((taskData && taskData.message) || 'Could not read upload status.', false);
-                                resetUploadState();
+                                _pollErrorCount++;
+                                if (_pollErrorCount >= 6) {
+                                    if (typeof showToast === 'function') showToast((taskData && taskData.message) || 'Could not read upload status.', false);
+                                    resetUploadState();
+                                    return;
+                                }
+                                _taskPollTimer = setTimeout(_pollOnce, 3000);
                                 return;
                             }
+
+                            _pollErrorCount = 0;
 
                             if (taskData.status === 'completed') {
                                 if (progressBar) { progressBar.style.width = '100%'; progressBar.classList.remove('processing'); }
@@ -370,7 +453,14 @@ function initXlsxUpload() {
                             _taskPollTimer = setTimeout(_pollOnce, 2000);
                         })
                         .catch(function(err) {
+                            if (_cancelRequested || !_uploadInProgress) return;
                             console.error('Bulk upload task poll error:', err);
+                            _pollErrorCount++;
+                            if (_pollErrorCount >= 6) {
+                                if (typeof showToast === 'function') showToast('Lost connection while checking upload status. Please refresh and verify upload result.', 'warning');
+                                resetUploadState();
+                                return;
+                            }
                             _taskPollTimer = setTimeout(_pollOnce, 4000);
                         });
                 }
@@ -435,7 +525,15 @@ function initXlsxUpload() {
 
             //  Retry helper: creates a fresh XHR with all handlers 
             function _retryUpload(reason) {
-                _uploadRetryCount = (_uploadRetryCount || 0) + 1;
+                if (_cancelRequested || !_uploadInProgress) return;
+
+                if (reason === 'ratelimit') {
+                    if (typeof showToast === 'function') showToast('Another upload is already running. Please wait and try again.', 'warning');
+                    resetUploadState();
+                    return;
+                }
+
+                _uploadRetryCount = _uploadRetryCount + 1;
                 if (_uploadRetryCount > 2) {
                     if (reason === 'network') {
                         if (typeof showToast === 'function') showToast('Upload failed after multiple retries. Please check your connection and try again.', false);
@@ -446,7 +544,8 @@ function initXlsxUpload() {
                 var delayMsg = reason === 'network' ? 'Network error. Retrying in 5s...' : 'Server is busy. Retrying...';
                 if (timeText) timeText.textContent = delayMsg;
                 if (reason === 'network' && typeof showToast === 'function') showToast('Network error. Retrying automatically...', false);
-                setTimeout(function() {
+                _retryTimer = setTimeout(function() {
+                    if (_cancelRequested || !_uploadInProgress) return;
                     if (timeText) timeText.textContent = 'Retrying upload...';
                     if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
                     _createAndSendXhr();  // Create a completely fresh XHR with all handlers
@@ -490,10 +589,9 @@ function initXlsxUpload() {
                             }, 1500);
                         }, 500);
                     } else if (xhr.status === 429) {
-                        // Rate limited or duplicate request  retry after delay
-                        var retryMsg = result.message || 'Server is busy. Retrying...';
+                        var retryMsg = result.message || 'Another upload is already running. Please wait and try again.';
                         if (typeof showToast === 'function') showToast(retryMsg, 'warning');
-                        _retryUpload('ratelimit');
+                        resetUploadState();
                     } else {
                         var errorMessage = result.message || 'Upload failed (status: ' + xhr.status + ')';
                         if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
@@ -520,11 +618,19 @@ function initXlsxUpload() {
             });
 
             xhr.addEventListener('error', function() {
+                if (_cancelRequested || !_uploadInProgress) return;
                 console.error('Upload XHR error  network failure');
                 _retryUpload('network');
             });
 
+            xhr.addEventListener('abort', function() {
+                if (_cancelRequested || !_uploadInProgress) return;
+                resetUploadState();
+                if (typeof showToast === 'function') showToast('Upload cancelled', 'warning');
+            });
+
             xhr.addEventListener('timeout', function() {
+                if (_cancelRequested || !_uploadInProgress) return;
                 console.error('Upload XHR timeout after 10 minutes');
                 if (typeof showToast === 'function') showToast('Upload timed out  the server took too long to respond. Please try with a smaller file.', 'warning');
                 resetUploadState();
@@ -538,20 +644,27 @@ function initXlsxUpload() {
             }  // end _createAndSendXhr
 
             function resetUploadState() {
-                if (_taskPollTimer) { clearTimeout(_taskPollTimer); _taskPollTimer = null; }
+                _clearAsyncTimers();
                 if (progressSection) progressSection.style.display = 'none';
                 if (progressBar) { progressBar.style.width = '0%'; progressBar.classList.remove('processing'); }
                 confirmUploadModal.innerHTML = originalText;
                 confirmUploadModal.disabled = false;
                 if (cancelBtn) cancelBtn.disabled = false;
                 if (backBtnEl) backBtnEl.disabled = false;
+
+                _uploadInProgress = false;
+                _cancelRequested = false;
+                _uploadRetryCount = 0;
+                _pollErrorCount = 0;
                 _uploadXhr = null;
                 _uploadTaskId = null;
+                _activeResetUploadState = null;
+
                 // Hide blocking overlay
                 if (typeof hideBlockingOverlay === 'function') hideBlockingOverlay();
             }
 
-            var _uploadRetryCount = 0;
+            _activeResetUploadState = resetUploadState;
             _createAndSendXhr();  // Initial send
         });
     }

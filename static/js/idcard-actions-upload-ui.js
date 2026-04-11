@@ -492,6 +492,10 @@ function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCou
 }
 
 function closeUploadModalFn() {
+    if (window.IDCardApp && typeof window.IDCardApp.cancelActiveUpload === 'function') {
+        window.IDCardApp.cancelActiveUpload({ notify: false, closeModal: false });
+    }
+
     var uploadModalOverlay = document.getElementById('uploadModalOverlay');
     if (uploadModalOverlay) {
         uploadModalOverlay.classList.remove('active');
