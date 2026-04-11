@@ -191,8 +191,8 @@
 }
 
 .dashboard-quick-action-drawer {
-    width: min(760px, 100vw);
-    max-width: min(760px, 100vw);
+    width: min(700px, 100vw);
+    max-width: min(700px, 100vw);
     transform: translateX(100%);
     transition: transform 0.2s ease;
     border-left: 1px solid #e2e8f0;

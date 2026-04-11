@@ -88,7 +88,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 8px 20px 0;
+    padding: 0;
   }
 
   @media (max-width: 768px) {
@@ -101,7 +101,7 @@
     }
 
     .imp-grid-wrap {
-      padding: 8px 12px 0;
+      padding: 0;
     }
   }
 
@@ -156,6 +156,8 @@
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border-color, #e0e0e0);
+    border-left: 0;
+    border-right: 0;
     background: #fff;
   }
 
@@ -496,6 +498,7 @@
   function _updateRolePillCounts() {
     var counts = { all: 0, super_admin: 0, admin_staff: 0, client: 0, client_staff: 0 };
     _users.forEach(function(u) {
+      if (u.is_active === false) return;
       counts.all += 1;
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
         counts[u.role] += 1;
@@ -650,6 +653,7 @@
 
   function _render() {
     _filteredUsers = _users.filter(function(u) {
+      if (u.is_active === false) return false;
       if (_role !== 'all' && u.role !== _role) return false;
       if (_text) {
         var q = _text.toLowerCase();

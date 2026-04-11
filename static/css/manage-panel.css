@@ -285,6 +285,30 @@
   background: #e0e7ff;
 }
 
+.backup-panel-theme .backup-actions-primary .notif-search-box {
+  max-width: 320px;
+  min-width: 220px;
+}
+
+.backup-panel-theme .backup-filter-date {
+  width: 150px;
+  min-width: 140px;
+  height: 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.backup-panel-theme .backup-filter-date:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
 .templates-panel-theme .notif-table-wrap,
 .monitor-panel-theme .notif-table-wrap,
 .maintenance-panel-theme #mtGrid {
@@ -2520,6 +2544,17 @@ textarea.panel-form-input {
   .backup-panel-theme .backup-btn-refresh {
     margin-left: auto;
   }
+  .backup-panel-theme .backup-actions-primary .notif-search-box {
+    width: 100%;
+    max-width: none !important;
+    min-width: 0;
+  }
+  .backup-panel-theme .backup-filter-date,
+  .backup-panel-theme #backupStatusFilter {
+    width: auto;
+    min-width: 140px;
+    flex: 1 1 160px;
+  }
   .templates-panel-theme .notif-actions-right,
   .monitor-panel-theme .notif-actions-right,
   .maintenance-panel-theme .notif-actions-right {
@@ -2527,9 +2562,10 @@ textarea.panel-form-input {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
-  .templates-panel-theme .templates-actions-secondary .notif-search-box {
+  .templates-panel-theme .templates-actions-primary .notif-search-box {
     width: 100%;
     max-width: none !important;
+    min-width: 0;
   }
   .template-modal-card {
     width: min(700px, calc(100vw - 24px));

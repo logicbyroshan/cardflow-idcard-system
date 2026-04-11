@@ -10,20 +10,9 @@
 <div class="panel-tab-content panel-tab-full-height templates-panel-theme" id="tab-download-templates">
 
   <div class="notif-actions-bar templates-actions-primary">
-    <div class="notif-actions-left" style="gap:10px;">
+    <div class="notif-actions-left" style="flex:1;min-width:0;gap:10px;align-items:center;flex-wrap:wrap;">
       <span class="templates-panel-kicker"><i class="fa-solid fa-file-export"></i> Download Templates</span>
-      <span class="panel-subtitle" style="margin:0;">Manage template text, font style, and export footer branding in one flow.</span>
-    </div>
-    <div class="notif-actions-right">
-      <button class="btn btn-md btn-primary" onclick="openCreateTemplateModal()">
-        <i class="fa-solid fa-plus"></i> New Template
-      </button>
-    </div>
-  </div>
-
-  <div class="notif-actions-bar templates-actions-secondary">
-    <div class="notif-actions-left" style="flex:1;min-width:0;">
-      <div class="notif-search-box" style="max-width:360px;">
+      <div class="notif-search-box" style="max-width:360px;min-width:240px;">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input
           type="text"
@@ -35,8 +24,11 @@
         >
       </div>
     </div>
-    <div class="notif-actions-right">
+    <div class="notif-actions-right" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
       <span class="panel-muted-count" id="templateTableCount">0 templates</span>
+      <button class="btn btn-md btn-primary" onclick="openCreateTemplateModal()">
+        <i class="fa-solid fa-plus"></i> New Template
+      </button>
     </div>
   </div>
 

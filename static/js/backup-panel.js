@@ -12,6 +12,11 @@
   'use strict';
 
   let _backups = [];
+  let _backupFiltered = [];
+  let _backupSearchText = '';
+  let _backupStatusFilter = 'all';
+  let _backupDateFrom = '';
+  let _backupDateTo = '';
   let _pollTimer = null;
   let _activeModalTaskId = null;
   let _deleteNowCode = '';
@@ -131,6 +136,10 @@
     const container = document.getElementById('backupsList');
     if (!container) return;
 
+    _syncBackupFiltersFromControls();
+    _backupFiltered = _getFilteredBackups();
+    _updateBackupCount(_backupFiltered.length);
+
     if (!_backups.length) {
       container.innerHTML =
         '<div class="backup-empty-state">' +
@@ -140,8 +149,99 @@
       return;
     }
 
-    container.innerHTML = _backups.map(b => _renderCard(b)).join('');
+    if (!_backupFiltered.length) {
+      container.innerHTML =
+        '<div class="backup-empty-state">' +
+        '<i class="fa-solid fa-filter-circle-xmark"></i>' +
+        '<p>No backups match the selected filters.</p>' +
+        '</div>';
+      return;
+    }
+
+    container.innerHTML = _backupFiltered.map(b => _renderCard(b)).join('');
   }
+
+  function _syncBackupFiltersFromControls() {
+    const searchInput = document.getElementById('backupSearchInput');
+    const statusInput = document.getElementById('backupStatusFilter');
+    const dateFromInput = document.getElementById('backupDateFrom');
+    const dateToInput = document.getElementById('backupDateTo');
+
+    _backupSearchText = String(searchInput ? searchInput.value : '').trim().toLowerCase();
+    _backupStatusFilter = String(statusInput ? statusInput.value : 'all').toLowerCase();
+    _backupDateFrom = String(dateFromInput ? dateFromInput.value : '').trim();
+    _backupDateTo = String(dateToInput ? dateToInput.value : '').trim();
+  }
+
+  function _getFilteredBackups() {
+    return _backups.filter(function (backup) {
+      const status = String(backup && backup.status || '').toLowerCase();
+      if (_backupStatusFilter && _backupStatusFilter !== 'all' && status !== _backupStatusFilter) {
+        return false;
+      }
+
+      const dateKey = _dateKey(backup && backup.created_at);
+      if (_backupDateFrom && (!dateKey || dateKey < _backupDateFrom)) {
+        return false;
+      }
+      if (_backupDateTo && (!dateKey || dateKey > _backupDateTo)) {
+        return false;
+      }
+
+      if (!_backupSearchText) return true;
+
+      const clientNames = backup && backup.client_names
+        ? Object.values(backup.client_names).join(' ')
+        : '';
+      const haystack = [
+        'backup',
+        String(backup && backup.id || ''),
+        status,
+        String(backup && backup.current_client || ''),
+        String(clientNames || ''),
+        String(backup && backup.error_message || ''),
+        String(backup && backup.combined_zip && backup.combined_zip.filename || ''),
+      ].join(' ').toLowerCase();
+
+      return haystack.indexOf(_backupSearchText) !== -1;
+    });
+  }
+
+  function _dateKey(isoValue) {
+    if (!isoValue) return '';
+    const date = new Date(isoValue);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function _updateBackupCount(total) {
+    const countEl = document.getElementById('backupTableCount');
+    if (!countEl) return;
+    countEl.textContent = String(total) + ' backup' + (Number(total) === 1 ? '' : 's');
+  }
+
+  window.backupApplyFilters = function () {
+    _syncBackupFiltersFromControls();
+    _renderBackups();
+  };
+
+  window.backupClearFilters = function () {
+    const searchInput = document.getElementById('backupSearchInput');
+    const statusInput = document.getElementById('backupStatusFilter');
+    const dateFromInput = document.getElementById('backupDateFrom');
+    const dateToInput = document.getElementById('backupDateTo');
+
+    if (searchInput) searchInput.value = '';
+    if (statusInput) statusInput.value = 'all';
+    if (dateFromInput) dateFromInput.value = '';
+    if (dateToInput) dateToInput.value = '';
+
+    _syncBackupFiltersFromControls();
+    _renderBackups();
+  };
 
   function _renderBackupsSkeleton(container, rows) {
     const count = Math.max(2, Number(rows || 3));

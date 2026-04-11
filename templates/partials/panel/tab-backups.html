@@ -57,14 +57,35 @@
   </style>
 
   <!-- Actions bar -->
-  <div class="notif-actions-bar">
-    <div class="notif-actions-left">
-      <div>
-        <div class="panel-title"><i class="fa-solid fa-database"></i> Backup Management</div>
-        <div class="panel-subnote">Track backup jobs, restore files, and cleanup actions.</div>
+  <div class="notif-actions-bar backup-actions-primary">
+    <div class="notif-actions-left" style="flex:1;min-width:0;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span class="backup-panel-kicker"><i class="fa-solid fa-database"></i> Backup Management</span>
+      <div class="notif-search-box" style="max-width:320px;min-width:220px;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          type="text"
+          id="backupSearchInput"
+          class="search-input"
+          placeholder="Search backup ID, school, file, status..."
+          oninput="backupApplyFilters()"
+          autocomplete="off"
+        >
       </div>
+      <select id="backupStatusFilter" class="form-select form-select-sm" onchange="backupApplyFilters()" title="Filter by status">
+        <option value="all">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="processing">Processing</option>
+        <option value="completed">Completed</option>
+        <option value="failed">Failed</option>
+      </select>
+      <input type="date" id="backupDateFrom" class="backup-filter-date" onchange="backupApplyFilters()" title="From date">
+      <input type="date" id="backupDateTo" class="backup-filter-date" onchange="backupApplyFilters()" title="To date">
+      <button type="button" class="btn btn-sm btn-neutral" onclick="backupClearFilters()">
+        <i class="fa-solid fa-filter-circle-xmark"></i> Clear
+      </button>
     </div>
-    <div class="notif-actions-right">
+    <div class="notif-actions-right" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+      <span class="panel-muted-count" id="backupTableCount">0 backups</span>
       <button type="button" class="btn btn-sm btn-outline-primary backup-btn-refresh" onclick="loadBackups()">
         <i class="fa-solid fa-arrows-rotate"></i> Refresh
       </button>

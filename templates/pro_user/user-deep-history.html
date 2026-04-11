@@ -43,7 +43,7 @@
     100% { background-position: -200% 0; }
   }
   .audit-page {
-    padding: 0 0 12px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -75,9 +75,10 @@
   .audit-content-scroll {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 8px 20px 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
   }
 
   .audit-page .action-bar {
@@ -144,11 +145,13 @@
     flex-direction: column;
     min-height: 0;
     border: 1px solid var(--audit-border);
+    border-left: 0;
+    border-right: 0;
     background: var(--audit-surface);
   }
   .audit-users-table-wrap {
     min-height: 0;
-    max-height: 360px;
+    max-height: none;
     overflow: auto;
   }
   .audit-users-table {
@@ -321,11 +324,17 @@
     white-space: nowrap;
   }
   .audit-history {
-    margin-top: 12px;
+    margin-top: 0;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     background: var(--audit-surface);
     border: 1px solid var(--audit-border);
-    border-radius: 12px;
-    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
   }
   .audit-history-head {
@@ -353,7 +362,7 @@
   }
   .audit-stat-label { font-size: 11px; color: var(--color-gray-500, #64748b); text-transform: uppercase; letter-spacing: 0.03em; }
   .audit-stat-value { font-size: 18px; font-weight: 700; color: var(--audit-text); line-height: 1.2; }
-  .audit-log-list { max-height: 520px; overflow-y: auto; }
+  .audit-log-list { flex: 1; min-height: 0; overflow-y: auto; }
   .audit-log-item {
     display: grid;
     grid-template-columns: 42px 1fr;
@@ -424,7 +433,7 @@
   @media (max-width: 768px) {
     .audit-page .pro-feature-tabs { padding: 0 12px; }
     .audit-page .action-bar { padding: 8px 12px; }
-    .audit-content-scroll { padding: 8px 12px; }
+    .audit-content-scroll { padding: 0; }
     .audit-users-shell .pagination-bar {
       padding: 6px;
       gap: 8px;

@@ -963,6 +963,20 @@ class ImpersonationApiTests(TestCase):
         response = self.client.get('/panel/api/auth/impersonate/users/')
         self.assertEqual(response.status_code, 403)
 
+    def test_impersonation_list_excludes_inactive_users(self):
+        self.target_user.is_active = False
+        self.target_user.save(update_fields=['is_active'])
+
+        self.client.login(username='pro-user-imp@example.com', password='testpass123')
+        response = self.client.get('/panel/api/auth/impersonate/users/')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        returned_ids = {entry['id'] for entry in payload['users']}
+        self.assertNotIn(self.target_user.id, returned_ids)
+        self.assertIn(self.normal_user.id, returned_ids)
+
     def test_impersonation_start_requires_pro_user(self):
         self.client.login(username='normal-user-imp@example.com', password='testpass123')
         response = self.client.post(

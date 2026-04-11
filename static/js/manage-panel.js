@@ -1574,7 +1574,6 @@ function renderTemplateTable() {
       <td>
         <div class="notif-title-cell">
           <strong class="text-sm">${escHtml(t.name)}</strong>
-          <span class="text-xs text-gray-400">${t.is_default ? 'Default template' : 'Custom template'}</span>
         </div>
       </td>
       <td><span class="text-xs text-gray-600">${escHtml(preview)}</span></td>
