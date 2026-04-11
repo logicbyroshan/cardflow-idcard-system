@@ -1893,7 +1893,7 @@ class ClientApiIntegrationTests(TestCase):
 
 
 class ClientActivationPasswordFlowTests(TestCase):
-    def test_first_activation_preserves_custom_password(self):
+    def test_first_activation_sends_credentials_and_rotates_unknown_password(self):
         from core.services import ClientService
         from core.models import EmailLog
 
@@ -1911,19 +1911,25 @@ class ClientActivationPasswordFlowTests(TestCase):
         created_user = User.objects.get(email='client-custom-activation@test.com')
         self.assertTrue(created_user.check_password(custom_password))
 
-        with mock.patch('client.services_client_core.send_welcome_email') as send_welcome_mock:
+        def _fake_send_welcome(*args, **kwargs):
+            on_success = kwargs.get('on_success')
+            if on_success:
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('client.services_client_core.send_welcome_email', side_effect=_fake_send_welcome) as send_welcome_mock:
             toggle_result = ClientService.toggle_status(client_id)
 
         self.assertTrue(toggle_result.success, msg=toggle_result.message)
         created_user.refresh_from_db()
         self.assertTrue(created_user.is_active)
-        self.assertTrue(created_user.check_password(custom_password))
-        send_welcome_mock.assert_not_called()
-        self.assertFalse(
+        self.assertFalse(created_user.check_password(custom_password))
+        self.assertTrue(created_user.welcome_email_sent)
+        send_welcome_mock.assert_called_once()
+        self.assertTrue(
             EmailLog.objects.filter(
                 recipient_email='client-custom-activation@test.com',
-                email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                status=EmailLog.STATUS_ON_HOLD,
+                status=EmailLog.STATUS_SENT,
             ).exists()
         )
 

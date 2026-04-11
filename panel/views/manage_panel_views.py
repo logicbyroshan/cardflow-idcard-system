@@ -170,8 +170,8 @@ def api_email_logs(request):
             'status': log.status,
             'status_display': log.get_status_display(),
             'error_message': log.error_message,
-            'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
-            'sent_at': log.sent_at.strftime('%d-%m-%Y %H:%M') if log.sent_at else None,
+            'created_at': timezone.localtime(log.created_at).strftime('%d-%m-%Y %H:%M'),
+            'sent_at': timezone.localtime(log.sent_at).strftime('%d-%m-%Y %H:%M') if log.sent_at else None,
         }
         for log in page_obj
     ]

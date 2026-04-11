@@ -138,7 +138,7 @@ def _serialize_login_history_event(entry, action_display_map, now):
         'ip_address': entry.ip_address or '',
         'icon_class': entry.icon_class,
         'icon_color': entry.icon_color,
-        'created_at': entry.created_at.strftime('%d-%m-%Y %H:%M'),
+        'created_at': timezone.localtime(entry.created_at).strftime('%d-%m-%Y %H:%M'),
         'time_ago': django_timesince(entry.created_at, now) + ' ago',
     }
     event.update(meta)

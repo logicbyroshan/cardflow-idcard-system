@@ -105,6 +105,12 @@ class ClientService(BaseService):
         return '' if value.endswith('@noemail.local') else value
 
     @staticmethod
+    def _has_real_email(email: str) -> bool:
+        """Return True when the address is usable for outbound SMTP delivery."""
+        value = (email or '').strip().lower()
+        return bool(value and '@' in value and not value.endswith('@noemail.local'))
+
+    @staticmethod
     def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
         """Return a safe error response while retaining full server-side diagnostics."""
         logger.exception('ClientService.%s failed: %s', action, exc)
@@ -456,30 +462,22 @@ class ClientService(BaseService):
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
         """Toggle client active/inactive status (atomic to prevent lost toggles).
-        On first activation, generates/sends credentials only when no known password
-        was provided at creation time.
+        On first activation, attempts to send credentials to the client's email.
         """
         try:
             # Collect state needed for email (must be outside atomic for clean email send)
             send_welcome = False
             welcome_email_info = {}
             welcome_user_id = None
+            welcome_email_log_id = None
+            welcome_email_failed_reason = ''
+            welcome_skipped_reason = ''
 
             with transaction.atomic():
                 client = Client.objects.select_related('user').select_for_update().get(id=client_id)
                 user = client.user
-
-                has_pending_welcome = EmailLog.objects.filter(
-                    recipient_email=user.email,
-                    email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                    status=EmailLog.STATUS_ON_HOLD,
-                ).exists()
-                has_known_phone_password = bool((user.phone or '').strip())
-                is_first_activation = (
-                    (client.status != 'active')
-                    and has_pending_welcome
-                    and not has_known_phone_password
-                )
+                real_email_available = cls._has_real_email(user.email)
+                is_first_activation = (client.status != 'active') and (not user.welcome_email_sent)
 
                 if client.status == 'active':
                     # Deactivate
@@ -496,21 +494,50 @@ class ClientService(BaseService):
                     status_display = 'Active'
                     deactivated_staff_count = 0
 
-                    if is_first_activation:
-                        first_password = generate_secure_password()
-                        user.set_password(first_password)
-                        # Do NOT set welcome_email_sent here — set it only after
-                        # the email is actually delivered so retries are possible.
-                        user.save(update_fields=['is_active', 'password'])
+                    if is_first_activation and real_email_available:
+                        phone_value = (user.phone or '').strip()
+                        can_reuse_phone_password = bool(phone_value) and user.check_password(phone_value)
+                        email_variant = 'welcome'
+                        credential_password = phone_value
+
+                        if not can_reuse_phone_password:
+                            credential_password = generate_secure_password()
+                            user.set_password(credential_password)
+                            email_variant = 'temp_password'
+                            user.save(update_fields=['is_active', 'password'])
+                        else:
+                            user.save(update_fields=['is_active'])
+
+                        subject = (
+                            'Your Temporary Password — Adarsh Admin'
+                            if email_variant == 'temp_password'
+                            else 'Welcome to Adarsh Admin - Your Account is Ready!'
+                        )
+                        log = EmailLog.objects.create(
+                            recipient_name=client.name or user.get_full_name() or user.username,
+                            recipient_email=user.email,
+                            subject=subject,
+                            email_type=(
+                                EmailLog.EMAIL_TYPE_TEMP_PASSWORD
+                                if email_variant == 'temp_password'
+                                else EmailLog.EMAIL_TYPE_WELCOME
+                            ),
+                            status=EmailLog.STATUS_ON_HOLD,
+                        )
+
                         send_welcome = True
                         welcome_user_id = user.pk
+                        welcome_email_log_id = log.pk
                         welcome_email_info = {
                             'name': client.name or user.get_full_name(),
                             'email': user.email,
-                            'password': first_password,
+                            'password': credential_password,
                             'phone': user.phone or '',
+                            'email_variant': email_variant,
                         }
                     else:
+                        if is_first_activation and not real_email_available:
+                            welcome_skipped_reason = 'No valid email found for this client, so activation email was skipped.'
                         user.save(update_fields=['is_active'])
 
                     client.save(update_fields=['status', 'updated_at'])
@@ -519,41 +546,55 @@ class ClientService(BaseService):
             if send_welcome:
                 _user_pk = welcome_user_id
                 _email = welcome_email_info['email']
+                _log_id = welcome_email_log_id
 
                 def _on_email_success():
                     try:
                         User.objects.filter(pk=_user_pk).update(welcome_email_sent=True)
-                        EmailLog.objects.filter(
-                            recipient_email=_email,
-                            email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                            status=EmailLog.STATUS_ON_HOLD,
-                        ).update(status=EmailLog.STATUS_SENT)
+                        EmailLog.objects.filter(pk=_log_id).update(
+                            status=EmailLog.STATUS_SENT,
+                            sent_at=localtime(),
+                            error_message='',
+                        )
                     except Exception as cb_err:
                         logger.warning('Email success callback failed for %s: %s', _email, cb_err)
 
                 def _on_email_failure(err_msg):
                     try:
-                        EmailLog.objects.filter(
-                            recipient_email=_email,
-                            email_type=EmailLog.EMAIL_TYPE_WELCOME,
-                            status=EmailLog.STATUS_ON_HOLD,
-                        ).update(status=EmailLog.STATUS_FAILED, error_message=str(err_msg))
+                        EmailLog.objects.filter(pk=_log_id).update(
+                            status=EmailLog.STATUS_FAILED,
+                            error_message=str(err_msg),
+                        )
                     except Exception as cb_err:
                         logger.warning('Email failure callback failed for %s: %s', _email, cb_err)
 
-                send_welcome_email(
-                    name=welcome_email_info['name'],
-                    email=welcome_email_info['email'],
-                    password=welcome_email_info['password'],
-                    role='client',
-                    phone=welcome_email_info['phone'],
-                    on_success=_on_email_success,
-                    on_failure=_on_email_failure,
-                )
+                try:
+                    queued, queue_message = send_welcome_email(
+                        name=welcome_email_info['name'],
+                        email=welcome_email_info['email'],
+                        password=welcome_email_info['password'],
+                        role='client',
+                        phone=welcome_email_info['phone'],
+                        email_variant=welcome_email_info['email_variant'],
+                        on_success=_on_email_success,
+                        on_failure=_on_email_failure,
+                    )
+                except Exception as email_err:
+                    queued = False
+                    queue_message = str(email_err)
+
+                if not queued:
+                    welcome_email_failed_reason = queue_message or 'Failed to queue activation email.'
+                    _on_email_failure(welcome_email_failed_reason)
 
             message = f'Client status changed to {status_display}!'
             if send_welcome:
-                message += ' Welcome email queued for delivery.'
+                if welcome_email_failed_reason:
+                    message += f' Activation email could not be sent: {welcome_email_failed_reason}'
+                else:
+                    message += ' Activation email queued for delivery.'
+            elif welcome_skipped_reason:
+                message += f' {welcome_skipped_reason}'
             if deactivated_staff_count > 0:
                 message += f' ({deactivated_staff_count} staff members also deactivated)'
                 logger.info(

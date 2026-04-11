@@ -1,11 +1,13 @@
 import json
 import os
 import tempfile
+from datetime import datetime, timezone as dt_timezone
 from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from client.models import Client
 from staff.models import Staff
@@ -306,6 +308,22 @@ class PanelEmailApiTests(PanelBaseTestCase):
         self.assertTrue(payload['success'])
         self.assertEqual(payload['total'], 1)
         self.assertEqual(payload['logs'][0]['recipient_email'], 'other@test.com')
+
+    def test_email_logs_endpoint_serializes_local_timezone(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+
+        created_utc = datetime(2026, 1, 1, 0, 0, tzinfo=dt_timezone.utc)
+        EmailLog.objects.filter(pk=self.sent_log.pk).update(created_at=created_utc)
+
+        response = self.client.get('/panel/api/email-logs/?search=panel-client@test.com')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['total'], 1)
+
+        expected_local = timezone.localtime(created_utc).strftime('%d-%m-%Y %H:%M')
+        self.assertEqual(payload['logs'][0]['created_at'], expected_local)
 
     def test_email_logs_endpoint_denies_admin_staff_without_email_permission(self):
         self.client.login(username='panel-admin-staff@test.com', password='pass1234')
