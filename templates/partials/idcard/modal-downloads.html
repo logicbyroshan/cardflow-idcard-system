@@ -177,7 +177,7 @@
         </div>
         <div class="download-img-wizard-chip" data-dl-wizard-chip="4">
           <span class="download-img-wizard-chip-index">4</span>
-          <span class="download-img-wizard-chip-label">Preview</span>
+          <span class="download-img-wizard-chip-label">Compress</span>
         </div>
       </div>
 
@@ -236,11 +236,11 @@
 
       <div id="downloadImgWizardStep3Generate" class="download-img-wizard-step mb-2" style="display:none;">
         <div class="download-img-section-heading is-generate">Step 3: Generate Layout</div>
-        <p class="center-modal-note mt-0 mb-2">Generate mode creates a white background photo card with fixed print sizes, centered image, and text below the photo.</p>
+        <p class="center-modal-note mt-0 mb-2">Generate mode creates a white background photo card with fixed print sizes, centered image, and text below the photo. You can set optional compression in the next step.</p>
 
         <div id="downloadImgGeneratePanel" class="download-img-generate-panel">
           <div class="download-img-size-row mb-2">
-            <span class="download-img-size-label">Generated card size</span>
+            <span class="download-img-size-label">Generated photo size</span>
             <label class="download-img-generate-checkbox-label">
               <input type="checkbox" id="downloadImgGenerateSizeSmall" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
               23 mm x 34 mm
@@ -287,7 +287,13 @@
             <label for="downloadImgGenerateCustomDate" class="center-modal-label text-left block mb-1">Custom Date</label>
             <input type="text" id="downloadImgGenerateCustomDate" class="download-img-generate-input" maxlength="40" placeholder="e.g. 10-04-2026">
           </div>
+        </div>
+      </div>
 
+      <div id="downloadImgWizardStep4" class="download-img-wizard-step" style="display:none;">
+        <div class="download-img-section-heading is-preview">Step 4: Compress (Optional)</div>
+        <p class="center-modal-note mt-0 mb-1">Enable this to reduce generated photo file size before download.</p>
+        <div class="download-img-generate-panel mt-2">
           <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
             <input type="checkbox" id="downloadImgCompressToggle" class="w-4 h-4 rounded border-gray-400 accent-purple-600 cursor-pointer">
             Compress generated image to target size
@@ -297,14 +303,6 @@
             <input type="number" id="downloadImgCompressTargetKb" class="download-img-kb-input" min="10" max="200" step="1" value="40">
             <p class="center-modal-note mt-1 mb-0">Range: 10 to 200 KB. Dimensions stay fixed; compression reduces quality only.</p>
           </div>
-        </div>
-      </div>
-
-      <div id="downloadImgWizardStep4" class="download-img-wizard-step" style="display:none;">
-        <div class="download-img-section-heading is-preview">Step 4: Filename Preview</div>
-        <p class="center-modal-note mt-0 mb-1">Review the output naming pattern before download.</p>
-        <div class="download-img-preview mt-2">
-          <div id="downloadImgRenamePreview" class="download-img-preview-value">NAME.jpg</div>
         </div>
       </div>
 

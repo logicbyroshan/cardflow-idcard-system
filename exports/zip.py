@@ -104,10 +104,10 @@ class ZipExporter:
             'photo_mm': (19.0, 25.0),
             'padding_mm': 2.0,
             'gap_below_photo_mm': 1.5,
-            'detail_bottom_gap_mm': 2.0,
+            'detail_bottom_gap_mm': 1.25,
             'name_font_pt': 7.0,
             'detail_font_pt': 5.0,
-            'line_gap_mm': 0.6,
+            'line_gap_mm': 0.8,
         },
         'size_37x53': {
             'canvas_mm': (37.0, 53.0),
@@ -117,7 +117,7 @@ class ZipExporter:
             'detail_bottom_gap_mm': 3.0,
             'name_font_pt': 12.0,
             'detail_font_pt': 9.0,
-            'line_gap_mm': 0.9,
+            'line_gap_mm': 0.8,
         },
     }
     GENERATED_TEXT_COLOR = (17, 24, 39)
@@ -1256,7 +1256,7 @@ class ZipExporter:
                 detail_text = ''
                 name_height = 0
                 detail_height = 0
-                minimum_gap_px = 2
+                minimum_gap_px = max(1, int(layout.get('line_gap_px', 1)))
 
                 while True:
                     name_font = self._resolve_name_font_for_generate(

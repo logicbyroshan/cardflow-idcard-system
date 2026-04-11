@@ -295,7 +295,9 @@ function _dlSetActiveImageMode(mode) {
 
 function _dlGetImageWizardMaxStep() {
     const mode = _dlGetActiveImageMode();
-    return mode ? 4 : 1;
+    if (mode === 'generate') return 4;
+    if (mode === 'rename') return 3;
+    return 1;
 }
 
 function _dlSetImageWizardStep(step) {
@@ -340,7 +342,7 @@ function _dlSyncImageWizardUi() {
     const step2El = document.getElementById('downloadImgWizardStep2');
     const renameStepEl = document.getElementById('downloadImgRenameFieldsSection');
     const generateStepEl = document.getElementById('downloadImgWizardStep3Generate');
-    const previewStepEl = document.getElementById('downloadImgWizardStep4');
+    const step4El = document.getElementById('downloadImgWizardStep4');
     const wizardProgressEl = document.getElementById('downloadImgWizardProgress');
     const wizardNavEl = document.querySelector('#downloadImgRenamePanel .download-img-wizard-nav');
     const step1HeadingEl = document.querySelector('#downloadImgWizardStep1 .download-img-section-heading');
@@ -362,7 +364,7 @@ function _dlSyncImageWizardUi() {
     if (step2El) step2El.style.display = (mode && _dlImageWizardStep === 2) ? 'block' : 'none';
     if (renameStepEl) renameStepEl.style.display = (mode === 'rename' && _dlImageWizardStep === 3) ? 'block' : 'none';
     if (generateStepEl) generateStepEl.style.display = (mode === 'generate' && _dlImageWizardStep === 3) ? 'block' : 'none';
-    if (previewStepEl) previewStepEl.style.display = (mode && _dlImageWizardStep === 4) ? 'block' : 'none';
+    if (step4El) step4El.style.display = (mode === 'generate' && _dlImageWizardStep === 4) ? 'block' : 'none';
 
     if (wizardProgressEl) wizardProgressEl.style.display = hasMode ? 'grid' : 'none';
     if (wizardNavEl) wizardNavEl.style.display = hasMode ? 'flex' : 'none';
@@ -395,7 +397,7 @@ function _dlSyncImageWizardUi() {
 
     if (nextBtn) {
         nextBtn.disabled = _dlImageWizardStep >= maxStep;
-        nextBtn.textContent = (_dlImageWizardStep === maxStep - 1) ? 'Preview' : 'Next';
+        nextBtn.textContent = 'Next';
     }
 
     if (confirmBtn) {
