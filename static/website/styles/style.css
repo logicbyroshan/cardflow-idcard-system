@@ -881,25 +881,17 @@ body {
 /* ===== Why Choose Us Section ===== */
 .why-choose-us {
     padding: 100px 0;
-    background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
-    position: relative;
-    overflow: hidden;
+    background: var(--white);
 }
 
 .why-choose-us h2 {
     font-size: 2.5rem;
     text-align: center;
     margin-bottom: 3rem;
-    color: #ffffff;
+    color: var(--secondary-color);
     font-weight: 700;
 }
 
-.why-choose-us .container {
-    position: relative;
-    z-index: 1;
-}
-
-.why-choose-us::before,
 .our-works::before {
     content: '';
     position: absolute;
@@ -913,7 +905,6 @@ body {
     background: radial-gradient(circle, rgba(10, 146, 221, 0.55) 0%, rgba(10, 146, 221, 0.2) 48%, transparent 75%);
 }
 
-.why-choose-us::after,
 .our-works::after {
     content: '';
     position: absolute;
