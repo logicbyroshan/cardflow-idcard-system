@@ -33,6 +33,8 @@ from .notification_views import (
 )
 
 from .monitoring_views import (
+    api_activity_log_clear_generate_code,
+    api_activity_log_clear_state,
     api_client_errors,
     api_clear_activity_logs,
     api_monitoring_data,

@@ -6,6 +6,7 @@ from .base import (
     super_admin_required,
     adarsh_cropper,
     login_as_user_page,
+    pro_user_log_deletion_guard_page,
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     dashboard,
@@ -164,6 +165,8 @@ from .task_api import (
 )
 
 from .monitoring_api import (
+    api_activity_log_clear_generate_code,
+    api_activity_log_clear_state,
     api_client_errors,
     api_clear_activity_logs,
     api_monitoring_data,

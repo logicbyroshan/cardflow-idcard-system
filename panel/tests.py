@@ -309,14 +309,6 @@ class PanelEmailApiTests(PanelBaseTestCase):
         self.assertEqual(payload['total'], 1)
         self.assertEqual(payload['logs'][0]['recipient_email'], 'other@test.com')
 
-    def test_email_logs_endpoint_serializes_local_timezone(self):
-        self.client.login(username='panel-super@test.com', password='pass1234')
-
-        created_utc = datetime(2026, 1, 1, 0, 0, tzinfo=dt_timezone.utc)
-        EmailLog.objects.filter(pk=self.sent_log.pk).update(created_at=created_utc)
-
-        response = self.client.get('/panel/api/email-logs/?search=panel-client@test.com')
-
     def test_email_logs_endpoint_supports_oldest_sort(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         EmailLog.objects.filter(id=self.sent_log.id).update(created_at=timezone.now() - timedelta(days=2))
@@ -330,20 +322,20 @@ class PanelEmailApiTests(PanelBaseTestCase):
         self.assertEqual(payload['logs'][0]['id'], self.sent_log.id)
 
     def test_email_logs_endpoint_serializes_local_timezone(self):
-    self.client.login(username='panel-super@test.com', password='pass1234')
+        self.client.login(username='panel-super@test.com', password='pass1234')
 
-    created_utc = datetime(2026, 1, 1, 0, 0, tzinfo=dt_timezone.utc)
-    EmailLog.objects.filter(pk=self.sent_log.pk).update(created_at=created_utc)
+        created_utc = datetime(2026, 1, 1, 0, 0, tzinfo=dt_timezone.utc)
+        EmailLog.objects.filter(pk=self.sent_log.pk).update(created_at=created_utc)
 
-    response = self.client.get('/panel/api/email-logs/?search=panel-client@test.com')
-    self.assertEqual(response.status_code, 200)
+        response = self.client.get('/panel/api/email-logs/?search=panel-client@test.com')
+        self.assertEqual(response.status_code, 200)
 
-    payload = response.json()
-    self.assertTrue(payload['success'])
-    self.assertEqual(payload['total'], 1)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['total'], 1)
 
-    expected_local = timezone.localtime(created_utc).strftime('%d-%m-%Y %H:%M')
-    self.assertEqual(payload['logs'][0]['created_at'], expected_local)
+        expected_local = timezone.localtime(created_utc).strftime('%d-%m-%Y %H:%M')
+        self.assertEqual(payload['logs'][0]['created_at'], expected_local)
 
     def test_email_logs_endpoint_denies_admin_staff_without_email_permission(self):
         self.client.login(username='panel-admin-staff@test.com', password='pass1234')
@@ -726,6 +718,130 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         allowed = self.client.get('/panel/api/operations-feed/')
         self.assertEqual(allowed.status_code, 200)
         self.assertTrue(allowed.json()['success'])
+
+    def test_clear_activity_logs_super_admin_creates_pending_request(self):
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='login',
+            description='Safety test log',
+        )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        code_response = self.client.get('/panel/api/activity-logs/clear/generate-code/')
+        self.assertEqual(code_response.status_code, 200)
+        confirmation_code = code_response.json().get('code')
+        self.assertTrue(confirmation_code)
+
+        response = self.client.post(
+            '/panel/api/activity-logs/clear/',
+            data=json.dumps({'confirmation_code': confirmation_code}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertTrue(payload.get('pending_pro_user_confirmation'))
+        self.assertEqual(payload.get('state', {}).get('status'), 'pending_pro_user_confirmation')
+        self.assertEqual(ActivityLog.objects.count(), 1)
+
+    def test_clear_activity_logs_pro_user_requires_pending_request(self):
+        pro_user = User.objects.create_user(
+            username='panel-pro-clear@test.com',
+            email='panel-pro-clear@test.com',
+            password='pass1234',
+            role='pro_user',
+        )
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='login',
+            description='Pending request required',
+        )
+
+        self.client.login(username=pro_user.username, password='pass1234')
+        code_response = self.client.get('/panel/api/activity-logs/clear/generate-code/')
+        self.assertEqual(code_response.status_code, 200)
+        confirmation_code = code_response.json().get('code')
+
+        response = self.client.post(
+            '/panel/api/activity-logs/clear/',
+            data=json.dumps({'confirmation_code': confirmation_code}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 409)
+        payload = response.json()
+        self.assertFalse(payload.get('success'))
+        self.assertEqual(payload.get('code'), 'no_pending_request')
+        self.assertEqual(ActivityLog.objects.count(), 1)
+
+    def test_clear_activity_logs_pro_user_confirms_and_archives(self):
+        pro_user = User.objects.create_user(
+            username='panel-pro-confirm@test.com',
+            email='panel-pro-confirm@test.com',
+            password='pass1234',
+            role='pro_user',
+        )
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='login',
+            description='Archive me first',
+        )
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='settings_update',
+            description='Archive me second',
+        )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        admin_code_response = self.client.get('/panel/api/activity-logs/clear/generate-code/')
+        self.assertEqual(admin_code_response.status_code, 200)
+        admin_code = admin_code_response.json().get('code')
+        self.assertTrue(admin_code)
+        request_response = self.client.post(
+            '/panel/api/activity-logs/clear/',
+            data=json.dumps({'confirmation_code': admin_code}),
+            content_type='application/json',
+        )
+        self.assertEqual(request_response.status_code, 200)
+        self.assertTrue(request_response.json().get('pending_pro_user_confirmation'))
+
+        self.client.login(username=pro_user.username, password='pass1234')
+        pro_code_response = self.client.get('/panel/api/activity-logs/clear/generate-code/')
+        self.assertEqual(pro_code_response.status_code, 200)
+        pro_code = pro_code_response.json().get('code')
+        self.assertTrue(pro_code)
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                response = self.client.post(
+                    '/panel/api/activity-logs/clear/',
+                    data=json.dumps({'confirmation_code': pro_code}),
+                    content_type='application/json',
+                )
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertTrue(payload.get('success'))
+            self.assertGreaterEqual(payload.get('deleted_count', 0), 2)
+            self.assertEqual(ActivityLog.objects.count(), 0)
+
+            archive_rel = payload.get('archive_relative_path')
+            self.assertTrue(archive_rel)
+            archive_abs = os.path.join(media_root, *archive_rel.split('/'))
+            self.assertTrue(os.path.exists(archive_abs))
+
+            with open(archive_abs, 'r', encoding='utf-8') as archive_file:
+                lines = [line.strip() for line in archive_file if line.strip()]
+
+            self.assertGreaterEqual(len(lines), 3)
+            self.assertIn('activity_log_archive', lines[0])
+            self.assertTrue(any('Archive me first' in line for line in lines[1:]))
+            self.assertTrue(any('Archive me second' in line for line in lines[1:]))
+
+        state_response = self.client.get('/panel/api/activity-logs/clear/state/')
+        self.assertEqual(state_response.status_code, 200)
+        state_payload = state_response.json()
+        self.assertEqual(state_payload.get('state', {}).get('status'), 'idle')
+        self.assertEqual(state_payload.get('state', {}).get('last_completed_by'), pro_user.username)
 
     def test_operations_feed_filters_and_recent_first(self):
         from datetime import timedelta

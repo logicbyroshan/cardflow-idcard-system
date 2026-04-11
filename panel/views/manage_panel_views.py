@@ -102,6 +102,10 @@ def manage_panel(request):
         'email_backend': getattr(django_settings, 'EMAIL_BACKEND', 'SMTP').split('.')[-1].replace('Backend', ''),
         'email_from': getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'Not configured'),
         'debug_mode': django_settings.DEBUG,
+        'activity_log_clear_enabled': bool(getattr(django_settings, 'ACTIVITY_LOG_MANUAL_CLEAR_ENABLED', False)),
+        'activity_log_clear_confirm_phrase': str(
+            getattr(django_settings, 'ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE', 'DELETE ALL LOGS')
+        ),
     }
 
     user_counts = User.objects.filter(is_active=True).aggregate(

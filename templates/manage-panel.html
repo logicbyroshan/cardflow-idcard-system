@@ -125,6 +125,8 @@
     window.WEBSITE_STATUS_SUMMARY_API_URL = "{% url 'website_admin:api_status_summary' %}";
     window.WEBSITE_NOT_FOUND_TOGGLE_API_URL = "{% url 'website_admin:api_status_not_found' %}";
     window.WEBSITE_PRO_ACCESS_API_URL = "{% url 'website_admin:api_status_pro_access_link' %}";
+    window.ACTIVITY_LOG_CLEAR_ENABLED = {{ activity_log_clear_enabled|yesno:"true,false" }};
+    window.ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE = "{{ activity_log_clear_confirm_phrase|escapejs }}";
   </script>
   <script defer src="{% static 'js/manage-panel.js' %}"></script>
   <script defer src="{% static 'js/backup-panel.js' %}"></script>

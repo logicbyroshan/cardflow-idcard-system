@@ -50,6 +50,8 @@ urlpatterns = [
     path('api/client-errors/', views.api_client_errors, name='api_client_errors_app'),
     path('api/monitoring/', views.api_monitoring_data, name='api_monitoring_data_app'),
     path('api/operations-feed/', views.api_operations_feed, name='api_operations_feed_app'),
+    path('api/activity-logs/clear/state/', views.api_activity_log_clear_state, name='api_activity_log_clear_state_app'),
+    path('api/activity-logs/clear/generate-code/', views.api_activity_log_clear_generate_code, name='api_activity_log_clear_generate_code_app'),
     path('api/activity-logs/clear/', views.api_clear_activity_logs, name='api_clear_activity_logs_app'),
     path('api/server-info/', views.api_server_info_snapshot, name='api_server_info_snapshot_app'),
 ]

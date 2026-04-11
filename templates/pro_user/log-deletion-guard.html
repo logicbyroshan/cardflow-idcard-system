@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Log Deletion Guard - Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+  .guard-page {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .guard-page .pro-feature-tabs {
+    position: static;
+    top: auto;
+    margin: 0;
+    padding: 0 20px;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    background: #fff;
+  }
+
+  .guard-page .action-bar {
+    position: static;
+    top: auto !important;
+    z-index: 22;
+    margin: 0;
+    background: var(--color-white, #ffffff);
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 10px 20px;
+  }
+
+  .guard-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 20px 28px;
+    background: var(--color-gray-50, #f8fafc);
+  }
+
+  .guard-card {
+    background: #fff;
+    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .guard-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #1f2937);
+    margin-bottom: 8px;
+  }
+
+  .guard-note {
+    font-size: 12px;
+    color: var(--text-secondary, #4b5563);
+    line-height: 1.45;
+  }
+
+  .guard-state-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid #dbeafe;
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+
+  .guard-state-pill.idle {
+    border-color: #e5e7eb;
+    color: #475569;
+    background: #f8fafc;
+  }
+
+  .guard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .guard-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .guard-field input {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    letter-spacing: 0.09em;
+  }
+
+  .guard-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .guard-meta {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  @media (max-width: 900px) {
+    .guard-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .guard-page .pro-feature-tabs,
+    .guard-page .action-bar,
+    .guard-content {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Log Deletion Guard</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right">
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="guard-page pro-feature-page" id="logClearGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
+  <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
+    <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+      <i class="fa-solid fa-user-secret"></i> Login As User
+    </a>
+    <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab" role="tab" aria-selected="false">
+      <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
+    </a>
+    <a href="{% url 'pro_user_log_deletion_guard' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
+      <i class="fa-solid fa-shield"></i> Log Deletion Guard
+    </a>
+  </div>
+
+  <div class="action-bar">
+    <div class="action-left" style="flex:1;gap:8px;align-items:center;">
+      <div style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">Two-Step Activity Log Deletion</div>
+      <span class="guard-state-pill idle" id="guardStateBadge">Idle</span>
+    </div>
+    <div class="action-right" style="font-size:12px;color:#64748b;">
+      Super Admin requests. Pro User confirms final deletion.
+    </div>
+  </div>
+
+  <div class="guard-content">
+    <div class="guard-card">
+      <div class="guard-title">Safety Contract</div>
+      <div class="guard-note">
+        This control permanently deletes all activity logs. Deletion requires a valid 10-digit one-time code.
+        Super Admin can only create a pending request. Pro User can execute final deletion only when a pending request exists.
+      </div>
+    </div>
+
+    <div class="guard-card" id="guardStateCard">
+      <div class="guard-title">Current Request State</div>
+      <div class="guard-note" id="guardStateText">Loading state...</div>
+      <div class="guard-meta" id="guardMeta"></div>
+    </div>
+
+    <div class="guard-card">
+      <div class="guard-title">Generate And Confirm</div>
+      <div class="guard-grid">
+        <div class="guard-field">
+          <label for="guardCodeInput">10-Digit Confirmation Code</label>
+          <input id="guardCodeInput" type="text" maxlength="10" inputmode="numeric" placeholder="0000000000" autocomplete="off" />
+        </div>
+        <div class="guard-field">
+          <label>Action</label>
+          <div class="guard-note" id="guardRoleHint">Preparing your permissions...</div>
+          <div class="guard-actions">
+            <button class="btn btn-sm btn-outline-primary" type="button" id="guardGenerateBtn">
+              <i class="fa-solid fa-hashtag"></i> Generate Code
+            </button>
+            <button class="btn btn-sm btn-danger" type="button" id="guardSubmitBtn">
+              <i class="fa-solid fa-shield-halved"></i> Submit
+            </button>
+            <button class="btn btn-sm btn-neutral" type="button" id="guardRefreshBtn">
+              <i class="fa-solid fa-rotate"></i> Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const root = document.getElementById('logClearGuardRoot');
+  if (!root) return;
+
+  const stateBadge = document.getElementById('guardStateBadge');
+  const stateText = document.getElementById('guardStateText');
+  const stateMeta = document.getElementById('guardMeta');
+  const roleHint = document.getElementById('guardRoleHint');
+  const codeInput = document.getElementById('guardCodeInput');
+  const generateBtn = document.getElementById('guardGenerateBtn');
+  const submitBtn = document.getElementById('guardSubmitBtn');
+  const refreshBtn = document.getElementById('guardRefreshBtn');
+
+  const currentRole = String(root.dataset.role || '').toLowerCase();
+  let guardState = null;
+  let autoRefreshTimer = null;
+
+  function csrfToken() {
+    if (typeof getCSRFToken === 'function') return getCSRFToken();
+    const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function notify(message, type) {
+    if (typeof showToast === 'function') {
+      showToast(message, type || 'info');
+      return;
+    }
+    window.alert(message);
+  }
+
+  function setBusy(btn, busy, htmlWhenIdle, htmlWhenBusy) {
+    if (!btn) return;
+    btn.disabled = !!busy;
+    btn.innerHTML = busy ? htmlWhenBusy : htmlWhenIdle;
+  }
+
+  function normalizeCodeInput() {
+    const digits = String(codeInput.value || '').replace(/\D+/g, '').slice(0, 10);
+    codeInput.value = digits;
+    return digits;
+  }
+
+  function renderState(stateObj) {
+    guardState = stateObj || {};
+    const status = String(guardState.status || 'idle');
+    const isPending = status === 'pending_pro_user_confirmation';
+    stateBadge.textContent = isPending ? 'Pending Pro User Confirmation' : 'Idle';
+    stateBadge.classList.toggle('idle', !isPending);
+
+    if (isPending) {
+      const requestedBy = guardState.requested_by_username || 'unknown';
+      const requestedAt = guardState.requested_at || '-';
+      stateText.textContent = 'A Super Admin request is pending. Pro User can now run final deletion.';
+      stateMeta.textContent = 'Requested by ' + requestedBy + ' at ' + requestedAt + '.';
+    } else {
+      const lastBy = guardState.last_completed_by || '-';
+      const lastAt = guardState.last_completed_at || '-';
+      const deletedCount = Number(guardState.last_deleted_count || 0);
+      stateText.textContent = 'No pending request. Super Admin must initiate before Pro User can confirm.';
+      stateMeta.textContent = 'Last completion by ' + lastBy + ' at ' + lastAt + ' (deleted ' + deletedCount + ' rows).';
+    }
+
+    if (currentRole === 'super_admin') {
+      roleHint.textContent = 'You are Super Admin. Submit creates a pending request for Pro User approval.';
+      submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Request Pro User Confirmation';
+      submitBtn.classList.remove('btn-success');
+      submitBtn.classList.add('btn-danger');
+      submitBtn.disabled = false;
+    } else if (currentRole === 'pro_user') {
+      roleHint.textContent = isPending
+        ? 'Pending request found. Submit will permanently delete logs after code verification.'
+        : 'Waiting for Super Admin request. Submit is disabled until request is pending.';
+      submitBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Confirm And Delete Logs';
+      submitBtn.classList.remove('btn-danger');
+      submitBtn.classList.add('btn-success');
+      submitBtn.disabled = !isPending;
+    } else {
+      roleHint.textContent = 'You do not have permission to request or confirm log deletion.';
+      submitBtn.disabled = true;
+      generateBtn.disabled = true;
+    }
+  }
+
+  async function fetchState() {
+    try {
+      const res = await fetch('/api/activity-logs/clear/state/', {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        notify((data && data.message) || 'Unable to load log deletion state.', 'error');
+        return;
+      }
+      renderState(data.state || {});
+    } catch (err) {
+      console.error('fetchState error', err);
+      notify('Network error while loading log deletion state.', 'error');
+    }
+  }
+
+  async function generateCode() {
+    setBusy(generateBtn, true, '<i class="fa-solid fa-hashtag"></i> Generate Code', '<i class="fa-solid fa-spinner fa-spin"></i> Generating');
+    try {
+      const res = await fetch('/api/activity-logs/clear/generate-code/', {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.code) {
+        notify((data && data.message) || 'Unable to generate code.', 'error');
+        return;
+      }
+      codeInput.value = String(data.code);
+      notify('10-digit confirmation code generated. Use it immediately.', 'success');
+    } catch (err) {
+      console.error('generateCode error', err);
+      notify('Network error while generating code.', 'error');
+    } finally {
+      setBusy(generateBtn, false, '<i class="fa-solid fa-hashtag"></i> Generate Code', '<i class="fa-solid fa-spinner fa-spin"></i> Generating');
+    }
+  }
+
+  async function submitAction() {
+    const code = normalizeCodeInput();
+    if (code.length !== 10) {
+      notify('Enter a valid 10-digit confirmation code first.', 'error');
+      return;
+    }
+
+    const isPro = currentRole === 'pro_user';
+    const confirmText = isPro
+      ? 'Final confirmation: this will permanently delete all activity logs.'
+      : 'This will create a pending request for Pro User confirmation.';
+
+    if (!window.confirm(confirmText)) {
+      return;
+    }
+
+    const idleHtml = submitBtn.innerHTML;
+    setBusy(submitBtn, true, idleHtml, '<i class="fa-solid fa-spinner fa-spin"></i> Processing');
+    try {
+      const res = await fetch('/api/activity-logs/clear/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ confirmation_code: code }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        notify((data && data.message) || 'Action failed.', 'error');
+        return;
+      }
+      notify(data.message || 'Action completed.', 'success');
+      codeInput.value = '';
+      await fetchState();
+    } catch (err) {
+      console.error('submitAction error', err);
+      notify('Network error while submitting action.', 'error');
+    } finally {
+      setBusy(submitBtn, false, idleHtml, '<i class="fa-solid fa-spinner fa-spin"></i> Processing');
+    }
+  }
+
+  codeInput.addEventListener('input', normalizeCodeInput);
+  generateBtn.addEventListener('click', generateCode);
+  submitBtn.addEventListener('click', submitAction);
+  refreshBtn.addEventListener('click', fetchState);
+
+  function startAutoRefresh() {
+    if (autoRefreshTimer) {
+      window.clearInterval(autoRefreshTimer);
+    }
+    autoRefreshTimer = window.setInterval(() => {
+      if (!document.hidden) {
+        fetchState();
+      }
+    }, 8000);
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      fetchState();
+    }
+  });
+
+  window.addEventListener('beforeunload', function() {
+    if (autoRefreshTimer) {
+      window.clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+  });
+
+  startAutoRefresh();
+  fetchState();
+})();
+</script>
+{% endblock %}

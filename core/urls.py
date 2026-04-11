@@ -81,6 +81,7 @@ urlpatterns = [
 
     # Deep User History (Pro User only)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
+    path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
     # Engine installer download (served via Django so headers are correct)
@@ -258,6 +259,8 @@ urlpatterns = [
 
     # Activity Logs API
     path('api/activity-logs/', views.api_activity_logs, name='api_activity_logs'),
+    path('api/activity-logs/clear/state/', views.api_activity_log_clear_state, name='api_activity_log_clear_state'),
+    path('api/activity-logs/clear/generate-code/', views.api_activity_log_clear_generate_code, name='api_activity_log_clear_generate_code'),
     path('api/activity-logs/clear/', views.api_clear_activity_logs, name='api_clear_activity_logs'),
 
     # Settings/Profile APIs (for all user types)

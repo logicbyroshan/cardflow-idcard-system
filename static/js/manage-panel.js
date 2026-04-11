@@ -1709,6 +1709,15 @@ function resetOperationsFilters() {
 }
 
 async function clearActivityLogsManual() {
+  const clearEnabled = window.ACTIVITY_LOG_CLEAR_ENABLED === true || window.ACTIVITY_LOG_CLEAR_ENABLED === 'true';
+  if (!clearEnabled) {
+    if (typeof showToast === 'function') {
+      showToast('Log clearing is disabled for safety. Enable it in server settings only when needed.', 'error');
+    }
+    return;
+  }
+
+  const confirmPhrase = String(window.ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE || 'DELETE ALL LOGS').trim();
   const clearBtn = document.getElementById('opsClearLogsBtn');
   const ok = await showConfirm({
     title: 'Clear Logs?',
@@ -1718,6 +1727,15 @@ async function clearActivityLogsManual() {
     btnClass: 'btn-danger',
   });
   if (!ok) return;
+
+  const typedPhrase = window.prompt(`Type exactly: ${confirmPhrase}`);
+  if (typedPhrase === null) return;
+  if (String(typedPhrase).trim() !== confirmPhrase) {
+    if (typeof showToast === 'function') {
+      showToast('Confirmation text did not match. Logs were not cleared.', 'error');
+    }
+    return;
+  }
 
   const originalHtml = clearBtn ? clearBtn.innerHTML : '';
   if (clearBtn) {
@@ -1729,9 +1747,11 @@ async function clearActivityLogsManual() {
     const res = await fetch('/api/activity-logs/clear/', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'X-CSRFToken': getCSRFToken(),
         'X-Requested-With': 'XMLHttpRequest',
       },
+      body: JSON.stringify({ confirm_phrase: confirmPhrase }),
     });
     const data = await res.json();
     if (res.ok && data && data.success) {

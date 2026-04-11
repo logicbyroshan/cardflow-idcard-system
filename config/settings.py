@@ -317,6 +317,13 @@ SESSION_ABSOLUTE_MAX_AGE = int(os.getenv('SESSION_ABSOLUTE_MAX_AGE', str(60 * 60
 # their session `_last_activity` is within this recent window.
 DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS = int(os.getenv('DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', '180'))
 
+# ── Activity log clear safety toggles ──
+# Disabled by default to prevent accidental destructive clears from the UI.
+ACTIVITY_LOG_MANUAL_CLEAR_ENABLED = _env_bool('ACTIVITY_LOG_MANUAL_CLEAR_ENABLED', False)
+ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE = (
+    os.getenv('ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE', 'DELETE ALL LOGS').strip() or 'DELETE ALL LOGS'
+)
+
 # ── Session fingerprint validation ──
 # Adds lightweight binding of a session to browser fingerprint material.
 # Include IP binding only when infra has stable client egress IPs.

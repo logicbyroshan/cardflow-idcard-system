@@ -10,14 +10,17 @@ import logging
 import os
 import platform
 import re
+import secrets
 import shutil
 import socket
+import string
 import subprocess
 from datetime import datetime, timezone as dt_timezone
 from pathlib import Path
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods, require_POST
@@ -31,6 +34,151 @@ _MAX_REPORTS_PER_MIN = 10
 _MAX_LOG_FIELD_LEN = 500
 _SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v3'
 _SERVER_INFO_CACHE_TTL = 86400
+_LOG_CLEAR_GUARD_STATE_KEY = 'activity_log_clear_guard_state_v1'
+
+
+def _archive_activity_logs_before_clear(*, actor_username, rows_iterable, row_count):
+    """Persist an archive snapshot before destructive log clear."""
+    archive_root = Path(settings.MEDIA_ROOT) / 'audit_log_archives'
+    archive_root.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(dt_timezone.utc).strftime('%Y%m%d_%H%M%S')
+    archive_filename = f'activity_logs_before_clear_{timestamp}.jsonl'
+    archive_path = archive_root / archive_filename
+
+    metadata = {
+        'type': 'activity_log_archive',
+        'archived_at': datetime.now(dt_timezone.utc),
+        'archived_by': actor_username,
+        'row_count': int(row_count or 0),
+    }
+
+    with archive_path.open('w', encoding='utf-8') as handle:
+        handle.write(json.dumps({'meta': metadata}, cls=DjangoJSONEncoder) + '\n')
+        for row in rows_iterable:
+            handle.write(json.dumps(row, cls=DjangoJSONEncoder) + '\n')
+
+    return archive_path
+
+
+def _generate_ten_digit_code() -> str:
+    return ''.join(secrets.choice(string.digits) for _ in range(10))
+
+
+def _log_clear_code_session_key(user_id) -> str:
+    return f'activity_log_clear_code_{user_id}'
+
+
+def _store_log_clear_code(request, code: str) -> None:
+    request.session[_log_clear_code_session_key(request.user.pk)] = {
+        'code': str(code or ''),
+        'generated_at': datetime.now(dt_timezone.utc).isoformat(),
+    }
+    request.session.modified = True
+
+
+def _consume_log_clear_code_if_valid(request, provided_code: str) -> bool:
+    key = _log_clear_code_session_key(request.user.pk)
+    payload = request.session.get(key)
+    valid = isinstance(payload, dict) and str(payload.get('code') or '') == str(provided_code or '')
+    if valid:
+        try:
+            del request.session[key]
+        except KeyError:
+            pass
+        request.session.modified = True
+    return bool(valid)
+
+
+def _is_log_clear_actor(user) -> bool:
+    role = str(getattr(user, 'role', '') or '').strip().lower()
+    return role in {'super_admin', 'pro_user'}
+
+
+def _normalize_log_clear_guard_state(payload):
+    if not isinstance(payload, dict):
+        return {
+            'status': 'idle',
+            'requested_by_username': '',
+            'requested_by_role': '',
+            'requested_by_user_id': None,
+            'requested_at': '',
+            'last_completed_by': '',
+            'last_completed_at': '',
+            'last_deleted_count': 0,
+        }
+
+    state = {
+        'status': str(payload.get('status') or 'idle').strip().lower() or 'idle',
+        'requested_by_username': str(payload.get('requested_by_username') or '').strip(),
+        'requested_by_role': str(payload.get('requested_by_role') or '').strip().lower(),
+        'requested_by_user_id': payload.get('requested_by_user_id'),
+        'requested_at': str(payload.get('requested_at') or '').strip(),
+        'last_completed_by': str(payload.get('last_completed_by') or '').strip(),
+        'last_completed_at': str(payload.get('last_completed_at') or '').strip(),
+        'last_deleted_count': int(payload.get('last_deleted_count') or 0),
+    }
+    if state['status'] != 'pending_pro_user_confirmation':
+        state['status'] = 'idle'
+    return state
+
+
+def _load_log_clear_guard_state():
+    from core.models import SystemSettings
+
+    raw_value = SystemSettings.get_value(_LOG_CLEAR_GUARD_STATE_KEY, default='')
+    if not raw_value:
+        return _normalize_log_clear_guard_state(None)
+    try:
+        parsed = json.loads(raw_value)
+    except Exception:
+        parsed = None
+    return _normalize_log_clear_guard_state(parsed)
+
+
+def _save_log_clear_guard_state(state):
+    from core.models import SystemSettings
+
+    normalized = _normalize_log_clear_guard_state(state)
+    SystemSettings.set_value(
+        _LOG_CLEAR_GUARD_STATE_KEY,
+        json.dumps(normalized, cls=DjangoJSONEncoder),
+        description='Guard state for two-step activity-log deletion approvals.',
+    )
+    return normalized
+
+
+def _extract_confirmation_code(request):
+    payload = {}
+    if request.body:
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except Exception:
+            payload = {}
+
+    code = str(payload.get('confirmation_code') or request.POST.get('confirmation_code') or '').strip()
+    if len(code) != 10 or not code.isdigit():
+        return ''
+    return code
+
+
+def _clear_activity_logs_with_archive(*, actor):
+    from core.models import ActivityLog
+
+    archive_fields = [
+        'id', 'user_id', 'action', 'description', 'target_model', 'target_id',
+        'target_name', 'ip_address', 'created_at',
+    ]
+    archive_qs = ActivityLog.objects.order_by('id').values(*archive_fields)
+    archive_count = ActivityLog.objects.count()
+    archive_path = _archive_activity_logs_before_clear(
+        actor_username=(actor.username or '').strip() or f'user:{actor.pk}',
+        rows_iterable=archive_qs.iterator(chunk_size=1000),
+        row_count=archive_count,
+    )
+    deleted_count, _ = ActivityLog.objects.all().delete()
+    archive_rel = str(archive_path.relative_to(Path(settings.MEDIA_ROOT))).replace('\\', '/')
+    return int(deleted_count or 0), archive_rel
 
 
 def _parse_feed_int(value, default, min_value=None, max_value=None):
@@ -869,22 +1017,127 @@ def api_clear_activity_logs(request):
 
     POST /panel/api/activity-logs/clear/
     """
-    from core.models import ActivityLog
-    from core.services.permission_service import PermissionService
+    if not _is_log_clear_actor(request.user):
+        return JsonResponse({'success': False, 'message': 'Only Super Admin or Pro User can manage log deletion.'}, status=403)
 
-    if not PermissionService.is_super_admin(request.user):
-        return JsonResponse({'success': False, 'message': 'Super admin only'}, status=403)
+    confirmation_code = _extract_confirmation_code(request)
+    if not confirmation_code:
+        return JsonResponse(
+            {
+                'success': False,
+                'message': 'Please enter a valid 10-digit confirmation code.',
+                'code': 'confirmation_required',
+            },
+            status=400,
+        )
 
-    try:
-        deleted_count, _ = ActivityLog.objects.all().delete()
+    if not _consume_log_clear_code_if_valid(request, confirmation_code):
+        return JsonResponse(
+            {
+                'success': False,
+                'message': 'Invalid or expired confirmation code. Generate a fresh 10-digit code and retry.',
+                'code': 'invalid_confirmation_code',
+            },
+            status=400,
+        )
+
+    role = str(getattr(request.user, 'role', '') or '').strip().lower()
+    now_iso = datetime.now(dt_timezone.utc).isoformat()
+    guard_state = _load_log_clear_guard_state()
+
+    if role == 'super_admin':
+        next_state = {
+            'status': 'pending_pro_user_confirmation',
+            'requested_by_username': request.user.username or f'user:{request.user.pk}',
+            'requested_by_role': 'super_admin',
+            'requested_by_user_id': request.user.pk,
+            'requested_at': now_iso,
+            'last_completed_by': guard_state.get('last_completed_by', ''),
+            'last_completed_at': guard_state.get('last_completed_at', ''),
+            'last_deleted_count': guard_state.get('last_deleted_count', 0),
+        }
+        _save_log_clear_guard_state(next_state)
         return JsonResponse({
             'success': True,
-            'deleted_count': int(deleted_count or 0),
-            'message': f'Cleared {int(deleted_count or 0)} log entries.',
+            'pending_pro_user_confirmation': True,
+            'message': 'Deletion request saved. Logs will be deleted only after Pro User confirms.',
+            'state': next_state,
+        })
+
+    if role != 'pro_user':
+        return JsonResponse({'success': False, 'message': 'Only Pro User can finalize log deletion.'}, status=403)
+
+    if guard_state.get('status') != 'pending_pro_user_confirmation':
+        return JsonResponse(
+            {
+                'success': False,
+                'message': 'No pending admin request found. Ask Super Admin to initiate first.',
+                'code': 'no_pending_request',
+            },
+            status=409,
+        )
+
+    try:
+        deleted_count, archive_rel = _clear_activity_logs_with_archive(actor=request.user)
+        completion_state = {
+            'status': 'idle',
+            'requested_by_username': '',
+            'requested_by_role': '',
+            'requested_by_user_id': None,
+            'requested_at': '',
+            'last_completed_by': request.user.username or f'user:{request.user.pk}',
+            'last_completed_at': now_iso,
+            'last_deleted_count': deleted_count,
+        }
+        _save_log_clear_guard_state(completion_state)
+        logger.warning(
+            'Activity logs cleared by pro_user=%s (id=%s), deleted=%s, archive=%s',
+            request.user.username,
+            request.user.pk,
+            deleted_count,
+            archive_rel,
+        )
+        return JsonResponse({
+            'success': True,
+            'deleted_count': deleted_count,
+            'archive_relative_path': archive_rel,
+            'message': f'Cleared {deleted_count} log entries. Archive saved to media/{archive_rel}.',
         })
     except Exception:
-        logger.exception('Failed to clear activity logs manually')
+        logger.exception('Failed to clear activity logs via guarded flow')
         return JsonResponse({'success': False, 'message': 'Failed to clear logs.'}, status=500)
+
+
+@require_http_methods(["GET"])
+@login_required
+def api_activity_log_clear_state(request):
+    from core.services.permission_service import PermissionService
+
+    if not _is_log_clear_actor(request.user):
+        return JsonResponse({'success': False, 'message': 'Only Super Admin or Pro User can view this state.'}, status=403)
+
+    role = str(getattr(request.user, 'role', '') or '').strip().lower()
+    state = _load_log_clear_guard_state()
+    can_confirm = role == 'pro_user' and state.get('status') == 'pending_pro_user_confirmation'
+    can_request = role in {'super_admin', 'pro_user'}
+    return JsonResponse({
+        'success': True,
+        'state': state,
+        'can_request': can_request,
+        'can_confirm': can_confirm,
+        'is_pro_user': role == 'pro_user',
+        'is_super_admin': PermissionService.is_super_admin(request.user) and role != 'pro_user',
+    })
+
+
+@require_http_methods(["GET"])
+@login_required
+def api_activity_log_clear_generate_code(request):
+    if not _is_log_clear_actor(request.user):
+        return JsonResponse({'success': False, 'message': 'Only Super Admin or Pro User can generate code.'}, status=403)
+    code = _generate_ten_digit_code()
+    _store_log_clear_code(request, code)
+    return JsonResponse({'success': True, 'code': code})
 
 
 @require_http_methods(["GET"])
