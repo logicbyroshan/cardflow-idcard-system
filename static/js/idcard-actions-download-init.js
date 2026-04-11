@@ -16,13 +16,22 @@ function _getCurrentStatus() {
     return typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : '';
 }
 
+var _fallbackBulkUiLockDepth = 0;
+
 function _setBulkUiLock(active) {
     if (window.IDCardApp && typeof window.IDCardApp.applyBulkUiLock === 'function') {
         window.IDCardApp.applyBulkUiLock(!!active);
         return;
     }
     if (!document || !document.body) return;
-    document.body.classList.toggle('bulk-operation-active', !!active);
+
+    if (active) {
+        _fallbackBulkUiLockDepth += 1;
+    } else {
+        _fallbackBulkUiLockDepth = Math.max(0, _fallbackBulkUiLockDepth - 1);
+    }
+
+    document.body.classList.toggle('bulk-operation-active', _fallbackBulkUiLockDepth > 0);
 }
 
 // ==========================================

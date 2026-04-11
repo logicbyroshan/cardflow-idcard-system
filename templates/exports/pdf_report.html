@@ -255,6 +255,10 @@ table.data-table td.img-cell img {
     object-fit: cover;
     object-position: top center;
 }
+/* Photo-only border: signatures and other image-like fields remain borderless. */
+table.data-table td.img-cell.photo-cell img {
+    border: 0.5pt solid #111;
+}
 /* Placeholder images: reduced opacity to signal missing photo  -  keep rectangular (passport size) */
 table.data-table td.img-cell.placeholder-cell img {
     opacity: 0.35;
@@ -318,7 +322,7 @@ table.data-table td.img-cell.placeholder-cell img {
             <tr>
                 {% for cell in row %}
                 {% if cell.is_image %}
-                <td class="img-cell{% if cell.is_placeholder %} placeholder-cell{% endif %}">
+                <td class="img-cell{% if cell.is_placeholder %} placeholder-cell{% endif %}{% if cell.image_category == 'photo' %} photo-cell{% endif %}">
                     <img src="{{ cell.content }}"
                          style="width:{{ cell.image_width_cm }}cm; height:{{ cell.image_height_cm }}cm;"
                          alt="">

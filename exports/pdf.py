@@ -930,17 +930,19 @@ class PdfExporter:
                 is_image = field.get('is_image', False)
                 val = fd.get(name, '')
                 ftype = field.get('type', 'text')
+                column_category = classify_column(name, ftype)
 
                 spec = get_column_spec(name, ftype)
                 col_cfg_idx = field_idx + 1  # +1 because configs[0] = Sr No
                 is_nowrap = column_configs[col_cfg_idx].get('nowrap', False) if column_configs and col_cfg_idx < len(column_configs) else False
 
-                is_email_cell = (classify_column(name, ftype) == 'email')
-                is_phone_cell = (classify_column(name, ftype) == 'mobile')
+                is_email_cell = (column_category == 'email')
+                is_phone_cell = (column_category == 'mobile')
                 cell = {
                     'align': spec.align,
                     'is_image': is_image,
                     'is_placeholder': False,
+                    'image_category': column_category if is_image else '',
                     'nowrap': is_nowrap,
                     'is_phone_cell': is_phone_cell,
                     'is_email_cell': is_email_cell,

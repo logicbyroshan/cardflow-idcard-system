@@ -134,6 +134,9 @@
 }
 
 .tutorial-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
@@ -144,6 +147,10 @@
     white-space: nowrap;
     cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.tutorial-tab-btn i {
+    font-size: 11px;
 }
 
 .tutorial-tab-btn:hover {
@@ -200,38 +207,128 @@
 .tutorial-panel ul,
 .tutorial-panel ol {
     margin: 8px 0 0;
-    padding-left: 18px;
-    color: #475569;
+    padding: 0;
+    list-style: none;
+    color: #334155;
     display: grid;
-    gap: 5px;
+    gap: 8px;
     font-size: 13px;
     line-height: 1.5;
 }
 
+.tutorial-panel ul li,
+.tutorial-panel ol li {
+    position: relative;
+    padding: 8px 10px 8px 34px;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
+
+.tutorial-panel ul li::before {
+    content: "\f058";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #2563eb;
+    position: absolute;
+    left: 11px;
+    top: 8px;
+    font-size: 13px;
+}
+
+.tutorial-panel ol {
+    counter-reset: tutorial-step;
+}
+
+.tutorial-panel ol li::before {
+    counter-increment: tutorial-step;
+    content: counter(tutorial-step);
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #667eea;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    position: absolute;
+    left: 10px;
+    top: 8px;
+}
+
 .quick-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
-    border: 1px solid #e5e7eb;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
     margin-top: 10px;
 }
 
 .quick-grid article {
-    border-right: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fff;
+    position: relative;
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     padding: 10px;
-    display: flex;
-    gap: 9px;
+    display: grid;
+    grid-template-columns: 24px 22px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    min-height: 66px;
 }
 
-.quick-grid article:nth-child(2n) {
-    border-right: none;
+.quick-grid article::before {
+    content: "\f2f6";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.quick-grid article:nth-child(2)::before {
+    content: "\f0ce";
+    background: linear-gradient(135deg, #0f766e 0%, #0e7490 100%);
+}
+
+.quick-grid article:nth-child(3)::before {
+    content: "\f093";
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.quick-grid article:nth-child(4)::before {
+    content: "\f0ad";
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+}
+
+.quick-grid article:nth-child(5)::before {
+    content: "\f058";
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+.quick-grid article:nth-child(6)::before {
+    content: "\f14a";
+    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+}
+
+.quick-grid article:nth-child(7)::before {
+    content: "\f019";
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.quick-grid article:nth-child(8)::before {
+    content: "\f0f3";
+    background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
 }
 
 .quick-grid article span {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     background: #667eea;
     color: #fff;
     font-size: 11px;
@@ -240,12 +337,14 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .quick-grid article p {
     margin: 0;
     font-size: 12.5px;
     color: #334155;
+    line-height: 1.45;
 }
 
 .callout {
@@ -290,6 +389,24 @@
     background: #f8fafc;
     color: #334155;
     font-weight: 700;
+}
+
+.tutorial-table tbody td:first-child {
+    position: relative;
+    padding-left: 26px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.tutorial-table tbody td:first-child::before {
+    content: "\f111";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 7px;
+    color: #667eea;
+    position: absolute;
+    left: 10px;
+    top: 13px;
 }
 
 .faq-grid {

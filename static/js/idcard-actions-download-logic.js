@@ -188,13 +188,22 @@ function _consumeNextBulkUiLockFlag() {
     return false;
 }
 
+var _fallbackBulkUiLockDepth = 0;
+
 function _setBulkUiLock(active) {
     if (window.IDCardApp && typeof window.IDCardApp.applyBulkUiLock === 'function') {
         window.IDCardApp.applyBulkUiLock(!!active);
         return;
     }
     if (!document || !document.body) return;
-    document.body.classList.toggle('bulk-operation-active', !!active);
+
+    if (active) {
+        _fallbackBulkUiLockDepth += 1;
+    } else {
+        _fallbackBulkUiLockDepth = Math.max(0, _fallbackBulkUiLockDepth - 1);
+    }
+
+    document.body.classList.toggle('bulk-operation-active', _fallbackBulkUiLockDepth > 0);
 }
 
 /**
@@ -527,6 +536,15 @@ function downloadImages(cardIds, renameOptions) {
     }
 
     // Legacy fallback (no DownloadManager)
+    var _legacyImgLockActive = true;
+    _setBulkUiLock(true);
+
+    function _releaseLegacyImgLock() {
+        if (!_legacyImgLockActive) return;
+        _setBulkUiLock(false);
+        _legacyImgLockActive = false;
+    }
+
     if (typeof showProgressToast === 'function') showProgressToast('Preparing images...', -1);
     
     const xhr = new XMLHttpRequest();
@@ -558,6 +576,7 @@ function downloadImages(cardIds, renameOptions) {
                             if (typeof showDownloadComplete === 'function') {
                                 showDownloadComplete(`Downloaded ${totalZips} ZIP file(s) with ${response.total_images} images!`);
                             }
+                            _releaseLegacyImgLock();
                             return;
                         }
                         
@@ -601,6 +620,7 @@ function downloadImages(cardIds, renameOptions) {
                         } catch (err) {
                             console.error('ZIP download failed:', err);
                             if (typeof showToast === 'function') showToast('Failed to download ZIP file', false);
+                            _releaseLegacyImgLock();
                         }
                     }
                     
@@ -609,11 +629,13 @@ function downloadImages(cardIds, renameOptions) {
                 } else {
                     if (typeof hideProgressToast === 'function') hideProgressToast();
                     if (typeof showToast === 'function') showToast(response.message || 'No images found!', false);
+                    _releaseLegacyImgLock();
                 }
             } catch(e) {
                 if (typeof hideProgressToast === 'function') hideProgressToast();
                 if (typeof showToast === 'function') showToast('Failed to process download response', false);
                 console.error('Download error:', e);
+                _releaseLegacyImgLock();
             }
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
@@ -623,17 +645,20 @@ function downloadImages(cardIds, renameOptions) {
             } catch(e) {
                 if (typeof showToast === 'function') showToast('Failed to download images', false);
             }
+            _releaseLegacyImgLock();
         }
     };
     
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download images', false);
+        _releaseLegacyImgLock();
     };
     
     xhr.ontimeout = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Image download timed out. Try selecting fewer cards.', false);
+        _releaseLegacyImgLock();
     };
     
     xhr.send(JSON.stringify(requestBody));
@@ -704,6 +729,15 @@ function downloadDocx(cardIds, format, templateId) {
     }
 
     // Legacy fallback
+    var _legacyDocxLockActive = true;
+    _setBulkUiLock(true);
+
+    function _releaseLegacyDocxLock() {
+        if (!_legacyDocxLockActive) return;
+        _setBulkUiLock(false);
+        _legacyDocxLockActive = false;
+    }
+
     if (typeof showProgressToast === 'function') showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1);
     
     const xhr = new XMLHttpRequest();
@@ -739,6 +773,7 @@ function downloadDocx(cardIds, format, templateId) {
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('Document downloaded successfully!');
             _moveCardsToDownloadIfApproved(cardIds);
+            _releaseLegacyDocxLock();
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -749,6 +784,7 @@ function downloadDocx(cardIds, format, templateId) {
                 } catch(e) {
                     if (typeof showToast === 'function') showToast('Failed to download document', false);
                 }
+                _releaseLegacyDocxLock();
             };
             reader.readAsText(xhr.response);
         }
@@ -757,11 +793,13 @@ function downloadDocx(cardIds, format, templateId) {
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download document', false);
+        _releaseLegacyDocxLock();
     };
     
     xhr.ontimeout = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Document download timed out. Try selecting fewer cards.', false);
+        _releaseLegacyDocxLock();
     };
     
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, format: format, template_id: templateId || '', status: _getCurrentStatus() }, _getActiveFilters())));
@@ -830,6 +868,15 @@ function downloadXlsx(cardIds, options) {
     }
 
     // Legacy fallback
+    var _legacyXlsxLockActive = true;
+    _setBulkUiLock(true);
+
+    function _releaseLegacyXlsxLock() {
+        if (!_legacyXlsxLockActive) return;
+        _setBulkUiLock(false);
+        _legacyXlsxLockActive = false;
+    }
+
     if (typeof showProgressToast === 'function') showProgressToast('Preparing Excel file...', -1);
     
     const xhr = new XMLHttpRequest();
@@ -868,6 +915,7 @@ function downloadXlsx(cardIds, options) {
                 downloadImages(cardIds);
             }
             _moveCardsToDownloadIfApproved(cardIds);
+            _releaseLegacyXlsxLock();
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -878,6 +926,7 @@ function downloadXlsx(cardIds, options) {
                 } catch(e) {
                     if (typeof showToast === 'function') showToast('Failed to download Excel file', false);
                 }
+                _releaseLegacyXlsxLock();
             };
             reader.readAsText(xhr.response);
         }
@@ -886,11 +935,13 @@ function downloadXlsx(cardIds, options) {
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download Excel file', false);
+        _releaseLegacyXlsxLock();
     };
     
     xhr.ontimeout = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Excel download timed out. Try selecting fewer cards.', false);
+        _releaseLegacyXlsxLock();
     };
     
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus() }, _getActiveFilters())));
@@ -1167,8 +1218,21 @@ function _pollExportStatus(taskId, cardCount, isCancelled, cancelFn, onFinalize)
  * Legacy synchronous PDF download (for small exports without DownloadManager).
  */
 function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitles, breakMode) {
+    var _legacyPdfLockActive = true;
+    _setBulkUiLock(true);
+
+    function _releaseLegacyPdfLock() {
+        if (!_legacyPdfLockActive) return;
+        _setBulkUiLock(false);
+        _legacyPdfLockActive = false;
+    }
+
     const xhr = new XMLHttpRequest();
-    var cancelFn = function () { xhr.abort(); if (typeof showToast === 'function') showToast('PDF download cancelled', 'info'); };
+    var cancelFn = function () {
+        xhr.abort();
+        _releaseLegacyPdfLock();
+        if (typeof showToast === 'function') showToast('PDF download cancelled', 'info');
+    };
     if (typeof showProgressToast === 'function') showProgressToast('Preparing PDF file...', -1, cancelFn);
     xhr.open('POST', `/api/table/${tableId}/cards/download-pdf/`, true);
     xhr.timeout = 600000;
@@ -1201,6 +1265,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
             document.body.removeChild(a);
             
             if (typeof showDownloadComplete === 'function') showDownloadComplete('PDF file downloaded successfully!');
+            _releaseLegacyPdfLock();
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
             const reader = new FileReader();
@@ -1211,6 +1276,7 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
                 } catch(e) {
                     if (typeof showToast === 'function') showToast('Failed to download PDF file', false);
                 }
+                _releaseLegacyPdfLock();
             };
             reader.readAsText(xhr.response);
         }
@@ -1219,11 +1285,17 @@ function _downloadPdfLegacy(tableId, cardIds, templateId, fontMode, shortenTitle
     xhr.onerror = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('Failed to download PDF file', false);
+        _releaseLegacyPdfLock();
     };
     
     xhr.ontimeout = function() {
         if (typeof hideProgressToast === 'function') hideProgressToast();
         if (typeof showToast === 'function') showToast('PDF download timed out. Try selecting fewer cards.', false);
+        _releaseLegacyPdfLock();
+    };
+
+    xhr.onabort = function() {
+        _releaseLegacyPdfLock();
     };
     
     xhr.send(JSON.stringify(Object.assign({ card_ids: cardIds, status: _getCurrentStatus(), template_id: templateId || '', font_mode: fontMode || 'auto', shorten_titles: !!shortenTitles, break_mode: (breakMode === 'class_only') ? 'class_only' : 'class_section' }, _getActiveFilters())));

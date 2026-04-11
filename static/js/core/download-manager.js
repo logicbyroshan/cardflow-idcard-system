@@ -40,6 +40,7 @@
     var _currentOverlayId = null;   // ID of the download currently shown in blocking overlay
     var _overlayStartTime = null;   // Track start time for ETA calculation
     var _bulkUiLockActive = false;
+    var _bulkUiLockDepth = 0;
 
     function _isBulkLockAllowedRoot(node) {
         if (!node || !node.nodeType || node.nodeType !== 1) return false;
@@ -69,7 +70,14 @@
 
     function _setBulkUiLock(active) {
         if (!document || !document.body) return;
-        var shouldLock = !!active;
+
+        if (active) {
+            _bulkUiLockDepth += 1;
+        } else {
+            _bulkUiLockDepth = Math.max(0, _bulkUiLockDepth - 1);
+        }
+
+        var shouldLock = _bulkUiLockDepth > 0;
         document.body.classList.toggle('bulk-operation-active', shouldLock);
         _toggleBulkLockInert(shouldLock);
 
@@ -1131,6 +1139,9 @@
     window.IDCardApp.applyBulkUiLock = _setBulkUiLock;
     window.IDCardApp.isBulkUiLocked = function () {
         return !!(document && document.body && document.body.classList.contains('bulk-operation-active'));
+    };
+    window.IDCardApp.getBulkUiLockDepth = function () {
+        return _bulkUiLockDepth;
     };
 
     // Global shortcuts for upload overlay (convenience for vanilla JS upload code)
