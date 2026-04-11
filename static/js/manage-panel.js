@@ -1521,7 +1521,7 @@ async function deleteTemplate(id) {
 
 
 /* ================================================================
-   OPERATIONS HUB TAB (Monitoring + Logs)
+  LOGS & UPDATES TAB (Monitoring + Logs)
    ================================================================ */
 let operationsFeed = [];
 let _opsPerPage = 25;
@@ -1576,8 +1576,8 @@ function resetOperationsFilters() {
 async function clearActivityLogsManual() {
   const clearBtn = document.getElementById('opsClearLogsBtn');
   const ok = await showConfirm({
-    title: 'Clear Activity Logs?',
-    text: 'This will permanently delete all activity logs. This action cannot be undone.',
+    title: 'Clear Logs?',
+    text: 'This will permanently delete all system logs. This action cannot be undone.',
     icon: 'fa-solid fa-trash-can',
     confirmLabel: 'Clear Logs',
     btnClass: 'btn-danger',
@@ -1601,24 +1601,24 @@ async function clearActivityLogsManual() {
     const data = await res.json();
     if (res.ok && data && data.success) {
       if (typeof showToast === 'function') {
-        showToast(data.message || 'Activity logs cleared.', 'success');
+        showToast(data.message || 'System logs cleared.', 'success');
       }
       _opsPage = 1;
       await loadOperationsFeed(1);
       return;
     }
     if (typeof showToast === 'function') {
-      showToast((data && data.message) || 'Failed to clear activity logs.', 'error');
+      showToast((data && data.message) || 'Failed to clear logs.', 'error');
     }
   } catch (err) {
     console.error('clearActivityLogsManual:', err);
     if (typeof showToast === 'function') {
-      showToast('Network error while clearing activity logs.', 'error');
+      showToast('Network error while clearing logs.', 'error');
     }
   } finally {
     if (clearBtn) {
       clearBtn.disabled = false;
-      clearBtn.innerHTML = originalHtml || '<i class="fa-solid fa-trash-can"></i> Clear Activity Logs';
+      clearBtn.innerHTML = originalHtml || '<i class="fa-solid fa-trash-can"></i> Clear Logs';
     }
   }
 }
@@ -1707,7 +1707,7 @@ window.cancelOperationsLatestTask = async function (taskId) {
 
   const ok = await showConfirm({
     title: 'Cancel Latest Active Task?',
-    text: 'This will stop the latest running background task from Operations Hub.',
+    text: 'This will stop the latest running background task from Logs & Updates.',
     icon: 'fa-solid fa-ban',
     confirmLabel: 'Cancel Task',
     btnClass: 'btn-danger',
@@ -1763,7 +1763,7 @@ function renderOperationsTable() {
   if (!operationsFeed.length) {
     tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="7">
       <div class="empty-state"><i class="fa-solid fa-wave-square"></i>
-      <p>No operations found</p><span>Adjust filters or wait for new activity.</span></div></td></tr>`;
+      <p>No logs or updates found</p><span>Adjust filters or wait for new activity.</span></div></td></tr>`;
     return;
   }
 
@@ -1872,7 +1872,7 @@ async function loadOperationsFeed(page) {
     colCount: 7,
     columns: ['0.5fr', '1fr', '1.3fr', '1.3fr', '1.2fr', '2.4fr', '1.3fr'],
     rows: 3,
-    ariaLabel: 'Loading operations feed...',
+    ariaLabel: 'Loading logs and updates...',
   });
   if (refreshBtn) {
     refreshBtn.disabled = true;
@@ -1918,7 +1918,7 @@ async function loadOperationsFeed(page) {
         'opsTableBody',
         7,
         'fa-wave-square',
-        'Unable to load operations',
+        'Unable to load logs and updates',
         'Please refresh and try again.'
       );
       return;
@@ -1930,7 +1930,7 @@ async function loadOperationsFeed(page) {
         'opsTableBody',
         7,
         'fa-wave-square',
-        'Unable to load operations',
+        'Unable to load logs and updates',
         'Please refresh and try again.'
       );
       return;
@@ -1955,7 +1955,7 @@ async function loadOperationsFeed(page) {
       'opsTableBody',
       7,
       'fa-wave-square',
-      'Unable to load operations',
+      'Unable to load logs and updates',
       'Network issue. Please refresh and try again.'
     );
   } finally {
@@ -1985,6 +1985,14 @@ let _emailTotalPages = 1;
 let _emailTotal = 0;
 let _emailLogsById = {};
 let _emailComposePreviewBound = false;
+let _emailSearchTimer = null;
+
+window.debounceEmailSearch = function () {
+  clearTimeout(_emailSearchTimer);
+  _emailSearchTimer = setTimeout(function () {
+    loadEmailLogs(1);
+  }, 300);
+};
 
 const EMAIL_TEMPLATE_CONFIG = {
   system: {
@@ -2238,9 +2246,11 @@ window.onEmailRowsPerPageChange = function (value) {
 window.loadEmailLogs = function (page) {
   if (page !== undefined) _emailPage = Math.max(1, Number(page || 1));
 
+  const search = document.getElementById('emailSearch')?.value?.trim() || '';
   const status = document.getElementById('emailStatusFilter')?.value || '';
   const type   = document.getElementById('emailTypeFilter')?.value   || '';
   let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=' + _emailPerPage;
+  if (search) url += '&search=' + encodeURIComponent(search);
   if (status) url += '&status='     + encodeURIComponent(status);
   if (type)   url += '&email_type=' + encodeURIComponent(type);
 
@@ -2537,7 +2547,7 @@ switchTab = function(tabName) {
   _syncOpsAutoRefresh(tabName === 'log-history');
 };
 
-/* ============ Monitoring (legacy alias -> Operations Hub) ============ */
+/* ============ Monitoring (legacy alias -> Logs & Updates) ============ */
 
 const STATUS_BADGE = {
   pending:    { color: '#92400e', bg: '#fef3c7', label: 'Pending' },

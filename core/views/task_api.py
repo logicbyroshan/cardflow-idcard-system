@@ -350,7 +350,7 @@ def api_task_cancel(request, task_id):
             if int(task_id) != int(latest_active_task_id):
                 return JsonResponse({
                     'success': False,
-                    'message': 'Only the latest active task can be cancelled from Operations Hub.'
+                    'message': 'Only the latest active task can be cancelled from Logs & Updates.'
                 }, status=400)
 
         result = background_cancel_task(task_id, user=request.user)

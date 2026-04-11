@@ -297,6 +297,16 @@ class PanelEmailApiTests(PanelBaseTestCase):
         self.assertEqual(payload['total'], 1)
         self.assertEqual(len(payload['logs']), 1)
 
+    def test_email_logs_endpoint_supports_search(self):
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/email-logs/?search=other@test.com')
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['total'], 1)
+        self.assertEqual(payload['logs'][0]['recipient_email'], 'other@test.com')
+
     def test_email_logs_endpoint_denies_admin_staff_without_email_permission(self):
         self.client.login(username='panel-admin-staff@test.com', password='pass1234')
         response = self.client.get('/panel/api/email-logs/')

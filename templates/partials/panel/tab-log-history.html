@@ -1,14 +1,14 @@
-<!-- === OPERATIONS HUB TAB (Logs + Monitoring) === -->
+<!-- === LOGS & UPDATES TAB (Logs + Monitoring) === -->
 <div class="panel-tab-content panel-tab-full-height log-panel-theme operations-panel-theme" id="tab-log-history">
 
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
       <div class="notif-search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="opsSearch" placeholder="Search users, tasks, logs, targets..." oninput="debounceOpsSearch()">
+        <input type="text" id="opsSearch" placeholder="Search users, updates, logs, tasks..." oninput="debounceOpsSearch()">
       </div>
       <select id="opsSourceFilter" class="form-select form-select-sm" onchange="handleOpsSourceChange()">
-        <option value="logs" selected>Activity Logs</option>
+        <option value="logs" selected>System Logs</option>
         <option value="all">All Sources</option>
         <option value="tasks">Background Tasks</option>
         <option value="backups">Backup Tasks</option>
@@ -30,7 +30,7 @@
         <option value="deleted">Deleted</option>
       </select>
       <select id="opsActionFilter" class="form-select form-select-sm" onchange="loadOperationsFeed(1)">
-        <option value="">All Log Actions</option>
+        <option value="">All Update Actions</option>
         <option value="login">Login</option>
         <option value="logout">Logout</option>
         <option value="password_reset">Password Reset</option>
@@ -63,7 +63,7 @@
         <i class="fa-solid fa-filter-circle-xmark"></i> Reset Filters
       </button>
       <button class="btn btn-sm btn-danger" type="button" onclick="clearActivityLogsManual()" id="opsClearLogsBtn">
-        <i class="fa-solid fa-trash-can"></i> Clear Activity Logs
+        <i class="fa-solid fa-trash-can"></i> Clear Logs
       </button>
       <button class="btn btn-sm btn-outline-primary" onclick="loadOperationsFeed()" id="opsRefreshBtn">
         <i class="fa-solid fa-arrows-rotate"></i> Refresh
@@ -98,8 +98,8 @@
           <td colspan="7">
             <div class="empty-state">
               <i class="fa-solid fa-wave-square"></i>
-              <p>No operations found</p>
-              <span>Background tasks and activity logs will appear here.</span>
+              <p>No logs or updates found</p>
+              <span>Background tasks and system logs will appear here.</span>
             </div>
           </td>
         </tr>

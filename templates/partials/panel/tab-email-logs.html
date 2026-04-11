@@ -4,14 +4,18 @@
   <!-- Actions / Filter bar -->
   <div class="notif-actions-bar">
     <div class="notif-actions-left">
-      <select id="emailStatusFilter" class="form-select form-select-sm" onchange="loadEmailLogs()">
+      <div class="notif-search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="emailSearch" placeholder="Search recipient, email, subject..." oninput="debounceEmailSearch()" aria-label="Search email logs">
+      </div>
+      <select id="emailStatusFilter" class="form-select form-select-sm" onchange="loadEmailLogs(1)">
         <option value="">All Statuses</option>
         <option value="on_hold">On Hold</option>
         <option value="pending">Pending</option>
         <option value="sent">Sent</option>
         <option value="failed">Failed</option>
       </select>
-      <select id="emailTypeFilter" class="form-select form-select-sm" onchange="loadEmailLogs()">
+      <select id="emailTypeFilter" class="form-select form-select-sm" onchange="loadEmailLogs(1)">
         <option value="">All Types</option>
         <option value="welcome">Welcome / Activation</option>
         <option value="temp_password">Temp Password</option>
@@ -22,7 +26,7 @@
       <button class="btn btn-sm btn-primary" onclick="openNewEmailModal()">
         <i class="fa-solid fa-plus"></i> Add New Email
       </button>
-      <button class="btn btn-sm btn-outline-primary" onclick="loadEmailLogs()">
+      <button class="btn btn-sm btn-outline-primary" onclick="loadEmailLogs(1)">
         <i class="fa-solid fa-rotate-right"></i> Refresh
       </button>
     </div>

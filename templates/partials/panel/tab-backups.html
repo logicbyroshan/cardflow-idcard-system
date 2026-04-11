@@ -1,5 +1,5 @@
 <!-- Backups Tab Content -->
-<div class="panel-tab-content backup-panel-theme" id="tab-backups">
+<div class="panel-tab-content panel-tab-full-height backup-panel-theme" id="tab-backups">
 
   <style>
     @keyframes backup-skeleton-shimmer {
@@ -57,18 +57,18 @@
   </style>
 
   <!-- Actions bar -->
-  <div class="backup-tab-actions">
-    <div class="backup-tab-head">
-      <h3 class="backup-tab-title"><i class="fa-solid fa-database"></i> Backup Management</h3>
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <div>
+        <div class="panel-title"><i class="fa-solid fa-database"></i> Backup Management</div>
+        <div class="panel-subnote">Track backup jobs, restore files, and cleanup actions.</div>
+      </div>
     </div>
-    <button type="button" class="backup-btn-refresh" onclick="loadBackups()">
-      <i class="fa-solid fa-arrows-rotate"></i> Refresh
-    </button>
-  </div>
-
-  <div class="panel-section-strip panel-section-strip-backup">
-    <span class="panel-section-strip-title"><i class="fa-solid fa-vault"></i> Backup Health &amp; Restore Readiness</span>
-    <span class="panel-section-strip-sub">Track progress, retention status and one-click recovery files.</span>
+    <div class="notif-actions-right">
+      <button type="button" class="btn btn-sm btn-outline-primary backup-btn-refresh" onclick="loadBackups()">
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+      </button>
+    </div>
   </div>
 
   <!-- Backup list container -->

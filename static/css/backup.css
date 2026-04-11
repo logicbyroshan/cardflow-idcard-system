@@ -463,7 +463,15 @@
 }
 .backup-tab-title i { color: #667eea; }
 
-.backup-list { min-height: 80px; padding: 14px 18px; }
+.backup-list {
+  min-height: 80px;
+  padding: 14px 18px;
+}
+
+.backup-panel-theme.panel-tab-full-height .backup-list {
+  flex: 1;
+  overflow-y: auto;
+}
 .backup-loading {
   text-align: center;
   padding: 30px;
@@ -473,15 +481,15 @@
 
 /* Backup card in list */
 .backup-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 0;
+  border: 1px solid #dbe2ef;
+  border-radius: 12px;
   margin-bottom: 14px;
   background: #fff;
   box-shadow: none;
   overflow: hidden;
   transition: border-color 0.2s;
 }
-.backup-card:hover { border-color: #d1d5db; }
+.backup-card:hover { border-color: #c7d2fe; }
 .backup-card-header {
   display: flex;
   align-items: center;
@@ -489,7 +497,7 @@
   padding: 12px 16px;
   border-bottom: 1px solid #f1f5f9;
   gap: 10px;
-  background: #fafbff;
+  background: #fcfdff;
 }
 .backup-card-title {
   font-size: 13px;
@@ -503,7 +511,7 @@
   padding: 3px 10px;
   text-transform: uppercase;
   letter-spacing: .6px;
-  border-radius: 3px;
+  border-radius: 999px;
 }
 .backup-status-pending { background: #fef3c7; color: #92400e; }
 .backup-status-processing { background: #dbeafe; color: #1e40af; }

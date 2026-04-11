@@ -123,6 +123,7 @@ def manage_panel(request):
 @require_http_methods(['GET'])
 def api_email_logs(request):
     """Return paginated email log entries for the Email Management tab."""
+    search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '')
     email_type_filter = request.GET.get('email_type', '')
 
@@ -140,6 +141,14 @@ def api_email_logs(request):
 
     # B3: explicit ordering for stable pagination
     qs = EmailLog.objects.order_by('-created_at')
+    if search_query:
+        qs = qs.filter(
+            Q(recipient_name__icontains=search_query)
+            | Q(recipient_email__icontains=search_query)
+            | Q(subject__icontains=search_query)
+            | Q(body_text__icontains=search_query)
+            | Q(error_message__icontains=search_query)
+        )
     if status_filter:
         qs = qs.filter(status=status_filter)
     if email_type_filter:

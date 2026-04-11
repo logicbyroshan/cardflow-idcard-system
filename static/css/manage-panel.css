@@ -234,6 +234,7 @@
 
 .templates-panel-theme .notif-actions-bar,
 .monitor-panel-theme .notif-actions-bar,
+.backup-panel-theme .notif-actions-bar,
 .maintenance-panel-theme .notif-actions-bar {
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
@@ -269,16 +270,9 @@
   padding-bottom: 7px;
 }
 
-.backup-panel-theme .backup-tab-actions {
+.backup-panel-theme .notif-actions-bar {
   background: linear-gradient(90deg, var(--notif-brand-soft) 0%, #ffffff 72%);
   border-bottom: 1px solid var(--notif-brand-border);
-}
-
-.backup-panel-theme .backup-tab-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .backup-panel-theme .backup-btn-refresh {
@@ -289,20 +283,6 @@
 
 .backup-panel-theme .backup-btn-refresh:hover {
   background: #e0e7ff;
-}
-
-.backup-panel-theme .backup-card {
-  position: relative;
-}
-
-.backup-panel-theme .backup-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--notif-brand-primary), var(--notif-brand-secondary));
 }
 
 .templates-panel-theme .notif-table-wrap,

@@ -865,7 +865,7 @@ def api_operations_feed(request):
 @csrf_protect
 def api_clear_activity_logs(request):
     """
-    Manually clear all activity log entries from Operations Hub.
+    Manually clear all activity log entries from Logs & Updates.
 
     POST /panel/api/activity-logs/clear/
     """
@@ -880,11 +880,11 @@ def api_clear_activity_logs(request):
         return JsonResponse({
             'success': True,
             'deleted_count': int(deleted_count or 0),
-            'message': f'Cleared {int(deleted_count or 0)} activity log entries.',
+            'message': f'Cleared {int(deleted_count or 0)} log entries.',
         })
     except Exception:
         logger.exception('Failed to clear activity logs manually')
-        return JsonResponse({'success': False, 'message': 'Failed to clear activity logs.'}, status=500)
+        return JsonResponse({'success': False, 'message': 'Failed to clear logs.'}, status=500)
 
 
 @require_http_methods(["GET"])
