@@ -1992,9 +1992,21 @@ class MobileAppPhase2LifecycleContractTests(TestCase):
 
 		self.assertIn("var ENTERING_CLASS = 'mobile-page-entering';", content)
 		self.assertIn("var LEAVE_CLASS = 'mobile-page-leave';", content)
+		self.assertIn("var TRANSITIONING_CLASS = 'mobile-page-transitioning';", content)
 		self.assertIn('setTimeout(clearLeaveClass, LEAVE_GUARD_MS);', content)
 		self.assertIn("window.addEventListener('pageshow'", content)
 		self.assertIn("window.addEventListener('pagehide'", content)
+
+	def test_mobile_css_has_transition_flicker_guards(self):
+		css_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'css' / 'mobile.css'
+		content = css_path.read_text(encoding='utf-8')
+
+		self.assertIn('body.mobile-page-transitioning', content)
+		self.assertIn("[class*='backdrop-blur']", content)
+		self.assertNotIn('.text-\\[8px\\]', content)
+		self.assertNotIn('.text-\\[9px\\]', content)
+		self.assertNotIn('.text-\\[10px\\]', content)
+		self.assertNotIn('.text-\\[11px\\]', content)
 
 	def test_mobile_bridge_has_external_link_and_deep_link_handlers(self):
 		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'

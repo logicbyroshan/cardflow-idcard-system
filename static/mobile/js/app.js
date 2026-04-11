@@ -56,18 +56,22 @@ window.showConfirm = function showConfirm(options) {
 
     var ENTERING_CLASS = 'mobile-page-entering';
     var LEAVE_CLASS = 'mobile-page-leave';
-    var ENTER_ANIM_MS = 320;
+    var TRANSITIONING_CLASS = 'mobile-page-transitioning';
+    var ENTER_ANIM_MS = 240;
     var LEAVE_GUARD_MS = 900;
 
     function clearEnterClass() {
         document.body.classList.remove(ENTERING_CLASS);
+        document.body.classList.remove(TRANSITIONING_CLASS);
     }
 
     function clearLeaveClass() {
         document.body.classList.remove(LEAVE_CLASS);
+        document.body.classList.remove(TRANSITIONING_CLASS);
     }
 
     document.body.classList.add(ENTERING_CLASS);
+    document.body.classList.add(TRANSITIONING_CLASS);
     setTimeout(clearEnterClass, ENTER_ANIM_MS);
 
     document.addEventListener('click', function(event) {
@@ -94,6 +98,7 @@ window.showConfirm = function showConfirm(options) {
         }
 
         document.body.classList.remove(ENTERING_CLASS);
+        document.body.classList.add(TRANSITIONING_CLASS);
         document.body.classList.add(LEAVE_CLASS);
 
         // If navigation is prevented or cancelled by app handlers,
