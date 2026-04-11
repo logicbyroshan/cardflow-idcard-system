@@ -187,8 +187,9 @@ select.wa-status-select:disabled,
 .filter-dropdown .dropdown-options,
 .wa-status-dropdown .dropdown-options {
   border: 1px solid var(--dropdown-unified-border) !important;
-  border-radius: 6px !important;
+  border-radius: 7px !important;
   background: #ffffff !important;
+  margin-top: 4px !important;
   padding: 4px 0 !important;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
 }
@@ -197,26 +198,10 @@ select.wa-status-select:disabled,
   color: #475569 !important;
   font-size: 13px !important;
   font-weight: 400 !important;
-  padding: 6px 10px !important;
-  transition: background-color 0.1s ease, color 0.1s ease !important;
-}
-
-.panel-content .custom-dropdown .dropdown-options,
-.panel-content .form-dropdown .dropdown-options,
-.panel-content .filter-dropdown .dropdown-options,
-.panel-content .wa-status-dropdown .dropdown-options,
-.main.wa-page .main-content .custom-dropdown .dropdown-options,
-.main.wa-page .main-content .form-dropdown .dropdown-options,
-.main.wa-page .main-content .filter-dropdown .dropdown-options,
-.main.wa-page .main-content .wa-status-dropdown .dropdown-options {
-  border-radius: 7px !important;
-  margin-top: 4px !important;
-}
-
-.panel-content .dropdown-option,
-.main.wa-page .main-content .dropdown-option {
   margin: 0 4px !important;
   border-radius: 4px !important;
+  padding: 6px 10px !important;
+  transition: background-color 0.1s ease, color 0.1s ease !important;
 }
 
 .panel-content select option,
