@@ -1548,6 +1548,18 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertNotIn('expanded ===', home_html)
 		self.assertNotIn('expandedGroup', groups_html)
 
+	def test_install_ctas_are_guarded_for_native_apk_shell(self):
+		templates_base = Path(__file__).resolve().parent.parent / 'templates'
+		mobile_base_html = (templates_base / 'mobile_app' / 'base.html').read_text(encoding='utf-8')
+		mobile_login_html = (templates_base / 'mobile_app' / 'login.html').read_text(encoding='utf-8')
+		website_pwa_html = (templates_base / 'partials' / 'website' / 'pwa-section.html').read_text(encoding='utf-8')
+
+		self.assertIn('function isNativeShell()', mobile_base_html)
+		self.assertIn('if (nativeShell) {', mobile_base_html)
+		self.assertIn("installBtn.classList.add('hidden');", mobile_login_html)
+		self.assertIn("if (nativeShell) {", mobile_login_html)
+		self.assertIn("section.style.display = 'none';", website_pwa_html)
+
 	def test_reprint_table_prefers_field_data_photo_url(self):
 		from reprintcard.models import ReprintRequest
 

@@ -519,8 +519,20 @@
         var hint = document.getElementById('pwa-install-hint');
         var currentPage = '{{ request.resolver_match.url_name|default:"" }}';
         var isInstallPage = currentPage === 'home' || currentPage === 'mobile_login';
+        var nativeShell = isNativeShell();
 
         if (!overlay || !sheet || !cta || !closeBtn) return;
+
+        if (nativeShell) {
+            overlay.classList.add('hidden');
+            sheet.classList.add('hidden');
+            return;
+        }
+
+        function isNativeShell() {
+            var cap = window.Capacitor;
+            return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+        }
 
         function syncDeferredPrompt() {
             if (!window.__deferredInstallPrompt) return;
@@ -564,7 +576,7 @@
         }
 
         function openSheet() {
-            if (!isInstallPage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
+            if (nativeShell || !isInstallPage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
             refreshCtaState();
             overlay.classList.remove('hidden');
             sheet.classList.remove('hidden');

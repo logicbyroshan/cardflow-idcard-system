@@ -71,3 +71,16 @@
         </div>
     </div>
 </section>
+
+<script>
+(function () {
+    var cap = window.Capacitor;
+    var isNative = !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+    if (!isNative) return;
+
+    var section = document.getElementById('download-app');
+    if (section) {
+        section.style.display = 'none';
+    }
+})();
+</script>

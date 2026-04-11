@@ -64,6 +64,7 @@ window.showConfirm = function showConfirm(options) {
     var INSTALL_ID_KEY = 'adarsh.mobile.installation.id';
     var pingIntervalId = null;
     var backPressedAt = 0;
+    var backHandlerReadyAt = Date.now() + 2200;
 
     function getCsrfToken() {
         var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
@@ -262,12 +263,21 @@ window.showConfirm = function showConfirm(options) {
     function setupAndroidBackBehavior() {
         if (!App || typeof App.addListener !== 'function') return;
         App.addListener('backButton', function(evt) {
+            var now = Date.now();
+            if (now < backHandlerReadyAt) {
+                return;
+            }
+
+            if (window.mobileOverlay && typeof window.mobileOverlay.isActive === 'function' && window.mobileOverlay.isActive()) {
+                window.mobileOverlay.close();
+                return;
+            }
+
             if (evt && evt.canGoBack) {
                 window.history.back();
                 return;
             }
 
-            var now = Date.now();
             if (now - backPressedAt < 1200) {
                 if (typeof App.exitApp === 'function') App.exitApp();
                 return;

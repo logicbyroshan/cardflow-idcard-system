@@ -181,6 +181,12 @@
     var deferredInstallPrompt = null;
     var installBtn = document.getElementById('install-app-btn');
     var installBtnText = document.getElementById('install-app-btn-text');
+    var nativeShell = isNativeShell();
+
+    function isNativeShell() {
+        var cap = window.Capacitor;
+        return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+    }
 
     function isIosSafariInstallPath() {
         var ua = navigator.userAgent || '';
@@ -191,6 +197,11 @@
     }
 
     function refreshInstallBtnState() {
+        if (nativeShell) {
+            installBtn.classList.add('hidden');
+            return;
+        }
+        installBtn.classList.remove('hidden');
         installBtnText.textContent = 'Download App';
     }
 
@@ -212,6 +223,9 @@
     });
 
     installBtn.addEventListener('click', async function () {
+        if (nativeShell) {
+            return;
+        }
         if (deferredInstallPrompt) {
             deferredInstallPrompt.prompt();
             try { await deferredInstallPrompt.userChoice; } catch (e) {}
