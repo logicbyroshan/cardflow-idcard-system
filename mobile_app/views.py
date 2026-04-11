@@ -86,7 +86,29 @@ def _mobile_shell_safe_bool(raw_value, default=False):
     return _truthy(raw_value)
 
 
-def _mobile_shell_app_config_payload(*, app_build=0):
+def _mobile_shell_resolve_url(url_value, *, request=None, fallback=''):
+    raw = str(url_value or '').strip() or str(fallback or '').strip()
+    if not raw:
+        return ''
+
+    if raw.startswith('http://') or raw.startswith('https://'):
+        return raw
+
+    if raw.startswith('/'):
+        if request is not None:
+            try:
+                return request.build_absolute_uri(raw)
+            except Exception:
+                pass
+
+        base = str(getattr(settings, 'WEBSITE_URL', '') or getattr(settings, 'SITE_URL', '') or '').strip().rstrip('/')
+        if base:
+            return f'{base}{raw}'
+
+    return raw
+
+
+def _mobile_shell_app_config_payload(*, app_build=0, request=None):
     app_build = max(0, _mobile_shell_safe_int(app_build, 0))
     min_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_MIN_BUILD', 1) or 1)
     latest_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_BUILD', min_build) or min_build)
@@ -95,6 +117,16 @@ def _mobile_shell_app_config_payload(*, app_build=0):
 
     update_required = force_toggle or (app_build > 0 and app_build < min_build)
     update_recommended = app_build > 0 and app_build < latest_build
+    update_url = _mobile_shell_resolve_url(
+        getattr(settings, 'MOBILE_SHELL_ANDROID_UPDATE_URL', ''),
+        request=request,
+        fallback='/static/website/apk/adarsh-admin.apk',
+    )
+    support_url = _mobile_shell_resolve_url(
+        getattr(settings, 'MOBILE_SHELL_SUPPORT_URL', ''),
+        request=request,
+        fallback='/app/profile/',
+    )
 
     return {
         'platform': 'android',
@@ -104,8 +136,9 @@ def _mobile_shell_app_config_payload(*, app_build=0):
         'latest_version': str(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0') or '1.0.0'),
         'update_required': update_required,
         'update_recommended': update_recommended,
+        'update_url': update_url,
         'privacy_url': str(getattr(settings, 'MOBILE_SHELL_PRIVACY_URL', '') or ''),
-        'support_url': str(getattr(settings, 'MOBILE_SHELL_SUPPORT_URL', '') or ''),
+        'support_url': support_url,
         'server_app_version': str(getattr(settings, 'APP_VERSION', '') or ''),
     }
 
@@ -3827,7 +3860,7 @@ def api_search(request):
 def api_mobile_shell_config(request):
     """Returns Android shell policy (version/update/support URLs) for runtime checks."""
     app_build = _mobile_shell_safe_int(request.GET.get('app_build'), 0)
-    payload = _mobile_shell_app_config_payload(app_build=app_build)
+    payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({'success': True, 'data': payload})
 
 
@@ -3873,7 +3906,7 @@ def api_mobile_shell_device_register(request):
         defaults=defaults,
     )
 
-    config_payload = _mobile_shell_app_config_payload(app_build=app_build)
+    config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({
         'success': True,
         'data': {
@@ -3926,7 +3959,7 @@ def api_mobile_shell_device_ping(request):
             is_active=True,
         )
 
-    config_payload = _mobile_shell_app_config_payload(app_build=app_build)
+    config_payload = _mobile_shell_app_config_payload(app_build=app_build, request=request)
     return JsonResponse({'success': True, 'data': {'config': config_payload}})
 
 

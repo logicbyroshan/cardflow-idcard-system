@@ -210,7 +210,7 @@ window.showConfirm = function showConfirm(options) {
         wrap.style.padding = '20px';
 
         var latestVersion = (configPayload && configPayload.latest_version) || '';
-        var supportUrl = (configPayload && configPayload.support_url) || '/app/profile/';
+        var updateUrl = (configPayload && configPayload.update_url) || (configPayload && configPayload.support_url) || '/app/profile/';
 
         wrap.innerHTML = '' +
             '<div style="max-width:360px;width:100%;text-align:center;">' +
@@ -219,7 +219,7 @@ window.showConfirm = function showConfirm(options) {
             'Your Adarsh Panel app version is no longer supported. Please update to continue.' +
             '</p>' +
             (latestVersion ? '<p style="font-size:12px;opacity:.82;margin:0 0 16px;">Latest version: ' + latestVersion + '</p>' : '') +
-            '<a href="' + supportUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;background:#fff;color:#0f172a;text-decoration:none;font-size:13px;font-weight:700;">Open Support</a>' +
+            '<a href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;background:#fff;color:#0f172a;text-decoration:none;font-size:13px;font-weight:700;">Update Now</a>' +
             '</div>';
 
         document.body.appendChild(wrap);
@@ -231,7 +231,7 @@ window.showConfirm = function showConfirm(options) {
 
         var latestBuild = parseInt(configPayload && configPayload.latest_build, 10) || 0;
         var latestVersion = String(configPayload && configPayload.latest_version || '').trim();
-        var supportUrl = String(configPayload && configPayload.support_url || '/app/profile/').trim();
+        var updateUrl = String(configPayload && (configPayload.update_url || configPayload.support_url) || '/app/profile/').trim();
         var reminderKey = 'adarsh.mobile.recommended.' + String(latestBuild || latestVersion || 'unknown');
 
         try {
@@ -267,7 +267,7 @@ window.showConfirm = function showConfirm(options) {
                 : '') +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-            '<a id="mobile-shell-recommended-open" href="' + supportUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#fff;color:#0f172a;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
+            '<a id="mobile-shell-recommended-open" href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#fff;color:#0f172a;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
             '<button id="mobile-shell-recommended-dismiss" type="button" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:600;">Later</button>' +
             '</div>' +
             '</div>';

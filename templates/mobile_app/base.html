@@ -258,6 +258,69 @@
             if (message && updateMessage) updateMessage.textContent = message;
         }
 
+        function getCapacitorPlugins() {
+            var cap = window.Capacitor;
+            if (!cap) return {};
+            return cap.Plugins || {};
+        }
+
+        async function getNativeBuildNumber() {
+            var plugins = getCapacitorPlugins();
+            var appPlugin = plugins.App;
+            if (!appPlugin || typeof appPlugin.getInfo !== 'function') return 0;
+            try {
+                var info = await appPlugin.getInfo();
+                var parsed = parseInt(info && info.build, 10);
+                return Number.isFinite(parsed) ? parsed : 0;
+            } catch (err) {
+                return 0;
+            }
+        }
+
+        async function fetchMobileShellConfig() {
+            try {
+                var buildNum = await getNativeBuildNumber();
+                var url = '/app/api/mobile-shell/config/';
+                if (buildNum > 0) {
+                    url += '?app_build=' + encodeURIComponent(String(buildNum));
+                }
+
+                var response = await fetch(url, { credentials: 'same-origin' });
+                if (!response.ok) return null;
+                var payload = await response.json();
+                if (!payload || !payload.success) return null;
+                return payload.data || null;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function resolveUpdateLink(configData) {
+            if (!configData) return '';
+            var updateUrl = String(configData.update_url || '').trim();
+            var supportUrl = String(configData.support_url || '').trim();
+            return updateUrl || supportUrl || '';
+        }
+
+        async function openUpdateLink(link) {
+            if (!link) return false;
+            var plugins = getCapacitorPlugins();
+            var browser = plugins.Browser;
+            if (browser && typeof browser.open === 'function') {
+                try {
+                    await browser.open({ url: link });
+                    return true;
+                } catch (err) {}
+            }
+
+            try {
+                window.location.href = link;
+                return true;
+            } catch (err) {
+                return false;
+            }
+        }
+
         async function activateWaitingWorker(registration) {
             if (!registration || !registration.waiting) return;
             try {
@@ -304,7 +367,21 @@
             }
 
             try {
-                setUpdateProgress(8, 'Checking for latest files...');
+                setUpdateProgress(8, 'Checking latest app release...');
+
+                var configData = await fetchMobileShellConfig();
+                var updateLink = resolveUpdateLink(configData);
+                if (updateLink) {
+                    setUpdateProgress(46, 'Opening update package...');
+                    var opened = await openUpdateLink(updateLink);
+                    if (opened) {
+                        setUpdateProgress(100, 'Install update, then reopen the app.');
+                        inProgress = false;
+                        return false;
+                    }
+                }
+
+                setUpdateProgress(16, 'Refreshing in-app assets...');
 
                 var registrations = [];
                 if ('serviceWorker' in navigator) {

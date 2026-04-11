@@ -354,6 +354,20 @@ class MobileAppShellApiTests(MobileAppBaseTestCase):
 		self.assertTrue(body.get('success'))
 		self.assertEqual(body['data']['platform'], 'android')
 		self.assertIn('min_supported_build', body['data'])
+		self.assertIn('update_url', body['data'])
+		self.assertIn('/static/website/apk/adarsh-admin.apk', body['data'].get('update_url', ''))
+
+	@override_settings(MOBILE_SHELL_ANDROID_UPDATE_URL='https://downloads.example.com/adarsh-admin.apk')
+	def test_mobile_shell_config_uses_explicit_update_url_when_configured(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/config/?app_build=10')
+
+		self.assertEqual(response.status_code, 200)
+		body = response.json()
+		self.assertEqual(
+			body['data'].get('update_url'),
+			'https://downloads.example.com/adarsh-admin.apk',
+		)
 
 	def test_mobile_shell_register_upserts_device(self):
 		self._login_mobile_client()
@@ -2142,6 +2156,24 @@ class MobileAppPhase7RolloutGuardAutomationTests(TestCase):
 		self.assertIn('## Phase 7 Completion (2026-04-11)', content)
 		self.assertIn('rollout_gate_check_contract.md', content)
 		self.assertIn('MobileAppPhase7RolloutGuardAutomationTests', content)
+
+
+class MobileAppProfileUpdateFlowContractTests(TestCase):
+	def test_profile_template_has_update_button_hooked_to_mobile_update_flow(self):
+		profile_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'profile.html'
+		content = profile_path.read_text(encoding='utf-8')
+
+		self.assertIn('Update App', content)
+		self.assertIn('window.mobileUpdateApp(event)', content)
+
+	def test_base_template_mobile_update_flow_fetches_config_and_opens_update_link(self):
+		base_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'base.html'
+		content = base_path.read_text(encoding='utf-8')
+
+		self.assertIn('async function fetchMobileShellConfig()', content)
+		self.assertIn('function resolveUpdateLink(configData)', content)
+		self.assertIn('var updateLink = resolveUpdateLink(configData);', content)
+		self.assertIn('await openUpdateLink(updateLink);', content)
 
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):

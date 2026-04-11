@@ -19,7 +19,13 @@
 3. Update backend env:
    - `MOBILE_SHELL_ANDROID_LATEST_BUILD`
    - `MOBILE_SHELL_ANDROID_LATEST_VERSION`
+   - `MOBILE_SHELL_ANDROID_UPDATE_URL`
    - `MOBILE_SHELL_ANDROID_MIN_BUILD` (only when forcing cutoff)
+
+## 3.1 In-App Profile Update Button
+1. Profile page button calls runtime update flow and opens `MOBILE_SHELL_ANDROID_UPDATE_URL` in native shell.
+2. Keep this URL pointed to the latest approved APK or managed update landing page.
+3. If URL is missing/unreachable, app falls back to in-app cache refresh only.
 
 ## 4. Release Tracks
 1. Internal testing: smoke test quickly.

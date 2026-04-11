@@ -76,6 +76,11 @@ Current scope: Android-first rollout. iOS work is intentionally deferred.
    - add `--include-inactive`.
 4. Command outputs JSON for release notes and incident triage.
 
+### Profile Update Button Runtime
+1. Mobile profile page `Update App` button calls `/app/api/mobile-shell/config/`.
+2. Native shell opens `update_url` from config (backed by `MOBILE_SHELL_ANDROID_UPDATE_URL`).
+3. Fallback behavior keeps cache-refresh flow if update URL cannot be opened.
+
 ## Backend dependencies
 The shell bridge expects these endpoints in Django mobile app:
 1. `GET /app/api/mobile-shell/config/`
