@@ -1,0 +1,48 @@
+<div class="dashboard-card">
+  <div class="dashboard-card-header">
+    <h3><i class="fa-solid fa-chart-simple"></i> Overview</h3>
+  </div>
+  <div class="dashboard-card-body p-0">
+    <div class="cards-overview" aria-label="Dashboard stats overview">
+      <div class="card-overview-item card-overview-item-static">
+        <div class="card-overview-left">
+          <div class="card-overview-icon clients">
+            <i class="fa-solid fa-building"></i>
+          </div>
+          <span class="card-overview-label">Clients</span>
+        </div>
+        <span class="card-overview-value">{{ overview_clients_count|default:0 }}</span>
+      </div>
+
+      <div class="card-overview-item card-overview-item-static">
+        <div class="card-overview-left">
+          <div class="card-overview-icon active-clients">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <span class="card-overview-label">Admins</span>
+        </div>
+        <span class="card-overview-value">{{ overview_admins_count|default:0 }}</span>
+      </div>
+
+      <div class="card-overview-item card-overview-item-static">
+        <div class="card-overview-left">
+          <div class="card-overview-icon staff">
+            <i class="fa-solid fa-user-tie"></i>
+          </div>
+          <span class="card-overview-label">Operators</span>
+        </div>
+        <span class="card-overview-value">{{ overview_operators_count|default:0 }}</span>
+      </div>
+
+      <div class="card-overview-item card-overview-item-static">
+        <div class="card-overview-left">
+          <div class="card-overview-icon active-staff">
+            <i class="fa-solid fa-user-gear"></i>
+          </div>
+          <span class="card-overview-label">Assistents</span>
+        </div>
+        <span class="card-overview-value">{{ overview_assistents_count|default:0 }}</span>
+      </div>
+    </div>
+  </div>
+</div>

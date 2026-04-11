@@ -920,3 +920,13 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         older_active.refresh_from_db()
         self.assertEqual(latest_active.status, 'cancelled')
         self.assertEqual(older_active.status, 'processing')
+
+        cancel_log = (
+            ActivityLog.objects
+            .filter(action='other', target_model='BackgroundTask', target_id=latest_active.id)
+            .order_by('-created_at')
+            .first()
+        )
+        self.assertIsNotNone(cancel_log)
+        self.assertEqual(cancel_log.user, pro_user)
+        self.assertIn('cancelled', (cancel_log.description or '').lower())

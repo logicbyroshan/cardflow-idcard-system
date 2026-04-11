@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let reprintOverviewSortKey = '';
     const printOverviewSearchInput = document.getElementById('printOverviewSearch');
     const reprintOverviewSearchInput = document.getElementById('reprintOverviewSearch');
-    const recentActivityTimeFilter = document.getElementById('recentActivityTimeFilter');
     const dashboardTabCountRecentClients = document.getElementById('dashboardTabCountRecentClients');
     const dashboardTabCountRecentUpdates = document.getElementById('dashboardTabCountRecentUpdates');
     const dashboardTabCountReprint = document.getElementById('dashboardTabCountReprint');
@@ -646,15 +645,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const activityList = document.getElementById('recentActivityList');
         if (!activityList) return;
-        const timeWindow = (recentActivityTimeFilter && recentActivityTimeFilter.value)
-            ? recentActivityTimeFilter.value
-            : '48';
 
         const esc = typeof escapeHtml === 'function'
             ? escapeHtml
             : (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
 
-        ApiClient.get(panelUrl(`/api/recent-activity/?limit=100&window=${encodeURIComponent(timeWindow)}`))
+        ApiClient.get(panelUrl('/api/recent-activity/?limit=100'))
             .then(data => {
                 if (!data || !data.success) return;
 
@@ -715,12 +711,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading recent activity:', error);
                 setDashboardTabCount(dashboardTabCountRecentUpdates, 0);
             });
-    }
-
-    if (recentActivityTimeFilter) {
-        recentActivityTimeFilter.addEventListener('change', function() {
-            loadRecentActivity();
-        });
     }
 
     function refreshLiveDashboardSections() {

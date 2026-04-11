@@ -1287,12 +1287,10 @@ class DashboardAndLogsHardeningTests(TestCase):
         response = self.client.get('/panel/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['total_clients'], 2)
-        self.assertEqual(response.context['active_clients'], 1)
-        self.assertEqual(response.context['total_staff'], 2)
-        self.assertEqual(response.context['active_staff'], 1)
-        self.assertEqual(response.context['client_staff_count'], 3)
-        self.assertEqual(response.context['active_client_staff_count'], 2)
+        self.assertEqual(response.context['overview_clients_count'], 1)
+        self.assertEqual(response.context['overview_admins_count'], 1)
+        self.assertEqual(response.context['overview_operators_count'], 1)
+        self.assertEqual(response.context['overview_assistents_count'], 2)
 
     def test_dashboard_limit_parser_clamps_values(self):
         from core.views.dashboard_views import _parse_dashboard_limit
@@ -1301,18 +1299,41 @@ class DashboardAndLogsHardeningTests(TestCase):
         self.assertEqual(_parse_dashboard_limit('-5'), 1)
         self.assertEqual(_parse_dashboard_limit('bad'), 500)
 
-    def test_recent_activity_window_parser_defaults_to_two_days(self):
-        from core.views.dashboard_views import _parse_recent_activity_window
+    def test_recent_activity_api_returns_latest_entries_without_time_window_filter(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from core.models import ActivityLog
 
-        self.assertEqual(_parse_recent_activity_window(None), 48)
-        self.assertEqual(_parse_recent_activity_window(''), 48)
-        self.assertEqual(_parse_recent_activity_window('all'), 48)
-        self.assertEqual(_parse_recent_activity_window('48'), 48)
-        self.assertEqual(_parse_recent_activity_window('2d'), 48)
-        self.assertEqual(_parse_recent_activity_window('24'), 24)
-        self.assertEqual(_parse_recent_activity_window('12'), 12)
-        self.assertEqual(_parse_recent_activity_window('1'), 1)
-        self.assertEqual(_parse_recent_activity_window('unexpected-token'), 48)
+        admin = _create_super_admin('activity-recent-admin@test.com', 'adminpass1')
+
+        old_entry = ActivityLog.objects.create(
+            user=admin,
+            action='other',
+            description='legacy-entry-10-days-old',
+        )
+        recent_entry = ActivityLog.objects.create(
+            user=admin,
+            action='other',
+            description='latest-entry-now',
+        )
+
+        ten_days_ago = timezone.now() - timedelta(days=10)
+        ActivityLog.objects.filter(pk=old_entry.pk).update(created_at=ten_days_ago)
+
+        self.client.force_login(admin)
+        response = self.client.get('/panel/api/recent-activity/', {'limit': 100, 'window': '1'})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        descriptions = [item.get('description') for item in payload.get('activities', [])]
+        self.assertIn('legacy-entry-10-days-old', descriptions)
+        self.assertIn('latest-entry-now', descriptions)
+
+        ids = [item.get('id') for item in payload.get('activities', [])]
+        self.assertIn(old_entry.pk, ids)
+        self.assertIn(recent_entry.pk, ids)
 
     def test_activity_logs_handles_invalid_limit_offset(self):
         from core.models import ActivityLog

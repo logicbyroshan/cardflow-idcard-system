@@ -8,10 +8,10 @@
         <input type="text" id="opsSearch" placeholder="Search users, tasks, logs, targets..." oninput="debounceOpsSearch()">
       </div>
       <select id="opsSourceFilter" class="form-select form-select-sm" onchange="handleOpsSourceChange()">
+        <option value="logs" selected>Activity Logs</option>
         <option value="all">All Sources</option>
         <option value="tasks">Background Tasks</option>
         <option value="backups">Backup Tasks</option>
-        <option value="logs">Activity Logs</option>
       </select>
       <select id="opsUserTypeFilter" class="form-select form-select-sm" onchange="loadOperationsFeed(1)">
         <option value="">All User Types</option>

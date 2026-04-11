@@ -12,17 +12,12 @@ Background service that creates a SINGLE combined ZIP archive named
 Uses a daemon thread for the heavy I/O so the request returns immediately.
 Progress is tracked in the BackupTask model (in core.models), polled from
 the Manage Panel.
-
-Auto-delete: sets ``auto_delete_at`` = now + 24 h after completion.
-A lightweight cleanup thread checks periodically and deletes expired backups.
 """
 
 import logging
 import os
 import threading
-import time
 import zipfile
-from datetime import timedelta
 from io import BytesIO
 from typing import List, Optional
 
@@ -33,9 +28,6 @@ logger = logging.getLogger(__name__)
 
 # Where backup ZIPs live (relative folder under MEDIA_ROOT)
 BACKUP_DIR_NAME = os.path.join('temp', 'backups')
-AUTO_DELETE_HOURS = 24
-_cleanup_started = False
-_cleanup_lock = threading.Lock()
 
 
 def _backup_root():
@@ -64,7 +56,6 @@ def start_backup(task_id: int):
         daemon=True,
     )
     thread.start()
-    _ensure_cleanup_thread()
 
 
 def delete_backup_files(task_id: int):
@@ -165,10 +156,9 @@ def _process_backup(task_id: int):
         task.current_client = ''
         task.status = 'completed'
         task.completed_at = timezone.now()
-        task.auto_delete_at = timezone.now() + timedelta(hours=AUTO_DELETE_HOURS)
         task.save(update_fields=[
             'zip_files', 'progress', 'current_client',
-            'status', 'completed_at', 'auto_delete_at',
+            'status', 'completed_at',
         ])
         logger.info("Backup #%d completed — combined ZIP: %s", task_id, zip_filename)
 
@@ -355,43 +345,6 @@ def _collect_images(zf, base_prefix, card, image_fields, already):
             zf.write(abs_path, arc_name)
         except Exception as exc:
             logger.debug("Could not add image %s to ZIP: %s", abs_path, exc)
-
-
-# ─── Cleanup watcher ─────────────────────────────────────────────────────
-
-def _ensure_cleanup_thread():
-    """Start a single daemon thread that auto-deletes expired backups."""
-    global _cleanup_started
-    with _cleanup_lock:
-        if _cleanup_started:
-            return
-        _cleanup_started = True
-
-    t = threading.Thread(target=_cleanup_loop, daemon=True)
-    t.start()
-
-
-def _cleanup_loop():
-    """Periodically check for expired backups and delete them."""
-    from core.models import BackupTask
-
-    while True:
-        try:
-            now = timezone.now()
-            expired = BackupTask.objects.filter(
-                status='completed',
-                is_auto_delete_cancelled=False,
-                auto_delete_at__lte=now,
-            )
-            for task in expired:
-                logger.info("Auto-deleting expired backup #%d", task.pk)
-                task.cleanup_files()
-                task.status = 'deleted'
-                task.save(update_fields=['status'])
-        except Exception as exc:
-            logger.warning("Backup cleanup error: %s", exc)
-
-        time.sleep(300)
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────

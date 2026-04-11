@@ -210,17 +210,6 @@ class BackgroundWorker:
                 close_old_connections()
             except Exception:
                 pass
-            # Periodic cleanup of orphaned temp/export files.
-            # Both functions are rate-limited internally (_MIN_CLEANUP_INTERVAL=1h)
-            # so concurrent workers or rapid task completions skip the scan cheaply.
-            try:
-                from core.services.task_cleanup import run_all_cleanup
-                # Periodic cleanup: temp files (24h), exports (3d).
-                # Activity logs are now cleared manually from Operations Hub.
-                # All functions are rate-limited internally so repeated calls are cheap.
-                run_all_cleanup()
-            except Exception as cleanup_err:
-                logger.warning('Post-task cleanup failed: %s', cleanup_err)
     
     def _process_bulk_upload(self, task):
         """
@@ -361,6 +350,7 @@ def cancel_task(task_id: int, user=None) -> dict:
     Returns dict with 'success' and 'message' keys.
     """
     from core.models import BackgroundTask
+    from core.services.activity_service import ActivityService
     from django.db import transaction
     from django.utils import timezone
 
@@ -381,8 +371,25 @@ def cancel_task(task_id: int, user=None) -> dict:
             task.completed_at = timezone.now()
             task.save(update_fields=['status', 'completed_at', 'updated_at'])
 
+            task_type_display = task.get_task_type_display()
+            task_owner = task.user
+
         # Cleanup files outside the transaction (I/O)
         task.cleanup_files()
+
+        try:
+            actor = user if user is not None else task_owner
+            ActivityService.log(
+                'other',
+                f'Background task #{task.id} cancelled ({task_type_display})',
+                user=actor,
+                target_model='BackgroundTask',
+                target_id=task.id,
+                target_name=task_type_display,
+            )
+        except Exception:
+            logger.exception('Failed to write cancellation activity for task %s', task.id)
+
         return {'success': True, 'message': 'Task cancelled'}
     except BackgroundTask.DoesNotExist:
         return {'success': False, 'message': 'Task not found'}

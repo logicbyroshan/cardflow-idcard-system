@@ -1532,7 +1532,7 @@ let opsSearchTimer = null;
 let opsAutoRefreshTimer = null;
 
 function handleOpsSourceChange() {
-  const source = document.getElementById('opsSourceFilter')?.value || 'all';
+  const source = document.getElementById('opsSourceFilter')?.value || 'logs';
   const taskStatusFilter = document.getElementById('opsTaskStatusFilter');
   const actionFilter = document.getElementById('opsActionFilter');
   const userRoleFilter = document.getElementById('opsUserTypeFilter');
@@ -1881,7 +1881,7 @@ async function loadOperationsFeed(page) {
 
   try {
     const search = document.getElementById('opsSearch')?.value || '';
-    const source = document.getElementById('opsSourceFilter')?.value || 'all';
+    const source = document.getElementById('opsSourceFilter')?.value || 'logs';
     const userRole = document.getElementById('opsUserTypeFilter')?.value || '';
     const taskStatus = document.getElementById('opsTaskStatusFilter')?.value || '';
     const action = document.getElementById('opsActionFilter')?.value || '';

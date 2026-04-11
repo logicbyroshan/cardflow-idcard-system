@@ -33,6 +33,111 @@ _SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v3'
 _SERVER_INFO_CACHE_TTL = 86400
 
 
+def _parse_feed_int(value, default, min_value=None, max_value=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    if min_value is not None:
+        parsed = max(min_value, parsed)
+    if max_value is not None:
+        parsed = min(max_value, parsed)
+    return parsed
+
+
+def _parse_iso_datetime(value):
+    raw_value = str(value or '').strip()
+    if not raw_value:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(raw_value.replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=dt_timezone.utc)
+    return parsed
+
+
+def _matches_activity_search(entry, token):
+    if not token:
+        return True
+
+    haystack = ' '.join([
+        str(entry.get('display_text') or ''),
+        str(entry.get('description') or ''),
+        str(entry.get('target_model') or ''),
+        str(entry.get('target_name') or ''),
+        str(entry.get('actor') or ''),
+        str(entry.get('action') or ''),
+    ]).lower()
+    return token in haystack
+
+
+def _build_activity_log_feed_rows(*, user, now, fetch_cap, search='', user_role='', action=''):
+    from core.models import ActivityLog
+    from core.services.activity_service import ActivityService
+
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    rows = []
+    search_token = str(search or '').strip().lower()
+    activities = ActivityService.get_recent(limit=fetch_cap, hours=None, user=user)
+
+    for entry in activities:
+        entry_action = str(entry.get('action') or '').strip()
+        entry_role = str(entry.get('actor_role') or '').strip()
+
+        if user_role and entry_role != user_role:
+            continue
+        if action and entry_action != action:
+            continue
+        if search_token and not _matches_activity_search(entry, search_token):
+            continue
+
+        description = str(entry.get('display_text') or entry.get('description') or '').strip()
+        created_at_dt = _parse_iso_datetime(entry.get('created_at')) or now
+        created_at_display = str(entry.get('created_at_display') or '').strip()
+        if not created_at_display:
+            created_at_display = created_at_dt.strftime('%d-%m-%Y %H:%M')
+
+        time_ago = str(entry.get('time_ago') or '').strip()
+        if time_ago and not time_ago.lower().endswith('ago'):
+            time_ago = f'{time_ago} ago'
+        elif not time_ago:
+            time_ago = 'just now'
+
+        device_meta = _device_surface_meta(_infer_device_surface(entry_action, description))
+        event_title = action_display_map.get(entry_action, entry_action.replace('_', ' ').title() or 'Activity')
+
+        rows.append({
+            'source_type': 'activity_log',
+            'source_label': 'Activity Log',
+            'event_title': event_title,
+            'event_subtitle': str(entry.get('target_model') or ''),
+            'task_id': None,
+            'status': '',
+            'status_display': '',
+            'action': entry_action,
+            'action_display': event_title,
+            'can_cancel': False,
+            'description': description,
+            'target_name': str(entry.get('target_name') or ''),
+            'user': str(entry.get('actor') or 'System'),
+            'ip_address': '',
+            'progress_text': '',
+            'error': '',
+            'icon_class': str(entry.get('icon_class') or 'fa-circle-info'),
+            'icon_color': str(entry.get('icon_color') or 'edit'),
+            'created_at': created_at_display,
+            'time_ago': time_ago,
+            'created_at_dt': created_at_dt,
+            **device_meta,
+        })
+
+    return rows
+
+
 def _infer_device_surface(action, description):
     text = f"{action or ''} {description or ''}".lower()
     mobile_tokens = ('mobile app', 'android', 'iphone', 'ipad', 'ipod', ' ios ', 'mobile')
@@ -573,31 +678,20 @@ def api_operations_feed(request):
     from django.db.models import Q
     from django.utils import timezone
     from django.utils.timesince import timesince as django_timesince
-    from core.models import ActivityLog, BackgroundTask, BackupTask
+    from core.models import BackgroundTask, BackupTask
     from core.services.permission_service import PermissionService
 
     if not PermissionService.is_super_admin(request.user):
         return JsonResponse({'success': False, 'message': 'Super admin only'}, status=403)
 
-    def _parse_int(value, default, min_value=None, max_value=None):
-        try:
-            parsed = int(value)
-        except (TypeError, ValueError):
-            parsed = default
-        if min_value is not None:
-            parsed = max(min_value, parsed)
-        if max_value is not None:
-            parsed = min(max_value, parsed)
-        return parsed
-
     now = timezone.now()
     since_24h = now - timedelta(hours=24)
 
-    limit = _parse_int(request.GET.get('limit', 180), 180, min_value=20, max_value=300)
-    offset = _parse_int(request.GET.get('offset', 0), 0, min_value=0)
+    limit = _parse_feed_int(request.GET.get('limit', 180), 180, min_value=20, max_value=300)
+    offset = _parse_feed_int(request.GET.get('offset', 0), 0, min_value=0)
     fetch_cap = min(max(offset + limit + 400, 300), 2000)
 
-    source = (request.GET.get('source', 'all') or 'all').strip().lower()
+    source = (request.GET.get('source', 'logs') or 'logs').strip().lower()
     allowed_sources = {'all', 'tasks', 'task', 'background', 'background_tasks', 'backups', 'backup', 'logs', 'log', 'activity'}
     if source not in allowed_sources:
         return JsonResponse({'success': False, 'message': 'Invalid source filter'}, status=400)
@@ -629,18 +723,6 @@ def api_operations_feed(request):
     failed_24h = BackgroundTask.objects.filter(
         status='failed', completed_at__gte=since_24h
     ).count()
-
-    action_display_map = dict(ActivityLog.ACTION_CHOICES)
-
-    def _card_status_summary_text(raw_description):
-        """Normalize noisy per-card status logs into a stable summary line."""
-        summary = str(raw_description or '').strip()
-        if not summary:
-            return 'Card status changed'
-        summary = re.sub(r'\s*\|\s*Target:\s*Card\s*#.*$', '', summary, flags=re.IGNORECASE)
-        summary = re.sub(r'\s*Target:\s*Card\s*#.*$', '', summary, flags=re.IGNORECASE)
-        summary = summary.strip(' |')
-        return summary or 'Card status changed'
 
     items = []
 
@@ -742,87 +824,14 @@ def api_operations_feed(request):
             })
 
     if include_logs:
-        log_qs = ActivityLog.objects.select_related('user', 'user__client_profile').order_by('-created_at')
-
-        if user_role:
-            log_qs = log_qs.filter(user__role=user_role)
-        if action:
-            log_qs = log_qs.filter(action=action)
-
-        if search:
-            base_search_q = (
-                Q(description__icontains=search)
-                | Q(target_name__icontains=search)
-                | Q(user__username__icontains=search)
-                | Q(user__first_name__icontains=search)
-                | Q(user__last_name__icontains=search)
-                | Q(action__icontains=search)
-            )
-            log_qs = log_qs.filter(base_search_q)
-
-        log_items = []
-        card_status_groups = {}
-
-        for log in log_qs[:fetch_cap]:
-            user_name = log.user.get_full_name() or log.user.username if log.user else 'System'
-
-            description = log.description or ''
-            if log.action == 'password_reset' and log.user and getattr(log.user, 'email', ''):
-                # Show full recipient email in recent activity for password reset actions.
-                description = f'Password reset completed for {log.user.email}'
-
-            device_meta = _device_surface_meta(_infer_device_surface(log.action, description))
-
-            if log.action == 'card_status':
-                summary_desc = _card_status_summary_text(description)
-                minute_bucket = log.created_at.replace(second=0, microsecond=0)
-                group_key = (log.user_id or 0, minute_bucket, summary_desc.lower())
-                existing_idx = card_status_groups.get(group_key)
-                if existing_idx is not None:
-                    grouped = log_items[existing_idx]
-                    grouped['_group_count'] = int(grouped.get('_group_count') or 1) + 1
-                    count = grouped['_group_count']
-                    grouped['event_title'] = f'{count} cards status changed'
-                    grouped['action_display'] = f'{count} cards status changed'
-                    grouped['description'] = f'{summary_desc} ({count} cards)'
-                    grouped['target_name'] = ''
-                    continue
-
-                card_status_groups[group_key] = len(log_items)
-                event_title = action_display_map.get(log.action, log.action)
-                action_display = event_title
-                row_description = summary_desc
-            else:
-                event_title = action_display_map.get(log.action, log.action)
-                action_display = event_title
-                row_description = description
-
-            log_items.append({
-                'source_type': 'activity_log',
-                'source_label': 'Activity Log',
-                'event_title': event_title,
-                'event_subtitle': log.target_model or '',
-                'task_id': None,
-                'status': '',
-                'status_display': '',
-                'action': log.action,
-                'action_display': action_display,
-                'can_cancel': False,
-                'description': row_description,
-                'target_name': log.target_name or '',
-                'user': user_name,
-                'ip_address': log.ip_address or '',
-                'progress_text': '',
-                'error': '',
-                'icon_class': log.icon_class,
-                'icon_color': log.icon_color,
-                'created_at': log.created_at.strftime('%d-%m-%Y %H:%M'),
-                'time_ago': django_timesince(log.created_at, now) + ' ago',
-                'created_at_dt': log.created_at,
-                '_group_count': 1,
-                **device_meta,
-            })
-
+        log_items = _build_activity_log_feed_rows(
+            user=request.user,
+            now=now,
+            fetch_cap=fetch_cap,
+            search=search,
+            user_role=user_role,
+            action=action,
+        )
         items.extend(log_items)
 
     items.sort(key=lambda row: row.get('created_at_dt') or now, reverse=True)
@@ -836,7 +845,6 @@ def api_operations_feed(request):
 
     for row in paged_items:
         row.pop('created_at_dt', None)
-        row.pop('_group_count', None)
 
     return JsonResponse({
         'success': True,

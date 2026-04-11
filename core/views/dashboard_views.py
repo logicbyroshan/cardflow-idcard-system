@@ -58,20 +58,6 @@ def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
     return min(max(limit, 1), max_limit)
 
 
-def _parse_recent_activity_window(raw_window):
-    """Parse recent activity time window query; defaults to last 48 hours."""
-    token = str(raw_window or '48').strip().lower()
-    if token in ('all', '48', '48h', '48hr', '48hour', '2d', '2day', '2days', 'last_2d', 'last2d', 'last_48h', 'last48h'):
-        return 48
-    if token in ('1', '1h', '1hr', '1hour', 'last_1h', 'last1h'):
-        return 1
-    if token in ('12', '12h', '12hr', '12hour', 'last_12h', 'last12h'):
-        return 12
-    if token in ('24', '24h', '24hr', '24hour', 'last_24h', 'last24h'):
-        return 24
-    return 48
-
-
 def _get_live_active_client_ids_for_dashboard(user):
     """
     Return client IDs with recent authenticated activity.
@@ -139,9 +125,9 @@ def _get_live_active_client_ids_for_dashboard(user):
     return active_client_ids
 
 
-def _get_dashboard_recent_activities(*, user, limit, hours=None):
-    """Return recent activity entries for the requested time window."""
-    return ActivityService.get_recent(limit=limit, hours=hours, user=user)
+def _get_dashboard_recent_activities(*, user, limit):
+    """Return latest activity entries for the dashboard recent-updates feed."""
+    return ActivityService.get_recent(limit=limit, hours=None, user=user)
 
 
 def _normalize_activity_name(value):
@@ -432,6 +418,24 @@ def dashboard(request):
         )
         cache.set(card_cache_key, card_stats, 30)
 
+    # Sidebar overview counts (clients/admins/operators/assistents).
+    overview_cache_key = f'dashboard_overview_stats{cache_suffix}'
+    overview_stats = cache.get(overview_cache_key)
+    if overview_stats is None:
+        clients_qs = Client.objects.filter(status='active')
+        assistents_qs = Staff.objects.filter(staff_type='client_staff', user__is_active=True)
+        if is_scoped:
+            clients_qs = clients_qs.filter(id__in=accessible_ids)
+            assistents_qs = assistents_qs.filter(client_id__in=accessible_ids)
+
+        overview_stats = {
+            'clients': clients_qs.count(),
+            'admins': User.objects.filter(role__in=['pro_user', 'super_admin'], is_active=True).count(),
+            'operators': User.objects.filter(role='admin_staff', is_active=True).count(),
+            'assistents': assistents_qs.count(),
+        }
+        cache.set(overview_cache_key, overview_stats, 30)
+
     context = {
         'active_page': 'dashboard',
         'user_role': get_user_role(request.user),
@@ -441,15 +445,19 @@ def dashboard(request):
         'approved_cards': card_stats['approved'],
         'downloaded_cards': card_stats['downloaded'],
         'pool_cards': card_stats.get('pool', 0),
+        'overview_clients_count': overview_stats.get('clients', 0),
+        'overview_admins_count': overview_stats.get('admins', 0),
+        'overview_operators_count': overview_stats.get('operators', 0),
+        'overview_assistents_count': overview_stats.get('assistents', 0),
     }
 
     recent_activities = _enrich_recent_activities_for_dashboard(
         request.user,
-        _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX, hours=48),
+        _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX),
     )
 
     context.update({
-        # Default dashboard feed shows last 48 hours (max API limit entries).
+        # Dashboard feed always shows latest ACTIVITY_FEED_MAX entries.
         'recent_activities': recent_activities,
     })
     return render(request, 'index.html', context)
@@ -898,10 +906,9 @@ def api_recent_activity(request):
             default=ACTIVITY_FEED_MAX,
             max_limit=ACTIVITY_FEED_MAX,
         )
-        hours = _parse_recent_activity_window(request.GET.get('window', '48'))
         activities = _enrich_recent_activities_for_dashboard(
             request.user,
-            _get_dashboard_recent_activities(user=request.user, limit=limit, hours=hours),
+            _get_dashboard_recent_activities(user=request.user, limit=limit),
         )
         return JsonResponse({'success': True, 'activities': activities})
     except Exception as e:
