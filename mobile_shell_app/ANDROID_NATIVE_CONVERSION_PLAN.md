@@ -167,3 +167,15 @@ Automated coverage added in `mobile_app/tests.py`:
 1. `MobileAppPhase2LifecycleContractTests.test_mobile_bridge_has_startup_back_guardrails`
 2. `MobileAppPhase2LifecycleContractTests.test_mobile_bridge_has_external_link_and_deep_link_handlers`
 3. `MobileAppPhase2LifecycleContractTests.test_shell_runtime_has_back_and_deep_link_guardrails`
+
+## Phase 3 Completion (2026-04-11)
+Artifacts created under `mobile_shell_app/phase3/`:
+1. `environment_gate_contract.md` (unified runtime mode-gating contract)
+2. `PHASE3_EXECUTION_LOG.md` (implemented changes + validation commands)
+3. `PHASE3_COMPLETION_REPORT.md` (final implementation + validation summary)
+
+Automated coverage added in `mobile_app/tests.py`:
+1. `MobileAppPhase3EnvironmentGateContractTests.test_environment_gate_exposes_unified_modes`
+2. `MobileAppPhase3EnvironmentGateContractTests.test_base_template_uses_environment_gate_for_install_and_update`
+3. `MobileAppPhase3EnvironmentGateContractTests.test_login_template_hides_install_prompt_in_native_shell`
+4. `MobileAppPhase3EnvironmentGateContractTests.test_mobile_bridge_uses_environment_gate_for_native_detection`

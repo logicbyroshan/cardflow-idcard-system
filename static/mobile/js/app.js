@@ -46,11 +46,24 @@ window.showConfirm = function showConfirm(options) {
 };
 
 (function initAndroidShellBridge() {
+    var envGate = window.adarshMobileEnv || null;
+    function isNativeShellContext() {
+        if (envGate && typeof envGate.isNativeShell === 'function') {
+            return envGate.isNativeShell();
+        }
+        var cap = window.Capacitor;
+        return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+    }
+
     var cap = window.Capacitor;
-    if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) {
+    if (!cap || !isNativeShellContext()) {
         return;
     }
-    if (typeof cap.getPlatform === 'function' && cap.getPlatform() !== 'android') {
+
+    var runtimePlatform = envGate && typeof envGate.getPlatform === 'function'
+        ? envGate.getPlatform()
+        : (typeof cap.getPlatform === 'function' ? cap.getPlatform() : '');
+    if (String(runtimePlatform || '').toLowerCase() !== 'android') {
         return;
     }
 

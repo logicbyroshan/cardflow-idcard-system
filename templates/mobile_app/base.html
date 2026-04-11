@@ -29,19 +29,24 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
+    <script src="{% static 'mobile/js/environment-gate.js' %}?v=1"></script>
 
     <script>
         // Capture install prompt early so it is not missed before UI script initializes.
         window.__deferredInstallPrompt = null;
-        window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            window.__deferredInstallPrompt = e;
-            window.dispatchEvent(new CustomEvent('adarsh:beforeinstallprompt'));
-        });
-        window.addEventListener('appinstalled', function() {
-            window.__deferredInstallPrompt = null;
-            window.dispatchEvent(new CustomEvent('adarsh:appinstalled'));
-        });
+        var envGate = window.adarshMobileEnv;
+        var isNativeShell = !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+        if (!isNativeShell) {
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__deferredInstallPrompt = e;
+                window.dispatchEvent(new CustomEvent('adarsh:beforeinstallprompt'));
+            });
+            window.addEventListener('appinstalled', function() {
+                window.__deferredInstallPrompt = null;
+                window.dispatchEvent(new CustomEvent('adarsh:appinstalled'));
+            });
+        }
     </script>
 
 
@@ -50,11 +55,16 @@
     <script>
         // Block non-mobile devices (but allow PWA standalone mode)
         function checkDevice() {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-                || (window.innerWidth <= 768);
-            const isStandalone = window.navigator.standalone === true
-                || window.matchMedia('(display-mode: standalone)').matches;
-            if (!isMobile && !isStandalone) {
+            var env = window.adarshMobileEnv || null;
+            var isMobile = env && typeof env.isLikelyMobileBrowserContext === 'function'
+                ? env.isLikelyMobileBrowserContext()
+                : (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768);
+            var isStandalone = env && typeof env.isStandalonePwa === 'function'
+                ? env.isStandalonePwa()
+                : (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
+            var isNativeShell = env && typeof env.isNativeShell === 'function' ? env.isNativeShell() : false;
+
+            if (!isMobile && !isStandalone && !isNativeShell) {
                 document.getElementById('mobile-app').style.display = 'none';
                 document.getElementById('desktop-block').style.display = 'flex';
             } else {
@@ -225,11 +235,20 @@
     };
 
     (function setupMobileAppUpdateFlow() {
+        var envGate = window.adarshMobileEnv || null;
         var updateScreen = document.getElementById('mobile-update-screen');
         var updateMessage = document.getElementById('mobile-update-message');
         var updateProgress = document.getElementById('mobile-update-progress');
         var updatePercent = document.getElementById('mobile-update-percent');
         var inProgress = false;
+
+        function shouldUseNativeUpdateUi() {
+            if (envGate && typeof envGate.shouldUseNativeUpdateUi === 'function') {
+                return envGate.shouldUseNativeUpdateUi();
+            }
+            var cap = window.Capacitor;
+            return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+        }
 
         function setUpdateProgress(percent, message) {
             var safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
@@ -269,6 +288,13 @@
         window.mobileUpdateApp = async function mobileUpdateApp(event) {
             if (event) event.preventDefault();
             if (inProgress) return false;
+
+            if (!shouldUseNativeUpdateUi()) {
+                var browserNextUrl = '/app/?updated=' + Date.now();
+                window.location.replace(browserNextUrl);
+                return false;
+            }
+
             inProgress = true;
 
             if (updateScreen) {
@@ -508,6 +534,7 @@
 
     <script>
     (function () {
+        var envGate = window.adarshMobileEnv || null;
         var STORAGE_KEY = 'pwa_install_sheet_dismissed_at';
         var DISMISS_TTL_MS = 60 * 60 * 1000; // remind again after 1 hour
         var installEvent = null;
@@ -530,14 +557,31 @@
             openSheet();
         }
 
+        function isNativeShell() {
+            return !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+        }
+
         function isMobileBrowser() {
+            if (envGate && typeof envGate.isMobileBrowser === 'function') {
+                return envGate.isMobileBrowser();
+            }
             var ua = navigator.userAgent || '';
             var mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
             return mobileUa || window.innerWidth <= 768;
         }
 
-        function isStandalone() {
+        function isStandalonePwa() {
+            if (envGate && typeof envGate.isStandalonePwa === 'function') {
+                return envGate.isStandalonePwa();
+            }
             return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+        }
+
+        function canShowInstallCta() {
+            if (envGate && typeof envGate.canShowInstallCta === 'function') {
+                return envGate.canShowInstallCta();
+            }
+            return isMobileBrowser() && !isStandalonePwa() && !isNativeShell();
         }
 
         function wasDismissed() {
@@ -564,7 +608,7 @@
         }
 
         function openSheet() {
-            if (!isInstallPage || !isMobileBrowser() || isStandalone() || wasDismissed()) return;
+            if (!isInstallPage || !canShowInstallCta() || wasDismissed()) return;
             refreshCtaState();
             overlay.classList.remove('hidden');
             sheet.classList.remove('hidden');
@@ -580,7 +624,14 @@
             var ua = navigator.userAgent || '';
             var isIOS = /iPhone|iPad|iPod/i.test(ua);
             var isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
-            return isIOS && isSafari && !isStandalone();
+            return isIOS && isSafari && !isStandalonePwa();
+        }
+
+        if (isNativeShell()) {
+            overlay.classList.add('hidden');
+            sheet.classList.add('hidden');
+            cta.classList.add('hidden');
+            return;
         }
 
         window.addEventListener('adarsh:beforeinstallprompt', syncDeferredPrompt);
@@ -624,7 +675,7 @@
         // Fallback: show sheet on mobile browser home dashboard when prompt is unavailable.
         window.addEventListener('load', function () {
             setTimeout(function () {
-                if (isInstallPage && isMobileBrowser() && !wasDismissed() && !isStandalone()) {
+                if (isInstallPage && canShowInstallCta() && !wasDismissed()) {
                     refreshCtaState();
                     openSheet();
                 }
@@ -633,7 +684,7 @@
             // Long-open sessions: check every minute so reminder appears again
             // after the 1-hour cooldown without requiring a page reload.
             setInterval(function () {
-                if (isInstallPage && isMobileBrowser() && !isStandalone() && wasDismissed()) {
+                if (isInstallPage && canShowInstallCta() && wasDismissed()) {
                     var raw = localStorage.getItem(STORAGE_KEY);
                     var ts = parseInt(raw || '0', 10);
                     if (ts && (Date.now() - ts) >= DISMISS_TTL_MS) {

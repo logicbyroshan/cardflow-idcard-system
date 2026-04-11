@@ -1847,6 +1847,44 @@ class MobileAppPhase2LifecycleContractTests(TestCase):
 		self.assertIn("if (!path.startsWith('/app')) return APP_ROOT_PATH;", shell_content)
 
 
+class MobileAppPhase3EnvironmentGateContractTests(TestCase):
+	def test_environment_gate_exposes_unified_modes(self):
+		env_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'environment-gate.js'
+		content = env_path.read_text(encoding='utf-8')
+
+		self.assertIn('window.adarshMobileEnv = {', content)
+		self.assertIn('isNativeShell: isNativeShell', content)
+		self.assertIn('isStandalonePwa: isStandalonePwa', content)
+		self.assertIn('isMobileBrowser: isMobileBrowser', content)
+		self.assertIn('canShowInstallCta: canShowInstallCta', content)
+		self.assertIn('shouldUseNativeUpdateUi: shouldUseNativeUpdateUi', content)
+
+	def test_base_template_uses_environment_gate_for_install_and_update(self):
+		base_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'base.html'
+		content = base_path.read_text(encoding='utf-8')
+
+		self.assertIn("mobile/js/environment-gate.js", content)
+		self.assertIn('if (!shouldUseNativeUpdateUi()) {', content)
+		self.assertIn('function canShowInstallCta()', content)
+		self.assertIn('if (isNativeShell()) {', content)
+
+	def test_login_template_hides_install_prompt_in_native_shell(self):
+		login_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'login.html'
+		content = login_path.read_text(encoding='utf-8')
+
+		self.assertIn("mobile/js/environment-gate.js", content)
+		self.assertIn('function isNativeShell()', content)
+		self.assertIn("installBtn.classList.add('hidden')", content)
+
+	def test_mobile_bridge_uses_environment_gate_for_native_detection(self):
+		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
+		content = js_path.read_text(encoding='utf-8')
+
+		self.assertIn('var envGate = window.adarshMobileEnv || null;', content)
+		self.assertIn('function isNativeShellContext()', content)
+		self.assertIn('if (!cap || !isNativeShellContext()) {', content)
+
+
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 	def _post_json(self, url, payload):
 		return self.client.post(
