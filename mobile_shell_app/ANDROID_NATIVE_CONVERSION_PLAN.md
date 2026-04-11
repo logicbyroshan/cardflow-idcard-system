@@ -191,3 +191,16 @@ Automated coverage added in `mobile_app/tests.py`:
 2. `MobileAppPhase4DeviceBridgeContractTests.test_mobile_bridge_uses_critical_queue_and_push_refresh_hooks`
 3. `MobileAppPhase4DeviceBridgeContractTests.test_camera_template_uses_native_picker_and_retryable_upload`
 4. `MobileAppPhase4DeviceBridgeContractTests.test_website_upload_template_uses_native_picker_and_retryable_batches`
+
+## Phase 5 Completion (2026-04-11)
+Artifacts created under `mobile_shell_app/phase5/`:
+1. `offline_behavior_matrix.json` (route-level read_only_cached vs online_required matrix)
+2. `deterministic_cache_update_flow.md` (cache namespace + invalidation + update contract)
+3. `PHASE5_EXECUTION_LOG.md` (implemented changes + validation commands)
+4. `PHASE5_COMPLETION_REPORT.md` (final implementation + validation summary)
+
+Automated coverage added in `mobile_app/tests.py`:
+1. `MobileAppPhase5OfflineCachingContractTests.test_service_worker_uses_app_version_and_generation_namespace`
+2. `MobileAppPhase5OfflineCachingContractTests.test_service_worker_defines_route_policy_buckets`
+3. `MobileAppPhase5OfflineCachingContractTests.test_mobile_templates_use_app_versioned_assets_and_sw_registration`
+4. `MobileAppPhase5OfflineCachingContractTests.test_phase5_offline_matrix_covers_route_inventory`

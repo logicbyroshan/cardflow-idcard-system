@@ -608,6 +608,16 @@ def _get_app_version() -> str:
 
 APP_VERSION = _get_app_version()
 
+try:
+    MOBILE_PWA_CACHE_GENERATION = max(1, int(os.getenv('MOBILE_PWA_CACHE_GENERATION', '1')))
+except ValueError:
+    MOBILE_PWA_CACHE_GENERATION = 1
+
+try:
+    MOBILE_PWA_CACHE_ROLLBACK_WINDOW = max(1, int(os.getenv('MOBILE_PWA_CACHE_ROLLBACK_WINDOW', '2')))
+except ValueError:
+    MOBILE_PWA_CACHE_ROLLBACK_WINDOW = 2
+
 
 # =============================================================================
 # ANDROID MOBILE SHELL POLICY

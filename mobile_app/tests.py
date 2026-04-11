@@ -208,7 +208,9 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertEqual(response['Service-Worker-Allowed'], '/app/')
 		self.assertIn('application/javascript', response['Content-Type'])
 		content = response.content.decode('utf-8')
-		self.assertRegex(content, r"const STATIC_CACHE = 'adarsh-static-v\d+';")
+		self.assertIn("const CACHE_GROUP = 'adarsh-mobile';", content)
+		self.assertIn('const CACHE_NAMESPACE = ', content)
+		self.assertIn('const ONLINE_REQUIRED_PREFIXES = ', content)
 		self.assertIn("/static/css/vendor/webfonts/fa-solid-900.woff2", content)
 
 	def test_mobile_page_redirects_without_mobile_auth_checkpoint(self):
@@ -1920,6 +1922,56 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 		self.assertIn('@click.prevent="pickPortfolioFromCamera($event)"', content)
 		self.assertIn('async pickPortfolioFromGallery()', content)
 		self.assertIn('bridge.uploadFormDataWithRetry(', content)
+
+
+class MobileAppPhase5OfflineCachingContractTests(TestCase):
+	@override_settings(APP_VERSION='v9.9.9', MOBILE_PWA_CACHE_GENERATION=7, MOBILE_PWA_CACHE_ROLLBACK_WINDOW=3)
+	def test_service_worker_uses_app_version_and_generation_namespace(self):
+		response = self.client.get('/app/sw.js?v=v9.9.9')
+		self.assertEqual(response.status_code, 200)
+		content = response.content.decode('utf-8')
+
+		self.assertIn("const CACHE_NAMESPACE = 'g7-v9.9.9';", content)
+		self.assertIn('const CACHE_GENERATION = 7;', content)
+		self.assertIn('const ROLLBACK_WINDOW = 3;', content)
+		self.assertIn('/static/mobile/js/app.js?v=v9.9.9.g7', content)
+
+	def test_service_worker_defines_route_policy_buckets(self):
+		response = self.client.get('/app/sw.js')
+		self.assertEqual(response.status_code, 200)
+		content = response.content.decode('utf-8')
+
+		self.assertIn('const READ_ONLY_CACHEABLE_PATHS = ', content)
+		self.assertIn('const ONLINE_REQUIRED_PREFIXES = ', content)
+		self.assertIn('if (url.pathname.indexOf(\'/app/api/\') === 0)', content)
+		self.assertIn('if (isOnlineRequiredPath(url.pathname)) {', content)
+		self.assertIn('return offlineJsonResponse();', content)
+
+	def test_mobile_templates_use_app_versioned_assets_and_sw_registration(self):
+		project_root = Path(__file__).resolve().parent.parent
+		base_path = project_root / 'templates' / 'mobile_app' / 'base.html'
+		login_path = project_root / 'templates' / 'mobile_app' / 'login.html'
+
+		base_content = base_path.read_text(encoding='utf-8')
+		login_content = login_path.read_text(encoding='utf-8')
+
+		self.assertIn('/app/manifest.json?v={{ APP_VERSION|urlencode }}', base_content)
+		self.assertIn('/app/sw.js?v={{ APP_VERSION|urlencode }}', base_content)
+		self.assertIn("{% static 'mobile/js/app.js' %}?v={{ APP_VERSION|urlencode }}", base_content)
+
+		self.assertIn('/app/manifest.json?v={{ APP_VERSION|urlencode }}', login_content)
+		self.assertIn('/app/sw.js?v={{ APP_VERSION|urlencode }}', login_content)
+		self.assertIn("{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}", login_content)
+
+	def test_phase5_offline_matrix_covers_route_inventory(self):
+		project_root = Path(__file__).resolve().parent.parent
+		matrix_path = project_root / 'mobile_shell_app' / 'phase5' / 'offline_behavior_matrix.json'
+		self.assertTrue(matrix_path.exists(), 'Missing phase5 offline behavior matrix')
+
+		payload = json.loads(matrix_path.read_text(encoding='utf-8'))
+		counts = payload.get('counts', {})
+		self.assertEqual(counts.get('total_routes'), 55)
+		self.assertEqual(len(payload.get('route_policies', [])), 55)
 
 
 class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
