@@ -87,7 +87,7 @@ window.showConfirm = function showConfirm(options) {
 
     function resetBackGuardAfterSystemDialog() {
         // Permission dialogs and resume transitions can emit phantom back events.
-        backHandlerReadyAt = Date.now() + 2200;
+        backHandlerReadyAt = Date.now() + 5000;
         backPressedAt = 0;
         userInteractedAt = 0;
     }
@@ -315,18 +315,18 @@ window.showConfirm = function showConfirm(options) {
                 return;
             }
 
+            // Reject stale/phantom back events before any history navigation.
+            if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000) {
+                backPressedAt = 0;
+                return;
+            }
+
             if (window.mobileOverlay && typeof window.mobileOverlay.isActive === 'function' && window.mobileOverlay.isActive()) {
                 window.mobileOverlay.close();
                 return;
             }
             if (evt && evt.canGoBack) {
                 window.history.back();
-                return;
-            }
-
-            // Prevent phantom startup back events from closing the app.
-            if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000) {
-                backPressedAt = 0;
                 return;
             }
 

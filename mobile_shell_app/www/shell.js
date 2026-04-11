@@ -217,7 +217,7 @@ function setupAndroidBackHandler() {
 
   const resetBackGuardAfterResume = () => {
     // Resume transitions can dispatch phantom back events on some devices.
-    backHandlerReadyAt = Date.now() + 2200;
+    backHandlerReadyAt = Date.now() + 5000;
     lastBackTapMs = 0;
     lastUserInteractionMs = 0;
   };
@@ -237,14 +237,14 @@ function setupAndroidBackHandler() {
       return;
     }
 
-    if (canGoBack) {
-      window.history.back();
+    // Reject stale/phantom back events before any history navigation.
+    if (!lastUserInteractionMs || (now - lastUserInteractionMs) > (12 * 60 * 1000)) {
+      lastBackTapMs = 0;
       return;
     }
 
-    // Ignore stale/phantom back events unless user interacted recently.
-    if (!lastUserInteractionMs || (now - lastUserInteractionMs) > (12 * 60 * 1000)) {
-      lastBackTapMs = 0;
+    if (canGoBack) {
+      window.history.back();
       return;
     }
 
