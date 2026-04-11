@@ -396,7 +396,9 @@ function _dlSyncImageWizardUi() {
     }
 
     if (nextBtn) {
-        nextBtn.disabled = _dlImageWizardStep >= maxStep;
+        const isFinalStep = _dlImageWizardStep >= maxStep;
+        nextBtn.disabled = isFinalStep;
+        nextBtn.style.display = isFinalStep ? 'none' : '';
         nextBtn.textContent = 'Next';
     }
 
