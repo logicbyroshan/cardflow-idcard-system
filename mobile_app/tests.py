@@ -1693,8 +1693,11 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 		self.assertIn('function isNativeShell()', mobile_base_html)
 		self.assertIn('if (nativeShell) {', mobile_base_html)
+		self.assertIn('var apkDownloadUrl =', mobile_base_html)
+		self.assertIn('if (apkDownloadUrl) {', mobile_base_html)
 		self.assertIn("installBtn.classList.add('hidden');", mobile_login_html)
-		self.assertIn("if (nativeShell) {", mobile_login_html)
+		self.assertIn('var apkDownloadUrl =', mobile_login_html)
+		self.assertIn('if (apkDownloadUrl) {', mobile_login_html)
 		self.assertIn("section.style.display = 'none';", website_pwa_html)
 		self.assertIn("website/apk/adarsh-admin.apk' %}?v={{ APP_VERSION }}", website_pwa_html)
 

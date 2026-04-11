@@ -613,6 +613,7 @@
     <script>
     (function () {
         var envGate = window.adarshMobileEnv || null;
+        var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:""|escapejs }}';
         var STORAGE_KEY = 'pwa_install_sheet_dismissed_at';
         var DISMISS_TTL_MS = 60 * 60 * 1000; // remind again after 1 hour
         var installEvent = null;
@@ -624,17 +625,13 @@
         var hint = document.getElementById('pwa-install-hint');
         var currentPage = '{{ request.resolver_match.url_name|default:"" }}';
         var isInstallPage = currentPage === 'home' || currentPage === 'mobile_login';
-        var nativeShell = isNativeShell();
 
         if (!overlay || !sheet || !cta || !closeBtn) return;
 
-        if (nativeShell) {
-            overlay.classList.add('hidden');
-            sheet.classList.add('hidden');
-            return;
-        }
-
         function isNativeShell() {
+            if (envGate && typeof envGate.isNativeShell === 'function') {
+                return envGate.isNativeShell();
+            }
             var cap = window.Capacitor;
             return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
         }
@@ -647,8 +644,12 @@
             openSheet();
         }
 
-        function isNativeShell() {
-            return !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+        var nativeShell = isNativeShell();
+
+        if (nativeShell) {
+            overlay.classList.add('hidden');
+            sheet.classList.add('hidden');
+            return;
         }
 
         function isMobileBrowser() {
@@ -738,6 +739,12 @@
         overlay.addEventListener('click', function () { closeSheet(true); });
 
         cta.addEventListener('click', async function () {
+            if (apkDownloadUrl) {
+                window.location.href = apkDownloadUrl;
+                closeSheet(true);
+                return;
+            }
+
             if (installEvent) {
                 installEvent.prompt();
                 try {

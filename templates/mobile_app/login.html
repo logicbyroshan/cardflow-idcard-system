@@ -182,6 +182,7 @@
     var deferredInstallPrompt = null;
     var installBtn = document.getElementById('install-app-btn');
     var installBtnText = document.getElementById('install-app-btn-text');
+    var apkDownloadUrl = '{{ MOBILE_ANDROID_APP_DOWNLOAD_URL|default:""|escapejs }}';
     var envGate = window.adarshMobileEnv || null;
 
     function isNativeShell() {
@@ -212,7 +213,7 @@
             return;
         }
         installBtn.classList.remove('hidden');
-        installBtnText.textContent = 'Download App';
+        installBtnText.textContent = apkDownloadUrl ? 'Download Android App' : 'Download App';
     }
 
     if ('serviceWorker' in navigator) {
@@ -238,6 +239,12 @@
         if (isNativeShell()) {
             return;
         }
+
+        if (apkDownloadUrl) {
+            window.location.href = apkDownloadUrl;
+            return;
+        }
+
         if (deferredInstallPrompt) {
             deferredInstallPrompt.prompt();
             try { await deferredInstallPrompt.userChoice; } catch (e) {}

@@ -13,6 +13,32 @@ from django.conf import settings
 from core.services.permission_service import PermissionService
 
 
+def _resolve_mobile_android_download_url(request):
+    raw = str(getattr(settings, 'MOBILE_SHELL_ANDROID_UPDATE_URL', '') or '').strip()
+    if not raw:
+        return ''
+
+    lowered = raw.lower()
+    if lowered.startswith('http://') or lowered.startswith('https://'):
+        return raw
+
+    if raw.startswith('//'):
+        return f'https:{raw}'
+
+    panel_url = str(getattr(settings, 'PANEL_URL', '') or '').strip().rstrip('/')
+    if raw.startswith('/'):
+        if panel_url:
+            return f'{panel_url}{raw}'
+        try:
+            return request.build_absolute_uri(raw)
+        except Exception:
+            return raw
+
+    if panel_url:
+        return f'{panel_url}/{raw.lstrip("/")}'
+    return raw
+
+
 def permissions(request):
     """
     Inject permission context into ALL templates.
@@ -32,6 +58,8 @@ def permissions(request):
     base_context = {
         'PANEL_URL': getattr(settings, 'PANEL_URL', ''),
         'WEBSITE_URL': getattr(settings, 'WEBSITE_URL', ''),
+        'APP_VERSION': getattr(settings, 'APP_VERSION', 'v1.1.0'),
+        'MOBILE_ANDROID_APP_DOWNLOAD_URL': _resolve_mobile_android_download_url(request),
     }
 
     if not request.user.is_authenticated:
@@ -78,9 +106,6 @@ def permissions(request):
     context['is_impersonating'] = bool(request.session.get('_pro_original_user_id'))
     context['impersonation_original_name'] = request.session.get('_pro_original_user_name', '')
     
-    # Add app version
-    context['APP_VERSION'] = getattr(settings, 'APP_VERSION', 'v1.1.0')
-
     # Merge subdomain URLs
     context.update(base_context)
 
