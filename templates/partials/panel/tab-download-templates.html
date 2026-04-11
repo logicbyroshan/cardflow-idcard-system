@@ -9,37 +9,34 @@
 <!-- === DOWNLOAD TEMPLATES TAB === -->
 <div class="panel-tab-content panel-tab-full-height templates-panel-theme" id="tab-download-templates">
 
-  <div class="notif-actions-bar" style="border-bottom:none;padding-bottom:10px;">
-    <div class="notif-actions-left" style="flex:1;min-width:0;">
-      <div style="width:100%;max-width:980px;background:#f8fafc;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;color:#1e3a8a;font-weight:700;">
-          <i class="fa-solid fa-file-export"></i>
-          <span>Export Document Settings</span>
-        </div>
-        <form id="panelExportSettingsForm">
-          <label class="panel-form-label" for="panelExportNoteLine">Note Line</label>
-          <textarea id="panelExportNoteLine" class="panel-form-input" rows="2" placeholder="Appears as the first footer line in PDF/Word exports"></textarea>
-
-          <label class="panel-form-label" for="panelExportCopyrightLine">Copyright / Branding Line</label>
-          <textarea id="panelExportCopyrightLine" class="panel-form-input" rows="2" placeholder="Appears with timestamp in footer"></textarea>
-
-          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
-            <button type="submit" class="btn btn-md btn-primary" id="panelSaveExportSettingsBtn">
-              <i class="fa-solid fa-save"></i> Save Export Settings
-            </button>
-            <span id="panelExportSettingsStatus" class="text-xs text-gray-500"></span>
-          </div>
-        </form>
-      </div>
+  <div class="notif-actions-bar templates-actions-primary">
+    <div class="notif-actions-left" style="gap:10px;">
+      <span class="templates-panel-kicker"><i class="fa-solid fa-file-export"></i> Download Templates</span>
+      <span class="panel-subtitle" style="margin:0;">Manage template text, font style, and export footer branding in one flow.</span>
     </div>
-  </div>
-
-  <!-- Header bar -->
-  <div class="notif-actions-bar">
-    <div class="notif-actions-left">
+    <div class="notif-actions-right">
       <button class="btn btn-md btn-primary" onclick="openCreateTemplateModal()">
         <i class="fa-solid fa-plus"></i> New Template
       </button>
+    </div>
+  </div>
+
+  <div class="notif-actions-bar templates-actions-secondary">
+    <div class="notif-actions-left" style="flex:1;min-width:0;">
+      <div class="notif-search-box" style="max-width:360px;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input
+          type="text"
+          id="templateSearchInput"
+          class="search-input"
+          placeholder="Search template name, footer text, or style..."
+          oninput="templateSetSearch(this.value)"
+          autocomplete="off"
+        >
+      </div>
+    </div>
+    <div class="notif-actions-right">
+      <span class="panel-muted-count" id="templateTableCount">0 templates</span>
     </div>
   </div>
 
@@ -49,10 +46,10 @@
       <thead>
         <tr>
           <th scope="col" style="width:5%">#</th>
-          <th scope="col" style="width:20%">Name</th>
-          <th scope="col" style="width:45%">Instructions / Footer Text</th>
+          <th scope="col" style="width:22%">Name</th>
+          <th scope="col" style="width:41%">Instructions / Footer Text</th>
+          <th scope="col" style="width:12%">Style</th>
           <th scope="col" style="width:10%">Default</th>
-          <th scope="col" style="width:10%">Created</th>
           <th scope="col" style="width:10%">Actions</th>
         </tr>
       </thead>
@@ -69,11 +66,15 @@
       </tbody>
     </table>
   </div>
+
+  <div id="templatePaginationWrap">
+    {% include 'components/pagination.html' with info_id='templatePaginationInfo' first_id='templateFirstPage' prev_id='templatePrevPage' next_id='templateNextPage' last_id='templateLastPage' page_numbers_id='templatePageNumbers' rows_dropdown_id='templateRowsDropdown' rows_toggle_id='templateRowsToggle' rows_text_id='templateRowsSelectedText' rows_options_id='templateRowsOptions' default_rows='25' %}
+  </div>
 </div>
 
 <!-- Create / Edit Template Modal -->
 <div class="center-modal-overlay center-modal-theme-blue" id="templateModal" onclick="if(event.target===this)closeTemplateModal()">
-  <div class="center-modal-card" style="max-width:520px;" @click.stop>
+  <div class="center-modal-card template-modal-card" @click.stop>
     <!-- Header -->
     <div class="center-modal-header">
       <h3 id="templateModalTitle"><i class="fa-solid fa-file-lines"></i> New Template</h3>
@@ -85,30 +86,39 @@
     <div class="center-modal-body-area text-left">
       <input type="hidden" id="templateEditId" value="">
 
-      <label class="panel-form-label">Template Name *</label>
+      <label class="panel-form-label" for="templateName">Template Name *</label>
       <input type="text" id="templateName" class="panel-form-input" placeholder="e.g. School ID Card Footer" maxlength="100">
 
-      <label class="panel-form-label">Instructions / Footer Text *</label>
+      <label class="panel-form-label" for="templateInstructions">Instructions / Footer Text *</label>
 
-      <!-- Mini toolbar -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-        <select id="templateFontName" class="form-select panel-form-select" style="width:auto;min-width:160px;margin-bottom:0;font-size:12px;">
+      <div class="template-modal-toolbar">
+        <select id="templateFontName" class="form-select panel-form-select template-font-select">
           <option value="arial">English (Arial)</option>
           <option value="hindi">Hindi (Abbasi)</option>
         </select>
-        <button type="button" id="templateBoldBtn" class="btn btn-sm btn-neutral" style="min-width:36px;font-weight:700;font-size:13px;padding:4px 10px;" onclick="toggleTemplateBold()" title="Bold">
+        <button type="button" id="templateBoldBtn" class="btn btn-sm btn-neutral template-bold-btn" onclick="toggleTemplateBold()" title="Bold">
           B
         </button>
+        <label class="template-default-toggle" for="templateIsDefault">
+          <input type="checkbox" id="templateIsDefault" class="checkbox-input">
+          <span>Set as default template</span>
+        </label>
       </div>
 
       <textarea id="templateInstructions" class="panel-form-input" rows="5"
         placeholder="Footer text printed at the bottom of PDF/Word exports..."
         maxlength="5000" style="transition:font-family .2s,font-weight .2s;"></textarea>
 
-      <label class="panel-form-label checkbox-label">
-        <input type="checkbox" id="templateIsDefault" class="checkbox-input">
-        Set as default template
-      </label>
+      <div class="template-modal-divider"></div>
+
+      <div class="template-modal-subheading"><i class="fa-solid fa-copyright"></i> Export Footer Branding</div>
+      <p class="template-modal-subcopy">These lines are shared export settings and can be updated while creating or editing a template.</p>
+
+      <label class="panel-form-label" for="templateExportNoteLine">Note Line</label>
+      <textarea id="templateExportNoteLine" class="panel-form-input" rows="2" maxlength="1000" placeholder="Appears as the first footer line in PDF/Word exports"></textarea>
+
+      <label class="panel-form-label" for="templateExportCopyrightLine">Copyright / Branding Line</label>
+      <textarea id="templateExportCopyrightLine" class="panel-form-input" rows="2" maxlength="1000" placeholder="Appears with timestamp in footer"></textarea>
     </div>
     <!-- Footer -->
     <div class="center-modal-footer-area">

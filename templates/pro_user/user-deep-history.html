@@ -139,107 +139,82 @@
     background: rgba(255, 255, 255, 0.2);
     color: var(--text-white, #fff);
   }
-  .audit-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 10px;
-    margin-top: 0;
-  }
-  .audit-users-pager {
+  .audit-users-shell {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    border-top: 1px solid var(--audit-border);
-    margin-top: 10px;
-    padding: 10px 2px 8px;
-    font-size: 12px;
-    color: var(--audit-muted);
-    flex-wrap: wrap;
-  }
-  .audit-users-pager-info {
-    color: var(--audit-muted);
-    white-space: nowrap;
-  }
-  .audit-users-pager-controls {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .audit-users-pager-btn {
-    width: 28px;
-    height: 28px;
+    flex-direction: column;
+    min-height: 0;
     border: 1px solid var(--audit-border);
-    border-radius: 2px;
-    background: #fff;
-    color: var(--audit-muted);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    background: var(--audit-surface);
+  }
+  .audit-users-table-wrap {
+    min-height: 0;
+    max-height: 360px;
+    overflow: auto;
+  }
+  .audit-users-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .audit-users-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  .audit-users-table th {
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    padding: 10px 12px;
+    border: 0;
+  }
+  .audit-users-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #edf2f7;
+    vertical-align: middle;
+  }
+  .audit-users-table tbody tr:hover td {
+    background: rgba(102, 126, 234, 0.04);
+  }
+  .audit-users-table tbody tr.is-clickable {
     cursor: pointer;
-    transition: all 0.15s;
   }
-  .audit-users-pager-btn:hover:not(:disabled) {
-    border-color: var(--primary, #667eea);
-    color: var(--primary, #667eea);
+  .audit-users-table tbody tr.is-active td {
+    background: rgba(102, 126, 234, 0.08);
   }
-  .audit-users-pager-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-  .audit-users-pager-page {
-    min-width: 90px;
+  .audit-col-index {
+    width: 56px;
     text-align: center;
-    color: var(--audit-text);
+    color: #94a3b8;
     font-weight: 600;
   }
-  .audit-users-pager-size {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
-  .audit-users-pager-size select {
-    border: 1px solid var(--audit-border);
-    border-radius: 2px;
-    padding: 4px 8px;
-    font-size: 12px;
-    background: #fff;
-    color: var(--audit-text);
-  }
-  .audit-user-card {
+  .audit-user-cell {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: var(--audit-surface);
-    border: 1px solid var(--audit-border);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .audit-user-card:hover,
-  .audit-user-card.active {
-    background: var(--bg-selected, rgba(102,126,234,0.06));
-    border-color: var(--primary, #667eea);
-    box-shadow: 0 2px 8px rgba(102,126,234,0.12);
+    gap: 10px;
+    min-width: 0;
   }
   .audit-avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-white, #fff);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 700;
     flex-shrink: 0;
   }
   .audit-user-main { flex: 1; min-width: 0; }
   .audit-user-name {
     color: var(--audit-text);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -262,9 +237,11 @@
     text-overflow: ellipsis;
   }
   .audit-role {
+    display: inline-flex;
+    align-items: center;
     font-size: 10px;
     padding: 2px 8px;
-    border-radius: 2px;
+    border-radius: 3px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -275,25 +252,73 @@
   .audit-role.r-client       { background: var(--color-success-bg, #d1fae5); color: var(--color-success-dark, #065f46); }
   .audit-role.r-client_staff { background: var(--color-blue-bg, #dbeafe); color: var(--color-blue-dark, #1e40af); }
   .audit-role.r-pro_user     { background: var(--color-danger-bg, #fee2e2); color: var(--color-danger-dark, #be123c); }
+  .audit-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .audit-status-pill.active {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #86efac;
+  }
+  .audit-status-pill.inactive {
+    color: #991b1b;
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
   .audit-open-btn {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
     padding: 4px 10px;
-    border-radius: 2px;
+    border-radius: 4px;
+    border: 1px solid #4f46e5;
     background: var(--primary-gradient, linear-gradient(135deg, #667eea, #764ba2));
     color: var(--text-white, #fff);
     font-size: 11px;
     font-weight: 600;
-    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
   }
-  .audit-user-card:hover .audit-open-btn,
-  .audit-user-card.active .audit-open-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+  .audit-open-btn:hover {
+    filter: brightness(0.96);
   }
-  .audit-user-card:hover .audit-role,
-  .audit-user-card.active .audit-role {
-    display: none;
+  .audit-open-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .audit-skeleton-row td {
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+  .audit-skeleton-block {
+    display: inline-block;
+    width: 100%;
+    height: 10px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background-size: 200% 100%;
+    animation: audit-skeleton-shimmer 1.35s linear infinite;
+  }
+  .audit-users-shell .pagination-bar {
+    border-top: 1px solid var(--audit-border);
+    padding: 6px 10px;
+  }
+  .audit-users-shell .pagination-right {
+    gap: 8px;
+  }
+  .audit-users-shell .pagination-right label {
+    font-size: 12px;
+    color: var(--audit-muted);
+    white-space: nowrap;
   }
   .audit-history {
     margin-top: 12px;
@@ -400,7 +425,11 @@
     .audit-page .pro-feature-tabs { padding: 0 12px; }
     .audit-page .action-bar { padding: 8px 12px; }
     .audit-content-scroll { padding: 8px 12px; }
-    .audit-grid { grid-template-columns: 1fr; }
+    .audit-users-shell .pagination-bar {
+      padding: 6px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
   }
 </style>
 {% endblock %}
@@ -452,25 +481,36 @@
   </div>
 
   <div class="audit-content-scroll">
-    <div id="auditUserGrid" class="audit-grid">
-      <div class="audit-empty"><i class="fa-solid fa-spinner fa-spin"></i><div>Loading users...</div></div>
-    </div>
-    <div id="auditUsersPager" class="audit-users-pager" style="display:none;">
-      <div id="auditUsersPagerInfo" class="audit-users-pager-info">Showing 0-0 of 0</div>
-      <div class="audit-users-pager-controls">
-        <button type="button" id="auditUsersPagerFirst" class="audit-users-pager-btn" onclick="__auditUsersGoPage('first')" title="First page" aria-label="First page"><i class="fa-solid fa-angles-left"></i></button>
-        <button type="button" id="auditUsersPagerPrev" class="audit-users-pager-btn" onclick="__auditUsersGoPage('prev')" title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-        <span id="auditUsersPagerPage" class="audit-users-pager-page">Page 1/1</span>
-        <button type="button" id="auditUsersPagerNext" class="audit-users-pager-btn" onclick="__auditUsersGoPage('next')" title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-        <button type="button" id="auditUsersPagerLast" class="audit-users-pager-btn" onclick="__auditUsersGoPage('last')" title="Last page" aria-label="Last page"><i class="fa-solid fa-angles-right"></i></button>
+    <div class="audit-users-shell">
+      <div class="audit-users-table-wrap">
+        <table class="audit-users-table" aria-label="Users with audit history">
+          <thead>
+            <tr>
+              <th style="width:6%;text-align:center;">#</th>
+              <th style="width:40%;">User</th>
+              <th style="width:16%;">Role</th>
+              <th style="width:12%;">Status</th>
+              <th style="width:14%;">Username</th>
+              <th style="width:12%;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="auditUserTableBody">
+            {% for _ in "12345" %}
+            <tr class="audit-skeleton-row" aria-hidden="true">
+              <td><span class="audit-skeleton-block" style="width:20px;margin:0 auto;"></span></td>
+              <td><span class="audit-skeleton-block" style="width:72%;"></span></td>
+              <td><span class="audit-skeleton-block" style="width:58%;"></span></td>
+              <td><span class="audit-skeleton-block" style="width:56%;"></span></td>
+              <td><span class="audit-skeleton-block" style="width:62%;"></span></td>
+              <td><span class="audit-skeleton-block" style="width:66%;"></span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-      <div class="audit-users-pager-size">
-        <label for="auditUsersPerPage">Rows</label>
-        <select id="auditUsersPerPage" onchange="__auditUsersSetPerPage(this.value)">
-          <option value="12">12</option>
-          <option value="24" selected>24</option>
-          <option value="48">48</option>
-        </select>
+
+      <div id="auditUsersPagerWrap" style="display:none;">
+        {% include 'components/pagination.html' with info_id='auditUsersPagerInfo' first_id='auditUsersPagerFirst' prev_id='auditUsersPagerPrev' next_id='auditUsersPagerNext' last_id='auditUsersPagerLast' page_numbers_id='auditUsersPagerNumbers' rows_dropdown_id='auditUsersRowsDropdown' rows_toggle_id='auditUsersRowsToggle' rows_text_id='auditUsersRowsSelectedText' rows_options_id='auditUsersRowsOptions' default_rows='25' %}
       </div>
     </div>
 
@@ -478,7 +518,7 @@
       <div class="audit-history-head">
         <div>
           <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,#1f2937);">User History</div>
-          <div id="auditSelectedMeta" class="audit-user-meta">Select a user card to open detailed history.</div>
+          <div id="auditSelectedMeta" class="audit-user-meta">Select a user row to open detailed history.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <select id="auditActionFilter" class="form-select form-select-sm" onchange="__auditReloadHistory()">
@@ -517,7 +557,8 @@
   var _role = 'all';
   var _text = '';
   var _usersPage = 1;
-  var _usersPerPage = 24;
+  var _usersPerPage = 25;
+  var _usersPagerBound = false;
   var _selectedUser = null;
   var _historyOffset = 0;
   var _historyLimit = 50;
@@ -573,8 +614,19 @@
     });
   }
 
+  function _setUsersRowsDropdownValue(value) {
+    var textEl = document.getElementById('auditUsersRowsSelectedText');
+    var optionsEl = document.getElementById('auditUsersRowsOptions');
+    if (textEl) textEl.textContent = String(value);
+    if (!optionsEl) return;
+
+    optionsEl.querySelectorAll('.dropdown-option').forEach(function(option) {
+      option.classList.toggle('selected', Number(option.dataset.value) === Number(value));
+    });
+  }
+
   function _toggleUsersPager(show) {
-    var pager = document.getElementById('auditUsersPager');
+    var pager = document.getElementById('auditUsersPagerWrap');
     if (pager) pager.style.display = show ? '' : 'none';
   }
 
@@ -593,10 +645,21 @@
     var end = Math.min(total, _usersPage * _usersPerPage);
 
     var info = document.getElementById('auditUsersPagerInfo');
-    if (info) info.textContent = 'Showing ' + start + '-' + end + ' of ' + total;
+    if (info) info.innerHTML = 'Showing <strong>' + start + '-' + end + '</strong> of <strong>' + total + '</strong> results';
 
-    var pageLabel = document.getElementById('auditUsersPagerPage');
-    if (pageLabel) pageLabel.textContent = 'Page ' + _usersPage + '/' + totalPages;
+    var pageNums = document.getElementById('auditUsersPagerNumbers');
+    if (pageNums) {
+      pageNums.innerHTML = '';
+      var maxVisible = 5;
+      var startPage = Math.max(1, _usersPage - Math.floor(maxVisible / 2));
+      var endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      if ((endPage - startPage + 1) < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+      }
+      for (var p = startPage; p <= endPage; p += 1) {
+        pageNums.insertAdjacentHTML('beforeend', '<button class="page-num' + (p === _usersPage ? ' active' : '') + '" data-page="' + p + '">' + p + '</button>');
+      }
+    }
 
     var firstBtn = document.getElementById('auditUsersPagerFirst');
     var prevBtn = document.getElementById('auditUsersPagerPrev');
@@ -609,6 +672,69 @@
     if (lastBtn) lastBtn.disabled = _usersPage >= totalPages;
   }
 
+  function _bindUsersPagerControls() {
+    if (_usersPagerBound) return;
+    _usersPagerBound = true;
+
+    var firstBtn = document.getElementById('auditUsersPagerFirst');
+    var prevBtn = document.getElementById('auditUsersPagerPrev');
+    var nextBtn = document.getElementById('auditUsersPagerNext');
+    var lastBtn = document.getElementById('auditUsersPagerLast');
+    var pageNums = document.getElementById('auditUsersPagerNumbers');
+    var rowsDropdown = document.getElementById('auditUsersRowsDropdown');
+    var rowsToggle = document.getElementById('auditUsersRowsToggle');
+    var rowsOptions = document.getElementById('auditUsersRowsOptions');
+
+    if (firstBtn) firstBtn.addEventListener('click', function() { window.__auditUsersGoPage('first'); });
+    if (prevBtn) prevBtn.addEventListener('click', function() { window.__auditUsersGoPage('prev'); });
+    if (nextBtn) nextBtn.addEventListener('click', function() { window.__auditUsersGoPage('next'); });
+    if (lastBtn) lastBtn.addEventListener('click', function() { window.__auditUsersGoPage('last'); });
+
+    if (pageNums) {
+      pageNums.addEventListener('click', function(event) {
+        var btn = event.target.closest('.page-num');
+        if (!btn) return;
+        var page = parseInt(btn.dataset.page || '', 10);
+        if (!Number.isFinite(page)) return;
+        window.__auditUsersGoPage(page);
+      });
+    }
+
+    if (rowsDropdown && rowsToggle && rowsOptions) {
+      rowsToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        rowsDropdown.classList.toggle('open');
+      });
+
+      rowsOptions.querySelectorAll('.dropdown-option').forEach(function(option) {
+        option.addEventListener('click', function() {
+          var value = parseInt(this.dataset.value || '', 10);
+          if (!Number.isFinite(value) || value <= 0) return;
+          _usersPerPage = value;
+          _usersPage = 1;
+          _setUsersRowsDropdownValue(_usersPerPage);
+          rowsDropdown.classList.remove('open');
+          __auditRenderUsers();
+        });
+      });
+
+      document.addEventListener('click', function(event) {
+        if (!rowsDropdown.contains(event.target)) {
+          rowsDropdown.classList.remove('open');
+        }
+      });
+    }
+
+    _setUsersRowsDropdownValue(_usersPerPage);
+  }
+
+  function _renderUsersEmpty(iconClass, text) {
+    var tbody = document.getElementById('auditUserTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6"><div class="audit-empty"><i class="fa-solid ' + _esc(iconClass || 'fa-users-slash') + '"></i><div>' + _esc(text || 'No users found') + '</div></div></td></tr>';
+    _toggleUsersPager(false);
+  }
+
   function _detailPageUrl(userId) {
     return '/panel/pro-user/activity-logs/' + encodeURIComponent(String(userId)) + '/';
   }
@@ -618,7 +744,7 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (!data.success) {
-          document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>' + _esc(data.message || 'Failed to load users') + '</div></div>';
+          _renderUsersEmpty('fa-circle-exclamation', data.message || 'Failed to load users');
           return;
         }
         _users = data.users || [];
@@ -626,7 +752,7 @@
         __auditRenderUsers();
       })
       .catch(function() {
-        document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-circle-exclamation"></i><div>Network error while loading users.</div></div>';
+        _renderUsersEmpty('fa-circle-exclamation', 'Network error while loading users.');
       });
   };
 
@@ -679,8 +805,7 @@
     document.getElementById('auditCount').textContent = total + ' user' + (total === 1 ? '' : 's');
 
     if (!total) {
-      _toggleUsersPager(false);
-      document.getElementById('auditUserGrid').innerHTML = '<div class="audit-empty"><i class="fa-solid fa-users-slash"></i><div>No users found</div></div>';
+      _renderUsersEmpty('fa-users-slash', 'No users found');
       return;
     }
 
@@ -691,25 +816,34 @@
     var pageUsers = _filteredUsers.slice(startIndex, startIndex + _usersPerPage);
 
     var html = '';
-    pageUsers.forEach(function(u) {
+    pageUsers.forEach(function(u, i) {
       var init = (String(u.name || '?').charAt(0) || '?').toUpperCase();
       var active = _selectedUser && _selectedUser.id === u.id ? ' active' : '';
-      var inactive = u.is_active ? '' : ' <span class="audit-log-tag" style="border-color:color-mix(in srgb, var(--color-danger,#ef4444) 28%, #ffffff 72%);color:var(--color-danger-dark,#b91c1c);background:var(--color-danger-bg,#fef2f2);">Inactive</span>';
+      var statusClass = u.is_active ? 'active' : 'inactive';
+      var statusLabel = u.is_active ? 'Active' : 'Inactive';
       var roleDisplay = _displayRole(u.role, u.role_display);
       var showClientMeta = u.role === 'client_staff';
       var clientMeta = (showClientMeta && u.client_name) ? '<div class="audit-user-client">Client: ' + _esc(u.client_name) + '</div>' : '';
-      html += '<div class="audit-user-card' + active + '" onclick="__auditSelectUser(' + u.id + ')" role="button" tabindex="0">'
-        + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || 'var(--color-gray-500,#64748b)') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
-        + '<div class="audit-user-main">'
-        + '<div class="audit-user-name">' + _esc(u.name) + inactive + '</div>'
-        + '<div class="audit-user-email">' + _esc(u.email || u.username) + '</div>'
-        + clientMeta
-        + '</div>'
-        + '<span class="audit-role ' + _roleClass(u.role) + '">' + _esc(roleDisplay) + '</span>'
-        + '<button class="audit-open-btn"><i class="fa-solid fa-timeline"></i> Open</button>'
-        + '</div>';
+      var rowIndex = startIndex + i + 1;
+      html += '<tr class="is-clickable' + active + '" onclick="__auditSelectUser(' + u.id + ')">'
+        + '<td class="audit-col-index">' + rowIndex + '</td>'
+        + '<td>'
+          + '<div class="audit-user-cell">'
+            + '<div class="audit-avatar" style="background:' + (COLORS[u.role] || 'var(--color-gray-500,#64748b)') + ';' + (u.is_active ? '' : 'opacity:0.65;') + '">' + _esc(init) + '</div>'
+            + '<div class="audit-user-main">'
+              + '<div class="audit-user-name">' + _esc(u.name || 'User') + '</div>'
+              + '<div class="audit-user-email">' + _esc(u.email || '-') + '</div>'
+              + clientMeta
+            + '</div>'
+          + '</div>'
+        + '</td>'
+        + '<td><span class="audit-role ' + _roleClass(u.role) + '">' + _esc(roleDisplay) + '</span></td>'
+        + '<td><span class="audit-status-pill ' + statusClass + '">' + statusLabel + '</span></td>'
+        + '<td class="text-xs text-gray-500">' + _esc(u.username || '-') + '</td>'
+        + '<td><button type="button" class="audit-open-btn" onclick="event.stopPropagation();__auditSelectUser(' + u.id + ')"><i class="fa-solid fa-timeline"></i> Open</button></td>'
+      + '</tr>';
     });
-    document.getElementById('auditUserGrid').innerHTML = html;
+    document.getElementById('auditUserTableBody').innerHTML = html;
     _renderUsersPager(total);
   };
 
@@ -718,16 +852,20 @@
     if (!Number.isFinite(next) || next <= 0) return;
     _usersPerPage = next;
     _usersPage = 1;
+    _setUsersRowsDropdownValue(_usersPerPage);
     __auditRenderUsers();
   };
 
   window.__auditUsersGoPage = function(direction) {
     var total = _filteredUsers.length;
     var totalPages = Math.max(1, Math.ceil(total / _usersPerPage));
-    if (direction === 'first') _usersPage = 1;
+    if (typeof direction === 'number') _usersPage = direction;
+    else if (direction === 'first') _usersPage = 1;
     else if (direction === 'prev') _usersPage = Math.max(1, _usersPage - 1);
     else if (direction === 'next') _usersPage = Math.min(totalPages, _usersPage + 1);
     else if (direction === 'last') _usersPage = totalPages;
+    if (_usersPage > totalPages) _usersPage = totalPages;
+    if (_usersPage < 1) _usersPage = 1;
     __auditRenderUsers();
   };
 
@@ -828,6 +966,8 @@
   };
 
   // Bootstrap only after global handlers are assigned.
+  _bindUsersPagerControls();
+  _setUsersRowsDropdownValue(_usersPerPage);
   window.__auditLoadUsers();
   window.__auditLoadActions();
 })();

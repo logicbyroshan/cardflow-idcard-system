@@ -1224,79 +1224,222 @@ function setPanelTableError(tbodyId, colCount, iconClass, title, subtitle) {
    DOWNLOAD TEMPLATES TAB
    ================================================================ */
 let panelTemplates = [];
+let panelTemplateFiltered = [];
 let _templateBoldState = false;
+let _templateSearchText = '';
+let _templatePage = 1;
+let _templatePerPage = 25;
+let _templatePagerBound = false;
+let _templateSettingsCache = {
+  export_note_line: '',
+  export_copyright_line: '',
+};
+let _templateSettingsLoaded = false;
+let _templateSettingsLoadingPromise = null;
 
-async function loadExportSettings() {
-  const noteEl = document.getElementById('panelExportNoteLine');
-  const copyrightEl = document.getElementById('panelExportCopyrightLine');
+function _syncTemplateSettingsToModal() {
+  const noteEl = document.getElementById('templateExportNoteLine');
+  const copyrightEl = document.getElementById('templateExportCopyrightLine');
   if (!noteEl || !copyrightEl) return;
 
-  try {
-    const res = await fetch('/api/export-settings/');
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!data || !data.success) return;
-    const settings = data.data || {};
-    noteEl.value = settings.export_note_line || '';
-    copyrightEl.value = settings.export_copyright_line || '';
-  } catch (err) {
-    console.error('loadExportSettings:', err);
-  }
+  noteEl.value = _templateSettingsCache.export_note_line || '';
+  copyrightEl.value = _templateSettingsCache.export_copyright_line || '';
 }
 
-async function saveExportSettings() {
-  const noteEl = document.getElementById('panelExportNoteLine');
-  const copyrightEl = document.getElementById('panelExportCopyrightLine');
-  const saveBtn = document.getElementById('panelSaveExportSettingsBtn');
-  const statusEl = document.getElementById('panelExportSettingsStatus');
-  if (!noteEl || !copyrightEl || !saveBtn) return;
+async function loadExportSettings(forceRefresh) {
+  if (!forceRefresh && _templateSettingsLoaded) {
+    _syncTemplateSettingsToModal();
+    return _templateSettingsCache;
+  }
 
-  const payload = {
-    export_note_line: (noteEl.value || '').trim(),
-    export_copyright_line: (copyrightEl.value || '').trim(),
+  if (!forceRefresh && _templateSettingsLoadingPromise) {
+    await _templateSettingsLoadingPromise;
+    _syncTemplateSettingsToModal();
+    return _templateSettingsCache;
+  }
+
+  _templateSettingsLoadingPromise = (async function () {
+    try {
+      const res = await fetch('/api/export-settings/');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || !data.success) return;
+      const settings = data.data || {};
+      _templateSettingsCache = {
+        export_note_line: settings.export_note_line || '',
+        export_copyright_line: settings.export_copyright_line || '',
+      };
+      _templateSettingsLoaded = true;
+      _syncTemplateSettingsToModal();
+    } catch (err) {
+      console.error('loadExportSettings:', err);
+    } finally {
+      _templateSettingsLoadingPromise = null;
+    }
+  })();
+
+  await _templateSettingsLoadingPromise;
+  return _templateSettingsCache;
+}
+
+function _readTemplateSettingsFromModal() {
+  const noteEl = document.getElementById('templateExportNoteLine');
+  const copyrightEl = document.getElementById('templateExportCopyrightLine');
+  return {
+    export_note_line: (noteEl ? noteEl.value : '').trim(),
+    export_copyright_line: (copyrightEl ? copyrightEl.value : '').trim(),
   };
+}
 
-  saveBtn.disabled = true;
-  saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
-  if (statusEl) {
-    statusEl.textContent = '';
-    statusEl.style.color = '';
-  }
+function _setTemplateRowsDropdownValue(value) {
+  const rowsText = document.getElementById('templateRowsSelectedText');
+  const rowsOptions = document.getElementById('templateRowsOptions');
+  if (rowsText) rowsText.textContent = String(value);
+  if (!rowsOptions) return;
 
-  try {
-    const res = await fetch('/api/export-settings/update/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-      },
-      body: JSON.stringify(payload),
+  rowsOptions.querySelectorAll('.dropdown-option').forEach(function (opt) {
+    opt.classList.toggle('selected', Number(opt.dataset.value) === Number(value));
+  });
+}
+
+function _bindTemplatePaginationControls() {
+  if (_templatePagerBound) return;
+  _templatePagerBound = true;
+
+  const firstBtn = document.getElementById('templateFirstPage');
+  const prevBtn = document.getElementById('templatePrevPage');
+  const nextBtn = document.getElementById('templateNextPage');
+  const lastBtn = document.getElementById('templateLastPage');
+  const pageNums = document.getElementById('templatePageNumbers');
+  const rowsDropdown = document.getElementById('templateRowsDropdown');
+  const rowsToggle = document.getElementById('templateRowsToggle');
+  const rowsOptions = document.getElementById('templateRowsOptions');
+
+  if (firstBtn) firstBtn.addEventListener('click', function () { templateGoPage(1); });
+  if (prevBtn) prevBtn.addEventListener('click', function () { templateGoPage(_templatePage - 1); });
+  if (nextBtn) nextBtn.addEventListener('click', function () { templateGoPage(_templatePage + 1); });
+  if (lastBtn) {
+    lastBtn.addEventListener('click', function () {
+      const totalPages = Math.max(1, Math.ceil(panelTemplateFiltered.length / _templatePerPage));
+      templateGoPage(totalPages);
     });
-    const data = await res.json();
-    if (res.ok && data && data.success) {
-      if (window.showToast) showToast('Export settings saved', 'success');
-      if (statusEl) {
-        statusEl.textContent = 'Saved';
-        statusEl.style.color = '#15803d';
-      }
-      return;
-    }
-    if (window.showToast) showToast((data && data.message) || 'Failed to save export settings', 'error');
-    if (statusEl) {
-      statusEl.textContent = 'Failed';
-      statusEl.style.color = '#b91c1c';
-    }
-  } catch (err) {
-    console.error('saveExportSettings:', err);
-    if (window.showToast) showToast('Network error saving export settings', 'error');
-    if (statusEl) {
-      statusEl.textContent = 'Error';
-      statusEl.style.color = '#b91c1c';
-    }
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.innerHTML = '<i class="fa-solid fa-save"></i> Save Export Settings';
   }
+
+  if (pageNums) {
+    pageNums.addEventListener('click', function (event) {
+      const btn = event.target.closest('.page-num');
+      if (!btn) return;
+      const page = parseInt(btn.dataset.page || '', 10);
+      if (!Number.isFinite(page)) return;
+      templateGoPage(page);
+    });
+  }
+
+  if (rowsDropdown && rowsToggle && rowsOptions) {
+    rowsToggle.addEventListener('click', function (event) {
+      event.stopPropagation();
+      rowsDropdown.classList.toggle('open');
+    });
+
+    rowsOptions.querySelectorAll('.dropdown-option').forEach(function (option) {
+      option.addEventListener('click', function () {
+        const value = parseInt(this.dataset.value || '', 10);
+        if (!Number.isFinite(value) || value <= 0) return;
+        _templatePerPage = value;
+        _templatePage = 1;
+        _setTemplateRowsDropdownValue(_templatePerPage);
+        rowsDropdown.classList.remove('open');
+        renderTemplateTable();
+      });
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!rowsDropdown.contains(event.target)) {
+        rowsDropdown.classList.remove('open');
+      }
+    });
+  }
+
+  _setTemplateRowsDropdownValue(_templatePerPage);
+}
+
+function _renderTemplatePagination(totalRows) {
+  const wrapper = document.getElementById('templatePaginationWrap');
+  const info = document.getElementById('templatePaginationInfo');
+  const pageNumbers = document.getElementById('templatePageNumbers');
+  const firstBtn = document.getElementById('templateFirstPage');
+  const prevBtn = document.getElementById('templatePrevPage');
+  const nextBtn = document.getElementById('templateNextPage');
+  const lastBtn = document.getElementById('templateLastPage');
+
+  if (!wrapper || !info || !pageNumbers) return;
+
+  if (totalRows <= 0) {
+    wrapper.style.display = 'none';
+    return;
+  }
+
+  wrapper.style.display = '';
+
+  const totalPages = Math.max(1, Math.ceil(totalRows / _templatePerPage));
+  if (_templatePage > totalPages) _templatePage = totalPages;
+  if (_templatePage < 1) _templatePage = 1;
+
+  const startIndex = (_templatePage - 1) * _templatePerPage;
+  const endIndex = Math.min(startIndex + _templatePerPage, totalRows);
+  info.innerHTML = 'Showing <strong>' + (startIndex + 1) + '-' + endIndex + '</strong> of <strong>' + totalRows + '</strong> results';
+
+  pageNumbers.innerHTML = '';
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, _templatePage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  if ((endPage - startPage + 1) < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i += 1) {
+    pageNumbers.insertAdjacentHTML(
+      'beforeend',
+      '<button class="page-num' + (i === _templatePage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>'
+    );
+  }
+
+  if (firstBtn) firstBtn.disabled = _templatePage <= 1;
+  if (prevBtn) prevBtn.disabled = _templatePage <= 1;
+  if (nextBtn) nextBtn.disabled = _templatePage >= totalPages;
+  if (lastBtn) lastBtn.disabled = _templatePage >= totalPages;
+}
+
+function _filterTemplates() {
+  const q = String(_templateSearchText || '').trim().toLowerCase();
+  if (!q) {
+    panelTemplateFiltered = panelTemplates.slice();
+    return panelTemplateFiltered;
+  }
+
+  panelTemplateFiltered = panelTemplates.filter(function (tpl) {
+    const fontLabel = tpl.font_name === 'hindi' ? 'hindi abbasi' : 'english arial';
+    const haystack = [tpl.name, tpl.instructions, fontLabel, tpl.is_default ? 'default' : '', tpl.is_bold ? 'bold' : '']
+      .join(' ')
+      .toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  });
+  return panelTemplateFiltered;
+}
+
+function templateSetSearch(value) {
+  _templateSearchText = value || '';
+  _templatePage = 1;
+  renderTemplateTable();
+}
+
+function templateGoPage(page) {
+  const totalPages = Math.max(1, Math.ceil(panelTemplateFiltered.length / _templatePerPage));
+  _templatePage = Number(page || 1);
+  if (!Number.isFinite(_templatePage)) _templatePage = 1;
+  if (_templatePage < 1) _templatePage = 1;
+  if (_templatePage > totalPages) _templatePage = totalPages;
+  renderTemplateTable();
 }
 
 /* Live-preview: update textarea font based on language + bold selection */
@@ -1328,20 +1471,15 @@ document.addEventListener('DOMContentLoaded', function () {
   var sel = document.getElementById('templateFontName');
   if (sel) sel.addEventListener('change', _syncTemplatePreviewFont);
 
-  const exportForm = document.getElementById('panelExportSettingsForm');
-  if (exportForm && !exportForm.dataset.bound) {
-    exportForm.dataset.bound = '1';
-    exportForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      saveExportSettings();
-    });
-  }
+  _bindTemplatePaginationControls();
+  _setTemplateRowsDropdownValue(_templatePerPage);
 });
 
 async function loadTemplates() {
+  _bindTemplatePaginationControls();
   const skeletonStart = setPanelTableSkeleton('templateTableBody', {
     colCount: 6,
-    columns: ['0.5fr', '1.5fr', '3fr', '1fr', '1fr', '1fr'],
+    columns: ['0.6fr', '2fr', '3fr', '1.3fr', '1fr', '1fr'],
     rows: 3,
     ariaLabel: 'Loading templates...',
   });
@@ -1356,12 +1494,23 @@ async function loadTemplates() {
         'Unable to load templates',
         'Please refresh and try again.'
       );
+      const wrap = document.getElementById('templatePaginationWrap');
+      if (wrap) wrap.style.display = 'none';
       return;
     }
     const data = await res.json();
     if (data.success) {
       await waitForPanelSkeletonDelay(skeletonStart);
-      panelTemplates = data.templates || [];
+      panelTemplates = (data.templates || []).map(function (tpl) {
+        return {
+          id: Number(tpl.id),
+          name: String(tpl.name || ''),
+          instructions: String(tpl.instructions || ''),
+          font_name: String(tpl.font_name || 'arial').toLowerCase() === 'hindi' ? 'hindi' : 'arial',
+          is_bold: Boolean(tpl.is_bold),
+          is_default: Boolean(tpl.is_default),
+        };
+      });
       renderTemplateTable();
       return;
     }
@@ -1373,6 +1522,8 @@ async function loadTemplates() {
       'Unable to load templates',
       'Please refresh and try again.'
     );
+    const wrap = document.getElementById('templatePaginationWrap');
+    if (wrap) wrap.style.display = 'none';
   } catch (err) {
     console.error('loadTemplates:', err);
     await waitForPanelSkeletonDelay(skeletonStart);
@@ -1383,28 +1534,57 @@ async function loadTemplates() {
       'Unable to load templates',
       'Network issue. Please refresh and try again.'
     );
+    const wrap = document.getElementById('templatePaginationWrap');
+    if (wrap) wrap.style.display = 'none';
   }
 }
 
 function renderTemplateTable() {
   const tbody = document.getElementById('templateTableBody');
+  const countEl = document.getElementById('templateTableCount');
   if (!tbody) return;
-  if (!panelTemplates.length) {
+
+  _filterTemplates();
+  const total = panelTemplateFiltered.length;
+
+  if (countEl) {
+    countEl.textContent = total + ' template' + (total === 1 ? '' : 's');
+  }
+
+  if (!total) {
     tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="6">
       <div class="empty-state"><i class="fa-solid fa-file-lines"></i>
-      <p>No templates yet</p><span>Create your first export template</span></div></td></tr>`;
+        <p>No templates found</p><span>Try a different search or create a new template</span></div></td></tr>`;
+    _renderTemplatePagination(0);
     return;
   }
-  tbody.innerHTML = panelTemplates.map((t, i) => {
+
+  const totalPages = Math.max(1, Math.ceil(total / _templatePerPage));
+  if (_templatePage > totalPages) _templatePage = totalPages;
+  if (_templatePage < 1) _templatePage = 1;
+  const startIndex = (_templatePage - 1) * _templatePerPage;
+  const pageRows = panelTemplateFiltered.slice(startIndex, startIndex + _templatePerPage);
+
+  tbody.innerHTML = pageRows.map((t, i) => {
     const preview = t.instructions.length > 80 ? t.instructions.substring(0, 80) + '...' : t.instructions;
     const fontLabel = t.font_name === 'hindi' ? 'Hindi' : 'Arial';
-    const boldLabel = t.is_bold ? '  <b>Bold</b>' : '';
+    const boldLabel = t.is_bold ? '<span class="template-style-pill">Bold</span>' : '<span class="template-style-pill muted">Normal</span>';
     return `<tr>
-      <td class="text-center text-xs text-gray-400">${i + 1}</td>
-      <td><strong class="text-sm">${escHtml(t.name)}</strong><br><span class="text-xs text-gray-400">${fontLabel}${boldLabel}</span></td>
+      <td class="text-center text-xs text-gray-400">${startIndex + i + 1}</td>
+      <td>
+        <div class="notif-title-cell">
+          <strong class="text-sm">${escHtml(t.name)}</strong>
+          <span class="text-xs text-gray-400">${t.is_default ? 'Default template' : 'Custom template'}</span>
+        </div>
+      </td>
       <td><span class="text-xs text-gray-600">${escHtml(preview)}</span></td>
+      <td>
+        <div class="template-style-cell">
+          <span class="template-style-pill">${fontLabel}</span>
+          ${boldLabel}
+        </div>
+      </td>
       <td class="text-center">${t.is_default ? '<span class="notif-badge-priority normal">Default</span>' : ''}</td>
-      <td class="text-center text-xs text-gray-400">${t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</td>
       <td>
         <div class="notif-actions-cell">
           <button class="btn btn-icon btn-neutral" title="Edit" onclick="editTemplate(${t.id})"><i class="fa-solid fa-pen"></i></button>
@@ -1413,14 +1593,18 @@ function renderTemplateTable() {
       </td>
     </tr>`;
   }).join('');
+
+  _renderTemplatePagination(total);
 }
 
-function openCreateTemplateModal() {
+async function openCreateTemplateModal() {
   document.getElementById('templateEditId').value = '';
   document.getElementById('templateName').value = '';
   document.getElementById('templateInstructions').value = '';
   document.getElementById('templateIsDefault').checked = false;
   document.getElementById('templateFontName').value = 'arial';
+  await loadExportSettings();
+  _syncTemplateSettingsToModal();
   _templateBoldState = false;
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
@@ -1433,7 +1617,7 @@ function openCreateTemplateModal() {
   }
 }
 
-function editTemplate(id) {
+async function editTemplate(id) {
   const t = panelTemplates.find(x => x.id === id);
   if (!t) return;
   document.getElementById('templateEditId').value = id;
@@ -1441,6 +1625,8 @@ function editTemplate(id) {
   document.getElementById('templateInstructions').value = t.instructions;
   document.getElementById('templateIsDefault').checked = t.is_default;
   document.getElementById('templateFontName').value = t.font_name || 'arial';
+  await loadExportSettings();
+  _syncTemplateSettingsToModal();
   _templateBoldState = !!t.is_bold;
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
@@ -1462,6 +1648,47 @@ function closeTemplateModal() {
   }
 }
 
+async function _saveTemplateSettingsIfChanged() {
+  const payload = _readTemplateSettingsFromModal();
+  const cachedNote = String(_templateSettingsCache.export_note_line || '');
+  const cachedCopyright = String(_templateSettingsCache.export_copyright_line || '');
+
+  if (payload.export_note_line === cachedNote && payload.export_copyright_line === cachedCopyright) {
+    return { success: true, skipped: true };
+  }
+
+  try {
+    const res = await fetch('/api/export-settings/update/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data || !data.success) {
+      return {
+        success: false,
+        message: (data && data.message) || 'Failed to save export footer settings',
+      };
+    }
+
+    _templateSettingsCache = {
+      export_note_line: payload.export_note_line,
+      export_copyright_line: payload.export_copyright_line,
+    };
+    _templateSettingsLoaded = true;
+    return { success: true };
+  } catch (err) {
+    console.error('_saveTemplateSettingsIfChanged:', err);
+    return {
+      success: false,
+      message: 'Network error saving export footer settings',
+    };
+  }
+}
+
 async function saveTemplate() {
   const editId = document.getElementById('templateEditId').value;
   const name = document.getElementById('templateName').value.trim();
@@ -1469,6 +1696,8 @@ async function saveTemplate() {
   const is_default = document.getElementById('templateIsDefault').checked;
   const font_name = document.getElementById('templateFontName').value;
   const is_bold = _templateBoldState;
+  const saveBtn = document.querySelector('#templateModal .center-modal-btn-confirm');
+  const originalSaveHtml = saveBtn ? saveBtn.innerHTML : '';
 
   if (!name) { if (window.showToast) showToast('Template name is required', 'error'); return; }
   if (!instructions) { if (window.showToast) showToast('Instructions text is required', 'error'); return; }
@@ -1477,6 +1706,11 @@ async function saveTemplate() {
     ? `/api/export-templates/${editId}/update/`
     : '/api/export-templates/create/';
 
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+  }
+
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -1484,16 +1718,30 @@ async function saveTemplate() {
       body: JSON.stringify({ name, instructions, is_default, font_name, is_bold }),
     });
     const data = await res.json();
-    if (data.success) {
-      if (window.showToast) showToast(editId ? 'Template updated' : 'Template created', 'success');
-      closeTemplateModal();
-      loadTemplates();
-    } else {
+    if (!data.success) {
       if (window.showToast) showToast(data.message || 'Failed', 'error');
+      return;
     }
+
+    const settingsResult = await _saveTemplateSettingsIfChanged();
+    if (!settingsResult.success) {
+      if (window.showToast) {
+        showToast((editId ? 'Template updated' : 'Template created') + ' but export footer settings were not saved: ' + settingsResult.message, 'warning');
+      }
+    } else if (window.showToast) {
+      showToast(editId ? 'Template and settings updated' : 'Template and settings created', 'success');
+    }
+
+    closeTemplateModal();
+    loadTemplates();
   } catch (err) {
     console.error('saveTemplate:', err);
     if (window.showToast) showToast('Network error', 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalSaveHtml;
+    }
   }
 }
 
