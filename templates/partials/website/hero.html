@@ -23,42 +23,4 @@
             </div>
         </div>
     </div>
-    
-    <div class="hero-card-wrapper">
-        <div class="card-slider">
-            <div class="card slide-card active">
-                <div class="card-image">
-                    {% if hero_images %}
-                        {% with first_hero=hero_images.0 %}
-                        <img id="slider-img" src="{{ first_hero.image.url }}" alt="{{ first_hero.title|default:'Hero Slide' }}">
-                        {% endwith %}
-                    {% else %}
-                        <img id="slider-img" src="{% static 'website/images/Hero/Hero1.jpg' %}" alt="Default Hero">
-                    {% endif %}
-                </div>
-                <div class="card-info">
-                    {% if hero_images %}
-                        {% with first_hero=hero_images.0 %}
-                        <h3 id="slider-title">{{ first_hero.title|default:"Premium Quality" }}</h3>
-                        <p id="slider-subtitle">{{ first_hero.subtitle|default:"Trusted by 500+ Schools" }}</p>
-                        {% endwith %}
-                    {% else %}
-                        <h3 id="slider-title">Premium Quality</h3>
-                        <p id="slider-subtitle">Trusted by 500+ Schools</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        <!-- Slider Dots (dynamic from HeroImage model) -->
-        <div class="slider-dots" role="group" aria-label="Hero image slides">
-            {% for hero in hero_images %}
-            <button type="button" class="dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter }}" data-url="{{ hero.image.url }}" data-title="{{ hero.title|default:'' }}" data-subtitle="{{ hero.subtitle|default:'' }}" aria-label="Go to slide {{ forloop.counter }}"></button>
-            {% empty %}
-            <button type="button" class="dot active" data-index="1" data-url="{% static 'website/images/Hero/Hero1.jpg' %}" data-title="Premium Quality" data-subtitle="Trusted by 500+ Schools" aria-label="Go to slide 1"></button>
-            {% endfor %}
-        </div>
-    </div>
 </section>
-
-<!-- Spacer to push content below floating card -->
-<div style="height: 180px;" class="hero-spacer"></div>

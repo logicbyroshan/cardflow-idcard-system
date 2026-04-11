@@ -198,13 +198,13 @@ body {
 .logo-img {
     width: 34px;
     height: 34px;
-    border-radius: 8px;
+    border-radius: 4px;
     object-fit: contain;
     display: block;
     opacity: 1 !important;
     visibility: visible !important;
     flex-shrink: 0;
-    padding: 2px;
+    padding: 1px;
     animation: logoSpin 1s ease-in-out;
     animation-delay: 5s;
     animation-iteration-count: 1;
@@ -223,7 +223,7 @@ body {
 .logo-box {
     width: 42px;
     height: 42px;
-    border-radius: 11px;
+    border-radius: 6px;
     background: linear-gradient(135deg, #fef9c3 0%, #fde68a 50%, #fcd34d 100%);
     display: flex;
     align-items: center;
@@ -232,6 +232,10 @@ body {
     perspective: 600px;
     flex-shrink: 0;
     animation: logoBoxGlow 3s ease-in-out infinite;
+}
+
+.navbar .logo-box {
+    border-radius: 6px !important;
 }
 
 @keyframes logoBoxGlow {
@@ -395,18 +399,18 @@ body {
 /* ===== Hero Section ===== */
 .hero {
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
-    height: 100vh;
+    min-height: 60vh;
+    height: auto;
     width: 100%;
     margin-left: 0;
     color: var(--white);
     position: relative;
-    overflow: visible;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    padding-top: 50px;
-    padding-bottom: 60px;
+    padding: 140px 20px 80px;
 }
 
 .hero::before {
@@ -438,15 +442,15 @@ body {
 .hero-inner {
     position: relative;
     z-index: 1;
-    padding: 20px;
-    max-width: 900px;
+    padding: 0 20px;
+    max-width: 1200px;
     margin: 0 auto;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding-top: 50px;
+    padding-top: 0;
 }
 
 /* Hero Content - matching page-hero styles */
@@ -486,7 +490,7 @@ body {
     margin-bottom: 20px;
     line-height: 1.2;
     color: #fff;
-    min-height: 2.4em;
+    min-height: 0;
     display: block;
     text-align: center;
 }
@@ -514,17 +518,7 @@ body {
 }
 
 .hero-card-wrapper {
-    position: absolute;
-    bottom: -200px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-    pointer-events: auto;
-    margin-top: 3rem;
+    display: none !important;
 }
 
 .hero-buttons {
@@ -719,9 +713,7 @@ body {
 
 /* ===== Slider Dots ===== */
 .slider-dots {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
+    display: none !important;
 }
 
 .dot {
@@ -889,15 +881,50 @@ body {
 /* ===== Why Choose Us Section ===== */
 .why-choose-us {
     padding: 100px 0;
-    background: var(--white);
+    background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
+    position: relative;
+    overflow: hidden;
 }
 
 .why-choose-us h2 {
     font-size: 2.5rem;
     text-align: center;
     margin-bottom: 3rem;
-    color: var(--secondary-color);
+    color: #ffffff;
     font-weight: 700;
+}
+
+.why-choose-us .container {
+    position: relative;
+    z-index: 1;
+}
+
+.why-choose-us::before,
+.our-works::before {
+    content: '';
+    position: absolute;
+    width: 680px;
+    height: 680px;
+    border-radius: 50%;
+    top: -260px;
+    right: -180px;
+    z-index: 0;
+    filter: blur(55px);
+    background: radial-gradient(circle, rgba(10, 146, 221, 0.55) 0%, rgba(10, 146, 221, 0.2) 48%, transparent 75%);
+}
+
+.why-choose-us::after,
+.our-works::after {
+    content: '';
+    position: absolute;
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    bottom: -210px;
+    left: -150px;
+    z-index: 0;
+    filter: blur(48px);
+    background: radial-gradient(circle, rgba(10, 146, 221, 0.45) 0%, rgba(10, 146, 221, 0.18) 45%, transparent 75%);
 }
 
 /* Legacy features-grid (kept for sub-pages) */
@@ -1093,15 +1120,22 @@ body {
 /* ===== Our Works Section ===== */
 .our-works {
     padding: 100px 0;
-    background: var(--light-bg);
+    background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
+    position: relative;
+    overflow: hidden;
 }
 
 .our-works h2 {
     font-size: 2.5rem;
     text-align: center;
     margin-bottom: 0.5rem;
-    color: var(--secondary-color);
+    color: #ffffff;
     font-weight: 700;
+}
+
+.our-works .container {
+    position: relative;
+    z-index: 1;
 }
 
 /* ===== Works Carousel ===== */
