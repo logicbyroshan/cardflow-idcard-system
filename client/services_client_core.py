@@ -462,7 +462,7 @@ class ClientService(BaseService):
     @classmethod
     def toggle_status(cls, client_id: int) -> ServiceResult:
         """Toggle client active/inactive status (atomic to prevent lost toggles).
-        On first activation, attempts to send credentials to the client's email.
+        On every activation, attempts to send credentials to the client's email.
         """
         try:
             # Collect state needed for email (must be outside atomic for clean email send)
@@ -477,7 +477,7 @@ class ClientService(BaseService):
                 client = Client.objects.select_related('user').select_for_update().get(id=client_id)
                 user = client.user
                 real_email_available = cls._has_real_email(user.email)
-                is_first_activation = (client.status != 'active') and (not user.welcome_email_sent)
+                is_activating = (client.status != 'active')
 
                 if client.status == 'active':
                     # Deactivate
@@ -494,7 +494,7 @@ class ClientService(BaseService):
                     status_display = 'Active'
                     deactivated_staff_count = 0
 
-                    if is_first_activation and real_email_available:
+                    if is_activating and real_email_available:
                         phone_value = (user.phone or '').strip()
                         can_reuse_phone_password = bool(phone_value) and user.check_password(phone_value)
                         email_variant = 'welcome'
@@ -536,7 +536,7 @@ class ClientService(BaseService):
                             'email_variant': email_variant,
                         }
                     else:
-                        if is_first_activation and not real_email_available:
+                        if is_activating and not real_email_available:
                             welcome_skipped_reason = 'No valid email found for this client, so activation email was skipped.'
                         user.save(update_fields=['is_active'])
 

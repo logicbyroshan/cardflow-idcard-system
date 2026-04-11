@@ -1933,6 +1933,38 @@ class ClientActivationPasswordFlowTests(TestCase):
             ).exists()
         )
 
+    def test_reactivation_also_sends_activation_email(self):
+        from core.services import ClientService
+
+        result = ClientService.create({
+            'name': 'Reactivation Client',
+            'email': 'client-reactivation@test.com',
+            'phone': '9123456789',
+            'password': 'ClientCustom@123',
+            'is_active': False,
+        })
+        self.assertTrue(result.success, msg=result.message)
+
+        client_id = result.data['client']['id']
+
+        def _fake_send_welcome(*args, **kwargs):
+            on_success = kwargs.get('on_success')
+            if on_success:
+                on_success()
+            return True, 'Welcome email queued for delivery.'
+
+        with mock.patch('client.services_client_core.send_welcome_email', side_effect=_fake_send_welcome) as send_welcome_mock:
+            first_activate = ClientService.toggle_status(client_id)
+            self.assertTrue(first_activate.success, msg=first_activate.message)
+
+            deactivate = ClientService.toggle_status(client_id)
+            self.assertTrue(deactivate.success, msg=deactivate.message)
+
+            second_activate = ClientService.toggle_status(client_id)
+            self.assertTrue(second_activate.success, msg=second_activate.message)
+
+        self.assertEqual(send_welcome_mock.call_count, 2)
+
     def test_create_rejects_missing_phone_and_custom_password(self):
         from core.services import ClientService
 
