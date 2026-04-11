@@ -2,11 +2,13 @@ import json
 from unittest import mock
 from datetime import timedelta
 from pathlib import Path
+from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.utils import timezone
 
 from client.models import Client
@@ -494,6 +496,63 @@ class MobileAppShellApiTests(MobileAppBaseTestCase):
 		self.assertGreaterEqual(body['data']['active_24h'], 1)
 		self.assertGreaterEqual(body['data']['stale_30d'], 1)
 		self.assertIsInstance(body['data']['top_builds'], list)
+
+
+class MobileDeviceCleanupCommandTests(MobileAppBaseTestCase):
+	def test_cleanup_marks_stale_devices_inactive(self):
+		now = timezone.now()
+		active_old = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='cleanup-stale-0001',
+			is_active=True,
+		)
+		MobileDevice.objects.filter(pk=active_old.pk).update(last_seen_at=now - timedelta(days=50))
+
+		out = StringIO()
+		call_command('cleanup_mobile_devices', '--stale-days', '30', stdout=out)
+
+		active_old.refresh_from_db()
+		self.assertFalse(active_old.is_active)
+
+	def test_cleanup_dry_run_does_not_modify_rows(self):
+		now = timezone.now()
+		active_old = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='cleanup-dryrun-0001',
+			is_active=True,
+		)
+		MobileDevice.objects.filter(pk=active_old.pk).update(last_seen_at=now - timedelta(days=45))
+
+		out = StringIO()
+		call_command('cleanup_mobile_devices', '--stale-days', '30', '--dry-run', stdout=out)
+
+		active_old.refresh_from_db()
+		self.assertTrue(active_old.is_active)
+
+	def test_cleanup_optionally_deletes_old_inactive_rows(self):
+		now = timezone.now()
+		old_inactive = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='cleanup-delete-0001',
+			is_active=False,
+		)
+		MobileDevice.objects.filter(pk=old_inactive.pk).update(last_seen_at=now - timedelta(days=180))
+
+		out = StringIO()
+		call_command(
+			'cleanup_mobile_devices',
+			'--stale-days',
+			'30',
+			'--delete-days',
+			'120',
+			'--delete-inactive',
+			stdout=out,
+		)
+
+		self.assertFalse(MobileDevice.objects.filter(pk=old_inactive.pk).exists())
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):

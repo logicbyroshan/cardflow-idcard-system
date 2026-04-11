@@ -38,7 +38,13 @@
 - [ ] Crash-free closed test sessions >= 99% target window.
 - [ ] Version/update policy verified in staging and production config.
 
+## H. Device Hygiene and Lifecycle
+- [x] Stale active devices can be marked inactive with management command.
+- [x] Old inactive device rows can be purged with explicit delete flag.
+- [ ] Production scheduler is configured to run cleanup command daily.
+
 ## Automated Coverage Notes
 - Mobile shell API regression tests now include register/ping upsert behavior and invalid installation ID rejection.
 - Update-policy regression tests now cover required, recommended, and force-update paths.
 - CI workflow runs `mobile_app.tests.MobileAppShellApiTests` alongside Android shell build checks.
+- Cleanup command behavior is covered for deactivate, dry-run, and purge paths in backend tests.

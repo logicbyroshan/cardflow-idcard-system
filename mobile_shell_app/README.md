@@ -37,7 +37,7 @@ Current scope: Android-first rollout. iOS work is intentionally deferred.
 ## Behavior currently implemented
 1. Remote PWA URL loading via Capacitor `server.url`.
 2. Strict navigation allowlist for known domains.
-3. Local fallback page (`offline.html`) when remote URL fails.
+3. Branded local fallback screens (`index.html` + `offline.html`) with retry, support, and web-open actions.
 4. Android back behavior with double-tap exit when no history is available.
 5. Android deep-link intent routing for `panel.adarshbhopal.in/app`.
 6. Push-notification token capture and backend device registration (through PWA bridge).

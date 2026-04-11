@@ -20,13 +20,13 @@ Validation:
 2. Capacitor Android sync verified.
 
 ## Phase 3 - App Shell Setup
-Status: Implemented
+Status: Implemented (extended)
 
 Delivered:
 1. Capacitor Android project scaffold committed.
 2. Environment-driven app identity and URL config.
 3. Android intent-filter for deep-link host and path.
-4. Offline fallback page retained for server-url failure mode.
+4. Branded launch and offline fallback screens with retry/support actions and live network state.
 
 Validation:
 1. `npm run verify` succeeds in mobile shell app folder.
@@ -72,7 +72,7 @@ Delivered:
 2. Release runbook documented in `ANDROID_RELEASE_PIPELINE.md`.
 
 ## Phase 7 - Rollout and Monitoring
-Status: Implemented (extended)
+Status: Implemented (extended + automation)
 
 Delivered:
 1. Device heartbeat endpoint for active-install tracking.
@@ -82,6 +82,7 @@ Delivered:
    - active 24h / 7d
    - stale 30d
    - top observed build versions
+5. Management command added to deactivate stale devices and purge aged inactive rows.
 
 Go-live recommendation:
 1. Closed testing (Play internal/closed track) for first 20-50 users.

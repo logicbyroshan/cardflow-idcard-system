@@ -42,3 +42,11 @@
 1. Android shell workflow builds a debug APK artifact on every shell/backend change.
 2. Backend gate runs `mobile_app.tests.MobileAppShellApiTests` to validate config/register/ping/summary behavior.
 3. Merge only when both Android build and backend mobile-shell tests pass.
+
+## 8. Device Lifecycle Cleanup
+1. Dry-run audit:
+   - `python manage.py cleanup_mobile_devices --stale-days 30 --delete-days 120 --delete-inactive --dry-run`
+2. Apply cleanup:
+   - `python manage.py cleanup_mobile_devices --stale-days 30 --delete-days 120 --delete-inactive`
+3. Recommended production schedule:
+   - run once daily during low-traffic window.
