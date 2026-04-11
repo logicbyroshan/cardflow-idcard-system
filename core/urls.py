@@ -148,6 +148,9 @@ urlpatterns = [
     path('api/notifications/admin/<int:notification_id>/delete/', views.api_panel_notification_delete, name='api_panel_notification_delete'),
     path('api/notifications/admin/target-users/', views.api_panel_target_users, name='api_panel_target_users'),
 
+    # Product Gallery (client/client_staff only)
+    path('product-gallery/', views.product_gallery, name='product_gallery'),
+
     # Client Tutorial (all authenticated users; content is client-oriented)
     path('tutorial/', views.tutorial, name='tutorial'),
     path('tutorial/personal-guide/', views.tutorial_personal_guide, name='tutorial_personal_guide'),

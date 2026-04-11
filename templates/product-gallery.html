@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Product Gallery - Adarsh ID Cards{% endblock %}
+{% block main_class %}main-scrollable-page{% endblock %}
+
+{% block extra_css %}
+<style>
+  .main.main-scrollable-page {
+    grid-template-rows: var(--spacing-topbar) minmax(0, 1fr);
+  }
+
+  .main.main-scrollable-page > .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--color-white, #ffffff) !important;
+    border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  .main.main-scrollable-page > :not(.topbar) {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden !important;
+    overflow-x: hidden;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  }
+
+  .pg-page {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .pg-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+    background: #ffffff;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .pg-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #0a92dd;
+  }
+
+  .pg-title {
+    margin: 6px 0 0;
+    font-size: 24px;
+    line-height: 1.2;
+    color: #0f172a;
+  }
+
+  .pg-subtitle {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #475569;
+    max-width: 720px;
+  }
+
+  .pg-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+
+  .pg-grid-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 20px 24px;
+  }
+
+  .portfolio-grid {
+    columns: 4 240px;
+    column-gap: 18px;
+  }
+
+  .portfolio-item {
+    break-inside: avoid;
+    display: inline-block;
+    width: 100%;
+    margin-bottom: 18px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #dbe4ef;
+    background: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .portfolio-item:hover {
+    transform: translateY(-2px);
+    border-color: #0a92dd;
+    box-shadow: 0 12px 28px rgba(10, 146, 221, 0.12);
+  }
+
+  .portfolio-image {
+    width: 100%;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .portfolio-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  .portfolio-meta {
+    padding: 10px 12px 11px;
+    border-top: 1px solid #e8eef6;
+  }
+
+  .portfolio-title {
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .portfolio-category {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .pg-empty {
+    column-span: all;
+    text-align: center;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 42px 16px;
+    color: #64748b;
+  }
+
+  .pg-empty i {
+    font-size: 30px;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  @media (max-width: 1024px) {
+    .portfolio-grid {
+      columns: 3 220px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .pg-header {
+      padding: 14px 12px 12px;
+    }
+
+    .pg-title {
+      font-size: 20px;
+    }
+
+    .pg-grid-wrap {
+      padding: 12px;
+    }
+
+    .portfolio-grid {
+      columns: 2 180px;
+      column-gap: 12px;
+    }
+
+    .portfolio-item {
+      margin-bottom: 12px;
+      border-radius: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .portfolio-grid {
+      columns: 1;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+<i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+<span class="breadcrumb-item active">Product Gallery</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="nav-right">
+  {% include 'partials/notification-bell.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="pg-page">
+  <section class="pg-header">
+    <div>
+      <span class="pg-kicker"><i class="fa-solid fa-images"></i> Product Gallery</span>
+      <h1 class="pg-title">Latest Product Samples</h1>
+      <p class="pg-subtitle">
+        Showing the latest {{ gallery_total }} product images. Ranking is tuned for {{ gallery_user_type_label }} users{% if gallery_client_name %} from {{ gallery_client_name }}{% endif %}.
+      </p>
+    </div>
+    <div class="pg-badges">
+      <span class="pg-badge"><i class="fa-solid fa-layer-group"></i> Latest 100 Images</span>
+      <span class="pg-badge"><i class="fa-solid fa-bullseye"></i> {{ gallery_user_type_label }} Focus</span>
+    </div>
+  </section>
+
+  <section class="pg-grid-wrap" aria-label="Product gallery grid">
+    <div class="portfolio-grid">
+      {% for item in gallery_items %}
+      <article class="portfolio-item {{ item.orientation|default:'square' }}" aria-label="{{ item.title|default:'Product Image' }}">
+        <div class="portfolio-image">
+          <img src="{{ item.image.url }}" alt="{{ item.title|default:'Product Image' }}" loading="lazy">
+        </div>
+        <div class="portfolio-meta">
+          <div class="portfolio-title">{{ item.title|default:'Product Sample' }}</div>
+          <div class="portfolio-category">{% if item.category %}{{ item.category.name }}{% else %}General{% endif %}</div>
+        </div>
+      </article>
+      {% empty %}
+      <div class="pg-empty">
+        <i class="fa-solid fa-image"></i>
+        <div>No product images available right now.</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

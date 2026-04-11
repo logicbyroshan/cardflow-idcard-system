@@ -436,6 +436,125 @@ class TutorialRoleScopeTests(TestCase):
         self.assertNotRegex(html, r'[\u0900-\u097F]')
 
 
+class ProductGalleryViewTests(TestCase):
+    _PNG_BYTES = (
+        b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+        b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfeA\x89\x12\xb3\x00\x00\x00\x00IEND\xaeB`\x82'
+    )
+
+    def setUp(self):
+        self.client_user, self.client_profile = _create_client_user(
+            'gallery-client@test.com',
+            'testpass123',
+        )
+        self.client_profile.name = 'Sunrise Public School'
+        self.client_profile.save(update_fields=['name'])
+
+        self.client_staff_user = User.objects.create_user(
+            username='gallery-client-staff@test.com',
+            email='gallery-client-staff@test.com',
+            password='testpass123',
+            role='client_staff',
+        )
+        from staff.models import Staff
+        Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_profile,
+        )
+
+        self.admin_user = User.objects.create_superuser(
+            username='gallery-admin@test.com',
+            email='gallery-admin@test.com',
+            password='testpass123',
+        )
+
+    def _image_file(self, name):
+        return SimpleUploadedFile(name, self._PNG_BYTES, content_type='image/png')
+
+    def test_client_can_access_product_gallery(self):
+        self.assertTrue(self.client.login(username='gallery-client@test.com', password='testpass123'))
+        response = self.client.get(reverse('product_gallery'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['active_page'], 'product_gallery')
+        self.assertEqual(response.context['gallery_user_type'], 'school')
+
+    def test_client_staff_can_access_product_gallery(self):
+        self.assertTrue(self.client.login(username='gallery-client-staff@test.com', password='testpass123'))
+        response = self.client.get(reverse('product_gallery'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['active_page'], 'product_gallery')
+
+    def test_non_client_role_is_redirected(self):
+        self.assertTrue(self.client.login(username='gallery-admin@test.com', password='testpass123'))
+        response = self.client.get(reverse('product_gallery'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], '/panel/')
+
+    def test_product_gallery_shows_latest_100_images_max(self):
+        from website.models import PortfolioCategory, PortfolioItem
+
+        category = PortfolioCategory.objects.create(name='General Products', slug='general-products')
+        created_ids = []
+
+        with patch('website.watermark.process_portfolio_image', side_effect=lambda image_file: image_file):
+            for idx in range(105):
+                item = PortfolioItem.objects.create(
+                    title=f'Sample {idx:03d}',
+                    category=category,
+                    item_type='image',
+                    is_active=True,
+                    image=self._image_file(f'sample-{idx:03d}.png'),
+                )
+                created_ids.append(item.id)
+
+        self.assertTrue(self.client.login(username='gallery-client@test.com', password='testpass123'))
+        response = self.client.get(reverse('product_gallery'))
+        self.assertEqual(response.status_code, 200)
+
+        items = response.context['gallery_items']
+        self.assertEqual(len(items), 100)
+        self.assertTrue(all(item.item_type == 'image' for item in items))
+
+        visible_ids = {item.id for item in items}
+        self.assertFalse(any(old_id in visible_ids for old_id in created_ids[:5]))
+        self.assertIn(created_ids[-1], visible_ids)
+
+    def test_school_user_type_prioritizes_school_related_items(self):
+        from website.models import PortfolioCategory, PortfolioItem
+
+        school_cat, _ = PortfolioCategory.objects.get_or_create(
+            slug='school-stationery',
+            defaults={'name': 'School Stationery'},
+        )
+        office_cat, _ = PortfolioCategory.objects.get_or_create(
+            slug='visiting-cards',
+            defaults={'name': 'Visiting Cards'},
+        )
+
+        with patch('website.watermark.process_portfolio_image', side_effect=lambda image_file: image_file):
+            school_item = PortfolioItem.objects.create(
+                title='Student ID Card Set',
+                category=school_cat,
+                item_type='image',
+                is_active=True,
+                image=self._image_file('school-item.png'),
+            )
+            PortfolioItem.objects.create(
+                title='Office Visiting Card Pack',
+                category=office_cat,
+                item_type='image',
+                is_active=True,
+                image=self._image_file('office-item.png'),
+            )
+
+        self.assertTrue(self.client.login(username='gallery-client@test.com', password='testpass123'))
+        response = self.client.get(reverse('product_gallery'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['gallery_user_type'], 'school')
+        self.assertEqual(response.context['gallery_items'][0].id, school_item.id)
+
+
 # ── IDCard Model Tests ──
 class IDCardModelTests(TestCase):
     def setUp(self):
