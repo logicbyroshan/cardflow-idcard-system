@@ -2283,6 +2283,8 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 
 		self.assertIn('async function fetchMobileShellConfig()', content)
 		self.assertIn('function resolveUpdateLink(configData)', content)
+		self.assertIn('var isLikelyApk = /\\.apk(?:\\?|#|$)/i.test(targetUrl);', content)
+		self.assertIn('window.location.assign(targetUrl);', content)
 		self.assertIn('var updateLink = resolveUpdateLink(configData);', content)
 		self.assertIn('await openUpdateLink(updateLink);', content)
 

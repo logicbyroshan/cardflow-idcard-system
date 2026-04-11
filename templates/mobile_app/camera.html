@@ -105,6 +105,13 @@
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-60 border-2 border-white/40 rounded-[40%] border-dashed"></div>
             <p class="absolute bottom-4 left-0 right-0 text-center text-white/60 text-xs">Align face within the guide</p>
         </div>
+        <div x-show="isNativeShell && !photoTaken && !cameraError"
+             class="absolute inset-x-0 bottom-16 flex justify-center pointer-events-none"
+             style="display:none;">
+            <div class="px-3 py-1.5 rounded-full bg-black/55 text-white/80 text-[11px]">
+                Tap capture to open native camera
+            </div>
+        </div>
         <!-- Permission Error -->
         <div x-show="cameraError" class="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div class="text-center px-8">
@@ -124,7 +131,7 @@
             </button>
             <input type="file" x-ref="galleryFile" accept="image/*" class="hidden" @change="onGalleryPick($event)">
             <template x-if="!photoTaken">
-                <button @click="capturePhoto()" class="w-16 h-16 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-white/20 active:scale-95 transition-transform">
+                <button @click="capturePhoto()" :disabled="cameraBusy || uploading" class="w-16 h-16 rounded-lg bg-white flex items-center justify-center shadow-lg shadow-white/20 active:scale-95 transition-transform disabled:opacity-70 disabled:cursor-not-allowed">
                     <div class="w-12 h-12 rounded-lg border-4 border-gray-300"></div>
                 </button>
             </template>
@@ -142,7 +149,7 @@
                     </button>
                 </div>
             </template>
-            <button @click="toggleFlash()" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform"
+            <button @click="toggleFlash()" :disabled="cameraBusy || uploading" class="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
                     :class="{ 'bg-amber-500/40 text-amber-300': flashOn }">
                 <i :class="flashOn ? 'fa-solid fa-bolt text-lg' : 'fa-solid fa-bolt-slash text-lg'"></i>
             </button>
@@ -182,6 +189,7 @@ function getCookie(n){ let v=null; document.cookie.split(';').forEach(c=>{ c=c.t
 function cameraApp() {
     return {
         stream: null,
+        isNativeShell: false,
         photoTaken: false,
         cameraError: false,
         flashOn: false,
@@ -189,6 +197,7 @@ function cameraApp() {
         showCropper: false,
         cropperOverlayToken: null,
         cropper: null,
+        cameraBusy: false,
         uploading: false,
         toast: { show: false, message: '', type: 'info' },
         tableId: {{ table_id }},
@@ -200,7 +209,12 @@ function cameraApp() {
 
         init() {
             this.filteredCards = this.allCards;
+            const bridge = window.adarshDeviceBridge;
+            this.isNativeShell = !!(bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell());
             this.startCamera();
+
+            this._onPageHide = () => this.stopStream();
+            window.addEventListener('pagehide', this._onPageHide, { passive: true });
 
             this.$watch('showCropper', (isOpen) => {
                 if (isOpen) {
@@ -214,6 +228,40 @@ function cameraApp() {
                     this._closeCropperOverlay(false);
                 }
             });
+        },
+
+        stopStream() {
+            if (!this.stream) return;
+            try {
+                this.stream.getTracks().forEach(t => t.stop());
+            } catch (e) {}
+            this.stream = null;
+            if (this.$refs.video) {
+                this.$refs.video.srcObject = null;
+            }
+        },
+
+        wait(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        },
+
+        async pickImageWithTimeout(source, quality, timeoutMs) {
+            const bridge = window.adarshDeviceBridge;
+            if (!(bridge && typeof bridge.pickImage === 'function')) return null;
+
+            const timeoutPromise = new Promise((resolve) => {
+                setTimeout(() => resolve({ __timeout: true }), timeoutMs);
+            });
+
+            const picked = await Promise.race([
+                bridge.pickImage({ source: source, quality: quality }),
+                timeoutPromise,
+            ]);
+
+            if (picked && picked.__timeout) {
+                throw new Error('Camera is taking too long to open. Please try again.');
+            }
+            return picked || null;
         },
 
         _closeCropperOverlay(fromPopstate) {
@@ -232,17 +280,55 @@ function cameraApp() {
 
         async startCamera() {
             this.cameraError = false;
+            if (this.isNativeShell) {
+                // Native shell capture is more stable via Capacitor Camera plugin.
+                this.stopStream();
+                return;
+            }
+
+            this.stopStream();
             try {
-                this.stream = await navigator.mediaDevices.getUserMedia({
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('camera_not_supported');
+                }
+
+                const streamPromise = navigator.mediaDevices.getUserMedia({
                     video: { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
                 });
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('camera_timeout')), 9000);
+                });
+
+                this.stream = await Promise.race([streamPromise, timeoutPromise]);
                 if (this.$refs.video) this.$refs.video.srcObject = this.stream;
             } catch (err) { this.cameraError = true; }
         },
 
-        capturePhoto() {
+        async capturePhoto() {
+            if (this.cameraBusy || this.uploading) return;
+
+            if (this.isNativeShell) {
+                this.cameraBusy = true;
+                try {
+                    const picked = await this.pickImageWithTimeout('camera', 92, 15000);
+                    if (picked) {
+                        this.cameraError = false;
+                        this.loadImageFile(picked);
+                    }
+                } catch (err) {
+                    this.cameraError = true;
+                    this.showMsg(err && err.message ? err.message : 'Unable to open camera', 'error');
+                }
+                this.cameraBusy = false;
+                return;
+            }
+
             const v = this.$refs.video, c = this.$refs.canvas;
+            if (!v || !v.videoWidth || !v.videoHeight) {
+                this.showMsg('Camera not ready yet. Please try again.', 'error');
+                return;
+            }
             c.width = v.videoWidth; c.height = v.videoHeight;
             c.getContext('2d').drawImage(v, 0, 0);
             this.photoTaken = true;
@@ -277,26 +363,42 @@ function cameraApp() {
         },
 
         async openGalleryPicker() {
+            if (this.cameraBusy || this.uploading) return;
             const bridge = window.adarshDeviceBridge;
             if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
-                const picked = await bridge.pickImage({ source: 'gallery', quality: 92 });
-                if (picked) {
-                    this.loadImageFile(picked);
-                    return;
+                this.cameraBusy = true;
+                try {
+                    const picked = await this.pickImageWithTimeout('gallery', 92, 15000);
+                    if (picked) {
+                        this.loadImageFile(picked);
+                        this.cameraBusy = false;
+                        return;
+                    }
+                } catch (err) {
+                    this.showMsg(err && err.message ? err.message : 'Unable to open gallery', 'error');
                 }
+                this.cameraBusy = false;
             }
             this.$refs.galleryFile.click();
         },
 
         async tryCameraRecovery() {
+            if (this.cameraBusy || this.uploading) return;
             const bridge = window.adarshDeviceBridge;
             if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
-                const picked = await bridge.pickImage({ source: 'camera', quality: 92 });
-                if (picked) {
-                    this.cameraError = false;
-                    this.loadImageFile(picked);
-                    return;
+                this.cameraBusy = true;
+                try {
+                    const picked = await this.pickImageWithTimeout('camera', 92, 15000);
+                    if (picked) {
+                        this.cameraError = false;
+                        this.loadImageFile(picked);
+                        this.cameraBusy = false;
+                        return;
+                    }
+                } catch (err) {
+                    this.showMsg(err && err.message ? err.message : 'Unable to open camera', 'error');
                 }
+                this.cameraBusy = false;
             }
             await this.startCamera();
         },
@@ -419,13 +521,18 @@ function cameraApp() {
         },
 
         async switchCamera() {
+            if (this.cameraBusy || this.uploading) return;
+            if (this.isNativeShell) {
+                this.showMsg('Switch camera is handled by your device camera app.', 'success');
+                return;
+            }
             this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
-            if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+            this.stopStream();
             await this.startCamera();
         },
 
         goBack() {
-            if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+            this.stopStream();
             // Use stored return URL or referrer for a fresh page load
             const retUrl = sessionStorage.getItem('cam_return_url');
             if (retUrl) {

@@ -304,17 +304,37 @@
 
         async function openUpdateLink(link) {
             if (!link) return false;
+            var targetUrl = String(link || '').trim();
+            if (!targetUrl) return false;
+
+            var isLikelyApk = /\.apk(?:\?|#|$)/i.test(targetUrl);
+            var isSameOrigin = false;
+            try {
+                var resolved = new URL(targetUrl, window.location.href);
+                targetUrl = resolved.toString();
+                isSameOrigin = resolved.origin === window.location.origin;
+            } catch (err) {}
+
+            // Prefer direct navigation for same-origin APK links so Android handles
+            // download/install from app context without forcing an external browser first.
+            if (isLikelyApk && isSameOrigin) {
+                try {
+                    window.location.assign(targetUrl);
+                    return true;
+                } catch (err) {}
+            }
+
             var plugins = getCapacitorPlugins();
             var browser = plugins.Browser;
             if (browser && typeof browser.open === 'function') {
                 try {
-                    await browser.open({ url: link });
+                    await browser.open({ url: targetUrl });
                     return true;
                 } catch (err) {}
             }
 
             try {
-                window.location.href = link;
+                window.location.assign(targetUrl);
                 return true;
             } catch (err) {
                 return false;
@@ -372,10 +392,10 @@
                 var configData = await fetchMobileShellConfig();
                 var updateLink = resolveUpdateLink(configData);
                 if (updateLink) {
-                    setUpdateProgress(46, 'Opening update package...');
+                    setUpdateProgress(46, 'Preparing update package...');
                     var opened = await openUpdateLink(updateLink);
                     if (opened) {
-                        setUpdateProgress(100, 'Install update, then reopen the app.');
+                        setUpdateProgress(100, 'Approve APK install prompt, then reopen the app.');
                         inProgress = false;
                         return false;
                     }

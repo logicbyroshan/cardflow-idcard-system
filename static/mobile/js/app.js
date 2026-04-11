@@ -45,6 +45,51 @@ window.showConfirm = function showConfirm(options) {
     return Promise.resolve(window.confirm(message));
 };
 
+(function setupSmoothPageTransitions() {
+    if (!document || !document.body) return;
+
+    var prefersReducedMotion = false;
+    try {
+        prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (err) {}
+    if (prefersReducedMotion) return;
+
+    document.body.classList.add('mobile-page-enter');
+    requestAnimationFrame(function() {
+        document.body.classList.add('mobile-page-enter-active');
+    });
+
+    document.addEventListener('click', function(event) {
+        var target = event.target;
+        if (!target || !target.closest) return;
+
+        var anchor = target.closest('a[href]');
+        if (!anchor) return;
+        if (anchor.hasAttribute('download')) return;
+        if (anchor.getAttribute('target') === '_blank') return;
+        if (anchor.hasAttribute('data-no-page-transition')) return;
+        if (event.defaultPrevented) return;
+
+        var href = String(anchor.getAttribute('href') || '').trim();
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return;
+        }
+
+        try {
+            var resolved = new URL(href, window.location.href);
+            if (resolved.origin !== window.location.origin) return;
+        } catch (err) {
+            return;
+        }
+
+        document.body.classList.add('mobile-page-leave');
+    }, true);
+
+    window.addEventListener('pageshow', function() {
+        document.body.classList.remove('mobile-page-leave');
+    });
+})();
+
 (function initAndroidShellBridge() {
     var envGate = window.adarshMobileEnv || null;
     function isNativeShellContext() {

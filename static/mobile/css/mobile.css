@@ -28,6 +28,33 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+body.mobile-page-enter #mobile-app {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+}
+
+body.mobile-page-enter.mobile-page-enter-active #mobile-app {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition: opacity 220ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.mobile-page-leave #mobile-app {
+    opacity: 0.74;
+    transform: scale(0.997);
+    transition: opacity 140ms ease, transform 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.mobile-page-enter #mobile-app,
+    body.mobile-page-enter.mobile-page-enter-active #mobile-app,
+    body.mobile-page-leave #mobile-app {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
 :root {
     /* Align mobile palette with website theme */
     --m-primary: #0a92dd;
