@@ -184,8 +184,8 @@ a.count-badge {
 }
 
 a.count-badge:hover {
-    transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transform: none;
+    box-shadow: none;
 }
 
 .count-badge.pending {
@@ -195,7 +195,9 @@ a.count-badge:hover {
 }
 
 a.count-badge.pending:hover {
-    background: #f9d78f;
+    background: var(--list-pending-bg);
+    border-color: var(--list-pending-border);
+    color: #b45309;
 }
 
 .count-badge.verified {
@@ -205,7 +207,9 @@ a.count-badge.pending:hover {
 }
 
 a.count-badge.verified:hover {
-    background: #a7f3d0;
+    background: var(--list-verified-bg);
+    border-color: var(--list-verified-border);
+    color: #047857;
 }
 
 .count-badge.approved {
@@ -215,7 +219,9 @@ a.count-badge.verified:hover {
 }
 
 a.count-badge.approved:hover {
-    background: #bfdbfe;
+    background: var(--list-approved-bg);
+    border-color: var(--list-approved-border);
+    color: #1d4ed8;
 }
 
 .count-badge.downloaded {
@@ -225,7 +231,9 @@ a.count-badge.approved:hover {
 }
 
 a.count-badge.downloaded:hover {
-    background: #e5e7eb;
+    background: var(--list-download-bg);
+    border-color: var(--list-download-border);
+    color: #1f2937;
 }
 
 .count-badge.pool {
@@ -235,7 +243,9 @@ a.count-badge.downloaded:hover {
 }
 
 a.count-badge.pool:hover {
-    background: #fecaca;
+    background: var(--list-pool-bg);
+    border-color: var(--list-pool-border);
+    color: #b91c1c;
 }
 
 /* ====================
