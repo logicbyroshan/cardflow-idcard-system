@@ -65,6 +65,15 @@ window.showConfirm = function showConfirm(options) {
     var pingIntervalId = null;
     var backPressedAt = 0;
     var backHandlerReadyAt = Date.now() + 2200;
+    var userInteractedAt = 0;
+
+    function markUserInteraction() {
+        userInteractedAt = Date.now();
+    }
+
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function(evtName) {
+        window.addEventListener(evtName, markUserInteraction, { passive: true, capture: true });
+    });
 
     function getCsrfToken() {
         var m = (document.cookie || '').match(/(?:^|;\s*)csrftoken=([^;]+)/);
@@ -275,6 +284,12 @@ window.showConfirm = function showConfirm(options) {
 
             if (evt && evt.canGoBack) {
                 window.history.back();
+                return;
+            }
+
+            // Prevent phantom startup back events from closing the app.
+            if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000) {
+                backPressedAt = 0;
                 return;
             }
 

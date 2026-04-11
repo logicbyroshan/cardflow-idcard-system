@@ -1559,6 +1559,7 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn("installBtn.classList.add('hidden');", mobile_login_html)
 		self.assertIn("if (nativeShell) {", mobile_login_html)
 		self.assertIn("section.style.display = 'none';", website_pwa_html)
+		self.assertIn("website/apk/adarsh-admin.apk' %}?v={{ APP_VERSION }}", website_pwa_html)
 
 	def test_reprint_table_prefers_field_data_photo_url(self):
 		from reprintcard.models import ReprintRequest
