@@ -266,7 +266,11 @@ def api_backup_list(request):
 @require_http_methods(['POST'])
 def api_backup_delete_now(request, task_id):
     """Immediately delete backup files."""
-    task = get_object_or_404(BackupTask, pk=task_id)
+    if PermissionService.is_super_admin(request.user):
+        task = get_object_or_404(BackupTask, pk=task_id)
+    else:
+        task = get_object_or_404(BackupTask, pk=task_id, created_by=request.user)
+
     if task.status not in ('completed', 'failed'):
         return _json_error('Cannot delete an active or already deleted backup.')
 

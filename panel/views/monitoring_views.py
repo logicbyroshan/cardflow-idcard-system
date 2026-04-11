@@ -35,6 +35,8 @@ _MAX_LOG_FIELD_LEN = 500
 _SERVER_INFO_CACHE_KEY = 'panel:server-info:snapshot:v3'
 _SERVER_INFO_CACHE_TTL = 86400
 _LOG_CLEAR_GUARD_STATE_KEY = 'activity_log_clear_guard_state_v1'
+_LOG_CLEAR_CODE_TTL_SECONDS = 600
+_LOG_CLEAR_MAX_ATTEMPTS = 5
 
 
 def _archive_activity_logs_before_clear(*, actor_username, rows_iterable, row_count):
@@ -69,25 +71,84 @@ def _log_clear_code_session_key(user_id) -> str:
     return f'activity_log_clear_code_{user_id}'
 
 
+def _log_clear_attempts_session_key(user_id) -> str:
+    return f'activity_log_clear_attempts_{user_id}'
+
+
+def _read_log_clear_attempts(request) -> int:
+    try:
+        return int(request.session.get(_log_clear_attempts_session_key(request.user.pk), 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _set_log_clear_attempts(request, attempts: int) -> None:
+    request.session[_log_clear_attempts_session_key(request.user.pk)] = max(int(attempts or 0), 0)
+    request.session.modified = True
+
+
+def _reset_log_clear_attempts(request) -> None:
+    key = _log_clear_attempts_session_key(request.user.pk)
+    if key in request.session:
+        del request.session[key]
+        request.session.modified = True
+
+
+def _increment_log_clear_attempts(request) -> int:
+    attempts = _read_log_clear_attempts(request) + 1
+    _set_log_clear_attempts(request, attempts)
+    return attempts
+
+
 def _store_log_clear_code(request, code: str) -> None:
     request.session[_log_clear_code_session_key(request.user.pk)] = {
         'code': str(code or ''),
         'generated_at': datetime.now(dt_timezone.utc).isoformat(),
     }
+    _reset_log_clear_attempts(request)
     request.session.modified = True
 
 
-def _consume_log_clear_code_if_valid(request, provided_code: str) -> bool:
+def _consume_log_clear_code_if_valid(request, provided_code: str):
     key = _log_clear_code_session_key(request.user.pk)
     payload = request.session.get(key)
-    valid = isinstance(payload, dict) and str(payload.get('code') or '') == str(provided_code or '')
-    if valid:
+    now = datetime.now(dt_timezone.utc)
+
+    if not isinstance(payload, dict):
+        _increment_log_clear_attempts(request)
+        return False, 'missing'
+
+    generated_raw = str(payload.get('generated_at') or '').strip()
+    generated_at = None
+    if generated_raw:
+        try:
+            generated_at = datetime.fromisoformat(generated_raw.replace('Z', '+00:00'))
+            if generated_at.tzinfo is None:
+                generated_at = generated_at.replace(tzinfo=dt_timezone.utc)
+        except Exception:
+            generated_at = None
+
+    if not generated_at or (now - generated_at).total_seconds() > _LOG_CLEAR_CODE_TTL_SECONDS:
         try:
             del request.session[key]
         except KeyError:
             pass
+        _increment_log_clear_attempts(request)
         request.session.modified = True
-    return bool(valid)
+        return False, 'expired'
+
+    valid = str(payload.get('code') or '') == str(provided_code or '')
+    if not valid:
+        _increment_log_clear_attempts(request)
+        return False, 'invalid'
+
+    try:
+        del request.session[key]
+    except KeyError:
+        pass
+    _reset_log_clear_attempts(request)
+    request.session.modified = True
+    return True, 'ok'
 
 
 def _is_log_clear_actor(user) -> bool:
@@ -1031,12 +1092,29 @@ def api_clear_activity_logs(request):
             status=400,
         )
 
-    if not _consume_log_clear_code_if_valid(request, confirmation_code):
+    attempts = _read_log_clear_attempts(request)
+    if attempts >= _LOG_CLEAR_MAX_ATTEMPTS:
         return JsonResponse(
             {
                 'success': False,
-                'message': 'Invalid or expired confirmation code. Generate a fresh 10-digit code and retry.',
-                'code': 'invalid_confirmation_code',
+                'message': 'Too many failed confirmation attempts. Generate a fresh 10-digit code and retry.',
+                'code': 'too_many_attempts',
+            },
+            status=429,
+        )
+
+    code_valid, code_reason = _consume_log_clear_code_if_valid(request, confirmation_code)
+    if not code_valid:
+        message = 'Invalid confirmation code. Generate a fresh 10-digit code and retry.'
+        error_code = 'invalid_confirmation_code'
+        if code_reason == 'expired':
+            message = 'Confirmation code expired. Generate a fresh 10-digit code and retry.'
+            error_code = 'expired_confirmation_code'
+        return JsonResponse(
+            {
+                'success': False,
+                'message': message,
+                'code': error_code,
             },
             status=400,
         )

@@ -9,6 +9,9 @@ Contains:
 """
 import json
 import logging
+import secrets
+import string
+from datetime import datetime, timezone as dt_timezone
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -26,6 +29,95 @@ from .idcard_helpers import (
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+_TABLE_DELETE_CODE_TTL_SECONDS = 600
+_TABLE_DELETE_MAX_ATTEMPTS = 5
+
+
+def _table_delete_code_session_key(table_id: int) -> str:
+    return f'table_delete_code_{table_id}'
+
+
+def _table_delete_attempts_session_key(table_id: int) -> str:
+    return f'table_delete_attempts_{table_id}'
+
+
+def _read_table_delete_attempts(request, table_id: int) -> int:
+    try:
+        return int(request.session.get(_table_delete_attempts_session_key(table_id), 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _set_table_delete_attempts(request, table_id: int, attempts: int) -> None:
+    request.session[_table_delete_attempts_session_key(table_id)] = max(int(attempts or 0), 0)
+    request.session.modified = True
+
+
+def _reset_table_delete_attempts(request, table_id: int) -> None:
+    key = _table_delete_attempts_session_key(table_id)
+    if key in request.session:
+        del request.session[key]
+        request.session.modified = True
+
+
+def _increment_table_delete_attempts(request, table_id: int) -> int:
+    attempts = _read_table_delete_attempts(request, table_id) + 1
+    _set_table_delete_attempts(request, table_id, attempts)
+    return attempts
+
+
+def _store_table_delete_code(request, table_id: int, code: str) -> None:
+    request.session[_table_delete_code_session_key(table_id)] = {
+        'code': str(code or ''),
+        'generated_at': datetime.now(dt_timezone.utc).isoformat(),
+    }
+    _reset_table_delete_attempts(request, table_id)
+    request.session.modified = True
+
+
+def _consume_table_delete_code_if_valid(request, table_id: int, provided_code: str):
+    payload = request.session.get(_table_delete_code_session_key(table_id))
+    now = datetime.now(dt_timezone.utc)
+
+    if not isinstance(payload, dict):
+        _increment_table_delete_attempts(request, table_id)
+        return False, 'missing'
+
+    generated_raw = str(payload.get('generated_at') or '').strip()
+    generated_at = None
+    if generated_raw:
+        try:
+            generated_at = datetime.fromisoformat(generated_raw.replace('Z', '+00:00'))
+            if generated_at.tzinfo is None:
+                generated_at = generated_at.replace(tzinfo=dt_timezone.utc)
+        except Exception:
+            generated_at = None
+
+    if not generated_at or (now - generated_at).total_seconds() > _TABLE_DELETE_CODE_TTL_SECONDS:
+        request.session.pop(_table_delete_code_session_key(table_id), None)
+        request.session.modified = True
+        _increment_table_delete_attempts(request, table_id)
+        return False, 'expired'
+
+    expected = str(payload.get('code') or '')
+    if expected != str(provided_code or ''):
+        _increment_table_delete_attempts(request, table_id)
+        return False, 'invalid'
+
+    request.session.pop(_table_delete_code_session_key(table_id), None)
+    _reset_table_delete_attempts(request, table_id)
+    request.session.modified = True
+    return True, 'ok'
+
+
+def _extract_confirmation_code(request) -> str:
+    if request.content_type and 'application/json' in request.content_type:
+        try:
+            body = json.loads(request.body or '{}')
+            return str((body or {}).get('confirmation_code', '') or '').strip()
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return ''
+    return str(request.POST.get('confirmation_code', '') or '').strip()
 
 
 # ==================== ID CARD TABLE API ENDPOINTS ====================
@@ -93,12 +185,62 @@ def api_idcard_table_delete(request, table_id):
             table.deleted_by_client = True
             table.save(update_fields=['deleted_by_client'])
             return JsonResponse({'success': True, 'message': 'Table removed from your view successfully.'})
+
+        # Admin-staff hard-delete requires one-time 10-digit confirmation code.
+        if PermissionService.is_admin_staff(request.user):
+            attempts = _read_table_delete_attempts(request, table_id)
+            if attempts >= _TABLE_DELETE_MAX_ATTEMPTS:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Too many failed attempts. Generate a fresh 10-digit confirmation code.',
+                    'code': 'too_many_attempts',
+                }, status=429)
+
+            confirmation_code = _extract_confirmation_code(request)
+            if len(confirmation_code) != 10 or not confirmation_code.isdigit():
+                return JsonResponse({
+                    'success': False,
+                    'message': '10-digit confirmation code is required for table deletion.',
+                    'code': 'confirmation_required',
+                }, status=400)
+
+            is_valid, reason = _consume_table_delete_code_if_valid(request, table_id, confirmation_code)
+            if not is_valid:
+                message = 'Invalid confirmation code. Generate a fresh code and retry.'
+                code = 'invalid_confirmation_code'
+                if reason == 'expired':
+                    message = 'Confirmation code expired. Generate a fresh code and retry.'
+                    code = 'expired_confirmation_code'
+                return JsonResponse({'success': False, 'message': message, 'code': code}, status=400)
+
         # Admin / admin_staff: hard-delete
         result = IDCardService.delete_table(table_id)
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except Exception as e:
         logger.exception("Table delete error: %s", e)
         return JsonResponse({'success': False, 'message': _safe_error(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@api_require_permission('perm_idcard_setting_delete')
+def api_generate_table_delete_code(request, table_id):
+    """Generate a 10-digit confirmation code for hard table delete."""
+    table, err = _check_client_scope_by_table(request.user, table_id)
+    if err:
+        return err
+
+    # Client roles only soft-delete and do not need hard-delete code generation.
+    if PermissionService.is_client_role(request.user):
+        return JsonResponse({'success': False, 'message': 'Confirmation code is not required for client table removal.'}, status=400)
+
+    code = ''.join(secrets.choice(string.digits) for _ in range(10))
+    _store_table_delete_code(request, table_id, code)
+    return JsonResponse({
+        'success': True,
+        'code': code,
+        'table_id': table.id,
+        'table_name': table.name,
+    })
 
 
 @require_http_methods(["POST"])

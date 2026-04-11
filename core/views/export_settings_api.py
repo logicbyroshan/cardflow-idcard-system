@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
 from ..models import SystemSettings
+from ..services.activity_service import ActivityService
 from ..services.permission_service import PermissionService, require_any_admin
 
 logger = logging.getLogger(__name__)
@@ -173,10 +174,29 @@ def api_export_template_update(request, template_id):
 @require_http_methods(['POST'])
 def api_export_template_delete(request, template_id):
     """POST /api/export-templates/<id>/delete/ — delete an export template."""
+    if not PermissionService.is_super_admin(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can delete export templates.'}, status=403)
+
     from core.models import ExportTemplate
     try:
         tpl = ExportTemplate.objects.get(id=template_id)
     except ExportTemplate.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Template not found'}, status=404)
+
+    template_name = tpl.name
+    template_id_value = tpl.id
     tpl.delete()
+
+    try:
+        ActivityService.log(
+            'settings_update',
+            f'Export template "{template_name}" deleted',
+            request=request,
+            target_model='ExportTemplate',
+            target_id=template_id_value,
+            target_name=template_name,
+        )
+    except Exception:
+        logger.exception('Failed to log export template deletion')
+
     return JsonResponse({'success': True, 'message': 'Template deleted'})

@@ -848,7 +848,22 @@ class ActivityService:
         Called periodically (e.g. via management command or scheduled task).
         Returns the number of entries deleted.
         """
-        cutoff = timezone.now() - timezone.timedelta(days=days)
+        min_days = max(int(getattr(settings, 'ACTIVITY_LOG_MIN_RETENTION_DAYS', 30) or 30), 1)
+        try:
+            requested_days = int(days)
+        except (TypeError, ValueError):
+            requested_days = min_days
+        safe_days = max(requested_days, min_days)
+
+        if safe_days != requested_days:
+            logger.warning(
+                'Activity log cleanup days=%s below minimum retention=%s; clamped to %s.',
+                requested_days,
+                min_days,
+                safe_days,
+            )
+
+        cutoff = timezone.now() - timezone.timedelta(days=safe_days)
         deleted, _ = ActivityLog.objects.filter(created_at__lt=cutoff).delete()
         if deleted:
             logger.info(f'Cleaned up {deleted} old activity log entries')

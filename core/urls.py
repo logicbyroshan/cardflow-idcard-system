@@ -203,6 +203,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/', views.api_idcard_table_get, name='api_idcard_table_get'),
     path('api/table/<int:table_id>/update/', views.api_idcard_table_update, name='api_idcard_table_update'),
     path('api/table/<int:table_id>/delete/', views.api_idcard_table_delete, name='api_idcard_table_delete'),
+    path('api/table/<int:table_id>/generate-delete-code/', views.api_generate_table_delete_code, name='api_generate_table_delete_code'),
     path('api/table/<int:table_id>/toggle-status/', views.api_idcard_table_toggle_status, name='api_idcard_table_toggle_status'),
     path('api/group/<int:group_id>/table/create-from-xlsx/', views.api_create_table_from_xlsx, name='api_create_table_from_xlsx'),
     

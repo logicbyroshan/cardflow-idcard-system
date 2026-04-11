@@ -3595,7 +3595,21 @@ def api_card_delete(request, card_id):
                     'message': 'Only cards in pool can be permanently deleted',
                 }, status=400)
 
+            card_id_for_log = card.id
+            table_name = card.table.name if card.table_id else ''
             card.delete()
+            try:
+                suffix = f' in table "{table_name}"' if table_name else ''
+                ActivityService.log(
+                    'bulk_delete',
+                    f'1 card deleted via mobile{suffix}',
+                    request=request,
+                    target_model='IDCard',
+                    target_id=card_id_for_log,
+                    target_name=f'Card #{card_id_for_log}',
+                )
+            except Exception:
+                logger.exception('Mobile card-delete activity logging failed')
             return JsonResponse({'success': True, 'message': 'Card permanently deleted'})
         else:
             if not PermissionService.has(user, 'perm_idcard_delete'):
@@ -3736,8 +3750,13 @@ def api_staff_delete(request, staff_id):
     else:
         try:
             staff = Staff.objects.select_related('user').get(id=staff_id, staff_type='admin_staff')
+            staff_id_for_log = staff.id
             name = staff.user.get_full_name() or staff.user.username
             staff.user.delete()  # cascade deletes staff profile
+            try:
+                ActivityService.log_staff_delete(request, name, staff_id_for_log)
+            except Exception:
+                logger.exception('Mobile staff-delete activity logging failed')
             return JsonResponse({'success': True, 'message': f'{name} deleted'})
         except Staff.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Staff not found'}, status=404)
@@ -4168,8 +4187,16 @@ def api_client_delete(request, client_id):
     try:
         client = get_object_or_404(Client, id=client_id)
         client_name = client.name
-        client.delete()
-        return JsonResponse({'success': True, 'message': f'{client_name} deleted permanently'})
+        result = ClientService.delete(client_id)
+        if result.success:
+            try:
+                ActivityService.log_client_delete(request, client_name, client_id)
+            except Exception:
+                logger.exception('Mobile client-delete activity logging failed')
+        return JsonResponse(
+            {'success': result.success, 'message': result.message},
+            status=200 if result.success else 400,
+        )
     except Exception as exc:
         logger.exception('api_client_delete error: %s', exc)
         return JsonResponse({'success': False, 'message': 'An error occurred. Please try again.'}, status=500)

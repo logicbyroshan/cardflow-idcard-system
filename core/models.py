@@ -883,12 +883,28 @@ class BackgroundTask(models.Model):
             days: Number of days to keep completed tasks
         """
         import logging
+        from django.conf import settings
         from django.utils import timezone
         from datetime import timedelta
         from django.core.files.storage import default_storage
         
         logger = logging.getLogger(__name__)
-        old_threshold = timezone.now() - timedelta(days=days)
+        min_days = max(int(getattr(settings, 'BACKGROUND_TASK_RESULT_MIN_RETENTION_DAYS', 7) or 7), 1)
+        try:
+            requested_days = int(days)
+        except (TypeError, ValueError):
+            requested_days = min_days
+        safe_days = max(requested_days, min_days)
+
+        if safe_days != requested_days:
+            logger.warning(
+                "BackgroundTask.cleanup_old_results days=%s below minimum=%s; clamped to %s",
+                requested_days,
+                min_days,
+                safe_days,
+            )
+
+        old_threshold = timezone.now() - timedelta(days=safe_days)
         old_tasks = cls.objects.filter(
             status__in=["completed", "failed", "cancelled"],
             completed_at__lt=old_threshold

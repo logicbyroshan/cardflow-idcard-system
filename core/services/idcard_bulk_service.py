@@ -81,23 +81,30 @@ class IDCardBulkService(BaseService):
                 if row.photo:
                     legacy_photos.append(row.photo.name)
 
-            # ── Step 2: delete files outside the transaction (I/O, not DB) ──
-            from mediafiles.services import ImageService
-            from django.core.files.storage import default_storage
-            for path in image_paths:
-                try:
-                    ImageService.delete_image(path)
-                except Exception as e:
-                    logger.warning("bulk_delete: could not delete image %s: %s", path, e)
-            for path in legacy_photos:
-                try:
-                    if default_storage.exists(path):
-                        default_storage.delete(path)
-                except Exception as e:
-                    logger.warning("bulk_delete: could not delete photo %s: %s", path, e)
+            image_paths = [p for p in set(image_paths) if p]
+            legacy_photos = [p for p in set(legacy_photos) if p]
 
-            # ── Step 3: SQL DELETE inside a short atomic transaction ──
+            # ── Step 2: SQL DELETE inside a short atomic transaction ──
+            # Files are removed only after commit to avoid DB/file drift.
             from django.db import transaction
+
+            def _delete_media_after_commit():
+                from mediafiles.services import ImageService
+                from django.core.files.storage import default_storage
+
+                for path in image_paths:
+                    try:
+                        ImageService.delete_image(path)
+                    except Exception as e:
+                        logger.warning("bulk_delete: could not delete image %s: %s", path, e)
+
+                for path in legacy_photos:
+                    try:
+                        if default_storage.exists(path):
+                            default_storage.delete(path)
+                    except Exception as e:
+                        logger.warning("bulk_delete: could not delete photo %s: %s", path, e)
+
             with transaction.atomic():
                 if delete_all:
                     locked_qs = IDCard.objects.select_for_update().filter(table=table)
@@ -105,6 +112,7 @@ class IDCardBulkService(BaseService):
                     locked_qs = IDCard.objects.select_for_update().filter(table=table, id__in=card_ids or [])
                 deleted_count = locked_qs.count()
                 locked_qs.delete()
+                transaction.on_commit(_delete_media_after_commit)
 
             return ServiceResult(
                 success=True,

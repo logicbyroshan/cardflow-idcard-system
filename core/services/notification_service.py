@@ -15,6 +15,7 @@ from datetime import timedelta
 from html import escape
 
 from django.core.cache import cache as _cache
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, Exists, OuterRef, Value, BooleanField
 from django.utils import timezone
@@ -303,7 +304,22 @@ class NotificationService:
     @classmethod
     def cleanup_old_notifications(cls, days=90):
         """Delete notifications older than N days and their read records."""
-        threshold = timezone.now() - timedelta(days=days)
+        min_days = max(int(getattr(settings, 'NOTIFICATION_MIN_RETENTION_DAYS', 90) or 90), 1)
+        try:
+            requested_days = int(days)
+        except (TypeError, ValueError):
+            requested_days = min_days
+        safe_days = max(requested_days, min_days)
+
+        if safe_days != requested_days:
+            logger.warning(
+                'Notification cleanup days=%s below minimum retention=%s; clamped to %s.',
+                requested_days,
+                min_days,
+                safe_days,
+            )
+
+        threshold = timezone.now() - timedelta(days=safe_days)
         count, _ = Notification.objects.filter(created_at__lt=threshold).delete()
         if count:
             logger.info("Cleaned up %d old notifications", count)

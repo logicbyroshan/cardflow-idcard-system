@@ -31,6 +31,7 @@ from .idcard_table_api import (
     api_idcard_table_get,
     api_idcard_table_update,
     api_idcard_table_delete,
+    api_generate_table_delete_code,
     api_idcard_table_toggle_status,
     api_idcard_table_list,
     api_create_table_from_xlsx,
