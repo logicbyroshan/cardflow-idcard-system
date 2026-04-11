@@ -85,6 +85,13 @@ window.showConfirm = function showConfirm(options) {
     var backHandlerReadyAt = Date.now() + 2200;
     var userInteractedAt = 0;
 
+    function resetBackGuardAfterSystemDialog() {
+        // Permission dialogs and resume transitions can emit phantom back events.
+        backHandlerReadyAt = Date.now() + 2200;
+        backPressedAt = 0;
+        userInteractedAt = 0;
+    }
+
     function markUserInteraction() {
         userInteractedAt = Date.now();
     }
@@ -370,7 +377,9 @@ window.showConfirm = function showConfirm(options) {
         }
 
         try {
+            resetBackGuardAfterSystemDialog();
             var perm = await PushNotifications.requestPermissions();
+            resetBackGuardAfterSystemDialog();
             if (!perm || perm.receive !== 'granted') return;
 
             if (!pushListenersBound) {
@@ -404,6 +413,7 @@ window.showConfirm = function showConfirm(options) {
                 if (App && typeof App.addListener === 'function') {
                     App.addListener('appStateChange', function(state) {
                         if (state && state.isActive) {
+                            resetBackGuardAfterSystemDialog();
                             var now = Date.now();
                             if (now - lastPushRegisterAttemptAt > 20000) {
                                 lastPushRegisterAttemptAt = now;

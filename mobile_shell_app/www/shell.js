@@ -11,6 +11,7 @@ let backHandlerReadyAt = Date.now() + 2200;
 let lastUserInteractionMs = 0;
 let androidBackHandlerAttached = false;
 let deepLinkHandlerAttached = false;
+let appStateGuardAttached = false;
 
 const LAST_ONLINE_STORAGE_KEY = 'adarsh.shell.lastOnlineAt';
 const APP_ROOT_PATH = '/app/';
@@ -213,6 +214,22 @@ async function loadCurrentNetworkState() {
 function setupAndroidBackHandler() {
   if (Capacitor.getPlatform() !== 'android' || androidBackHandlerAttached) return;
   androidBackHandlerAttached = true;
+
+  const resetBackGuardAfterResume = () => {
+    // Resume transitions can dispatch phantom back events on some devices.
+    backHandlerReadyAt = Date.now() + 2200;
+    lastBackTapMs = 0;
+    lastUserInteractionMs = 0;
+  };
+
+  if (!appStateGuardAttached) {
+    appStateGuardAttached = true;
+    App.addListener('appStateChange', (state) => {
+      if (state && state.isActive) {
+        resetBackGuardAfterResume();
+      }
+    });
+  }
 
   App.addListener('backButton', ({ canGoBack }) => {
     const now = Date.now();

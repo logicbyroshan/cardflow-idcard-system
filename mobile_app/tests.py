@@ -1979,6 +1979,8 @@ class MobileAppPhase2LifecycleContractTests(TestCase):
 		self.assertIn('backHandlerReadyAt = Date.now() + 2200', content)
 		self.assertIn('if (now < backHandlerReadyAt)', content)
 		self.assertIn('if (!userInteractedAt || (now - userInteractedAt) > 12 * 60 * 1000)', content)
+		self.assertIn("App.addListener('appStateChange'", content)
+		self.assertIn('userInteractedAt = 0;', content)
 
 	def test_mobile_bridge_has_external_link_and_deep_link_handlers(self):
 		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
@@ -1995,6 +1997,8 @@ class MobileAppPhase2LifecycleContractTests(TestCase):
 
 		self.assertIn('backHandlerReadyAt = Date.now() + 2200', shell_content)
 		self.assertIn('if (!lastUserInteractionMs || (now - lastUserInteractionMs) > (12 * 60 * 1000))', shell_content)
+		self.assertIn("App.addListener('appStateChange'", shell_content)
+		self.assertIn('lastUserInteractionMs = 0;', shell_content)
 		self.assertIn("App.addListener('appUrlOpen'", shell_content)
 		self.assertIn("if (!path.startsWith('/app')) return APP_ROOT_PATH;", shell_content)
 
