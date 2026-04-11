@@ -400,7 +400,7 @@ body {
 .hero {
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
     min-height: 60vh;
-    height: auto;
+    height: 60vh;
     width: 100%;
     margin-left: 0;
     color: var(--white);
@@ -408,9 +408,9 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
-    padding: 140px 20px 80px;
+    padding: 110px 20px 44px;
 }
 
 .hero::before {
@@ -444,12 +444,14 @@ body {
     z-index: 1;
     padding: 0 20px;
     max-width: 1200px;
+    width: 100%;
+    height: 100%;
     margin: 0 auto;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     padding-top: 0;
 }
 
@@ -485,14 +487,16 @@ body {
 }
 
 .hero .hero-content h1 {
-    font-size: 3.5rem;
+    font-size: clamp(2.1rem, 4.8vw, 3.5rem);
     font-weight: 800;
-    margin-bottom: 20px;
-    line-height: 1.2;
+    margin: 0 auto 20px;
+    line-height: 1.15;
     color: #fff;
     min-height: 0;
+    max-width: 20ch;
     display: block;
     text-align: center;
+    text-wrap: balance;
 }
 
 .hero .gradient-text {
@@ -892,32 +896,6 @@ body {
     font-weight: 700;
 }
 
-.our-works::before {
-    content: '';
-    position: absolute;
-    width: 680px;
-    height: 680px;
-    border-radius: 50%;
-    top: -260px;
-    right: -180px;
-    z-index: 0;
-    filter: blur(55px);
-    background: radial-gradient(circle, rgba(10, 146, 221, 0.55) 0%, rgba(10, 146, 221, 0.2) 48%, transparent 75%);
-}
-
-.our-works::after {
-    content: '';
-    position: absolute;
-    width: 520px;
-    height: 520px;
-    border-radius: 50%;
-    bottom: -210px;
-    left: -150px;
-    z-index: 0;
-    filter: blur(48px);
-    background: radial-gradient(circle, rgba(10, 146, 221, 0.45) 0%, rgba(10, 146, 221, 0.18) 45%, transparent 75%);
-}
-
 /* Legacy features-grid (kept for sub-pages) */
 .features-grid {
     display: grid;
@@ -1111,16 +1089,14 @@ body {
 /* ===== Our Works Section ===== */
 .our-works {
     padding: 100px 0;
-    background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
-    position: relative;
-    overflow: hidden;
+    background: var(--white);
 }
 
 .our-works h2 {
     font-size: 2.5rem;
     text-align: center;
     margin-bottom: 0.5rem;
-    color: #ffffff;
+    color: var(--secondary-color);
     font-weight: 700;
 }
 
