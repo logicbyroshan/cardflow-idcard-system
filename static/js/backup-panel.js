@@ -138,7 +138,6 @@
 
     _syncBackupFiltersFromControls();
     _backupFiltered = _getFilteredBackups();
-    _updateBackupCount(_backupFiltered.length);
 
     if (!_backups.length) {
       container.innerHTML =
@@ -215,12 +214,6 @@
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return year + '-' + month + '-' + day;
-  }
-
-  function _updateBackupCount(total) {
-    const countEl = document.getElementById('backupTableCount');
-    if (!countEl) return;
-    countEl.textContent = String(total) + ' backup' + (Number(total) === 1 ? '' : 's');
   }
 
   window.backupApplyFilters = function () {

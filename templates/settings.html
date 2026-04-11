@@ -10,6 +10,7 @@
   <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'dist/css/core.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
   <!-- Page-specific: settings panels -->
   <link rel="stylesheet" href="{% static 'css/settings.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
@@ -235,12 +236,11 @@
                 <p>Automatically logout after inactivity</p>
               </div>
               <select class="form-select session-select" id="sessionTimeout">
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="60">1 hour</option>
-                <option value="120">2 hours</option>
+                <option value="1440">1 day</option>
+                <option value="2880">2 days</option>
                 <option value="10080" selected>7 days (default)</option>
-                <option value="0">Never</option>
+                <option value="21600">15 days</option>
+                <option value="43200">30 days</option>
               </select>
             </div>
           </div>
@@ -254,6 +254,7 @@
   {% include 'partials/components/toast.html' %}
 
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+  <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
   <script defer src="{% static 'js/settings.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
 </body>

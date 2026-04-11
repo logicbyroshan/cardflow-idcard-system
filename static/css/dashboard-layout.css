@@ -321,7 +321,6 @@
 
 .recent-table thead th.recent-updates-sortable:hover,
 .recent-table thead th.recent-updates-sortable:focus-visible {
-    background: rgba(56, 189, 248, 0.16);
     color: #083344 !important;
     outline: none;
 }
@@ -676,7 +675,7 @@
     text-align: center;
     margin: 0;
     border-radius: 0;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid #d1d5db;
     margin-left: -1px;
     margin-top: -1px;
     padding: 10px 12px;
@@ -902,5 +901,5 @@
 .client-quick-actions-bar .quick-action-btn {
     min-height: 34px;
     padding: 7px 12px;
-    border-radius: 6px;
+    border-radius: 0;
 }

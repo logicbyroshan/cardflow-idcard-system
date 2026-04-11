@@ -1479,15 +1479,10 @@ async function loadTemplates() {
 
 function renderTemplateTable() {
   const tbody = document.getElementById('templateTableBody');
-  const countEl = document.getElementById('templateTableCount');
   if (!tbody) return;
 
   _filterTemplates();
   const total = panelTemplateFiltered.length;
-
-  if (countEl) {
-    countEl.textContent = total + ' template' + (total === 1 ? '' : 's');
-  }
 
   if (!total) {
     tbody.innerHTML = `<tr class="notif-table-empty"><td colspan="6">

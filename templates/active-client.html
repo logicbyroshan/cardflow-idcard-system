@@ -80,12 +80,13 @@
     }
 
     .active-client-stats-row {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      --stat-badge-width: 106px;
+      display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      justify-items: stretch;
+      justify-content: center;
       gap: 6px;
-      width: 364px;
+      width: calc((var(--stat-badge-width) * 3) + 12px);
       max-width: 100%;
       margin: 0 auto;
       padding: 2px 0;
@@ -97,8 +98,9 @@
       justify-content: space-between;
       gap: 4px;
       height: 22px;
-      width: 100%;
-      min-width: 0;
+      width: var(--stat-badge-width);
+      flex: 0 0 var(--stat-badge-width);
+      min-width: var(--stat-badge-width);
       max-width: none;
       padding: 0 8px;
       border-radius: 6px;
@@ -146,23 +148,20 @@
       border-color: #fca5a5;
     }
 
-    .active-client-stats-row .count-badge.reprint {
-      background: #fef3c7;
-      color: #92400e;
-      border-color: #fcd34d;
-    }
-
     .active-client-stats-row .stat-label {
       font-weight: 600;
       white-space: nowrap;
     }
 
     .active-client-stats-row .stat-value {
+      display: inline-block;
       font-weight: 700;
       width: 5ch;
       min-width: 5ch;
+      max-width: 5ch;
       text-align: right;
       white-space: nowrap;
+      overflow: hidden;
     }
 
     #active-client-table th.updates-col,
@@ -175,7 +174,7 @@
 
     @media (max-width: 1280px) {
       .active-client-stats-row {
-        width: 340px;
+        --stat-badge-width: 100px;
       }
 
       .active-client-stats-row .count-badge {
@@ -186,8 +185,8 @@
 
     @media (max-width: 900px) {
       .active-client-stats-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        width: 238px;
+        --stat-badge-width: 96px;
+        width: calc((var(--stat-badge-width) * 2) + 6px);
       }
     }
   </style>

@@ -20,7 +20,7 @@ Required context:
                 <th class="text-center">Status</th>
                 <th class="text-center">Created At</th>
                 <th class="text-center">Updated At</th>
-                <th class="text-center" title="Client login history"><i class="fa-solid fa-circle-info"></i></th>
+                <th class="text-center" title="Log">Log</th>
             </tr>
         </thead>
         <tbody id="client-table-body">
@@ -48,8 +48,8 @@ Required context:
                             class="client-history-trigger"
                             data-client-id="{{ client.id }}"
                             data-client-name="{{ client.name|escape }}"
-                            title="View client login history"
-                            aria-label="View client login history">
+                            title="View log"
+                            aria-label="View log">
                         <i class="fa-solid fa-circle-info"></i>
                     </button>
                 </td>

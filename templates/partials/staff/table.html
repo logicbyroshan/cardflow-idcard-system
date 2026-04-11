@@ -17,7 +17,7 @@ Uses Tailwind CSS component classes.
                 <th scope="col" class="text-center">Created At</th>
                 <th scope="col" class="text-center">Updated At</th>
                 {% if active_page == 'manage_staff' and not is_client_admin %}
-                <th scope="col" class="w-20 text-center">Info</th>
+                <th scope="col" class="w-20 text-center" title="Log">Log</th>
                 {% else %}
                 <th scope="col" class="text-left" style="min-width: 250px;">Assigned Classes &amp; Sections</th>
                 {% endif %}
@@ -43,8 +43,8 @@ Uses Tailwind CSS component classes.
                         class="operator-history-trigger"
                         data-staff-id="{{ staff.id }}"
                         data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
-                        title="View login history"
-                        aria-label="View login history"
+                        title="View log"
+                        aria-label="View log"
                     >
                         <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
                     </button>

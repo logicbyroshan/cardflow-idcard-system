@@ -18,7 +18,7 @@
     gap: 8px;
     padding: 8px 12px;
     background: #ffffff;
-    border: 1px solid #bfdbfe;
+    border: 1px solid #d1d5db;
     border-radius: 0;
     cursor: pointer;
     transition: all 0.2s;
@@ -34,8 +34,8 @@
 }
 
 .quick-action-btn:hover {
-    background: #edf5ff;
-    border-color: #60a5fa;
+    background: #f8fafc;
+    border-color: #94a3b8;
     transform: none;
 }
 
@@ -45,7 +45,7 @@
 }
 
 .quick-action-btn.is-active {
-    background: #e7f1ff;
+    background: #eef2ff;
     border-color: #1d4ed8;
 }
 
@@ -253,12 +253,27 @@
 }
 
 /* Strict button consistency overrides */
-.quick-actions,
+.quick-actions {
+    gap: 0;
+}
+
 .bulk-actions-buttons {
     gap: 8px;
 }
 
-.quick-action-btn,
+.quick-action-btn {
+    margin-top: -1px;
+    margin-left: -1px;
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 0;
+}
+
+.quick-action-btn:first-child,
+.quick-action-btn:nth-child(2) {
+    margin-top: 0;
+}
+
 .bulk-action-btn {
     margin: 0;
     min-height: 34px;

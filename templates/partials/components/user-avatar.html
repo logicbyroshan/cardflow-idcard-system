@@ -13,11 +13,11 @@ Parameters:
   - show_label: true | false (default: false) - show role label below
 
 Styles:
-  Pro User     - Gold/amber with rocket icon
+  Pro User     - Gold/amber with user tie icon
   Super Admin  - Purple/indigo with crown icon
-  Operator  - Blue with shield icon
-  Client       - Green with building icon
-  Assistent - Teal with user icon
+  Operator     - Blue with user shield icon
+  Client       - Green with user icon
+  Assistent    - Teal with user gear icon
 {% endcomment %}
 
 {% with avatar_role=role|default:"client" avatar_size=size|default:"medium" %}
@@ -29,20 +29,20 @@ Styles:
   {% else %}
   <div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
     {% if avatar_role == 'client' %}
-    <i class="fa-solid fa-building"></i>
-    {% else %}
     <i class="fa-solid fa-user"></i>
+    {% else %}
+    <i class="fa-solid fa-user-gear"></i>
     {% endif %}
   </div>
   {% endif %}
 {% else %}
 <div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
   {% if avatar_role == 'pro_user' %}
-  <i class="fa-solid fa-rocket"></i>
+  <i class="fa-solid fa-user-tie"></i>
   {% elif avatar_role == 'super_admin' %}
   <i class="fa-solid fa-crown"></i>
   {% elif avatar_role == 'admin_staff' %}
-  <i class="fa-solid fa-shield"></i>
+  <i class="fa-solid fa-user-shield"></i>
   {% else %}
   <i class="fa-solid fa-user"></i>
   {% endif %}

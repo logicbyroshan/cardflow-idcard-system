@@ -226,8 +226,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     loginNotifyToggleEl.checked = securitySettings.login_notifications_enabled;
                 }
                 if (sessionTimeoutEl && securitySettings.session_timeout_minutes !== undefined && securitySettings.session_timeout_minutes !== null) {
-                    sessionTimeoutEl.value = String(securitySettings.session_timeout_minutes);
+                    const requestedValue = String(securitySettings.session_timeout_minutes);
+                    const supportedOption = sessionTimeoutEl.querySelector('option[value="' + requestedValue + '"]');
+                    sessionTimeoutEl.value = supportedOption ? requestedValue : '10080';
                     sessionTimeoutEl.dataset.previous = sessionTimeoutEl.value;
+                    if (typeof window.syncUnifiedSelectDropdowns === 'function') {
+                        window.syncUnifiedSelectDropdowns();
+                    }
                 }
             }
         } catch (error) {
@@ -245,19 +250,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const sessionTimeout = document.getElementById('sessionTimeout');
 
     function getSessionTimeoutMessage(value) {
-        if (value === '0') {
-            return 'Session timeout disabled';
+        if (value === '1440') {
+            return 'Session timeout set to 1 day';
+        }
+        if (value === '2880') {
+            return 'Session timeout set to 2 days';
         }
         if (value === '10080') {
             return 'Session timeout set to 7 days';
         }
-        if (value === '60') {
-            return 'Session timeout set to 1 hour';
+        if (value === '21600') {
+            return 'Session timeout set to 15 days';
         }
-        if (value === '120') {
-            return 'Session timeout set to 2 hours';
+        if (value === '43200') {
+            return 'Session timeout set to 30 days';
         }
-        return `Session timeout set to ${value} minutes`;
+        return 'Session timeout updated';
     }
 
     async function saveSecuritySettings(payload, successMessage) {

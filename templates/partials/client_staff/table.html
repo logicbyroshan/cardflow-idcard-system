@@ -13,7 +13,7 @@
                 <th scope="col" class="text-center">Updated At</th>
                 <th scope="col" class="text-left" style="min-width: 250px;">Assigned Classes &amp; Sections</th>
                 {% if can_view_login_history %}
-                <th scope="col" class="w-20 text-center" title="Assistent login history"><i class="fa-solid fa-circle-info"></i></th>
+                <th scope="col" class="w-20 text-center" title="Log">Log</th>
                 {% endif %}
             </tr>
         </thead>
@@ -85,8 +85,8 @@
                         class="client-staff-history-trigger"
                         data-staff-id="{{ staff.id }}"
                         data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
-                        title="View assistent login history"
-                        aria-label="View assistent login history"
+                        title="View log"
+                        aria-label="View log"
                     >
                         <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
                     </button>

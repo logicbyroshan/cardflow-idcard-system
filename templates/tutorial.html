@@ -87,7 +87,7 @@
           <i class="fa-brands fa-youtube"></i>
           {% if tutorial_lang == 'hi' %}Video Tutorial dekhen{% else %}Watch Video Tutorial{% endif %}
         </a>
-        <a class="btn btn-outline-secondary" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
+        <a class="btn btn-outline-secondary tutorial-personal-guide-btn" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
           <i class="fa-solid fa-user-check"></i>
           Personal Guide
         </a>
@@ -344,7 +344,7 @@
           <i class="fa-brands fa-youtube"></i>
           {% if tutorial_lang == 'hi' %}YouTube par video tutorial dekhen{% else %}Watch Video Tutorial on YouTube{% endif %}
         </a>
-        <a class="btn btn-outline-secondary" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
+        <a class="btn btn-outline-secondary tutorial-personal-guide-btn" href="{% url 'tutorial_personal_guide' %}?lang={{ tutorial_lang }}">
           <i class="fa-solid fa-user-check"></i>
           Personal Guide
         </a>
