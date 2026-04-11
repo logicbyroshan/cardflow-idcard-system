@@ -689,7 +689,7 @@
       var showClientMeta = u.role === 'client_staff';
       var clientMeta = (showClientMeta && u.client_name) ? '<div class="imp-client-meta">Client: ' + _esc(u.client_name) + '</div>' : '';
       var rowIndex = startIndex + i + 1;
-      h += '<tr class="' + (canImpersonate ? 'is-clickable' : '') + '"' + (canImpersonate ? ' onclick="__impStart(' + u.id + ')"' : '') + '>'
+      h += '<tr class="' + (canImpersonate ? 'is-clickable' : '') + '"' + (canImpersonate ? ' ondblclick="__impStart(' + u.id + ')" title="Double-click to login as this user"' : '') + '>'
         + '<td class="imp-col-index">' + rowIndex + '</td>'
         + '<td>'
           + '<div class="imp-user-cell">'

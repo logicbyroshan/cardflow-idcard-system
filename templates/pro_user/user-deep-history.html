@@ -834,7 +834,7 @@
       var showClientMeta = u.role === 'client_staff';
       var clientMeta = (showClientMeta && u.client_name) ? '<div class="audit-user-client">Client: ' + _esc(u.client_name) + '</div>' : '';
       var rowIndex = startIndex + i + 1;
-      html += '<tr class="is-clickable' + active + '" onclick="__auditSelectUser(' + u.id + ')">'
+      html += '<tr class="is-clickable' + active + '" ondblclick="__auditSelectUser(' + u.id + ')" title="Double-click to open history">'
         + '<td class="audit-col-index">' + rowIndex + '</td>'
         + '<td>'
           + '<div class="audit-user-cell">'

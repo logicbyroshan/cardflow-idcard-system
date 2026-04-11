@@ -1149,7 +1149,7 @@ class SecurityHeadersMiddleware:
             parts.append('http://127.0.0.1:4765')
         return ' '.join(parts)
 
-    def _build_panel_csp(self):
+    def _build_panel_csp(self, frame_ancestors="'none'"):
         return (
             "default-src 'self'; "
             f"script-src {self._build_script_src(['https://static.cloudflareinsights.com'])}; "
@@ -1162,10 +1162,10 @@ class SecurityHeadersMiddleware:
             "object-src 'none'; "
             "base-uri 'self'; "
             "form-action 'self'; "
-            "frame-ancestors 'none';"
+            f"frame-ancestors {frame_ancestors};"
         )
 
-    def _build_pwa_csp(self):
+    def _build_pwa_csp(self, frame_ancestors="'none'"):
         script_sources = [
             'https://cdn.tailwindcss.com',
             'https://cdn.jsdelivr.net',
@@ -1189,8 +1189,22 @@ class SecurityHeadersMiddleware:
             "object-src 'none'; "
             "base-uri 'self'; "
             "form-action 'self'; "
-            "frame-ancestors 'none';"
+            f"frame-ancestors {frame_ancestors};"
         )
+
+    @staticmethod
+    def _is_dashboard_drawer_embed_request(request):
+        """Return True only for dashboard quick-action embed targets."""
+        if request.GET.get('embed') != 'drawer':
+            return False
+
+        normalized_path = request.path.rstrip('/').lower()
+        allowed_suffixes = (
+            '/manage-clients',
+            '/manage-staff',
+            '/manage-client-staff',
+        )
+        return any(normalized_path.endswith(suffix) for suffix in allowed_suffixes)
 
     def __call__(self, request):
         response = self.get_response(request)
@@ -1204,7 +1218,12 @@ class SecurityHeadersMiddleware:
         content_type = response.get('Content-Type', '')
         if 'text/html' in content_type and 'Content-Security-Policy' not in response:
             is_pwa = request.path.startswith('/app/')
-            response['Content-Security-Policy'] = self._build_pwa_csp() if is_pwa else self._build_panel_csp()
+            frame_ancestors = "'self'" if self._is_dashboard_drawer_embed_request(request) else "'none'"
+            response['Content-Security-Policy'] = (
+                self._build_pwa_csp(frame_ancestors=frame_ancestors)
+                if is_pwa
+                else self._build_panel_csp(frame_ancestors=frame_ancestors)
+            )
 
         if self._permissions_policy:
             # Mobile PWA needs camera access for photo capture
