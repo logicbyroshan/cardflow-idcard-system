@@ -1,0 +1,35 @@
+{
+  "generated_on": "2026-04-11",
+  "branch": "feature/mobile-pwa-shell-phase1",
+  "notes": "Phase 0 frozen asset hashes for no-UI-change baseline.",
+  "assets": [
+    {
+      "path": "static/css/tailwind.css",
+      "sha256": "896149D39734D1342A8BAE348485D5AF6D77260206D7D4ECC95B834759E7F67D"
+    },
+    {
+      "path": "static/mobile/css/mobile.css",
+      "sha256": "D9649A9CC47329C2899CF5D4C75AA5E1D80EA438BDAF15EE9764BDDB935505DF"
+    },
+    {
+      "path": "static/mobile/js/app.js",
+      "sha256": "B855D5263DA29ACA21074779B46DC09BFE769169AAEB0335DDD889869EA11C42"
+    },
+    {
+      "path": "static/css/vendor/webfonts/fa-solid-900.woff2",
+      "sha256": "9FC85F3A4544AB0D570C7F8F9BBB88DB8D92C359B2707580EA8B07C75673EAE2"
+    },
+    {
+      "path": "static/css/vendor/webfonts/fa-regular-400.woff2",
+      "sha256": "2BCCECF0BC7E96CD5CE4003ABEB3AE9EE4A3D19158C4E6EDFD2DF32D2F0D5721"
+    },
+    {
+      "path": "static/css/vendor/webfonts/fa-brands-400.woff2",
+      "sha256": "3A8924CD5203A28628716AEDB5CEF0943DA4C3B44E3FFCEE90AB06387B41C490"
+    },
+    {
+      "path": "static/css/vendor/webfonts/fa-v4compatibility.woff2",
+      "sha256": "4D4A2D7FD1C6684845CB174FDD7FC073BD64CB741286FB247F8B76C2B7B852C4"
+    }
+  ]
+}

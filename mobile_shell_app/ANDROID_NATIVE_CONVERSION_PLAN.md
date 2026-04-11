@@ -137,3 +137,10 @@ Total: ~2 to 4 weeks depending on QA depth and device matrix.
 1. Approve this architecture decision: keep web UI as source of truth (no Compose/XML rewrite).
 2. Start Phase 0 by generating route inventory and baseline screenshots.
 3. Then execute Phase 2 startup/back hardening verification on 3 physical Android devices.
+
+## Phase 0 Kickoff (2026-04-11)
+Artifacts created under `mobile_shell_app/phase0/`:
+1. `mobile_routes_manifest.json` (55-route baseline with decorators/templates)
+2. `mobile_assets_baseline.json` (SHA256 freeze for CSS/JS/fonts)
+3. `mobile_screenshot_checklist.md` (route-role-device capture plan)
+4. `PHASE0_EXECUTION_LOG.md` (what was done, no-runtime-change proof)
