@@ -419,19 +419,20 @@ def dashboard(request):
         cache.set(card_cache_key, card_stats, 30)
 
     # Sidebar overview counts (clients/admins/operators/assistents).
+    # Show total records, not only active ones.
     overview_cache_key = f'dashboard_overview_stats{cache_suffix}'
     overview_stats = cache.get(overview_cache_key)
     if overview_stats is None:
-        clients_qs = Client.objects.filter(status='active')
-        assistents_qs = Staff.objects.filter(staff_type='client_staff', user__is_active=True)
+        clients_qs = Client.objects.all()
+        assistents_qs = Staff.objects.filter(staff_type='client_staff')
         if is_scoped:
             clients_qs = clients_qs.filter(id__in=accessible_ids)
             assistents_qs = assistents_qs.filter(client_id__in=accessible_ids)
 
         overview_stats = {
             'clients': clients_qs.count(),
-            'admins': User.objects.filter(role__in=['pro_user', 'super_admin'], is_active=True).count(),
-            'operators': User.objects.filter(role='admin_staff', is_active=True).count(),
+            'admins': User.objects.filter(role__in=['pro_user', 'super_admin']).count(),
+            'operators': User.objects.filter(role='admin_staff').count(),
             'assistents': assistents_qs.count(),
         }
         cache.set(overview_cache_key, overview_stats, 30)

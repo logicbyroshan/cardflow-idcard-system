@@ -1287,10 +1287,10 @@ class DashboardAndLogsHardeningTests(TestCase):
         response = self.client.get('/panel/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['overview_clients_count'], 1)
+        self.assertEqual(response.context['overview_clients_count'], 2)
         self.assertEqual(response.context['overview_admins_count'], 1)
-        self.assertEqual(response.context['overview_operators_count'], 1)
-        self.assertEqual(response.context['overview_assistents_count'], 2)
+        self.assertEqual(response.context['overview_operators_count'], 2)
+        self.assertEqual(response.context['overview_assistents_count'], 3)
 
     def test_dashboard_limit_parser_clamps_values(self):
         from core.views.dashboard_views import _parse_dashboard_limit
