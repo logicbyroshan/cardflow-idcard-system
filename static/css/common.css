@@ -1287,6 +1287,38 @@ body.bulk-operation-active #blockingOverlay * {
   gap: 6px;
 }
 
+/* --- Breadcrumb truncation for long dynamic labels --- */
+.topbar .nav-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.topbar .breadcrumb {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.topbar .breadcrumb-item {
+  min-width: 0;
+  max-width: clamp(120px, 22vw, 260px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar .breadcrumb-item.active {
+  max-width: clamp(140px, 30vw, 360px);
+}
+
+.topbar .breadcrumb-item i,
+.topbar .breadcrumb-sep {
+  flex-shrink: 0;
+}
+
 /* --- Modal Body Patterns --- */
 .modal-icon-circle {
   width: 52px;

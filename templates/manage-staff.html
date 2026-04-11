@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Manage Staff - Adarsh Admin{% endblock %}
+{% block title %}Manage Operator - Adarsh Admin{% endblock %}
 
 {% block body_class %}{% if request.GET.embed == 'drawer' %}class="dashboard-drawer-embed"{% endif %}{% endblock %}
 
@@ -114,7 +114,7 @@
 {% block breadcrumb %}
   <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
   <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-  <span class="breadcrumb-item active">Manage Staff</span>
+  <span class="breadcrumb-item active">Manage Operator</span>
 {% endblock %}
 
 {% block content %}
@@ -134,8 +134,8 @@
 
 {% block modals %}
   {% include 'partials/staff/staff-drawer.html' %}
-  {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
-  {% include 'components/status-modal.html' with modal_id="status-modal" item_name="staff member" %}
+  {% include 'components/delete-modal.html' with modal_id="delete-modal" item_name="operator" %}
+  {% include 'components/status-modal.html' with modal_id="status-modal" item_name="operator" %}
   {% include 'partials/staff/temp-password-modal.html' %}
 {% endblock %}
 

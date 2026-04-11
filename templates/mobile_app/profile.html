@@ -97,7 +97,7 @@
                     <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
                         <i class="fa-solid fa-users text-indigo-400 text-sm"></i>
                     </div>
-                    <span class="text-[13px] font-semibold text-gray-700">Manage Staff</span>
+                    <span class="text-[13px] font-semibold text-gray-700">{% if is_super_admin %}Manage Operator{% else %}Manage Assistent{% endif %}</span>
                 </div>
                 <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
             </a>

@@ -206,13 +206,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Always restore submit button to non-loading state when opening drawer
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<span id="submit-btn-text">Add Staff</span>';
+        submitBtn.innerHTML = '<span id="submit-btn-text">Add Operator</span>';
         var submitBtnText = document.getElementById('submit-btn-text');
 
         if (mode === 'add') {
-            drawerTitle.textContent = 'Add New Staff';
+            drawerTitle.textContent = 'Add New Operator';
             drawerIcon.className = 'fa-solid fa-user-plus';
-            if (submitBtnText) submitBtnText.textContent = 'Add Staff';
+            if (submitBtnText) submitBtnText.textContent = 'Add Operator';
             submitBtn.style.display = 'inline-flex';
             NS.enableFormInputs(true);
             NS.initClientAssignment([]);
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Permissions stay OFF by default for new staff (already reset above)
         } else if (mode === 'edit') {
-            drawerTitle.textContent = 'Edit Staff';
+            drawerTitle.textContent = 'Edit Operator';
             drawerIcon.className = 'fa-solid fa-pen-to-square';
             if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             submitBtn.style.display = 'inline-flex';
@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 NS.initClientAssignment(staffData.assigned_client_ids || []);
             }
         } else if (mode === 'view') {
-            drawerTitle.textContent = 'View Staff Details';
+            drawerTitle.textContent = 'View Operator Details';
             drawerIcon.className = 'fa-solid fa-eye';
             submitBtn.style.display = 'none';
             NS.enableFormInputs(false);

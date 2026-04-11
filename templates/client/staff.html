@@ -1,7 +1,7 @@
 {% extends 'client/base.html' %}
 {% load static %}
 
-{% block title %}Manage Staff - Client Portal{% endblock %}
+{% block title %}Manage Assistent - Client Portal{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -260,7 +260,7 @@
     <i class="fa-solid fa-house"></i> Home
 </a>
 <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-<span class="breadcrumb-item active">Manage Staff</span>
+<span class="breadcrumb-item active">Manage Assistent</span>
 {% endblock %}
 
 {% block content %}
@@ -283,7 +283,7 @@
 {% include 'partials/client/temp-password-modal.html' %}
 
 <!-- Delete Confirmation Modal -->
-{% include 'partials/common/delete-modal.html' with modal_id="delete-modal" item_name="staff member" %}
+{% include 'partials/common/delete-modal.html' with modal_id="delete-modal" item_name="assistent" %}
 
 <!-- Toast Notifications -->
 {% include 'partials/common/toast.html' %}

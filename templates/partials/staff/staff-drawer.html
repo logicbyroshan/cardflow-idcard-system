@@ -11,7 +11,7 @@ Refactored into sub-partials for maintainability.
     <div class="drawer-header">
         <h2 class="drawer-title" id="drawer-title">
             <i class="fa-solid fa-user-plus" id="drawer-icon"></i>
-            <span id="drawer-title-text">Add New Staff</span>
+            <span id="drawer-title-text">Add New Operator</span>
         </h2>
         <button type="button" class="drawer-close" id="drawer-close-btn" title="Close" aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
@@ -25,7 +25,7 @@ Refactored into sub-partials for maintainability.
             <!-- Profile Avatar Placeholder -->
             <div class="profile-upload-section flex-row items-center gap-4">
                 {% include 'partials/components/user-avatar.html' with role='admin_staff' size='large' %}
-                <span class="text-xs text-gray-500">Staff avatar</span>
+                <span class="text-xs text-gray-500">Operator avatar</span>
             </div>
 
             {% include 'partials/staff/staff-drawer-client-assignment.html' %}

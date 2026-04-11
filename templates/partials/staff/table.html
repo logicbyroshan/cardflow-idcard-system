@@ -16,7 +16,11 @@ Uses Tailwind CSS component classes.
                 <th scope="col" class="w-24 text-center">Status</th>
                 <th scope="col" class="text-center">Created At</th>
                 <th scope="col" class="text-center">Updated At</th>
+                {% if active_page == 'manage_staff' and not is_client_admin %}
+                <th scope="col" class="w-20 text-center">Info</th>
+                {% else %}
                 <th scope="col" class="text-left" style="min-width: 250px;">Assigned Classes &amp; Sections</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody id="staff-table-body">
@@ -32,6 +36,20 @@ Uses Tailwind CSS component classes.
                 </td>
                 <td class="text-gray-500 text-center">{{ staff.created_at|date:"d-m-Y H:i" }}</td>
                 <td class="text-gray-500 text-center">{{ staff.updated_at|date:"d-m-Y H:i" }}</td>
+                {% if active_page == 'manage_staff' and not is_client_admin %}
+                <td class="text-center">
+                    <button
+                        type="button"
+                        class="operator-history-trigger"
+                        data-staff-id="{{ staff.id }}"
+                        data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
+                        title="View login history"
+                        aria-label="View login history"
+                    >
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    </button>
+                </td>
+                {% else %}
                 <td class="text-left" style="min-width: 250px;">
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px;">
                         {% with max_visible=3 %}
@@ -79,11 +97,16 @@ Uses Tailwind CSS component classes.
                         {% endwith %}
                     </div>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr>
                 <td colspan="7">
-                    {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-user-slash' title='No Staff Found' message='No staff members match your current filters. Try adjusting your search.' hidden=False %}
+                    {% if active_page == 'manage_staff' and not is_client_admin %}
+                    {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-user-slash' title='No Operator Found' message='No operators match your current filters. Try adjusting your search.' hidden=False %}
+                    {% else %}
+                    {% include 'components/empty-state.html' with id='staff-table-empty-inline' icon='fa-user-slash' title='No Assistent Found' message='No assistent members match your current filters. Try adjusting your search.' hidden=False %}
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -91,6 +114,10 @@ Uses Tailwind CSS component classes.
     </table>
     
     <!-- Empty State - Shown when search/filter yields no results -->
-    {% include 'components/empty-state.html' with id="staff-empty-state" icon="fa-user-slash" title="No Staff Found" message="Try adjusting your search or filter criteria" hidden=True %}
+    {% if active_page == 'manage_staff' and not is_client_admin %}
+    {% include 'components/empty-state.html' with id="staff-empty-state" icon="fa-user-slash" title="No Operator Found" message="Try adjusting your search or filter criteria" hidden=True %}
+    {% else %}
+    {% include 'components/empty-state.html' with id="staff-empty-state" icon="fa-user-slash" title="No Assistent Found" message="Try adjusting your search or filter criteria" hidden=True %}
+    {% endif %}
 </div>
 <!-- Staff Table End -->
