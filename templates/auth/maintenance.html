@@ -1,110 +1,96 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Account Suspended - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-</head>
-<body class="auth-body">
-  <main class="auth-container">
-    <div class="auth-card" style="max-width: 520px;">
-      <!-- Logo -->
-      <div class="auth-logo">
-        <img src="{% static 'assets/logo.png' %}" alt="Adarsh ID Cards" width="64" height="100" onerror="this.style.display='none'">
-      </div>
+{% extends 'errors/base_error_page.html' %}
 
-      <!-- Maintenance Icon -->
-      <div class="auth-icon-header">
-        <div class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
-          <i class="fa-solid fa-wrench modal-icon-i-warning" aria-hidden="true"></i>
-        </div>
-        <h2 class="auth-icon-title">
-          Account Under Maintenance
-        </h2>
-        <p class="auth-icon-desc">
-          {% if reason %}
-            {{ reason }}
-          {% else %}
-            Your organization account has been temporarily suspended by the administrator. Access to the system is currently restricted.
-          {% endif %}
-        </p>
-      </div>
+{% block page_title %}Account Suspended - Adarsh ID Cards{% endblock %}
+{% block body_class %}status-maintenance{% endblock %}
 
-      <!-- Status Indicator -->
-      <div class="auth-info-box auth-info-box-warning">
-        <div class="auth-info-box-body">
-          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-          <div class="auth-info-box-text auth-info-box-text-warning">
-            <strong>Why am I seeing this?</strong><br>
-            Your organization's account status has been changed to inactive. This may be due to:
-            <ul>
-              <li>Pending administrative review</li>
-              <li>Account renewal required</li>
-              <li>Temporary suspension by administrator</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+{% block badge_text %}Account Maintenance{% endblock %}
+{% block heading_text %}Account Under Maintenance{% endblock %}
+{% block message_text %}
+    {% if reason %}
+        {{ reason }}
+    {% else %}
+        Your organization account has been temporarily suspended by the administrator. Access to the system is currently restricted.
+    {% endif %}
+{% endblock %}
 
-      <!-- Live Status Check -->
-      <div class="maintenance-status-bar">
-        <span class="status-dot"></span>
-        <span id="statusText">Checking account status...</span>
-      </div>
+{% block micro_copy %}
+    We will keep checking your account status and unlock access as soon as it is reactivated.
+{% endblock %}
 
-      <!-- Actions -->
-      <div class="auth-action-footer">
-        <p>Please contact your administrator to restore access. This page will automatically redirect once your account is reactivated.</p>
-        <div style="display: flex; gap: 0.5rem;">
-          <button onclick="checkStatus()" class="btn btn-md btn-primary">
-            <i class="fa-solid fa-rotate"></i> Check Status
-          </button>
-          <a href="{% url 'logout' %}" class="btn btn-md btn-cancel" style="text-decoration: none;">
-            <i class="fa-solid fa-right-from-bracket"></i> Logout
-          </a>
-        </div>
-      </div>
-    </div>
-  </main>
+{% block status_meta %}
+<div class="status-stack" aria-hidden="true">
+    <div class="status-item"><strong>Account:</strong> Suspended</div>
+    <div class="status-item"><strong>Scope:</strong> Client Access</div>
+</div>
+{% endblock %}
 
-  <script>
-  (function() {
+{% block extra_content %}
+<ul class="detail-list">
+    <li>Pending administrative review</li>
+    <li>Account renewal required</li>
+    <li>Temporary suspension by administrator</li>
+</ul>
+
+<div id="maintenanceStatusBar" class="live-status-bar">
+    <span id="maintenanceStatusDot" class="status-dot"></span>
+    <span id="statusText">Checking account status...</span>
+</div>
+{% endblock %}
+
+{% block actions %}
+<div class="actions">
+    <button type="button" onclick="checkStatus()" class="btn btn-primary">
+        <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+        Check Status
+    </button>
+    <a href="{% url 'logout' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+        Logout
+    </a>
+</div>
+{% endblock %}
+
+{% block help_note %}This page auto-checks every 30 seconds and redirects when access is restored.{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
     var statusText = document.getElementById('statusText');
-    var checkInterval = 30000; // 30 seconds
+    var statusBar = document.getElementById('maintenanceStatusBar');
+    var statusDot = document.getElementById('maintenanceStatusDot');
+    var checkInterval = 30000;
+
+    function markActiveAndRedirect() {
+        if (statusBar) statusBar.classList.add('is-complete');
+        if (statusDot) statusDot.classList.add('is-complete');
+        statusText.textContent = 'Account reactivated. Redirecting...';
+        setTimeout(function() {
+            window.location.href = '/';
+        }, 1000);
+    }
 
     function checkStatus() {
-      statusText.textContent = 'Checking account status...';
-      fetch('{% url "api_check_maintenance" %}', {
-        method: 'GET',
-        credentials: 'same-origin',
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.active) {
-          statusText.innerHTML = '<span style="color:#059669;font-weight:600;">Account reactivated! Redirecting...</span>';
-          setTimeout(function() { window.location.href = '/'; }, 1000);
-        } else {
-          statusText.textContent = 'Account still suspended. Will check again in 30s...';
-        }
-      })
-      .catch(function() {
-        statusText.textContent = 'Unable to check status. Will retry...';
-      });
+        statusText.textContent = 'Checking account status...';
+        fetch('{% url "api_check_maintenance" %}', {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.active) {
+                    markActiveAndRedirect();
+                } else {
+                    statusText.textContent = 'Account still suspended. Will check again in 30s...';
+                }
+            })
+            .catch(function() {
+                statusText.textContent = 'Unable to check status. Will retry...';
+            });
     }
 
     window.checkStatus = checkStatus;
-
-    // Auto-check periodically
     checkStatus();
     setInterval(checkStatus, checkInterval);
-  })();
-  </script>
-</body>
-</html>
+})();
+</script>
+{% endblock %}

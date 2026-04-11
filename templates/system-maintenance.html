@@ -1,362 +1,271 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title>System Maintenance - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-  <style>
-    :root {
-      --maint-surface: var(--color-gray-50, #f8fafc);
-      --maint-surface-soft: var(--color-blue-bg, #dbeafe);
-      --maint-border: var(--color-gray-200, #e2e8f0);
-      --maint-warn: var(--color-warning, #f59e0b);
-      --maint-warn-dark: var(--color-warning-dark, #b45309);
-      --maint-warn-bg: var(--color-warning-bg, #fef3c7);
-      --maint-ok: var(--color-success, #16a34a);
-      --maint-ok-dark: var(--color-success-dark, #15803d);
-      --maint-ok-bg: var(--color-success-bg, #dcfce7);
+{% extends 'errors/base_error_page.html' %}
+
+{% block page_title %}System Maintenance - Adarsh ID Cards{% endblock %}
+{% block body_class %}status-maintenance{% endblock %}
+
+{% block extra_head %}
+<style>
+    .countdown-wrap {
+        margin-top: 16px;
     }
 
-    .auth-body {
-      min-height: 100vh;
-      margin: 0;
-      background:
-        radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.14), transparent 30%),
-        radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1), transparent 26%),
-        linear-gradient(180deg, var(--maint-surface) 0%, var(--maint-surface-soft) 100%);
-    }
-    .auth-container {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.25rem;
-    }
-    .auth-card {
-      width: min(100%, 620px);
-      margin: 0 auto;
-      border: 1px solid var(--maint-border);
-      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
-      border-radius: 18px;
-      background: var(--bg-white, #ffffff);
-    }
-    @keyframes maintenance-skeleton-shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    .maintenance-skeleton {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      background: linear-gradient(90deg, rgba(251, 191, 36, 0.35) 25%, rgba(253, 230, 138, 0.7) 37%, rgba(251, 191, 36, 0.35) 63%);
-      background-size: 200% 100%;
-      animation: maintenance-skeleton-shimmer 1.4s linear infinite;
-    }
-    .maintenance-complete-badge {
-      display: none;
-      margin: 0.35rem auto 0;
-      width: fit-content;
-      padding: 0.3rem 0.65rem;
-      border-radius: 8px;
-      font-size: 0.74rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      background: var(--maint-ok-bg);
-      color: var(--maint-ok-dark);
-      border: 1px solid color-mix(in srgb, var(--maint-ok) 40%, #ffffff 60%);
-    }
-    .maintenance-complete-badge.show {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
     .countdown-grid {
-      display: flex; gap: 0.75rem; justify-content: center; margin: 1.25rem 0;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin: 12px 0;
+        flex-wrap: wrap;
     }
+
     .countdown-unit {
-      display: flex; flex-direction: column; align-items: center;
-      background: color-mix(in srgb, var(--maint-warn) 8%, #ffffff 92%);
-      border: 1px solid color-mix(in srgb, var(--maint-warn) 22%, #ffffff 78%);
-      border-radius: 10px; padding: 0.75rem 1rem; min-width: 72px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: color-mix(in srgb, var(--ill-soft) 40%, #ffffff 60%);
+        border: 1px solid color-mix(in srgb, var(--ill-a) 24%, #ffffff 76%);
+        border-radius: 10px;
+        padding: 10px 14px;
+        min-width: 82px;
     }
+
     .countdown-value {
-      font-size: 1.75rem; font-weight: 700; color: var(--maint-warn-dark); line-height: 1;
-      font-variant-numeric: tabular-nums;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: var(--ill-b);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
     }
+
     .countdown-label {
-      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--maint-warn-dark); margin-top: 0.25rem; font-weight: 600;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ill-b);
+        margin-top: 4px;
+        font-weight: 600;
     }
-    .maintenance-progress {
-      width: 100%; height: 4px; background: var(--maint-warn-bg); border-radius: 2px;
-      overflow: hidden; margin-top: 0.5rem;
-    }
-    .maintenance-progress-bar {
-      height: 100%; background: var(--maint-warn); border-radius: 2px;
-      transition: width 1s linear;
-    }
-    .maintenance-progress-bar.is-complete {
-      background: var(--maint-ok);
-    }
-    .maintenance-status-bar {
-      position: relative;
-      overflow: hidden;
-      background: var(--maint-surface);
-      border: 1px solid var(--maint-border);
-      border-radius: 10px;
-      padding: 0.8rem 1rem;
-      margin-bottom: 1.5rem;
-      text-align: center;
-    }
-    .maintenance-status-bar::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      background: var(--maint-warn);
-    }
-    .maintenance-status-bar.is-complete {
-      border-color: color-mix(in srgb, var(--maint-ok) 35%, #ffffff 65%);
-      background: color-mix(in srgb, var(--maint-ok) 10%, #ffffff 90%);
-    }
-    .maintenance-status-bar.is-complete::before {
-      background: var(--maint-ok);
-    }
-    .status-dot.is-complete {
-      background: var(--maint-ok);
-      animation: none;
-    }
-    .auth-info-box.is-complete {
-      border-color: color-mix(in srgb, var(--maint-ok) 35%, #ffffff 65%);
-      background: color-mix(in srgb, var(--maint-ok) 10%, #ffffff 90%);
-    }
-    .auth-info-box.is-complete .auth-info-box-text-warning {
-      color: var(--maint-ok-dark);
-    }
-    .auth-icon-circle-warning.is-complete {
-      background: var(--maint-ok-bg);
-      border-color: color-mix(in srgb, var(--maint-ok) 35%, #ffffff 65%);
-      box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.24);
-      animation: none;
-    }
-    .auth-icon-circle-warning.is-complete .modal-icon-i-warning {
-      color: var(--maint-ok-dark);
-      animation: none !important;
-    }
-    .auth-icon-circle-warning.is-complete .maintenance-skeleton {
-      animation: none;
-      background: color-mix(in srgb, var(--maint-ok) 20%, #ffffff 80%);
-    }
-    @media (max-width: 640px) {
-      .auth-container { padding: 0.75rem; }
-      .auth-card { border-radius: 14px; }
-      .countdown-grid { gap: 0.5rem; }
-      .countdown-unit { min-width: 64px; padding: 0.65rem 0.75rem; }
-      .countdown-value { font-size: 1.45rem; }
-    }
-  </style>
-</head>
-<body class="auth-body">
-  <main class="auth-container">
-    <div class="auth-card" style="max-width: 540px;">
-      <!-- Logo -->
-      <div class="auth-logo">
-        <img src="{% static 'assets/logo.png' %}" alt="Adarsh ID Cards" width="64" height="100" onerror="this.style.display='none'">
-      </div>
 
-      <!-- Maintenance Icon -->
-      <div class="auth-icon-header">
-        <div id="maintenanceIconCircle" class="modal-icon-circle-xl auth-icon-circle-warning maintenance-pulse">
-          <span class="maintenance-skeleton" aria-hidden="true"></span>
-        </div>
-        <h2 class="auth-icon-title">System Under Maintenance</h2>
-        <div id="maintenanceCompleteBadge" class="maintenance-complete-badge">
-          <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-          Maintenance completed
-        </div>
-        <p class="auth-icon-desc" id="maintenanceMessage">
-          {{ message|default:"The system is under scheduled maintenance. Please check back shortly." }}
-        </p>
-      </div>
+    .progress-track {
+        width: 100%;
+        height: 6px;
+        background: color-mix(in srgb, var(--ill-soft) 66%, #ffffff 34%);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
 
-      <!-- Countdown Timer -->
-      <div id="countdownSection">
-        <div class="countdown-grid" id="countdownGrid">
-          <div class="countdown-unit">
+    .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--ill-a);
+        border-radius: 999px;
+        transition: width 1s linear;
+    }
+
+    .progress-bar.is-complete {
+        background: var(--ok-a);
+    }
+
+    .done-chip {
+        margin-top: 12px;
+        display: none;
+        width: fit-content;
+        padding: 5px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        background: var(--ok-soft);
+        color: var(--ok-b);
+        border: 1px solid color-mix(in srgb, var(--ok-a) 35%, #ffffff 65%);
+        align-items: center;
+        gap: 6px;
+    }
+
+    .done-chip.show {
+        display: inline-flex;
+    }
+</style>
+{% endblock %}
+
+{% block badge_text %}System Maintenance{% endblock %}
+{% block heading_text %}System Under Maintenance{% endblock %}
+{% block message_text %}{{ message|default:"The system is under scheduled maintenance. Please check back shortly." }}{% endblock %}
+
+{% block micro_copy %}
+    We are applying updates to improve stability and performance. This page will auto-refresh status and redirect when maintenance ends.
+{% endblock %}
+
+{% block status_meta %}
+<div class="status-stack" aria-hidden="true">
+    <div class="status-item"><strong>Mode:</strong> Maintenance Enabled</div>
+    <div class="status-item"><strong>Scope:</strong> Platform Access</div>
+</div>
+{% endblock %}
+
+{% block extra_content %}
+<div id="maintenanceDoneChip" class="done-chip">
+    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+    Maintenance completed
+</div>
+
+<div id="countdownSection" class="countdown-wrap">
+    <div class="countdown-grid">
+        <div class="countdown-unit">
             <span class="countdown-value" id="cdHours">--</span>
             <span class="countdown-label">Hours</span>
-          </div>
-          <div class="countdown-unit">
+        </div>
+        <div class="countdown-unit">
             <span class="countdown-value" id="cdMinutes">--</span>
             <span class="countdown-label">Minutes</span>
-          </div>
-          <div class="countdown-unit">
+        </div>
+        <div class="countdown-unit">
             <span class="countdown-value" id="cdSeconds">--</span>
             <span class="countdown-label">Seconds</span>
-          </div>
         </div>
-        <div class="maintenance-progress">
-          <div class="maintenance-progress-bar" id="progressBar" style="width: 0%"></div>
-        </div>
-      </div>
-
-      <!-- Status Info -->
-      <div id="maintenanceInfoBox" class="auth-info-box auth-info-box-warning">
-        <div class="auth-info-box-body">
-          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-          <div class="auth-info-box-text auth-info-box-text-warning">
-            <strong>What's happening?</strong><br>
-            We're performing scheduled maintenance to improve the system. This page will automatically redirect once maintenance is complete.
-          </div>
-        </div>
-      </div>
-
-      <!-- Live Status Check -->
-      <div id="maintenanceStatusBar" class="maintenance-status-bar">
-        <span id="maintenanceStatusDot" class="status-dot"></span>
-        <span id="statusText">Checking maintenance status...</span>
-      </div>
-
-      <!-- Actions -->
-      <div class="auth-action-footer">
-        <div style="display: flex; gap: 0.5rem;">
-          <button onclick="checkStatus()" class="btn btn-md btn-primary">
-            <i class="fa-solid fa-rotate"></i> Check Now
-          </button>
-          <a href="{% url 'logout' %}" class="btn btn-md btn-cancel" style="text-decoration: none;">
-            <i class="fa-solid fa-right-from-bracket"></i> Logout
-          </a>
-        </div>
-      </div>
     </div>
-  </main>
+    <div class="progress-track">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+</div>
 
-  <script id="maintenance-config" type="application/json">
-  {
-    "endTime": {{ end_time_json|default:"null" }},
-    "apiUrl": "{% url 'api_system_maintenance_check' %}",
-    "redirectUrl": "{{ redirect_url|default:'/'|escapejs }}"
-  }
-  </script>
-  <script>
-  (function() {
+<div id="maintenanceStatusBar" class="live-status-bar">
+    <span id="maintenanceStatusDot" class="status-dot"></span>
+    <span id="statusText">Checking maintenance status...</span>
+</div>
+{% endblock %}
+
+{% block actions %}
+<div class="actions">
+    <button type="button" onclick="checkStatus()" class="btn btn-primary">
+        <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+        Check Now
+    </button>
+    <a href="{% url 'logout' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+        Logout
+    </a>
+</div>
+{% endblock %}
+
+{% block help_note %}Status checks run automatically every 10 seconds.{% endblock %}
+
+{% block scripts %}
+<script id="maintenance-config" type="application/json">
+{
+  "endTime": {{ end_time_json|default:"null" }},
+  "apiUrl": "{% url 'api_system_maintenance_check' %}",
+  "redirectUrl": "{{ redirect_url|default:'/'|escapejs }}"
+}
+</script>
+<script>
+(function() {
     var cfg = JSON.parse(document.getElementById('maintenance-config').textContent);
     var endTime = cfg.endTime ? new Date(cfg.endTime) : null;
     var startTime = new Date();
     var redirectUrl = cfg.redirectUrl || '/';
+
     var statusText = document.getElementById('statusText');
     var countdownSection = document.getElementById('countdownSection');
     var progressBar = document.getElementById('progressBar');
     var statusBar = document.getElementById('maintenanceStatusBar');
     var statusDot = document.getElementById('maintenanceStatusDot');
-    var infoBox = document.getElementById('maintenanceInfoBox');
-    var iconCircle = document.getElementById('maintenanceIconCircle');
-    var completeBadge = document.getElementById('maintenanceCompleteBadge');
+    var doneChip = document.getElementById('maintenanceDoneChip');
+
     var completed = false;
     var countdownExpiryChecked = false;
 
-    // Hide countdown if no end time
-    if (!endTime) {
-      countdownSection.style.display = 'none';
+    if (!endTime && countdownSection) {
+        countdownSection.style.display = 'none';
     }
 
-    // Calculate total duration for progress bar
     var totalDuration = endTime ? (endTime - startTime) : 0;
 
-    function pad(n) { return n < 10 ? '0' + n : n; }
+    function pad(n) {
+        return n < 10 ? '0' + n : String(n);
+    }
 
     function markMaintenanceComplete() {
-      if (completed) return;
-      completed = true;
+        if (completed) return;
+        completed = true;
 
-      if (statusBar) statusBar.classList.add('is-complete');
-      if (statusDot) statusDot.classList.add('is-complete');
-      if (infoBox) infoBox.classList.add('is-complete');
-      if (iconCircle) iconCircle.classList.add('is-complete');
-      if (progressBar) {
-        progressBar.classList.add('is-complete');
-        progressBar.style.width = '100%';
-      }
-      if (completeBadge) completeBadge.classList.add('show');
-      statusText.textContent = 'Maintenance complete. Redirecting to website...';
+        if (statusBar) statusBar.classList.add('is-complete');
+        if (statusDot) statusDot.classList.add('is-complete');
+        if (progressBar) {
+            progressBar.classList.add('is-complete');
+            progressBar.style.width = '100%';
+        }
+        if (doneChip) doneChip.classList.add('show');
+
+        statusText.textContent = 'Maintenance complete. Redirecting...';
     }
 
     function redirectToWebsite() {
-      window.location.replace(redirectUrl);
+        window.location.replace(redirectUrl);
     }
 
     function updateCountdown() {
-      if (!endTime) return;
-      var now = new Date();
-      var diff = endTime - now;
+        if (!endTime) return;
 
-      if (diff <= 0) {
-        document.getElementById('cdHours').textContent = '00';
-        document.getElementById('cdMinutes').textContent = '00';
-        document.getElementById('cdSeconds').textContent = '00';
-        progressBar.style.width = '100%';
-        if (!countdownExpiryChecked) {
-          countdownExpiryChecked = true;
-          checkStatus();
+        var now = new Date();
+        var diff = endTime - now;
+
+        if (diff <= 0) {
+            document.getElementById('cdHours').textContent = '00';
+            document.getElementById('cdMinutes').textContent = '00';
+            document.getElementById('cdSeconds').textContent = '00';
+            if (progressBar) progressBar.style.width = '100%';
+            if (!countdownExpiryChecked) {
+                countdownExpiryChecked = true;
+                checkStatus();
+            }
+            return;
         }
-        return;
-      }
 
-      var h = Math.floor(diff / 3600000);
-      var m = Math.floor((diff % 3600000) / 60000);
-      var s = Math.floor((diff % 60000) / 1000);
+        var h = Math.floor(diff / 3600000);
+        var m = Math.floor((diff % 3600000) / 60000);
+        var s = Math.floor((diff % 60000) / 1000);
 
-      document.getElementById('cdHours').textContent = pad(h);
-      document.getElementById('cdMinutes').textContent = pad(m);
-      document.getElementById('cdSeconds').textContent = pad(s);
+        document.getElementById('cdHours').textContent = pad(h);
+        document.getElementById('cdMinutes').textContent = pad(m);
+        document.getElementById('cdSeconds').textContent = pad(s);
 
-      // Progress bar
-      if (totalDuration > 0) {
-        var elapsed = totalDuration - diff;
-        var pct = Math.min(100, (elapsed / totalDuration) * 100);
-        progressBar.style.width = pct + '%';
-      }
+        if (totalDuration > 0 && progressBar) {
+            var elapsed = totalDuration - diff;
+            var pct = Math.min(100, (elapsed / totalDuration) * 100);
+            progressBar.style.width = pct + '%';
+        }
     }
 
     function checkStatus() {
-      statusText.textContent = 'Checking maintenance status...';
-      fetch(cfg.apiUrl, { method: 'GET', credentials: 'same-origin' })
-        .then(function(r) {
-          if (!r.ok) throw new Error('status-check-failed');
-          return r.json();
-        })
-        .then(function(data) {
-          if (!data.enabled) {
-            markMaintenanceComplete();
-            setTimeout(redirectToWebsite, 700);
-          } else {
-            statusText.textContent = 'Maintenance in progress. Will check again soon...';
-          }
-        })
-        .catch(function() {
-          statusText.textContent = 'Unable to check status. Will retry...';
-        });
+        statusText.textContent = 'Checking maintenance status...';
+        fetch(cfg.apiUrl, { method: 'GET', credentials: 'same-origin' })
+            .then(function(r) {
+                if (!r.ok) throw new Error('status-check-failed');
+                return r.json();
+            })
+            .then(function(data) {
+                if (!data.enabled) {
+                    markMaintenanceComplete();
+                    setTimeout(redirectToWebsite, 700);
+                } else {
+                    statusText.textContent = 'Maintenance in progress. Will check again soon...';
+                }
+            })
+            .catch(function() {
+                statusText.textContent = 'Unable to check status. Will retry...';
+            });
     }
 
-    // Run countdown every second
-    if (endTime) { setInterval(updateCountdown, 1000); updateCountdown(); }
+    window.checkStatus = checkStatus;
 
-    // Poll status every 10 seconds
+    if (endTime) {
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+    }
+
     setInterval(checkStatus, 10000);
     checkStatus();
-
-    // Expose for button
-    window.checkStatus = checkStatus;
-  })();
-  </script>
-</body>
-</html>
+})();
+</script>
+{% endblock %}

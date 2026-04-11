@@ -1,64 +1,45 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Account Inactive - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-  <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
-</head>
-<body class="auth-body">
-  <main class="auth-container">
-    <div class="auth-card" style="max-width: 480px;">
-      <!-- Logo -->
-      <div class="auth-logo">
-        <img src="{% static 'assets/logo.png' %}" alt="Adarsh ID Cards" width="64" height="100" onerror="this.style.display='none'">
-      </div>
+{% extends 'errors/base_error_page.html' %}
 
-      <!-- Inactive Status Icon -->
-      <div class="auth-icon-header">
-        <div class="modal-icon-circle-lg auth-icon-circle-danger">
-          <i class="fa-solid fa-user-lock modal-icon-i-danger" aria-hidden="true"></i>
-        </div>
-        <h2 class="auth-icon-title">Account Deactivated</h2>
-        <p class="auth-icon-desc">
-          {% if reason %}
-            {{ reason }}
-          {% else %}
-            Your account has been deactivated by an administrator. You can no longer access this system.
-          {% endif %}
-        </p>
-      </div>
+{% block page_title %}Account Inactive - Adarsh ID Cards{% endblock %}
+{% block body_class %}status-inactive{% endblock %}
 
-      <!-- Info Box -->
-      <div class="auth-info-box auth-info-box-info">
-        <div class="auth-info-box-body">
-          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-          <div class="auth-info-box-text auth-info-box-text-info">
-            <strong>What happened?</strong><br>
-            Your account status was changed to inactive. This may be due to:
-            <ul>
-              <li>Organization account suspension</li>
-              <li>Staff account deactivation</li>
-              <li>Administrative changes</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+{% block badge_text %}Account Inactive{% endblock %}
+{% block heading_text %}Account Deactivated{% endblock %}
+{% block message_text %}
+    {% if reason %}
+        {{ reason }}
+    {% else %}
+        Your account has been deactivated by an administrator. You can no longer access this system.
+    {% endif %}
+{% endblock %}
 
-      <!-- Action -->
-      <div class="auth-action-footer">
-        <p>Please contact your administrator to restore access.</p>
-        <a href="{% url 'login' %}" class="btn btn-md btn-primary" style="text-decoration: none;">
-          <i class="fa-solid fa-arrow-left"></i> Back to Login
-        </a>
-      </div>
-    </div>
-  </main>
-</body>
-</html>
+{% block micro_copy %}
+    Please contact your administrator to restore access.
+{% endblock %}
+
+{% block status_meta %}
+<div class="status-stack" aria-hidden="true">
+    <div class="status-item"><strong>Account:</strong> Inactive</div>
+    <div class="status-item"><strong>Scope:</strong> Access Control</div>
+</div>
+{% endblock %}
+
+{% block extra_content %}
+<ul class="detail-list">
+    <li>Organization account suspension</li>
+    <li>Staff account deactivation</li>
+    <li>Administrative security update</li>
+</ul>
+{% endblock %}
+
+{% block actions %}
+<div class="actions">
+    <a href="{% url 'login' %}" class="btn btn-primary">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        Back to Login
+    </a>
+    <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+</div>
+{% endblock %}
+
+{% block help_note %}If this looks incorrect, ask an administrator to reactivate your account.{% endblock %}

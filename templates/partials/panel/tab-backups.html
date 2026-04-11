@@ -59,7 +59,6 @@
   <!-- Actions bar -->
   <div class="notif-actions-bar backup-actions-primary">
     <div class="notif-actions-left" style="flex:1;min-width:0;gap:10px;align-items:center;flex-wrap:wrap;">
-      <span class="backup-panel-kicker"><i class="fa-solid fa-database"></i> Backup Management</span>
       <div class="notif-search-box" style="max-width:320px;min-width:220px;">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input
@@ -107,6 +106,10 @@
     {% endfor %}
   </div>
 
+  <div id="backupPaginationWrap">
+    {% include 'components/pagination.html' with info_id='backupPaginationInfo' first_id='backupFirstPage' prev_id='backupPrevPage' next_id='backupNextPage' last_id='backupLastPage' page_numbers_id='backupPageNumbers' rows_dropdown_id='backupRowsDropdown' rows_toggle_id='backupRowsToggle' rows_text_id='backupRowsSelectedText' rows_options_id='backupRowsOptions' default_rows='25' %}
+  </div>
+
   <!-- Delete now modal -->
   <div id="deleteNowModal" class="modal-backdrop" style="display:none;">
     <div class="modal-center modal-danger" @click.stop>
@@ -123,11 +126,11 @@
           </div>
           <p class="modal-body-title">Delete Backup Now?</p>
           <p class="modal-body-subtitle">This will <strong>permanently delete</strong> all backup files for this task. This action cannot be undone.</p>
-          <div class="modal-alert modal-alert-danger">
-            <p class="modal-alert-title">
+          <div class="alert-box alert-box--danger">
+            <p class="alert-box-heading">
               <i class="fa-solid fa-circle-exclamation"></i> Warning
             </p>
-            <ul>
+            <ul class="alert-box-list">
               <li>All backup files will be permanently removed</li>
               <li>This action cannot be undone</li>
             </ul>

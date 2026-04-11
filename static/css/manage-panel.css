@@ -338,6 +338,15 @@
   border-top: 1px solid #e5e7eb;
 }
 
+#backupPaginationWrap {
+  display: none;
+  flex-shrink: 0;
+}
+
+#backupPaginationWrap .pagination-bar {
+  border-top: 1px solid #e5e7eb;
+}
+
 .template-style-cell {
   display: inline-flex;
   align-items: center;
@@ -1990,7 +1999,7 @@ textarea.panel-form-input {
 }
 .server-info-overview {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(236px, 248px) minmax(0, 1fr);
   border: 1px solid var(--server-brand-border);
   border-radius: 0;
   overflow: hidden;
@@ -1999,11 +2008,11 @@ textarea.panel-form-input {
 }
 .server-donut-wrap {
   border-right: 1px solid #e5e7eb;
-  padding: 20px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   background: linear-gradient(180deg, #ffffff 0%, var(--server-brand-soft) 100%);
 }
 .server-donut {

@@ -17,6 +17,9 @@
   let _backupStatusFilter = 'all';
   let _backupDateFrom = '';
   let _backupDateTo = '';
+  let _backupPage = 1;
+  let _backupPerPage = 25;
+  let _backupPagerBound = false;
   let _pollTimer = null;
   let _activeModalTaskId = null;
   let _deleteNowCode = '';
@@ -46,6 +49,9 @@
 
   /*  Init  */
   document.addEventListener('DOMContentLoaded', function () {
+    _bindBackupPaginationControls();
+    _setBackupRowsDropdownValue(_backupPerPage);
+
     // Auto-open backups tab if URL contains ?tab=backups
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') === 'backups' && typeof switchTab === 'function') {
@@ -127,6 +133,7 @@
         await waitForMinDelay(skeletonStart);
       }
       container.innerHTML = '<div class="backup-empty-state"><p>Failed to load backups.</p></div>';
+      _renderBackupPagination(0);
       console.error('loadBackups error', err);
     }
   };
@@ -136,6 +143,7 @@
     const container = document.getElementById('backupsList');
     if (!container) return;
 
+    _bindBackupPaginationControls();
     _syncBackupFiltersFromControls();
     _backupFiltered = _getFilteredBackups();
 
@@ -145,6 +153,7 @@
         '<i class="fa-solid fa-database"></i>' +
         '<p>No backups yet. Use the <strong>Take Backup</strong> button on the Dashboard to create one.</p>' +
         '</div>';
+      _renderBackupPagination(0);
       return;
     }
 
@@ -154,10 +163,146 @@
         '<i class="fa-solid fa-filter-circle-xmark"></i>' +
         '<p>No backups match the selected filters.</p>' +
         '</div>';
+      _renderBackupPagination(0);
       return;
     }
 
-    container.innerHTML = _backupFiltered.map(b => _renderCard(b)).join('');
+    const totalRows = _backupFiltered.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / _backupPerPage));
+    if (_backupPage > totalPages) _backupPage = totalPages;
+    if (_backupPage < 1) _backupPage = 1;
+
+    const startIndex = (_backupPage - 1) * _backupPerPage;
+    const pageRows = _backupFiltered.slice(startIndex, startIndex + _backupPerPage);
+    container.innerHTML = pageRows.map(b => _renderCard(b)).join('');
+    _renderBackupPagination(totalRows);
+  }
+
+  function _setBackupRowsDropdownValue(value) {
+    const rowsText = document.getElementById('backupRowsSelectedText');
+    const rowsOptions = document.getElementById('backupRowsOptions');
+    if (rowsText) rowsText.textContent = String(value);
+    if (!rowsOptions) return;
+
+    rowsOptions.querySelectorAll('.dropdown-option').forEach(function (opt) {
+      opt.classList.toggle('selected', Number(opt.dataset.value) === Number(value));
+    });
+  }
+
+  function _bindBackupPaginationControls() {
+    if (_backupPagerBound) return;
+    _backupPagerBound = true;
+
+    const firstBtn = document.getElementById('backupFirstPage');
+    const prevBtn = document.getElementById('backupPrevPage');
+    const nextBtn = document.getElementById('backupNextPage');
+    const lastBtn = document.getElementById('backupLastPage');
+    const pageNums = document.getElementById('backupPageNumbers');
+    const rowsDropdown = document.getElementById('backupRowsDropdown');
+    const rowsToggle = document.getElementById('backupRowsToggle');
+    const rowsOptions = document.getElementById('backupRowsOptions');
+
+    if (firstBtn) firstBtn.addEventListener('click', function () { _backupGoPage(1); });
+    if (prevBtn) prevBtn.addEventListener('click', function () { _backupGoPage(_backupPage - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { _backupGoPage(_backupPage + 1); });
+    if (lastBtn) {
+      lastBtn.addEventListener('click', function () {
+        const totalPages = Math.max(1, Math.ceil(_backupFiltered.length / _backupPerPage));
+        _backupGoPage(totalPages);
+      });
+    }
+
+    if (pageNums) {
+      pageNums.addEventListener('click', function (event) {
+        const btn = event.target.closest('.page-num');
+        if (!btn) return;
+        const page = parseInt(btn.dataset.page || '', 10);
+        if (!Number.isFinite(page)) return;
+        _backupGoPage(page);
+      });
+    }
+
+    if (rowsDropdown && rowsToggle && rowsOptions) {
+      rowsToggle.addEventListener('click', function (event) {
+        event.stopPropagation();
+        rowsDropdown.classList.toggle('open');
+      });
+
+      rowsOptions.querySelectorAll('.dropdown-option').forEach(function (option) {
+        option.addEventListener('click', function () {
+          const value = parseInt(this.dataset.value || '', 10);
+          if (!Number.isFinite(value) || value <= 0) return;
+          _backupPerPage = value;
+          _backupPage = 1;
+          _setBackupRowsDropdownValue(_backupPerPage);
+          rowsDropdown.classList.remove('open');
+          _renderBackups();
+        });
+      });
+
+      document.addEventListener('click', function (event) {
+        if (!rowsDropdown.contains(event.target)) {
+          rowsDropdown.classList.remove('open');
+        }
+      });
+    }
+
+    _setBackupRowsDropdownValue(_backupPerPage);
+  }
+
+  function _renderBackupPagination(totalRows) {
+    const wrapper = document.getElementById('backupPaginationWrap');
+    const info = document.getElementById('backupPaginationInfo');
+    const pageNumbers = document.getElementById('backupPageNumbers');
+    const firstBtn = document.getElementById('backupFirstPage');
+    const prevBtn = document.getElementById('backupPrevPage');
+    const nextBtn = document.getElementById('backupNextPage');
+    const lastBtn = document.getElementById('backupLastPage');
+
+    if (!wrapper || !info || !pageNumbers) return;
+
+    if (totalRows <= 0) {
+      wrapper.style.display = 'none';
+      return;
+    }
+
+    wrapper.style.display = '';
+    const totalPages = Math.max(1, Math.ceil(totalRows / _backupPerPage));
+    if (_backupPage > totalPages) _backupPage = totalPages;
+    if (_backupPage < 1) _backupPage = 1;
+
+    const startIndex = (_backupPage - 1) * _backupPerPage;
+    const endIndex = Math.min(startIndex + _backupPerPage, totalRows);
+    info.innerHTML = 'Showing <strong>' + (startIndex + 1) + '-' + endIndex + '</strong> of <strong>' + totalRows + '</strong> results';
+
+    pageNumbers.innerHTML = '';
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, _backupPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    if ((endPage - startPage + 1) < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i += 1) {
+      pageNumbers.insertAdjacentHTML(
+        'beforeend',
+        '<button class="page-num' + (i === _backupPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>'
+      );
+    }
+
+    if (firstBtn) firstBtn.disabled = _backupPage <= 1;
+    if (prevBtn) prevBtn.disabled = _backupPage <= 1;
+    if (nextBtn) nextBtn.disabled = _backupPage >= totalPages;
+    if (lastBtn) lastBtn.disabled = _backupPage >= totalPages;
+  }
+
+  function _backupGoPage(page) {
+    const totalPages = Math.max(1, Math.ceil(_backupFiltered.length / _backupPerPage));
+    _backupPage = Number(page || 1);
+    if (!Number.isFinite(_backupPage)) _backupPage = 1;
+    if (_backupPage < 1) _backupPage = 1;
+    if (_backupPage > totalPages) _backupPage = totalPages;
+    _renderBackups();
   }
 
   function _syncBackupFiltersFromControls() {
@@ -218,6 +363,7 @@
 
   window.backupApplyFilters = function () {
     _syncBackupFiltersFromControls();
+    _backupPage = 1;
     _renderBackups();
   };
 
@@ -233,6 +379,7 @@
     if (dateToInput) dateToInput.value = '';
 
     _syncBackupFiltersFromControls();
+    _backupPage = 1;
     _renderBackups();
   };
 

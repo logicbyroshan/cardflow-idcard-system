@@ -530,12 +530,60 @@ body[style*="overflow:hidden"] {
   flex-shrink: 0;
 }
 
+/* Keep modal action buttons visually consistent across modal variants. */
+.modal-footer .btn,
+.side-modal-footer .btn,
+.center-modal-footer-area .btn,
+.upload-modal-footer .btn,
+.crop-modal-footer .btn,
+.backup-modal-footer .btn {
+  min-height: 34px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
+.modal-footer .btn.btn-md,
+.side-modal-footer .btn.btn-md,
+.center-modal-footer-area .btn.btn-md,
+.upload-modal-footer .btn.btn-md,
+.crop-modal-footer .btn.btn-md,
+.backup-modal-footer .btn.btn-md {
+  height: 34px;
+}
+
 /* Theme header backgrounds */
 .center-modal-theme-red .center-modal-header    { background: linear-gradient(135deg, #dc2626, #ef4444); }
 .center-modal-theme-amber .center-modal-header  { background: linear-gradient(135deg, #d97706, #f59e0b); }
 .center-modal-theme-blue .center-modal-header   { background: linear-gradient(135deg, #2563eb, #3b82f6); }
 .center-modal-theme-purple .center-modal-header { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
 .center-modal-theme-green .center-modal-header  { background: linear-gradient(135deg, #16a34a, #22c55e); }
+
+/* Align permission section headers with the global form section title style. */
+.permission-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 6px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.permission-header i {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+}
+
+.form-label-hint {
+  color: var(--color-gray-400, #9ca3af);
+  font-weight: 400;
+}
 
 .center-modal-icon {
   margin-bottom: 10px;
@@ -1448,6 +1496,47 @@ body.bulk-operation-active #blockingOverlay * {
 .alert-box--danger .alert-box-text  { color: #78350f; }
 .alert-box--warning .alert-box-text { color: #78350f; }
 .alert-box--info .alert-box-text    { color: #0369a1; }
+
+.alert-box-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alert-box-inline .alert-box-text {
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  .pagination-bar {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .pagination-left {
+    order: 1;
+    width: 100%;
+  }
+
+  .pagination-right {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .pagination-center {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    display: flex;
+  }
+
+  .pagination-center .page-numbers {
+    max-width: 220px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
 
 /* --- Verification Code Block --- */
 .verify-section {

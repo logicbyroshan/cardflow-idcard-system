@@ -46,11 +46,11 @@ JS contract (Alpine bridge):
         <p class="modal-body-subtitle">
           You are about to change the status of <strong id="statusItemName" class="text-gray-800">this {{ item_name|default:'item' }}</strong>.
         </p>
-        <div class="modal-alert modal-alert-warning">
-          <p class="modal-alert-title">
+        <div class="alert-box alert-box--warning">
+          <p class="alert-box-heading">
             <i class="fa-solid fa-circle-info"></i> Please Note
           </p>
-          <ul id="statusNote">
+          <ul class="alert-box-list" id="statusNote">
             <li>This will affect {{ item_name|default:'item' }}'s login access</li>
             <li>Changes will take effect immediately</li>
           </ul>

@@ -49,11 +49,11 @@
         </button>
         {% endif %}
         {% if is_super_admin %}
-        <button class="panel-tab" data-tab="server-info" onclick="switchTab('server-info'); initServerInfoTab();">
-          <i class="fa-solid fa-server"></i> System &amp; Server
-        </button>
         <button class="panel-tab" data-tab="download-templates" onclick="switchTab('download-templates')">
           <i class="fa-solid fa-file-arrow-down"></i> Download Templates
+        </button>
+        <button class="panel-tab" data-tab="server-info" onclick="switchTab('server-info'); initServerInfoTab();">
+          <i class="fa-solid fa-server"></i> System &amp; Server
         </button>
         {% endif %}
       </div>
@@ -62,8 +62,8 @@
       {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
       {% if is_super_admin or perm_manage_panel_backup %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
-      {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-download-templates.html' %}{% endif %}
+      {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}
 
       {% if is_super_admin %}{% include 'partials/panel/create-notification-modal.html' %}{% endif %}
 

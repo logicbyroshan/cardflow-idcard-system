@@ -76,7 +76,7 @@ and the JS block at the bottom which wires up the logic.
 
       <!-- Optional table name -->
       <div class="form-group" style="margin-top:10px;">
-        <label class="form-label">Table Name <span style="color:var(--color-gray-400,#9ca3af);font-weight:400;">(optional  -  auto-derived from filename)</span></label>
+        <label class="form-label">Table Name <span class="form-label-hint">(optional  -  auto-derived from filename)</span></label>
         <input type="text" id="cxTableName" class="form-input" placeholder="e.g. CLASS 5 DATA">
       </div>
 
@@ -97,9 +97,9 @@ and the JS block at the bottom which wires up the logic.
       </p>
 
       <!-- Data rows count -->
-      <div id="cxDataRowsInfo" class="modal-alert modal-alert-info" style="margin:8px 0;display:flex;align-items:center;gap:6px;">
+      <div id="cxDataRowsInfo" class="alert-box alert-box--info alert-box-inline" style="margin:8px 0;">
         <i class="fa-solid fa-table-list" style="font-size:12px;"></i>
-        <span id="cxDataRowsCount">0 data rows found</span>
+        <span id="cxDataRowsCount" class="alert-box-text">0 data rows found</span>
       </div>
 
       <!-- Field table -->
@@ -132,7 +132,7 @@ and the JS block at the bottom which wires up the logic.
     <!-- Step 3: Optional ZIP Photos -->
     <div id="cxStep3" style="display:none;">
       <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size:28px;color:var(--color-success,#22c55e);"></i></div>
-      <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span style="font-weight:400;font-size:12px;color:var(--color-gray-400,#9ca3af);">(optional)</span></h4>
+      <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span class="form-label-hint" style="font-size:12px;">(optional)</span></h4>
       <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">Upload ZIP files containing images to match with cards. Skip this step if no photos.</p>
 
       <div class="center-modal-dropzone" id="cxZipDropzone" style="border-radius:6px;margin-top:10px;">
