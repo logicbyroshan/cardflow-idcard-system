@@ -45,12 +45,15 @@ Deferred:
 2. Any iOS-specific capability.
 
 ## Phase 5 - QA and Security
-Status: Implemented (foundation)
+Status: Implemented (extended)
 
 Delivered:
 1. API-level tests for shell config/register/ping routes.
 2. Device record model with per-user+installation uniqueness.
 3. Server policy settings for minimum and latest Android build.
+4. API tests for invalid installation IDs and update-required/recommended policy behavior.
+5. API tests for force-update toggle behavior.
+6. CI workflow now runs backend shell API regression tests.
 
 Operational checklist:
 1. Run targeted mobile tests in CI/staging.
@@ -69,12 +72,16 @@ Delivered:
 2. Release runbook documented in `ANDROID_RELEASE_PIPELINE.md`.
 
 ## Phase 7 - Rollout and Monitoring
-Status: Implemented (foundation)
+Status: Implemented (extended)
 
 Delivered:
 1. Device heartbeat endpoint for active-install tracking.
 2. Mobile device metadata storage (model/version/build/ip/last_seen).
 3. Rollout monitoring playbook documented in `ANDROID_QA_SECURITY_CHECKLIST.md`.
+4. Device summary monitoring endpoint for elevated roles:
+   - active 24h / 7d
+   - stale 30d
+   - top observed build versions
 
 Go-live recommendation:
 1. Closed testing (Play internal/closed track) for first 20-50 users.

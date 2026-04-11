@@ -7,15 +7,15 @@
 - [ ] Browser and shell concurrent session policy behaves as expected.
 
 ## B. Device Registry and Heartbeat
-- [ ] Register endpoint creates a device record on first launch.
-- [ ] Re-register updates existing record (same installation_id).
-- [ ] Ping endpoint updates `last_seen_at` and app version/build.
-- [ ] Invalid installation IDs are rejected with 400.
+- [x] Register endpoint creates a device record on first launch.
+- [x] Re-register updates existing record (same installation_id).
+- [x] Ping endpoint updates `last_seen_at` and app version/build.
+- [x] Invalid installation IDs are rejected with 400.
 
 ## C. App Update Policy
-- [ ] `MOBILE_SHELL_ANDROID_MIN_BUILD` enforces hard update.
-- [ ] `MOBILE_SHELL_ANDROID_LATEST_BUILD` triggers recommendation state.
-- [ ] Force update toggle works regardless of build value.
+- [x] `MOBILE_SHELL_ANDROID_MIN_BUILD` enforces hard update.
+- [x] `MOBILE_SHELL_ANDROID_LATEST_BUILD` triggers recommendation state.
+- [x] Force update toggle works regardless of build value.
 
 ## D. Push Integration
 - [ ] Push permission prompt appears on Android 13+.
@@ -37,3 +37,8 @@
 - [ ] No blocker bugs in auth, upload, card list, status update flows.
 - [ ] Crash-free closed test sessions >= 99% target window.
 - [ ] Version/update policy verified in staging and production config.
+
+## Automated Coverage Notes
+- Mobile shell API regression tests now include register/ping upsert behavior and invalid installation ID rejection.
+- Update-policy regression tests now cover required, recommended, and force-update paths.
+- CI workflow runs `mobile_app.tests.MobileAppShellApiTests` alongside Android shell build checks.

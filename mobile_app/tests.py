@@ -5,7 +5,7 @@ from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
@@ -400,6 +400,100 @@ class MobileAppShellApiTests(MobileAppBaseTestCase):
 
 		self.assertEqual(response.status_code, 200)
 		self.assertTrue(MobileDevice.objects.filter(user=self.client_user, installation_id='inst-ping-0002').exists())
+
+	def test_mobile_shell_register_rejects_invalid_installation_id(self):
+		self._login_mobile_client()
+		response = self.client.post(
+			'/app/api/mobile-shell/device/register/',
+			data=json.dumps({'platform': 'android', 'installation_id': 'bad'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+
+	def test_mobile_shell_ping_rejects_invalid_installation_id(self):
+		self._login_mobile_client()
+		response = self.client.post(
+			'/app/api/mobile-shell/device/ping/',
+			data=json.dumps({'installation_id': 'short'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+
+	@override_settings(
+		MOBILE_SHELL_ANDROID_MIN_BUILD=120,
+		MOBILE_SHELL_ANDROID_LATEST_BUILD=130,
+		MOBILE_SHELL_ANDROID_LATEST_VERSION='1.3.0',
+	)
+	def test_mobile_shell_config_sets_required_and_recommended_flags(self):
+		self._login_mobile_client()
+
+		low_resp = self.client.get('/app/api/mobile-shell/config/?app_build=110')
+		low_data = low_resp.json()['data']
+		self.assertTrue(low_data['update_required'])
+		self.assertTrue(low_data['update_recommended'])
+
+		mid_resp = self.client.get('/app/api/mobile-shell/config/?app_build=125')
+		mid_data = mid_resp.json()['data']
+		self.assertFalse(mid_data['update_required'])
+		self.assertTrue(mid_data['update_recommended'])
+
+		high_resp = self.client.get('/app/api/mobile-shell/config/?app_build=130')
+		high_data = high_resp.json()['data']
+		self.assertFalse(high_data['update_required'])
+		self.assertFalse(high_data['update_recommended'])
+
+	@override_settings(
+		MOBILE_SHELL_ANDROID_FORCE_UPDATE=True,
+		MOBILE_SHELL_ANDROID_MIN_BUILD=1,
+		MOBILE_SHELL_ANDROID_LATEST_BUILD=1,
+	)
+	def test_mobile_shell_config_force_update_overrides_build_threshold(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/config/?app_build=9999')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['data']['update_required'])
+
+	def test_mobile_shell_summary_requires_elevated_role(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/device/summary/')
+		self.assertEqual(response.status_code, 403)
+
+	def test_mobile_shell_summary_returns_rollout_metrics(self):
+		self._login_mobile_super_admin()
+		now = timezone.now()
+
+		recent = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='inst-summary-0001',
+			app_build=10,
+			app_version='1.0.0',
+			is_active=True,
+		)
+		older = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='inst-summary-0002',
+			app_build=9,
+			app_version='0.9.0',
+			is_active=True,
+		)
+
+		MobileDevice.objects.filter(pk=recent.pk).update(last_seen_at=now - timedelta(hours=2))
+		MobileDevice.objects.filter(pk=older.pk).update(last_seen_at=now - timedelta(days=45))
+
+		response = self.client.get('/app/api/mobile-shell/device/summary/')
+		self.assertEqual(response.status_code, 200)
+		body = response.json()
+		self.assertTrue(body['success'])
+		self.assertGreaterEqual(body['data']['total_devices'], 2)
+		self.assertGreaterEqual(body['data']['active_24h'], 1)
+		self.assertGreaterEqual(body['data']['stale_30d'], 1)
+		self.assertIsInstance(body['data']['top_builds'], list)
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):

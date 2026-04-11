@@ -37,3 +37,8 @@
 1. Track auth failures, upload failures, and status update errors.
 2. Track active device heartbeat counts and stale device records.
 3. Track push registration success volume by day.
+
+## 7. CI Quality Gates
+1. Android shell workflow builds a debug APK artifact on every shell/backend change.
+2. Backend gate runs `mobile_app.tests.MobileAppShellApiTests` to validate config/register/ping/summary behavior.
+3. Merge only when both Android build and backend mobile-shell tests pass.

@@ -184,6 +184,66 @@ window.showConfirm = function showConfirm(options) {
         document.body.appendChild(wrap);
     }
 
+    function showUpdateRecommendedBanner(configPayload, currentBuild) {
+        var current = document.getElementById('mobile-shell-recommended-update');
+        if (current) return;
+
+        var latestBuild = parseInt(configPayload && configPayload.latest_build, 10) || 0;
+        var latestVersion = String(configPayload && configPayload.latest_version || '').trim();
+        var supportUrl = String(configPayload && configPayload.support_url || '/app/profile/').trim();
+        var reminderKey = 'adarsh.mobile.recommended.' + String(latestBuild || latestVersion || 'unknown');
+
+        try {
+            if (localStorage.getItem(reminderKey) === 'dismissed') {
+                return;
+            }
+        } catch (err) {}
+
+        var wrap = document.createElement('div');
+        wrap.id = 'mobile-shell-recommended-update';
+        wrap.style.position = 'fixed';
+        wrap.style.left = '12px';
+        wrap.style.right = '12px';
+        wrap.style.bottom = '12px';
+        wrap.style.zIndex = '10060';
+        wrap.style.background = '#0f172a';
+        wrap.style.color = '#fff';
+        wrap.style.borderRadius = '12px';
+        wrap.style.padding = '12px 14px';
+        wrap.style.boxShadow = '0 12px 24px rgba(0,0,0,.3)';
+
+        var message = latestVersion
+            ? 'A newer app version (' + latestVersion + ') is available.'
+            : 'A newer app build is available.';
+
+        wrap.innerHTML = '' +
+            '<div style="display:flex;gap:10px;align-items:flex-start;">' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:700;line-height:1.25;">Update Available</div>' +
+            '<div style="font-size:12px;opacity:.9;line-height:1.35;margin-top:2px;">' + message + '</div>' +
+            (currentBuild > 0 && latestBuild > 0
+                ? '<div style="font-size:11px;opacity:.75;margin-top:4px;">Current build ' + currentBuild + ' -> Latest build ' + latestBuild + '</div>'
+                : '') +
+            '</div>' +
+            '<div style="display:flex;gap:8px;">' +
+            '<a id="mobile-shell-recommended-open" href="' + supportUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#fff;color:#0f172a;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
+            '<button id="mobile-shell-recommended-dismiss" type="button" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:600;">Later</button>' +
+            '</div>' +
+            '</div>';
+
+        document.body.appendChild(wrap);
+
+        var dismissBtn = document.getElementById('mobile-shell-recommended-dismiss');
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', function() {
+                try {
+                    localStorage.setItem(reminderKey, 'dismissed');
+                } catch (err) {}
+                wrap.remove();
+            });
+        }
+    }
+
     function setupExternalLinkBridge() {
         if (!Browser || typeof Browser.open !== 'function') return;
         document.addEventListener('click', function(event) {
@@ -288,6 +348,8 @@ window.showConfirm = function showConfirm(options) {
             var configPayload = registerResp && registerResp.data && registerResp.data.config;
             if (configPayload && configPayload.update_required) {
                 showUpdateRequiredOverlay(configPayload);
+            } else if (configPayload && configPayload.update_recommended) {
+                showUpdateRecommendedBanner(configPayload, nativeInfo.appBuild);
             }
         } catch (err) {}
 

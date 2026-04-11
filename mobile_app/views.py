@@ -13,6 +13,7 @@ import re
 import logging
 import time
 import hashlib
+from datetime import timedelta
 from urllib.parse import urlencode
 from functools import wraps
 
@@ -31,6 +32,7 @@ from django.db.models.functions import Cast
 from django.db.models.fields.json import KeyTextTransform
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.timezone import make_aware, is_naive
+from django.utils import timezone
 
 from client.services import (
     ClientAccessService,
@@ -74,6 +76,14 @@ def _mobile_shell_safe_int(raw_value, default=0):
         return int(raw_value)
     except (TypeError, ValueError):
         return default
+
+
+def _mobile_shell_safe_bool(raw_value, default=False):
+    if raw_value is None:
+        return default
+    if isinstance(raw_value, bool):
+        return raw_value
+    return _truthy(raw_value)
 
 
 def _mobile_shell_app_config_payload(*, app_build=0):
@@ -3756,6 +3766,35 @@ def api_mobile_shell_device_ping(request):
 
     config_payload = _mobile_shell_app_config_payload(app_build=app_build)
     return JsonResponse({'success': True, 'data': {'config': config_payload}})
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_mobile_shell_device_summary(request):
+    """Rollout monitoring snapshot for shell devices (super/pro admin only)."""
+    if not (PermissionService.is_super_admin(request.user) or PermissionService.is_pro_user(request.user)):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    include_inactive = _mobile_shell_safe_bool(request.GET.get('include_inactive'), False)
+    now = timezone.now()
+    base_qs = MobileDevice.objects.filter(platform='android')
+    if not include_inactive:
+        base_qs = base_qs.filter(is_active=True)
+
+    summary = {
+        'total_devices': base_qs.count(),
+        'active_24h': base_qs.filter(last_seen_at__gte=now - timedelta(hours=24)).count(),
+        'active_7d': base_qs.filter(last_seen_at__gte=now - timedelta(days=7)).count(),
+        'stale_30d': base_qs.filter(last_seen_at__lt=now - timedelta(days=30)).count(),
+        'last_seen_at': base_qs.aggregate(last_seen=Max('last_seen_at')).get('last_seen'),
+        'top_builds': list(
+            base_qs.exclude(app_build__lte=0)
+            .values('app_build', 'app_version')
+            .annotate(total=Count('id'))
+            .order_by('-app_build', '-total')[:5]
+        ),
+    }
+    return JsonResponse({'success': True, 'data': summary})
 
 
 @require_mobile_client
