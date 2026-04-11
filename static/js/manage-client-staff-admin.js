@@ -435,6 +435,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    async function openAssignmentDrawerFromTable(staffId) {
+        if (!staffId) return;
+
+        var targetId = String(staffId);
+        var row = document.querySelector('#staff-table-body tr[data-staff-id="' + targetId + '"]');
+        if (row) {
+            selectStaffRow(row);
+            targetId = row.dataset.staffId;
+        }
+
+        var staffData = await fetchStaffDetails(targetId);
+        if (staffData) {
+            openDrawer('view', staffData);
+        }
+    }
+
+    window.openStaffAssignmentDrawerFromTable = openAssignmentDrawerFromTable;
+
     if (tableContainer) {
         tableContainer.addEventListener('click', function(e) {
             var historyBtn = e.target.closest('.client-staff-history-trigger');
@@ -442,6 +460,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 e.stopPropagation();
                 openStaffHistory(historyBtn.dataset.staffId, historyBtn.dataset.staffName);
+                return;
+            }
+
+            var viewMoreBtn = e.target.closest('.staff-assignment-view-more');
+            if (viewMoreBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                openAssignmentDrawerFromTable(viewMoreBtn.dataset.staffId);
                 return;
             }
 

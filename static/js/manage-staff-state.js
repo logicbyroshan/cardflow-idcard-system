@@ -191,6 +191,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tableContainer) {
         // Row click - select row (delegated from stable parent)
         tableContainer.addEventListener('click', function(e) {
+            var viewMoreBtn = e.target.closest('.staff-assignment-view-more');
+            if (viewMoreBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var viewRow = viewMoreBtn.closest('tr');
+                if (viewRow && viewRow.dataset.staffId && !viewRow.classList.contains('no-data-row')) {
+                    NS.selectStaffRow(viewRow);
+                }
+
+                if (typeof window.openStaffAssignmentDrawerFromTable === 'function') {
+                    window.openStaffAssignmentDrawerFromTable(viewMoreBtn.dataset.staffId);
+                } else if (viewStaffBtn && !viewStaffBtn.disabled) {
+                    viewStaffBtn.click();
+                }
+                return;
+            }
+
             var row = e.target.closest('tr');
             if (row && row.dataset.staffId && !row.classList.contains('no-data-row')) {
                 NS.selectStaffRow(row);

@@ -36,6 +36,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    window.openStaffAssignmentDrawerFromTable = async function(staffId) {
+        var targetId = staffId || NS.selectedStaffId;
+        if (!targetId) return;
+
+        var row = document.querySelector('#staff-table-body tr[data-staff-id="' + String(targetId) + '"]');
+        if (row && typeof NS.selectStaffRow === 'function') {
+            NS.selectStaffRow(row);
+            targetId = row.dataset.staffId;
+        }
+
+        var staffData = await NS.fetchStaffDetails(targetId);
+        if (staffData) NS.openDrawer('view', staffData);
+    };
+
     if (deleteStaffBtn) {
         deleteStaffBtn.addEventListener('click', function() {
             if (!NS.selectedStaffId || !NS.selectedRow) {

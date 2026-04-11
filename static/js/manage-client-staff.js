@@ -1042,6 +1042,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    window.openStaffAssignmentDrawerFromTable = async function (staffId) {
+        if (!staffId || !mgr) return;
+
+        var targetId = String(staffId);
+        if (typeof mgr.selectRowById === 'function') {
+            mgr.selectRowById(targetId);
+        }
+
+        var detail = await fetchStaffDetailById(targetId);
+        if (!detail) {
+            if (typeof showToast === 'function') showToast('Failed to load staff data', 'error');
+            return;
+        }
+
+        mgr.openDrawer('assign', detail);
+    };
+
     // ==================== INITIALIZE SHARED MODULE ====================
     var mgr = window.initStaffPage({
 
