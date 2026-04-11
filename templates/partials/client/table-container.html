@@ -25,8 +25,19 @@ Required context:
         </thead>
         <tbody id="client-table-body">
             {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}">
-                <td class="text-left">{{ client.name }}</td>
+            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}" data-client-logo="{% if client.website_logo %}{{ client.website_logo.url }}{% endif %}">
+                <td class="text-left">
+                    <div class="client-name-cell" title="{{ client.name }}">
+                        <span class="client-logo-badge" aria-hidden="true">
+                            {% if client.website_logo %}
+                            <img src="{{ client.website_logo.url }}" alt="{{ client.name }} logo" loading="lazy">
+                            {% else %}
+                            <i class="fa-solid fa-building"></i>
+                            {% endif %}
+                        </span>
+                        <span class="client-name-text">{{ client.name }}</span>
+                    </div>
+                </td>
                 <td class="email-cell text-left">{{ client.user.email|email_break }}</td>
                 <td class="phone-cell text-center">{{ client.user.phone|default:"-"|phone_break }}</td>
                 <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>

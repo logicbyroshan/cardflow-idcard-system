@@ -60,6 +60,24 @@ document.addEventListener('DOMContentLoaded', function() {
           .replace(/'/g, '&#39;');
       }
 
+      function resolveClientLogoUrl(item) {
+        if (!item || typeof item !== 'object') return '';
+        return item.website_logo_url || item.photo_url || item.logo_url || '';
+      }
+
+      function getSelectedClientName() {
+        if (!NS.selectedRow) return '';
+        var fromDataset = NS.selectedRow.dataset ? NS.selectedRow.dataset.clientName : '';
+        if (fromDataset) return String(fromDataset).trim();
+        var firstCell = NS.selectedRow.querySelector('td:first-child');
+        return firstCell ? String(firstCell.textContent || '').trim() : '';
+      }
+
+      function getSelectedClientLogo() {
+        if (!NS.selectedRow || !NS.selectedRow.dataset) return '';
+        return String(NS.selectedRow.dataset.clientLogo || '').trim();
+      }
+
       function renderClientMessageHistory(messages, historyNode) {
         if (!historyNode) return;
         if (!messages || messages.length === 0) {
@@ -201,8 +219,13 @@ document.addEventListener('DOMContentLoaded', function() {
           if (isFocused) rowClass += ' active';
           var statusText = clientItem.status === 'active' ? 'Active' : 'Inactive';
           var userText = clientItem.is_user_active ? 'Login active' : 'Login inactive';
+          var logoUrl = resolveClientLogoUrl(clientItem);
+          var logoHtml = logoUrl
+            ? '<span class="group-msg-client-avatar"><img src="' + escapeHtmlLocal(logoUrl) + '" alt="' + escapeHtmlLocal(clientItem.name || 'Client') + ' logo" loading="lazy"></span>'
+            : '<span class="group-msg-client-avatar"><i class="fa-solid fa-building"></i></span>';
           return (
             '<div class="' + rowClass + '" data-client-id="' + escapeHtmlLocal(clientId) + '">' +
+              logoHtml +
               '<div class="group-msg-client-meta">' +
                 '<span class="group-msg-client-name">' + escapeHtmlLocal(clientItem.name || '-') + '</span>' +
                 '<span class="group-msg-client-sub">' + escapeHtmlLocal(statusText) + ' | ' + escapeHtmlLocal(userText) + '</span>' +
@@ -314,13 +337,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (deleteClientBtn) deleteClientBtn.addEventListener('click', function() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
-        var clientName = NS.selectedRow.querySelector('td:first-child').textContent;
+        var clientName = getSelectedClientName();
         NS.openDeleteModalFn(clientName);
       });
 
       if (activeClientBtn) activeClientBtn.addEventListener('click', function() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
-        var clientName = NS.selectedRow.querySelector('td:first-child').textContent;
+        var clientName = getSelectedClientName();
         var currentStatus = NS.selectedRow.dataset.clientStatus;
         NS.pendingStatusClientId = NS.selectedClientId;
         NS.openStatusModalFn(clientName, currentStatus);
@@ -661,6 +684,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var closeStaffDrawer = document.getElementById('closeStaffDrawer');
       var closeStaffDrawerBtn = document.getElementById('closeStaffDrawerBtn');
       var staffDrawerClientName = document.getElementById('staffDrawerClientName');
+      var staffDrawerClientLogo = document.getElementById('staffDrawerClientLogo');
       var staffList = document.getElementById('staffList');
       var noStaffMessage = document.getElementById('noStaffMessage');
       var totalStaffCount = document.getElementById('totalStaffCount');
@@ -781,8 +805,18 @@ document.addEventListener('DOMContentLoaded', function() {
       async function openStaffDrawer() {
         if (!NS.selectedClientId || !NS.selectedRow) return;
 
-        var clientName = NS.selectedRow.querySelector('td:first-child').textContent;
-        staffDrawerClientName.textContent = clientName;
+        var clientName = getSelectedClientName() || 'Client';
+        var clientLogo = getSelectedClientLogo();
+        if (staffDrawerClientName) {
+          staffDrawerClientName.textContent = clientName;
+        }
+        if (staffDrawerClientLogo) {
+          if (clientLogo) {
+            staffDrawerClientLogo.innerHTML = '<img src="' + escapeHtmlLocal(clientLogo) + '" alt="' + escapeHtmlLocal(clientName) + ' logo" style="width:100%;height:100%;object-fit:contain;background:#fff;padding:3px;">';
+          } else {
+            staffDrawerClientLogo.innerHTML = '<i class="fa-solid fa-building" style="font-size:12px;"></i>';
+          }
+        }
 
         // Show loading state
         ensureStaffSkeletonStyles();

@@ -357,6 +357,28 @@
   accent-color: #667eea;
   flex-shrink: 0;
 }
+.backup-client-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #dbe2ea;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.backup-client-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #ffffff;
+}
+.backup-client-logo i {
+  color: #64748b;
+  font-size: 14px;
+}
 .backup-client-info { flex: 1; min-width: 0; }
 .backup-client-name {
   font-size: 13px;

@@ -2,7 +2,15 @@
     <div id="staff-drawer" class="drawer-modal">
       <div class="drawer-content drawer-wide">
         <div class="drawer-header">
-          <h3><i class="fa-solid fa-users"></i> <span id="staffDrawerClientName">Client</span>'s Staff</h3>
+          <h3>
+            <i class="fa-solid fa-users"></i>
+            <span style="display:inline-flex;align-items:center;gap:8px;">
+              <span id="staffDrawerClientLogo" style="width:26px;height:26px;border-radius:6px;border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.2);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                <i class="fa-solid fa-building" style="font-size:12px;"></i>
+              </span>
+              <span><span id="staffDrawerClientName">Client</span>'s Staff</span>
+            </span>
+          </h3>
           <button class="drawer-close" id="closeStaffDrawer" aria-label="Close staff drawer"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="drawer-body">

@@ -807,6 +807,9 @@ def api_client_message_targets(request):
                 'name': item.name,
                 'status': item.status,
                 'is_user_active': bool(item.user and item.user.is_active),
+                'logo_url': item.website_logo.url if getattr(item, 'website_logo', None) else None,
+                'photo_url': item.website_logo.url if getattr(item, 'website_logo', None) else None,
+                'website_logo_url': item.website_logo.url if getattr(item, 'website_logo', None) else None,
             }
             for item in rows
         ],

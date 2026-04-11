@@ -32,9 +32,12 @@
     drawer.setAttribute('aria-hidden', 'true');
     drawer.innerHTML = '' +
       '<div class="drawer-header card-history-header">' +
-        '<div>' +
-          '<div class="card-history-title">Client Login History</div>' +
-          '<div class="card-history-subtitle" id="clientHistorySubtitle">Login, logout, and devices</div>' +
+        '<div class="card-history-header-main">' +
+          '<span class="card-history-client-logo" id="clientHistoryLogo" aria-hidden="true"><i class="fa-solid fa-building"></i></span>' +
+          '<div>' +
+            '<div class="card-history-title">Client Login History</div>' +
+            '<div class="card-history-subtitle" id="clientHistorySubtitle">Login, logout, and devices</div>' +
+          '</div>' +
         '</div>' +
         '<button type="button" class="drawer-close card-history-close" id="clientHistoryClose" aria-label="Close history">' +
           '<i class="fa-solid fa-xmark"></i>' +
@@ -77,10 +80,22 @@
     document.body.style.overflow = 'hidden';
   }
 
-  function renderClientHistoryLoading(clientName) {
+  function renderClientHistoryHeaderLogo(logoUrl, clientName) {
+    var logoEl = document.getElementById('clientHistoryLogo');
+    if (!logoEl) return;
+
+    if (logoUrl) {
+      logoEl.innerHTML = '<img src="' + escapeHtml(logoUrl) + '" alt="' + escapeHtml(clientName || 'Client') + ' logo" loading="lazy">';
+    } else {
+      logoEl.innerHTML = '<i class="fa-solid fa-building"></i>';
+    }
+  }
+
+  function renderClientHistoryLoading(clientName, logoUrl) {
     var subtitle = document.getElementById('clientHistorySubtitle');
     var body = document.getElementById('clientHistoryBody');
 
+    renderClientHistoryHeaderLogo(logoUrl, clientName);
     if (subtitle) subtitle.textContent = clientName ? 'Client: ' + clientName : 'Loading';
     if (body) {
       body.innerHTML = '<div class="card-history-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading login history...</div>';
@@ -139,10 +154,12 @@
     return rows.join('');
   }
 
-  function renderClientHistory(clientName, payload) {
+  function renderClientHistory(clientName, payload, logoUrl) {
     var subtitle = document.getElementById('clientHistorySubtitle');
     var body = document.getElementById('clientHistoryBody');
     if (!body) return;
+
+    renderClientHistoryHeaderLogo(logoUrl, clientName);
 
     var activeDevices = Number(payload.active_devices || 0);
     var surfaceCounts = payload && payload.active_surface_counts ? payload.active_surface_counts : {};
@@ -204,11 +221,11 @@
     body.innerHTML = '<div class="card-history-list">' + activeSummaryHtml + html + '</div>';
   }
 
-  function openClientHistory(clientId, clientName) {
+  function openClientHistory(clientId, clientName, logoUrl) {
     if (!clientId) return;
 
     openClientHistoryDrawer();
-    renderClientHistoryLoading(clientName || 'Client');
+    renderClientHistoryLoading(clientName || 'Client', logoUrl || '');
 
     fetch(clientHistoryApiUrl(clientId), {
       method: 'GET',
@@ -225,7 +242,7 @@
         });
       })
       .then(function(data) {
-        renderClientHistory(clientName || (data.client && data.client.name) || 'Client', data);
+        renderClientHistory(clientName || (data.client && data.client.name) || 'Client', data, logoUrl || '');
       })
       .catch(function(err) {
         renderClientHistoryError(err && err.message ? err.message : 'Failed to load login history.');
@@ -251,7 +268,8 @@
         window.ManageClientPage.selectRow(row);
       }
 
-      openClientHistory(btn.dataset.clientId, btn.dataset.clientName);
+      var clientLogo = row && row.dataset ? row.dataset.clientLogo || '' : '';
+      openClientHistory(btn.dataset.clientId, btn.dataset.clientName, clientLogo);
     });
 
     tableContainer.dataset.historyBound = '1';

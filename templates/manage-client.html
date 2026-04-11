@@ -57,6 +57,48 @@
       transform: translateY(-1px);
     }
 
+    .client-name-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .client-logo-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid #dbe2ea;
+      background: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .client-logo-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #ffffff;
+    }
+
+    .client-logo-badge i {
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .client-name-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+      vertical-align: middle;
+      max-width: 240px;
+    }
+
     .client-history-chip-row {
       display: flex;
       flex-wrap: wrap;
@@ -147,8 +189,19 @@
           </thead>
           <tbody id="client-table-body">
             {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}">
-              <td class="text-left">{{ client.name }}</td>
+            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}" data-client-logo="{% if client.website_logo %}{{ client.website_logo.url }}{% endif %}">
+              <td class="text-left">
+                <div class="client-name-cell" title="{{ client.name }}">
+                  <span class="client-logo-badge" aria-hidden="true">
+                    {% if client.website_logo %}
+                    <img src="{{ client.website_logo.url }}" alt="{{ client.name }} logo" loading="lazy">
+                    {% else %}
+                    <i class="fa-solid fa-building"></i>
+                    {% endif %}
+                  </span>
+                  <span class="client-name-text">{{ client.name }}</span>
+                </div>
+              </td>
               <td class="text-left">{{ client.user.email }}</td>
               <td class="text-center">{{ client.user.phone|default:"-" }}</td>
               <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>

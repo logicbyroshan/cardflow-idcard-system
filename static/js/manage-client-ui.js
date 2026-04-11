@@ -43,6 +43,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Phase 1: Profile photo upload removed - using avatar placeholder
 
+      function resolveClientLogoUrl(clientData) {
+        if (!clientData || typeof clientData !== 'object') return '';
+        return clientData.website_logo_url || clientData.photo_url || clientData.logo_url || '';
+      }
+
       function renderClientDrawerAvatar(name, logoUrl) {
         if (!clientDrawerAvatar) return;
         if (logoUrl) {
@@ -314,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('clientPhone').value = clientData.phone || '';
             document.getElementById('clientAddress').value = clientData.address || '';
             NS.setClientStatusDropdown(clientData.status === 'active' ? 'true' : 'false');
-            renderClientDrawerAvatar(clientData.name || '', clientData.photo_url || '');
+            renderClientDrawerAvatar(clientData.name || '', resolveClientLogoUrl(clientData));
             
             // Phase 1: Photo upload removed - using avatar placeholder
             
@@ -350,16 +355,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update avatar with photo if available
         var avatarEl = document.getElementById('viewClientAvatar');
-        if (clientData.photo_url) {
+        var resolvedLogoUrl = resolveClientLogoUrl(clientData);
+        if (resolvedLogoUrl) {
           avatarEl.innerHTML = '';
           var img = document.createElement('img');
-          img.src = clientData.photo_url;
+          img.src = resolvedLogoUrl;
           img.alt = clientData.name || '';
-          img.className = 'w-full h-full object-cover';
-          img.style.cssText = 'width:48px;height:48px;border-radius:50%;';
+          img.className = 'w-full h-full object-contain';
+          img.style.cssText = 'width:48px;height:48px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;padding:4px;';
           avatarEl.appendChild(img);
         } else {
-          avatarEl.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client" style="width:48px;height:48px;border-radius:50%;font-size:22px;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-building"></i></div>';
+          avatarEl.innerHTML = '<div class="user-avatar-placeholder user-avatar-placeholder--client" style="width:48px;height:48px;border-radius:10px;font-size:20px;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-building"></i></div>';
         }
         
         var statusEl = document.getElementById('viewClientStatus');

@@ -862,47 +862,94 @@ def api_engine_adjust_image(request):
 @require_GET
 def engine_download(request):
     """
-    Stream AdarshEngineSetup.exe (Inno Setup installer) to the browser as an attachment.
+    Stream the latest available installer to the browser as an attachment.
 
-    Looks for the file in:
-      1. MEDIA_ROOT/engine/AdarshEngineSetup.exe  (primary)
-      2. STATICFILES_DIRS[0]/engine/AdarshEngineSetup.exe  (legacy fallback)
-      3. STATIC_ROOT/engine/AdarshEngineSetup.exe           (legacy fallback)
+    Supports both legacy and current installer names, including collectstatic
+    hashed filenames.
+
+    Looks in:
+      1. MEDIA_ROOT/engine/
+      2. STATICFILES_DIRS[*]/engine/
+      3. STATIC_ROOT/engine/
     """
     from django.conf import settings
     from django.http import Http404
 
-    candidates = []
+    search_roots = []
+    installer_name_candidates = [
+        'AdarshEngineSetup.exe',
+        'AdarshCropperSetup.exe',
+        'AdarshCropper.exe',
+        'PassportEngineSetup.exe',
+        'PhotoCropperSetup.exe',
+    ]
+    installer_glob_patterns = [
+        'AdarshEngineSetup*.exe',
+        'AdarshCropperSetup*.exe',
+        'AdarshCropper*.exe',
+        'PassportEngineSetup*.exe',
+        'PhotoCropperSetup*.exe',
+    ]
 
     # Primary: media directory (not processed by collectstatic)
     if hasattr(settings, 'MEDIA_ROOT') and settings.MEDIA_ROOT:
-        candidates.append(Path(settings.MEDIA_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
+        search_roots.append(Path(settings.MEDIA_ROOT) / 'engine')
 
     # Legacy fallback: staticfiles dirs (dev)
     for sdir in getattr(settings, 'STATICFILES_DIRS', []):
-        candidates.append(Path(sdir) / 'engine' / 'AdarshEngineSetup.exe')
+        search_roots.append(Path(sdir) / 'engine')
 
     # Legacy fallback: collected static root (production)
     if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
-        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
+        search_roots.append(Path(settings.STATIC_ROOT) / 'engine')
 
     exe_path = None
-    for candidate in candidates:
-        if candidate.exists():
-            exe_path = candidate
+    # Prefer exact canonical filenames first.
+    for root in search_roots:
+        if not root.exists():
+            continue
+        for name in installer_name_candidates:
+            candidate = root / name
+            if candidate.is_file():
+                exe_path = candidate
+                break
+        if exe_path is not None:
             break
 
+    # Fall back to hashed collectstatic variants (e.g., Name.abcd1234.exe).
     if exe_path is None:
-        logger.error("AdarshEngineSetup.exe not found in any candidate path.")
+        for pattern in installer_glob_patterns:
+            matches = []
+            for root in search_roots:
+                if not root.exists():
+                    continue
+                matches.extend([p for p in root.glob(pattern) if p.is_file()])
+            if matches:
+                exe_path = max(matches, key=lambda p: p.stat().st_mtime)
+                break
+
+    if exe_path is None:
+        logger.error("No installer executable found in engine search roots: %s", [str(p) for p in search_roots])
         raise Http404("AdarshEngine installer not found.")
 
-    logger.info("Serving AdarshEngineSetup.exe from: %s", exe_path)
+    download_filename = 'AdarshEngineSetup.exe'
+    lower_name = exe_path.name.lower()
+    if lower_name.startswith('adarshcroppersetup'):
+        download_filename = 'AdarshCropperSetup.exe'
+    elif lower_name.startswith('adarshcropper'):
+        download_filename = 'AdarshCropper.exe'
+    elif lower_name.startswith('passportenginesetup'):
+        download_filename = 'PassportEngineSetup.exe'
+    elif lower_name.startswith('photocroppersetup'):
+        download_filename = 'PhotoCropperSetup.exe'
+
+    logger.info("Serving installer from: %s (download as %s)", exe_path, download_filename)
 
     response = FileResponse(
         open(exe_path, 'rb'),
         content_type='application/octet-stream',
         as_attachment=True,
-        filename='AdarshEngineSetup.exe',
+        filename=download_filename,
     )
     # Suppress browsers/proxies from sniffing the content type
     response['X-Content-Type-Options'] = 'nosniff'

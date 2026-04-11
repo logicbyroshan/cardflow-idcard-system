@@ -19,10 +19,18 @@ Contains: Table displaying active clients with groups info
             {% for client in clients %}
             <tr class="client-main-row"
                 data-client-id="{{ client.id }}"
-                data-client-name="{{ client.name|escape }}">
+                data-client-name="{{ client.name|escape }}"
+                data-client-logo="{% if client.website_logo %}{{ client.website_logo.url }}{% endif %}">
                 <td class="name-col text-left">
                     <div class="client-name-cell">
-                        <span>{{ client.name }}</span>
+                        <span class="client-logo-badge" aria-hidden="true">
+                          {% if client.website_logo %}
+                          <img src="{{ client.website_logo.url }}" alt="{{ client.name }} logo" loading="lazy">
+                          {% else %}
+                          <i class="fa-solid fa-building"></i>
+                          {% endif %}
+                        </span>
+                        <span class="client-name-text">{{ client.name }}</span>
                     </div>
                 </td>
                 <td class="email-col text-left">{{ client.user.email }}</td>

@@ -46,6 +46,39 @@
   padding: 12px 20px;
 }
 
+.card-history-header-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.card-history-client-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.card-history-client-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 3px;
+}
+
+.card-history-client-logo i {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+}
+
 .card-history-title {
   font-size: 15px;
   font-weight: 700;
