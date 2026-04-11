@@ -311,7 +311,7 @@
         document.getElementById('categoryModalTitle').textContent = 'Add Category';
         document.getElementById('categoryForm').reset();
         document.getElementById('cat_id').value = '';
-        document.getElementById('cat_icon').value = 'fas fa-folder';
+        document.getElementById('cat_icon').value = 'fa-solid fa-folder';
         document.getElementById('cat_is_bento').checked = false;
         document.getElementById('cat_bento_size').value = 'normal';
         if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {

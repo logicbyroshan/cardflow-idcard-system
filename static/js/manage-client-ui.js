@@ -441,15 +441,15 @@ document.addEventListener('DOMContentLoaded', function() {
           // Going to deactivate
           statusModalHeader.style.background = '#dc2626';
           statusModalIcon.innerHTML = '<i class="fa-solid fa-ban text-danger text-sm"></i>';
-          statusNote.innerHTML = '<i class="fa-solid fa-exclamation-circle"></i> This will prevent the client from logging in.';
+          statusNote.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> This will prevent the client from logging in.';
           confirmStatusBtn.className = 'btn btn-md btn-danger';
           confirmStatusBtn.style.background = '';
           confirmStatusBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Deactivate';
         } else {
           // Going to activate
           statusModalHeader.style.background = '#16a34a';
-          statusModalIcon.innerHTML = '<i class="fa-solid fa-check-circle text-success text-sm"></i>';
-          statusNote.innerHTML = '<i class="fa-solid fa-info-circle"></i> This will allow the client to log in.';
+          statusModalIcon.innerHTML = '<i class="fa-solid fa-circle-check text-success text-sm"></i>';
+          statusNote.innerHTML = '<i class="fa-solid fa-circle-info"></i> This will allow the client to log in.';
           confirmStatusBtn.className = 'btn btn-md btn-success';
           confirmStatusBtn.style.background = '';
           confirmStatusBtn.innerHTML = '<i class="fa-solid fa-check"></i> Activate';

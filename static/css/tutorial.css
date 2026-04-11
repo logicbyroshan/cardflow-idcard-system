@@ -244,7 +244,7 @@
     content: counter(tutorial-step);
     width: 18px;
     height: 18px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: #667eea;
     color: #fff;
     display: inline-flex;
@@ -501,4 +501,18 @@
     .faq-grid article {
         border-right: none;
     }
+}
+
+/* Strict button consistency overrides */
+.tutorial-hero-actions .btn {
+    min-height: 32px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+.tutorial-tab-btn {
+    min-height: 32px;
+    padding: 8px 12px;
+    border-radius: 6px 6px 0 0;
 }

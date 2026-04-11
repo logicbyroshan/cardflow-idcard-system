@@ -144,7 +144,7 @@
     background: #f3f4f6;
     border: none;
     padding: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     line-height: 1;
     z-index: 2;
 }
@@ -330,16 +330,16 @@
     align-items: center;
     justify-content: center;
     gap: 0;
-    padding: 2px 10px;
+    padding: 3px 10px;
     font-size: 12px;
     font-weight: 500;
-    border-radius: 4px;
+    border-radius: 6px;
     border: none;
     cursor: pointer;
     transition: all 0.2s ease;
     background: #f1f5f9;
     color: #475569;
-    height: 24px;
+    height: 26px;
     white-space: nowrap;
 }
 
@@ -423,17 +423,17 @@
     bottom: auto;
     right: auto;
     width: auto;
-    height: auto;
+    min-height: 24px;
     background: transparent;
     color: #3b82f6;
     border: none;
-    border-radius: 2px;
-    font-size: 10px;
+    border-radius: 6px;
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     display: block;
     text-align: center;
-    padding: 0 2px;
+    padding: 3px 8px;
     margin-top: 1px;
     opacity: 1;
     transform: none;
@@ -750,7 +750,7 @@
     font-size: 12px;
     font-weight: 600;
     padding: 5px 14px;
-    border-radius: 20px;
+    border-radius: 8px;
     letter-spacing: 0.3px;
     text-transform: uppercase;
 }
@@ -896,4 +896,29 @@
 .wf-btn-confirm:active {
     transform: translateY(0);
     filter: brightness(0.95);
+}
+
+/* Strict button consistency overrides */
+.action-buttons-group .btn.action-btn,
+.action-bar .btn.action-btn {
+    height: 30px;
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+.row-action-btn {
+    height: 26px;
+    min-height: 26px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.wf-btn {
+    min-height: 34px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12.5px;
 }

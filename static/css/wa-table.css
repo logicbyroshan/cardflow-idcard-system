@@ -107,7 +107,7 @@
     z-index: 5;
     position: relative;
 }
-.wa-thumb.round { border-radius: 50%; }
+.wa-thumb.round { border-radius: 10px; }
 .wa-thumb.logo  { object-fit: contain; background: #fafbfc; padding: 6px; }
 .wa-thumb.lg    { width: 72px; height: 72px; border-radius: 10px; }
 .wa-thumb.xl    { width: 88px; height: 72px; border-radius: 10px; }
@@ -124,7 +124,7 @@
     font-size: 20px;
     border: 2px dashed var(--wa-gray-200);
 }
-.wa-no-img.round { border-radius: 50%; }
+.wa-no-img.round { border-radius: 10px; }
 .wa-no-img.lg    { width: 72px; height: 72px; font-size: 24px; }
 .wa-thumb-icon {
     display: inline-flex;
@@ -198,7 +198,7 @@
     justify-content: center;
     width: 44px;
     height: 44px;
-    border-radius: 50%;
+    border-radius: 10px;
     font-size: 16px;
     font-weight: 800;
     text-transform: uppercase;
@@ -212,7 +212,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 50%;
+    border-radius: 10px;
 }
 .wa-avatar.lg { width: 52px; height: 52px; font-size: 18px; }
 
@@ -241,7 +241,7 @@
     padding: 5px 13px;
     font-size: 11.5px;
     font-weight: 700;
-    border-radius: 20px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
@@ -251,7 +251,7 @@
     content: '';
     width: 6px;
     height: 6px;
-    border-radius: 50%;
+    border-radius: 2px;
     flex-shrink: 0;
     animation: pulse-dot 2s infinite;
 }
@@ -285,7 +285,7 @@
     padding: 4px 12px;
     font-size: 11.5px;
     font-weight: 700;
-    border-radius: 20px;
+    border-radius: 8px;
     text-transform: capitalize;
     white-space: nowrap;
 }
@@ -304,13 +304,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border: 1px solid var(--wa-gray-200);
-    border-radius: 8px;
+    border-radius: 6px;
     background: #fff;
     color: var(--wa-gray-500);
     font-size: 13px;
+    padding: 0;
     cursor: pointer;
     transition: all 0.15s ease;
     flex-shrink: 0;
@@ -384,7 +385,7 @@
     -moz-appearance: none;
     appearance: none;
     padding: 6px 30px 6px 12px;
-    border-radius: 20px;
+    border-radius: 8px;
     border: 1.5px solid var(--wa-gray-200);
     font-size: 12px;
     font-weight: 700;
@@ -448,7 +449,7 @@
 /* ===== STATUS CUSTOM DROPDOWN (contacts) ===== */
 .wa-status-dropdown { position: relative; display: inline-block; }
 .wa-status-toggle {
-    border-radius: 20px !important;
+    border-radius: 8px !important;
     padding: 5px 12px !important;
     font-size: 12px !important;
     font-weight: 700 !important;
@@ -528,4 +529,8 @@
     font-weight: 600;
     color: var(--wa-primary);
 }
-.wa-bulk-action-bar .btn { padding: 5px 14px; font-size: 12px; }
+.wa-bulk-action-bar .btn {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 12px;
+}

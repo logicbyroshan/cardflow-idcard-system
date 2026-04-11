@@ -834,7 +834,7 @@ body[style*="overflow:hidden"] {
 .dl-toast-skeleton-icon {
   width: 16px;
   height: 16px;
-  border-radius: 9999px;
+  border-radius: 8px;
   background: linear-gradient(90deg, rgba(255,255,255,0.35) 25%, rgba(255,255,255,0.6) 37%, rgba(255,255,255,0.35) 63%);
   background-size: 200% 100%;
   animation: toast-skeleton-shimmer 1.2s linear infinite;
@@ -1323,7 +1323,7 @@ body.bulk-operation-active #blockingOverlay * {
 .modal-icon-circle {
   width: 52px;
   height: 52px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1617,7 +1617,7 @@ body.bulk-operation-active #blockingOverlay * {
   width: 100%;
   height: 10px;
   background: rgba(148, 163, 184, 0.2);
-  border-radius: 9999px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -1652,7 +1652,7 @@ body.bulk-operation-active #blockingOverlay * {
 .blocking-overlay-icon {
   width: 72px;
   height: 72px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1674,7 +1674,7 @@ body.bulk-operation-active #blockingOverlay * {
 }
 
 .blocking-overlay-skeleton-block {
-  border-radius: 9999px;
+  border-radius: 8px;
   background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
   background-size: 200% 100%;
   animation: blocking-overlay-skeleton-shimmer 1.2s linear infinite;
@@ -1683,7 +1683,7 @@ body.bulk-operation-active #blockingOverlay * {
 .blocking-overlay-skeleton-circle {
   width: 32px;
   height: 32px;
-  border-radius: 9999px;
+  border-radius: 8px;
 }
 
 .blocking-overlay-skeleton-line {
@@ -1748,7 +1748,7 @@ body.bulk-operation-active #blockingOverlay * {
   background: rgba(99, 102, 241, 0.2);
   color: #a5b4fc;
   padding: 6px 14px;
-  border-radius: 20px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 20px;
@@ -1859,7 +1859,7 @@ body.bulk-operation-active #blockingOverlay * {
   justify-content: center;
   width: 72px;
   height: 72px;
-  border-radius: 50%;
+  border-radius: 8px;
   margin-bottom: 1rem;
 }
 
@@ -1926,7 +1926,7 @@ body.bulk-operation-active #blockingOverlay * {
   font-weight: 500;
   background: #e0e7ff;
   color: #4338ca;
-  border-radius: 9999px;
+  border-radius: 6px;
   white-space: nowrap;
 }
 
@@ -1937,7 +1937,7 @@ body.bulk-operation-active #blockingOverlay * {
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 9999px;
+  border-radius: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1992,5 +1992,15 @@ body.bulk-operation-active #blockingOverlay * {
 
 .staff-actions .btn-icon i {
   font-size: 13px;
+}
+
+/* Shared avatar shape normalization for panel placeholders and logos */
+.user-avatar,
+.user-avatar img,
+.user-avatar-placeholder,
+.sidebar .user-avatar .user-avatar-placeholder,
+.view-avatar,
+.view-avatar img {
+  border-radius: 8px !important;
 }
 

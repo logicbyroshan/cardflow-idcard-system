@@ -690,3 +690,13 @@
         transform: none;
     }
 }
+
+/* Strict website button consistency overrides */
+@media (max-width: 767px) {
+    .explore-btn,
+    .load-more-btn {
+        min-height: var(--btn-web-height, 38px);
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px);
+        border-radius: var(--btn-web-radius, 10px);
+    }
+}

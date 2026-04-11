@@ -32,12 +32,12 @@
 
         <!-- Header (gradient with avatar) -->
         <div class="flex flex-col items-center px-5 pt-[calc(env(safe-area-inset-top,0px)+20px)] pb-5 bg-gradient-to-br from-brand-light to-brand-dark flex-shrink-0 relative">
-            <button @click="close()" class="absolute top-[calc(env(safe-area-inset-top,0px)+10px)] right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-700 active:bg-gray-100 transition-colors">
-                <i class="fa-solid fa-times text-sm"></i>
+            <button @click="close()" class="absolute top-[calc(env(safe-area-inset-top,0px)+10px)] right-4 w-8 h-8 flex items-center justify-center rounded-md bg-white text-gray-700 active:bg-gray-100 transition-colors">
+                <i class="fa-solid fa-xmark text-sm"></i>
             </button>
 
             <!-- Avatar circle -->
-            <div class="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-white mb-3 overflow-hidden">
+            <div class="w-16 h-16 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white mb-3 overflow-hidden">
                 {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
                     <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" class="w-full h-full object-contain bg-white">
                 {% elif is_super_admin %}

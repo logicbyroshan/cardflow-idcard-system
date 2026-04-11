@@ -89,7 +89,7 @@
         <div class="download-modal-status"
              x-show="downloadModal.statusText && (downloadModal.state === 'preparing' || downloadModal.state === 'downloading')">
             <p class="download-status-text">
-                <span class="skeleton-line h-2.5 w-2.5 rounded-full" aria-hidden="true"></span>
+                <span class="skeleton-line h-2.5 w-2.5 rounded-md" aria-hidden="true"></span>
                 <span x-text="downloadModal.statusText"></span>
             </p>
         </div>

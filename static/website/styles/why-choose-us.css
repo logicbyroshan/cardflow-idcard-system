@@ -166,7 +166,7 @@
     width: 80px;
     height: 80px;
     background: linear-gradient(135deg, rgba(10, 146, 221, 0.1), rgba(102, 126, 234, 0.1));
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -295,8 +295,8 @@
     gap: 12px;
     background: linear-gradient(135deg, #0a92dd, #667eea);
     color: #fff;
-    padding: 15px 35px;
-    border-radius: 50px;
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
+    border-radius: 12px;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.3s ease;
@@ -436,7 +436,7 @@
     width: 70px;
     height: 70px;
     background: linear-gradient(135deg, #0a92dd, #667eea);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -587,4 +587,11 @@
     color: #64748b;
     line-height: 1.7;
     font-size: 0.95rem;
+}
+
+/* Strict website button consistency overrides */
+.btn-explore {
+    min-height: var(--btn-web-lg-height, 46px);
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
+    border-radius: 12px;
 }

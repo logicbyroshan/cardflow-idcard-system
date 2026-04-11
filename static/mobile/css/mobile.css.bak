@@ -356,7 +356,7 @@ html, body {
     bottom: 3px;
     background-color: white;
     transition: 0.3s;
-    border-radius: 50%;
+    border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .toggle-switch input:checked + .toggle-slider {
@@ -416,7 +416,7 @@ html, body {
     left: 50%;
     width: 0;
     height: 0;
-    border-radius: 50%;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.3);
     transform: translate(-50%, -50%);
     transition: width 0.4s, height 0.4s;
@@ -1080,7 +1080,7 @@ button, .btn, [type="button"], [type="submit"] {
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    border-radius: 9999px;
+    border-radius: 8px;
     background: #dcfce7;
     color: #16a34a;
     border: 1px solid #bbf7d0;
@@ -1092,7 +1092,7 @@ button, .btn, [type="button"], [type="submit"] {
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    border-radius: 9999px;
+    border-radius: 8px;
     background: #f3f4f6;
     color: #6b7280;
     border: 1px solid #e5e7eb;
@@ -1124,7 +1124,7 @@ button, .btn, [type="button"], [type="submit"] {
 .rounded-md { border-radius: 0.25rem; }
 .rounded-lg { border-radius: 0.375rem; }
 .rounded-xl { border-radius: 0.5rem; }
-.rounded-full { border-radius: 9999px; }
+.rounded-md { border-radius: 8px; }
 
 /* ── SIZING UTILITIES ───────────────────────────────────────────── */
 .w-full { width: 100%; }

@@ -1,6 +1,7 @@
 /* Unified dropdown styling across the entire app */
 :root {
   --dropdown-unified-height: 28px;
+  --control-unified-height: 28px;
   --dropdown-unified-radius: 4px;
   --dropdown-unified-border: #e5e7eb;
   --dropdown-unified-border-hover: #d1d5db;
@@ -217,4 +218,55 @@ select.wa-status-select:disabled,
   background-color: rgba(102, 126, 234, 0.1) !important;
   color: #4f46e5 !important;
   font-weight: 500 !important;
+}
+
+/* Keep search + dropdown + action controls at the same height in toolbars. */
+.search-box,
+.notif-search-box {
+  min-height: var(--control-unified-height);
+}
+
+.search-box .search-input,
+.notif-search-box {
+  height: var(--control-unified-height) !important;
+  min-height: var(--control-unified-height) !important;
+  box-sizing: border-box !important;
+}
+
+.search-box .search-icon {
+  top: 50% !important;
+  transform: translateY(-50%);
+}
+
+.search-box .search-clear-btn {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px;
+  height: 16px;
+}
+
+.notif-search-box {
+  border: 1px solid var(--dropdown-unified-border) !important;
+  border-radius: var(--dropdown-unified-radius) !important;
+  gap: 8px !important;
+  padding: 3px 10px !important;
+}
+
+.notif-search-box input {
+  font-size: 13px !important;
+  line-height: 1.1 !important;
+}
+
+.notif-actions-bar .btn,
+.notif-actions-left .btn.btn-sm,
+.notif-actions-right .btn.btn-sm,
+.wa-action-bar .btn.btn-sm,
+.pagination-right .btn.btn-sm {
+  height: var(--control-unified-height) !important;
+  min-height: var(--control-unified-height) !important;
+  border-radius: var(--dropdown-unified-radius) !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+  display: inline-flex;
+  align-items: center;
 }

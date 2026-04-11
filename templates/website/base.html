@@ -39,6 +39,7 @@
 
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}">
     <link rel="stylesheet" href="{% static 'website/styles/ui-consistency.css' %}?v=146">
 
     <!-- Structured Data (Organization + LocalBusiness)  -  Public website only -->
@@ -83,16 +84,16 @@
             <div class="top-bar-content">
                 {% if business.phone %}
                     <button type="button" class="top-bar-item copy-btn" data-copy="{{ business.phone }}" aria-label="Copy phone number {{ business.phone }}">
-                        <i class="fas fa-phone-alt" aria-hidden="true"></i>
+                        <i class="fa-solid fa-phone" aria-hidden="true"></i>
                         <span>{{ business.phone }}</span>
-                        <i class="fas fa-copy copy-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-copy copy-icon" aria-hidden="true"></i>
                     </button>
                 {% endif %}
                 {% if business.email %}
                     <button type="button" class="top-bar-item copy-btn" data-copy="{{ business.email }}" aria-label="Copy email {{ business.email }}">
-                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <i class="fa-solid fa-envelope" aria-hidden="true"></i>
                         <span>{{ business.email }}</span>
-                        <i class="fas fa-copy copy-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-copy copy-icon" aria-hidden="true"></i>
                     </button>
                 {% endif %}
             </div>
@@ -118,7 +119,7 @@
                     <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                     <li><a href="{% url 'website:home' %}#contact">Contact</a></li>
                     <li class="nav-btn-group">
-                        <a href="{% url 'website:panel_entry' %}" class="btn-cta btn-login"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a>
+                        <a href="{% url 'website:panel_entry' %}" class="btn-cta btn-login"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Panel</a>
                     </li>
                 </ul>
                 <button type="button" class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
@@ -150,16 +151,16 @@
                     <p>Your trusted partner for professional ID card solutions with 20+ years of excellence.</p>
                     <div class="social-links">
                         <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-facebook-f" aria-hidden="true"></i>
+                            <i class="fa-brands fa-facebook-f" aria-hidden="true"></i>
                         </a>
                         <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram" {% if not business.instagram_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-instagram" aria-hidden="true"></i>
+                            <i class="fa-brands fa-instagram" aria-hidden="true"></i>
                         </a>
                         <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Twitter" {% if not business.twitter_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-twitter" aria-hidden="true"></i>
+                            <i class="fa-brands fa-twitter" aria-hidden="true"></i>
                         </a>
                         <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.whatsapp_number %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                         </a>
                     </div>
                 </div>
@@ -173,7 +174,7 @@
                         <li><a href="{% url 'website:why_choose_us' %}">Why Choose Us</a></li>
                         <li><a href="{% url 'website:testimonials' %}">Testimonials</a></li>
                         <li><a href="{% url 'website:home' %}#contact">Get a Quote</a></li>
-                        <li><a href="{% url 'website:panel_entry' %}"><i class="fas fa-user-shield" aria-hidden="true"></i> Panel</a></li>
+                        <li><a href="{% url 'website:panel_entry' %}"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Panel</a></li>
                     </ul>
                 </div>
 
@@ -206,7 +207,7 @@
                         </iframe>
                         {% if business.address %}
                         <p style="margin-top: 1rem; font-size: 0.85rem; line-height: 1.4;">
-                            <i class="fas fa-map-marker-alt" aria-hidden="true"></i> {{ business.address }}
+                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i> {{ business.address }}
                         </p>
                         {% endif %}
                     </div>
@@ -221,6 +222,9 @@
 
     <!-- Global Scripts -->
     <script src="{% static 'website/scripts/main.js' %}" defer></script>
+    <script src="{% static 'js/core/unified-select-dropdown.js' %}" defer></script>
+    <script src="{% static 'js/core/icon-button-text.js' %}" defer></script>
+    <script src="{% static 'js/core/icon-consistency.js' %}" defer></script>
 
     <!-- Copy to clipboard for top-bar items -->
     <script>

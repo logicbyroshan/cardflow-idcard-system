@@ -76,12 +76,12 @@
     .wa-reviews-page .wa-cell-sub {
         color: #64748b;
         font-weight: 400;
-        line-height: 1.2;
+        line-height: 1.15;
         margin: 0;
     }
 
     .wa-reviews-page .wa-cell-info {
-        gap: 1px;
+        gap: 0;
     }
 
     .wa-reviews-page .wa-stars-row {
@@ -157,8 +157,8 @@
 
     .wa-reviews-page #reviewRowsPerPage {
         min-width: 74px;
-        height: 26px;
-        padding: 2px 8px;
+        height: 28px;
+        padding: 3px 10px;
         border-radius: 4px;
     }
 
@@ -214,8 +214,7 @@
                         <div class="wa-cell-info">
                             <span class="wa-cell-title">{{ r.reviewer_name }}</span>
                             <span class="wa-cell-sub">
-                                {% if r.reviewer_title %}{{ r.reviewer_title }}{% endif %}
-                                {% if r.reviewer_school %}<br>{{ r.reviewer_school }}{% endif %}
+                                {% if r.reviewer_title %}{{ r.reviewer_title }}{% endif %}{% if r.reviewer_title and r.reviewer_school %}, {% endif %}{% if r.reviewer_school %}{{ r.reviewer_school }}{% endif %}
                             </span>
                         </div>
                     </div>
@@ -237,10 +236,10 @@
                 </td>
                 <td class="wa-actions">
                     {% if is_super_admin or perm_website_edit %}
-                    <button class="btn btn-icon" title="Edit" onclick="editReview({{ r.id }})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-neutral" title="Edit" onclick="editReview({{ r.id }})"><i class="fa-solid fa-pen"></i> Edit</button>
                     {% endif %}
                     {% if is_super_admin or perm_website_delete %}
-                    <button class="btn btn-icon danger" title="Delete" onclick="deleteReview({{ r.id }})"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn btn-danger" title="Delete" onclick="deleteReview({{ r.id }})"><i class="fa-solid fa-trash"></i> Delete</button>
                     {% endif %}
                 </td>
             </tr>

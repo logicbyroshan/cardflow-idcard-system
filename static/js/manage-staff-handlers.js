@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Going to deactivate
             if (statusModalHeader) statusModalHeader.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
             if (statusModalIcon) statusModalIcon.innerHTML = '<i class="fa-solid fa-ban" style="font-size: 48px; color: #ef4444;"></i>';
-            if (statusNote) statusNote.innerHTML = '<i class="fa-solid fa-exclamation-circle"></i> This will prevent the operator from logging in.';
+            if (statusNote) statusNote.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> This will prevent the operator from logging in.';
             if (confirmStatusBtn) {
                 confirmStatusBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
                 confirmStatusBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Deactivate';
@@ -255,8 +255,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Going to activate
             if (statusModalHeader) statusModalHeader.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
-            if (statusModalIcon) statusModalIcon.innerHTML = '<i class="fa-solid fa-check-circle" style="font-size: 48px; color: #22c55e;"></i>';
-            if (statusNote) statusNote.innerHTML = '<i class="fa-solid fa-info-circle"></i> This will allow the operator to log in.';
+            if (statusModalIcon) statusModalIcon.innerHTML = '<i class="fa-solid fa-circle-check" style="font-size: 48px; color: #22c55e;"></i>';
+            if (statusNote) statusNote.innerHTML = '<i class="fa-solid fa-circle-info"></i> This will allow the operator to log in.';
             if (confirmStatusBtn) {
                 confirmStatusBtn.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
                 confirmStatusBtn.innerHTML = '<i class="fa-solid fa-check"></i> Activate';

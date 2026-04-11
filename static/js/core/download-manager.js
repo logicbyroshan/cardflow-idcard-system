@@ -302,7 +302,7 @@
         cancelBtn.className = 'dl-toast-cancel';
         cancelBtn.title = 'Cancel';
         cancelBtn.style.cssText = 'background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;' +
-            'border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;' +
+            'border-radius: 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;' +
             'flex-shrink:0;font-size:12px;transition:background .15s;';
         var cancelIcon = document.createElement('i');
         cancelIcon.className = 'fa-solid fa-xmark';
@@ -407,10 +407,10 @@
             // Update icon
             if (icon) {
                 icon.className = status === 'complete'
-                    ? 'fa-solid fa-check-circle'
+                    ? 'fa-solid fa-circle-check'
                     : status === 'cancelled'
                         ? 'fa-solid fa-ban'
-                        : 'fa-solid fa-times-circle';
+                        : 'fa-solid fa-circle-xmark';
                 icon.style.animation = 'none';
             }
 

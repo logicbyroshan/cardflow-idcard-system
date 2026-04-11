@@ -60,7 +60,7 @@
         .wa-page-loading-block {
             display: block;
             height: 11px;
-            border-radius: 999px;
+            border-radius: 8px;
             background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
             background-size: 200% 100%;
             animation: waPageSkeletonShimmer 1.25s linear infinite;
@@ -86,6 +86,7 @@
     </style>
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}">
     <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
     <!-- Shared Alpine runtime loader -->
     {% include 'partials/common/alpine-loader.html' %}
@@ -199,6 +200,9 @@
 
     <!-- Core JS bundle (api + toast + modal + utils + init + global-search + notification-bell) -->
     <script src="{% static 'dist/js/core.min.js' %}"></script>
+    <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
+    <script defer src="{% static 'js/core/icon-button-text.js' %}"></script>
+    <script defer src="{% static 'js/core/icon-consistency.js' %}"></script>
 
     <script>
     /* Reusable confirm modal  -  returns a Promise<boolean> */

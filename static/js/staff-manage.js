@@ -131,7 +131,7 @@ async function loadStaff() {
         <td>
           <div class="staff-actions">
             <button class="btn btn-icon" onclick="editStaff(${staff.id})" title="Edit" aria-label="Edit">
-              <i class="fa-solid fa-edit"></i>
+              <i class="fa-solid fa-pen"></i>
             </button>
             <button class="btn btn-icon" onclick="toggleStatus(${staff.id})" title="${staff.is_active ? 'Deactivate' : 'Activate'}" aria-label="${staff.is_active ? 'Deactivate' : 'Activate'}">
               <i class="fa-solid fa-${staff.is_active ? 'ban' : 'check'}"></i>

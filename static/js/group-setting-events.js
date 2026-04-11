@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const newStatus = currentStatus === 'active' ? 'Inactive' : 'Active';
 
             if (GSP.statusItemName) GSP.statusItemName.textContent = `"${name}"`;
-            if (GSP.statusNote) GSP.statusNote.innerHTML = `<i class="fa-solid fa-info-circle"></i> Table will be set to ${newStatus}.`;
+            if (GSP.statusNote) GSP.statusNote.innerHTML = `<i class="fa-solid fa-circle-info"></i> Table will be set to ${newStatus}.`;
             if (window.alpineOpenModal) window.alpineOpenModal('status');
         });
     }

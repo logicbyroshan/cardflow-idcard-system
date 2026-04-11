@@ -48,7 +48,7 @@
     width: 80px;
     height: 80px;
     background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -233,7 +233,7 @@
     width: 70px;
     height: 70px;
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -387,7 +387,7 @@
     border: none;
     width: 24px;
     height: 24px;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -844,4 +844,18 @@
 
 .crop-action-btns {
   display: flex; gap: 6px;
+}
+
+/* Strict button consistency overrides */
+.delete-footer .btn-danger {
+    min-height: 34px;
+    padding: 8px 16px;
+    border-radius: 6px;
+}
+
+.crop-aspect-btn {
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
 }

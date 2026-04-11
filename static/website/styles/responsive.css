@@ -574,15 +574,15 @@ h2 {
         width: 100%;
         text-align: center;
         justify-content: center;
-        padding: 14px 24px !important;
-        border-radius: 12px !important;
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px) !important;
+        border-radius: var(--btn-web-radius, 10px) !important;
         font-size: 1rem;
     }
 
     .btn-cta {
         margin: 10px 20px;
         text-align: center;
-        border-radius: 50px !important;
+        border-radius: var(--btn-web-radius, 10px) !important;
     }
 
     .hamburger {
@@ -1134,8 +1134,8 @@ h2 {
         width: 100%;
         text-align: center;
         justify-content: center;
-        padding: 14px 24px !important;
-        border-radius: 12px !important;
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px) !important;
+        border-radius: var(--btn-web-radius, 10px) !important;
         font-size: 1rem;
         font-weight: 600;
         box-shadow: 0 4px 15px rgba(10, 146, 221, 0.25);
@@ -1147,9 +1147,9 @@ h2 {
 
     .btn-cta {
         margin: 16px 20px;
-        padding: 14px 24px !important;
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px) !important;
         text-align: center;
-        border-radius: 50px !important;
+        border-radius: var(--btn-web-radius, 10px) !important;
         font-size: 1rem !important;
     }
 
@@ -1265,10 +1265,10 @@ h2 {
 
     .btn {
         width: auto;
-        padding: 12px 22px;
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px);
         font-size: 0.88rem;
-        border-radius: 50px;
-        min-height: 44px;
+        border-radius: var(--btn-web-radius, 10px);
+        min-height: var(--btn-web-height, 38px);
     }
 
     .hero-card-wrapper {
@@ -2172,5 +2172,31 @@ h2 {
 
     .info-box:active {
         transform: translateX(3px);
+    }
+}
+
+/* Strict website button consistency overrides */
+@media (max-width: 1179px) {
+    .btn-cta,
+    .nav-btn-group .btn-login,
+    .btn-app {
+        min-height: var(--btn-web-height, 38px);
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px) !important;
+        border-radius: var(--btn-web-radius, 10px) !important;
+    }
+}
+
+@media (max-width: 999px) {
+    .btn {
+        min-height: var(--btn-web-height, 38px);
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px);
+        border-radius: var(--btn-web-radius, 10px);
+    }
+
+    .form-btn,
+    .pwa-install-btn {
+        min-height: var(--btn-web-lg-height, 46px);
+        padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
+        border-radius: 12px;
     }
 }

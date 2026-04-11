@@ -252,7 +252,7 @@ function layoutState() {
         },
 
         getToastIcon(type) {
-            return { success: 'fa-solid fa-check-circle', error: 'fa-solid fa-times-circle', warning: 'fa-solid fa-exclamation-triangle', info: 'fa-solid fa-info-circle' }[type] || 'fa-solid fa-check-circle';
+            return { success: 'fa-solid fa-circle-check', error: 'fa-solid fa-circle-xmark', warning: 'fa-solid fa-exclamation-triangle', info: 'fa-solid fa-circle-info' }[type] || 'fa-solid fa-circle-check';
         },
 
         getToastClass(type) {

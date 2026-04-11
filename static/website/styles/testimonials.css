@@ -73,7 +73,7 @@
     width: 70px;
     height: 70px;
     background: linear-gradient(135deg, #0a92dd, #667eea);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -248,7 +248,7 @@
 .reviewer-avatar {
     width: 55px;
     height: 55px;
-    border-radius: 50%;
+    border-radius: 8px;
     overflow: hidden;
     border: 3px solid #e2e8f0;
     padding: 3px;
@@ -260,13 +260,13 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: 50%;
+    border-radius: 8px;
 }
 
 .reviewer-avatar .avatar-3d {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -410,11 +410,11 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    padding: 15px 40px;
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
     background: linear-gradient(135deg, #0a92dd, #667eea);
     color: #fff;
     border: none;
-    border-radius: 50px;
+    border-radius: 12px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -465,7 +465,7 @@
     width: 60px;
     height: 60px;
     background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(142, 68, 173, 0.1));
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -565,7 +565,7 @@
     width: 80px;
     height: 80px;
     background: linear-gradient(135deg, #0a92dd, #667eea);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -595,11 +595,11 @@
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    padding: 18px 35px;
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
     background: linear-gradient(135deg, #0a92dd, #667eea);
     color: #fff;
     border: none;
-    border-radius: 50px;
+    border-radius: 12px;
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
@@ -709,7 +709,7 @@
     height: 40px;
     background: rgba(255, 255, 255, 0.1);
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
     color: #fff;
     font-size: 1.2rem;
     cursor: pointer;
@@ -853,7 +853,7 @@ svg defs {
     width: 60px;
     height: 60px;
     background: #e8f4fc;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -992,4 +992,18 @@ svg defs {
 
 .toast-close:hover {
     color: #64748b;
+}
+
+/* Strict website button consistency overrides */
+.load-more-btn,
+.write-review-btn {
+    min-height: var(--btn-web-lg-height, 46px);
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
+    border-radius: 12px;
+}
+
+.submit-review-btn {
+    min-height: 44px;
+    padding: 10px 20px;
+    border-radius: 10px;
 }

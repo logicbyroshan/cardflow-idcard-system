@@ -112,7 +112,7 @@ function initSearchAllModal() {
         if (searchResultsContainer) {
             searchResultsContainer.innerHTML = `
                 <div class="search-placeholder">
-                    <i class="fa-solid fa-search"></i>
+                    <i class="fa-solid fa-magnifying-glass"></i>
                     <p>Type to search across all lists</p>
                 </div>
             `;
@@ -142,7 +142,7 @@ function initSearchAllModal() {
                 } else if (searchResultsContainer) {
                     searchResultsContainer.innerHTML = `
                         <div class="search-no-results">
-                            <i class="fa-solid fa-exclamation-circle"></i>
+                            <i class="fa-solid fa-circle-exclamation"></i>
                             <p>Error: ${data.message}</p>
                         </div>
                     `;
@@ -156,7 +156,7 @@ function initSearchAllModal() {
                     if (searchResultsContainer) {
                         searchResultsContainer.innerHTML = `
                             <div class="search-no-results">
-                                <i class="fa-solid fa-exclamation-circle"></i>
+                                <i class="fa-solid fa-circle-exclamation"></i>
                                 <p>Error searching. Please try again.</p>
                             </div>
                         `;
@@ -186,7 +186,7 @@ function initSearchAllModal() {
             if (searchResultsContainer) {
                 searchResultsContainer.innerHTML = `
                     <div class="search-placeholder">
-                        <i class="fa-solid fa-search"></i>
+                        <i class="fa-solid fa-magnifying-glass"></i>
                         <p>Type to search across all lists</p>
                     </div>
                 `;
@@ -211,7 +211,7 @@ function initSearchAllModal() {
                 if (searchResultsContainer) {
                     searchResultsContainer.innerHTML = `
                         <div class="search-placeholder">
-                            <i class="fa-solid fa-search"></i>
+                            <i class="fa-solid fa-magnifying-glass"></i>
                             <p>${query.length === 0 ? 'Type to search across all lists' : 'Enter at least 2 characters'}</p>
                         </div>
                     `;
@@ -257,7 +257,7 @@ function displaySearchResults(results, query, container, closeModalFn) {
     if (results.length === 0) {
         container.innerHTML = `
             <div class="search-no-results">
-                <i class="fa-solid fa-search"></i>
+                <i class="fa-solid fa-magnifying-glass"></i>
                 <p>No results found for "${_esc(query)}"</p>
             </div>
         `;

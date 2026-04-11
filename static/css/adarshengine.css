@@ -206,7 +206,7 @@
   width: 14px;
   height: 14px;
   background: #818cf8;
-  border-radius: 50%;
+  border-radius: 8px;
   border: 2px solid #1a1a2e;
   cursor: pointer;
   transition: background 0.15s, transform 0.15s;
@@ -226,7 +226,7 @@
   width: 14px;
   height: 14px;
   background: #818cf8;
-  border-radius: 50%;
+  border-radius: 8px;
   border: 2px solid #1a1a2e;
   cursor: pointer;
 }
@@ -247,14 +247,26 @@
   background: linear-gradient(to right, #4fc3f7, #78909c, #ffb74d);
 }
 
+.ae-crop-btn,
+.ae-autofix-btn,
+.ae-apply-all-btn,
+.ae-btn,
+.ae-preset-btn,
+.ae-crop-apply,
+.ae-crop-cancel,
+.ae-edit-btn {
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
 /* ── Crop Button ────────────────────────────────────────────────── */
 
 .ae-crop-btn {
   width: 100%;
-  padding: 10px 14px;
+  min-height: 34px;
+  padding: 9px 14px;
   background: rgba(129, 140, 248, 0.12);
   border: 1px solid rgba(129, 140, 248, 0.2);
-  border-radius: 6px;
   color: #a5b4fc;
   font-size: 12px;
   font-weight: 600;
@@ -295,8 +307,8 @@
 .ae-crop-apply,
 .ae-crop-cancel {
   flex: 1;
-  padding: 8px 10px;
-  border-radius: 5px;
+  min-height: 30px;
+  padding: 7px 10px;
   border: none;
   font-size: 11px;
   font-weight: 600;
@@ -328,10 +340,10 @@
 
 .ae-autofix-btn {
   width: 100%;
-  padding: 10px 14px;
+  min-height: 34px;
+  padding: 9px 14px;
   background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(245, 158, 11, 0.15));
   border: 1px solid rgba(250, 204, 21, 0.25);
-  border-radius: 6px;
   color: #fcd34d;
   font-size: 12px;
   font-weight: 600;
@@ -395,11 +407,11 @@
 }
 
 .ae-preset-btn {
-  padding: 8px 10px;
+  min-height: 30px;
+  padding: 7px 10px;
   font-size: 12px;
   background: #2d3748;
   border: 1px solid #4a5568;
-  border-radius: 5px;
   color: #e2e8f0;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -464,10 +476,10 @@
 
 .ae-apply-all-btn {
   width: 100%;
-  padding: 10px 14px;
+  min-height: 34px;
+  padding: 9px 14px;
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.15));
   border: 1px solid rgba(34, 197, 94, 0.25);
-  border-radius: 6px;
   color: #4ade80;
   font-size: 12px;
   font-weight: 600;
@@ -686,8 +698,8 @@
 
 /* Footer buttons */
 .ae-btn {
-  padding: 8px 18px;
-  border-radius: 6px;
+  min-height: 32px;
+  padding: 8px 16px;
   border: none;
   font-size: 12px;
   font-weight: 600;
@@ -767,11 +779,11 @@
 }
 
 .ae-edit-btn {
-  padding: 6px 14px;
+  min-height: 28px;
+  padding: 6px 12px;
   background: rgba(129, 140, 248, 0.9);
   color: #fff;
   border: none;
-  border-radius: 5px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;

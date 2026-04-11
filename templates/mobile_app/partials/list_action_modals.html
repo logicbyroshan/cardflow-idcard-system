@@ -120,7 +120,7 @@
                                     <div class="skeleton-line h-2.5 w-2/5 rounded-lg"></div>
                                     <div class="skeleton-line h-2.5 w-1/3 rounded-lg"></div>
                                 </div>
-                                <div class="skeleton-line w-5 h-5 rounded-full mt-0.5"></div>
+                                <div class="skeleton-line w-5 h-5 rounded-md mt-0.5"></div>
                             </div>
                         </div>
                     </template>
@@ -143,7 +143,7 @@
                             </p>
                             <p class="text-[11px] text-gray-500 mt-0.5">Roll: <span x-text="card.roll_no || '-' "></span></p>
                         </div>
-                        <div class="w-5 h-5 rounded-full border flex items-center justify-center mt-0.5"
+                        <div class="w-5 h-5 rounded-md border flex items-center justify-center mt-0.5"
                              :class="reprintPicker.selectedId === card.card_id ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300 text-transparent'">
                             <i class="fa-solid fa-check text-[10px]"></i>
                         </div>

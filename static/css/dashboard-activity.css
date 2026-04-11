@@ -227,7 +227,7 @@
 .notif-unread-dot {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
+    border-radius: 3px;
     background: #667eea;
     flex-shrink: 0;
     margin-top: 6px;

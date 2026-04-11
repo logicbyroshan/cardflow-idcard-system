@@ -59,7 +59,7 @@
     min-width: 18px;
     height: 18px;
     padding: 0 6px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.24);
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.55);
@@ -664,4 +664,23 @@
 .confirmed-datetime-filter-group .btn.btn-sm {
     min-height: 0;
     padding: 0 6px;
+}
+
+/* Strict button consistency overrides */
+.action-buttons-group .btn.action-btn,
+.action-bar .btn.action-btn {
+    height: 30px;
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+.reprint-datetime-filter-group .btn.btn-sm,
+.confirmed-datetime-filter-group .btn.btn-sm {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 12px;
 }

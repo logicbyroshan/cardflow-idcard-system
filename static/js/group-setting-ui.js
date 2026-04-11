@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentStatus = GSP.selectedRow.dataset.tableStatus;
             if (currentStatus === 'active') {
                 // Row is Active, so button should show "Inactive" to deactivate
-                GSP.toggleStatusBtn.innerHTML = '<i class="fa-solid fa-times"></i> Inactive';
+                GSP.toggleStatusBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Inactive';
                 GSP.toggleStatusBtn.classList.remove('btn-active');
                 GSP.toggleStatusBtn.classList.add('btn-inactive');
             } else {

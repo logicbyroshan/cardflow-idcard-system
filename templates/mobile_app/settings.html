@@ -30,7 +30,7 @@
                 <i class="fa-solid fa-bell text-[14px]"></i>
                 <span>Notify</span>
                 {% if unread_system_count > 0 %}
-                <span class="absolute top-1.5 left-[calc(50%+4px)] w-3.5 h-3.5 bg-red-500 rounded-full text-[7px] text-white flex items-center justify-center font-bold leading-none">{{ unread_system_count }}</span>
+                <span class="absolute top-1.5 left-[calc(50%+4px)] w-3.5 h-3.5 bg-red-500 rounded-md text-[7px] text-white flex items-center justify-center font-bold leading-none">{{ unread_system_count }}</span>
                 {% endif %}
             </button>
                 <button @click="setTab('logs')"
@@ -91,7 +91,7 @@
                             <div class="flex items-start justify-between gap-2">
                                 <p class="text-[12px] font-bold text-gray-800 leading-snug">{{ notif.title }}</p>
                                 {% if not notif.is_read %}
-                                <span class="w-2 h-2 rounded-full bg-brand-light flex-shrink-0 mt-1"></span>
+                                <span class="w-2 h-2 rounded-sm bg-brand-light flex-shrink-0 mt-1"></span>
                                 {% endif %}
                             </div>
                             <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">{{ notif.message }}</p>
@@ -153,12 +153,12 @@
                         {% elif act.status == 'pool' %}bg-red-50 text-red-500
                         {% else %}bg-gray-50 text-gray-400{% endif %}">
                         <i class="fa-solid text-[10px]
-                            {% if act.status == 'verified' %}fa-check-circle
+                            {% if act.status == 'verified' %}fa-circle-check
                             {% elif act.status == 'approved' %}fa-check-double
                             {% elif act.status == 'download' %}fa-download
                             {% elif act.status == 'pending' %}fa-clock
                             {% elif act.status == 'pool' %}fa-layer-group
-                            {% else %}fa-info-circle{% endif %}"></i>
+                            {% else %}fa-circle-info{% endif %}"></i>
                     </div>
                     <div class="flex-[3] min-w-0 pr-2">
                         <p class="text-[11px] font-semibold text-gray-800 truncate leading-tight">{{ act.name }}</p>
@@ -515,7 +515,7 @@
                                             (<span x-text="serverInfo.disk.percent"></span>%)
                                         </span>
                                     </div>
-                                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
+                                    <div class="w-full h-2 bg-gray-100 rounded-md overflow-hidden mt-1">
                                         <div class="h-2 bg-sky-400" :style="'width:' + serverInfo.disk.percent + '%'" style="transition:width 0.5s;"></div>
                                     </div>
                                     <div class="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
@@ -534,7 +534,7 @@
                                             (<span x-text="serverInfo.memory.used_pct ?? '-' "></span>%)
                                         </span>
                                     </div>
-                                    <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
+                                    <div class="w-full h-2 bg-gray-100 rounded-md overflow-hidden mt-1">
                                         <div class="h-2 bg-indigo-400" :style="'width:' + Math.min(100, Math.max(0, Number(serverInfo.memory.used_pct || 0))) + '%'" style="transition:width 0.5s;"></div>
                                     </div>
                                 </div>
@@ -564,7 +564,7 @@
                                                     <span class="text-[11px] font-semibold text-gray-700" x-text="item.name"></span>
                                                     <span class="text-[10px] text-gray-500 font-mono" x-text="item.size_human || formatBytes(item.size_bytes)"></span>
                                                 </div>
-                                                <div class="w-full h-1.5 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
+                                                <div class="w-full h-1.5 bg-gray-200 rounded-md mt-1.5 overflow-hidden">
                                                     <div class="h-1.5 bg-sky-400" :style="'width:' + Math.min(100, Math.max(0, Number(item.pct_of_used_disk || 0))) + '%'" style="transition:width 0.4s;"></div>
                                                 </div>
                                             </div>

@@ -31,10 +31,10 @@ Types: success (green), error (red), info (blue), warning (orange)
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
       <i :class="{
-        'fa-solid fa-check-circle':         toast.type === 'success',
-        'fa-solid fa-times-circle':         toast.type === 'error',
+        'fa-solid fa-circle-check':         toast.type === 'success',
+        'fa-solid fa-circle-xmark':         toast.type === 'error',
         'fa-solid fa-exclamation-triangle': toast.type === 'warning',
-        'fa-solid fa-info-circle':          toast.type === 'info'
+        'fa-solid fa-circle-info':          toast.type === 'info'
       }"></i>
       <span x-text="toast.message"></span>
     </div>
@@ -43,7 +43,7 @@ Types: success (green), error (red), info (blue), warning (orange)
 
 <!-- DOM Toast (progress bars & pre-Alpine fallback) -->
 <div id="toast" class="toast">
-  <i id="toastIcon" class="fa-solid fa-check-circle"></i>
+  <i id="toastIcon" class="fa-solid fa-circle-check"></i>
   <div class="toast-content">
     <div class="toast-message-row">
       <span id="toastMessage">Success!</span>

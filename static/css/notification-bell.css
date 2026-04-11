@@ -38,7 +38,7 @@
     width: 9px;
     height: 9px;
     border: 2px solid #ffffff;
-    border-radius: 9999px;
+    border-radius: 4px;
     background: #ef4444;
     display: none;
     pointer-events: none;
@@ -183,7 +183,7 @@
   .notif-unread-dot {
     width: 7px;
     height: 7px;
-    border-radius: 9999px;
+    border-radius: 3px;
     background: #667eea;
     margin-top: 6px;
     flex-shrink: 0;

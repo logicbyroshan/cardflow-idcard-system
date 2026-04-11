@@ -454,7 +454,7 @@
 
 .dashboard-scroll-table-wrapper::-webkit-scrollbar-thumb {
     background: #94a3b8;
-    border-radius: 999px;
+    border-radius: 8px;
 }
 
 .dashboard-scroll-table-wrapper::-webkit-scrollbar-thumb:hover {

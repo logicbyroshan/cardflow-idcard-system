@@ -179,7 +179,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid var(--notif-brand-border);
   background: var(--notif-brand-soft-2);
   color: #233876;
@@ -248,7 +248,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid var(--notif-brand-border);
   background: var(--notif-brand-soft-2);
   color: #233876;
@@ -293,9 +293,9 @@
 .backup-panel-theme .backup-filter-date {
   width: 150px;
   min-width: 140px;
-  height: 32px;
+  height: 28px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #fff;
   color: #334155;
   font-size: 12px;
@@ -357,7 +357,7 @@
   padding: 2px 8px;
   font-size: 10px;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: 8px;
   color: #334155;
   background: #eef2ff;
   border: 1px solid #c7d2fe;
@@ -510,9 +510,10 @@
   justify-content: flex-end;
 }
 .notif-actions-bar .btn {
-  min-height: 32px;
-  border-radius: 8px;
-  font-weight: 400;
+  min-height: 28px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 .notif-actions-bar .btn:focus-visible {
   outline: none;
@@ -714,10 +715,10 @@
   gap: 8px;
   background: #fff;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 5px 12px;
+  border-radius: 4px;
+  padding: 3px 10px;
   min-width: 240px;
-  height: 32px;
+  height: 28px;
   box-sizing: border-box;
 }
 .notif-search-box i { color: #94a3b8; font-size: 12px; }
@@ -1387,7 +1388,7 @@ textarea.panel-form-input {
   justify-content: center;
   min-height: 24px;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid #c7d2fe;
   background: #eef2ff;
   color: #4f46e5;
@@ -1484,9 +1485,9 @@ textarea.panel-form-input {
 
 .operations-panel-theme #opsRowsPerPage {
   min-width: 74px;
-  height: 26px;
-  padding: 2px 8px;
-  border-radius: 6px;
+  height: 28px;
+  padding: 3px 10px;
+  border-radius: 4px;
 }
 
 .ops-source-badge.task {
@@ -1547,8 +1548,8 @@ textarea.panel-form-input {
 }
 
 .ops-cancel-btn {
-  height: 24px;
-  padding: 3px 9px;
+  min-height: 28px;
+  padding: 4px 10px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
@@ -1592,7 +1593,7 @@ textarea.panel-form-input {
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid var(--email-brand-border);
   background: var(--email-brand-soft-2);
   color: #233876;
@@ -1656,6 +1657,7 @@ textarea.panel-form-input {
 .email-action-btn {
   width: auto;
   min-width: 74px;
+  min-height: 28px;
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -1706,16 +1708,16 @@ textarea.panel-form-input {
 
 .notif-panel-theme #notifRowsPerPage {
   min-width: 74px;
-  height: 26px;
-  padding: 2px 8px;
-  border-radius: 6px;
+  height: 28px;
+  padding: 3px 10px;
+  border-radius: 4px;
 }
 
 .email-panel-theme #emailRowsPerPage {
   min-width: 74px;
-  height: 26px;
-  padding: 2px 8px;
-  border-radius: 6px;
+  height: 28px;
+  padding: 3px 10px;
+  border-radius: 4px;
 }
 
 #emailLogsTable .btn-outline-primary {
@@ -2008,7 +2010,7 @@ textarea.panel-form-input {
   width: 198px;
   height: 198px;
   margin: 0 auto 16px;
-  border-radius: 50%;
+  border-radius: 8px;
   background: conic-gradient(var(--server-brand-primary) calc(var(--pct) * 1%), #e2e8f0 0);
   display: flex;
   align-items: center;
@@ -2017,7 +2019,7 @@ textarea.panel-form-input {
 .server-donut-inner {
   width: 146px;
   height: 146px;
-  border-radius: 50%;
+  border-radius: 8px;
   background: #fff;
   display: flex;
   flex-direction: column;
@@ -2172,7 +2174,7 @@ textarea.panel-form-input {
 .server-list-skeleton-block,
 .server-value-skeleton {
   display: inline-block;
-  border-radius: 999px;
+  border-radius: 8px;
   background: linear-gradient(90deg, #e2e8f0 20%, #f8fafc 42%, #e2e8f0 64%);
   background-size: 200% 100%;
   animation: server-info-skeleton-shimmer 1.2s linear infinite;
@@ -2220,7 +2222,7 @@ textarea.panel-form-input {
   background: linear-gradient(90deg, #e2e8f0 20%, #f8fafc 42%, #e2e8f0 64%);
   background-size: 200% 100%;
   animation: server-info-skeleton-shimmer 1.2s linear infinite;
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .server-donut-wrap.is-loading .server-donut-inner span {
@@ -2258,13 +2260,13 @@ textarea.panel-form-input {
 .server-path-bar-bg {
   margin-top: 7px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #e2e8f0;
   overflow: hidden;
 }
 .server-path-bar-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: 8px;
   background: linear-gradient(90deg, var(--server-brand-primary), var(--server-brand-secondary));
 }
 .server-path-meta {
@@ -2398,7 +2400,7 @@ textarea.panel-form-input {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: 8px;
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.25);
   font-size: 16px;

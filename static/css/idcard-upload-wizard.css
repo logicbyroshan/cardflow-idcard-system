@@ -78,7 +78,7 @@
     color: #fff;
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -760,7 +760,7 @@
 .wizard-step .step-number {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -963,4 +963,24 @@
     font-size: 12px;
     color: #6b7280;
     white-space: nowrap;
+}
+
+/* Strict button consistency overrides */
+.file-select-content .btn-lg {
+    min-height: 42px;
+    padding: 10px 24px;
+    border-radius: 10px;
+}
+
+.btn-upload-zip {
+    min-height: 40px;
+    padding: 10px 18px;
+    border-radius: 8px;
+}
+
+.upload-modal-footer .btn {
+    min-height: 34px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
 }

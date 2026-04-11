@@ -14,13 +14,13 @@
         <div class="container">
             <div class="hero-content">
                 <div class="hero-badge">
-                    <i class="fas fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
                     <span>{% if avg_rating %}{{ avg_rating|floatformat:1 }}{% else %}5.0{% endif %}/5 Average Rating</span>
                 </div>
                 <h1>What Our <span class="gradient-text">Clients Say</span></h1>
                 <p class="hero-subtitle">Real stories from schools across the nation. Discover why {{ total_reviews|default:'500' }}+ institutions trust {{ site_name }}.</p>
                 <div class="hero-buttons" style="margin-top: 1.5rem;">
-                    <a href="#writeReview" class="btn btn-primary" id="heroWriteReviewBtn"><i class="fas fa-pen-fancy"></i> Write a Review</a>
+                    <a href="#writeReview" class="btn btn-primary" id="heroWriteReviewBtn"><i class="fa-solid fa-pen-fancy"></i> Write a Review</a>
                 </div>
             </div>
         </div>
@@ -67,7 +67,7 @@
                             <span>{{ t.reviewer_title }}{% if t.reviewer_school %}, {{ t.reviewer_school }}{% endif %}</span>
                         </div>
                         <div class="card-rating">
-                            <i class="fas fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
                             <span>{{ t.rating|floatformat:1 }}</span>
                         </div>
                     </div>
@@ -75,9 +75,9 @@
                         <p>{{ t.text|linebreaksbr }}</p>
                     </div>
                     <div class="card-footer">
-                        <span class="review-date"><i class="far fa-calendar-alt"></i> {{ t.review_date|date:'M Y' }}</span>
+                        <span class="review-date"><i class="fa-regular fa-calendar-days"></i> {{ t.review_date|date:'M Y' }}</span>
                         <div class="helpful-btn" data-id="{{ t.id }}">
-                            <i class="far fa-thumbs-up"></i>
+                            <i class="fa-regular fa-thumbs-up"></i>
                             <span>Helpful ({{ t.helpful_count }})</span>
                         </div>
                     </div>
@@ -86,11 +86,11 @@
                 {% empty %}
                 <div class="testimonial-card" style="grid-column: 1 / -1; text-align: center; opacity: 0.85;">
                     <div class="stars">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
                     </div>
                     <p style="font-size: 1.1rem; color: #94a3b8; margin: 18px 0 0 0;">No reviews yet. Be the first to share your experience!</p>
                     <div class="testimonial-author">
-                        <div class="avatar-placeholder"><i class="fas fa-user"></i></div>
+                        <div class="avatar-placeholder"><i class="fa-solid fa-user"></i></div>
                         <div>
                             <h4>Future Reviewer</h4>
                             <p>Your School - India</p>
@@ -125,7 +125,7 @@
             <div class="ratings-grid">
                 <div class="rating-card">
                     <div class="rating-icon">
-                        <i class="fas fa-gem"></i>
+                        <i class="fa-solid fa-gem"></i>
                     </div>
                     <h4>Quality</h4>
                     <div class="circle-progress" data-percent="98">
@@ -140,7 +140,7 @@
                 
                 <div class="rating-card">
                     <div class="rating-icon">
-                        <i class="fas fa-truck"></i>
+                        <i class="fa-solid fa-truck"></i>
                     </div>
                     <h4>Delivery</h4>
                     <div class="circle-progress" data-percent="96">
@@ -155,7 +155,7 @@
                 
                 <div class="rating-card">
                     <div class="rating-icon">
-                        <i class="fas fa-paint-brush"></i>
+                        <i class="fa-solid fa-paint-brush"></i>
                     </div>
                     <h4>Design</h4>
                     <div class="circle-progress" data-percent="97">
@@ -170,7 +170,7 @@
                 
                 <div class="rating-card">
                     <div class="rating-icon">
-                        <i class="fas fa-headset"></i>
+                        <i class="fa-solid fa-headset"></i>
                     </div>
                     <h4>Support</h4>
                     <div class="circle-progress" data-percent="99">
@@ -185,7 +185,7 @@
                 
                 <div class="rating-card">
                     <div class="rating-icon">
-                        <i class="fas fa-angles-right"></i>
+                        <i class="fa-solid fa-angles-right"></i>
                     </div>
                     <h4>Value</h4>
                     <div class="circle-progress" data-percent="95">
@@ -204,18 +204,18 @@
     <!-- Review Modal -->
     <div class="review-modal" id="reviewModal">
         <div class="review-modal-content">
-            <button class="review-modal-close" id="reviewModalClose"><i class="fas fa-times"></i></button>
+            <button class="review-modal-close" id="reviewModalClose"><i class="fa-solid fa-xmark"></i></button>
             <h3>Submit Your Feedback</h3>
             <form id="reviewForm" data-submit-url="{% url 'website:submit_testimonial' %}">
                 {% csrf_token %}
                 <div class="form-group">
                     <label>Rating</label>
                     <div class="star-rating">
-                        <i class="fas fa-star" data-rating="1"></i>
-                        <i class="fas fa-star" data-rating="2"></i>
-                        <i class="fas fa-star" data-rating="3"></i>
-                        <i class="fas fa-star" data-rating="4"></i>
-                        <i class="fas fa-star" data-rating="5"></i>
+                        <i class="fa-solid fa-star" data-rating="1"></i>
+                        <i class="fa-solid fa-star" data-rating="2"></i>
+                        <i class="fa-solid fa-star" data-rating="3"></i>
+                        <i class="fa-solid fa-star" data-rating="4"></i>
+                        <i class="fa-solid fa-star" data-rating="5"></i>
                     </div>
                     <input type="hidden" name="rating" id="selectedRating" value="5">
                 </div>
@@ -237,10 +237,10 @@
     <div class="toast-container" id="toastContainer">
         <div class="toast" id="toast">
             <div class="toast-icon">
-                <i class="fas fa-check-circle"></i>
+                <i class="fa-solid fa-circle-check"></i>
             </div>
             <div class="toast-message"></div>
-            <button class="toast-close"><i class="fas fa-times"></i></button>
+            <button class="toast-close"><i class="fa-solid fa-xmark"></i></button>
         </div>
     </div>
 {% endblock %}

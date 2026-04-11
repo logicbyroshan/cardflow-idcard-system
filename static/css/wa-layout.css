@@ -248,7 +248,7 @@
     color: var(--wa-gray-700);
     background: #f8fafc;
     border: 1px solid var(--wa-gray-200);
-    border-radius: 999px;
+    border-radius: 8px;
     padding: 3px 9px;
     white-space: nowrap;
 }

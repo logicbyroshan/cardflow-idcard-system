@@ -84,7 +84,7 @@ body.modal-open {
 .product-gallery-share {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.2);
     border: none;
     color: #fff;
@@ -102,7 +102,7 @@ body.modal-open {
 .product-gallery-close {
     width: 40px;
     height: 40px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.2);
     border: none;
     color: #fff;
@@ -236,7 +236,7 @@ body.modal-open {
 .gallery-play-btn {
     width: 50px;
     height: 50px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: rgba(16, 15, 87, 0.85);
     border: 2px solid rgba(255,255,255,0.5);
     color: #fff;
@@ -599,11 +599,11 @@ body.modal-open {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 15px 30px;
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
     background: var(--white);
     color: #0a92dd;
     border: none;
-    border-radius: 30px;
+    border-radius: 12px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -678,7 +678,7 @@ body.modal-open {
     padding: 7px 12px;
     background: var(--white);
     border: 2px solid #e9ecef;
-    border-radius: 999px;
+    border-radius: 8px;
     font-size: 0.8rem;
     font-weight: 500;
     color: #495057;
@@ -841,7 +841,7 @@ body.modal-open {
     width: 60px;
     height: 60px;
     background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -934,7 +934,7 @@ body.modal-open {
     height: 40px;
     background: rgba(255,255,255,0.2);
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -963,10 +963,10 @@ body.modal-open {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    padding: 15px 40px;
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
     background: var(--white);
     border: 2px solid #0a92dd;
-    border-radius: 30px;
+    border-radius: 12px;
     font-size: 1rem;
     font-weight: 600;
     color: #0a92dd;
@@ -1021,7 +1021,7 @@ body.modal-open {
     width: 80px;
     height: 80px;
     background: linear-gradient(135deg, #0a92dd, #667eea);
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1098,7 +1098,7 @@ body.modal-open {
     height: 50px;
     background: rgba(255,255,255,0.1);
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1121,7 +1121,7 @@ body.modal-open {
     height: 60px;
     background: rgba(255,255,255,0.1);
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
     display: none;
     align-items: center;
     justify-content: center;
@@ -1225,7 +1225,7 @@ body.modal-open {
     height: 40px;
     background: rgba(255,255,255,0.2);
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1270,7 +1270,7 @@ body.modal-open {
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    border-radius: 999px;
+    border-radius: 8px;
     font-size: 0.8rem;
     font-weight: 600;
     border: 1.5px solid #0a92dd;
@@ -1291,4 +1291,12 @@ body.modal-open {
 
 .extra-category-tag i {
     font-size: 0.76rem;
+}
+
+/* Strict website button consistency overrides */
+.category-overlay .explore-btn,
+.load-more-btn {
+    min-height: var(--btn-web-lg-height, 46px);
+    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
+    border-radius: 12px;
 }

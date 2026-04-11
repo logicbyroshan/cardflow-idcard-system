@@ -46,11 +46,11 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 10px;
+    padding: 6px 12px;
     background: var(--primary);
     color: var(--text-white);
     border: none;
-    border-radius: 2px;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 400;
     cursor: pointer;
@@ -146,7 +146,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: #fff;
     border: none;
-    border-radius: 2px;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 400;
     cursor: pointer;
@@ -173,7 +173,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: #fff;
     border: none;
-    border-radius: 2px;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 400;
     cursor: pointer;
@@ -196,11 +196,11 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 6px 12px;
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: #fff;
     border: none;
-    border-radius: 2px;
+    border-radius: 6px;
     font-size: 13px;
     font-weight: 400;
     cursor: pointer;
@@ -394,7 +394,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: #fff;
     border: none;
-    border-radius: 50%;
+    border-radius: 8px;
     font-size: 15px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -651,4 +651,23 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 
 .side-modal.view-mode .side-modal-footer .btn-primary {
     display: none;
+}
+
+/* Strict button consistency overrides */
+.btn.btn-upload,
+.btn.btn-upload-field,
+.btn.btn-remove-field,
+.btn.btn-download-field,
+.btn.btn-upload-inline,
+.btn.btn-upload-small {
+    min-height: 32px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.btn.btn-upload-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
 }

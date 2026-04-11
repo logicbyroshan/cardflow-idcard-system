@@ -9,7 +9,7 @@
  * Data source: GET /api/table/{id}/cards-json/
  *
  * Architecture:
- *   _allCards[]         all card objects fetched from server so far
+ *   _allCards[]         all card objects fetched from server so fa-regular
  *   _filteredCards[]    subset after client-side image-sort / sort
  *   _pool[]             fixed array of pre-created TR elements
  *                         rebound to different card data as user scrolls

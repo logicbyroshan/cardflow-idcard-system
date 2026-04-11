@@ -18,7 +18,7 @@
             <p class="text-white/60 text-[10px] truncate">{{ card.table_name }}  -  {{ card.group_name }}</p>
         </div>
         <!-- Status Badge -->
-        <span class="text-[10px] font-bold px-3 py-1.5 rounded-full flex-shrink-0
+        <span class="text-[10px] font-bold px-3 py-1.5 rounded-md flex-shrink-0
             {% if card.status == 'pending' %}bg-amber-400/30 text-white border border-amber-300/50
             {% elif card.status == 'verified' %}bg-emerald-400/30 text-white border border-emerald-300/50
             {% elif card.status == 'approved' %}bg-sky-400/30 text-white border border-sky-300/50
@@ -223,7 +223,7 @@
              x-transition:enter-end="translate-y-0"
              style="padding-bottom: env(safe-area-inset-bottom, 20px);">
             <div class="flex justify-center pt-3 pb-1">
-                <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+                <div class="w-10 h-1 rounded-md bg-gray-200"></div>
             </div>
             <div class="px-4 pb-2 pt-1">
                 <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -239,7 +239,7 @@
                     </button>
                     <button @click="setStatus('verified')"
                             class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-check-circle"></i>Verified
+                        <i class="fa-solid fa-circle-check"></i>Verified
                     </button>
                     <button @click="setStatus('approved')"
                             class="py-3.5 text-xs font-bold rounded-2xl border-2 transition-all active:scale-95 bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 flex items-center justify-center gap-1.5">
@@ -263,7 +263,7 @@
          class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] max-w-[380px] w-full px-4">
         <div class="rounded-2xl px-4 py-3 shadow-lg text-xs font-bold text-white flex items-center gap-2"
              :class="toast.type === 'success' ? 'bg-green-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-brand-light'">
-            <i :class="toast.type === 'success' ? 'fa-solid fa-check-circle' : toast.type === 'error' ? 'fa-solid fa-xmark-circle' : 'fa-solid fa-info-circle'"></i>
+            <i :class="toast.type === 'success' ? 'fa-solid fa-circle-check' : toast.type === 'error' ? 'fa-solid fa-xmark-circle' : 'fa-solid fa-circle-info'"></i>
             <span x-text="toast.message"></span>
         </div>
     </div>

@@ -27,7 +27,7 @@
                         {% endif %}
                         {% if is_super_admin or perm_idcard_verified_list %}
                         <a href="{% if is_client or is_client_staff %}{% url 'client:idcard_actions' table.id %}{% else %}{% url 'idcard_actions' table.id %}{% endif %}?status=verified" class="list-btn verified-btn">
-                            <i class="fa-solid fa-check-circle"></i> Verified
+                            <i class="fa-solid fa-circle-check"></i> Verified
                             <span class="count-badge">{{ table.verified_count }}</span>
                         </a>
                         {% endif %}

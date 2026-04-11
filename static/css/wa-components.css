@@ -110,7 +110,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: 8px;
     font-size: 13px;
     flex-shrink: 0;
 }
@@ -501,4 +501,26 @@
     .wa-action-bar { flex-direction: column; align-items: flex-start; }
     .wa-filter-tabs { overflow-x: auto; flex-wrap: nowrap; }
     .wa-category-chips { grid-template-columns: 1fr 1fr; }
+}
+
+/* Strict button consistency overrides */
+.wa-filter-btn {
+    min-height: 30px;
+    padding: 5px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.wa-chip-btn {
+    height: 28px;
+    min-height: 28px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+.wa-btn-xs {
+    min-height: 26px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    line-height: 1.4;
 }

@@ -276,7 +276,7 @@ tr.reprint-requested:hover {
 .reprint-confirm-icon {
   width: 56px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -337,4 +337,24 @@ tr.reprint-requested:hover {
   color: #fff;
   border: none;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+/* Strict button consistency overrides */
+.btn-reprint-single,
+.btn-confirm-single,
+.btn-reject-single,
+.btn-request-edit-single,
+.btn-confirmed-edit-single,
+.btn-download-single {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+}
+
+.reprint-reason-footer .btn-cancel,
+.reprint-reason-footer .btn-submit {
+  min-height: 34px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
 }

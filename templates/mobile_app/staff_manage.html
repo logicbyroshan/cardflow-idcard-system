@@ -90,7 +90,7 @@
              style="height: 85vh; height: 85dvh;"
              x-transition:enter="transition ease-out duration-400" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-            <div class="flex justify-center pt-3 pb-1 flex-shrink-0"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
+            <div class="flex justify-center pt-3 pb-1 flex-shrink-0"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
             <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -197,7 +197,7 @@
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDetail = false" x-transition></div>
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto p-4 max-h-[70vh] overflow-y-auto"
              x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-            <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
+            <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
             <div class="text-center mb-4">
                 <div class="w-16 h-16 rounded-3xl bg-gradient-to-br from-brand-light to-brand-dark flex items-center justify-center text-white text-xl font-bold mx-auto mb-2">
                     <span x-text="(detailStaff.name || 'S').substring(0,2).toUpperCase()"></span>

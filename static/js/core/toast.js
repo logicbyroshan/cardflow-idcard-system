@@ -35,9 +35,9 @@
     // ICON MAP
     // ------------------------------------------
     var ICONS = {
-        success: 'fa-check-circle',
-        error:   'fa-times-circle',
-        info:    'fa-info-circle',
+        success: 'fa-circle-check',
+        error:   'fa-circle-xmark',
+        info:    'fa-circle-info',
         warning: 'fa-exclamation-triangle'
     };
 
@@ -101,7 +101,7 @@
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', 'assertive');
         toast.innerHTML =
-            '<i id="toastIcon" class="fa-solid fa-check-circle"></i>' +
+            '<i id="toastIcon" class="fa-solid fa-circle-check"></i>' +
             '<span id="toastMessage">Success!</span>' +
             '<span id="toastPercent" style="display:none;margin-left:8px;font-weight:600;"></span>' +
             '<button id="toastCancelBtn" type="button" title="Cancel" ' +
@@ -235,7 +235,7 @@
         var cancelBtn  = document.getElementById('toastCancelBtn');
 
         if (msgEl)  msgEl.textContent = message;
-        if (iconEl) iconEl.className  = 'fa-solid fa-check-circle';
+        if (iconEl) iconEl.className  = 'fa-solid fa-circle-check';
         if (progressEl) progressEl.style.display = 'block';
         if (barEl)  { barEl.classList.remove('indeterminate'); barEl.style.width = '100%'; }
         if (pctEl)  { pctEl.style.display = 'inline'; pctEl.textContent = '100%'; }

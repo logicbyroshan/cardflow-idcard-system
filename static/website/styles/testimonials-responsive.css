@@ -1025,3 +1025,19 @@
         font-size: 0.95rem;
     }
 }
+
+/* Strict website button consistency overrides */
+@media (max-width: 767px) {
+    .load-more-btn,
+    .write-review-btn {
+        min-height: var(--btn-web-height, 38px);
+        padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px);
+        border-radius: var(--btn-web-radius, 10px);
+    }
+
+    .submit-review-btn {
+        min-height: 42px;
+        padding: 9px 18px;
+        border-radius: 10px;
+    }
+}

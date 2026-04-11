@@ -191,7 +191,7 @@
     right: 4px;
     width: 22px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: 8px;
     border: none;
     background: rgba(239, 68, 68, 0.85);
     color: #fff;
@@ -216,7 +216,7 @@
     font-weight: 700;
     width: 20px;
     height: 20px;
-    border-radius: 50%;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -238,6 +238,13 @@
     align-items: center;
     justify-content: center;
 }
+    /* Strict button consistency overrides */
+    .hero-image-card .btn {
+        min-height: 30px;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
 
 /* ===== IMAGE PREVIEW ===== */
 .wa-img-preview { margin-bottom: 6px; }

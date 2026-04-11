@@ -773,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '  background-size: 200% 100%;',
           '  animation: staff-skeleton-shimmer 1.25s linear infinite;',
           '}',
-          '.staff-loading-skeleton-avatar { width: 34px; height: 34px; border-radius: 9999px; flex-shrink: 0; }',
+          '.staff-loading-skeleton-avatar { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; }',
           '.staff-loading-skeleton-line-lg { width: 58%; height: 11px; }',
           '.staff-loading-skeleton-line-md { width: 36%; height: 10px; }',
           '.staff-loading-skeleton-line-full { width: 100%; height: 10px; }'

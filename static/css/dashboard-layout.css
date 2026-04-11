@@ -289,7 +289,7 @@
     content: '';
     width: 6px;
     height: 6px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: #22c55e;
     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
@@ -649,7 +649,7 @@
 .notif-dot {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.35);
     transition: all 0.2s;
     cursor: pointer;
@@ -847,7 +847,7 @@
     width: 56px;
     height: 18px;
     margin: 0 auto;
-    border-radius: 999px;
+    border-radius: 8px;
 }
 
 .dash-skeleton-avatar {
@@ -895,4 +895,12 @@
     background: linear-gradient(90deg, #dbe2ef 20%, #edf2f7 50%, #dbe2ef 80%);
     background-size: 220% 100%;
     animation: dashboardSkeletonWave 1.25s linear infinite;
+}
+
+/* Strict button consistency overrides */
+.dashboard-side-sticky .quick-action-btn,
+.client-quick-actions-bar .quick-action-btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 6px;
 }

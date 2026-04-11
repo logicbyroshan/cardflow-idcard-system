@@ -23,9 +23,9 @@ Styles:
 {% with avatar_role=role|default:"client" avatar_size=size|default:"medium" %}
 {% if avatar_role == 'client' or avatar_role == 'client_staff' %}
   {% if logo_url %}
-  <img src="{{ logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-full bg-white" loading="lazy">
+  <img src="{{ logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-lg bg-white" loading="lazy">
   {% elif current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
-  <img src="{{ current_client_logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-full bg-white" loading="lazy">
+  <img src="{{ current_client_logo_url }}" alt="Client logo" class="w-full h-full object-contain rounded-lg bg-white" loading="lazy">
   {% else %}
   <div class="user-avatar-placeholder user-avatar-placeholder--{{ avatar_role }} user-avatar-placeholder--{{ avatar_size }}">
     {% if avatar_role == 'client' %}

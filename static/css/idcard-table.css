@@ -301,7 +301,7 @@ body:has(.idcard-actions-page) {
     width: 4px;
     height: 4px;
     background: #3498db;
-    border-radius: 50%;
+    border-radius: 8px;
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -618,16 +618,16 @@ body:has(.idcard-actions-page) {
 .download-single-btn,
 .back-approved-row-btn,
 .retrieve-row-btn {
-    padding: 2px 6px;
-    font-size: 13px;
+    padding: 3px 8px;
+    font-size: 12px;
     font-weight: 600;
     color: #fff;
     border: none;
-    border-radius: 2px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
-    height: 22px;
+    height: 26px;
     display: inline-flex;
     align-items: center;
     gap: 3px;
@@ -679,13 +679,14 @@ body:has(.idcard-actions-page) {
 
 /* Edit photo button - override for inline-table usage */
 .edit-photo-btn {
-    padding: 0;
-    font-size: 13px;
+    min-height: 24px;
+    padding: 3px 8px;
+    font-size: 12px;
     font-weight: 600;
     background: transparent;
     color: #3b82f6;
     border: none;
-    border-radius: 0;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
@@ -774,3 +775,27 @@ body:has(.idcard-actions-page) {
 
 /* Empty State - No Cards Found
    Base .empty-state styles are in common.css (single source of truth) */
+
+/* Strict button consistency overrides */
+.action-buttons-group .btn {
+    height: 30px;
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+.verify-row-btn,
+.approve-row-btn,
+.unverify-row-btn,
+.unapprove-row-btn,
+.download-row-btn,
+.download-single-btn,
+.back-approved-row-btn,
+.retrieve-row-btn {
+    height: 26px;
+    min-height: 26px;
+    padding: 3px 8px !important;
+    border-radius: 6px;
+    font-size: 12px;
+}

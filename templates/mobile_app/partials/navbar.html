@@ -30,7 +30,7 @@
                         class="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 active:bg-gray-100 transition-colors">
                     <i class="fa-solid fa-bell text-[14px]"></i>
                 {% if notification_count and notification_count > 0 %}
-                <span class="absolute top-1 right-1 min-w-[17px] h-[17px] bg-red-500 rounded-full border-2 border-white flex items-center justify-center pointer-events-none">
+                <span class="absolute top-1 right-1 min-w-[17px] h-[17px] bg-red-500 rounded-md border-2 border-white flex items-center justify-center pointer-events-none">
                     <span class="text-white text-[9px] font-bold leading-none px-0.5">{{ notification_count|default:0 }}</span>
                 </span>
                 {% endif %}
@@ -39,9 +39,9 @@
             <a href="{% url 'mobile_app:settings_page' %}"
                     @click="return window.mobileTriggerDrawer($event, 'open-hamburger', this.getAttribute('href'))"
                     class="w-10 h-10 flex flex-col items-center justify-center gap-[4px] rounded-xl bg-gray-50 text-gray-600 active:bg-gray-100 transition-colors">
-                <span class="block w-[16px] h-[2px] bg-current rounded-full"></span>
-                <span class="block w-[12px] h-[2px] bg-current rounded-full self-start ml-[2px]"></span>
-                <span class="block w-[16px] h-[2px] bg-current rounded-full"></span>
+                <span class="block w-[16px] h-[2px] bg-current rounded-md"></span>
+                <span class="block w-[12px] h-[2px] bg-current rounded-md self-start ml-[2px]"></span>
+                <span class="block w-[16px] h-[2px] bg-current rounded-md"></span>
             </a>
         </div>
 

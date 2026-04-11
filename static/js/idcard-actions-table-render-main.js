@@ -66,7 +66,7 @@ function renderTable() {
         noResultsRow.innerHTML = `
             <td colspan="${colCount}" class="no-cards">
                 <div class="empty-state">
-                    <i class="fa-solid fa-search"></i>
+                    <i class="fa-solid fa-magnifying-glass"></i>
                     <h3>No Results Found</h3>
                     <p>Try adjusting your search or filter criteria</p>
                 </div>

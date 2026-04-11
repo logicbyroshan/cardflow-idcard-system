@@ -63,8 +63,13 @@
   display: flex; justify-content: flex-end; gap: 12px;
 }
 .center-modal .modal-footer .btn {
-  min-width: 100px; padding: 10px 20px;
-  font-weight: 500; border-radius: 6px; transition: all 0.2s;
+  min-width: 100px;
+  min-height: 34px;
+  padding: 8px 18px;
+  font-weight: 600;
+  border-radius: 6px;
+  line-height: 1.2;
+  transition: all 0.2s;
 }
 .center-modal .modal-footer .btn-secondary {
   background: var(--gray-200, #e5e7eb); color: var(--gray-700, #374151); border: none;

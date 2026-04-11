@@ -13,7 +13,7 @@
   </div>
   <div class="notif-bar-list" id="notifBarList">
     <div class="notif-bar-empty">
-      <i class="fa-solid fa-check-circle"></i> You're all caught up!
+      <i class="fa-solid fa-circle-check"></i> You're all caught up!
     </div>
   </div>
 </div>
@@ -180,7 +180,7 @@
         }
 
         if (!items.length) {
-          list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-check-circle"></i> You\'re all caught up!</div>';
+          list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-circle-check"></i> You\'re all caught up!</div>';
           return;
         }
 
@@ -256,7 +256,7 @@
           // If list is now empty, show empty state
           const list = document.getElementById('notifBarList');
           if (list && !list.querySelector('.notif-bar-item')) {
-            list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-check-circle"></i> You\'re all caught up!</div>';
+            list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-circle-check"></i> You\'re all caught up!</div>';
           }
         }, 260);
       }

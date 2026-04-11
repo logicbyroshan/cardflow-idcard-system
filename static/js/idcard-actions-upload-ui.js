@@ -200,13 +200,13 @@ function populateFieldMappingTable(matchedFields, missingFields, ignoredFields, 
     if (isError) {
         if (uploadStatus) {
             uploadStatus.className = 'upload-status error';
-            uploadStatus.innerHTML = '<i class="fa-solid fa-times-circle error-icon"></i><span id="uploadStatusText">No matching fields found! Map fields manually below.</span>';
+            uploadStatus.innerHTML = '<i class="fa-solid fa-circle-xmark error-icon"></i><span id="uploadStatusText">No matching fields found! Map fields manually below.</span>';
         }
         if (modalHeader) modalHeader.classList.add('error');
     } else {
         if (uploadStatus) {
             uploadStatus.className = 'upload-status';
-            uploadStatus.innerHTML = '<i class="fa-solid fa-check-circle success-icon"></i><span id="uploadStatusText">Fields matched successfully!</span>';
+            uploadStatus.innerHTML = '<i class="fa-solid fa-circle-check success-icon"></i><span id="uploadStatusText">Fields matched successfully!</span>';
         }
         if (modalHeader) modalHeader.classList.remove('error');
     }
@@ -275,7 +275,7 @@ function populateFieldMappingTable(matchedFields, missingFields, ignoredFields, 
         var statusCell = document.createElement('div');
         statusCell.className = 'fm-cell fm-status-icon ' + (autoMatch ? 'mapped' : 'unmapped');
         statusCell.innerHTML = autoMatch
-            ? '<i class="fa-solid fa-check-circle"></i>'
+            ? '<i class="fa-solid fa-circle-check"></i>'
             : '<i class="fa-solid fa-minus-circle"></i>';
 
         row.appendChild(labelCell);
@@ -328,7 +328,7 @@ function updateMappingStatusIcons() {
             usedHeaders.add(sel.value);
             if (statusIcon) {
                 statusIcon.className = 'fm-cell fm-status-icon mapped';
-                statusIcon.innerHTML = '<i class="fa-solid fa-check-circle"></i>';
+                statusIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
             }
         } else {
             missingCount++;
@@ -356,13 +356,13 @@ function updateMappingStatusIcons() {
     if (matchedCount > 0) {
         if (uploadStatus) {
             uploadStatus.className = 'upload-status';
-            uploadStatus.innerHTML = '<i class="fa-solid fa-check-circle success-icon"></i><span id="uploadStatusText">Fields matched  ' + matchedCount + ' of ' + selects.length + '</span>';
+            uploadStatus.innerHTML = '<i class="fa-solid fa-circle-check success-icon"></i><span id="uploadStatusText">Fields matched  ' + matchedCount + ' of ' + selects.length + '</span>';
         }
         if (modalHeader) modalHeader.classList.remove('error');
     } else {
         if (uploadStatus) {
             uploadStatus.className = 'upload-status error';
-            uploadStatus.innerHTML = '<i class="fa-solid fa-times-circle error-icon"></i><span id="uploadStatusText">No fields mapped yet</span>';
+            uploadStatus.innerHTML = '<i class="fa-solid fa-circle-xmark error-icon"></i><span id="uploadStatusText">No fields mapped yet</span>';
         }
         if (modalHeader) modalHeader.classList.add('error');
     }

@@ -234,3 +234,22 @@
         justify-content: center;
     }
 }
+
+/* Strict website button consistency overrides */
+@media (max-width: 767px) {
+    .btn-gradient,
+    .btn-outline {
+        min-height: 44px;
+        padding: 10px 24px;
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 479px) {
+    .btn-gradient,
+    .btn-outline {
+        min-height: 42px;
+        padding: 9px 20px;
+        border-radius: 10px;
+    }
+}

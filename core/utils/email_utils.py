@@ -311,7 +311,7 @@ def build_unified_email_html(
                 badge_html = ''
                 if badge_text:
                                 badge_html = (
-                                                f"<span style=\"display:inline-block;padding:6px 12px;border-radius:999px;"
+                                                f"<span style=\"display:inline-block;padding:6px 12px;border-radius: 8px;"
                                                 f"background:{tokens['badge_bg']};color:{tokens['badge_text']};font-size:12px;font-weight:700;\">"
                                                 f"{escape(badge_text)}</span>"
                                 )

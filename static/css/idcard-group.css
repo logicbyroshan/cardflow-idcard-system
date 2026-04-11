@@ -359,7 +359,7 @@
   }
     
     .list-btn {
-    padding: 2px 6px;
+    padding: 4px 8px;
         font-size: 13px;
     min-width: 90px;
     }
@@ -372,7 +372,7 @@
     }
     
     .bulk-btn {
-      padding: 2px 6px;
+      padding: 4px 8px;
         font-size: 13px;
       min-width: 90px;
     }
@@ -380,7 +380,7 @@
 
 @media (min-width: 1201px) and (max-width: 1400px) {
     .list-btn {
-    padding: 3px 6px;
+    padding: 4px 8px;
         font-size: 13px;
     min-width: 95px;
     }
@@ -392,7 +392,7 @@
     }
     
     .bulk-btn {
-      padding: 3px 6px;
+      padding: 4px 8px;
         font-size: 13px;
       min-width: 95px;
     }
@@ -648,4 +648,25 @@
   .table-item .view-btn:hover {
     background: rgba(72, 187, 120, 0.2);
   }
+
+/* Strict button consistency overrides */
+.list-btn,
+.bulk-btn {
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+}
+
+.group-card-footer .btn {
+    min-height: 34px;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+.table-item .view-btn {
+    min-height: 30px;
+    padding: 6px 12px;
+    border-radius: 6px;
+}
 

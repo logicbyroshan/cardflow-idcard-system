@@ -14,7 +14,7 @@
         <div class="container">
             <div class="hero-content">
                 <div class="hero-badge">
-                    <i class="fas fa-palette" aria-hidden="true"></i>
+                    <i class="fa-solid fa-palette" aria-hidden="true"></i>
                     <span>Our Creative Portfolio</span>
                 </div>
                 <h1>Crafting <span class="gradient-text">Identity</span> Solutions</h1>
@@ -47,7 +47,7 @@
                     </div>
                     <div class="category-overlay">
                         <button class="explore-btn" data-filter="{{ cat.id }}">
-                            View Samples <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            View Samples <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -81,7 +81,7 @@
 
             <!-- Filter Tabs -->
             <div class="portfolio-filters">
-                <button class="filter-tab active" data-filter="all"><i class="fas fa-th" aria-hidden="true"></i> All</button>
+                <button class="filter-tab active" data-filter="all"><i class="fa-solid fa-th" aria-hidden="true"></i> All</button>
                 {% for cat in categories %}
                     <button class="filter-tab" data-filter="{{ cat.id }}">{{ cat.name }}</button>
                 {% endfor %}
@@ -102,9 +102,9 @@
                             {% if item.image %}
                                 <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
                             {% else %}
-                                <div class="portfolio-video-placeholder"><i class="fas fa-video" aria-hidden="true"></i></div>
+                                <div class="portfolio-video-placeholder"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
                             {% endif %}
-                            <div class="portfolio-play-icon" aria-hidden="true"><i class="fas fa-play-circle"></i></div>
+                            <div class="portfolio-play-icon" aria-hidden="true"><i class="fa-solid fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
                                 <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
@@ -137,9 +137,9 @@
                 <h3 id="productGalleryTitle">Items</h3>
                 <div class="product-gallery-header-actions">
                     <button class="product-gallery-share" id="productGalleryShare" aria-label="Share gallery">
-                        <i class="fas fa-share-alt" aria-hidden="true"></i>
+                        <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
                     </button>
-                    <button class="product-gallery-close" id="productGalleryClose" aria-label="Close gallery"><i class="fas fa-times" aria-hidden="true"></i></button>
+                    <button class="product-gallery-close" id="productGalleryClose" aria-label="Close gallery"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
             </div>
             <div class="product-gallery-body">
@@ -149,9 +149,9 @@
     </div>
 
     <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
-        <button class="lightbox-close" id="lightboxClose" aria-label="Close image preview"><i class="fas fa-times" aria-hidden="true"></i></button>
-        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous image"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
-        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next image"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+        <button class="lightbox-close" id="lightboxClose" aria-label="Close image preview"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous image"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next image"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
         <div class="lightbox-content">
             <img src="" id="lightboxImage" alt="Image preview">
             <div class="lightbox-footer">
@@ -163,7 +163,7 @@
 
     <div class="video-modal" id="videoModal" role="dialog" aria-modal="true" aria-label="Video player">
         <div class="video-modal-content">
-            <button class="video-modal-close" id="videoModalClose" aria-label="Close video"><i class="fas fa-times" aria-hidden="true"></i></button>
+            <button class="video-modal-close" id="videoModalClose" aria-label="Close video"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             <video id="modalVideo" controls src=""></video>
         </div>
     </div>

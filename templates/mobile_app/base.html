@@ -29,6 +29,7 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v={{ APP_VERSION|urlencode }}">
     <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}?v={{ APP_VERSION|urlencode }}">
+    <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}?v={{ APP_VERSION|urlencode }}">
     <script src="{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}"></script>
     <script src="{% static 'mobile/js/device-bridge.js' %}?v={{ APP_VERSION|urlencode }}"></script>
 
@@ -104,7 +105,7 @@
                         <span>Copy Link</span>
                     </button>
                 </div>
-                <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-6 py-3">
+                <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-md px-6 py-3">
                     <i class="fa-solid fa-link"></i>
                     <span>Open this link on your phone browser</span>
                 </div>
@@ -197,9 +198,9 @@
             </div>
             <p class="text-[16px] font-bold text-gray-800">Updating App</p>
             <p id="mobile-update-message" class="text-[11px] text-gray-500 mt-1">Preparing update...</p>
-            <div class="mt-5 w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="mt-5 w-full h-2 bg-gray-100 rounded-md overflow-hidden">
                 <div id="mobile-update-progress"
-                     class="h-full bg-gradient-to-r from-brand-light to-brand-dark rounded-full transition-all duration-300"
+                     class="h-full bg-gradient-to-r from-brand-light to-brand-dark rounded-md transition-all duration-300"
                      style="width:0%;"></div>
             </div>
             <p id="mobile-update-percent" class="text-[11px] text-gray-500 mt-2">0%</p>
@@ -208,6 +209,9 @@
 
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}?v={{ APP_VERSION|urlencode }}"></script>
+    <script src="{% static 'js/core/unified-select-dropdown.js' %}?v={{ APP_VERSION|urlencode }}"></script>
+    <script src="{% static 'js/core/icon-button-text.js' %}"></script>
+    <script src="{% static 'js/core/icon-consistency.js' %}?v={{ APP_VERSION|urlencode }}"></script>
     <script>
     window.mobileLogout = function mobileLogout(event) {
         if (event) event.preventDefault();

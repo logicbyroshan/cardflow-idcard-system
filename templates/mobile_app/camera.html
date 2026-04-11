@@ -67,13 +67,13 @@
         <p class="text-white/70 text-xs mb-2 font-medium">Search &amp; select a student:</p>
         <!-- Search input -->
         <div class="relative mb-2">
-            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
             <input type="text" x-model="cardSearch" @input="filterCards()"
                    placeholder="Type name to search..."
                    class="w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/10 text-white text-sm border border-white/20 focus:border-brand-light outline-none placeholder-white/30">
             <button x-show="cardSearch" @click="cardSearch=''; filterCards()"
                     class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
-                <i class="fa-solid fa-times"></i>
+                <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
         <!-- Results list -->
@@ -108,7 +108,7 @@
         <div x-show="isNativeShell && !photoTaken && !cameraError"
              class="absolute inset-x-0 bottom-16 flex justify-center pointer-events-none"
              style="display:none;">
-            <div class="px-3 py-1.5 rounded-full bg-black/55 text-white/80 text-[11px]">
+            <div class="px-3 py-1.5 rounded-md bg-black/55 text-white/80 text-[11px]">
                 Tap capture to open native camera
             </div>
         </div>

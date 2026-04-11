@@ -17,7 +17,7 @@ and the JS block at the bottom which wires up the logic.
   .cx-progress-skeleton-icon {
     width: 28px;
     height: 28px;
-    border-radius: 9999px;
+    border-radius: 8px;
     margin: 0 auto 10px;
     display: block;
     background: linear-gradient(90deg, var(--color-success-bg,#dcfce7) 25%, var(--color-success-bg,#f0fdf4) 37%, var(--color-success-bg,#dcfce7) 63%);
@@ -45,11 +45,11 @@ and the JS block at the bottom which wires up the logic.
 
     <!-- Step indicator (3 steps) -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <div id="cxStep1Dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-success,#22c55e);"></div>
+      <div id="cxStep1Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-success,#22c55e);"></div>
       <div style="flex:1;height:2px;background:var(--color-gray-200,#e5e7eb);" id="cxStepLine1"><div id="cxStepLineFill1" style="width:0%;height:100%;background:var(--color-success,#22c55e);transition:width 0.3s;"></div></div>
-      <div id="cxStep2Dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-gray-200,#e5e7eb);"></div>
+      <div id="cxStep2Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-gray-200,#e5e7eb);"></div>
       <div style="flex:1;height:2px;background:var(--color-gray-200,#e5e7eb);" id="cxStepLine2"><div id="cxStepLineFill2" style="width:0%;height:100%;background:var(--color-success,#22c55e);transition:width 0.3s;"></div></div>
-      <div id="cxStep3Dot" style="width:8px;height:8px;border-radius:50%;background:var(--color-gray-200,#e5e7eb);"></div>
+      <div id="cxStep3Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-gray-200,#e5e7eb);"></div>
     </div>
 
     <!-- Step 1: XLSX Upload -->
@@ -107,7 +107,7 @@ and the JS block at the bottom which wires up the logic.
         <table class="cm-field-table">
           <thead>
             <tr>
-              <th>#</th>
+              <th>Sr no.</th>
               <th>Column Name</th>
               <th>Type</th>
               <th style="text-align:center;">Mandatory</th>

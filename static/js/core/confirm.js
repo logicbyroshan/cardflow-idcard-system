@@ -34,7 +34,7 @@
     '.cc-content{flex:1;min-height:0;overflow-y:auto;padding:28px 24px 16px;text-align:center}',
     '.cc-actions{display:flex;gap:8px;justify-content:center;padding:14px 24px 18px;border-top:1px solid #e5e7eb;background:#fafafa;border-radius:0 0 10px 10px;flex-shrink:0}',
     '.cc-actions .btn{min-width:90px}',
-    '.cc-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;margin:0 auto 12px;font-size:20px;background:#fef3c7;color:#d97706}',
+    '.cc-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius: 8px;margin:0 auto 12px;font-size:20px;background:#fef3c7;color:#d97706}',
     '.cc-title{font-size:15px;font-weight:700;color:#1f2937;margin:0 0 4px}',
     '.cc-text{font-size:13px;color:#6b7280;margin:0 0 10px;line-height:1.5}',
     '.cc-warning{width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;text-align:left;margin-bottom:16px}',

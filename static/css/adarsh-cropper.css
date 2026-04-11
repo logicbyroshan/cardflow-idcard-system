@@ -333,7 +333,7 @@
 .engine-badge-skeleton-icon {
   width: 11px;
   height: 11px;
-  border-radius: 9999px;
+  border-radius: 8px;
 }
 
 .engine-badge-skeleton-line {

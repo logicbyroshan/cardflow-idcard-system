@@ -77,7 +77,7 @@
                 </div>
                 <div class="global-search-body" id="globalSearchResults" aria-live="polite">
                     <div class="search-placeholder">
-                        <i class="fa-solid fa-search"></i>
+                        <i class="fa-solid fa-magnifying-glass"></i>
                         <p>Search across all ID cards</p>
                         <span>Enter at least 2 characters to search</span>
                     </div>
@@ -173,7 +173,7 @@
         const title = titleOverride || scope.title;
         container.innerHTML = `
             <div class="search-placeholder">
-                <i class="fa-solid fa-search"></i>
+                <i class="fa-solid fa-magnifying-glass"></i>
                 <p>${title}</p>
                 <span>${scope.hint}</span>
             </div>
@@ -358,7 +358,7 @@
                     if (results) {
                         results.innerHTML = `
                             <div class="global-search-no-results">
-                                <i class="fa-solid fa-exclamation-circle"></i>
+                                <i class="fa-solid fa-circle-exclamation"></i>
                                 <p>Unable to load client list right now.</p>
                             </div>
                         `;
@@ -443,7 +443,7 @@
                     const _esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
                     results.innerHTML = `
                         <div class="global-search-no-results">
-                            <i class="fa-solid fa-exclamation-circle"></i>
+                            <i class="fa-solid fa-circle-exclamation"></i>
                             <p>${_esc(data.message || 'Search failed')}</p>
                         </div>
                     `;
@@ -456,7 +456,7 @@
                     if (results) {
                         results.innerHTML = `
                             <div class="global-search-no-results">
-                                <i class="fa-solid fa-exclamation-circle"></i>
+                                <i class="fa-solid fa-circle-exclamation"></i>
                                 <p>Something went wrong. Please try again.</p>
                             </div>
                         `;
@@ -474,7 +474,7 @@
         if (results.length === 0) {
             container.innerHTML = `
                 <div class="global-search-no-results">
-                    <i class="fa-solid fa-search"></i>
+                    <i class="fa-solid fa-magnifying-glass"></i>
                     <p>No results found for "${esc(query)}"</p>
                 </div>
             `;

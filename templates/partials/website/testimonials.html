@@ -10,7 +10,7 @@
                     <div class="stars" aria-label="Rated {{ testimonial.rating }} out of 5">
                         {% for i in "12345"|make_list %}
                             {% if forloop.counter <= testimonial.rating %}
-                                <i class="fas fa-star" aria-hidden="true"></i>
+                                <i class="fa-solid fa-star" aria-hidden="true"></i>
                             {% endif %}
                         {% endfor %}
                     </div>

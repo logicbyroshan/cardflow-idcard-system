@@ -62,8 +62,20 @@ h6 {
 .section-badge,
 .hero-text .tagline,
 .review-badge,
-.rating-badge {
+.rating-badge,
+.download-app-badge,
+.card-badge,
+.featured-badge {
     border-radius: var(--wa-radius-md) !important;
+}
+
+.avatar-placeholder,
+.avatar-3d,
+.reviewer-avatar,
+.reviewer-avatar img,
+.reviewer-avatar .avatar-3d,
+.testimonial-author img {
+    border-radius: var(--wa-radius-sm) !important;
 }
 
 .feature-card,

@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="{% static 'css/client-message-drawer.css' %}">
   {% block extra_css %}{% endblock %}
   <link rel="stylesheet" href="{% static 'css/dropdown-unified.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ui-control-consistency.css' %}">
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <!-- Shared Alpine runtime loader -->
   {% include 'partials/common/alpine-loader.html' %}
@@ -57,7 +58,10 @@
 
   <!-- Core JS bundle (api + toast + modal + utils + init + global-search + notification-bell) -->
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
+  <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
   <script defer src="{% static 'js/client-message-drawer.js' %}"></script>
+  <script defer src="{% static 'js/core/icon-button-text.js' %}"></script>
+  <script defer src="{% static 'js/core/icon-consistency.js' %}"></script>
 
   {% block extra_js %}{% endblock %}
 

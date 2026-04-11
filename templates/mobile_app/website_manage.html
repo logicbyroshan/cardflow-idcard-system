@@ -49,7 +49,7 @@
                             </template>
                             <!-- upload arrow -->
                             {% if perm_website_edit %}
-                            <div class="absolute top-3 right-3 w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center">
+                            <div class="absolute top-3 right-3 w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center">
                                 <i class="fa-solid fa-plus text-indigo-400 text-[9px]"></i>
                             </div>
                             {% endif %}
@@ -90,7 +90,7 @@
         <div class="relative bg-white rounded-t-3xl max-h-[90vh] flex flex-col">
             <!-- Handle -->
             <div class="flex justify-center pt-3 pb-1">
-                <div class="w-10 h-1.5 rounded-full bg-gray-300"></div>
+                <div class="w-10 h-1.5 rounded-md bg-gray-300"></div>
             </div>
             <!-- Header -->
             <div class="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
@@ -148,7 +148,7 @@
                                     </div>
                                 </template>
                                 <button @click.stop="removeFile(idx)"
-                                        class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow">
+                                        class="absolute top-0.5 right-0.5 w-5 h-5 rounded-md bg-red-500 flex items-center justify-center shadow">
                                     <i class="fa-solid fa-xmark text-white text-[8px]"></i>
                                 </button>
                             </div>
@@ -158,8 +158,8 @@
 
                 <!-- Upload progress bar -->
                 <div x-show="uploading" class="w-full space-y-1">
-                    <div class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div class="h-full rounded-full bg-gradient-to-r from-brand-light to-brand-dark transition-all duration-300" :style="'width:' + uploadPct + '%'"></div>
+                    <div class="w-full h-1.5 rounded-md bg-gray-100 overflow-hidden">
+                        <div class="h-full rounded-md bg-gradient-to-r from-brand-light to-brand-dark transition-all duration-300" :style="'width:' + uploadPct + '%'"></div>
                     </div>
                     <p class="text-[10px] text-gray-500" x-text="uploadStatus || ('Uploading... ' + uploadPct + '%')"></p>
                 </div>
@@ -205,7 +205,7 @@
     <div x-show="categoryPreview.open" x-cloak class="fixed inset-0 z-[95] flex flex-col justify-end" data-mobile-overlay-root @keydown.escape.window="closeCategoryPreview()">
         <div class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" @click="closeCategoryPreview()"></div>
         <div class="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col">
-            <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-full bg-gray-300"></div></div>
+            <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
             <div class="px-4 pb-3 border-b border-gray-100 flex items-center justify-between">
                 <div>
                     <p class="text-[14px] font-bold text-gray-800" x-text="categoryPreview.name || 'Media'"></p>

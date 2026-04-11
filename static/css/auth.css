@@ -40,7 +40,7 @@ body.auth-page {
 .step-dot {
     width: 8px;
     height: 8px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: var(--auth-border);
     transition: all 0.3s ease;
 }
@@ -132,7 +132,7 @@ body.auth-page {
     height: 22px;
     border: 2px solid transparent;
     border-top-color: white;
-    border-radius: 50%;
+    border-radius: 8px;
     animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
@@ -191,7 +191,7 @@ body.auth-page {
     display: inline-block;
     width: 8px;
     height: 8px;
-    border-radius: 50%;
+    border-radius: 8px;
     background: #f59e0b;
     margin-right: 6px;
     animation: blink-dot 1.5s ease-in-out infinite;

@@ -1,0 +1,94 @@
+/* Cross-page control/table consistency layer.
+   Keeps icon sizes, control typography, and table typography aligned. */
+:root {
+  --ui-consistent-control-font-size: 13px;
+  --ui-consistent-control-font-weight: 500;
+  --ui-consistent-input-font-weight: 400;
+  --ui-consistent-table-head-font-size: 13px;
+  --ui-consistent-table-head-font-weight: 600;
+  --ui-consistent-table-body-font-size: 13px;
+  --ui-consistent-table-body-font-weight: 500;
+  --ui-consistent-icon-size: 12px;
+}
+
+.main .btn,
+.main .btn.btn-sm,
+.main .btn.btn-md,
+.main .btn.btn-lg,
+.main .pagination-controls button,
+.main .page-num,
+.main .pagination-right label {
+  font-size: var(--ui-consistent-control-font-size) !important;
+  line-height: 1.2 !important;
+}
+
+.main .btn,
+.main .btn.btn-sm,
+.main .btn.btn-md,
+.main .btn.btn-lg,
+.main .pagination-controls button,
+.main .page-num {
+  font-weight: var(--ui-consistent-control-font-weight) !important;
+}
+
+.main select.form-select,
+.main select.form-select-sm,
+.main .dropdown-toggle,
+.main .dropdown-option,
+.main .search-box .search-input,
+.main .notif-search-box input {
+  font-size: var(--ui-consistent-control-font-size) !important;
+  line-height: 1.2 !important;
+  font-weight: var(--ui-consistent-input-font-weight) !important;
+}
+
+.main .btn i,
+.main .btn svg,
+.main .dropdown-toggle i,
+.main .dropdown-toggle svg,
+.main .search-box .search-icon,
+.main .search-box .search-clear-btn i,
+.main .search-box .search-clear-btn svg,
+.main .notif-search-box i {
+  width: var(--ui-consistent-icon-size);
+  height: var(--ui-consistent-icon-size);
+  font-size: var(--ui-consistent-icon-size) !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main .data-table th,
+.main .wa-table thead th,
+.main .notif-table th,
+.main .reprint-history-table th,
+.main .audit-users-table th {
+  font-size: var(--ui-consistent-table-head-font-size) !important;
+  font-weight: var(--ui-consistent-table-head-font-weight) !important;
+  line-height: 1.25 !important;
+}
+
+.main .data-table td,
+.main .wa-table tbody td,
+.main .notif-table td,
+.main .reprint-history-table td,
+.main .audit-users-table td {
+  font-size: var(--ui-consistent-table-body-font-size) !important;
+  font-weight: var(--ui-consistent-table-body-font-weight) !important;
+  line-height: 1.3 !important;
+}
+
+/* Keep action cells from drifting back to tiny icon rendering. */
+.main .wa-actions .btn i,
+.main .actions .btn i,
+.main .staff-actions .btn i {
+  font-size: var(--ui-consistent-icon-size) !important;
+}
+
+/* Keep search clear and dropdown caret visually aligned with text. */
+.main .search-box .search-clear-btn,
+.main .dropdown-toggle i,
+.main .dropdown-toggle svg {
+  vertical-align: middle;
+}

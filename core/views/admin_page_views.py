@@ -478,6 +478,7 @@ def manage_client_staff(request):
         'client_filter_options': client_filter_options,
         'show_client_filter': True,
         'can_manage_clients': can_manage_client_staff,
+        'can_view_login_history': PermissionService.is_super_admin(user) or PermissionService.is_admin_staff(user),
     }
 
     if is_htmx(request):

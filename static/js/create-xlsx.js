@@ -486,7 +486,7 @@ function initCreateWithXlsx(opts) {
             waitForProgressSkeleton().then(function() {
               if (progressBar) progressBar.style.width = '100%';
               if (progressPct) progressPct.textContent = 'Done!';
-              if (progressIcon) { progressIcon.className = 'fa-solid fa-check-circle'; progressIcon.style.animation = 'none'; }
+              if (progressIcon) { progressIcon.className = 'fa-solid fa-circle-check'; progressIcon.style.animation = 'none'; }
               progressText.textContent = result.message || 'Table created successfully!';
               if (window.showToast) showToast(result.message || 'Table created successfully!', 'success');
               if (window.alpineCloseModal) window.alpineCloseModal();
