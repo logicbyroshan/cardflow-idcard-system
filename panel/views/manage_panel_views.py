@@ -126,6 +126,9 @@ def api_email_logs(request):
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '')
     email_type_filter = request.GET.get('email_type', '')
+    sort_order = str(request.GET.get('sort', 'latest') or 'latest').strip().lower()
+    if sort_order not in {'latest', 'oldest'}:
+        sort_order = 'latest'
 
     # B1: guard against non-integer query params (would cause HTTP 500)
     try:
@@ -140,7 +143,10 @@ def api_email_logs(request):
     per_page = min(max(1, per_page), 200)
 
     # B3: explicit ordering for stable pagination
-    qs = EmailLog.objects.order_by('-created_at')
+    if sort_order == 'oldest':
+        qs = EmailLog.objects.order_by('created_at', 'id')
+    else:
+        qs = EmailLog.objects.order_by('-created_at', '-id')
     if search_query:
         qs = qs.filter(
             Q(recipient_name__icontains=search_query)
@@ -186,6 +192,7 @@ def api_email_logs(request):
         'total': paginator.count,
         'page': page,
         'total_pages': paginator.num_pages,
+        'sort': sort_order,
         'status_counts': {
             'on_hold': _sc_map.get(EmailLog.STATUS_ON_HOLD, 0),
             'pending': _sc_map.get(EmailLog.STATUS_PENDING, 0),

@@ -23,6 +23,10 @@
         <option value="otp_reset">Password Reset OTP</option>
         <option value="system">System / Custom</option>
       </select>
+      <select id="emailSortFilter" class="form-select form-select-sm" onchange="loadEmailLogs(1)" aria-label="Sort email logs by date">
+        <option value="latest" selected>Latest</option>
+        <option value="oldest">Oldest</option>
+      </select>
       <button class="btn btn-sm btn-primary" onclick="openNewEmailModal()">
         <i class="fa-solid fa-plus"></i> Add New Email
       </button>
@@ -31,16 +35,52 @@
       </button>
     </div>
     <div class="notif-actions-right">
-      <span class="email-status-badge on-hold" title="On Hold">
+      <span
+        class="email-status-badge on-hold email-status-filter"
+        data-email-status="on_hold"
+        role="button"
+        tabindex="0"
+        aria-pressed="false"
+        title="Filter: On Hold"
+        onclick="setEmailStatusQuickFilter('on_hold')"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEmailStatusQuickFilter('on_hold');}"
+      >
         <i class="fa-solid fa-clock"></i> <span id="emailCountOnHold">0</span>
       </span>
-      <span class="email-status-badge pending" title="Pending">
+      <span
+        class="email-status-badge pending email-status-filter"
+        data-email-status="pending"
+        role="button"
+        tabindex="0"
+        aria-pressed="false"
+        title="Filter: Pending"
+        onclick="setEmailStatusQuickFilter('pending')"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEmailStatusQuickFilter('pending');}"
+      >
         <i class="fa-solid fa-hourglass-half"></i> <span id="emailCountPending">0</span>
       </span>
-      <span class="email-status-badge sent" title="Sent">
+      <span
+        class="email-status-badge sent email-status-filter"
+        data-email-status="sent"
+        role="button"
+        tabindex="0"
+        aria-pressed="false"
+        title="Filter: Sent"
+        onclick="setEmailStatusQuickFilter('sent')"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEmailStatusQuickFilter('sent');}"
+      >
         <i class="fa-solid fa-circle-check"></i> <span id="emailCountSent">0</span>
       </span>
-      <span class="email-status-badge failed" title="Failed">
+      <span
+        class="email-status-badge failed email-status-filter"
+        data-email-status="failed"
+        role="button"
+        tabindex="0"
+        aria-pressed="false"
+        title="Filter: Failed"
+        onclick="setEmailStatusQuickFilter('failed')"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setEmailStatusQuickFilter('failed');}"
+      >
         <i class="fa-solid fa-circle-xmark"></i> <span id="emailCountFailed">0</span>
       </span>
     </div>

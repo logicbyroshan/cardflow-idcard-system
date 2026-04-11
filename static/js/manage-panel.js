@@ -2234,6 +2234,40 @@ let _emailTotal = 0;
 let _emailLogsById = {};
 let _emailComposePreviewBound = false;
 let _emailSearchTimer = null;
+let _emailSortOrder = 'latest';
+
+const EMAIL_STATUS_FILTER_LABELS = {
+  on_hold: 'On Hold',
+  pending: 'Pending',
+  sent: 'Sent',
+  failed: 'Failed',
+};
+
+function _normalizeEmailSortOrder(value) {
+  return String(value || '').toLowerCase() === 'oldest' ? 'oldest' : 'latest';
+}
+
+function _syncEmailStatusFilterBadges(activeStatus) {
+  const normalized = String(activeStatus || '');
+  const badges = document.querySelectorAll('.email-status-filter[data-email-status]');
+  badges.forEach(function (badge) {
+    const badgeStatus = badge.getAttribute('data-email-status') || '';
+    const isActive = !!normalized && badgeStatus === normalized;
+    const label = EMAIL_STATUS_FILTER_LABELS[badgeStatus] || 'Status';
+    badge.classList.toggle('is-active', isActive);
+    badge.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    badge.setAttribute('title', isActive ? ('Active filter: ' + label + ' (click to clear)') : ('Filter: ' + label));
+  });
+}
+
+window.setEmailStatusQuickFilter = function (statusValue) {
+  const nextStatus = String(statusValue || '').trim();
+  const statusSelect = document.getElementById('emailStatusFilter');
+  if (!statusSelect || !nextStatus) return;
+  statusSelect.value = statusSelect.value === nextStatus ? '' : nextStatus;
+  _syncEmailStatusFilterBadges(statusSelect.value || '');
+  loadEmailLogs(1);
+};
 
 window.debounceEmailSearch = function () {
   clearTimeout(_emailSearchTimer);
@@ -2497,10 +2531,17 @@ window.loadEmailLogs = function (page) {
   const search = document.getElementById('emailSearch')?.value?.trim() || '';
   const status = document.getElementById('emailStatusFilter')?.value || '';
   const type   = document.getElementById('emailTypeFilter')?.value   || '';
+  const sortSelect = document.getElementById('emailSortFilter');
+  const sort = _normalizeEmailSortOrder(sortSelect?.value || _emailSortOrder);
+  _emailSortOrder = sort;
+  if (sortSelect && sortSelect.value !== sort) sortSelect.value = sort;
+  _syncEmailStatusFilterBadges(status);
+
   let url = (window.EMAIL_LOGS_API_URL || '/api/email-logs/') + '?page=' + _emailPage + '&per_page=' + _emailPerPage;
   if (search) url += '&search=' + encodeURIComponent(search);
   if (status) url += '&status='     + encodeURIComponent(status);
   if (type)   url += '&email_type=' + encodeURIComponent(type);
+  url += '&sort=' + encodeURIComponent(sort);
 
   const tbody = document.getElementById('emailLogsBody');
   var skeletonStart = null;
