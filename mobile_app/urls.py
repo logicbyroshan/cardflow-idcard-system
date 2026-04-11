@@ -56,6 +56,10 @@ urlpatterns = [
     path('api/profile/update/', views.api_profile_update, name='api_profile_update'),
     path('api/search/', views.api_search, name='api_search'),
     path('api/server-info/', views.api_server_info, name='api_server_info'),
+    path('api/mobile-shell/config/', views.api_mobile_shell_config, name='api_mobile_shell_config'),
+    path('api/mobile-shell/device/register/', views.api_mobile_shell_device_register, name='api_mobile_shell_device_register'),
+    path('api/mobile-shell/device/ping/', views.api_mobile_shell_device_ping, name='api_mobile_shell_device_ping'),
+    path('api/mobile-shell/device/summary/', views.api_mobile_shell_device_summary, name='api_mobile_shell_device_summary'),
 
     # Pro user impersonation APIs (mobile surface)
     path('api/impersonate/users/', views.api_impersonate_users, name='api_impersonate_users'),

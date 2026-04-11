@@ -1,0 +1,78 @@
+name: Android Mobile Shell CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/mobile-pwa-shell-phase1
+    paths:
+      - mobile_shell_app/**
+      - mobile_app/**
+      - config/settings.py
+      - .github/workflows/mobile-shell-android.yml
+  pull_request:
+    paths:
+      - mobile_shell_app/**
+      - mobile_app/**
+      - config/settings.py
+      - .github/workflows/mobile-shell-android.yml
+
+jobs:
+  android-shell-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile_shell_app/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install npm deps
+        working-directory: mobile_shell_app
+        run: npm ci
+
+      - name: Verify shell config
+        working-directory: mobile_shell_app
+        run: npm run verify
+
+      - name: Build debug APK
+        working-directory: mobile_shell_app/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adarsh-panel-shell-debug-apk
+          path: mobile_shell_app/android/app/build/outputs/apk/debug/app-debug.apk
+
+  backend-shell-api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run mobile shell backend tests
+        run: |
+          python manage.py test mobile_app.tests.MobileAppShellApiTests -v 2

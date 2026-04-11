@@ -2,17 +2,20 @@ import json
 from unittest import mock
 from datetime import timedelta
 from pathlib import Path
+from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.utils import timezone
 
 from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
 from staff.models import Staff
 from website.models import PortfolioCategory, PortfolioItem
+from mobile_app.models import MobileDevice
 
 
 User = get_user_model()
@@ -335,6 +338,221 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertGreaterEqual(len(login_response.redirect_chain), 1)
 		self.assertEqual(login_response.redirect_chain[0][0], '/app/no-access/?reason=no-client-context')
 		self.assertEqual(login_response.status_code, 403)
+
+
+class MobileAppShellApiTests(MobileAppBaseTestCase):
+	def test_mobile_shell_config_returns_policy_payload(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/config/?app_build=1')
+
+		self.assertEqual(response.status_code, 200)
+		body = response.json()
+		self.assertTrue(body.get('success'))
+		self.assertEqual(body['data']['platform'], 'android')
+		self.assertIn('min_supported_build', body['data'])
+
+	def test_mobile_shell_register_upserts_device(self):
+		self._login_mobile_client()
+		payload = {
+			'platform': 'android',
+			'installation_id': 'inst-test-0001',
+			'app_build': 12,
+			'app_version': '1.2.0',
+			'device_model': 'Pixel 7',
+			'os_version': '14',
+			'device_language': 'en',
+		}
+
+		response = self.client.post(
+			'/app/api/mobile-shell/device/register/',
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+
+		device = MobileDevice.objects.get(user=self.client_user, platform='android', installation_id='inst-test-0001')
+		self.assertEqual(device.app_build, 12)
+		self.assertEqual(device.app_version, '1.2.0')
+
+		payload['app_build'] = 13
+		payload['app_version'] = '1.3.0'
+		response2 = self.client.post(
+			'/app/api/mobile-shell/device/register/',
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+		self.assertEqual(response2.status_code, 200)
+		device.refresh_from_db()
+		self.assertEqual(device.app_build, 13)
+		self.assertEqual(device.app_version, '1.3.0')
+
+	def test_mobile_shell_ping_creates_record_when_missing(self):
+		self._login_mobile_client()
+		payload = {
+			'installation_id': 'inst-ping-0002',
+			'app_build': 3,
+			'app_version': '1.0.3',
+		}
+		response = self.client.post(
+			'/app/api/mobile-shell/device/ping/',
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(MobileDevice.objects.filter(user=self.client_user, installation_id='inst-ping-0002').exists())
+
+	def test_mobile_shell_register_rejects_invalid_installation_id(self):
+		self._login_mobile_client()
+		response = self.client.post(
+			'/app/api/mobile-shell/device/register/',
+			data=json.dumps({'platform': 'android', 'installation_id': 'bad'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+
+	def test_mobile_shell_ping_rejects_invalid_installation_id(self):
+		self._login_mobile_client()
+		response = self.client.post(
+			'/app/api/mobile-shell/device/ping/',
+			data=json.dumps({'installation_id': 'short'}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['success'])
+
+	@override_settings(
+		MOBILE_SHELL_ANDROID_MIN_BUILD=120,
+		MOBILE_SHELL_ANDROID_LATEST_BUILD=130,
+		MOBILE_SHELL_ANDROID_LATEST_VERSION='1.3.0',
+	)
+	def test_mobile_shell_config_sets_required_and_recommended_flags(self):
+		self._login_mobile_client()
+
+		low_resp = self.client.get('/app/api/mobile-shell/config/?app_build=110')
+		low_data = low_resp.json()['data']
+		self.assertTrue(low_data['update_required'])
+		self.assertTrue(low_data['update_recommended'])
+
+		mid_resp = self.client.get('/app/api/mobile-shell/config/?app_build=125')
+		mid_data = mid_resp.json()['data']
+		self.assertFalse(mid_data['update_required'])
+		self.assertTrue(mid_data['update_recommended'])
+
+		high_resp = self.client.get('/app/api/mobile-shell/config/?app_build=130')
+		high_data = high_resp.json()['data']
+		self.assertFalse(high_data['update_required'])
+		self.assertFalse(high_data['update_recommended'])
+
+	@override_settings(
+		MOBILE_SHELL_ANDROID_FORCE_UPDATE=True,
+		MOBILE_SHELL_ANDROID_MIN_BUILD=1,
+		MOBILE_SHELL_ANDROID_LATEST_BUILD=1,
+	)
+	def test_mobile_shell_config_force_update_overrides_build_threshold(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/config/?app_build=9999')
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['data']['update_required'])
+
+	def test_mobile_shell_summary_requires_elevated_role(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/device/summary/')
+		self.assertEqual(response.status_code, 403)
+
+	def test_mobile_shell_summary_returns_rollout_metrics(self):
+		self._login_mobile_super_admin()
+		now = timezone.now()
+
+		recent = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='inst-summary-0001',
+			app_build=10,
+			app_version='1.0.0',
+			is_active=True,
+		)
+		older = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='inst-summary-0002',
+			app_build=9,
+			app_version='0.9.0',
+			is_active=True,
+		)
+
+		MobileDevice.objects.filter(pk=recent.pk).update(last_seen_at=now - timedelta(hours=2))
+		MobileDevice.objects.filter(pk=older.pk).update(last_seen_at=now - timedelta(days=45))
+
+		response = self.client.get('/app/api/mobile-shell/device/summary/')
+		self.assertEqual(response.status_code, 200)
+		body = response.json()
+		self.assertTrue(body['success'])
+		self.assertGreaterEqual(body['data']['total_devices'], 2)
+		self.assertGreaterEqual(body['data']['active_24h'], 1)
+		self.assertGreaterEqual(body['data']['stale_30d'], 1)
+		self.assertIsInstance(body['data']['top_builds'], list)
+
+
+class MobileDeviceCleanupCommandTests(MobileAppBaseTestCase):
+	def test_cleanup_marks_stale_devices_inactive(self):
+		now = timezone.now()
+		active_old = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='cleanup-stale-0001',
+			is_active=True,
+		)
+		MobileDevice.objects.filter(pk=active_old.pk).update(last_seen_at=now - timedelta(days=50))
+
+		out = StringIO()
+		call_command('cleanup_mobile_devices', '--stale-days', '30', stdout=out)
+
+		active_old.refresh_from_db()
+		self.assertFalse(active_old.is_active)
+
+	def test_cleanup_dry_run_does_not_modify_rows(self):
+		now = timezone.now()
+		active_old = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='cleanup-dryrun-0001',
+			is_active=True,
+		)
+		MobileDevice.objects.filter(pk=active_old.pk).update(last_seen_at=now - timedelta(days=45))
+
+		out = StringIO()
+		call_command('cleanup_mobile_devices', '--stale-days', '30', '--dry-run', stdout=out)
+
+		active_old.refresh_from_db()
+		self.assertTrue(active_old.is_active)
+
+	def test_cleanup_optionally_deletes_old_inactive_rows(self):
+		now = timezone.now()
+		old_inactive = MobileDevice.objects.create(
+			user=self.client_user,
+			platform='android',
+			installation_id='cleanup-delete-0001',
+			is_active=False,
+		)
+		MobileDevice.objects.filter(pk=old_inactive.pk).update(last_seen_at=now - timedelta(days=180))
+
+		out = StringIO()
+		call_command(
+			'cleanup_mobile_devices',
+			'--stale-days',
+			'30',
+			'--delete-days',
+			'120',
+			'--delete-inactive',
+			stdout=out,
+		)
+
+		self.assertFalse(MobileDevice.objects.filter(pk=old_inactive.pk).exists())
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):

@@ -1,0 +1,35 @@
+{
+  "name": "adarsh-mobile-shell",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor Android shell that loads the Adarsh mobile PWA.",
+  "scripts": {
+    "prepare": "node ./scripts/prepare.mjs",
+    "sync:android": "npm run prepare && npx cap sync android",
+    "copy:android": "npm run prepare && npx cap copy android",
+    "open:android": "npm run sync:android && npx cap open android",
+    "run:android": "npm run sync:android && npx cap run android",
+    "build:android:debug": "npm run sync:android && cd android && gradlew.bat assembleDebug",
+    "doctor": "node ./scripts/doctor.mjs",
+    "verify": "npm run doctor && npm run sync:android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/browser": "^6.0.2",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/device": "^6.0.2",
+    "@capacitor/haptics": "^6.0.1",
+    "@capacitor/keyboard": "^6.0.2",
+    "@capacitor/network": "^6.0.1",
+    "@capacitor/push-notifications": "^6.0.2",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1",
+    "@capacitor/toast": "^6.0.2",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "typescript": "^5.6.3"
+  }
+}

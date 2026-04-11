@@ -230,6 +230,13 @@ package-lock.json
 static/css/tailwind.__last_good.css
 static/css/tailwind.__new.css
 
+# Android shell local artifacts
+mobile_shell_app/android/.gradle/
+mobile_shell_app/android/local.properties
+mobile_shell_app/android/app/build/
+*.jks
+*.keystore
+
 # Temp test scripts
 test_*.py
 
