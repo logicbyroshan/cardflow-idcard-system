@@ -13,6 +13,7 @@ from client.models import Client
 from idcards.models import IDCard, IDCardGroup, IDCardTable
 from staff.models import Staff
 from website.models import PortfolioCategory, PortfolioItem
+from mobile_app.models import MobileDevice
 
 
 User = get_user_model()
@@ -335,6 +336,70 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertGreaterEqual(len(login_response.redirect_chain), 1)
 		self.assertEqual(login_response.redirect_chain[0][0], '/app/no-access/?reason=no-client-context')
 		self.assertEqual(login_response.status_code, 403)
+
+
+class MobileAppShellApiTests(MobileAppBaseTestCase):
+	def test_mobile_shell_config_returns_policy_payload(self):
+		self._login_mobile_client()
+		response = self.client.get('/app/api/mobile-shell/config/?app_build=1')
+
+		self.assertEqual(response.status_code, 200)
+		body = response.json()
+		self.assertTrue(body.get('success'))
+		self.assertEqual(body['data']['platform'], 'android')
+		self.assertIn('min_supported_build', body['data'])
+
+	def test_mobile_shell_register_upserts_device(self):
+		self._login_mobile_client()
+		payload = {
+			'platform': 'android',
+			'installation_id': 'inst-test-0001',
+			'app_build': 12,
+			'app_version': '1.2.0',
+			'device_model': 'Pixel 7',
+			'os_version': '14',
+			'device_language': 'en',
+		}
+
+		response = self.client.post(
+			'/app/api/mobile-shell/device/register/',
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+
+		device = MobileDevice.objects.get(user=self.client_user, platform='android', installation_id='inst-test-0001')
+		self.assertEqual(device.app_build, 12)
+		self.assertEqual(device.app_version, '1.2.0')
+
+		payload['app_build'] = 13
+		payload['app_version'] = '1.3.0'
+		response2 = self.client.post(
+			'/app/api/mobile-shell/device/register/',
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+		self.assertEqual(response2.status_code, 200)
+		device.refresh_from_db()
+		self.assertEqual(device.app_build, 13)
+		self.assertEqual(device.app_version, '1.3.0')
+
+	def test_mobile_shell_ping_creates_record_when_missing(self):
+		self._login_mobile_client()
+		payload = {
+			'installation_id': 'inst-ping-0002',
+			'app_build': 3,
+			'app_version': '1.0.3',
+		}
+		response = self.client.post(
+			'/app/api/mobile-shell/device/ping/',
+			data=json.dumps(payload),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(MobileDevice.objects.filter(user=self.client_user, installation_id='inst-ping-0002').exists())
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):

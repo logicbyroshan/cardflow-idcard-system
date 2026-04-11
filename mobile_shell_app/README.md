@@ -2,16 +2,17 @@
 
 This folder contains a native app shell that loads the existing mobile PWA URL.
 
+Current scope: Android-first rollout. iOS work is intentionally deferred.
+
 ## Why this approach
 - One primary feature surface stays in the PWA.
-- Users install from Play Store/App Store and get app-like behavior.
+- Users install from Play Store and get app-like behavior.
 - Native bridge remains available for push notifications and device capabilities.
 
 ## Prerequisites
 - Node.js 18+
 - npm 9+
 - Android Studio (for Android builds)
-- Xcode on macOS (for iOS builds)
 
 ## Quick start
 1. Copy environment file:
@@ -20,18 +21,17 @@ This folder contains a native app shell that loads the existing mobile PWA URL.
    - `npm install`
 3. Validate config:
    - `npm run doctor`
-4. Add platforms (first time only):
+4. Add Android platform (first time only):
    - `npx cap add android`
-   - `npx cap add ios`
-5. Sync and open native projects:
+5. Sync and open native project:
    - `npm run open:android`
-   - `npm run open:ios`
 
 ## Environment variables
 - `APP_NAME`: display name for native app
 - `APP_ID`: native bundle identifier/package ID
 - `PWA_URL`: production PWA URL loaded in the shell
 - `PWA_DEV_URL`: optional local debug URL
+- `CAP_SHELL_USE_DEV_URL`: set `1` to load `PWA_DEV_URL`
 - `ANDROID_SCHEME`: default `https`
 
 ## Behavior currently implemented
@@ -39,20 +39,22 @@ This folder contains a native app shell that loads the existing mobile PWA URL.
 2. Strict navigation allowlist for known domains.
 3. Local fallback page (`offline.html`) when remote URL fails.
 4. Android back behavior with double-tap exit when no history is available.
-5. Network listener hook for online/offline state diagnostics.
+5. Android deep-link intent routing for `panel.adarshbhopal.in/app`.
+6. Push-notification token capture and backend device registration (through PWA bridge).
+7. External links open in system browser from app shell context.
 
 ## Release flow
 ### Android
-1. `npm run sync`
+1. `npm run sync:android`
 2. `npx cap open android`
 3. Build signed `AAB` in Android Studio.
 4. Upload to Play Console internal testing.
 
-### iOS (macOS only)
-1. `npm run sync`
-2. `npx cap open ios`
-3. Archive in Xcode.
-4. Upload to TestFlight / App Store Connect.
+## Backend dependencies
+The shell bridge expects these endpoints in Django mobile app:
+1. `GET /app/api/mobile-shell/config/`
+2. `POST /app/api/mobile-shell/device/register/`
+3. `POST /app/api/mobile-shell/device/ping/`
 
 ## Security baseline
 1. Keep `PWA_URL` as HTTPS only.

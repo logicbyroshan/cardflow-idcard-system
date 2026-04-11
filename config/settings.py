@@ -610,6 +610,21 @@ APP_VERSION = _get_app_version()
 
 
 # =============================================================================
+# ANDROID MOBILE SHELL POLICY
+# =============================================================================
+
+MOBILE_SHELL_ANDROID_MIN_BUILD = max(1, int(os.getenv('MOBILE_SHELL_ANDROID_MIN_BUILD', '1')))
+MOBILE_SHELL_ANDROID_LATEST_BUILD = max(
+    MOBILE_SHELL_ANDROID_MIN_BUILD,
+    int(os.getenv('MOBILE_SHELL_ANDROID_LATEST_BUILD', str(MOBILE_SHELL_ANDROID_MIN_BUILD))),
+)
+MOBILE_SHELL_ANDROID_LATEST_VERSION = os.getenv('MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0').strip() or '1.0.0'
+MOBILE_SHELL_ANDROID_FORCE_UPDATE = _env_bool('MOBILE_SHELL_ANDROID_FORCE_UPDATE', False)
+MOBILE_SHELL_PRIVACY_URL = os.getenv('MOBILE_SHELL_PRIVACY_URL', WEBSITE_URL or SITE_URL).strip()
+MOBILE_SHELL_SUPPORT_URL = os.getenv('MOBILE_SHELL_SUPPORT_URL', WEBSITE_URL or SITE_URL).strip()
+
+
+# =============================================================================
 # PERFORMANCE MONITORING THRESHOLDS
 # =============================================================================
 

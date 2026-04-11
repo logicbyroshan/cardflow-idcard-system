@@ -12,6 +12,7 @@ import json
 import re
 import logging
 import time
+import hashlib
 from urllib.parse import urlencode
 from functools import wraps
 
@@ -53,6 +54,7 @@ from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
 from mediafiles.services.image_thumbnail import ThumbnailService
+from .models import MobileDevice
 
 logger = logging.getLogger(__name__)
 APP_BOOT_TS = time.time()
@@ -60,10 +62,47 @@ MAX_SEARCH_QUERY_LEN = 100
 MAX_GLOBAL_SEARCH_DB_SCAN = 100
 MAX_REPRINT_ACTION_IDS = 200
 MOBILE_CLIENT_EDIT_LOCK_STATUSES = frozenset({'pool'})
+MOBILE_INSTALLATION_ID_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,79}$')
 
 
 def _truthy(value):
     return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _mobile_shell_safe_int(raw_value, default=0):
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _mobile_shell_app_config_payload(*, app_build=0):
+    app_build = max(0, _mobile_shell_safe_int(app_build, 0))
+    min_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_MIN_BUILD', 1) or 1)
+    latest_build = int(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_BUILD', min_build) or min_build)
+    latest_build = max(min_build, latest_build)
+    force_toggle = bool(getattr(settings, 'MOBILE_SHELL_ANDROID_FORCE_UPDATE', False))
+
+    update_required = force_toggle or (app_build > 0 and app_build < min_build)
+    update_recommended = app_build > 0 and app_build < latest_build
+
+    return {
+        'platform': 'android',
+        'app_name': 'Adarsh Panel',
+        'min_supported_build': min_build,
+        'latest_build': latest_build,
+        'latest_version': str(getattr(settings, 'MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.0') or '1.0.0'),
+        'update_required': update_required,
+        'update_recommended': update_recommended,
+        'privacy_url': str(getattr(settings, 'MOBILE_SHELL_PRIVACY_URL', '') or ''),
+        'support_url': str(getattr(settings, 'MOBILE_SHELL_SUPPORT_URL', '') or ''),
+        'server_app_version': str(getattr(settings, 'APP_VERSION', '') or ''),
+    }
+
+
+def _mobile_shell_device_payload_hash(*, installation_id, app_build, app_version):
+    seed = f'{installation_id}|{app_build}|{app_version}'.encode('utf-8', errors='ignore')
+    return hashlib.sha256(seed).hexdigest()[:20]
 
 MOBILE_PUBLIC_BENTO_INCLUDE_SLUGS = [
     'certificates',
@@ -3609,6 +3648,114 @@ def api_search(request):
         })
 
     return JsonResponse({'success': True, 'data': {'results': results, 'count': len(results)}})
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
+def api_mobile_shell_config(request):
+    """Returns Android shell policy (version/update/support URLs) for runtime checks."""
+    app_build = _mobile_shell_safe_int(request.GET.get('app_build'), 0)
+    payload = _mobile_shell_app_config_payload(app_build=app_build)
+    return JsonResponse({'success': True, 'data': payload})
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_mobile_shell_device_register(request):
+    """Upserts Android shell device metadata and optional push token."""
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    installation_id = str(data.get('installation_id') or '').strip()
+    if not MOBILE_INSTALLATION_ID_RE.match(installation_id):
+        return JsonResponse({'success': False, 'message': 'Valid installation_id is required.'}, status=400)
+
+    platform_name = str(data.get('platform') or 'android').strip().lower() or 'android'
+    if platform_name != 'android':
+        return JsonResponse({'success': False, 'message': 'Only android platform is supported in current rollout.'}, status=400)
+
+    app_build = max(0, _mobile_shell_safe_int(data.get('app_build'), 0))
+    app_version = str(data.get('app_version') or '').strip()[:32]
+    push_token = str(data.get('push_token') or '').strip()[:255]
+    device_model = str(data.get('device_model') or '').strip()[:120]
+    os_version = str(data.get('os_version') or '').strip()[:50]
+    device_language = str(data.get('device_language') or '').strip()[:32]
+
+    defaults = {
+        'push_token': push_token,
+        'app_build': app_build,
+        'app_version': app_version,
+        'device_model': device_model,
+        'os_version': os_version,
+        'device_language': device_language,
+        'last_ip': _get_client_ip(request),
+        'is_active': True,
+    }
+
+    device_obj, _ = MobileDevice.objects.update_or_create(
+        user=request.user,
+        platform='android',
+        installation_id=installation_id,
+        defaults=defaults,
+    )
+
+    config_payload = _mobile_shell_app_config_payload(app_build=app_build)
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'device_id': device_obj.id,
+            'device_signature': _mobile_shell_device_payload_hash(
+                installation_id=installation_id,
+                app_build=app_build,
+                app_version=app_version,
+            ),
+            'config': config_payload,
+        },
+    })
+
+
+@require_mobile_client
+@require_http_methods(["POST"])
+def api_mobile_shell_device_ping(request):
+    """Heartbeat endpoint to keep mobile device records active and up to date."""
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+
+    installation_id = str(data.get('installation_id') or '').strip()
+    if not MOBILE_INSTALLATION_ID_RE.match(installation_id):
+        return JsonResponse({'success': False, 'message': 'Valid installation_id is required.'}, status=400)
+
+    app_build = max(0, _mobile_shell_safe_int(data.get('app_build'), 0))
+    app_version = str(data.get('app_version') or '').strip()[:32]
+
+    updated = MobileDevice.objects.filter(
+        user=request.user,
+        platform='android',
+        installation_id=installation_id,
+    ).update(
+        app_build=app_build,
+        app_version=app_version,
+        last_ip=_get_client_ip(request),
+        is_active=True,
+    )
+
+    if not updated:
+        MobileDevice.objects.create(
+            user=request.user,
+            platform='android',
+            installation_id=installation_id,
+            app_build=app_build,
+            app_version=app_version,
+            last_ip=_get_client_ip(request),
+            is_active=True,
+        )
+
+    config_payload = _mobile_shell_app_config_payload(app_build=app_build)
+    return JsonResponse({'success': True, 'data': {'config': config_payload}})
 
 
 @require_mobile_client

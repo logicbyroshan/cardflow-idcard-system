@@ -6,6 +6,9 @@ This folder contains execution documents for shipping a native-distributed shell
 - PHASE1_PRODUCT_AND_COMPLIANCE_PLAN.md
 - PHASE1_COMPLIANCE_CHECKLIST.md
 - PHASE1_EXECUTION_BOARD.md
+- PHASE2_TO_PHASE7_ANDROID_EXECUTION.md
+- ANDROID_QA_SECURITY_CHECKLIST.md
+- ANDROID_RELEASE_PIPELINE.md
 
 ## How to use
 1. Complete all checkboxes in PHASE1_COMPLIANCE_CHECKLIST.md.
