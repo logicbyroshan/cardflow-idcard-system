@@ -175,3 +175,71 @@
     background: rgba(239, 68, 68, 0.08);
     border-color: rgba(239, 68, 68, 0.3);
 }
+
+/* ====================
+   Quick Action Embedded Drawer
+   ==================== */
+.dashboard-quick-action-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.dashboard-quick-action-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.dashboard-quick-action-drawer {
+    width: min(760px, 100vw);
+    max-width: min(760px, 100vw);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    border-left: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.dashboard-quick-action-overlay.active .dashboard-quick-action-drawer {
+    transform: translateX(0);
+}
+
+.dashboard-quick-action-drawer-head {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.dashboard-quick-action-drawer-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.dashboard-quick-action-drawer-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #d1d5db;
+    border-radius: 2px;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-quick-action-drawer-close:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.dashboard-quick-action-frame {
+    width: 100%;
+    height: calc(100vh - 52px);
+    border: 0;
+    background: #f8fafc;
+}
