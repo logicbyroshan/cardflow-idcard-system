@@ -75,7 +75,7 @@
       }
     });
 
-    var wrapperEls = document.querySelectorAll('.client-message-nav-link, .client-message-top-shortcut, .quick-action-message');
+    var wrapperEls = document.querySelectorAll('.client-message-nav-link, [data-client-message-open], .quick-action-message');
     wrapperEls.forEach(function (el) {
       el.classList.toggle('has-unread', count > 0);
     });

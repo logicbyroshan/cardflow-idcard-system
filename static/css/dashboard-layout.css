@@ -617,24 +617,39 @@
 }
 
 .welcome-notif-dismiss,
-.welcome-notif-viewall {
+.welcome-notif-markread {
     background: rgba(255, 255, 255, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.25);
     color: #fff;
-    width: 30px;
     height: 30px;
     border-radius: 6px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.15s;
-    font-size: 13px;
+    transition: background 0.15s, border-color 0.15s;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    padding: 0 10px;
     text-decoration: none;
 }
-.welcome-notif-dismiss:hover,
-.welcome-notif-viewall:hover {
+
+.welcome-notif-markread {
     background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+.welcome-notif-dismiss:hover,
+.welcome-notif-markread:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+    .welcome-notif-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 /* Dots indicator */

@@ -1,90 +1,118 @@
 <style>
-  #clientMessageStrip {
+  #clientNotificationStrip {
     display: none;
-    margin-top: 12px;
-    margin-left: 12px;
-    margin-right: 12px;
+    margin: 12px 12px 0;
   }
 
-  .client-message-card {
-    border: 1px solid #bfdbfe;
-    background: linear-gradient(128deg, #eef5ff 0%, #f8fafc 58%, #ffffff 100%);
-    border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(30, 64, 175, 0.08);
+  .client-notif-card {
+    border: 1px solid #fca5a5;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: #fff;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(153, 27, 27, 0.28);
     padding: 12px 14px;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 14px;
+    gap: 12px;
   }
 
-  .client-message-main {
+  .client-notif-card.cat-alert {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    border-color: #fdba74;
+  }
+
+  .client-notif-card.cat-announcement {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    border-color: #fcd34d;
+  }
+
+  .client-notif-card.cat-update {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    border-color: #86efac;
+  }
+
+  .client-notif-card.cat-general {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-color: #93c5fd;
+  }
+
+  .client-notif-main {
     display: flex;
     align-items: flex-start;
-    gap: 11px;
+    gap: 10px;
     min-width: 0;
     flex: 1;
   }
 
-  .client-message-icon {
-    width: 36px;
-    height: 36px;
+  .client-notif-icon {
+    width: 34px;
+    height: 34px;
     border-radius: 8px;
-    background: linear-gradient(160deg, #2563eb, #1d4ed8);
+    background: rgba(255, 255, 255, 0.2);
     color: #fff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
+    font-size: 16px;
     flex-shrink: 0;
   }
 
-  .client-message-body {
+  .client-notif-body {
     min-width: 0;
   }
 
-  .client-message-topline {
+  .client-notif-topline {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
   }
 
-  .client-message-label {
+  .client-notif-label {
     font-size: 11px;
     font-weight: 800;
-    color: #1d4ed8;
+    color: rgba(255, 255, 255, 0.92);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
   }
 
-  .client-message-counter {
+  .client-notif-counter {
     font-size: 11px;
-    color: #334155;
-    border-radius: 8px;
-    background: #e2e8f0;
+    color: #fff;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.24);
     padding: 2px 8px;
     font-weight: 700;
   }
 
-  .client-message-meta {
+  .client-notif-title {
     margin-top: 2px;
-    font-size: 12px;
-    color: #334155;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     line-height: 1.3;
+    color: #fff;
   }
 
-  .client-message-text {
-    margin-top: 6px;
-    font-size: 14px;
-    color: #0f172a;
-    line-height: 1.55;
+  .client-notif-text {
+    margin-top: 4px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
   }
 
-  .client-message-actions {
+  .client-notif-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .client-notif-actions {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -93,103 +121,104 @@
     flex-shrink: 0;
   }
 
-  .client-message-actions .btn {
-    border-radius: 10px;
+  .client-notif-btn {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
   }
 
-  .client-message-expiry {
-    margin-top: 5px;
-    font-size: 11px;
-    color: #7c2d12;
-    font-weight: 700;
+  .client-notif-btn:hover {
+    background: rgba(255, 255, 255, 0.32);
+    color: #fff;
+  }
+
+  .client-notif-btn.mark-read {
+    background: rgba(255, 255, 255, 0.3);
   }
 
   @media (max-width: 900px) {
-    .client-message-card {
-      flex-direction: column;
-      align-items: stretch;
-      padding: 12px;
-    }
-
-    .client-message-actions {
-      justify-content: flex-start;
-    }
-
-    #clientMessageStrip {
+    #clientNotificationStrip {
       margin-left: 8px;
       margin-right: 8px;
+    }
+
+    .client-notif-card {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .client-notif-actions {
+      justify-content: flex-start;
     }
   }
 </style>
 
-<div id="clientMessageStrip" aria-live="polite">
-  <div class="client-message-card">
-    <div class="client-message-main">
-      <div class="client-message-icon" aria-hidden="true">
-        <i class="fa-solid fa-bullhorn"></i>
+<div id="clientNotificationStrip" aria-live="polite">
+  <div class="client-notif-card cat-maintenance" id="clientNotificationCard">
+    <div class="client-notif-main">
+      <div class="client-notif-icon" aria-hidden="true">
+        <i class="fa-solid fa-wrench" id="clientNotificationIcon"></i>
       </div>
-      <div class="client-message-body">
-        <div class="client-message-topline">
-          <div class="client-message-label">Admin Message</div>
-          <div class="client-message-counter" id="clientMessageStripCounter">1 of 1</div>
+      <div class="client-notif-body">
+        <div class="client-notif-topline">
+          <div class="client-notif-label" id="clientNotificationLabel">Maintenance</div>
+          <div class="client-notif-counter" id="clientNotificationCounter">1 of 1</div>
         </div>
-        <div class="client-message-meta" id="clientMessageStripMeta">Message from Admin</div>
-        <div class="client-message-text" id="clientMessageStripText"></div>
-        <div class="client-message-expiry" id="clientMessageStripExpiry" style="display:none;"></div>
+        <div class="client-notif-title" id="clientNotificationTitle"></div>
+        <div class="client-notif-text" id="clientNotificationText"></div>
+        <div class="client-notif-meta" id="clientNotificationMeta"></div>
       </div>
     </div>
-    <div class="client-message-actions">
-      <a href="{% url 'client:messages' %}" class="btn btn-sm btn-neutral" title="Open messages page">Go to Messages</a>
-      <button type="button" class="btn btn-sm btn-neutral" id="clientMessageNextBtn" title="Next message">
-        Next
-      </button>
-      <button type="button" class="btn btn-sm btn-neutral" id="clientMessageReadBtn" title="Mark read">Read</button>
-      <button type="button" class="btn btn-sm btn-neutral" id="clientMessageDismissBtn" aria-label="Dismiss message" title="Dismiss">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+    <div class="client-notif-actions">
+      <a href="{% url 'notifications_page' %}" class="client-notif-btn" title="Open notifications page">Notifications</a>
+      <button type="button" class="client-notif-btn" id="clientNotificationDismissBtn" title="Dismiss notification">Dismiss</button>
+      <button type="button" class="client-notif-btn mark-read" id="clientNotificationReadBtn" title="Mark notification as read">Mark as Read</button>
     </div>
   </div>
 </div>
 
 <script>
 (function() {
-  var root = document.getElementById('clientMessageStrip');
+  var root = document.getElementById('clientNotificationStrip');
   if (!root) return;
 
-  var metaEl = document.getElementById('clientMessageStripMeta');
-  var textEl = document.getElementById('clientMessageStripText');
-  var expiryEl = document.getElementById('clientMessageStripExpiry');
-  var counterEl = document.getElementById('clientMessageStripCounter');
-  var nextBtn = document.getElementById('clientMessageNextBtn');
-  var readBtn = document.getElementById('clientMessageReadBtn');
-  var dismissBtn = document.getElementById('clientMessageDismissBtn');
+  var cardEl = document.getElementById('clientNotificationCard');
+  var iconEl = document.getElementById('clientNotificationIcon');
+  var labelEl = document.getElementById('clientNotificationLabel');
+  var titleEl = document.getElementById('clientNotificationTitle');
+  var textEl = document.getElementById('clientNotificationText');
+  var metaEl = document.getElementById('clientNotificationMeta');
+  var counterEl = document.getElementById('clientNotificationCounter');
+  var dismissBtn = document.getElementById('clientNotificationDismissBtn');
+  var readBtn = document.getElementById('clientNotificationReadBtn');
 
-  var queue = [];
+  var allItems = [];
+  var visibleItems = [];
+  var dismissedIds = new Set();
   var currentIndex = 0;
+  var rotateTimer = null;
   var pollTimer = null;
-  var anchorNode = document.createComment('clientMessageStripAnchor');
-  var originalParent = root.parentNode;
-  var isDockedInWelcome = false;
 
-  if (originalParent) {
-    originalParent.insertBefore(anchorNode, root);
-  }
+  var categoryIcons = {
+    general: 'fa-circle-info',
+    announcement: 'fa-bullhorn',
+    update: 'fa-arrow-up-right-dots',
+    maintenance: 'fa-wrench',
+    alert: 'fa-triangle-exclamation'
+  };
 
-  function formatLocalDate(value) {
-    if (!value) return '';
-    var d = new Date(value);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleString();
-  }
-
-  function escapeHtml(s) {
-    var text = String(s == null ? '' : s);
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+  function normalizeCategory(value) {
+    var category = String(value || 'general').toLowerCase();
+    if (categoryIcons[category]) return category;
+    return 'general';
   }
 
   function getCsrf() {
@@ -201,127 +230,140 @@
     return cookie ? cookie.split('=')[1] : '';
   }
 
-  function renderCurrent() {
-    var welcomeBanner = document.getElementById('clientWelcomeBanner');
-    var welcomeSlot = document.getElementById('clientMessageWelcomeSlot');
+  function clearRotateTimer() {
+    if (rotateTimer) {
+      clearInterval(rotateTimer);
+      rotateTimer = null;
+    }
+  }
 
-    if (!queue.length) {
-      root.style.display = 'none';
-      if (welcomeBanner) {
-        welcomeBanner.style.display = '';
-      }
-      if (isDockedInWelcome && anchorNode.parentNode) {
-        anchorNode.parentNode.insertBefore(root, anchorNode.nextSibling);
-        isDockedInWelcome = false;
-      }
+  function startRotateTimer() {
+    clearRotateTimer();
+    if (visibleItems.length <= 1) return;
+    rotateTimer = setInterval(function() {
+      if (!visibleItems.length) return;
+      currentIndex = (currentIndex + 1) % visibleItems.length;
+      renderCurrent();
+    }, 7000);
+  }
+
+  function syncVisibleItems(preferredId) {
+    var currentId = preferredId;
+    if (currentId == null && visibleItems[currentIndex]) {
+      currentId = visibleItems[currentIndex].id;
+    }
+
+    visibleItems = allItems.filter(function(item) {
+      return item && !dismissedIds.has(item.id);
+    });
+
+    if (!visibleItems.length) {
+      currentIndex = 0;
       return;
     }
 
-    if (currentIndex >= queue.length) currentIndex = 0;
-    var item = queue[currentIndex];
+    if (currentId != null) {
+      var idx = visibleItems.findIndex(function(item) { return item.id === currentId; });
+      currentIndex = idx >= 0 ? idx : 0;
+    } else {
+      currentIndex = 0;
+    }
+  }
+
+  function renderCurrent() {
+    if (!visibleItems.length) {
+      root.style.display = 'none';
+      clearRotateTimer();
+      return;
+    }
+
+    if (currentIndex >= visibleItems.length) currentIndex = 0;
+    var item = visibleItems[currentIndex];
     if (!item) {
       root.style.display = 'none';
+      clearRotateTimer();
       return;
     }
 
-    var metaParts = [
-      'Message from ' + (item.sent_by_name || 'Admin'),
-      item.client_name || '',
-      item.scope_display || item.scope || ''
-    ].filter(Boolean);
+    var category = normalizeCategory(item.category);
+    var iconClass = categoryIcons[category] || categoryIcons.general;
+    var timeAgo = item.time_ago ? String(item.time_ago) + ' ago' : 'Unread notification';
 
-    metaEl.textContent = metaParts.join(' | ');
-    textEl.innerHTML = escapeHtml(item.message || '');
-    if (counterEl) {
-      counterEl.textContent = (currentIndex + 1) + ' of ' + queue.length;
-      counterEl.style.display = queue.length > 1 ? '' : 'none';
-    }
-    if (expiryEl) {
-      var isTemporary = item.visibility === 'temporary';
-      var expiryText = formatLocalDate(item.expires_at);
-      if (isTemporary && expiryText) {
-        expiryEl.textContent = 'Temporary message. Expires: ' + expiryText;
-        expiryEl.style.display = '';
-      } else {
-        expiryEl.textContent = '';
-        expiryEl.style.display = 'none';
-      }
-    }
-    if (nextBtn) {
-      nextBtn.style.display = queue.length > 1 ? '' : 'none';
-    }
+    cardEl.className = 'client-notif-card cat-' + category;
+    iconEl.className = 'fa-solid ' + iconClass;
+    labelEl.textContent = item.category_display || category;
+    titleEl.textContent = item.title || 'Notification';
+    textEl.textContent = item.message || '';
+    metaEl.textContent = timeAgo;
 
-    if (welcomeBanner && welcomeSlot) {
-      welcomeBanner.style.display = 'none';
-      if (!isDockedInWelcome || root.parentNode !== welcomeSlot) {
-        welcomeSlot.appendChild(root);
-        isDockedInWelcome = true;
-      }
-    } else if (isDockedInWelcome && anchorNode.parentNode) {
-      anchorNode.parentNode.insertBefore(root, anchorNode.nextSibling);
-      isDockedInWelcome = false;
+    if (visibleItems.length > 1) {
+      counterEl.textContent = (currentIndex + 1) + ' of ' + visibleItems.length;
+      counterEl.style.display = '';
+    } else {
+      counterEl.style.display = 'none';
     }
 
     root.style.display = '';
+    startRotateTimer();
   }
 
-  function showNext() {
-    if (!queue.length) return;
-    currentIndex = (currentIndex + 1) % queue.length;
-    renderCurrent();
-  }
+  function fetchUnreadNotifications() {
+    var currentItem = visibleItems[currentIndex];
+    var currentId = currentItem ? currentItem.id : null;
 
-  function markCurrentAsRead() {
-    if (!queue.length) return Promise.resolve();
-    var item = queue[currentIndex];
-    if (!item || !item.notification_id) return Promise.resolve();
-
-    return fetch('/api/notifications/' + item.notification_id + '/read/', {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': getCsrf(),
-      },
-      credentials: 'same-origin',
-    }).catch(function() {});
-  }
-
-  function dismissCurrent() {
-    if (!queue.length) {
-      root.style.display = 'none';
-      return;
-    }
-
-    markCurrentAsRead().finally(function() {
-      queue.splice(currentIndex, 1);
-      if (currentIndex >= queue.length) currentIndex = 0;
-      renderCurrent();
-      if (!queue.length) {
-        fetchUnread();
-      }
-    });
-  }
-
-  function fetchUnread() {
-    fetch('/api/notifications/client-messages/unread/?limit=5', { credentials: 'same-origin' })
-      .then(function(resp) { return resp.ok ? resp.json() : null; })
+    fetch('/api/notifications/list/?limit=10&unread_only=true', { credentials: 'same-origin' })
+      .then(function(response) { return response.ok ? response.json() : null; })
       .then(function(data) {
         if (!data || !data.success) return;
-        queue = Array.isArray(data.items) ? data.items : [];
-        currentIndex = 0;
+        allItems = Array.isArray(data.notifications) ? data.notifications : [];
+        syncVisibleItems(currentId);
         renderCurrent();
       })
       .catch(function() {});
   }
 
-  if (readBtn) readBtn.addEventListener('click', dismissCurrent);
-  if (dismissBtn) dismissBtn.addEventListener('click', dismissCurrent);
-  if (nextBtn) nextBtn.addEventListener('click', showNext);
+  function dismissCurrentNotification() {
+    var currentItem = visibleItems[currentIndex];
+    if (!currentItem) return;
+    dismissedIds.add(currentItem.id);
+    syncVisibleItems();
+    renderCurrent();
+  }
 
-  fetchUnread();
-  pollTimer = setInterval(fetchUnread, 45000);
+  function markCurrentAsRead() {
+    var currentItem = visibleItems[currentIndex];
+    if (!currentItem) return;
+
+    fetch('/api/notifications/' + currentItem.id + '/read/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      credentials: 'same-origin'
+    }).then(function() {
+      allItems = allItems.filter(function(item) { return item.id !== currentItem.id; });
+      dismissedIds.delete(currentItem.id);
+      syncVisibleItems();
+      renderCurrent();
+    }).catch(function() {});
+  }
+
+  if (dismissBtn) dismissBtn.addEventListener('click', dismissCurrentNotification);
+  if (readBtn) readBtn.addEventListener('click', markCurrentAsRead);
+
+  fetchUnreadNotifications();
+  pollTimer = setInterval(fetchUnreadNotifications, 45000);
+
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      fetchUnreadNotifications();
+    }
+  });
 
   window.addEventListener('beforeunload', function() {
-    if (pollTimer) clearInterval(pollTimer);
+    clearRotateTimer();
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
   });
 })();
 </script>

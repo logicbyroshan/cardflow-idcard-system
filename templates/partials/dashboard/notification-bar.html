@@ -8,7 +8,7 @@
       <span class="notif-bar-badge" id="notifBarCount" style="display:none;">0</span>
     </div>
     <a href="{% url 'notifications_page' %}" class="notif-bar-link">
-      View All <i class="fa-solid fa-arrow-right"></i>
+      Open Notifications
     </a>
   </div>
   <div class="notif-bar-list" id="notifBarList">
@@ -88,6 +88,11 @@
   gap: 4px;
   flex-shrink: 0;
 }
+.notif-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .notif-bar-mark-btn {
   cursor: pointer;
   border: 1px solid #d1d5db;
@@ -104,6 +109,21 @@
   background: #22c55e;
   color: #fff;
   border-color: #22c55e;
+}
+.notif-bar-dismiss-btn {
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: calc(13px * var(--notif-bar-font-scale));
+  line-height: 1.4;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.notif-bar-dismiss-btn:hover {
+  background: #e2e8f0;
 }
 .notif-bar-icon {
   width: 28px;
@@ -197,7 +217,8 @@
           const cat = n.category || 'general';
           const unreadCls = n.is_read ? '' : ' unread';
           const msgPreview = (n.message || '').length > 80 ? n.message.substring(0, 80) + '...' : (n.message || '');
-          const markBtn = n.is_read ? '' : `<button class="notif-bar-mark-btn" onclick="event.stopPropagation();markNotifRead(${n.id}, this.closest('.notif-bar-item'))" title="Mark as read"><i class="fa-solid fa-check"></i></button>`;
+          const dismissBtn = `<button class="notif-bar-dismiss-btn" onclick="event.stopPropagation();dismissNotifFromBar(this.closest('.notif-bar-item'))" title="Dismiss">Dismiss</button>`;
+          const markBtn = n.is_read ? '' : `<button class="notif-bar-mark-btn" onclick="event.stopPropagation();markNotifRead(${n.id}, this.closest('.notif-bar-item'))" title="Mark as read">Mark as Read</button>`;
           return `<div class="notif-bar-item${unreadCls}" data-notif-id="${n.id}" onclick="openNotifFromBar(${n.id}, this)" onkeydown="handleNotifBarKeydown(event, ${n.id}, this)" tabindex="0" role="button" aria-label="Open notification">
             <div class="notif-bar-icon ${cat}"><i class="fa-solid ${icon}"></i></div>
             <div class="notif-bar-body">
@@ -206,7 +227,10 @@
             </div>
             <div class="notif-bar-right">
               <div class="notif-bar-time">${n.time_ago || ''}</div>
-              ${markBtn}
+              <div class="notif-bar-actions">
+                ${dismissBtn}
+                ${markBtn}
+              </div>
             </div>
           </div>`;
         }).join('');
@@ -261,6 +285,19 @@
         }, 260);
       }
     }).catch(() => {});
+  };
+
+  window.dismissNotifFromBar = function(el) {
+    if (!el) return;
+    el.style.transition = 'opacity 0.2s';
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.remove();
+      const list = document.getElementById('notifBarList');
+      if (list && !list.querySelector('.notif-bar-item')) {
+        list.innerHTML = '<div class="notif-bar-empty"><i class="fa-solid fa-circle-check"></i> You\'re all caught up!</div>';
+      }
+    }, 220);
   };
 
   window.openNotifFromBar = function(id, el) {

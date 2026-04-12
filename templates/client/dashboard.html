@@ -22,12 +22,22 @@
   </button>
   <button type="button" class="client-message-top-shortcut" data-client-message-open>
     <span class="client-message-top-shortcut-icon">
-      <i class="fa-solid fa-bell"></i>
+      <i class="fa-solid fa-message"></i>
       <span class="client-message-top-shortcut-badge" data-client-msg-count>0</span>
     </span>
     <span>Messages</span>
   </button>
-  {% include 'partials/notification-bell.html' %}
+  <button
+    type="button"
+    class="client-message-top-shortcut client-notification-top-shortcut"
+    onclick="window.location.href='{% url 'notifications_page' %}'"
+    title="Open notifications"
+  >
+    <span class="client-message-top-shortcut-icon">
+      <i class="fa-solid fa-bell"></i>
+    </span>
+    <span>Notifications</span>
+  </button>
 </div>
 {% endblock %}
 
@@ -242,10 +252,19 @@
       {% endif %}
       <button type="button" class="quick-action-btn quick-action-message" data-client-message-open>
         <span class="client-message-quick-icon">
-          <i class="fa-solid fa-bell"></i>
+          <i class="fa-solid fa-message"></i>
           <span class="client-message-quick-badge" data-client-msg-count>0</span>
         </span>
         <span>Messages</span>
+      </button>
+      <button
+        type="button"
+        class="quick-action-btn"
+        onclick="window.location.href='{% url 'notifications_page' %}'"
+        title="Open notifications"
+      >
+        <i class="fa-solid fa-bell"></i>
+        <span>Notifications</span>
       </button>
       <a href="{% url 'settings' %}" class="quick-action-btn">
         <i class="fa-solid fa-gear"></i>

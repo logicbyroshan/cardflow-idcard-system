@@ -60,6 +60,12 @@
       {% endblock %}
     </header>
 
+    {% if is_client or is_client_staff %}
+    {% if active_page != 'dashboard' %}
+    {% include 'partials/client-message-strip.html' %}
+    {% endif %}
+    {% endif %}
+
     <!-- Page Content -->
     {% block content %}{% endblock %}
 
