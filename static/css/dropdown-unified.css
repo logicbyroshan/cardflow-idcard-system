@@ -195,6 +195,17 @@ select.wa-status-select:disabled,
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
 }
 
+.custom-dropdown.open-up .dropdown-options,
+.form-dropdown.open-up .dropdown-options,
+.filter-dropdown.open-up .dropdown-options,
+.wa-status-dropdown.open-up .dropdown-options {
+  top: auto !important;
+  bottom: calc(100% + 4px) !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+  box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
 .dropdown-option {
   color: #475569 !important;
   font-size: 13px !important;

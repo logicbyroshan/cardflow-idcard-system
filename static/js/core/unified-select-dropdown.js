@@ -50,7 +50,35 @@
             if (!entry || !entry.wrapper) return;
             if (exceptWrapper && entry.wrapper === exceptWrapper) return;
             entry.wrapper.classList.remove('open');
+            entry.wrapper.classList.remove('open-up');
             entry.button.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function updatePlacement(entry) {
+        if (!entry || !entry.wrapper || !entry.button || !entry.optionsEl) return;
+        if (!entry.wrapper.classList.contains('open')) {
+            entry.wrapper.classList.remove('open-up');
+            return;
+        }
+
+        var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        var triggerRect = entry.button.getBoundingClientRect();
+        var dropdownHeight = entry.optionsEl.scrollHeight || 0;
+        var maxHeight = 260;
+        var requiredSpace = Math.min(dropdownHeight || maxHeight, maxHeight) + 8;
+        var availableBelow = viewportHeight - triggerRect.bottom;
+        var availableAbove = triggerRect.top;
+        var shouldOpenUp = availableBelow < requiredSpace && availableAbove > availableBelow;
+
+        entry.wrapper.classList.toggle('open-up', shouldOpenUp);
+    }
+
+    function updateOpenPlacements() {
+        wrappers.forEach(function (entry) {
+            if (!entry || !entry.wrapper) return;
+            if (!entry.wrapper.classList.contains('open')) return;
+            updatePlacement(entry);
         });
     }
 
@@ -187,7 +215,14 @@
             closeAll(wrapper);
             wrapper.classList.toggle('open', willOpen);
             button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            if (willOpen) syncEntry(entry, false);
+            if (willOpen) {
+                syncEntry(entry, false);
+                window.requestAnimationFrame(function () {
+                    updatePlacement(entry);
+                });
+            } else {
+                wrapper.classList.remove('open-up');
+            }
         });
 
         optionsEl.addEventListener('click', function (event) {
@@ -201,6 +236,7 @@
 
             syncEntry(entry, true);
             wrapper.classList.remove('open');
+            wrapper.classList.remove('open-up');
             button.setAttribute('aria-expanded', 'false');
 
             var changeEvent = new Event('change', { bubbles: true });
@@ -275,6 +311,14 @@
                 closeAll(null);
             }
         });
+
+        window.addEventListener('resize', function () {
+            updateOpenPlacements();
+        });
+
+        window.addEventListener('scroll', function () {
+            updateOpenPlacements();
+        }, true);
 
         document.body.addEventListener('htmx:afterSwap', function (event) {
             convertInRoot(event.target || document);
