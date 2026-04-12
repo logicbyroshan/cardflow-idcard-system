@@ -1272,11 +1272,26 @@ def product_gallery(request):
         reverse=True,
     )
 
+    gallery_categories = sorted(
+        {
+            item.category.name.strip()
+            for item in portfolio_items
+            if getattr(item, 'category', None) and str(item.category.name or '').strip()
+        },
+        key=lambda value: value.lower(),
+    )
+    if any(
+        not getattr(item, 'category', None) or not str(getattr(item.category, 'name', '') or '').strip()
+        for item in portfolio_items
+    ) and not any(category.lower() == 'general' for category in gallery_categories):
+        gallery_categories.append('General')
+
     context = {
         'active_page': 'product_gallery',
         'user_role': get_user_role(request.user),
         'gallery_items': portfolio_items,
         'gallery_total': len(portfolio_items),
+        'gallery_categories': gallery_categories,
         'gallery_user_type': gallery_user_type,
         'gallery_user_type_label': _GALLERY_TYPE_LABELS.get(gallery_user_type, 'General'),
         'gallery_client_name': getattr(gallery_client, 'name', ''),

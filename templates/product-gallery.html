@@ -40,45 +40,113 @@
   }
 
   .pg-header {
-    padding: 18px 20px 14px;
+    padding: 12px 20px;
     border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
     background: #ffffff;
+    flex-shrink: 0;
+  }
+
+  .pg-controls {
+    width: 100%;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 14px;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .pg-controls-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
     flex-wrap: wrap;
   }
 
-  .pg-kicker {
+  .pg-category-select {
+    width: 200px;
+  }
+
+  .pg-search-control {
+    min-width: 0;
+    flex: 1 1 260px;
+    max-width: 420px;
+  }
+
+  .pg-controls-left .search-box {
+    position: relative;
+    width: 100%;
+  }
+
+  .pg-controls-left .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .pg-controls-left .search-input {
+    width: 100%;
+    height: 28px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #475569;
+    padding: 4px 30px 4px 30px;
+    font-size: 13px;
+    line-height: 1.2;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .pg-controls-left .search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.2);
+  }
+
+  .pg-controls-left .search-clear-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    width: 16px;
+    height: 16px;
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #0a92dd;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+    cursor: pointer;
+    transition: opacity 0.15s ease, color 0.15s ease;
   }
 
-  .pg-title {
-    margin: 6px 0 0;
-    font-size: 24px;
-    line-height: 1.2;
-    color: #0f172a;
+  .pg-controls-left .search-box.has-value .search-clear-btn {
+    opacity: 1;
+    pointer-events: auto;
   }
 
-  .pg-subtitle {
-    margin: 8px 0 0;
-    font-size: 13px;
-    color: #475569;
-    max-width: 720px;
+  .pg-controls-left .search-clear-btn:hover {
+    color: #64748b;
   }
 
-  .pg-badges {
+  .pg-search-control.is-disabled {
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  .pg-controls-right {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    align-items: center;
+    margin-left: auto;
   }
 
   .pg-badge {
@@ -100,64 +168,101 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 16px 20px 24px;
+    padding: 14px 20px 24px;
   }
 
   .portfolio-grid {
-    columns: 4 240px;
-    column-gap: 18px;
+    columns: 4 220px;
+    column-gap: 14px;
   }
 
   .portfolio-item {
+    --skeleton-height: 240px;
+    --skeleton-jitter: 0px;
     break-inside: avoid;
     display: inline-block;
     width: 100%;
-    margin-bottom: 18px;
-    border-radius: 16px;
+    margin-bottom: 14px;
+    border-radius: 10px;
     overflow: hidden;
-    border: 2px solid #dbe4ef;
+    border: 1px solid #d8e3ee;
     background: #ffffff;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
 
   .portfolio-item:hover {
     transform: translateY(-2px);
-    border-color: #0a92dd;
-    box-shadow: 0 12px 28px rgba(10, 146, 221, 0.12);
+    border-color: #bed0e4;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
   }
 
+  .portfolio-item.square { --skeleton-height: 235px; }
+  .portfolio-item.portrait { --skeleton-height: 320px; }
+  .portfolio-item.landscape { --skeleton-height: 180px; }
+
   .portfolio-image {
+    position: relative;
     width: 100%;
-    background: #f8fafc;
+    min-height: calc(var(--skeleton-height) + var(--skeleton-jitter));
+    background: #eef3f9;
+    overflow: hidden;
+  }
+
+  .portfolio-image .js-lazy-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    opacity: 0;
+    transform: scale(1.01);
+    transition: opacity 0.3s ease, transform 0.45s ease;
+  }
+
+  .portfolio-item.is-loaded .portfolio-image {
+    min-height: 0;
+    background: #ffffff;
+  }
+
+  .portfolio-item.is-loaded .portfolio-image .js-lazy-image {
+    opacity: 1;
+    transform: none;
+  }
+
+  .portfolio-skeleton {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(108deg, #e6edf5 12%, #f7fbff 38%, #e4edf6 64%);
+    background-size: 220% 100%;
+    animation: pgShimmer 1.25s linear infinite;
+  }
+
+  @keyframes pgShimmer {
+    0% { background-position: 180% 0; }
+    100% { background-position: -40% 0; }
+  }
+
+  .portfolio-item.is-loaded .portfolio-skeleton,
+  .portfolio-item.is-error .portfolio-skeleton {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+  }
+
+  .portfolio-item.is-error .portfolio-image {
+    min-height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .portfolio-image img {
-    width: 100%;
-    height: auto;
-    display: block;
-    object-fit: contain;
-  }
-
-  .portfolio-meta {
-    padding: 10px 12px 11px;
-    border-top: 1px solid #e8eef6;
-  }
-
-  .portfolio-title {
-    color: #0f172a;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.3;
-    margin-bottom: 4px;
-  }
-
-  .portfolio-category {
+  .portfolio-item.is-error .portfolio-image::after {
+    content: 'Unable to load image';
     color: #64748b;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
+  }
+
+  .portfolio-item.is-error .portfolio-image .js-lazy-image {
+    display: none;
   }
 
   .pg-empty {
@@ -177,6 +282,15 @@
     display: block;
   }
 
+  .pg-empty-filter {
+    margin-top: 6px;
+  }
+
+  .pg-sentinel {
+    width: 1px;
+    height: 1px;
+  }
+
   @media (max-width: 1024px) {
     .portfolio-grid {
       columns: 3 220px;
@@ -185,11 +299,32 @@
 
   @media (max-width: 768px) {
     .pg-header {
-      padding: 14px 12px 12px;
+      padding: 12px;
     }
 
-    .pg-title {
-      font-size: 20px;
+    .pg-controls {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .pg-controls-left {
+      width: 100%;
+    }
+
+    .pg-category-select {
+      width: 100%;
+      flex: 1 1 100%;
+    }
+
+    .pg-search-control {
+      max-width: none;
+      flex: 1 1 100%;
+    }
+
+    .pg-controls-right {
+      width: 100%;
+      justify-content: flex-end;
     }
 
     .pg-grid-wrap {
@@ -198,12 +333,12 @@
 
     .portfolio-grid {
       columns: 2 180px;
-      column-gap: 12px;
+      column-gap: 10px;
     }
 
     .portfolio-item {
-      margin-bottom: 12px;
-      border-radius: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
     }
   }
 
@@ -230,38 +365,258 @@
 {% block content %}
 <div class="pg-page">
   <section class="pg-header">
-    <div>
-      <span class="pg-kicker"><i class="fa-solid fa-images"></i> Product Gallery</span>
-      <h1 class="pg-title">Latest Product Samples</h1>
-      <p class="pg-subtitle">
-        Showing the latest {{ gallery_total }} product images. Ranking is tuned for {{ gallery_user_type_label }} users{% if gallery_client_name %} from {{ gallery_client_name }}{% endif %}.
-      </p>
-    </div>
-    <div class="pg-badges">
-      <span class="pg-badge"><i class="fa-solid fa-layer-group"></i> Latest 100 Images</span>
-      <span class="pg-badge"><i class="fa-solid fa-bullseye"></i> {{ gallery_user_type_label }} Focus</span>
+    <div class="pg-controls action-bar" aria-label="Gallery filters">
+      <div class="pg-controls-left action-left">
+        <label for="galleryCategoryFilter" class="sr-only">Filter by category</label>
+        <select id="galleryCategoryFilter" class="form-select form-select-sm pg-category-select"{% if not gallery_items %} disabled{% endif %}>
+          <option value="">All Categories</option>
+          {% for category_name in gallery_categories %}
+          <option value="{{ category_name|lower }}">{{ category_name }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="pg-search-control{% if not gallery_items %} is-disabled{% endif %}">
+          {% include 'components/search-box.html' with input_id='gallerySearchInput' clear_id='gallerySearchClear' placeholder='Search images by name or category' %}
+        </div>
+      </div>
+
+      <div class="pg-controls-right action-right">
+        <span class="pg-badge"><i class="fa-solid fa-layer-group"></i> Latest 100 Images</span>
+      </div>
     </div>
   </section>
 
   <section class="pg-grid-wrap" aria-label="Product gallery grid">
-    <div class="portfolio-grid">
+    {% if gallery_items %}
+    <div class="portfolio-grid" id="portfolioGrid">
       {% for item in gallery_items %}
-      <article class="portfolio-item {{ item.orientation|default:'square' }}" aria-label="{{ item.title|default:'Product Image' }}">
+      <article class="portfolio-item {{ item.orientation|default:'square' }} is-loading"
+               data-category="{% if item.category and item.category.name %}{{ item.category.name|lower }}{% else %}general{% endif %}"
+               data-keywords="{% if item.title %}{{ item.title|lower }} {% endif %}{% if item.category and item.category.name %}{{ item.category.name|lower }}{% else %}general{% endif %}"
+               aria-label="Product image {{ forloop.counter }}"
+               style="--skeleton-jitter:{% cycle '0px' '18px' '-12px' '10px' '-6px' '14px' %};">
         <div class="portfolio-image">
-          <img src="{{ item.image.url }}" alt="{{ item.title|default:'Product Image' }}" loading="lazy">
-        </div>
-        <div class="portfolio-meta">
-          <div class="portfolio-title">{{ item.title|default:'Product Sample' }}</div>
-          <div class="portfolio-category">{% if item.category %}{{ item.category.name }}{% else %}General{% endif %}</div>
+          <div class="portfolio-skeleton" aria-hidden="true"></div>
+          <img class="js-lazy-image"
+               src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3C/svg%3E"
+               data-src="{{ item.image.url }}"
+               alt="Product image {{ forloop.counter }}"
+               loading="lazy"
+               decoding="async">
         </div>
       </article>
-      {% empty %}
-      <div class="pg-empty">
-        <i class="fa-solid fa-image"></i>
-        <div>No product images available right now.</div>
-      </div>
       {% endfor %}
     </div>
+    <div class="pg-empty pg-empty-filter" id="galleryNoResults" hidden>
+      <i class="fa-solid fa-filter-circle-xmark"></i>
+      <div>No images match the selected category and search query.</div>
+    </div>
+    <div class="pg-sentinel" id="galleryLoadSentinel" aria-hidden="true"></div>
+    {% else %}
+    <div class="pg-empty" id="galleryEmptyState">
+      <i class="fa-solid fa-image"></i>
+      <div>No product images available right now.</div>
+    </div>
+    {% endif %}
   </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var gridWrap = document.querySelector('.pg-grid-wrap');
+  var grid = document.getElementById('portfolioGrid');
+  if (!gridWrap || !grid) {
+    return;
+  }
+
+  var categorySelect = document.getElementById('galleryCategoryFilter');
+  var searchInput = document.getElementById('gallerySearchInput');
+  var clearButton = document.getElementById('gallerySearchClear');
+  var searchBox = searchInput ? searchInput.closest('.search-box') : null;
+  var noResults = document.getElementById('galleryNoResults');
+  var sentinel = document.getElementById('galleryLoadSentinel');
+  var allItems = Array.prototype.slice.call(grid.querySelectorAll('.portfolio-item'));
+  var INITIAL_BATCH = 24;
+  var BATCH_SIZE = 16;
+  var visibleCount = INITIAL_BATCH;
+  var filteredItems = allItems.slice();
+
+  function normalize(value) {
+    return (value || '').toString().trim().toLowerCase();
+  }
+
+  function updateSearchUi() {
+    if (!searchInput || !searchBox) {
+      return;
+    }
+    searchBox.classList.toggle('has-value', normalize(searchInput.value).length > 0);
+  }
+
+  function markImageLoaded(img, item) {
+    img.dataset.loaded = '1';
+    item.classList.remove('is-loading');
+    item.classList.add('is-loaded');
+  }
+
+  function markImageError(item) {
+    item.classList.remove('is-loading');
+    item.classList.add('is-error');
+  }
+
+  allItems.forEach(function (item) {
+    var img = item.querySelector('.js-lazy-image');
+    if (!img) {
+      return;
+    }
+
+    img.addEventListener('load', function () {
+      markImageLoaded(img, item);
+    }, { once: true });
+
+    img.addEventListener('error', function () {
+      markImageError(item);
+    }, { once: true });
+  });
+
+  function loadImage(img) {
+    if (!img || img.dataset.loaded === '1' || img.dataset.loading === '1') {
+      return;
+    }
+    var sourceUrl = img.dataset.src;
+    if (!sourceUrl) {
+      return;
+    }
+    img.dataset.loading = '1';
+    img.src = sourceUrl;
+  }
+
+  var imageObserver = null;
+  if ('IntersectionObserver' in window) {
+    imageObserver = new IntersectionObserver(function (entries, observer) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        var img = entry.target;
+        observer.unobserve(img);
+        loadImage(img);
+      });
+    }, {
+      root: gridWrap,
+      rootMargin: '320px 0px'
+    });
+  }
+
+  function queueImage(item) {
+    if (!item || item.hidden || item.classList.contains('is-loaded') || item.classList.contains('is-error')) {
+      return;
+    }
+    var img = item.querySelector('.js-lazy-image');
+    if (!img) {
+      return;
+    }
+
+    if (imageObserver) {
+      if (img.dataset.observing === '1') {
+        return;
+      }
+      img.dataset.observing = '1';
+      imageObserver.observe(img);
+      return;
+    }
+
+    loadImage(img);
+  }
+
+  function applyVisibility() {
+    var maxVisible = Math.min(visibleCount, filteredItems.length);
+
+    allItems.forEach(function (item) {
+      item.hidden = true;
+    });
+
+    for (var index = 0; index < maxVisible; index += 1) {
+      var item = filteredItems[index];
+      item.hidden = false;
+      queueImage(item);
+    }
+
+    if (noResults) {
+      noResults.hidden = filteredItems.length !== 0;
+    }
+
+    if (sentinel) {
+      sentinel.hidden = maxVisible >= filteredItems.length;
+    }
+  }
+
+  function applyFilters() {
+    var activeCategory = normalize(categorySelect ? categorySelect.value : '');
+    var query = normalize(searchInput ? searchInput.value : '');
+
+    filteredItems = allItems.filter(function (item) {
+      var category = normalize(item.dataset.category);
+      var keywords = normalize(item.dataset.keywords);
+      var categoryMatches = !activeCategory || category === activeCategory;
+      var queryMatches = !query || keywords.indexOf(query) !== -1;
+      return categoryMatches && queryMatches;
+    });
+
+    visibleCount = INITIAL_BATCH;
+    applyVisibility();
+  }
+
+  var filterTimer = null;
+  function queueFilterApply() {
+    if (filterTimer) {
+      window.clearTimeout(filterTimer);
+    }
+    filterTimer = window.setTimeout(applyFilters, 90);
+  }
+
+  if (categorySelect) {
+    categorySelect.addEventListener('change', applyFilters);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      updateSearchUi();
+      queueFilterApply();
+    });
+  }
+
+  if (clearButton && searchInput) {
+    clearButton.addEventListener('click', function () {
+      searchInput.value = '';
+      updateSearchUi();
+      applyFilters();
+      searchInput.focus();
+    });
+  }
+
+  if (sentinel && 'IntersectionObserver' in window) {
+    var pagingObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        if (visibleCount >= filteredItems.length) {
+          return;
+        }
+        visibleCount = Math.min(filteredItems.length, visibleCount + BATCH_SIZE);
+        applyVisibility();
+      });
+    }, {
+      root: gridWrap,
+      rootMargin: '460px 0px'
+    });
+    pagingObserver.observe(sentinel);
+  }
+
+  updateSearchUi();
+  applyFilters();
+});
+</script>
 {% endblock %}
