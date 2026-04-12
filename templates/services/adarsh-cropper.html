@@ -7,6 +7,192 @@
 <!-- Cropper CSS bundle (adarsh-cropper + adarshengine + preview + modals) -->
 <link rel="stylesheet" href="{% static 'dist/css/cropper.min.css' %}">
 <link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
+<style>
+  .engine-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cropper-page.engine-offline {
+    min-height: calc(100vh - var(--spacing-topbar) - 12px);
+    padding: 22px;
+    background:
+      radial-gradient(1000px 360px at 98% -6%, rgba(14, 116, 144, 0.14), transparent 62%),
+      radial-gradient(860px 320px at -8% 110%, rgba(37, 99, 235, 0.1), transparent 58%),
+      linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  }
+
+  .cropper-page.engine-offline .update-banner {
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    border-bottom-width: 1px;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+
+  .cropper-page.engine-offline .engine-status-card {
+    border: none;
+    background: transparent;
+    padding: 0;
+    min-height: calc(100vh - var(--spacing-topbar) - 190px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cropper-page.engine-offline .engine-error-shell {
+    width: min(860px, 100%);
+    border: 1px solid #cfe1f4;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.1);
+    padding: 26px 28px;
+  }
+
+  .cropper-page.engine-offline .engine-error-content {
+    text-align: left;
+    padding: 0;
+  }
+
+  .cropper-page.engine-offline .engine-error-content .engine-status-indicator {
+    justify-content: flex-start;
+    margin-bottom: 16px;
+    font-size: 17px;
+    color: #b91c1c;
+  }
+
+  .cropper-page.engine-offline .engine-dl-hero {
+    justify-content: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+
+  .cropper-page.engine-offline .engine-dl-icon {
+    width: 54px;
+    height: 54px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: #fff;
+    padding: 4px;
+  }
+
+  .cropper-page.engine-offline .engine-dl-name {
+    font-size: 17px;
+    color: #0f172a;
+  }
+
+  .cropper-page.engine-offline .engine-dl-sub {
+    color: #475569;
+    font-size: 12px;
+  }
+
+  .cropper-page.engine-offline .engine-help-text {
+    margin: 0 0 16px;
+    max-width: 100%;
+    color: #334155;
+    font-size: 13px;
+  }
+
+  .cropper-page.engine-offline .engine-actions {
+    margin: 0 0 16px;
+  }
+
+  .cropper-page.engine-offline .engine-actions .btn {
+    min-height: 38px;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.22);
+  }
+
+  .engine-install-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+
+  .engine-install-step {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 72px;
+  }
+
+  .engine-install-step-index {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: #0ea5e9;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .engine-install-step-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .engine-install-step-main strong {
+    font-size: 12px;
+    color: #0f172a;
+    line-height: 1.25;
+  }
+
+  .engine-install-step-main span {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.35;
+  }
+
+  .cropper-page.engine-offline .engine-smartscreen-note {
+    margin: 0 0 12px;
+    max-width: 100%;
+    border-color: #fcd34d;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  }
+
+  .cropper-page.engine-offline .engine-note {
+    justify-content: flex-start;
+    font-size: 12px;
+    color: #475569;
+  }
+
+  @media (max-width: 900px) {
+    .cropper-page.engine-offline {
+      padding: 12px;
+    }
+
+    .cropper-page.engine-offline .engine-status-card {
+      min-height: auto;
+      align-items: stretch;
+    }
+
+    .cropper-page.engine-offline .engine-error-shell {
+      padding: 16px;
+      border-radius: 14px;
+    }
+
+    .engine-install-steps {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block breadcrumb %}
@@ -16,7 +202,7 @@
 {% endblock %}
 
 {% block topbar_right %}
-<div class="nav-right" style="display:flex;align-items:center;gap:8px;"
+<div class="nav-right engine-topbar-right"
      x-data="{ eng: { loading: true, checked: false, connected: false, version: '' } }"
      @engine-state.window="eng = $event.detail">
   <div class="engine-badge"
@@ -42,7 +228,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="cropper-page" x-data="cropperApp()" x-init="init()"
+<div class="cropper-page" :class="{ 'engine-offline': engine.checked && !engine.connected && !engine.loading }" x-data="cropperApp()" x-init="init()"
      @engine-refresh.window="checkEngine()">
 
   {#  UPDATE AVAILABLE BANNER (shown on top)  #}
@@ -68,7 +254,7 @@
   </div>
 
   {#  SECTION A  -  Engine Status Card  #}
-  <div class="engine-status-card">
+  <div class="engine-status-card" :class="{ 'is-offline': engine.checked && !engine.connected && !engine.loading }">
 
     {# Loading #}
     <div class="engine-loading" x-show="engine.loading" x-cloak>
@@ -101,49 +287,75 @@
 
     {# Disconnected #}
     <div class="engine-disconnected" x-show="engine.checked && !engine.connected && !engine.loading" x-cloak x-transition>
-      <div class="engine-error-content">
-        <div class="engine-status-indicator disconnected">
-          <i class="fa-solid fa-circle-xmark"></i>
-          <span>Engine Not Detected</span>
-        </div>
-
-        {# Engine icon + description #}
-        <div class="engine-dl-hero">
-          <img src="{% static 'engine/adarsh_engine.ico' %}" alt="Adarsh Engine" class="engine-dl-icon">
-          <div class="engine-dl-info">
-            <strong class="engine-dl-name">Adarsh Engine</strong>
-            <span class="engine-dl-sub">Local photo-processing service for Windows</span>
+      <div class="engine-error-shell">
+        <div class="engine-error-content">
+          <div class="engine-status-indicator disconnected">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <span>Engine Not Detected</span>
           </div>
-        </div>
 
-        <p class="engine-help-text">
-          The local Adarsh Engine service is not running on this machine.
-          Download and install it to enable photo processing.
-        </p>
-
-        {# Show Download Installer ONLY when no update is available (first-time install) #}
-        <div class="engine-actions" x-show="!update.available">
-          <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshEngineSetup.exe">
-            <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
-          </a>
-        </div>
-
-        {# SmartScreen / browser download help #}
-        <div class="engine-smartscreen-note">
-          <i class="fa-solid fa-shield-halved"></i>
-          <div>
-            <strong>If your browser blocks the download:</strong>
-            Chrome / Edge  -  click the <em>arrow</em> next to the blocked file -> <em>"Keep"</em> or <em>"Keep anyway"</em>.<br>
-            Firefox  -  click <em>"Keep file"</em> in the download warning.<br>
-            <strong>If Windows SmartScreen appears after installing:</strong> click <em>"More info"</em> -> <em>"Run anyway"</em>.
-            This is expected for new software without a paid code-signing certificate.
+          {# Engine icon + description #}
+          <div class="engine-dl-hero">
+            <img src="{% static 'engine/adarsh_engine.ico' %}" alt="Adarsh Engine" class="engine-dl-icon">
+            <div class="engine-dl-info">
+              <strong class="engine-dl-name">Adarsh Engine</strong>
+              <span class="engine-dl-sub">Local photo-processing service for Windows</span>
+            </div>
           </div>
-        </div>
 
-        <p class="engine-note">
-          <i class="fa-solid fa-circle-info"></i>
-          After installing, restart the Adarsh Engine service and refresh this page to connect.
-        </p>
+          <p class="engine-help-text">
+            The local Adarsh Engine service is not running on this machine.
+            Download and install it to enable photo processing.
+          </p>
+
+          {# Show Download Installer ONLY when no update is available (first-time install) #}
+          <div class="engine-actions" x-show="!update.available">
+            <a href="{% url 'engine_download' %}" class="btn btn-primary" download="AdarshEngineSetup.exe">
+              <i class="fa-solid fa-download"></i> Download <span x-show="update.version">v<span x-text="update.version"></span></span><span x-show="!update.version">Installer</span>
+            </a>
+          </div>
+
+          <div class="engine-install-steps">
+            <div class="engine-install-step">
+              <span class="engine-install-step-index">1</span>
+              <div class="engine-install-step-main">
+                <strong>Download Installer</strong>
+                <span>Use the button above, or use the update banner if visible.</span>
+              </div>
+            </div>
+            <div class="engine-install-step">
+              <span class="engine-install-step-index">2</span>
+              <div class="engine-install-step-main">
+                <strong>Install And Allow</strong>
+                <span>If prompted by browser or SmartScreen, allow and continue.</span>
+              </div>
+            </div>
+            <div class="engine-install-step">
+              <span class="engine-install-step-index">3</span>
+              <div class="engine-install-step-main">
+                <strong>Refresh Status</strong>
+                <span>Restart service if needed, then click refresh in top-right.</span>
+              </div>
+            </div>
+          </div>
+
+          {# SmartScreen / browser download help #}
+          <div class="engine-smartscreen-note">
+            <i class="fa-solid fa-shield-halved"></i>
+            <div>
+              <strong>If your browser blocks the download:</strong>
+              Chrome / Edge  -  click the <em>arrow</em> next to the blocked file -> <em>"Keep"</em> or <em>"Keep anyway"</em>.<br>
+              Firefox  -  click <em>"Keep file"</em> in the download warning.<br>
+              <strong>If Windows SmartScreen appears after installing:</strong> click <em>"More info"</em> -> <em>"Run anyway"</em>.
+              This is expected for new software without a paid code-signing certificate.
+            </div>
+          </div>
+
+          <p class="engine-note">
+            <i class="fa-solid fa-circle-info"></i>
+            After installing, restart the Adarsh Engine service and refresh this page to connect.
+          </p>
+        </div>
       </div>
     </div>
 
