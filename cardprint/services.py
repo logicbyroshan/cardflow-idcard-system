@@ -10,6 +10,7 @@ Workflow: generate_list (queued) → finalized (via Generate Card PDF) → pool
 import io
 import logging
 import os
+import re
 
 from django.db import transaction
 from django.utils import timezone
@@ -314,7 +315,11 @@ class GenerateCardService:
             return True
         if t in {'file', 'img', 'picture'}:
             return True
-        if any(key in n for key in ('photo', 'image', 'signature', 'sign', 'barcode', 'qr')):
+        if ('photo' in n) or ('image' in n) or ('barcode' in n):
+            return True
+        if re.search(r'\bsignature\b|\bsign\b', n):
+            return True
+        if re.search(r'\bqr\b', n):
             return True
         return False
 

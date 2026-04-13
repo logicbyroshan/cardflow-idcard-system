@@ -48,11 +48,14 @@ window.showConfirm = function showConfirm(options) {
 (function setupSmoothPageTransitions() {
     if (!document || !document.body) return;
 
+    var envGate = window.adarshMobileEnv || null;
+    var isNativeShell = !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+
     var prefersReducedMotion = false;
     try {
         prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     } catch (err) {}
-    if (prefersReducedMotion) return;
+    if (prefersReducedMotion || isNativeShell) return;
 
     var ENTERING_CLASS = 'mobile-page-entering';
     var LEAVE_CLASS = 'mobile-page-leave';

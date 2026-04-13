@@ -32,6 +32,13 @@ IMAGE_SUBTYPE_DIMENSIONS = {
 _DEFAULT_IMAGE_DIMENSIONS = {'height_cm': 2.5, 'width_cm': 1.95}
 
 
+def _contains_word(text: str, word: str) -> bool:
+    """Return True when word appears as a standalone token."""
+    if not text or not word:
+        return False
+    return re.search(r'\b' + re.escape(word) + r'\b', text) is not None
+
+
 # =============================================================================
 # FIELD CLASSIFICATION
 # =============================================================================
@@ -54,7 +61,10 @@ def is_image_field(field: Dict[str, Any]) -> bool:
     if field_type in IMAGE_FIELD_TYPES:
         return True
     name_lower = field.get('name', '').lower().strip()
-    return any(kw in name_lower for kw in _IMAGE_NAME_KEYWORDS)
+    return any(
+        _contains_word(name_lower, kw) if kw in ('sign', 'qr') else (kw in name_lower)
+        for kw in _IMAGE_NAME_KEYWORDS
+    )
 
 
 def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
@@ -87,13 +97,13 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     if ('father' in name_lower and 'photo' in name_lower) or name_norm in ('f photo',):
         return 'father_photo'
     # Signature
-    if 'sign' in name_lower:
+    if _contains_word(name_lower, 'signature') or _contains_word(name_lower, 'sign'):
         return 'signature'
     # Barcode
     if 'barcode' in name_lower:
         return 'barcode'
     # QR code
-    if 'qr' in name_lower:
+    if _contains_word(name_lower, 'qr'):
         return 'qr_code'
     # Generic photo (catch-all)
     if any(kw in name_lower for kw in ('photo', 'pic', 'picture', 'image')):

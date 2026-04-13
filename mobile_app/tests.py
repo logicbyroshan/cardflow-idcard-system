@@ -2094,6 +2094,8 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 
 		self.assertIn('@click="openGalleryPicker()"', content)
 		self.assertIn('async tryCameraRecovery()', content)
+		self.assertIn('ensureImageInput(file, sourceLabel)', content)
+		self.assertIn('Video captured from ', content)
 		self.assertIn('bridge.uploadFormDataWithRetry(uploadUrl, buildUploadFormData', content)
 
 	def test_website_upload_template_uses_native_picker_and_retryable_batches(self):
@@ -2102,6 +2104,8 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 
 		self.assertIn('@click.prevent="pickPortfolioFromCamera($event)"', content)
 		self.assertIn('async pickPortfolioFromGallery()', content)
+		self.assertIn('source = (e && e.target === this.$refs.portfolioCameraInput) ? \'camera\' : \'gallery\';', content)
+		self.assertIn('Camera returned video. Please switch to Photo mode and try again.', content)
 		self.assertIn('bridge.uploadFormDataWithRetry(', content)
 
 
@@ -2305,12 +2309,14 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 
 		self.assertIn('async function fetchMobileShellConfig()', content)
 		self.assertIn('function resolveUpdateLink(configData)', content)
+		self.assertIn('function shouldOpenInstallerForConfig(configData)', content)
 		self.assertIn('var isLikelyApk = /\\.apk(?:\\?|#|$)/i.test(targetUrl);', content)
 		self.assertIn('resolved.searchParams.set(\'_ts\', String(Date.now()));', content)
 		self.assertIn('window.location.assign(targetUrl);', content)
+		self.assertIn('var shouldOpenInstaller = shouldOpenInstallerForConfig(configData);', content)
 		self.assertIn('var updateLink = resolveUpdateLink(configData);', content)
-		self.assertIn('await openUpdateLink(updateLink, { preferExternalForApk: true });', content)
-		self.assertIn('setUpdateProgress(90, \'APK opened. Download and install, then reopen the app.\');', content)
+		self.assertIn('await openUpdateLink(updateLink, { preferExternalForApk: false });', content)
+		self.assertIn('setUpdateProgress(90, \'Installer opened. Confirm install, then reopen the app.\');', content)
 
 	def test_profile_template_shows_update_status_card_and_runtime_check(self):
 		profile_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'profile.html'

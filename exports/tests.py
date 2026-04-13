@@ -1583,6 +1583,22 @@ class ExportFieldDetectionTests(SimpleTestCase):
 
         self.assertEqual(get_section_field_name(table_fields), 'Division')
 
+    def test_designation_field_is_not_image(self):
+        from exports.utils import is_image_field, classify_image_subtype
+
+        designation_field = {'name': 'DESIGNATION', 'type': 'text'}
+
+        self.assertFalse(is_image_field(designation_field))
+        self.assertIsNone(classify_image_subtype(designation_field))
+
+    def test_sign_field_still_classifies_as_signature(self):
+        from exports.utils import is_image_field, classify_image_subtype
+
+        sign_field = {'name': 'SIGN', 'type': 'text'}
+
+        self.assertTrue(is_image_field(sign_field))
+        self.assertEqual(classify_image_subtype(sign_field), 'signature')
+
 
 class WordLayoutTuningTests(SimpleTestCase):
     def test_dense_width_allocator_keeps_table_inside_page(self):

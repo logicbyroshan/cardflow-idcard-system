@@ -314,7 +314,9 @@ function cameraApp() {
                     const picked = await this.pickImageWithTimeout('camera', 92, 15000);
                     if (picked) {
                         this.cameraError = false;
-                        this.loadImageFile(picked);
+                        this.loadImageFile(picked, 'camera');
+                    } else {
+                        this.showMsg('No photo captured. Please try again in Photo mode.', 'info');
                     }
                 } catch (err) {
                     this.cameraError = true;
@@ -342,12 +344,41 @@ function cameraApp() {
                 e.target.value = '';
                 return;
             }
-            this.loadImageFile(file);
+            this.loadImageFile(file, 'gallery');
             e.target.value = '';
         },
 
-        loadImageFile(file) {
+        isLikelyImageFile(file) {
+            if (!file) return false;
+            const mime = String(file.type || '').toLowerCase();
+            if (mime.startsWith('image/')) return true;
+            if (mime.startsWith('video/')) return false;
+            const name = String(file.name || '').toLowerCase();
+            return /\.(jpg|jpeg|png|webp|gif|bmp|heic|heif)$/i.test(name);
+        },
+
+        isLikelyVideoFile(file) {
+            if (!file) return false;
+            const mime = String(file.type || '').toLowerCase();
+            if (mime.startsWith('video/')) return true;
+            const name = String(file.name || '').toLowerCase();
+            return /\.(mp4|mov|mkv|webm|3gp|avi)$/i.test(name);
+        },
+
+        ensureImageInput(file, sourceLabel) {
+            if (this.isLikelyImageFile(file)) return true;
+            const sourceText = sourceLabel ? String(sourceLabel) : 'camera';
+            if (this.isLikelyVideoFile(file)) {
+                this.showMsg('Video captured from ' + sourceText + '. Please switch to Photo mode.', 'error');
+                return false;
+            }
+            this.showMsg('Only image files are supported for upload.', 'error');
+            return false;
+        },
+
+        loadImageFile(file, sourceLabel) {
             if (!file) return;
+            if (!this.ensureImageInput(file, sourceLabel || 'camera')) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const img = new Image();
@@ -370,10 +401,11 @@ function cameraApp() {
                 try {
                     const picked = await this.pickImageWithTimeout('gallery', 92, 15000);
                     if (picked) {
-                        this.loadImageFile(picked);
+                        this.loadImageFile(picked, 'gallery');
                         this.cameraBusy = false;
                         return;
                     }
+                    this.showMsg('No image selected from gallery.', 'info');
                 } catch (err) {
                     this.showMsg(err && err.message ? err.message : 'Unable to open gallery', 'error');
                 }
@@ -391,10 +423,11 @@ function cameraApp() {
                     const picked = await this.pickImageWithTimeout('camera', 92, 15000);
                     if (picked) {
                         this.cameraError = false;
-                        this.loadImageFile(picked);
+                        this.loadImageFile(picked, 'camera');
                         this.cameraBusy = false;
                         return;
                     }
+                    this.showMsg('No photo captured. Please try again in Photo mode.', 'info');
                 } catch (err) {
                     this.showMsg(err && err.message ? err.message : 'Unable to open camera', 'error');
                 }

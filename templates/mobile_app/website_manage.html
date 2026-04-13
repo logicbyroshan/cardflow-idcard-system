@@ -340,19 +340,40 @@ function websiteManageApp() {
             this.pendingFiles = [];
         },
         handlePortfolioFiles(e) {
-            this.addPortfolioFiles(Array.from((e && e.target && e.target.files) || []));
+            const source = (e && e.target === this.$refs.portfolioCameraInput) ? 'camera' : 'gallery';
+            this.addPortfolioFiles(Array.from((e && e.target && e.target.files) || []), { source });
             if (e && e.target) e.target.value = '';
         },
-        addPortfolioFiles(files) {
+        addPortfolioFiles(files, options) {
             const MAX_FILES = 20;
             const MAX_IMAGE_MB = 15;
             const MAX_VIDEO_MB = 100;
+            const opts = options || {};
+            const source = String(opts.source || 'gallery').toLowerCase();
             const incoming = Array.isArray(files) ? files : [];
-            if (this.pendingFiles.length + incoming.length > MAX_FILES) {
+            const skippedCameraVideos = incoming.filter(f => {
+                if (source !== 'camera') return false;
+                const mime = String(f && f.type || '').toLowerCase();
+                if (mime.startsWith('video/')) return true;
+                const name = String(f && f.name || '').toLowerCase();
+                return /\.(mp4|mov|mkv|webm|3gp|avi)$/i.test(name);
+            });
+
+            if (skippedCameraVideos.length) {
+                this.showToast('Camera returned video. Please switch to Photo mode and try again.', false);
+            }
+
+            const eligibleIncoming = incoming.filter(f => !skippedCameraVideos.includes(f));
+
+            if (!eligibleIncoming.length) {
+                return;
+            }
+
+            if (this.pendingFiles.length + eligibleIncoming.length > MAX_FILES) {
                 this.showToast(`Maximum ${MAX_FILES} files per upload`, false);
                 return;
             }
-            const oversized = incoming.filter(f => {
+            const oversized = eligibleIncoming.filter(f => {
                 const isVideo = (f.type || '').toLowerCase().startsWith('video/');
                 const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
                 return f.size > maxBytes;
@@ -360,7 +381,7 @@ function websiteManageApp() {
             if (oversized.length) {
                 this.showToast(`${oversized.length} file(s) exceeded size limits and were skipped`, false);
             }
-            incoming.filter(f => {
+            eligibleIncoming.filter(f => {
                 const isVideo = (f.type || '').toLowerCase().startsWith('video/');
                 const maxBytes = (isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB) * 1024 * 1024;
                 return f.size <= maxBytes;
@@ -380,7 +401,7 @@ function websiteManageApp() {
             if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
                 const picked = await bridge.pickImage({ source: 'camera', quality: 92 });
                 if (picked) {
-                    this.addPortfolioFiles([picked]);
+                    this.addPortfolioFiles([picked], { source: 'camera' });
                     return;
                 }
             }
@@ -393,7 +414,7 @@ function websiteManageApp() {
             if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
                 const picked = await bridge.pickImage({ source: 'gallery', quality: 92 });
                 if (picked) {
-                    this.addPortfolioFiles([picked]);
+                    this.addPortfolioFiles([picked], { source: 'gallery' });
                     return;
                 }
             }

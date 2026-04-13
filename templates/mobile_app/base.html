@@ -332,6 +332,17 @@
             return updateUrl || supportUrl || '';
         }
 
+        function isTruthyFlag(value) {
+            if (value === true) return true;
+            var normalized = String(value || '').trim().toLowerCase();
+            return normalized === 'true' || normalized === '1' || normalized === 'yes';
+        }
+
+        function shouldOpenInstallerForConfig(configData) {
+            if (!configData) return false;
+            return isTruthyFlag(configData.update_required) || isTruthyFlag(configData.update_recommended);
+        }
+
         async function openUpdateLink(link, options) {
             if (!link) return false;
             var targetUrl = String(link || '').trim();
@@ -437,13 +448,14 @@
                 await rampUpdateProgress(4, 18, 320, 'Checking latest app release...');
 
                 var configData = await fetchMobileShellConfig();
+                var shouldOpenInstaller = shouldOpenInstallerForConfig(configData);
                 var updateLink = resolveUpdateLink(configData);
-                if (updateLink) {
+                if (shouldOpenInstaller && updateLink) {
                     await rampUpdateProgress(18, 42, 420, 'Contacting secure update server...');
-                    var opened = await openUpdateLink(updateLink, { preferExternalForApk: true });
+                    var opened = await openUpdateLink(updateLink, { preferExternalForApk: false });
                     if (opened) {
-                        await rampUpdateProgress(42, 76, 560, 'Opening Android installer...');
-                        setUpdateProgress(90, 'APK opened. Download and install, then reopen the app.');
+                        await rampUpdateProgress(42, 76, 560, 'Opening Android package installer...');
+                        setUpdateProgress(90, 'Installer opened. Confirm install, then reopen the app.');
                         setTimeout(function() {
                             if (updateScreen) {
                                 updateScreen.classList.add('hidden');
@@ -455,6 +467,8 @@
                     }
 
                     setUpdateProgress(38, 'Could not open installer directly. Trying in-app refresh...');
+                } else {
+                    await rampUpdateProgress(18, 34, 280, 'App is already up to date. Refreshing in-app assets...');
                 }
 
                 await rampUpdateProgress(38, 52, 260, 'Refreshing in-app assets...');
