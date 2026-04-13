@@ -1044,6 +1044,10 @@ body[style*="overflow:hidden"] {
   background: linear-gradient(135deg, var(--color-indigo-500) 0%, var(--color-indigo-600) 100%);
 }
 
+.toast.downloading i:not(.fa-spinner):not(.toast-skeleton-icon):not(.dl-toast-skeleton-icon) {
+  animation: none;
+}
+
 .toast.downloading i.fa-spinner {
   animation: spin-icon 1s linear infinite;
 }

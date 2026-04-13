@@ -71,7 +71,6 @@
     color: var(--color-white);
     background: rgba(255,255,255,0.28);
     border-color: rgba(255,255,255,0.5);
-    transform: rotate(90deg);
 }
 .wa-modal form {
     /* Form is the scrollable area — content scrolls, footer sticks to bottom */

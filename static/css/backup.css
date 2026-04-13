@@ -73,7 +73,6 @@
 .backup-modal-close:hover {
   background: rgba(255,255,255,0.28);
   color: var(--color-white);
-  transform: rotate(90deg);
 }
 
 .backup-modal-body {

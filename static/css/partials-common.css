@@ -48,7 +48,7 @@
   color: var(--color-white); font-size: var(--ui-font-size-base, 14px); transition: all 0.2s;
 }
 .center-modal .modal-close:hover {
-  background: rgba(255, 255, 255, 0.35); transform: rotate(90deg);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .center-modal .modal-body {
