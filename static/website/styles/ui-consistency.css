@@ -18,6 +18,9 @@
     --wa-radius-xl: 16px;
     --wa-chip-radius: 12px;
     --wa-card-radius: 14px;
+    --wa-section-content-max: 1200px;
+    --wa-section-gutter-desktop: 24px;
+    --wa-section-gutter-mobile: 16px;
 }
 
 body {
@@ -33,6 +36,104 @@ h5,
 h6 {
     color: var(--wa-text-900);
     letter-spacing: -0.01em;
+}
+
+/* Keep homepage sections on a consistent content width rhythm. */
+.trusted-schools > .container,
+.why-choose-us > .container,
+.our-works > .container,
+.testimonials > .container,
+.contact-section > .container {
+    max-width: var(--wa-section-content-max) !important;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--wa-section-gutter-desktop) !important;
+    padding-right: var(--wa-section-gutter-desktop) !important;
+}
+
+.logos-carousel,
+.bento-grid,
+.works-carousel,
+.testimonials-grid {
+    max-width: var(--wa-section-content-max) !important;
+}
+
+.testimonials-grid {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.testimonial-card {
+    max-width: none !important;
+}
+
+/* Keep footer brand visual aligned with navbar brand visual. */
+.footer-brand {
+    gap: 10px;
+}
+
+.footer-brand-logo-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #fef9c3 0%, #fde68a 50%, #fcd34d 100%);
+    border: none;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.08);
+}
+
+.footer-brand-logo-img {
+    width: 34px;
+    height: 34px;
+    border-radius: 4px;
+    object-fit: contain;
+    padding: 1px;
+}
+
+.footer-brand-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, #fff 0%, #fcd34d 25%, #fff 50%, #93c5fd 75%, #fff 100%);
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: logoTextShimmer 3s ease-in-out infinite;
+}
+
+/* Tighten contact spacing to avoid oversized padding while keeping comfort. */
+.contact-section {
+    padding: 82px 0;
+}
+
+.contact-section .section-subtitle {
+    margin-bottom: 2.1rem;
+}
+
+.contact-wrapper {
+    gap: 2rem;
+}
+
+.contact-form-side {
+    padding: 2rem;
+}
+
+.contact-form {
+    gap: 0.85rem;
+}
+
+.form-input {
+    padding: 10px 14px;
+}
+
+.contact-info-side {
+    gap: 0.95rem;
+}
+
+.info-box {
+    gap: 1rem;
+    padding: 1.1rem 1.15rem;
 }
 
 .section-header p,
@@ -185,6 +286,31 @@ h6 {
 }
 
 @media (max-width: 767px) {
+    .trusted-schools > .container,
+    .why-choose-us > .container,
+    .our-works > .container,
+    .testimonials > .container,
+    .contact-section > .container {
+        padding-left: var(--wa-section-gutter-mobile) !important;
+        padding-right: var(--wa-section-gutter-mobile) !important;
+    }
+
+    .contact-section {
+        padding: 56px 0;
+    }
+
+    .contact-wrapper {
+        gap: 1.2rem;
+    }
+
+    .contact-form-side {
+        padding: 1.15rem;
+    }
+
+    .info-box {
+        padding: 0.9rem 0.95rem;
+    }
+
     .portfolio-filters .filter-tab,
     .filter-tabs .filter-tab,
     .extra-categories-bar .extra-category-tag,
