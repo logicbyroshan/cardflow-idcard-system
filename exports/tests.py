@@ -1778,7 +1778,7 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertIn('table.data-table td.img-cell.photo-cell {', content)
         self.assertIn('border: none;', content)
         self.assertIn('table.data-table td.img-cell.photo-cell img {', content)
-        self.assertIn('border: 0.5pt solid #111;', content)
+        self.assertIn('border: 1pt solid #111;', content)
         self.assertIn('template_use_abbasi', content)
 
     def test_word_data_row_removes_photo_cell_box_border(self):
