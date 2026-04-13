@@ -8,7 +8,9 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from ..services.permission_service import api_require_super_admin
 from ..services import StaffService
+from ..services.activity_service import ActivityService
 from client.models import Client
+from staff.models import Staff
 from accounts.rate_limit import rate_limit
 from mediafiles.utils import normalize_uploaded_image
 
@@ -52,6 +54,28 @@ def _validate_optional_image_upload(uploaded):
     return normalized_upload, None
 
 
+def _admin_staff_assignment_snapshot(staff_obj):
+    if not staff_obj:
+        return {
+            'client_ids': [],
+            'group_ids': [],
+            'table_ids': [],
+            'classes': [],
+            'sections': [],
+            'branches': [],
+            'scope_count': 0,
+        }
+    return {
+        'client_ids': list(staff_obj.assigned_clients.values_list('id', flat=True)),
+        'group_ids': [],
+        'table_ids': [],
+        'classes': [],
+        'sections': [],
+        'branches': [],
+        'scope_count': 0,
+    }
+
+
 @require_http_methods(["POST"])
 @api_require_super_admin
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='staff_create')
@@ -85,6 +109,29 @@ def api_staff_create(request):
         # Add email_sent at top level for JS compatibility
         if result.success and 'email_sent' in result.data:
             response_data['email_sent'] = result.data['email_sent']
+
+        if result.success:
+            created_staff_id = ((result.data or {}).get('staff') or {}).get('id')
+            if created_staff_id:
+                try:
+                    created_staff = (
+                        Staff.objects
+                        .filter(id=created_staff_id, staff_type='admin_staff')
+                        .select_related('user')
+                        .prefetch_related('assigned_clients')
+                        .first()
+                    )
+                    if created_staff:
+                        ActivityService.log_staff_create(request, created_staff)
+                        ActivityService.log_staff_assignment_change(
+                            request,
+                            created_staff,
+                            before_snapshot={},
+                            after_snapshot=_admin_staff_assignment_snapshot(created_staff),
+                            reason='created',
+                        )
+                except Exception:
+                    logger.exception('Failed to log admin staff create timeline for staff_id=%s', created_staff_id)
         
         return JsonResponse(response_data, status=200 if result.success else 400)
     except json.JSONDecodeError:
@@ -108,6 +155,15 @@ def api_staff_get(request, staff_id):
 def api_staff_update(request, staff_id):
     """API endpoint to update a staff"""
     try:
+        before_staff = (
+            Staff.objects
+            .filter(id=staff_id, staff_type='admin_staff')
+            .select_related('user')
+            .prefetch_related('assigned_clients')
+            .first()
+        )
+        before_assignment_snapshot = _admin_staff_assignment_snapshot(before_staff)
+
         # Check if it's a multipart form (file upload) or JSON
         if request.content_type and 'multipart/form-data' in request.content_type:
             data = dict(request.POST)
@@ -125,6 +181,28 @@ def api_staff_update(request, staff_id):
             return file_error
         
         result = StaffService.update(staff_id, data, profile_image=profile_image)
+
+        if result.success:
+            try:
+                refreshed = (
+                    Staff.objects
+                    .filter(id=staff_id, staff_type='admin_staff')
+                    .select_related('user')
+                    .prefetch_related('assigned_clients')
+                    .first()
+                )
+                if refreshed:
+                    ActivityService.log_staff_update(request, refreshed)
+                    ActivityService.log_staff_assignment_change(
+                        request,
+                        refreshed,
+                        before_snapshot=before_assignment_snapshot,
+                        after_snapshot=_admin_staff_assignment_snapshot(refreshed),
+                        reason='updated',
+                    )
+            except Exception:
+                logger.exception('Failed to log admin staff update timeline for staff_id=%s', staff_id)
+
         return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)

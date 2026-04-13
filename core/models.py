@@ -283,6 +283,7 @@ class ActivityLog(models.Model):
         # Staff management
         ('staff_create', 'Staff created'),
         ('staff_update', 'Staff updated'),
+        ('staff_assignment', 'Staff assignment updated'),
         ('staff_delete', 'Staff deleted'),
         ('staff_status', 'Staff status changed'),
         ('staff_password_reset', 'Staff password reset'),
@@ -338,6 +339,7 @@ class ActivityLog(models.Model):
         'client_status': ('fa-user-check', 'verify'),
         'staff_create': ('fa-user-plus', 'add'),
         'staff_update': ('fa-user-pen', 'edit'),
+        'staff_assignment': ('fa-list-check', 'verify'),
         'staff_delete': ('fa-user-minus', 'delete'),
         'staff_status': ('fa-user-check', 'verify'),
         'staff_password_reset': ('fa-key', 'approve'),
@@ -1174,3 +1176,46 @@ class EmailLog(models.Model):
 
     def __str__(self):
         return f'[{self.status}] {self.email_type} → {self.recipient_email}'
+
+
+class ClientPresenceSession(models.Model):
+    """
+    Tracks per-tab presence for client/client_staff sessions.
+
+    A row remains "live" while:
+    - closed_at is NULL
+    - last_seen_at is within the configured live window
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='presence_sessions',
+        db_index=True,
+    )
+    client = models.ForeignKey(
+        'core.Client',
+        on_delete=models.CASCADE,
+        related_name='presence_sessions',
+        db_index=True,
+    )
+    session_key = models.CharField(max_length=64, db_index=True)
+    tab_id = models.CharField(max_length=80, db_index=True)
+    user_role = models.CharField(max_length=20, blank=True, default='', db_index=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True, db_index=True)
+    closed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Client Presence Session'
+        verbose_name_plural = 'Client Presence Sessions'
+        unique_together = ('session_key', 'tab_id')
+        indexes = [
+            models.Index(fields=['client', 'closed_at', 'last_seen_at'], name='clpres_client_live_idx'),
+            models.Index(fields=['user', 'closed_at', 'last_seen_at'], name='clpres_user_live_idx'),
+            models.Index(fields=['closed_at', 'last_seen_at'], name='clpres_closed_seen_idx'),
+        ]
+
+    def __str__(self):
+        state = 'closed' if self.closed_at else 'live'
+        return f'Presence(user={self.user_id}, client={self.client_id}, tab={self.tab_id}, {state})'

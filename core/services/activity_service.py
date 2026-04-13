@@ -327,6 +327,91 @@ class ActivityService:
             target_name=name,
         )
 
+    @staticmethod
+    def _normalize_assignment_int_list(values, max_items=300):
+        if not isinstance(values, (list, tuple, set)):
+            return []
+        normalized = []
+        seen = set()
+        for item in values:
+            try:
+                val = int(str(item).strip())
+            except (TypeError, ValueError):
+                continue
+            if val <= 0 or val in seen:
+                continue
+            seen.add(val)
+            normalized.append(val)
+            if len(normalized) >= max_items:
+                break
+        normalized.sort()
+        return normalized
+
+    @staticmethod
+    def _normalize_assignment_text_list(values, max_items=300):
+        if not isinstance(values, (list, tuple, set)):
+            return []
+        normalized = []
+        seen = set()
+        for item in values:
+            text = str(item or '').strip()
+            if not text:
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(text)
+            if len(normalized) >= max_items:
+                break
+        normalized.sort(key=lambda value: value.lower())
+        return normalized
+
+    @classmethod
+    def log_staff_assignment_change(cls, request, staff, before_snapshot, after_snapshot, reason='updated'):
+        """Write a focused assignment-change activity log entry when assignment state changes."""
+        before = before_snapshot if isinstance(before_snapshot, dict) else {}
+        after = after_snapshot if isinstance(after_snapshot, dict) else {}
+
+        fields = [
+            ('client_ids', 'clients', cls._normalize_assignment_int_list),
+            ('group_ids', 'groups', cls._normalize_assignment_int_list),
+            ('table_ids', 'tables', cls._normalize_assignment_int_list),
+            ('classes', 'classes', cls._normalize_assignment_text_list),
+            ('sections', 'sections', cls._normalize_assignment_text_list),
+            ('branches', 'branches', cls._normalize_assignment_text_list),
+        ]
+
+        parts = []
+        for key, label, normalizer in fields:
+            before_values = normalizer(before.get(key, []))
+            after_values = normalizer(after.get(key, []))
+            if before_values != after_values:
+                parts.append(f'{label} {len(before_values)}->{len(after_values)}')
+
+        before_scope_count = int(before.get('scope_count') or 0)
+        after_scope_count = int(after.get('scope_count') or 0)
+        if before_scope_count != after_scope_count:
+            parts.append(f'scopes {before_scope_count}->{after_scope_count}')
+
+        if not parts:
+            return
+
+        name = staff.user.get_full_name() or staff.user.username
+        action_word = 'initialized' if str(reason or '').strip().lower() == 'created' else 'updated'
+        description = f'Staff "{name}" assignment {action_word}: ' + '; '.join(parts)
+        if len(description) > 500:
+            description = description[:497] + '...'
+
+        cls.log(
+            'staff_assignment',
+            description,
+            request=request,
+            target_model='Staff',
+            target_id=staff.pk,
+            target_name=name,
+        )
+
     @classmethod
     def log_staff_delete(cls, request, staff_name, staff_id=None):
         cls.log(

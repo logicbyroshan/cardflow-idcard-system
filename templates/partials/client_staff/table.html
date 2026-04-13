@@ -13,7 +13,7 @@
                 <th scope="col" class="text-center">Updated At</th>
                 <th scope="col" class="text-left" style="min-width: 250px;">Assigned Classes &amp; Sections</th>
                 {% if can_view_login_history %}
-                <th scope="col" class="w-20 text-center" title="Log">Log</th>
+                <th scope="col" class="w-24 text-center" title="Log">Log</th>
                 {% endif %}
             </tr>
         </thead>
@@ -80,16 +80,28 @@
                 </td>
                 {% if can_view_login_history %}
                 <td class="text-center">
-                    <button
-                        type="button"
-                        class="client-staff-history-trigger"
-                        data-staff-id="{{ staff.id }}"
-                        data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
-                        title="View log"
-                        aria-label="View log"
-                    >
-                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                    </button>
+                    <div style="display: inline-flex; align-items: center; gap: 4px;">
+                        <button
+                            type="button"
+                            class="client-staff-history-trigger"
+                            data-staff-id="{{ staff.id }}"
+                            data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
+                            title="View login history"
+                            aria-label="View login history"
+                        >
+                            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                        </button>
+                        <button
+                            type="button"
+                            class="client-staff-assignment-history-trigger"
+                            data-staff-id="{{ staff.id }}"
+                            data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
+                            title="View assignment timeline"
+                            aria-label="View assignment timeline"
+                        >
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </td>
                 {% endif %}
             </tr>

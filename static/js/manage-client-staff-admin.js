@@ -76,6 +76,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/login-history/?limit=80';
     }
 
+    function clientStaffAssignmentHistoryApiUrl(staffId) {
+        return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/assignment-timeline/?limit=80';
+    }
+
     function ensureStaffHistoryDrawer() {
         if (document.getElementById('staffHistoryDrawer')) return;
 
@@ -289,6 +293,147 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    function ensureStaffAssignmentHistoryDrawer() {
+        if (document.getElementById('staffAssignmentHistoryDrawer')) return;
+
+        var overlay = document.createElement('div');
+        overlay.id = 'staffAssignmentHistoryOverlay';
+        overlay.className = 'drawer-overlay card-history-overlay';
+
+        var drawer = document.createElement('aside');
+        drawer.id = 'staffAssignmentHistoryDrawer';
+        drawer.className = 'side-drawer card-history-drawer';
+        drawer.setAttribute('aria-hidden', 'true');
+        drawer.innerHTML = '' +
+            '<div class="drawer-header card-history-header">' +
+                '<div>' +
+                    '<div class="card-history-title">Assistent Assignment Timeline</div>' +
+                    '<div class="card-history-subtitle" id="staffAssignmentHistorySubtitle">Assignment changes and ownership updates</div>' +
+                '</div>' +
+                '<button type="button" class="drawer-close card-history-close" id="staffAssignmentHistoryClose" aria-label="Close assignment timeline">' +
+                    '<i class="fa-solid fa-xmark"></i>' +
+                '</button>' +
+            '</div>' +
+            '<div class="drawer-body card-history-body" id="staffAssignmentHistoryBody">' +
+                '<div class="card-history-empty">Select a staff member to view assignment timeline.</div>' +
+            '</div>';
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(drawer);
+
+        function closeDrawer() {
+            overlay.classList.remove('active');
+            drawer.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        overlay.addEventListener('click', closeDrawer);
+        var closeBtn = document.getElementById('staffAssignmentHistoryClose');
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+
+        document.addEventListener('keydown', function(evt) {
+            if (evt.key === 'Escape') closeDrawer();
+        });
+    }
+
+    function openStaffAssignmentHistoryDrawer() {
+        ensureStaffAssignmentHistoryDrawer();
+        var overlay = document.getElementById('staffAssignmentHistoryOverlay');
+        var drawer = document.getElementById('staffAssignmentHistoryDrawer');
+        if (!overlay || !drawer) return;
+        overlay.classList.add('active');
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function renderStaffAssignmentHistoryLoading(staffName) {
+        var subtitle = document.getElementById('staffAssignmentHistorySubtitle');
+        var body = document.getElementById('staffAssignmentHistoryBody');
+        if (subtitle) subtitle.textContent = staffName ? 'Staff: ' + staffName : 'Loading';
+        if (body) {
+            body.innerHTML = '<div class="card-history-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading assignment timeline...</div>';
+        }
+    }
+
+    function renderStaffAssignmentHistoryError(message) {
+        var body = document.getElementById('staffAssignmentHistoryBody');
+        if (body) {
+            body.innerHTML = '<div class="card-history-error">' + escapeHtml(message || 'Unable to load assignment timeline.') + '</div>';
+        }
+    }
+
+    function renderStaffAssignmentHistory(staffName, payload) {
+        var subtitle = document.getElementById('staffAssignmentHistorySubtitle');
+        var body = document.getElementById('staffAssignmentHistoryBody');
+        if (!body) return;
+
+        if (subtitle) {
+            subtitle.textContent = (staffName || 'Assistent') + ' - Assignment timeline';
+        }
+
+        var events = Array.isArray(payload.events) ? payload.events : [];
+        if (!events.length) {
+            body.innerHTML = '<div class="card-history-empty">No assignment updates recorded yet.</div>';
+            return;
+        }
+
+        var html = events.map(function(item) {
+            var description = escapeHtml(item.description || item.action_display || 'Assignment updated');
+            var when = escapeHtml(item.created_at || '');
+            var ago = escapeHtml(item.time_ago || '');
+            var icon = escapeHtml(item.icon_class || 'fa-list-check');
+            var actor = escapeHtml(item.actor_name || 'System');
+            var actionLabel = escapeHtml(item.action_display || item.action || 'Update');
+
+            return '' +
+                '<div class="card-history-item">' +
+                    '<div class="card-history-when">' + when + '</div>' +
+                    '<div class="card-history-what">' + description + '</div>' +
+                    '<div class="card-history-meta">' + ago + '</div>' +
+                    '<div class="staff-history-chip-row">' +
+                        '<span class="staff-history-chip staff-history-chip--action"><i class="fa-solid ' + icon + '"></i> ' + actionLabel + '</span>' +
+                        '<span class="staff-history-chip staff-history-chip--meta"><i class="fa-solid fa-user"></i> ' + actor + '</span>' +
+                    '</div>' +
+                '</div>';
+        }).join('');
+
+        body.innerHTML = '<div class="card-history-list">' + html + '</div>';
+    }
+
+    function openStaffAssignmentHistory(staffId, staffName) {
+        if (!staffId) return;
+
+        openStaffAssignmentHistoryDrawer();
+        renderStaffAssignmentHistoryLoading(staffName || 'Assistent');
+
+        fetch(clientStaffAssignmentHistoryApiUrl(staffId), {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        })
+            .then(function(resp) {
+                return resp.json().then(function(data) {
+                    if (!resp.ok || !data || !data.success) {
+                        var message = data && data.message ? data.message : 'Failed to load assignment timeline.';
+                        throw new Error(message);
+                    }
+                    return data;
+                });
+            })
+            .then(function(data) {
+                var resolvedName = staffName || (data.staff && data.staff.name) || 'Assistent';
+                renderStaffAssignmentHistory(resolvedName, data);
+            })
+            .catch(function(err) {
+                renderStaffAssignmentHistoryError(err && err.message ? err.message : 'Failed to load assignment timeline.');
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Unable to load assistent assignment timeline', 'error');
+                }
+            });
+    }
+
     function getSelectedClientId() {
         var first = NS.selectedClientIds.values().next();
         return first.done ? null : first.value;
@@ -460,6 +605,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 e.stopPropagation();
                 openStaffHistory(historyBtn.dataset.staffId, historyBtn.dataset.staffName);
+                return;
+            }
+
+            var assignmentHistoryBtn = e.target.closest('.client-staff-assignment-history-trigger');
+            if (assignmentHistoryBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                openStaffAssignmentHistory(assignmentHistoryBtn.dataset.staffId, assignmentHistoryBtn.dataset.staffName);
                 return;
             }
 

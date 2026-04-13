@@ -20,12 +20,14 @@ ARCHITECTURE RULES (enforced):
 import os
 import json
 import logging
+from datetime import timedelta
 
 from django.core.cache import cache as django_cache
 from django.http import JsonResponse, FileResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.utils import timezone
 
 from core.models import BackgroundTask
 from idcards.models import IDCardTable
@@ -164,6 +166,65 @@ def _release_task_lock(user_id, task_type):
     """Release the double-click lock after task creation completes/fails."""
     lock_key = f'task_lock:{user_id}:{task_type}'
     django_cache.delete(lock_key)
+
+
+def _estimate_eta_seconds(task, now):
+    """Estimate remaining seconds based on progress rate for processing tasks."""
+    if task.status != 'processing' or not task.started_at:
+        return None
+    if task.total <= 0 or task.progress <= 0 or task.progress >= task.total:
+        return None
+
+    elapsed_seconds = max(int((now - task.started_at).total_seconds()), 1)
+    rate = task.progress / float(elapsed_seconds)
+    if rate <= 0:
+        return None
+
+    remaining = int((task.total - task.progress) / rate)
+    if remaining < 0:
+        return None
+    return min(remaining, 7 * 24 * 3600)
+
+
+def _serialize_progress_center_task(task, now):
+    metadata = task.metadata if isinstance(task.metadata, dict) else {}
+    stage_label = str(metadata.get('stage_label') or metadata.get('stage') or task.get_status_display()).strip()
+    if not stage_label:
+        stage_label = task.get_status_display()
+
+    elapsed_seconds = None
+    if task.started_at:
+        end_time = task.completed_at or now
+        elapsed_seconds = max(int((end_time - task.started_at).total_seconds()), 0)
+
+    eta_seconds = _estimate_eta_seconds(task, now)
+    task_data = {
+        'task_id': task.id,
+        'task_type': task.task_type,
+        'task_type_display': task.get_task_type_display(),
+        'status': task.status,
+        'status_display': task.get_status_display(),
+        'stage_label': stage_label,
+        'progress': task.progress,
+        'total': task.total,
+        'progress_percentage': task.progress_percentage,
+        'created_at': task.created_at.isoformat() if task.created_at else None,
+        'started_at': task.started_at.isoformat() if task.started_at else None,
+        'completed_at': task.completed_at.isoformat() if task.completed_at else None,
+        'elapsed_seconds': elapsed_seconds,
+        'eta_seconds': eta_seconds,
+        'has_result': bool(task.result_path),
+        'can_cancel': task.status in ('pending', 'processing'),
+    }
+
+    if task.user_id:
+        actor = task.user.get_full_name() or task.user.username or ''
+        task_data['owner_name'] = actor
+
+    if task.status == 'completed' and task.result_path:
+        task_data['download_url'] = f'/api/task-download/{task.id}/'
+
+    return task_data
 
 
 # ==================== TASK STATUS API ====================
@@ -480,6 +541,65 @@ def api_task_active(request):
         return JsonResponse({
             'success': False,
             'message': 'Error checking tasks'
+        }, status=400)
+
+
+@require_GET
+@api_require_any_authenticated
+def api_task_progress_center(request):
+    """Return aggregated task progress data for the dashboard progress center."""
+    request.session.modified = False
+
+    try:
+        try:
+            limit = int(request.GET.get('limit', 8))
+        except (TypeError, ValueError):
+            limit = 8
+        limit = min(max(limit, 3), 20)
+
+        now = timezone.now()
+        recent_cutoff = now - timedelta(hours=24)
+
+        if PermissionService.is_super_admin(request.user):
+            tasks_base = BackgroundTask.objects.select_related('user').all()
+            scope = 'all'
+        else:
+            tasks_base = BackgroundTask.objects.select_related('user').filter(user=request.user)
+            scope = 'self'
+
+        active_qs = tasks_base.filter(status__in=['pending', 'processing']).order_by('-created_at', '-id')
+        active_tasks = list(active_qs[:limit])
+
+        recent_tasks = list(
+            tasks_base
+            .exclude(id__in=[task.id for task in active_tasks])
+            .order_by('-created_at', '-id')[:limit]
+        )
+
+        tasks = active_tasks + recent_tasks
+        tasks_data = [_serialize_progress_center_task(task, now) for task in tasks]
+
+        stats = {
+            'active': active_qs.count(),
+            'pending': tasks_base.filter(status='pending').count(),
+            'processing': tasks_base.filter(status='processing').count(),
+            'completed_24h': tasks_base.filter(status='completed', completed_at__gte=recent_cutoff).count(),
+            'failed_24h': tasks_base.filter(status='failed', completed_at__gte=recent_cutoff).count(),
+        }
+
+        return JsonResponse({
+            'success': True,
+            'scope': scope,
+            'stats': stats,
+            'tasks': tasks_data,
+            'generated_at': now.isoformat(),
+        })
+
+    except Exception as e:
+        logger.exception("Error loading task progress center: %s", e)
+        return JsonResponse({
+            'success': False,
+            'message': 'Error loading task progress data'
         }, status=400)
 
 

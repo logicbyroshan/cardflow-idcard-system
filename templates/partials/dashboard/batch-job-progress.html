@@ -1,0 +1,38 @@
+<!-- Batch Job Progress Center -->
+<div class="dashboard-card">
+  <div class="dashboard-card-header batch-job-header">
+    <h3><i class="fa-solid fa-bars-progress"></i> Batch Job Progress Center</h3>
+    <div class="batch-job-header-meta" id="batchJobLastUpdated">Updated just now</div>
+  </div>
+  <div class="dashboard-card-body tall-body">
+    <div class="batch-job-stats">
+      <div class="batch-job-stat-card">
+        <span class="batch-job-stat-label">Active</span>
+        <span class="batch-job-stat-value" id="batchJobActiveCount">0</span>
+      </div>
+      <div class="batch-job-stat-card">
+        <span class="batch-job-stat-label">Pending</span>
+        <span class="batch-job-stat-value" id="batchJobPendingCount">0</span>
+      </div>
+      <div class="batch-job-stat-card">
+        <span class="batch-job-stat-label">Processing</span>
+        <span class="batch-job-stat-value" id="batchJobProcessingCount">0</span>
+      </div>
+      <div class="batch-job-stat-card">
+        <span class="batch-job-stat-label">Completed (24h)</span>
+        <span class="batch-job-stat-value" id="batchJobCompletedCount">0</span>
+      </div>
+      <div class="batch-job-stat-card">
+        <span class="batch-job-stat-label">Failed (24h)</span>
+        <span class="batch-job-stat-value" id="batchJobFailedCount">0</span>
+      </div>
+    </div>
+
+    <div class="batch-job-list" id="batchJobProgressList">
+      <div class="batch-job-empty">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        Loading batch jobs...
+      </div>
+    </div>
+  </div>
+</div>

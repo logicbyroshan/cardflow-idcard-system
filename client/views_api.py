@@ -92,6 +92,39 @@ def _result_error_status(message: str, fallback: int = 400) -> int:
     return fallback
 
 
+def _client_staff_assignment_snapshot(staff_obj):
+    """Return normalized assignment state used for timeline diff logging."""
+    if not staff_obj:
+        return {
+            'client_ids': [],
+            'group_ids': [],
+            'table_ids': [],
+            'classes': [],
+            'sections': [],
+            'branches': [],
+            'scope_count': 0,
+        }
+
+    table_ids = []
+    for value in (staff_obj.assigned_table_ids or []):
+        try:
+            num = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if num > 0:
+            table_ids.append(num)
+
+    return {
+        'client_ids': [int(staff_obj.client_id)] if getattr(staff_obj, 'client_id', None) else [],
+        'group_ids': list(staff_obj.assigned_groups.values_list('id', flat=True)),
+        'table_ids': table_ids,
+        'classes': list(staff_obj.allowed_classes or []),
+        'sections': list(staff_obj.allowed_sections or []),
+        'branches': list(staff_obj.allowed_branches or []),
+        'scope_count': len(staff_obj.assignment_scopes or []),
+    }
+
+
 # =============================================================================
 # API VIEWS - Dashboard
 # =============================================================================
@@ -298,9 +331,22 @@ def api_staff_list_create(request):
         staff_id = (result.data or {}).get('staff_id')
         if staff_id:
             try:
-                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                staff = (
+                    Staff.objects
+                    .select_related('user')
+                    .prefetch_related('assigned_groups')
+                    .filter(id=staff_id)
+                    .first()
+                )
                 if staff:
                     ActivityService.log_staff_create(request, staff)
+                    ActivityService.log_staff_assignment_change(
+                        request,
+                        staff,
+                        before_snapshot={},
+                        after_snapshot=_client_staff_assignment_snapshot(staff),
+                        reason='created',
+                    )
             except Exception:
                 logger.exception('Failed to log staff create activity for staff_id=%s', staff_id)
         return JsonResponse({
@@ -338,6 +384,15 @@ def api_staff_detail(request, staff_id):
         }, status=404 if 'found' in result.message.lower() else 403)
     
     if request.method == 'PUT':
+        before_staff = (
+            Staff.objects
+            .select_related('user')
+            .prefetch_related('assigned_groups')
+            .filter(id=staff_id)
+            .first()
+        )
+        before_assignment_snapshot = _client_staff_assignment_snapshot(before_staff)
+
         content_type = request.content_type or ''
         if 'multipart/form-data' in content_type:
             # Django doesn't parse PUT multipart by default
@@ -382,9 +437,22 @@ def api_staff_detail(request, staff_id):
         
         if result.success:
             try:
-                staff = Staff.objects.select_related('user').filter(id=staff_id).first()
+                staff = (
+                    Staff.objects
+                    .select_related('user')
+                    .prefetch_related('assigned_groups')
+                    .filter(id=staff_id)
+                    .first()
+                )
                 if staff:
                     ActivityService.log_staff_update(request, staff)
+                    ActivityService.log_staff_assignment_change(
+                        request,
+                        staff,
+                        before_snapshot=before_assignment_snapshot,
+                        after_snapshot=_client_staff_assignment_snapshot(staff),
+                        reason='updated',
+                    )
             except Exception:
                 logger.exception('Failed to log staff update activity for staff_id=%s', staff_id)
             return JsonResponse({

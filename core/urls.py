@@ -41,6 +41,11 @@ urlpatterns = [
     # Recent Client Updates API
     path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),
 
+    # Live working client presence APIs
+    path('api/presence/track/', views.api_presence_track, name='api_presence_track'),
+    path('api/presence/live-count/', views.api_live_client_presence, name='api_live_client_presence'),
+    path('api/presence/stream/', views.api_live_client_presence_stream, name='api_live_client_presence_stream'),
+
     # Print & Reprint Overview API (dashboard)
     path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
     
@@ -178,6 +183,7 @@ urlpatterns = [
     path('api/client/<int:client_id>/messages/<int:message_id>/delete/', views.api_client_message_delete, name='api_client_message_delete'),
     path('api/client/<int:client_id>/login-history/', views.api_client_login_history, name='api_client_login_history'),
     path('api/client-staff/<int:staff_id>/login-history/', views.api_client_staff_login_history, name='api_client_staff_login_history'),
+    path('api/client-staff/<int:staff_id>/assignment-timeline/', views.api_client_staff_assignment_timeline, name='api_client_staff_assignment_timeline'),
     path('api/client-staff/clients/', views.api_admin_client_staff_clients, name='api_admin_client_staff_clients'),
     path('api/client-staff/create/', views.api_admin_client_staff_create, name='api_admin_client_staff_create'),
     path('api/client-staff/<int:staff_id>/', views.api_admin_client_staff_get, name='api_admin_client_staff_get'),
@@ -193,6 +199,7 @@ urlpatterns = [
     path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
     path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
     path('api/staff/<int:staff_id>/login-history/', views.api_staff_login_history, name='api_staff_login_history'),
+    path('api/staff/<int:staff_id>/assignment-timeline/', views.api_staff_assignment_timeline, name='api_staff_assignment_timeline'),
     path('api/clients/active/', views.api_active_clients_list, name='api_active_clients_list'),
     path('api/clients/for-staff-assignment/', views.api_all_clients_for_assignment, name='api_all_clients_for_assignment'),
     path('api/staff/<int:staff_id>/set-temp-password/', views.api_staff_set_temp_password, name='api_staff_set_temp_password'),
@@ -244,6 +251,7 @@ urlpatterns = [
     path('api/task-cancel/<int:task_id>/', views.api_task_cancel, name='api_task_cancel'),
     path('api/tasks/', views.api_task_list, name='api_task_list'),
     path('api/task-active/', views.api_task_active, name='api_task_active'),
+    path('api/task-progress-center/', views.api_task_progress_center, name='api_task_progress_center'),
     path('api/table/<int:table_id>/bulk-upload-task/', views.api_create_bulk_upload_task, name='api_create_bulk_upload_task'),
     path('api/table/<int:table_id>/reupload-task/', views.api_create_reupload_task, name='api_create_reupload_task'),
     path('api/table/<int:table_id>/export-task/', views.api_create_export_task, name='api_create_export_task'),

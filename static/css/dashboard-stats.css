@@ -287,10 +287,13 @@ button.card-overview-item {
 
 .card-overview-item-static {
     cursor: default;
+    background: var(--color-white);
+    border-color: var(--color-gray-300);
 }
 
 .card-overview-item-static:hover {
-    background: var(--color-blue-50);
+    background: var(--color-white);
+    border-color: var(--color-gray-300);
 }
 
 .card-overview-item:first-child {

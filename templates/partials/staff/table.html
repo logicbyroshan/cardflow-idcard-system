@@ -38,16 +38,28 @@ Uses Tailwind CSS component classes.
                 <td class="text-gray-500 text-center">{{ staff.updated_at|date:"d-m-Y H:i" }}</td>
                 {% if active_page == 'manage_staff' and not is_client_admin %}
                 <td class="text-center">
-                    <button
-                        type="button"
-                        class="operator-history-trigger"
-                        data-staff-id="{{ staff.id }}"
-                        data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
-                        title="View log"
-                        aria-label="View log"
-                    >
-                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                    </button>
+                    <div style="display: inline-flex; align-items: center; gap: 4px;">
+                        <button
+                            type="button"
+                            class="operator-history-trigger"
+                            data-staff-id="{{ staff.id }}"
+                            data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
+                            title="View login history"
+                            aria-label="View login history"
+                        >
+                            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                        </button>
+                        <button
+                            type="button"
+                            class="operator-assignment-history-trigger"
+                            data-staff-id="{{ staff.id }}"
+                            data-staff-name="{{ staff.user.get_full_name|default:staff.user.username|escape }}"
+                            title="View assignment timeline"
+                            aria-label="View assignment timeline"
+                        >
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </td>
                 {% else %}
                 <td class="text-left" style="min-width: 250px;">

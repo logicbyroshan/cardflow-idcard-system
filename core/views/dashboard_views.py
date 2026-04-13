@@ -2,16 +2,16 @@
 Dashboard views — dashboard page, cropper page, and dashboard API endpoints.
 Split from base.py for maintainability.
 """
+import json
 import logging
 import re
-from django.conf import settings as django_settings
+import time
 from django.core.cache import cache
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.contrib.sessions.models import Session
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
@@ -21,6 +21,7 @@ from idcards.models import IDCard, IDCardTable
 from ..models import User
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
+from ..services.live_presence_service import LiveClientPresenceService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
@@ -58,71 +59,14 @@ def _parse_dashboard_limit(raw_limit, *, default=500, max_limit=500):
     return min(max(limit, 1), max_limit)
 
 
-def _get_live_active_client_ids_for_dashboard(user):
-    """
-    Return client IDs with recent authenticated activity.
-    Includes direct client users and client_staff users mapped to their clients.
-
-    A session is considered "live" only when it has a recent `_last_activity`
-    stamp (written by SessionIdleTimeoutMiddleware), so stale open sessions are
-    excluded shortly after a browser/app is closed.
-    """
-    now = timezone.now()
-    live_window_seconds = max(int(getattr(django_settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 180) or 0), 30)
-    live_cutoff_epoch = now.timestamp() - live_window_seconds
-    active_user_ids = set()
-
-    for session in Session.objects.filter(expire_date__gt=now).iterator(chunk_size=200):
-        try:
-            data = session.get_decoded()
-        except Exception:
-            continue
-
-        raw_last_activity = data.get('_last_activity')
-        try:
-            last_activity = float(raw_last_activity)
-        except (TypeError, ValueError):
-            continue
-
-        if last_activity < live_cutoff_epoch:
-            continue
-
-        raw_user_id = data.get('_auth_user_id')
-        if not raw_user_id:
-            continue
-
-        try:
-            active_user_ids.add(int(raw_user_id))
-        except (TypeError, ValueError):
-            continue
-
-    if not active_user_ids:
-        return set()
-
-    direct_client_ids = set(
-        Client.objects.filter(
-            user_id__in=active_user_ids,
-            status='active',
-            user__is_active=True,
-        ).values_list('id', flat=True)
-    )
-
-    staff_client_ids = set(
-        Staff.objects.filter(
-            user_id__in=active_user_ids,
-            staff_type='client_staff',
-            user__is_active=True,
-            client_id__isnull=False,
-            client__status='active',
-        ).values_list('client_id', flat=True)
-    )
-
-    active_client_ids = direct_client_ids | staff_client_ids
-    if PermissionService.is_admin_staff(user):
-        allowed_ids = set(PermissionService.get_accessible_client_ids(user))
-        active_client_ids &= allowed_ids
-
-    return active_client_ids
+def _parse_json_body(request):
+    raw_body = getattr(request, 'body', b'') or b''
+    if not raw_body:
+        return {}
+    try:
+        return json.loads(raw_body.decode('utf-8'))
+    except (TypeError, ValueError, UnicodeDecodeError):
+        return {}
 
 
 def _get_dashboard_recent_activities(*, user, limit):
@@ -535,12 +479,11 @@ def api_recent_client_updates(request):
         cached = cache.get(cache_key)
         if cached is not None:
             cached_clients = cached.get('clients', []) if isinstance(cached, dict) else cached
-            live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+            presence_payload = LiveClientPresenceService.get_live_payload_for_user(user)
             return JsonResponse({
                 'success': True,
                 'clients': cached_clients,
-                'active_clients_now': len(live_active_client_ids),
-                'active_client_ids': sorted(live_active_client_ids),
+                **presence_payload,
             })
 
         # Get recent clients - scoped by PermissionService
@@ -629,12 +572,10 @@ def api_recent_client_updates(request):
                 'pool': cc.get('pool', 0),
             })
 
-        live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
-        active_clients_now = len(live_active_client_ids)
+        presence_payload = LiveClientPresenceService.get_live_payload_for_user(user)
         payload = {
             'clients': results,
-            'active_clients_now': active_clients_now,
-            'active_client_ids': sorted(live_active_client_ids),
+            **presence_payload,
         }
 
         cache.set(cache_key, {'clients': results}, 20)
@@ -648,6 +589,88 @@ def api_recent_client_updates(request):
             'success': False,
             'error': 'An error occurred. Please try again.'
         }, status=500)
+
+
+@require_http_methods(["POST"])
+@api_require_any_authenticated
+def api_presence_track(request):
+    """Track explicit client-side presence events (start/heartbeat/stop)."""
+    try:
+        body = _parse_json_body(request)
+        action = str(body.get('action') or request.POST.get('action') or '').strip().lower()
+        tab_id = str(body.get('tab_id') or request.POST.get('tab_id') or '').strip()
+
+        if action not in {'start', 'heartbeat', 'stop'}:
+            return JsonResponse({'success': False, 'message': 'Invalid presence action.'}, status=400)
+        if not tab_id:
+            return JsonResponse({'success': False, 'message': 'Missing tab_id.'}, status=400)
+
+        if not request.session.session_key:
+            request.session.save()
+
+        result = LiveClientPresenceService.record_event(
+            user=request.user,
+            session_key=request.session.session_key,
+            tab_id=tab_id,
+            action=action,
+        )
+        return JsonResponse({'success': True, 'tracked': bool(result.get('tracked')), 'action': action})
+    except Exception as e:
+        logger.exception('api_presence_track error: %s', e)
+        return JsonResponse({'success': False, 'message': 'Presence tracking failed.'}, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_live_client_presence(request):
+    """Return current live working client count + IDs for dashboard updates."""
+    try:
+        payload = LiveClientPresenceService.get_live_payload_for_user(request.user)
+        return JsonResponse({'success': True, **payload})
+    except Exception as e:
+        logger.exception('api_live_client_presence error: %s', e)
+        return JsonResponse({'success': False, 'message': 'Could not load live client presence.'}, status=500)
+
+
+@require_http_methods(["GET"])
+@api_require_any_admin
+def api_live_client_presence_stream(request):
+    """SSE stream that pushes dashboard live-client count changes without page reload."""
+
+    def _sse_event(event_name, data):
+        return f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
+
+    def _stream(user):
+        start = time.monotonic()
+        stop_after_seconds = 55
+        keepalive_every_seconds = 15
+        next_keepalive = start + keepalive_every_seconds
+
+        last_version = LiveClientPresenceService.get_signal_version()
+        initial_payload = LiveClientPresenceService.get_live_payload_for_user(user)
+        initial_payload['version'] = last_version
+        yield _sse_event('presence', initial_payload)
+
+        while (time.monotonic() - start) < stop_after_seconds:
+            time.sleep(2)
+            current_version = LiveClientPresenceService.get_signal_version()
+            now_mono = time.monotonic()
+
+            if current_version != last_version:
+                payload = LiveClientPresenceService.get_live_payload_for_user(user)
+                payload['version'] = current_version
+                yield _sse_event('presence', payload)
+                last_version = current_version
+                continue
+
+            if now_mono >= next_keepalive:
+                yield ': keepalive\n\n'
+                next_keepalive = now_mono + keepalive_every_seconds
+
+    response = StreamingHttpResponse(_stream(request.user), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
 
 
 @require_http_methods(["GET"])

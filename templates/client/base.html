@@ -22,7 +22,7 @@
   <!-- Shared Alpine runtime loader -->
   {% include 'partials/common/alpine-loader.html' %}
 </head>
-<body x-data="layoutState" x-init="init">
+<body data-user-role="{{ request.user.role|default:'' }}" x-data="layoutState" x-init="init">
 
   <!-- Impersonation Banner (Pro User) -->
   {% include 'partials/impersonate-bar.html' %}
@@ -68,6 +68,7 @@
   <!-- Core JS bundle (api + toast + modal + utils + init + global-search + notification-bell) -->
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'js/core/unified-select-dropdown.js' %}"></script>
+  <script defer src="{% static 'js/live-client-presence.js' %}"></script>
   <script defer src="{% static 'js/client-message-drawer.js' %}"></script>
   <script defer src="{% static 'js/core/icon-button-text.js' %}"></script>
   <script defer src="{% static 'js/core/icon-consistency.js' %}"></script>

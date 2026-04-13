@@ -106,6 +106,39 @@ def _serialize_admin_client_staff(staff_obj, include_permissions=True):
     return data
 
 
+def _staff_assignment_snapshot(staff_obj):
+    """Normalized assignment state for activity timeline diff logging."""
+    if not staff_obj:
+        return {
+            'client_ids': [],
+            'group_ids': [],
+            'table_ids': [],
+            'classes': [],
+            'sections': [],
+            'branches': [],
+            'scope_count': 0,
+        }
+
+    table_ids = []
+    for value in (staff_obj.assigned_table_ids or []):
+        try:
+            num = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if num > 0:
+            table_ids.append(num)
+
+    return {
+        'client_ids': [int(staff_obj.client_id)] if getattr(staff_obj, 'client_id', None) else [],
+        'group_ids': list(staff_obj.assigned_groups.values_list('id', flat=True)),
+        'table_ids': table_ids,
+        'classes': list(staff_obj.allowed_classes or []),
+        'sections': list(staff_obj.allowed_sections or []),
+        'branches': list(staff_obj.allowed_branches or []),
+        'scope_count': len(staff_obj.assignment_scopes or []),
+    }
+
+
 def _build_admin_client_staff_payload(payload):
     data = {}
     for key in ('name', 'email', 'phone', 'address', 'is_active', 'password'):
@@ -526,8 +559,22 @@ def api_admin_client_staff_create(request):
         Staff.objects
         .filter(id=created_staff_id, staff_type='client_staff')
         .select_related('user', 'client')
+        .prefetch_related('assigned_groups')
         .first()
     )
+
+    if created_staff:
+        try:
+            ActivityService.log_staff_create(request, created_staff)
+            ActivityService.log_staff_assignment_change(
+                request,
+                created_staff,
+                before_snapshot={},
+                after_snapshot=_staff_assignment_snapshot(created_staff),
+                reason='created',
+            )
+        except Exception:
+            logger.exception('Failed to log client staff create timeline for staff_id=%s', created_staff.id)
 
     return JsonResponse({
         'success': True,
@@ -558,6 +605,8 @@ def api_admin_client_staff_update(request, staff_id):
         return JsonResponse({'success': False, 'message': 'Changing assigned client is not supported. Create a new staff for another client.'}, status=400)
 
     data = _build_admin_client_staff_payload(payload)
+    before_assignment_snapshot = _staff_assignment_snapshot(staff_obj)
+
     result = StaffService.update(staff_obj.id, data)
     if not result.success:
         return JsonResponse(result.to_response_dict(), status=400)
@@ -566,8 +615,22 @@ def api_admin_client_staff_update(request, staff_id):
         Staff.objects
         .filter(id=staff_obj.id, staff_type='client_staff')
         .select_related('user', 'client')
+        .prefetch_related('assigned_groups')
         .first()
     )
+
+    if refreshed:
+        try:
+            ActivityService.log_staff_update(request, refreshed)
+            ActivityService.log_staff_assignment_change(
+                request,
+                refreshed,
+                before_snapshot=before_assignment_snapshot,
+                after_snapshot=_staff_assignment_snapshot(refreshed),
+                reason='updated',
+            )
+        except Exception:
+            logger.exception('Failed to log client staff update timeline for staff_id=%s', refreshed.id)
 
     return JsonResponse({
         'success': True,

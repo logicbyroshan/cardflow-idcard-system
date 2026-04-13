@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="theme-color" content="#2F80ED">
     <!-- PWA Manifest  -  enables 'Add to Home Screen' on Android/Chrome -->
     <link rel="manifest" href="/app/manifest.json?v={{ APP_VERSION|urlencode }}">
@@ -78,7 +79,7 @@
         window.addEventListener('resize', checkDevice);
     </script>
 </head>
-<body class="bg-[#eaf2ff] overscroll-none pwa-v2">
+<body data-user-role="{{ request.user.role|default:'' }}" class="bg-[#eaf2ff] font-sans overscroll-none pwa-v2">
     <style>
         body.mobile-overlay-active {
             overflow: hidden !important;
@@ -209,6 +210,7 @@
 
     <!-- Custom JS -->
     <script src="{% static 'mobile/js/app.js' %}?v={{ APP_VERSION|urlencode }}"></script>
+    <script src="{% static 'js/live-client-presence.js' %}?v={{ APP_VERSION|urlencode }}"></script>
     <script src="{% static 'js/core/unified-select-dropdown.js' %}?v={{ APP_VERSION|urlencode }}"></script>
     <script src="{% static 'js/core/icon-button-text.js' %}"></script>
     <script src="{% static 'js/core/icon-consistency.js' %}?v={{ APP_VERSION|urlencode }}"></script>

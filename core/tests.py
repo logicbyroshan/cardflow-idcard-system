@@ -1182,6 +1182,233 @@ class TaskApiSecurityTests(TestCase):
         self.assertFalse(json.loads(response.content.decode('utf-8'))['success'])
 
 
+class TaskProgressCenterApiTests(TestCase):
+    def setUp(self):
+        self.super_admin = _create_super_admin('task-progress-admin@test.com', 'adminpass1')
+        self.regular_user, self.regular_client = _create_client_user(
+            'task-progress-client@test.com',
+            'clientpass1',
+        )
+
+    def test_task_progress_center_returns_aggregates_and_download_links(self):
+        from core.models import BackgroundTask
+
+        now = timezone.now()
+
+        processing = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_pdf',
+            status='processing',
+            progress=25,
+            total=100,
+            metadata={'stage_label': 'Packaging records'},
+        )
+        pending = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_docx',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+        completed = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_excel',
+            status='completed',
+            progress=10,
+            total=10,
+            result_path='exports/test-output.xlsx',
+        )
+        failed = BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_zip',
+            status='failed',
+            progress=3,
+            total=8,
+            error_message='zip failed',
+        )
+        other_user_active = BackgroundTask.objects.create(
+            user=self.regular_user,
+            task_type='export_pdf',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+
+        BackgroundTask.objects.filter(pk=processing.pk).update(
+            created_at=now - timedelta(minutes=8),
+            started_at=now - timedelta(minutes=5),
+        )
+        BackgroundTask.objects.filter(pk=pending.pk).update(created_at=now - timedelta(minutes=6))
+        BackgroundTask.objects.filter(pk=completed.pk).update(
+            created_at=now - timedelta(minutes=12),
+            completed_at=now - timedelta(minutes=2),
+        )
+        BackgroundTask.objects.filter(pk=failed.pk).update(
+            created_at=now - timedelta(minutes=11),
+            completed_at=now - timedelta(minutes=3),
+        )
+        BackgroundTask.objects.filter(pk=other_user_active.pk).update(created_at=now - timedelta(minutes=7))
+
+        self.client.force_login(self.super_admin)
+        response = self.client.get('/panel/api/task-progress-center/', {'limit': 8})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('scope'), 'all')
+
+        stats = payload.get('stats') or {}
+        self.assertEqual(stats.get('active'), 3)
+        self.assertEqual(stats.get('pending'), 2)
+        self.assertEqual(stats.get('processing'), 1)
+        self.assertEqual(stats.get('completed_24h'), 1)
+        self.assertEqual(stats.get('failed_24h'), 1)
+
+        task_map = {item.get('task_id'): item for item in (payload.get('tasks') or [])}
+        self.assertIn(processing.id, task_map)
+        self.assertIn(completed.id, task_map)
+        self.assertIn(other_user_active.id, task_map)
+
+        self.assertEqual(task_map[completed.id].get('download_url'), f'/api/task-download/{completed.id}/')
+        self.assertTrue(task_map[processing.id].get('can_cancel'))
+        self.assertIsNotNone(task_map[processing.id].get('eta_seconds'))
+
+    def test_task_progress_center_scopes_non_super_admin_to_self(self):
+        from core.models import BackgroundTask
+
+        own_task = BackgroundTask.objects.create(
+            user=self.regular_user,
+            task_type='export_pdf',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+        BackgroundTask.objects.create(
+            user=self.super_admin,
+            task_type='export_excel',
+            status='pending',
+            progress=0,
+            total=0,
+        )
+
+        self.client.force_login(self.regular_user)
+        response = self.client.get('/panel/api/task-progress-center/', {'limit': 8})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('scope'), 'self')
+
+        stats = payload.get('stats') or {}
+        self.assertEqual(stats.get('active'), 1)
+        self.assertEqual(stats.get('pending'), 1)
+        self.assertEqual(stats.get('processing'), 0)
+
+        task_ids = {item.get('task_id') for item in (payload.get('tasks') or [])}
+        self.assertEqual(task_ids, {own_task.id})
+
+
+class AssignmentTimelineApiTests(TestCase):
+    def setUp(self):
+        from staff.models import Staff
+
+        self.super_admin = _create_super_admin('assignment-timeline-admin@test.com', 'adminpass1')
+        _client_owner, self.client_obj = _create_client_user('assignment-client-owner@test.com', 'clientpass1')
+
+        self.client_staff_user = User.objects.create_user(
+            username='assignment-client-staff@test.com',
+            email='assignment-client-staff@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Timeline',
+            last_name='Client Staff',
+        )
+        self.client_staff_profile = Staff.objects.create(
+            user=self.client_staff_user,
+            staff_type='client_staff',
+            client=self.client_obj,
+        )
+
+        self.admin_staff_user = User.objects.create_user(
+            username='assignment-admin-staff@test.com',
+            email='assignment-admin-staff@test.com',
+            password='pass1234',
+            role='admin_staff',
+            first_name='Timeline',
+            last_name='Operator',
+        )
+        self.admin_staff_profile = Staff.objects.create(
+            user=self.admin_staff_user,
+            staff_type='admin_staff',
+        )
+
+        self.client.force_login(self.super_admin)
+
+    def test_client_staff_assignment_timeline_filters_assignment_related_events(self):
+        from core.models import ActivityLog
+
+        assignment_log = ActivityLog.objects.create(
+            user=self.super_admin,
+            action='staff_assignment',
+            description='Assignment updated: clients +1, groups +2',
+            target_model='Staff',
+            target_id=self.client_staff_profile.id,
+        )
+        fallback_assignment_log = ActivityLog.objects.create(
+            user=self.super_admin,
+            action='staff_update',
+            description='Staff assignment scope adjusted by admin',
+            target_model='Staff',
+            target_id=self.client_staff_profile.id,
+        )
+        noise_log = ActivityLog.objects.create(
+            user=self.super_admin,
+            action='staff_update',
+            description='Changed staff phone number',
+            target_model='Staff',
+            target_id=self.client_staff_profile.id,
+        )
+
+        response = self.client.get(
+            f'/panel/api/client-staff/{self.client_staff_profile.id}/assignment-timeline/',
+            {'limit': 50},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual((payload.get('staff') or {}).get('id'), self.client_staff_profile.id)
+
+        event_ids = [item.get('id') for item in (payload.get('events') or [])]
+        self.assertIn(assignment_log.id, event_ids)
+        self.assertIn(fallback_assignment_log.id, event_ids)
+        self.assertNotIn(noise_log.id, event_ids)
+
+    def test_admin_staff_assignment_timeline_returns_staff_assignment_events(self):
+        from core.models import ActivityLog
+
+        assignment_log = ActivityLog.objects.create(
+            user=self.super_admin,
+            action='staff_assignment',
+            description='Admin staff client access updated',
+            target_model='Staff',
+            target_id=self.admin_staff_profile.id,
+        )
+
+        response = self.client.get(
+            f'/panel/api/staff/{self.admin_staff_profile.id}/assignment-timeline/',
+            {'limit': 50},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual((payload.get('staff') or {}).get('id'), self.admin_staff_profile.id)
+
+        event_ids = [item.get('id') for item in (payload.get('events') or [])]
+        self.assertEqual(event_ids, [assignment_log.id])
+
+
 class CropApiScopeTests(TestCase):
     def setUp(self):
         from staff.models import Staff
@@ -1864,6 +2091,114 @@ class SecurityApiRegressionTests(TestCase):
         self.assertIn('cannot be edited', response.json().get('message', '').lower())
         self.card_a.refresh_from_db()
         self.assertEqual(self.card_a.field_data.get('NAME'), 'ALICE')
+
+    def test_live_presence_start_and_stop_updates_admin_live_count(self):
+        client_session = self.client_class()
+        admin_session = self.client_class()
+
+        client_session.login(username='sec-client-a@test.com', password='clientpass1')
+        start_resp = client_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'start', 'tab_id': 'tab_a'}),
+            content_type='application/json',
+        )
+        self.assertEqual(start_resp.status_code, 200)
+        self.assertTrue(start_resp.json().get('success'))
+
+        admin_session.login(username='sec-api-admin@test.com', password='adminpass1')
+        live_resp = admin_session.get(reverse('api_live_client_presence'))
+        self.assertEqual(live_resp.status_code, 200)
+        live_payload = live_resp.json()
+        self.assertTrue(live_payload.get('success'))
+        self.assertEqual(live_payload.get('active_clients_now'), 1)
+        self.assertEqual(live_payload.get('active_assistants_now'), 0)
+        self.assertIn(self.client_a.id, live_payload.get('active_client_ids', []))
+
+        stop_resp = client_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'stop', 'tab_id': 'tab_a'}),
+            content_type='application/json',
+        )
+        self.assertEqual(stop_resp.status_code, 200)
+
+        live_after_stop = admin_session.get(reverse('api_live_client_presence')).json()
+        self.assertEqual(live_after_stop.get('active_clients_now'), 0)
+        self.assertEqual(live_after_stop.get('active_assistants_now'), 0)
+        self.assertEqual(live_after_stop.get('active_client_ids'), [])
+
+    def test_live_presence_exposes_assistant_count_separately(self):
+        from staff.models import Staff
+
+        assistant_session = self.client_class()
+        admin_session = self.client_class()
+
+        client_staff_user = User.objects.create_user(
+            username='sec-client-staff-a@test.com',
+            email='sec-client-staff-a@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=client_staff_user,
+            staff_type='client_staff',
+            client=self.client_a,
+        )
+
+        assistant_session.login(username='sec-client-staff-a@test.com', password='pass1234')
+        start_resp = assistant_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'start', 'tab_id': 'tab_staff_a'}),
+            content_type='application/json',
+        )
+        self.assertEqual(start_resp.status_code, 200)
+
+        admin_session.login(username='sec-api-admin@test.com', password='adminpass1')
+        payload = admin_session.get(reverse('api_live_client_presence')).json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload.get('active_clients_now'), 1)
+        self.assertEqual(payload.get('active_assistants_now'), 1)
+
+    def test_live_presence_count_respects_admin_staff_scope(self):
+        from staff.models import Staff
+
+        client_a_session = self.client_class()
+        client_b_session = self.client_class()
+        admin_staff_session = self.client_class()
+
+        client_staff_user = User.objects.create_user(
+            username='sec-client-staff-b@test.com',
+            email='sec-client-staff-b@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=client_staff_user,
+            staff_type='client_staff',
+            client=self.client_b,
+        )
+
+        client_a_session.login(username='sec-client-a@test.com', password='clientpass1')
+        client_a_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'start', 'tab_id': 'tab_scope_a'}),
+            content_type='application/json',
+        )
+
+        client_b_session.login(username='sec-client-staff-b@test.com', password='pass1234')
+        client_b_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'start', 'tab_id': 'tab_scope_b'}),
+            content_type='application/json',
+        )
+
+        admin_staff_session.login(username='sec-admin-staff@test.com', password='pass1234')
+        scoped_resp = admin_staff_session.get(reverse('api_live_client_presence'))
+        self.assertEqual(scoped_resp.status_code, 200)
+        scoped_payload = scoped_resp.json()
+        self.assertTrue(scoped_payload.get('success'))
+        self.assertEqual(scoped_payload.get('active_clients_now'), 1)
+        self.assertEqual(scoped_payload.get('active_assistants_now'), 0)
+        self.assertEqual(scoped_payload.get('active_client_ids'), [self.client_a.id])
 
 
 class CardHistoryApiTests(TestCase):

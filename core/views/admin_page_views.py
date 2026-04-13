@@ -258,6 +258,24 @@ def _serialize_login_history_event(entry, action_display_map, now):
     return event
 
 
+def _serialize_assignment_history_event(entry, action_display_map, now):
+    actor_name = 'System'
+    if entry.user_id:
+        actor_name = entry.user.get_full_name() or entry.user.username or 'System'
+
+    return {
+        'id': entry.pk,
+        'action': entry.action,
+        'action_display': action_display_map.get(entry.action, entry.action),
+        'description': entry.description or '',
+        'actor_name': actor_name,
+        'icon_class': entry.icon_class,
+        'icon_color': entry.icon_color,
+        'created_at': timezone.localtime(entry.created_at).strftime('%d-%m-%Y %H:%M'),
+        'time_ago': django_timesince(entry.created_at, now) + ' ago',
+    }
+
+
 def _build_personal_guide_text(share_url):
     """Build the downloadable plain-text personal guide content."""
     lines = [
@@ -784,6 +802,59 @@ def api_client_staff_login_history(request, staff_id):
     })
 
 
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
+def api_client_staff_assignment_timeline(request, staff_id):
+    """Return assignment-change timeline for a single client staff member."""
+    can_manage_client_staff = (
+        PermissionService.is_super_admin(request.user)
+        or PermissionService.has(request.user, 'perm_idcard_client_list')
+        or PermissionService.has(request.user, 'perm_manage_client_staff')
+    )
+    if PermissionService.is_admin_staff(request.user) and not can_manage_client_staff:
+        return JsonResponse({'success': False, 'message': 'Manage Assistent permission required'}, status=403)
+
+    staff = get_object_or_404(
+        Staff.objects.select_related('user', 'client'),
+        id=staff_id,
+        staff_type='client_staff',
+    )
+
+    if staff.client_id and not PermissionService.can_access_client(request.user, staff.client_id):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(target_model='Staff', target_id=staff.id)
+        .filter(Q(action='staff_assignment') | Q(action='staff_update', description__icontains='assignment'))
+        .select_related('user')
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    events = [_serialize_assignment_history_event(entry, action_display_map, now) for entry in logs_qs]
+
+    staff_name = staff.user.get_full_name() or staff.user.username
+    return JsonResponse({
+        'success': True,
+        'staff': {
+            'id': staff.id,
+            'name': staff_name,
+            'status': 'active' if staff.user.is_active else 'inactive',
+            'client_name': staff.client.name if staff.client_id else '',
+        },
+        'events': events,
+    })
+
+
 @super_admin_required
 @require_http_methods(['GET'])
 def api_staff_login_history(request, staff_id):
@@ -825,6 +896,46 @@ def api_staff_login_history(request, staff_id):
         'active_surface_counts': device_snapshot.get('surface_counts') or {'desktop': 0, 'mobile': 0},
         'device_fingerprints': device_fingerprints,
         'active_devices_info': device_snapshot.get('devices') or [],
+        'events': events,
+    })
+
+
+@super_admin_required
+@require_http_methods(['GET'])
+def api_staff_assignment_timeline(request, staff_id):
+    """Return assignment-change timeline for a single admin staff (operator)."""
+    staff = get_object_or_404(
+        Staff.objects.select_related('user'),
+        id=staff_id,
+        staff_type='admin_staff',
+    )
+
+    try:
+        limit = int(request.GET.get('limit', 80))
+    except (TypeError, ValueError):
+        limit = 80
+    limit = min(max(limit, 10), 200)
+
+    logs_qs = (
+        ActivityLog.objects
+        .filter(target_model='Staff', target_id=staff.id)
+        .filter(Q(action='staff_assignment') | Q(action='staff_update', description__icontains='assignment'))
+        .select_related('user')
+        .order_by('-created_at')[:limit]
+    )
+
+    now = timezone.now()
+    action_display_map = dict(ActivityLog.ACTION_CHOICES)
+    events = [_serialize_assignment_history_event(entry, action_display_map, now) for entry in logs_qs]
+
+    staff_name = staff.user.get_full_name() or staff.user.username
+    return JsonResponse({
+        'success': True,
+        'staff': {
+            'id': staff.id,
+            'name': staff_name,
+            'status': 'active' if staff.user.is_active else 'inactive',
+        },
         'events': events,
     })
 
