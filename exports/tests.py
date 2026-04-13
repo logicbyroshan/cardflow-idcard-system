@@ -1851,7 +1851,8 @@ class WordLayoutTuningTests(SimpleTestCase):
 
         with PILImage.open(image_stream) as image:
             self.assertEqual(image.size, (20, 30))
-            self.assertEqual(image.getpixel((0, 0)), (255, 0, 0))
+            self.assertEqual(image.getpixel((0, 0)), (65, 65, 65))
+            self.assertEqual(image.getpixel((10, 15)), (255, 0, 0))
 
     def test_word_hindi_font_detection_is_normalized(self):
         from exports.word import WordExporter

@@ -40,12 +40,36 @@ class WordImagesMixin:
 
     @staticmethod
     def _build_word_image_stream(img_data, Image, ImageOps, add_photo_border=False):
-        """Return a BytesIO stream for Word embedding without pixel mutation.
+        """Return a BytesIO stream for Word embedding.
 
-        Keep source bytes intact so photo quality remains unchanged. Border
-        thickness for photo-like columns is handled in VML as 0.5pt.
+        Some Word compatibility renderers ignore VML stroke on image shapes.
+        For photo-like columns, add a subtle 1px inner hairline border in the
+        bitmap (without changing dimensions) so border remains visible.
         """
-        return BytesIO(img_data)
+        if not add_photo_border:
+            return BytesIO(img_data)
+
+        with Image.open(BytesIO(img_data)) as src_img:
+            src_img.load()
+            if src_img.mode != 'RGB':
+                src_img = src_img.convert('RGB')
+            bordered = src_img.copy()
+            w, h = bordered.size
+            if w >= 2 and h >= 2:
+                px = bordered.load()
+                # Slightly lighter than pure black so this reads like a
+                # thin 0.5pt hairline instead of a heavy frame.
+                edge = (65, 65, 65)
+                for x in range(w):
+                    px[x, 0] = edge
+                    px[x, h - 1] = edge
+                for y in range(h):
+                    px[0, y] = edge
+                    px[w - 1, y] = edge
+            out_stream = BytesIO()
+            bordered.save(out_stream, format='PNG', optimize=True)
+            out_stream.seek(0)
+            return out_stream
 
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
@@ -87,6 +111,7 @@ class WordImagesMixin:
                                 img_data,
                                 Image,
                                 ImageOps,
+                                add_photo_border=add_photo_border,
                             )
                             
                             para = cell.paragraphs[0]
@@ -102,7 +127,7 @@ class WordImagesMixin:
                             self._convert_to_vml(
                                 run,
                                 inline_shape,
-                                add_border=add_photo_border,
+                                add_border=False,
                             )
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             self._set_para_spacing(para, parse_xml, nsdecls)
