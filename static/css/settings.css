@@ -389,7 +389,7 @@
     box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
 }
 
-/* Form Row — 2 columns */
+/* Form Row - 2 columns */
 .settings-section .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
