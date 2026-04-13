@@ -72,6 +72,8 @@ body.modal-open {
 .product-gallery-header h3 {
     font-size: 1.5rem;
     font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
     margin: 0;
 }
 
@@ -86,7 +88,7 @@ body.modal-open {
     height: 40px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.2);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.34);
     color: #fff;
     font-size: 1rem;
     cursor: pointer;
@@ -94,9 +96,11 @@ body.modal-open {
     display: flex;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(8px);
 }
 .product-gallery-share:hover {
     background: rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
 }
 
 .product-gallery-close {
@@ -104,7 +108,7 @@ body.modal-open {
     height: 40px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.2);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.34);
     color: #fff;
     font-size: 1.2rem;
     cursor: pointer;
@@ -112,11 +116,21 @@ body.modal-open {
     display: flex;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(8px);
 }
 
 .product-gallery-close:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: rotate(90deg);
+    background: rgba(255, 255, 255, 0.34);
+    transform: translateY(-1px);
+}
+
+.product-gallery-share:focus-visible,
+.product-gallery-close:focus-visible,
+.lightbox-close:focus-visible,
+.lightbox-nav:focus-visible,
+.video-modal-close:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.9);
+    outline-offset: 2px;
 }
 
 /* Pinterest / Masonry Grid Gallery */
@@ -1142,7 +1156,7 @@ body.modal-open {
     width: 50px;
     height: 50px;
     background: rgba(255,255,255,0.1);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -1152,10 +1166,12 @@ body.modal-open {
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 10;
+    backdrop-filter: blur(8px);
 }
 
 .lightbox-close:hover {
     background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
 }
 
 .lightbox-nav {
@@ -1165,7 +1181,7 @@ body.modal-open {
     width: 60px;
     height: 60px;
     background: rgba(255,255,255,0.1);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 8px;
     display: none;
     align-items: center;
@@ -1175,10 +1191,12 @@ body.modal-open {
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 10;
+    backdrop-filter: blur(8px);
 }
 
 .lightbox-nav:hover {
     background: rgba(255,255,255,0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
 .lightbox-prev {
@@ -1269,7 +1287,7 @@ body.modal-open {
     width: 40px;
     height: 40px;
     background: rgba(255,255,255,0.2);
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.34);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -1279,11 +1297,12 @@ body.modal-open {
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 10;
+    backdrop-filter: blur(8px);
 }
 
 .video-modal-close:hover {
-    background: rgba(255,255,255,0.3);
-    transform: rotate(90deg);
+    background: rgba(255,255,255,0.34);
+    transform: translateY(-1px);
 }
 
 .video-modal-content video {

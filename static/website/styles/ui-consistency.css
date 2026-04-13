@@ -98,6 +98,24 @@ h6 {
     letter-spacing: -0.015em;
 }
 
+/* Guard dark-surface text contrast against global heading color defaults. */
+.hero .hero-content h1,
+.page-hero .hero-content h1,
+.download-app-title,
+.product-gallery-header h3,
+.lightbox-caption,
+.footer .footer-section h4 {
+    color: #ffffff !important;
+}
+
+.hero .hero-subtitle,
+.page-hero .hero-subtitle,
+.download-app-desc,
+.footer .footer-section p,
+.footer .footer-section ul li a {
+    color: rgba(255, 255, 255, 0.86);
+}
+
 /* Reserve two-line space for typed hero heading to avoid layout jump. */
 .hero .hero-content h1 {
     min-height: calc(1.15em * 2);
