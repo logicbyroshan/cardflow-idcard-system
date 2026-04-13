@@ -288,37 +288,53 @@ def _matches_activity_search(entry, token):
     return token in haystack
 
 
-def _build_activity_log_feed_rows(*, user, now, fetch_cap, search='', user_role='', action=''):
+def _build_activity_log_feed_rows(*, user, now, fetch_cap, search='', user_role='', action='', offset=0, limit=None, paginated=False):
+    from django.db.models import Q
+    from django.utils.timesince import timesince as django_timesince
     from core.models import ActivityLog
     from core.services.activity_service import ActivityService
 
     action_display_map = dict(ActivityLog.ACTION_CHOICES)
     rows = []
-    search_token = str(search or '').strip().lower()
-    activities = ActivityService.get_recent(limit=fetch_cap, hours=None, user=user)
 
-    for entry in activities:
-        entry_action = str(entry.get('action') or '').strip()
-        entry_role = str(entry.get('actor_role') or '').strip()
+    queryset = ActivityLog.objects.select_related(
+        'user',
+        'user__client_profile',
+        'user__staff_profile__client',
+    ).order_by('-created_at')
 
-        if user_role and entry_role != user_role:
-            continue
-        if action and entry_action != action:
-            continue
-        if search_token and not _matches_activity_search(entry, search_token):
-            continue
+    if user and user.is_authenticated:
+        queryset = ActivityService._apply_role_filter(queryset, user)
 
-        description = str(entry.get('display_text') or entry.get('description') or '').strip()
-        created_at_dt = _parse_iso_datetime(entry.get('created_at')) or now
-        created_at_display = str(entry.get('created_at_display') or '').strip()
-        if not created_at_display:
-            created_at_display = created_at_dt.strftime('%d-%m-%Y %H:%M')
+    if action:
+        queryset = queryset.filter(action=action)
+    if user_role:
+        queryset = queryset.filter(user__role=user_role)
+    if search:
+        queryset = queryset.filter(
+            Q(description__icontains=search)
+            | Q(target_name__icontains=search)
+            | Q(target_model__icontains=search)
+            | Q(user__username__icontains=search)
+            | Q(user__first_name__icontains=search)
+            | Q(user__last_name__icontains=search)
+        )
 
-        time_ago = str(entry.get('time_ago') or '').strip()
-        if time_ago and not time_ago.lower().endswith('ago'):
-            time_ago = f'{time_ago} ago'
-        elif not time_ago:
-            time_ago = 'just now'
+    total_count = queryset.count()
+    if paginated:
+        safe_offset = max(int(offset or 0), 0)
+        safe_limit = max(int(limit or 1), 1)
+        entries = queryset[safe_offset:safe_offset + safe_limit]
+    else:
+        entries = queryset[:fetch_cap]
+
+    for entry in entries:
+        entry_action = str(entry.action or '').strip()
+        description = str(entry.description or '').strip() or 'Activity update'
+        created_at_dt = entry.created_at or now
+        created_at_display = created_at_dt.strftime('%d-%m-%Y %H:%M')
+        time_ago = django_timesince(created_at_dt, now) + ' ago'
+        actor = ActivityService._get_actor_display(entry, user, hide_admin_names=False)
 
         device_meta = _device_surface_meta(_infer_device_surface(entry_action, description))
         event_title = action_display_map.get(entry_action, entry_action.replace('_', ' ').title() or 'Activity')
@@ -327,7 +343,7 @@ def _build_activity_log_feed_rows(*, user, now, fetch_cap, search='', user_role=
             'source_type': 'activity_log',
             'source_label': 'Activity Log',
             'event_title': event_title,
-            'event_subtitle': str(entry.get('target_model') or ''),
+            'event_subtitle': str(entry.target_model or ''),
             'task_id': None,
             'status': '',
             'status_display': '',
@@ -335,20 +351,20 @@ def _build_activity_log_feed_rows(*, user, now, fetch_cap, search='', user_role=
             'action_display': event_title,
             'can_cancel': False,
             'description': description,
-            'target_name': str(entry.get('target_name') or ''),
-            'user': str(entry.get('actor') or 'System'),
-            'ip_address': '',
+            'target_name': str(entry.target_name or ''),
+            'user': actor or 'System',
+            'ip_address': str(entry.ip_address or ''),
             'progress_text': '',
             'error': '',
-            'icon_class': str(entry.get('icon_class') or 'fa-circle-info'),
-            'icon_color': str(entry.get('icon_color') or 'edit'),
+            'icon_class': str(entry.icon_class or 'fa-circle-info'),
+            'icon_color': str(entry.icon_color or 'edit'),
             'created_at': created_at_display,
             'time_ago': time_ago,
             'created_at_dt': created_at_dt,
             **device_meta,
         })
 
-    return rows
+    return rows, total_count
 
 
 def _infer_device_surface(action, description):
@@ -1036,25 +1052,40 @@ def api_operations_feed(request):
                 'created_at_dt': task.created_at,
             })
 
+    log_total = 0
+    logs_only_mode = include_logs and not include_background and not include_backups
+
     if include_logs:
-        log_items = _build_activity_log_feed_rows(
+        log_items, log_total = _build_activity_log_feed_rows(
             user=request.user,
             now=now,
             fetch_cap=fetch_cap,
             search=search,
             user_role=user_role,
             action=action,
+            offset=offset if logs_only_mode else 0,
+            limit=limit if logs_only_mode else None,
+            paginated=logs_only_mode,
         )
         items.extend(log_items)
 
     items.sort(key=lambda row: row.get('created_at_dt') or now, reverse=True)
-    total = len(items)
-    source_counts = {
-        'background_task': sum(1 for row in items if row.get('source_type') == 'background_task'),
-        'backup_task': sum(1 for row in items if row.get('source_type') == 'backup_task'),
-        'activity_log': sum(1 for row in items if row.get('source_type') == 'activity_log'),
-    }
-    paged_items = items[offset:offset + limit]
+    if logs_only_mode:
+        total = log_total
+        source_counts = {
+            'background_task': 0,
+            'backup_task': 0,
+            'activity_log': log_total,
+        }
+        paged_items = items
+    else:
+        total = len(items)
+        source_counts = {
+            'background_task': sum(1 for row in items if row.get('source_type') == 'background_task'),
+            'backup_task': sum(1 for row in items if row.get('source_type') == 'backup_task'),
+            'activity_log': sum(1 for row in items if row.get('source_type') == 'activity_log'),
+        }
+        paged_items = items[offset:offset + limit]
 
     for row in paged_items:
         row.pop('created_at_dt', None)

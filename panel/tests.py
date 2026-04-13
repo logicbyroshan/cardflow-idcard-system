@@ -974,6 +974,31 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertTrue(all(item['action'] == 'login' for item in items))
         self.assertTrue(all(item['user'] == self.client_user.username for item in items))
 
+    def test_operations_feed_logs_supports_deep_pagination_without_cap(self):
+        for i in range(450):
+            ActivityLog.objects.create(
+                user=self.super_admin,
+                action='other',
+                description=f'deep-log-{i:03d}',
+            )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+        response = self.client.get('/panel/api/operations-feed/', {
+            'source': 'logs',
+            'limit': 25,
+            'offset': 350,
+        })
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertGreaterEqual(payload.get('total', 0), 450)
+
+        items = payload.get('items', [])
+        self.assertEqual(len(items), 25)
+        self.assertTrue(all(item.get('source_type') == 'activity_log' for item in items))
+        self.assertGreaterEqual(payload.get('source_counts', {}).get('activity_log', 0), 450)
+
     def test_operations_feed_rejects_removed_client_logs_source(self):
         self.client.login(username='panel-super@test.com', password='pass1234')
         response = self.client.get('/panel/api/operations-feed/', {
