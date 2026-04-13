@@ -719,6 +719,7 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertEqual(allowed.status_code, 200)
         self.assertTrue(allowed.json()['success'])
 
+    @override_settings(ACTIVITY_LOG_MANUAL_CLEAR_ENABLED=True)
     def test_clear_activity_logs_super_admin_creates_pending_request(self):
         ActivityLog.objects.create(
             user=self.super_admin,
@@ -744,6 +745,7 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertEqual(payload.get('state', {}).get('status'), 'pending_pro_user_confirmation')
         self.assertEqual(ActivityLog.objects.count(), 1)
 
+    @override_settings(ACTIVITY_LOG_MANUAL_CLEAR_ENABLED=True)
     def test_clear_activity_logs_pro_user_requires_pending_request(self):
         pro_user = User.objects.create_user(
             username='panel-pro-clear@test.com',
@@ -773,6 +775,7 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         self.assertEqual(payload.get('code'), 'no_pending_request')
         self.assertEqual(ActivityLog.objects.count(), 1)
 
+    @override_settings(ACTIVITY_LOG_MANUAL_CLEAR_ENABLED=True)
     def test_clear_activity_logs_pro_user_confirms_and_archives(self):
         pro_user = User.objects.create_user(
             username='panel-pro-confirm@test.com',
@@ -842,6 +845,32 @@ class PanelMonitoringApiTests(PanelBaseTestCase):
         state_payload = state_response.json()
         self.assertEqual(state_payload.get('state', {}).get('status'), 'idle')
         self.assertEqual(state_payload.get('state', {}).get('last_completed_by'), pro_user.username)
+
+    def test_clear_activity_logs_disabled_returns_403(self):
+        ActivityLog.objects.create(
+            user=self.super_admin,
+            action='login',
+            description='Guard disabled safety test',
+        )
+
+        self.client.login(username='panel-super@test.com', password='pass1234')
+
+        state_response = self.client.get('/panel/api/activity-logs/clear/state/')
+        self.assertEqual(state_response.status_code, 403)
+        self.assertEqual(state_response.json().get('code'), 'log_clear_disabled')
+
+        code_response = self.client.get('/panel/api/activity-logs/clear/generate-code/')
+        self.assertEqual(code_response.status_code, 403)
+        self.assertEqual(code_response.json().get('code'), 'log_clear_disabled')
+
+        response = self.client.post(
+            '/panel/api/activity-logs/clear/',
+            data=json.dumps({'confirmation_code': '1234567890'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get('code'), 'log_clear_disabled')
+        self.assertEqual(ActivityLog.objects.count(), 1)
 
     def test_operations_feed_filters_and_recent_first(self):
         from datetime import timedelta

@@ -933,6 +933,12 @@ class ActivityService:
         Called periodically (e.g. via management command or scheduled task).
         Returns the number of entries deleted.
         """
+        if not bool(getattr(settings, 'ACTIVITY_LOG_AUTOCLEAN_ENABLED', False)):
+            logger.warning(
+                'Activity log cleanup skipped because ACTIVITY_LOG_AUTOCLEAN_ENABLED is disabled.'
+            )
+            return 0
+
         min_days = max(int(getattr(settings, 'ACTIVITY_LOG_MIN_RETENTION_DAYS', 30) or 30), 1)
         try:
             requested_days = int(days)

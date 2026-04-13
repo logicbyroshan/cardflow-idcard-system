@@ -323,6 +323,9 @@ ACTIVITY_LOG_MANUAL_CLEAR_ENABLED = _env_bool('ACTIVITY_LOG_MANUAL_CLEAR_ENABLED
 ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE = (
     os.getenv('ACTIVITY_LOG_CLEAR_CONFIRM_PHRASE', 'DELETE ALL LOGS').strip() or 'DELETE ALL LOGS'
 )
+# Automatic retention cleanup is disabled by default.
+# Keep False in production unless you intentionally run scheduled archival/cleanup.
+ACTIVITY_LOG_AUTOCLEAN_ENABLED = _env_bool('ACTIVITY_LOG_AUTOCLEAN_ENABLED', False)
 
 # ── Session fingerprint validation ──
 # Adds lightweight binding of a session to browser fingerprint material.

@@ -156,6 +156,10 @@ def _is_log_clear_actor(user) -> bool:
     return role in {'super_admin', 'pro_user'}
 
 
+def _is_manual_log_clear_enabled() -> bool:
+    return bool(getattr(settings, 'ACTIVITY_LOG_MANUAL_CLEAR_ENABLED', False))
+
+
 def _normalize_log_clear_guard_state(payload):
     if not isinstance(payload, dict):
         return {
@@ -1081,6 +1085,16 @@ def api_clear_activity_logs(request):
     if not _is_log_clear_actor(request.user):
         return JsonResponse({'success': False, 'message': 'Only Super Admin or Pro User can manage log deletion.'}, status=403)
 
+    if not _is_manual_log_clear_enabled():
+        return JsonResponse(
+            {
+                'success': False,
+                'message': 'Log deletion guard is disabled by server policy.',
+                'code': 'log_clear_disabled',
+            },
+            status=403,
+        )
+
     confirmation_code = _extract_confirmation_code(request)
     if not confirmation_code:
         return JsonResponse(
@@ -1194,6 +1208,16 @@ def api_activity_log_clear_state(request):
     if not _is_log_clear_actor(request.user):
         return JsonResponse({'success': False, 'message': 'Only Super Admin or Pro User can view this state.'}, status=403)
 
+    if not _is_manual_log_clear_enabled():
+        return JsonResponse(
+            {
+                'success': False,
+                'message': 'Log deletion guard is disabled by server policy.',
+                'code': 'log_clear_disabled',
+            },
+            status=403,
+        )
+
     role = str(getattr(request.user, 'role', '') or '').strip().lower()
     state = _load_log_clear_guard_state()
     can_confirm = role == 'pro_user' and state.get('status') == 'pending_pro_user_confirmation'
@@ -1213,6 +1237,15 @@ def api_activity_log_clear_state(request):
 def api_activity_log_clear_generate_code(request):
     if not _is_log_clear_actor(request.user):
         return JsonResponse({'success': False, 'message': 'Only Super Admin or Pro User can generate code.'}, status=403)
+    if not _is_manual_log_clear_enabled():
+        return JsonResponse(
+            {
+                'success': False,
+                'message': 'Log deletion guard is disabled by server policy.',
+                'code': 'log_clear_disabled',
+            },
+            status=403,
+        )
     code = _generate_ten_digit_code()
     _store_log_clear_code(request, code)
     return JsonResponse({'success': True, 'code': code})
