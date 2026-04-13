@@ -21,11 +21,21 @@
     --wa-section-content-max: 1200px;
     --wa-section-gutter-desktop: 24px;
     --wa-section-gutter-mobile: 16px;
+    --wa-section-spacing-desktop: 88px;
+    --wa-section-spacing-tablet: 72px;
+    --wa-section-spacing-mobile: 56px;
 }
 
 body {
     font-family: var(--wa-font-base);
     color: var(--wa-text-900);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: var(--wa-font-base);
 }
 
 h1,
@@ -39,16 +49,53 @@ h6 {
 }
 
 /* Keep homepage sections on a consistent content width rhythm. */
+.top-bar > .container,
+.navbar > .container,
+.footer > .container,
+.page-hero > .container,
 .trusted-schools > .container,
 .why-choose-us > .container,
 .our-works > .container,
 .testimonials > .container,
-.contact-section > .container {
+.contact-section > .container,
+.download-app-section > .container,
+.key-features > .container,
+.promises-section > .container,
+.trust-section > .container,
+.categories-showcase > .container,
+.portfolio-section > .container,
+.testimonials-grid-section > .container,
+.ratings-section > .container,
+.policy-section > .container {
     max-width: var(--wa-section-content-max) !important;
     margin-left: auto;
     margin-right: auto;
     padding-left: var(--wa-section-gutter-desktop) !important;
     padding-right: var(--wa-section-gutter-desktop) !important;
+}
+
+/* Keep section spacing consistent across homepage and inner pages. */
+.why-choose-us,
+.our-works,
+.testimonials,
+.contact-section,
+.download-app-section,
+.key-features,
+.promises-section,
+.trust-section,
+.categories-showcase,
+.portfolio-section,
+.testimonials-grid-section,
+.ratings-section,
+.policy-section {
+    padding-top: var(--wa-section-spacing-desktop) !important;
+    padding-bottom: var(--wa-section-spacing-desktop) !important;
+}
+
+.section-title,
+.section-header h2 {
+    color: var(--wa-text-900);
+    letter-spacing: -0.015em;
 }
 
 .logos-carousel,
@@ -168,6 +215,20 @@ h6 {
 .card-badge,
 .featured-badge {
     border-radius: var(--wa-radius-md) !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.section-badge,
+.download-app-badge,
+.card-badge,
+.featured-badge {
+    border: 1px solid rgba(10, 146, 221, 0.18);
+}
+
+.hero .hero-badge,
+.page-hero .hero-badge {
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .avatar-placeholder,
@@ -285,18 +346,159 @@ h6 {
     color: var(--wa-brand-500);
 }
 
+/* Use real Download App section class names for responsive behavior. */
+@media (max-width: 999px) {
+    .why-choose-us,
+    .our-works,
+    .testimonials,
+    .contact-section,
+    .download-app-section,
+    .key-features,
+    .promises-section,
+    .trust-section,
+    .categories-showcase,
+    .portfolio-section,
+    .testimonials-grid-section,
+    .ratings-section,
+    .policy-section {
+        padding-top: var(--wa-section-spacing-tablet) !important;
+        padding-bottom: var(--wa-section-spacing-tablet) !important;
+    }
+
+    .download-app-wrap {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .download-app-content {
+        text-align: center;
+    }
+
+    .download-app-desc {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .download-app-features,
+    .download-app-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .download-app-phone .phone-mockup {
+        width: 230px;
+        height: 455px;
+        transform: none;
+        margin: 0 auto;
+    }
+}
+
 @media (max-width: 767px) {
+    .top-bar > .container,
+    .navbar > .container,
+    .footer > .container,
+    .page-hero > .container,
     .trusted-schools > .container,
     .why-choose-us > .container,
     .our-works > .container,
     .testimonials > .container,
-    .contact-section > .container {
+    .contact-section > .container,
+    .download-app-section > .container,
+    .key-features > .container,
+    .promises-section > .container,
+    .trust-section > .container,
+    .categories-showcase > .container,
+    .portfolio-section > .container,
+    .testimonials-grid-section > .container,
+    .ratings-section > .container,
+    .policy-section > .container {
         padding-left: var(--wa-section-gutter-mobile) !important;
         padding-right: var(--wa-section-gutter-mobile) !important;
     }
 
+    .why-choose-us,
+    .our-works,
+    .testimonials,
+    .contact-section,
+    .download-app-section,
+    .key-features,
+    .promises-section,
+    .trust-section,
+    .categories-showcase,
+    .portfolio-section,
+    .testimonials-grid-section,
+    .ratings-section,
+    .policy-section {
+        padding-top: var(--wa-section-spacing-mobile) !important;
+        padding-bottom: var(--wa-section-spacing-mobile) !important;
+    }
+
     .contact-section {
         padding: 56px 0;
+    }
+
+    /* Fix cramped mobile layout in homepage Why Choose Us cards. */
+    .bento-grid {
+        gap: 0.9rem;
+    }
+
+    .bento-card {
+        padding: 1.15rem;
+        flex-direction: column !important;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+
+    .bento-card-1,
+    .bento-card-2,
+    .bento-card-3,
+    .bento-card-4 {
+        grid-column: span 1 !important;
+    }
+
+    .bento-card-1 .bento-text-content,
+    .bento-card-4 .bento-text-content,
+    .bento-card-1 .bento-illustration,
+    .bento-card-4 .bento-illustration {
+        flex: 1 1 100%;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .bento-illustration,
+    .bento-card-1 .bento-illustration,
+    .bento-card-4 .bento-illustration {
+        max-width: 92px;
+        width: 92px;
+        min-width: 92px;
+        margin-bottom: 0;
+    }
+
+    .bento-card h3 {
+        font-size: 1rem;
+    }
+
+    .bento-card p {
+        font-size: 0.86rem;
+        line-height: 1.55;
+    }
+
+    .download-app-wrap {
+        gap: 1.5rem;
+    }
+
+    .download-app-title {
+        font-size: 1.75rem;
+    }
+
+    .download-app-desc {
+        font-size: 0.94rem;
+    }
+
+    .download-app-phone .phone-mockup {
+        width: 200px;
+        height: 390px;
     }
 
     .contact-wrapper {
