@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const portfolioGrid = document.getElementById('portfolioGrid');
     const skeletonWrap = document.getElementById('portfolioLoadSkeleton');
     const loadSentinel = document.getElementById('portfolioLoadSentinel');
+    const galleryGrid = document.getElementById('productGalleryGrid');
+    const gallerySkeleton = document.getElementById('productGallerySkeleton');
     const PORTFOLIO_BATCH_SIZE = 20;
     let currentFilter = 'all';
     let filteredItems = [];
@@ -24,6 +26,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function setSkeletonVisible(visible) {
         if (!skeletonWrap) return;
         skeletonWrap.hidden = !visible;
+    }
+
+    function setGallerySkeletonVisible(visible) {
+        if (gallerySkeleton) {
+            gallerySkeleton.hidden = !visible;
+        }
+        if (galleryGrid) {
+            galleryGrid.hidden = visible;
+        }
+    }
+
+    function applyLazyImageAttrs(img, isPriority) {
+        if (!img) return;
+        img.loading = isPriority ? 'eager' : 'lazy';
+        img.decoding = 'async';
+        img.setAttribute('fetchpriority', isPriority ? 'high' : 'low');
     }
 
     function getNoResultMessage() {
@@ -137,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- 2. Category Explore (Opens Modal with filtered items — images + videos) ---
     const exploreButtons = document.querySelectorAll('.explore-btn');
     const productModal = document.getElementById('productGalleryModal');
-    const galleryGrid = document.getElementById('productGalleryGrid');
     
     // Get category images data for bento backgrounds
     let categoryImagesForModal = {};
@@ -175,112 +192,116 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             document.getElementById('productGalleryTitle').textContent = catName;
             currentGalleryCategorySlug = catSlug;
-            
+            productModal.classList.add('active');
+            document.body.classList.add('modal-open');
+
             galleryGrid.innerHTML = '';
-            
-            // Use rich items data (with images + videos)
-            const catItems = categoryItemsData[categoryId] || [];
-            
-            if (catItems.length === 0) {
-                // Fallback: use image-only data
-                const fallbackImages = categoryImagesForModal[categoryId] || [];
-                if (fallbackImages.length === 0) {
-                    galleryGrid.innerHTML = '<p style="text-align: center; padding: 60px 20px; color: #666;">No samples available for this category yet.</p>';
+            setGallerySkeletonVisible(true);
+
+            window.setTimeout(() => {
+                // Use rich items data (with images + videos)
+                const catItems = categoryItemsData[categoryId] || [];
+
+                if (catItems.length === 0) {
+                    // Fallback: use image-only data
+                    const fallbackImages = categoryImagesForModal[categoryId] || [];
+                    if (fallbackImages.length === 0) {
+                        galleryGrid.innerHTML = '<p style="text-align: center; padding: 60px 20px; color: #666;">No samples available for this category yet.</p>';
+                    } else {
+                        const _fbList = fallbackImages.map((u, i) => ({src: u, title: catName + ' Sample ' + (i + 1)}));
+                        fallbackImages.forEach((imgUrl, index) => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'gallery-item';
+                            const img = document.createElement('img');
+                            img.src = imgUrl;
+                            img.alt = catName + ' Sample ' + (index + 1);
+                            applyLazyImageAttrs(img, index === 0);
+                            wrapper.appendChild(img);
+                            wrapper.addEventListener('click', () => openLightboxAt(_fbList, index));
+                            galleryGrid.appendChild(wrapper);
+                        });
+                    }
                 } else {
-                    const _fbList = fallbackImages.map((u, i) => ({src: u, title: catName + ' Sample ' + (i + 1)}));
-                    fallbackImages.forEach((imgUrl, index) => {
+                    // Build image-only list for lightbox slideshow
+                    const _imgOnlyItems = catItems.filter(i => i.image && i.type !== 'video' && i.type !== 'reel');
+                    const _imgList = _imgOnlyItems.map(i => ({src: i.image, title: i.title || catName}));
+                    // B4: O(1) index lookup instead of O(n) indexOf inside forEach
+                    const _imgIndexMap = new Map(_imgOnlyItems.map((itm, idx) => [itm, idx]));
+
+                    catItems.forEach((item, index) => {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'gallery-item';
-                        const img = document.createElement('img');
-                        img.src = imgUrl;
-                        img.alt = catName + ' Sample ' + (index + 1);
-                        img.loading = 'lazy';
-                        wrapper.appendChild(img);
-                        wrapper.addEventListener('click', () => openLightboxAt(_fbList, index));
+                        if (item.type === 'video') wrapper.classList.add('video-item');
+                        if (item.type === 'reel') wrapper.classList.add('video-item', 'reel-item');
+
+                        if ((item.type === 'video' || item.type === 'reel') && item.video) {
+                            // Video item — inline playback
+                            const video = document.createElement('video');
+                            video.src = item.video;
+                            video.muted = true;
+                            video.loop = true;
+                            video.playsInline = true;
+                            video.preload = 'metadata';
+                            if (item.image) video.poster = item.image;
+                            video.setAttribute('playsinline', '');
+
+                            // Play/pause overlay
+                            const playOverlay = document.createElement('div');
+                            playOverlay.className = 'gallery-video-overlay';
+                            playOverlay.innerHTML = '<button class="gallery-play-btn"><i class="fas fa-play"></i></button>';
+
+                            let isPlaying = false;
+                            const playBtn = playOverlay.querySelector('.gallery-play-btn');
+
+                            function togglePlay(e) {
+                                e.stopPropagation();
+                                if (isPlaying) {
+                                    video.pause();
+                                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                                    isPlaying = false;
+                                } else {
+                                    video.muted = false;
+                                    video.play().then(() => {
+                                        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                                        isPlaying = true;
+                                    }).catch(() => {});
+                                }
+                            }
+                            playBtn.addEventListener('click', togglePlay);
+
+                            // Autoplay on hover (muted)
+                            wrapper.addEventListener('mouseenter', () => {
+                                if (!isPlaying) {
+                                    video.muted = true;
+                                    video.play().catch(() => {});
+                                }
+                            });
+                            wrapper.addEventListener('mouseleave', () => {
+                                if (!isPlaying) {
+                                    video.pause();
+                                    video.currentTime = 0;
+                                }
+                            });
+
+                            wrapper.appendChild(video);
+                            wrapper.appendChild(playOverlay);
+                        } else if (item.image) {
+                            // Image item
+                            const img = document.createElement('img');
+                            img.src = item.image;
+                            img.alt = item.title || (catName + ' Sample ' + (index + 1));
+                            applyLazyImageAttrs(img, index < 2);
+                            wrapper.appendChild(img);
+                            const _imgIdx = _imgIndexMap.has(item) ? _imgIndexMap.get(item) : 0;
+                            wrapper.addEventListener('click', () => openLightboxAt(_imgList, _imgIdx));
+                        }
+
                         galleryGrid.appendChild(wrapper);
                     });
                 }
-            } else {
-                // Build image-only list for lightbox slideshow
-                const _imgOnlyItems = catItems.filter(i => i.image && i.type !== 'video' && i.type !== 'reel');
-                const _imgList = _imgOnlyItems.map(i => ({src: i.image, title: i.title || catName}));
-                // B4: O(1) index lookup instead of O(n) indexOf inside forEach
-                const _imgIndexMap = new Map(_imgOnlyItems.map((itm, idx) => [itm, idx]));
 
-                catItems.forEach((item, index) => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'gallery-item';
-                    if (item.type === 'video') wrapper.classList.add('video-item');
-                    if (item.type === 'reel') wrapper.classList.add('video-item', 'reel-item');
-
-                    if ((item.type === 'video' || item.type === 'reel') && item.video) {
-                        // Video item — inline playback
-                        const video = document.createElement('video');
-                        video.src = item.video;
-                        video.muted = true;
-                        video.loop = true;
-                        video.playsInline = true;
-                        video.preload = 'metadata';
-                        if (item.image) video.poster = item.image;
-                        video.setAttribute('playsinline', '');
-
-                        // Play/pause overlay
-                        const playOverlay = document.createElement('div');
-                        playOverlay.className = 'gallery-video-overlay';
-                        playOverlay.innerHTML = '<button class="gallery-play-btn"><i class="fas fa-play"></i></button>';
-                        
-                        let isPlaying = false;
-                        const playBtn = playOverlay.querySelector('.gallery-play-btn');
-
-                        function togglePlay(e) {
-                            e.stopPropagation();
-                            if (isPlaying) {
-                                video.pause();
-                                playBtn.innerHTML = '<i class="fas fa-play"></i>';
-                                isPlaying = false;
-                            } else {
-                                video.muted = false;
-                                video.play().then(() => {
-                                    playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                                    isPlaying = true;
-                                }).catch(() => {});
-                            }
-                        }
-                        playBtn.addEventListener('click', togglePlay);
-
-                        // Autoplay on hover (muted)
-                        wrapper.addEventListener('mouseenter', () => {
-                            if (!isPlaying) {
-                                video.muted = true;
-                                video.play().catch(() => {});
-                            }
-                        });
-                        wrapper.addEventListener('mouseleave', () => {
-                            if (!isPlaying) {
-                                video.pause();
-                                video.currentTime = 0;
-                            }
-                        });
-
-                        wrapper.appendChild(video);
-                        wrapper.appendChild(playOverlay);
-                    } else if (item.image) {
-                        // Image item
-                        const img = document.createElement('img');
-                        img.src = item.image;
-                        img.alt = item.title || (catName + ' Sample ' + (index + 1));
-                        img.loading = 'lazy';
-                        wrapper.appendChild(img);
-                        const _imgIdx = _imgIndexMap.has(item) ? _imgIndexMap.get(item) : 0;
-                        wrapper.addEventListener('click', () => openLightboxAt(_imgList, _imgIdx));
-                    }
-
-                    galleryGrid.appendChild(wrapper);
-                });
-            }
-
-            productModal.classList.add('active');
-            document.body.classList.add('modal-open');
+                setGallerySkeletonVisible(false);
+            }, 160);
         });
     });
 
@@ -554,6 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
         productModal.classList.remove('active');
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
+        setGallerySkeletonVisible(false);
         // Restore scroll position
         window.scrollTo(0, savedScrollPosition);
         // Pause all gallery videos
@@ -662,6 +684,8 @@ function initCategoryBackgrounds() {
                     img.alt = `Sample ${index + 1}`;
                     img.className = 'slider-img';
                     img.loading = index === 0 ? 'eager' : 'lazy';
+                    img.decoding = 'async';
+                    img.setAttribute('fetchpriority', index === 0 ? 'high' : 'low');
                     if (index === 0) img.classList.add('active');
                     slider.appendChild(img);
                 });

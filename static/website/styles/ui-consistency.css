@@ -98,6 +98,16 @@ h6 {
     letter-spacing: -0.015em;
 }
 
+/* Reserve two-line space for typed hero heading to avoid layout jump. */
+.hero .hero-content h1 {
+    min-height: calc(1.15em * 2);
+}
+
+.typing-wrapper {
+    display: inline-block;
+    min-height: calc(1.15em * 2);
+}
+
 .logos-carousel,
 .bento-grid,
 .works-carousel,
@@ -432,6 +442,11 @@ h6 {
     .policy-section {
         padding-top: var(--wa-section-spacing-mobile) !important;
         padding-bottom: var(--wa-section-spacing-mobile) !important;
+    }
+
+    .hero .hero-content h1,
+    .typing-wrapper {
+        min-height: calc(1.3em * 2);
     }
 
     .contact-section {

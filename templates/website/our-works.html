@@ -1,11 +1,11 @@
 {% extends 'website/base.html' %}
 {% load static %}
 
-{% block title %}Our Works{% endblock %}
+{% block title %}Our Products{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=146">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=146">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=147">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=147">
 {% endblock %}
 
 {% block content %}
@@ -100,14 +100,14 @@
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
                             {% else %}
                                 <div class="portfolio-video-placeholder"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
                             {% endif %}
                             <div class="portfolio-play-icon" aria-hidden="true"><i class="fa-solid fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
+                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
                             {% endif %}
                         {% endif %}
                     </div>
@@ -119,12 +119,14 @@
                 {% endfor %}
             </div>
             <div id="portfolioLoadSkeleton" class="portfolio-load-skeleton" hidden aria-hidden="true">
-                <div class="portfolio-skeleton-card"></div>
-                <div class="portfolio-skeleton-card"></div>
-                <div class="portfolio-skeleton-card"></div>
-                <div class="portfolio-skeleton-card"></div>
-                <div class="portfolio-skeleton-card"></div>
-                <div class="portfolio-skeleton-card"></div>
+                <div class="portfolio-skeleton-card skeleton-tall"></div>
+                <div class="portfolio-skeleton-card skeleton-portrait"></div>
+                <div class="portfolio-skeleton-card skeleton-square"></div>
+                <div class="portfolio-skeleton-card skeleton-landscape"></div>
+                <div class="portfolio-skeleton-card skeleton-portrait"></div>
+                <div class="portfolio-skeleton-card skeleton-wide"></div>
+                <div class="portfolio-skeleton-card skeleton-square"></div>
+                <div class="portfolio-skeleton-card skeleton-tall"></div>
             </div>
             <div id="portfolioLoadSentinel" class="portfolio-load-sentinel" aria-hidden="true"></div>
         </div>
@@ -143,6 +145,14 @@
                 </div>
             </div>
             <div class="product-gallery-body">
+                <div id="productGallerySkeleton" class="gallery-load-skeleton" hidden aria-hidden="true">
+                    <div class="gallery-skeleton-card skeleton-tall"></div>
+                    <div class="gallery-skeleton-card skeleton-portrait"></div>
+                    <div class="gallery-skeleton-card skeleton-square"></div>
+                    <div class="gallery-skeleton-card skeleton-landscape"></div>
+                    <div class="gallery-skeleton-card skeleton-portrait"></div>
+                    <div class="gallery-skeleton-card skeleton-wide"></div>
+                </div>
                 <div class="product-gallery-grid" id="productGalleryGrid"></div>
             </div>
         </div>
@@ -170,5 +180,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=146"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=147"></script>
 {% endblock %}

@@ -68,6 +68,10 @@
     .product-gallery-grid {
         column-count: 1;
     }
+
+    .gallery-load-skeleton {
+        columns: 1;
+    }
     
     .gallery-item img {
         height: auto;
@@ -495,12 +499,12 @@
     }
 
     .portfolio-load-skeleton {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        columns: 2 140px;
+        column-gap: 10px;
     }
 
     .portfolio-skeleton-card {
-        height: 145px;
+        margin-bottom: 10px;
     }
 
     .portfolio-grid {
@@ -589,7 +593,16 @@
         column-gap: 6px;
     }
 
+    .portfolio-load-skeleton {
+        columns: 2;
+        column-gap: 6px;
+    }
+
     .portfolio-item {
+        margin-bottom: 6px;
+    }
+
+    .portfolio-skeleton-card {
         margin-bottom: 6px;
     }
 }

@@ -139,15 +139,49 @@ body.modal-open {
     width: 100%;
 }
 
+.gallery-load-skeleton {
+    columns: 4 220px;
+    column-gap: 16px;
+}
+
+.gallery-skeleton-card {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    break-inside: avoid;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    border: 1px solid #dbe8f5;
+    background: linear-gradient(110deg, #e7edf4 8%, #f3f7fc 18%, #e7edf4 33%);
+    background-size: 220% 100%;
+    animation: portfolioSkeletonShimmer 1.15s linear infinite;
+    overflow: hidden;
+}
+
+.gallery-skeleton-card.skeleton-tall { aspect-ratio: 2 / 3; }
+.gallery-skeleton-card.skeleton-portrait { aspect-ratio: 3 / 4; }
+.gallery-skeleton-card.skeleton-square { aspect-ratio: 1 / 1; }
+.gallery-skeleton-card.skeleton-landscape { aspect-ratio: 4 / 3; }
+.gallery-skeleton-card.skeleton-wide { aspect-ratio: 16 / 10; }
+
 @media (max-width: 900px) {
     .product-gallery-grid {
         column-count: 3;
+    }
+
+    .gallery-load-skeleton {
+        columns: 3 220px;
     }
 }
 
 @media (max-width: 600px) {
     .product-gallery-grid {
         column-count: 2;
+    }
+
+    .gallery-load-skeleton {
+        columns: 2 180px;
+        column-gap: 12px;
     }
 }
 
@@ -704,19 +738,30 @@ body.modal-open {
 
 .portfolio-load-skeleton {
     margin-top: 12px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    columns: 4 240px;
+    column-gap: 20px;
 }
 
 .portfolio-skeleton-card {
-    height: 190px;
-    border-radius: 14px;
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    break-inside: avoid;
+    margin-bottom: 20px;
+    border-radius: 16px;
     background: linear-gradient(110deg, #e7edf4 8%, #f3f7fc 18%, #e7edf4 33%);
-    background-size: 200% 100%;
+    background-size: 220% 100%;
     animation: portfolioSkeletonShimmer 1.15s linear infinite;
     border: 1px solid #dbe8f5;
+    min-height: 140px;
+    overflow: hidden;
 }
+
+.portfolio-skeleton-card.skeleton-tall { aspect-ratio: 2 / 3; }
+.portfolio-skeleton-card.skeleton-portrait { aspect-ratio: 3 / 4; }
+.portfolio-skeleton-card.skeleton-square { aspect-ratio: 1 / 1; }
+.portfolio-skeleton-card.skeleton-landscape { aspect-ratio: 4 / 3; }
+.portfolio-skeleton-card.skeleton-wide { aspect-ratio: 16 / 10; }
 
 .portfolio-load-sentinel {
     height: 1px;
