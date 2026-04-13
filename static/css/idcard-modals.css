@@ -14,17 +14,17 @@
 }
 
 .no-images-notice .no-images-icon {
-    font-size: 48px;
+    font-size: var(--ui-font-size-10xl, 48px);
     margin-bottom: 12px;
 }
 
 .no-images-notice p {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     margin: 0;
 }
 
 .zip-upload-hint {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #78350f;
     margin: 0 0 10px 0;
     line-height: 1.4;
@@ -57,7 +57,7 @@
 }
 
 .delete-warning-icon i {
-    font-size: 36px;
+    font-size: var(--ui-font-size-8xl, 36px);
     color: var(--color-danger-dark);
 }
 
@@ -66,7 +66,7 @@
 }
 
 .delete-count {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-800);
     margin-bottom: 20px;
 }
@@ -89,12 +89,12 @@
     gap: 10px;
     padding: 8px 0;
     color: var(--color-red-800);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .warning-item i {
     color: var(--color-danger-dark);
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
 }
 
@@ -145,13 +145,13 @@
 }
 
 .verification-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-700);
     font-weight: 500;
 }
 
 .verification-code {
-    font-size: 21px;
+    font-size: var(--ui-font-size-3xl-plus, 21px);
     font-weight: 800;
     font-family: 'Courier New', monospace;
     letter-spacing: 0.12em;
@@ -176,7 +176,7 @@
 .verification-input {
     width: 100%;
     text-align: center;
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
     font-weight: 700;
     font-family: 'Courier New', monospace;
     letter-spacing: 3px;
@@ -204,7 +204,7 @@
 }
 
 .verification-status {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
     min-height: 16px;
 }
@@ -244,18 +244,18 @@
 }
 
 .simple-delete-icon i {
-    font-size: 30px;
+    font-size: var(--ui-font-size-6xl, 30px);
     color: var(--color-warning-dark);
 }
 
 .simple-delete-text p {
     margin: 0 0 8px 0;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-800);
 }
 
 .simple-delete-text .delete-info {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-500);
 }
 
@@ -277,7 +277,7 @@
 }
 
 .image-sort-form label {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-gray-700);
     display: flex;
@@ -287,7 +287,7 @@
 
 .image-sort-form label i {
     color: var(--color-gray-500);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .image-sort-form .form-select {
@@ -360,13 +360,13 @@
     position: absolute;
     left: 14px;
     color: var(--color-gray-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .search-input-wrapper input {
     width: 100%;
     padding: 12px 40px 12px 40px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     border: 2px solid var(--color-gray-200);
     border-radius: 10px;
     outline: none;
@@ -405,7 +405,7 @@
 
 .search-info {
     margin-top: 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-500);
 }
 
@@ -481,7 +481,7 @@
 .search-loading-skeleton-line-sm { width: 56%; }
 
 .search-loading i {
-    font-size: 30px;
+    font-size: var(--ui-font-size-6xl, 30px);
     margin-bottom: 10px;
     color: var(--color-blue);
 }
@@ -535,7 +535,7 @@
 
 .search-result-photo-placeholder i {
     color: var(--color-slate-400);
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .search-result-info {
@@ -544,7 +544,7 @@
 }
 
 .search-result-name {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-gray-800);
     margin-bottom: 4px;
@@ -554,7 +554,7 @@
 }
 
 .search-result-match {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-500);
     margin-bottom: 4px;
 }
@@ -566,7 +566,7 @@
 .search-result-status {
     display: inline-block;
     padding: 3px 8px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     text-transform: uppercase;
     border-radius: 4px;
@@ -603,7 +603,7 @@
     padding: 10px 15px;
     background: var(--color-white);
     border-bottom: 1px solid var(--color-gray-200);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-gray-700);
 }
@@ -621,7 +621,7 @@
 }
 
 .format-info {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-500);
     margin-bottom: 20px;
     display: flex;
@@ -674,7 +674,7 @@
 }
 
 .format-icon i {
-    font-size: 24px;
+    font-size: var(--ui-font-size-4xl, 24px);
     color: var(--color-white);
 }
 
@@ -688,14 +688,14 @@
 
 .format-details h4 {
     margin: 0 0 4px 0;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     color: var(--color-gray-800);
 }
 
 .format-details p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-500);
 }
 
@@ -703,7 +703,7 @@
     display: inline-block;
     padding: 3px 8px;
     border-radius: 4px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     text-transform: uppercase;
     margin-top: 6px;
@@ -736,12 +736,12 @@
 }
 
 .table-loading-overlay i {
-    font-size: 32px;
+    font-size: var(--ui-font-size-7xl, 32px);
     color: var(--color-primary);
 }
 
 .table-loading-overlay span {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: #666;
 }
 
@@ -794,7 +794,7 @@
 }
 .crop-modal-header h3 {
   display: flex; align-items: center; gap: 8px;
-  font-size: 14px; font-weight: 700; margin: 0;
+  font-size: var(--ui-font-size-base, 14px); font-weight: 700; margin: 0;
 }
 .crop-modal-close {
   display: flex; align-items: center; justify-content: center;
@@ -836,7 +836,7 @@
 }
 .crop-aspect-btn {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 8px; font-size: 11px; font-weight: 600;
+  padding: 4px 8px; font-size: var(--ui-font-size-xs, 11px); font-weight: 600;
   border: 1px solid var(--color-gray-300); border-radius: 6px;
   background: var(--color-white); color: var(--color-gray-500);
   cursor: pointer; transition: all 0.15s;
@@ -859,5 +859,5 @@
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }

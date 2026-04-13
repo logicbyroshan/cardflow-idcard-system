@@ -78,7 +78,7 @@
     border: none;
     box-shadow: none;
     border-radius: 0;
-    font-size: 30px;
+    font-size: var(--ui-font-size-6xl, 30px);
 }
 
 /* Profile Info */
@@ -88,7 +88,7 @@
 }
 
 .profile-name {
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     font-weight: 700;
     color: var(--color-slate-800);
     margin-bottom: 8px;
@@ -101,7 +101,7 @@
     color: var(--color-white);
     padding: 3px 14px;
     border-radius: 8px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -114,12 +114,12 @@
     justify-content: center;
     gap: 6px;
     color: var(--color-slate-500);
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .profile-email i {
     color: var(--primary-light);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
 }
 
 /* Profile Stats */
@@ -138,14 +138,14 @@
 
 .stat-value {
     display: block;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
     color: var(--color-slate-800);
     margin-bottom: 2px;
 }
 
 .stat-label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-500);
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -165,7 +165,7 @@
     border: 1.5px solid var(--color-danger);
     color: var(--color-danger);
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -182,7 +182,7 @@
 }
 
 .btn-logout i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 /* ===== Right Column — Settings Sections ===== */
@@ -230,7 +230,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: var(--color-white);
@@ -291,7 +291,7 @@
 }
 
 .section-title h3 {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 650;
     color: var(--color-slate-800);
     margin: 0;
@@ -299,7 +299,7 @@
 }
 
 .section-title p {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-400);
     margin: 0;
     line-height: 1.3;
@@ -324,7 +324,7 @@
 
 .settings-section label {
     display: block;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     color: var(--color-slate-600);
     margin-bottom: 2px;
@@ -340,7 +340,7 @@
     background: var(--color-white);
     border: 1px solid var(--color-slate-200);
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 400;
     color: var(--color-slate-800);
     transition: all 0.2s ease;
@@ -358,12 +358,12 @@
 
 .settings-section input::placeholder {
     color: var(--color-slate-400);
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 /* Form hint text */
 .settings-section .form-hint {
-    font-size: 11.5px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-500);
     margin: 0 0 4px 0;
     line-height: 1.4;
@@ -375,7 +375,7 @@
     background: var(--color-white);
     border: 1px solid var(--color-slate-200);
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-slate-800);
     transition: all 0.2s ease;
     font-family: inherit;
@@ -411,7 +411,7 @@
     color: var(--color-white);
     border: none;
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -428,7 +428,7 @@
 }
 
 .btn-save i {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 /* Prevent global compact .btn rules from clipping text on this page */
@@ -460,7 +460,7 @@
 }
 
 .settings-export-status {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-slate-500);
 }
 
@@ -470,7 +470,7 @@
 
 .settings-template-loading {
     color: var(--color-slate-400);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 @keyframes settings-template-skeleton-shimmer {
@@ -545,7 +545,7 @@
 
 .settings-template-create-title {
     margin: 0 0 12px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-slate-700);
 }
@@ -562,7 +562,7 @@
 }
 
 .settings-template-default-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -607,7 +607,7 @@
 }
 
 .password-toggle i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 /* ===== Security Setting Items ===== */
@@ -629,14 +629,14 @@
 }
 
 .setting-info h4 {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     color: var(--color-slate-800);
     margin-bottom: 2px;
 }
 
 .setting-info p {
-    font-size: 11.5px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-400);
     margin: 0;
 }
@@ -644,7 +644,7 @@
 /* Session Select */
 .session-select {
     padding: 6px 28px 6px 12px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     min-width: 140px;
 }
 
@@ -726,5 +726,5 @@
     min-height: 38px;
     padding: 10px 20px;
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }

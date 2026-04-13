@@ -8,7 +8,7 @@
    ==================== */
 .recent-table {
     width: 100%;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     border-collapse: collapse;
     table-layout: fixed;
 }
@@ -41,7 +41,7 @@
 
 .recent-table th {
     padding: 6px 12px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -52,7 +52,7 @@
 
 .recent-table td {
     padding: 6px 12px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-700);
     border: 1px solid var(--color-gray-200);
 }
@@ -79,7 +79,7 @@
 .client-sub-row td {
     border-top: 1px solid #e8ecf4 !important;
     padding: 6px 10px !important;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 .client-sub-row td:first-child {
     padding-left: 32px !important;
@@ -97,11 +97,11 @@
     color: var(--color-primary);
 }
 .client-sub-row .sub-row-name i {
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     color: var(--color-gray-400);
 }
 .client-sub-row .count-badge {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
 }
 
@@ -117,7 +117,7 @@
     content: '\f054';
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    font-size: 9px;
+    font-size: var(--ui-font-size-2xs-plus, 9px);
     position: absolute;
     left: 8px;
     top: 50%;
@@ -246,7 +246,7 @@
    View All Link
    ==================== */
 .view-all {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
     color: var(--primary, var(--color-primary));
     text-decoration: none;
@@ -290,7 +290,7 @@
     padding: 0 8px;
     border-radius: 4px;
     border: 1px solid transparent;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 600;
     line-height: 1;
     text-transform: capitalize;
@@ -359,7 +359,7 @@
     top: 50%;
     transform: translateY(-50%);
     color: var(--color-gray-400);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     pointer-events: none;
 }
 
@@ -368,7 +368,7 @@
     height: 34px;
     border: 1px solid var(--color-gray-300);
     border-radius: 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-700);
     padding: 0 10px 0 30px;
     background: var(--color-white);
@@ -554,7 +554,7 @@
     text-align: center;
     padding: 30px;
     color: var(--color-gray-400);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .rh-state-cell-lg {
@@ -566,7 +566,7 @@
 }
 
 .rh-state-icon {
-    font-size: 24px;
+    font-size: var(--ui-font-size-4xl, 24px);
     display: block;
     margin-bottom: 8px;
 }

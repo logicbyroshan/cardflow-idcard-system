@@ -90,7 +90,7 @@ body.auth-page {
     width: 42px;
     height: 46px;
     text-align: center;
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
     font-weight: 600;
     background: rgba(var(--primary-rgb), 0.05);
     border: 1px solid var(--auth-border);
@@ -109,7 +109,7 @@ body.auth-page {
 .message {
     padding: 10px 14px;
     border-radius: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     margin-bottom: 14px;
     display: none;
 }
@@ -143,7 +143,7 @@ body.auth-page {
 .resend-timer {
     text-align: center;
     color: var(--auth-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     margin-top: 14px;
 }
 .resend-timer button {
@@ -169,12 +169,12 @@ body.auth-page {
 }
 .dev-otp span {
     color: var(--color-orange-400);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 .dev-otp strong {
     display: block;
     color: var(--color-orange-400);
-    font-size: 22px;
+    font-size: var(--ui-font-size-3xl-lg, 22px);
     letter-spacing: 4px;
     margin-top: 4px;
 }

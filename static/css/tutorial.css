@@ -26,7 +26,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -43,7 +43,7 @@
 
 .tutorial-hero-content h1 {
     margin: 0 0 6px;
-    font-size: 22px;
+    font-size: var(--ui-font-size-3xl-lg, 22px);
     line-height: 1.25;
     color: var(--color-slate-800);
 }
@@ -51,7 +51,7 @@
 .tutorial-hero-content p {
     margin: 0;
     color: var(--color-slate-500);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     line-height: 1.55;
 }
 
@@ -102,28 +102,28 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     background: var(--color-red-100);
     color: var(--color-red-700);
 }
 
 .tutorial-video-card h3 {
     margin: 8px 0 5px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-slate-800);
 }
 
 .tutorial-video-card p {
     margin: 0 0 6px;
     color: var(--color-slate-500);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     line-height: 1.5;
 }
 
 .tutorial-video-card a {
     color: var(--color-indigo-600);
     font-weight: 600;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     text-decoration: none;
 }
 
@@ -161,7 +161,7 @@
     border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--color-slate-500);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 10px 12px;
     white-space: nowrap;
@@ -170,7 +170,7 @@
 }
 
 .tutorial-tab-btn i {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
 }
 
 .tutorial-tab-btn:hover {
@@ -205,14 +205,14 @@
 
 .tutorial-panel h2 {
     margin: 0 0 8px;
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     color: var(--color-slate-800);
     font-weight: 700;
 }
 
 .tutorial-panel h3 {
     margin: 14px 0 7px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-slate-700);
     font-weight: 700;
 }
@@ -220,7 +220,7 @@
 .tutorial-panel p {
     color: var(--color-slate-500);
     margin: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     line-height: 1.6;
 }
 
@@ -232,7 +232,7 @@
     color: var(--color-slate-700);
     display: grid;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     line-height: 1.5;
 }
 
@@ -252,7 +252,7 @@
     position: absolute;
     left: 11px;
     top: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .tutorial-panel ol {
@@ -270,7 +270,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 700;
     position: absolute;
     left: 10px;
@@ -307,7 +307,7 @@
     align-items: center;
     justify-content: center;
     color: var(--color-white);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     background: linear-gradient(135deg, var(--color-blue-dark) 0%, var(--color-blue-700) 100%);
 }
 
@@ -351,7 +351,7 @@
     height: 22px;
     background: var(--color-primary);
     color: var(--color-white);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -362,7 +362,7 @@
 
 .quick-grid article p {
     margin: 0;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-700);
     line-height: 1.45;
 }
@@ -373,7 +373,7 @@
     padding: 9px 10px;
     color: var(--color-red-800);
     margin-top: 10px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .callout-soft {
@@ -395,7 +395,7 @@
     padding: 8px 9px;
     border-bottom: 1px solid var(--color-slate-100);
     border-right: 1px solid var(--color-slate-100);
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-600);
     vertical-align: top;
 }
@@ -422,7 +422,7 @@
     content: "\f111";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
-    font-size: 7px;
+    font-size: var(--ui-font-size-4xs, 7px);
     color: var(--color-primary);
     position: absolute;
     left: 10px;
@@ -451,13 +451,13 @@
 .faq-grid h4 {
     margin: 0 0 5px;
     color: var(--color-slate-700);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
 }
 
 .faq-grid p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-500);
     line-height: 1.5;
 }
@@ -477,7 +477,7 @@
     background: var(--color-white);
     padding: 9px 10px;
     color: var(--color-slate-600);
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .daily-checklist label:last-child {
@@ -491,7 +491,7 @@
 
 .tutorial-note {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-500);
     font-style: italic;
 }
@@ -509,7 +509,7 @@
     }
 
     .tutorial-hero-content h1 {
-        font-size: 18px;
+        font-size: var(--ui-font-size-2xl, 18px);
     }
 
     .quick-grid,
@@ -528,7 +528,7 @@
     min-height: 32px;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .tutorial-tab-btn {

@@ -21,7 +21,7 @@
   }
   
   .page-header h1 {
-    font-size: 22px;
+    font-size: var(--ui-font-size-3xl-lg, 22px);
     font-weight: 700;
     color: var(--text-primary, var(--color-gray-50));
     display: flex;
@@ -36,7 +36,7 @@
     border-radius: 8px;
     color: var(--text-secondary, var(--color-slate-400));
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -63,13 +63,13 @@
   }
   
   .filter-group label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-secondary, var(--color-slate-400));
   }
   
   .filter-group input {
     padding: 8px 12px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     min-width: 140px;
     min-height: 36px;
   }
@@ -94,7 +94,7 @@
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
     border-radius: 8px;
     color: var(--text-primary, var(--color-gray-50));
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
   }
   
   .search-box i {
@@ -103,7 +103,7 @@
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary, var(--color-slate-400));
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
   }
   
   .cards-table-container {
@@ -136,7 +136,7 @@
   
   .cards-table th {
     background: rgba(255,255,255,0.02);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
@@ -151,7 +151,7 @@
   }
   
   .cards-table td {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-primary, var(--color-gray-50));
   }
   
@@ -168,7 +168,7 @@
     align-items: center;
     justify-content: center;
     color: var(--text-secondary, var(--color-slate-400));
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
   }
   
   .status-badge {
@@ -177,7 +177,7 @@
     gap: 6px;
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
   }
   
@@ -195,7 +195,7 @@
     border-radius: 6px;
     color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     transition: all 0.2s;
   }
   
@@ -224,7 +224,7 @@
   }
   
   .pagination-info {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-secondary, var(--color-slate-400));
   }
   
@@ -241,7 +241,7 @@
     border-radius: 6px;
     color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     transition: all 0.2s;
   }
   
@@ -296,7 +296,7 @@
   }
   
   .modal-header h2 {
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
     font-weight: 600;
     color: var(--text-primary, var(--color-gray-50));
   }
@@ -341,7 +341,7 @@
   }
   
   .card-detail-item label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -350,7 +350,7 @@
   }
   
   .card-detail-item .value {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--text-primary, var(--color-gray-50));
     font-weight: 500;
   }

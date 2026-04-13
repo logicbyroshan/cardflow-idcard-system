@@ -46,7 +46,7 @@
             justify-content: center;
             overflow-x: hidden;
             color: var(--ink);
-            font-family: var(--font-family, "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
+            font-family: var(--ui-font-family-sans, "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif);
             background:
                 radial-gradient(circle at 12% 16%, var(--color-blue-bg, var(--color-blue-100)) 0, transparent 42%),
                 radial-gradient(circle at 85% 82%, var(--ill-soft) 0, transparent 42%),
@@ -138,7 +138,7 @@
 
         .code {
             display: inline-block;
-            font-size: 13px;
+            font-size: var(--ui-font-size-md, 13px);
             font-weight: 700;
             letter-spacing: 0.1em;
             color: var(--ill-b);
@@ -174,13 +174,13 @@
         p {
             margin: 0;
             color: var(--muted);
-            font-size: 17px;
+            font-size: var(--ui-font-size-xl-plus, 17px);
             line-height: 1.6;
         }
 
         .mini-copy {
             margin-top: 8px;
-            font-size: 14px;
+            font-size: var(--ui-font-size-base, 14px);
             color: var(--color-gray-500, var(--color-slate-500));
         }
 
@@ -242,7 +242,7 @@
             position: absolute;
             bottom: 10px;
             right: 12px;
-            font-size: 12px;
+            font-size: var(--ui-font-size-sm, 12px);
             font-weight: 800;
             letter-spacing: 0.08em;
             color: color-mix(in srgb, var(--ill-b) 78%, var(--color-slate-700) 22%);
@@ -269,7 +269,7 @@
             border: 1px solid rgba(148, 163, 184, 0.24);
             border-radius: 12px;
             padding: 11px 12px;
-            font-size: 13px;
+            font-size: var(--ui-font-size-md, 13px);
             color: var(--color-gray-700, var(--color-slate-700));
         }
 
@@ -281,7 +281,7 @@
             margin: 16px 0 0;
             padding-left: 20px;
             color: var(--muted);
-            font-size: 14px;
+            font-size: var(--ui-font-size-base, 14px);
             line-height: 1.6;
         }
 
@@ -297,7 +297,7 @@
             border-radius: 12px;
             padding: 11px 18px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: var(--ui-font-size-base, 14px);
             border: 1px solid transparent;
             transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
             cursor: pointer;
@@ -338,7 +338,7 @@
             border-radius: 10px;
             padding: 10px 12px;
             text-align: center;
-            font-size: 14px;
+            font-size: var(--ui-font-size-base, 14px);
             color: var(--ink);
             display: flex;
             align-items: center;
@@ -390,7 +390,7 @@
 
         .help-note {
             margin-top: 18px;
-            font-size: 13px;
+            font-size: var(--ui-font-size-md, 13px);
             color: var(--color-gray-500, var(--color-slate-500));
         }
 
@@ -405,7 +405,7 @@
             }
 
             p {
-                font-size: 15px;
+                font-size: var(--ui-font-size-lg, 15px);
             }
 
             .status-stack {

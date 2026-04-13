@@ -101,7 +101,7 @@
     background: var(--color-white);
     color: var(--color-slate-600);
     padding: 4px 30px 4px 30px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     line-height: 1.2;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
@@ -161,7 +161,7 @@
     border-radius: 8px;
     background: var(--color-white);
     color: var(--color-slate-700);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 6px 10px;
     white-space: nowrap;
@@ -261,7 +261,7 @@
   .portfolio-item.is-error .portfolio-image::after {
     content: 'Unable to load image';
     color: var(--color-slate-500);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
   }
 
@@ -280,7 +280,7 @@
   }
 
   .pg-empty i {
-    font-size: 30px;
+    font-size: var(--ui-font-size-6xl, 30px);
     color: var(--color-slate-400);
     margin-bottom: 10px;
     display: block;

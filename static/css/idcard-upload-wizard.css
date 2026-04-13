@@ -65,7 +65,7 @@
 
 .upload-modal-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -130,7 +130,7 @@
 }
 
 .file-select-icon i {
-    font-size: 40px;
+    font-size: var(--ui-font-size-9xl, 40px);
     color: white;
 }
 
@@ -209,16 +209,16 @@
 
 .upload-status .success-icon {
     color: var(--color-emerald-500);
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .upload-status .error-icon {
     color: var(--color-danger);
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .upload-status span {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     color: var(--color-emerald-800);
 }
@@ -256,7 +256,7 @@
 }
 
 .match-title {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -290,7 +290,7 @@
     gap: 4px;
     padding: 4px 10px;
     border-radius: 20px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
 }
 
@@ -322,7 +322,7 @@
 
 .match-arrow {
     color: var(--color-gray-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .data-rows-info {
@@ -338,11 +338,11 @@
 
 .data-rows-info i {
     color: var(--color-blue);
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .data-rows-info span {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     color: var(--color-blue-700);
 }
@@ -360,14 +360,14 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-amber-800);
     margin-bottom: 10px;
 }
 
 .zip-upload-header i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-warning-dark);
 }
 
@@ -376,7 +376,7 @@
 }
 
 .zip-upload-info p {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: #78350f;
     margin: 0;
     line-height: 1.5;
@@ -387,7 +387,7 @@
     background: rgba(255, 255, 255, 0.7);
     border-radius: 6px;
     padding: 12px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .zip-info-box p {
@@ -411,7 +411,7 @@
 
 .zip-info-box li i {
     color: var(--color-emerald-600);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 /* Unified ZIP Input */
@@ -432,7 +432,7 @@
     color: var(--color-warning-dark);
     border: 2px dashed var(--color-warning-dark);
     border-radius: 8px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -469,7 +469,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-emerald-800);
 }
@@ -497,7 +497,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: #78350f;
     margin-top: 8px;
 }
@@ -525,11 +525,11 @@
 .zip-upload-row .zip-file-status {
     margin-top: 0;
     padding: 6px 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .zip-file-name {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #78350f;
     font-style: italic;
 }
@@ -553,11 +553,11 @@
 
 .zip-file-status i {
     color: var(--color-emerald-600);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .zip-file-status span {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-emerald-800);
 }
@@ -579,7 +579,7 @@
 }
 
 .progress-title {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-green-800);
     display: flex;
@@ -588,7 +588,7 @@
 }
 
 .progress-title i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     animation: bounce 1s infinite;
 }
 
@@ -598,7 +598,7 @@
 }
 
 .progress-percentage {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 700;
     color: var(--color-green-700);
 }
@@ -662,7 +662,7 @@
     justify-content: space-between;
     align-items: center;
     margin-top: 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .progress-size {
@@ -694,7 +694,7 @@
 
 .upload-modal-footer .btn {
     padding: 7px 16px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
@@ -751,7 +751,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-gray-400);
     transition: all 0.3s ease;
@@ -764,7 +764,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
     background: var(--color-gray-200);
     color: var(--color-gray-500);
@@ -820,7 +820,7 @@
     gap: 5px;
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
 }
 
@@ -853,7 +853,7 @@
     padding: 8px 12px;
     background: var(--color-slate-100);
     border-bottom: 1px solid var(--color-gray-200);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -888,7 +888,7 @@
 }
 
 .fm-cell.fm-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     color: var(--color-slate-800);
     white-space: nowrap;
@@ -905,7 +905,7 @@
     padding: 6px 10px;
     border: 1px solid var(--color-gray-300);
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-700);
     background: var(--color-white);
     cursor: pointer;
@@ -921,7 +921,7 @@
 
 .fm-cell.fm-status-icon {
     text-align: center;
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
 }
 
 .fm-status-icon.mapped {
@@ -960,7 +960,7 @@
 }
 
 .step-progress-text {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-500);
     white-space: nowrap;
 }
@@ -982,5 +982,5 @@
     min-height: 34px;
     padding: 8px 16px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }

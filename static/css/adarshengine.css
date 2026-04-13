@@ -62,7 +62,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 600;
   color: var(--color-slate-200);
   letter-spacing: 0.3px;
@@ -70,11 +70,11 @@
 
 .ae-header-title i {
   color: var(--primary-light);
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
 }
 
 .ae-header-filename {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-500);
   font-weight: 400;
   max-width: 300px;
@@ -94,7 +94,7 @@
   border-radius: 6px;
   color: var(--color-slate-400);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   transition: all 0.15s;
 }
 
@@ -148,7 +148,7 @@
 }
 
 .ae-group-label {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -172,13 +172,13 @@
 }
 
 .ae-slider-name {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   color: var(--color-slate-300);
 }
 
 .ae-slider-value {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--primary-light);
   font-family: 'Consolas', 'Courier New', monospace;
@@ -268,7 +268,7 @@
   background: rgba(129, 140, 248, 0.12);
   border: 1px solid rgba(129, 140, 248, 0.2);
   color: var(--color-indigo-300);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -310,7 +310,7 @@
   min-height: 30px;
   padding: 7px 10px;
   border: none;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -345,7 +345,7 @@
   background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(var(--yellow-rgb), 0.15));
   border: 1px solid rgba(250, 204, 21, 0.25);
   color: var(--color-amber-300);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -367,11 +367,11 @@
 }
 
 .ae-autofix-btn i {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .ae-autofix-hint {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-slate-500);
   line-height: 1.4;
   margin: 0;
@@ -396,7 +396,7 @@
   flex: 1;
   height: 34px;
   padding: 8px 28px 8px 10px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   background: #1a1f2e;
   border: 1px solid var(--color-slate-600);
   color: var(--color-slate-200);
@@ -409,7 +409,7 @@
 .ae-preset-btn {
   min-height: 30px;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   background: var(--color-slate-700);
   border: 1px solid var(--color-slate-600);
   color: var(--color-slate-200);
@@ -458,7 +458,7 @@
 .ae-preset-name-input {
   flex: 1;
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   background: #1a1f2e;
   border: 1px solid var(--color-slate-600);
   border-radius: 5px;
@@ -481,7 +481,7 @@
   background: linear-gradient(135deg, rgba(var(--green-rgb), 0.15), rgba(16, 185, 129, 0.15));
   border: 1px solid rgba(var(--green-rgb), 0.25);
   color: var(--color-green-400);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -561,12 +561,12 @@
 }
 
 .ae-loading i {
-  font-size: 28px;
+  font-size: var(--ui-font-size-5xl, 28px);
   color: var(--primary-light);
 }
 
 .ae-loading span {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-500);
 }
 
@@ -619,12 +619,12 @@
 }
 
 .ae-error-overlay i.ae-error-icon {
-  font-size: 36px;
+  font-size: var(--ui-font-size-8xl, 36px);
   color: var(--color-red-400);
 }
 
 .ae-error-overlay .ae-error-text {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-red-300);
   max-width: 340px;
   text-align: center;
@@ -637,7 +637,7 @@
   border: 1px solid rgba(var(--red-rgb), 0.25);
   border-radius: 5px;
   color: var(--color-red-300);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -651,7 +651,7 @@
 /* ── Phase 16: Version Badge ────────────────────────────────────── */
 
 .ae-version-badge {
-  font-size: 9px;
+  font-size: var(--ui-font-size-2xs-plus, 9px);
   color: var(--color-slate-600);
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -685,7 +685,7 @@
 
 /* Info badge */
 .ae-info-badge {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-slate-500);
   display: flex;
   align-items: center;
@@ -693,7 +693,7 @@
 }
 
 .ae-info-badge i {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
 }
 
 /* Footer buttons */
@@ -701,7 +701,7 @@
   min-height: 32px;
   padding: 8px 16px;
   border: none;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -784,7 +784,7 @@
   background: rgba(129, 140, 248, 0.9);
   color: var(--color-white);
   border: none;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -985,7 +985,7 @@
   display: flex;
   justify-content: space-between;
   padding: 4px 6px 0;
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-family: 'Consolas', 'Courier New', monospace;
 }
 
@@ -1002,7 +1002,7 @@
 }
 
 .ae-nav-group .ae-group-label {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -1023,7 +1023,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   color: var(--color-slate-400);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -1046,7 +1046,7 @@
 }
 
 .ae-nav-hint {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-slate-600);
   text-align: center;
   margin: 0;

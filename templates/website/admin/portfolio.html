@@ -83,7 +83,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: var(--ui-font-size-xl, 16px);
     }
 
     .portfolio-items-pane .wa-cell-title,
@@ -123,7 +123,7 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        font-size: 10px;
+        font-size: var(--ui-font-size-2xs, 10px);
         font-weight: 700;
         color: var(--color-slate-700);
         border: 1px solid var(--color-slate-300);
@@ -285,7 +285,7 @@
     }
 
     .portfolio-pagination-bar .pagination-right label {
-        font-size: 11px;
+        font-size: var(--ui-font-size-xs, 11px);
         color: var(--color-slate-500);
         white-space: nowrap;
         margin: 0;
@@ -489,7 +489,7 @@
             </div>
 
             <div class="wa-filter-row" style="margin-top:0;border-top:0;padding-top:6px;padding-bottom:8px;">
-                <span class="wa-cell-sub" style="font-size:11px;">
+                <span class="wa-cell-sub" style="font-size: var(--ui-font-size-xs, 11px);">
                     Public bento overrides are active: School Stationery and Office Stationery stay out of bento; Certificates, Marksheets, Mugs and T-Shirts stay in bento.
                 </span>
             </div>
@@ -744,7 +744,7 @@
 <div id="imagePreviewOverlay" onclick="closeImagePreview()"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
     <button onclick="event.stopPropagation();closeImagePreview()"
-            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:4px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.24);color:var(--color-white);font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
+            style="position:absolute;top:18px;right:18px;width:44px;height:44px;border-radius:4px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.24);color:var(--color-white);font-size: var(--ui-font-size-2xl-plus, 19px);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;">
         <i class="fa-solid fa-xmark"></i>
     </button>
     <img id="imagePreviewImg" src="" alt=""

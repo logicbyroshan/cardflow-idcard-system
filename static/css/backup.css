@@ -46,7 +46,7 @@
   flex-shrink: 0;
 }
 .backup-modal-header h2 {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 700;
   color: var(--color-white);
   display: flex;
@@ -54,7 +54,7 @@
   gap: 8px;
   margin: 0;
 }
-.backup-modal-header h2 i { color: rgba(255,255,255,0.85); font-size: 15px; }
+.backup-modal-header h2 i { color: rgba(255,255,255,0.85); font-size: var(--ui-font-size-lg, 15px); }
 .backup-modal-close {
   display: flex;
   align-items: center;
@@ -64,7 +64,7 @@
   border-radius: 8px;
   background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.25);
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   color: rgba(255,255,255,0.9);
   cursor: pointer;
   line-height: 1;
@@ -99,7 +99,7 @@
   margin-bottom: 18px;
 }
 .backup-guidelines h3 {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-slate-700);
   margin-bottom: 10px;
@@ -116,7 +116,7 @@
 .backup-guidelines li {
   position: relative;
   padding: 5px 0 5px 18px;
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-600);
   line-height: 1.5;
 }
@@ -131,13 +131,13 @@
 /* ─── Code section ─── */
 .backup-code-section { margin-top: 8px; }
 .backup-code-label {
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-600);
   margin-bottom: 8px;
 }
 .backup-code-display {
   text-align: center;
-  font-size: 21px;
+  font-size: var(--ui-font-size-3xl-plus, 21px);
   font-weight: 800;
   letter-spacing: 0.12em;
   color: var(--backup-accent);
@@ -159,7 +159,7 @@
 .backup-code-input {
   width: 100%;
   padding: 10px 12px;
-  font-size: 18px;
+  font-size: var(--ui-font-size-2xl, 18px);
   letter-spacing: 3px;
   text-align: center;
   border: 2px solid var(--color-gray-300);
@@ -173,7 +173,7 @@
 }
 .backup-code-input:focus { border-color: var(--backup-accent); box-shadow: 0 0 0 3px rgba(var(--blue-rgb), 0.15); }
 .backup-code-hint {
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-danger);
   margin-top: 4px;
 }
@@ -194,7 +194,7 @@
 
 .backup-btn-cancel {
   padding: 7px 16px;
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-slate-500);
   background: var(--color-slate-100);
@@ -205,7 +205,7 @@
 
 .backup-btn-confirm {
   padding: 7px 18px;
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-white);
   background: var(--backup-accent);
@@ -220,7 +220,7 @@
 
 .backup-btn-danger {
   padding: 7px 18px;
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-white);
   background: var(--color-danger);
@@ -234,7 +234,7 @@
 
 .backup-btn-secondary {
   padding: 7px 16px;
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-slate-600);
   background: var(--color-white);
@@ -248,7 +248,7 @@
 
 .backup-btn-refresh {
   padding: 6px 14px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--backup-accent);
   background: var(--color-white);
@@ -267,7 +267,7 @@
   padding: 20px;
   text-align: center;
   color: var(--color-danger);
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 .backup-error-box a { color: var(--color-primary); margin-left: 8px; }
 
@@ -279,7 +279,7 @@
   border-bottom: 1px solid var(--color-gray-200);
 }
 .backup-page-header h1 {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-slate-800);
   display: flex;
@@ -288,7 +288,7 @@
 }
 .backup-page-header h1 i { color: var(--color-primary); }
 .backup-page-header p {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-500);
   margin-top: 2px;
 }
@@ -303,14 +303,14 @@
   flex-wrap: wrap;
 }
 .backup-sort-label {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-slate-500);
   margin-right: 4px;
 }
 .backup-sort-btn {
   padding: 6px 12px;
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--color-slate-500);
   background: var(--color-gray-50);
@@ -330,7 +330,7 @@
 
 .backup-btn-select-all {
   padding: 6px 12px;
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--color-primary);
   background: var(--color-white);
@@ -392,11 +392,11 @@
 }
 .backup-client-logo i {
   color: var(--color-slate-500);
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 .backup-client-info { flex: 1; min-width: 0; }
 .backup-client-name {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-slate-800);
   white-space: nowrap;
@@ -409,21 +409,21 @@
   margin-top: 3px;
 }
 .backup-client-meta span {
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-500);
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
-.backup-client-meta span i { font-size: 10px; color: var(--color-slate-400); }
+.backup-client-meta span i { font-size: var(--ui-font-size-2xs, 10px); color: var(--color-slate-400); }
 .backup-client-date {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-400);
   margin-top: 2px;
 }
 .backup-client-check-icon {
   color: var(--color-primary);
-  font-size: 18px;
+  font-size: var(--ui-font-size-2xl, 18px);
   opacity: 0;
   transition: opacity .15s;
 }
@@ -435,8 +435,8 @@
   padding: 40px 20px;
   color: var(--color-slate-400);
 }
-.backup-empty i { font-size: 28px; margin-bottom: 8px; display: block; }
-.backup-empty p { font-size: 13px; }
+.backup-empty i { font-size: var(--ui-font-size-5xl, 28px); margin-bottom: 8px; display: block; }
+.backup-empty p { font-size: var(--ui-font-size-md, 13px); }
 
 /* Bottom bar */
 .backup-bottom-bar {
@@ -453,7 +453,7 @@
   z-index: 100;
 }
 .backup-bottom-info {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-slate-700);
 }
@@ -466,7 +466,7 @@
 }
 .backup-confirm-list li {
   padding: 4px 0 4px 16px;
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-600);
   position: relative;
 }
@@ -491,7 +491,7 @@
   z-index: 5;
 }
 .backup-tab-title {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-slate-800);
   display: flex;
@@ -513,7 +513,7 @@
   text-align: center;
   padding: 30px;
   color: var(--color-slate-400);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 /* Backup card in list */
@@ -537,13 +537,13 @@
   background: #fcfdff;
 }
 .backup-card-title {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-slate-800);
 }
 .backup-card-title i { margin-right: 5px; color: var(--color-primary); }
 .backup-card-status {
-  font-size: 10.5px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   padding: 3px 10px;
   text-transform: uppercase;
@@ -563,7 +563,7 @@
 .backup-progress-info {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-500);
   margin-bottom: 6px;
   font-weight: 500;
@@ -609,7 +609,7 @@
   margin-bottom: 10px;
 }
 .backup-client-tag {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   padding: 3px 9px;
   background: var(--color-indigo-50);
@@ -628,17 +628,17 @@
   border-bottom: 1px solid var(--color-gray-50);
 }
 .backup-download-name {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-700);
   font-weight: 500;
 }
 .backup-download-size {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-400);
   margin-left: 8px;
 }
 .backup-download-link {
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--color-primary);
   text-decoration: none;
@@ -657,7 +657,7 @@
 }
 .backup-action-btn {
   padding: 6px 12px;
-  font-size: 11.5px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -678,8 +678,8 @@
   padding: 30px;
   color: var(--color-slate-400);
 }
-.backup-empty-state i { font-size: 28px; margin-bottom: 8px; display: block; }
-.backup-empty-state p { font-size: 13px; }
+.backup-empty-state i { font-size: var(--ui-font-size-5xl, 28px); margin-bottom: 8px; display: block; }
+.backup-empty-state p { font-size: var(--ui-font-size-md, 13px); }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {

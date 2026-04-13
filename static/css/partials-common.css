@@ -36,16 +36,16 @@
   align-items: center;
 }
 .center-modal .modal-header h3 {
-  margin: 0; font-size: 15px; font-weight: 600;
+  margin: 0; font-size: var(--ui-font-size-lg, 15px); font-weight: 600;
   color: var(--color-white); display: flex; align-items: center; gap: 10px;
 }
-.center-modal .modal-header h3 i { font-size: 20px; }
+.center-modal .modal-header h3 i { font-size: var(--ui-font-size-3xl, 20px); }
 
 .center-modal .modal-close {
   width: 34px; height: 34px; border: none;
   background: rgba(255, 255, 255, 0.2); border-radius: 8px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  color: var(--color-white); font-size: 14px; transition: all 0.2s;
+  color: var(--color-white); font-size: var(--ui-font-size-base, 14px); transition: all 0.2s;
 }
 .center-modal .modal-close:hover {
   background: rgba(255, 255, 255, 0.35); transform: rotate(90deg);

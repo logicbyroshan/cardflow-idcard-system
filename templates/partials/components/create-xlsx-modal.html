@@ -54,23 +54,23 @@ and the JS block at the bottom which wires up the logic.
 
     <!-- Step 1: XLSX Upload -->
     <div id="cxStep1">
-      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-file-excel" style="font-size:28px;"></i></div>
+      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-file-excel" style="font-size: var(--ui-font-size-5xl, 28px);"></i></div>
       <h4 class="center-modal-title" style="text-align:center;">Create Table from XLSX</h4>
-      <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">Select a spreadsheet file. Column headers will become table fields.</p>
+      <p class="center-modal-subtitle" style="text-align:center;font-size: var(--ui-font-size-md, 13px);">Select a spreadsheet file. Column headers will become table fields.</p>
 
       <div class="center-modal-dropzone" id="cxDropzone" style="border-radius:6px;margin-top:10px;">
         <div style="text-align:center;">
-          <i class="fa-solid fa-cloud-arrow-up" style="font-size:24px;color:var(--color-success,var(--color-success));margin-bottom:6px;display:block;"></i>
-          <p style="margin:0;font-size:13px;color:var(--color-gray-500,var(--color-gray-500));">Drop XLSX/CSV here or <span style="color:var(--color-success,var(--color-success));font-weight:600;cursor:pointer;" id="cxBrowse">browse</span></p>
-          <p style="margin:4px 0 0;font-size:11px;color:var(--color-gray-400,var(--color-gray-400));">Max 50 MB &middot; .xlsx, .xls, .csv</p>
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size: var(--ui-font-size-4xl, 24px);color:var(--color-success,var(--color-success));margin-bottom:6px;display:block;"></i>
+          <p style="margin:0;font-size: var(--ui-font-size-md, 13px);color:var(--color-gray-500,var(--color-gray-500));">Drop XLSX/CSV here or <span style="color:var(--color-success,var(--color-success));font-weight:600;cursor:pointer;" id="cxBrowse">browse</span></p>
+          <p style="margin:4px 0 0;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));">Max 50 MB &middot; .xlsx, .xls, .csv</p>
         </div>
       </div>
       <input type="file" id="cxFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
       <div id="cxFileInfo" style="display:none;margin-top:8px;padding:8px 10px;background:var(--color-success-bg,var(--color-green-50));border-radius:6px;border:1px solid var(--color-emerald-200);">
         <div style="display:flex;align-items:center;gap:8px;">
           <i class="fa-solid fa-file-excel" style="color:var(--color-success,var(--color-success));"></i>
-          <span id="cxFileName" style="font-size:12px;font-weight:500;color:var(--text-primary,var(--color-slate-800));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-          <button type="button" id="cxFileRemove" style="background:none;border:none;color:var(--color-danger,var(--color-danger));cursor:pointer;font-size:13px;padding:2px;"><i class="fa-solid fa-xmark"></i></button>
+          <span id="cxFileName" style="font-size: var(--ui-font-size-sm, 12px);font-weight:500;color:var(--text-primary,var(--color-slate-800));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+          <button type="button" id="cxFileRemove" style="background:none;border:none;color:var(--color-danger,var(--color-danger));cursor:pointer;font-size: var(--ui-font-size-md, 13px);padding:2px;"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
@@ -83,22 +83,22 @@ and the JS block at the bottom which wires up the logic.
       <div class="center-modal-actions">
         <button type="button" class="center-modal-btn center-modal-btn-cancel" @click="closeModal">Cancel</button>
         <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxNextBtn" disabled>
-          Next <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size:11px;"></i>
+          Next <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size: var(--ui-font-size-xs, 11px);"></i>
         </button>
       </div>
     </div>
 
     <!-- Step 2: Field Preview -->
     <div id="cxStep2" style="display:none;">
-      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-table-columns" style="font-size:28px;color:var(--color-blue,var(--color-blue));"></i></div>
+      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-table-columns" style="font-size: var(--ui-font-size-5xl, 28px);color:var(--color-blue,var(--color-blue));"></i></div>
       <h4 class="center-modal-title" style="text-align:center;">Field Preview</h4>
-      <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">
+      <p class="center-modal-subtitle" style="text-align:center;font-size: var(--ui-font-size-md, 13px);">
         Review detected columns, their types, and mark mandatory fields.
       </p>
 
       <!-- Data rows count -->
       <div id="cxDataRowsInfo" class="alert-box alert-box--info alert-box-inline" style="margin:8px 0;">
-        <i class="fa-solid fa-table-list" style="font-size:12px;"></i>
+        <i class="fa-solid fa-table-list" style="font-size: var(--ui-font-size-sm, 12px);"></i>
         <span id="cxDataRowsCount" class="alert-box-text">0 data rows found</span>
       </div>
 
@@ -121,25 +121,25 @@ and the JS block at the bottom which wires up the logic.
 
       <div class="center-modal-actions">
         <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxBackToStep1">
-          <i class="fa-solid fa-arrow-left" style="margin-right:4px;font-size:11px;"></i> Back
+          <i class="fa-solid fa-arrow-left" style="margin-right:4px;font-size: var(--ui-font-size-xs, 11px);"></i> Back
         </button>
         <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxNextToStep3">
-          Next <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size:11px;"></i>
+          Next <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size: var(--ui-font-size-xs, 11px);"></i>
         </button>
       </div>
     </div>
 
     <!-- Step 3: Optional ZIP Photos -->
     <div id="cxStep3" style="display:none;">
-      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size:28px;color:var(--color-success,var(--color-success));"></i></div>
-      <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span class="form-label-hint" style="font-size:12px;">(optional)</span></h4>
-      <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">Upload ZIP files containing images to match with cards. Skip this step if no photos.</p>
+      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size: var(--ui-font-size-5xl, 28px);color:var(--color-success,var(--color-success));"></i></div>
+      <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span class="form-label-hint" style="font-size: var(--ui-font-size-sm, 12px);">(optional)</span></h4>
+      <p class="center-modal-subtitle" style="text-align:center;font-size: var(--ui-font-size-md, 13px);">Upload ZIP files containing images to match with cards. Skip this step if no photos.</p>
 
       <div class="center-modal-dropzone" id="cxZipDropzone" style="border-radius:6px;margin-top:10px;">
         <div style="text-align:center;">
-          <i class="fa-solid fa-file-zipper" style="font-size:24px;color:var(--color-blue,var(--color-blue));margin-bottom:6px;display:block;"></i>
-          <p style="margin:0;font-size:13px;color:var(--color-gray-500,var(--color-gray-500));">Drop ZIP files here or <span style="color:var(--color-blue,var(--color-blue));font-weight:600;cursor:pointer;" id="cxZipBrowse">browse</span></p>
-          <p style="margin:4px 0 0;font-size:11px;color:var(--color-gray-400,var(--color-gray-400));">Max 1 GB per ZIP &middot; .zip only</p>
+          <i class="fa-solid fa-file-zipper" style="font-size: var(--ui-font-size-4xl, 24px);color:var(--color-blue,var(--color-blue));margin-bottom:6px;display:block;"></i>
+          <p style="margin:0;font-size: var(--ui-font-size-md, 13px);color:var(--color-gray-500,var(--color-gray-500));">Drop ZIP files here or <span style="color:var(--color-blue,var(--color-blue));font-weight:600;cursor:pointer;" id="cxZipBrowse">browse</span></p>
+          <p style="margin:4px 0 0;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));">Max 1 GB per ZIP &middot; .zip only</p>
         </div>
       </div>
       <input type="file" id="cxZipInput" accept=".zip" multiple style="display:none;">
@@ -147,13 +147,13 @@ and the JS block at the bottom which wires up the logic.
 
       <div class="center-modal-actions">
         <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxBackBtn">
-          <i class="fa-solid fa-arrow-left" style="margin-right:4px;font-size:11px;"></i> Back
+          <i class="fa-solid fa-arrow-left" style="margin-right:4px;font-size: var(--ui-font-size-xs, 11px);"></i> Back
         </button>
         <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxSkipBtn" style="background:var(--color-gray-500,var(--color-gray-500));">
           Skip &amp; Create
         </button>
         <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxUploadBtn">
-          <i class="fa-solid fa-upload" style="margin-right:4px;font-size:11px;"></i> Create
+          <i class="fa-solid fa-upload" style="margin-right:4px;font-size: var(--ui-font-size-xs, 11px);"></i> Create
         </button>
       </div>
     </div>
@@ -161,11 +161,11 @@ and the JS block at the bottom which wires up the logic.
     <!-- Progress (shown during upload) -->
     <div id="cxProgress" style="display:none;text-align:center;padding:20px 0;">
       <i id="cxProgressIcon" class="cx-progress-skeleton-icon" aria-hidden="true"></i>
-      <p style="margin:0;font-size:13px;color:var(--text-secondary,var(--color-gray-700));font-weight:500;" id="cxProgressText">Creating table and importing data...</p>
+      <p style="margin:0;font-size: var(--ui-font-size-md, 13px);color:var(--text-secondary,var(--color-gray-700));font-weight:500;" id="cxProgressText">Creating table and importing data...</p>
       <div style="margin-top:12px;background:var(--color-gray-200,var(--color-gray-200));border-radius:4px;height:6px;overflow:hidden;">
         <div id="cxProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--color-success,var(--color-success)),var(--color-success-dark));border-radius:4px;transition:width 0.3s;"></div>
       </div>
-      <p style="margin:6px 0 0;font-size:11px;color:var(--color-gray-400,var(--color-gray-400));" id="cxProgressPct"></p>
+      <p style="margin:6px 0 0;font-size: var(--ui-font-size-xs, 11px);color:var(--color-gray-400,var(--color-gray-400));" id="cxProgressPct"></p>
       <div style="margin-top:14px;">
         <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxProgressCancelBtn">Cancel Upload</button>
       </div>

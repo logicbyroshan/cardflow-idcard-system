@@ -12,7 +12,7 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Saira Semi Condensed', sans-serif;
+            font-family: var(--ui-font-family-sans);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -75,7 +75,7 @@
             animation: pulse-ring 2s ease-in-out infinite;
         }
         .offline-icon i {
-            font-size: 36px;
+            font-size: var(--ui-font-size-8xl, 36px);
             background: linear-gradient(135deg, var(--primary-light), #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -87,20 +87,20 @@
         }
 
         .offline-title {
-            font-size: 28px;
+            font-size: var(--ui-font-size-5xl, 28px);
             font-weight: 700;
             color: var(--color-white);
             margin-bottom: 10px;
             letter-spacing: -0.5px;
         }
         .offline-name {
-            font-size: 15px;
+            font-size: var(--ui-font-size-lg, 15px);
             color: var(--color-indigo-300);
             font-weight: 600;
             margin-bottom: 8px;
         }
         .offline-text {
-            font-size: 14px;
+            font-size: var(--ui-font-size-base, 14px);
             line-height: 1.6;
             color: var(--color-slate-400);
             margin-bottom: 32px;
@@ -114,7 +114,7 @@
             background: linear-gradient(135deg, var(--color-indigo-500) 0%, var(--color-indigo-600) 100%);
             color: var(--color-white);
             font-family: inherit;
-            font-size: 14px;
+            font-size: var(--ui-font-size-base, 14px);
             font-weight: 600;
             border: none;
             border-radius: 10px;
@@ -136,16 +136,16 @@
             margin-top: 28px;
             padding-top: 20px;
             border-top: 1px solid rgba(99, 102, 241, 0.15);
-            font-size: 12px;
+            font-size: var(--ui-font-size-sm, 12px);
             color: var(--color-slate-500);
         }
         .offline-footer i { margin-right: 4px; }
 
         @media (max-width: 480px) {
             .offline-card { padding: 36px 24px; }
-            .offline-title { font-size: 24px; }
+            .offline-title { font-size: var(--ui-font-size-4xl, 24px); }
             .offline-icon { width: 72px; height: 72px; }
-            .offline-icon i { font-size: 28px; }
+            .offline-icon i { font-size: var(--ui-font-size-5xl, 28px); }
         }
     </style>
 </head>

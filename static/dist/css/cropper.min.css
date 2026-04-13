@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 600;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .engine-status-indicator.connected i {
-  font-size: 18px;
+  font-size: var(--ui-font-size-2xl, 18px);
 }
 
 .engine-status-indicator.disconnected {
@@ -62,14 +62,14 @@
 }
 
 .engine-status-indicator.disconnected i {
-  font-size: 20px;
+  font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .engine-meta {
   display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-500);
 }
 
@@ -84,7 +84,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   color: var(--color-primary, var(--color-indigo-600));
   background: transparent;
@@ -107,13 +107,13 @@
 
 .engine-error-content .engine-status-indicator {
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   margin-bottom: 12px;
 }
 
 .engine-help-text {
   color: var(--color-gray-500);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   margin-bottom: 20px;
   max-width: 400px;
   margin-left: auto;
@@ -126,13 +126,13 @@
 }
 
 .engine-actions .btn {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   padding: 10px 24px;
   height: auto;
 }
 
 .engine-note {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400);
   display: flex;
   align-items: center;
@@ -164,13 +164,13 @@
 }
 
 .engine-dl-name {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 600;
   color: var(--color-gray-800, var(--color-gray-800));
 }
 
 .engine-dl-sub {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400);
   margin-top: 2px;
 }
@@ -184,7 +184,7 @@
   border: 1px solid var(--color-amber-300);
   border-radius: 8px;
   padding: 12px 14px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: #78350f;
   line-height: 1.6;
   max-width: 480px;
@@ -194,7 +194,7 @@
 
 .engine-smartscreen-note i {
   color: var(--color-warning-dark);
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -207,7 +207,7 @@
   gap: 8px;
   padding: 16px;
   color: var(--color-gray-400);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 @keyframes cropper-skeleton-shimmer {
@@ -266,11 +266,11 @@
   align-items: flex-start;
   gap: 12px;
   color: var(--color-blue-700);
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 .update-banner-info > i {
-  font-size: 20px;
+  font-size: var(--ui-font-size-3xl, 20px);
   margin-top: 2px;
   flex-shrink: 0;
 }
@@ -282,7 +282,7 @@
 
 .update-changelog {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-blue);
   line-height: 1.4;
 }
@@ -295,7 +295,7 @@
 }
 
 .update-current-version {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-500);
   white-space: nowrap;
 }
@@ -307,7 +307,7 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 500;
   background: var(--color-gray-100);
   color: var(--color-gray-500);
@@ -356,7 +356,7 @@
   background: var(--color-white);
   color: var(--color-gray-500);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   transition: all 0.15s;
 }
 
@@ -387,7 +387,7 @@
 }
 
 .card-header h3 {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 600;
   color: var(--color-gray-800);
   margin-bottom: 4px;
@@ -398,11 +398,11 @@
 
 .card-header h3 i {
   color: var(--color-primary);
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
 }
 
 .card-desc {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400);
   margin-bottom: 16px;
 }
@@ -422,7 +422,7 @@
 }
 
 .pipeline-title {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-gray-600, var(--color-gray-600));
   text-transform: uppercase;
@@ -463,7 +463,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 500;
   color: var(--color-gray-700, var(--color-gray-700));
 }
@@ -488,7 +488,7 @@
   background: var(--color-primary, var(--color-blue));
   color: var(--color-white);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
 }
 
 .pipeline-step-label {
@@ -505,7 +505,7 @@
 .pipeline-kb-input {
   width: 60px;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   border: 1px solid var(--color-gray-300, var(--color-gray-300));
   border-radius: 4px;
   text-align: center;
@@ -517,7 +517,7 @@
 }
 
 .pipeline-kb-unit {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-500, var(--color-gray-500));
 }
 
@@ -525,13 +525,13 @@
   height: 30px;
   padding: 4px 26px 4px 8px;
   min-width: 160px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
 }
 
 .pipeline-text-input {
   width: 100px;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   border: 1px solid var(--color-gray-300, var(--color-gray-300));
   border-radius: 4px;
 }
@@ -573,7 +573,7 @@
 
 .input-wrapper i {
   color: var(--color-gray-400);
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 .input-wrapper input {
@@ -581,7 +581,7 @@
   border: none;
   outline: none;
   padding: 10px 0;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-family: 'Consolas', 'Courier New', monospace;
   color: var(--color-gray-800);
   background: transparent;
@@ -592,7 +592,7 @@
 }
 
 .input-hint {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-400);
   display: flex;
   align-items: center;
@@ -613,7 +613,7 @@
 .input-mode-toggle .mode-btn {
   flex: 1;
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   border: 1px solid var(--color-gray-300);
   background: var(--color-gray-50);
@@ -659,7 +659,7 @@
   width: 100%;
   height: 38px;
   padding: 8px 32px 8px 12px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .client-dropdown:disabled {
@@ -672,7 +672,7 @@
   right: 36px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-500);
 }
 
@@ -715,7 +715,7 @@
   color: var(--color-primary);
   cursor: pointer;
   padding: 4px 6px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   border-radius: 4px;
   transition: all 0.15s;
   opacity: 0.7;
@@ -727,7 +727,7 @@
 }
 
 .working-folder-hint {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-primary);
   display: flex;
   align-items: center;
@@ -761,13 +761,13 @@
 }
 
 .progress-label {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-gray-700);
 }
 
 .progress-percent {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-primary);
 }
@@ -804,7 +804,7 @@
 }
 
 .progress-detail {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-400);
   margin-top: 6px;
 }
@@ -827,7 +827,7 @@
 }
 
 .result-header h3 {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 600;
   color: var(--color-gray-800);
   display: flex;
@@ -876,7 +876,7 @@
 }
 
 .chart-pct {
-  font-size: 20px;
+  font-size: var(--ui-font-size-3xl, 20px);
   font-weight: 700;
   color: var(--color-gray-800);
 }
@@ -886,7 +886,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-danger);
   display: flex;
@@ -920,7 +920,7 @@
 
 .result-value {
   display: block;
-  font-size: 22px;
+  font-size: var(--ui-font-size-3xl-lg, 22px);
   font-weight: 700;
   color: var(--color-gray-800);
   line-height: 1;
@@ -940,7 +940,7 @@
 }
 
 .result-label {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -955,7 +955,7 @@
 }
 
 .result-errors h4 {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-danger);
   display: flex;
@@ -976,7 +976,7 @@
 }
 
 .error-list li {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-600);
   padding: 4px 8px;
   background: var(--color-danger-bg);
@@ -1013,14 +1013,14 @@
 }
 
 .error-content > i {
-  font-size: 18px;
+  font-size: var(--ui-font-size-2xl, 18px);
   color: var(--color-danger);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .error-title {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-danger-dark);
   display: block;
@@ -1028,7 +1028,7 @@
 }
 
 .error-message {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-600);
   line-height: 1.4;
   margin: 0;
@@ -1104,7 +1104,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
 }
 
 .path-label {
@@ -1118,14 +1118,14 @@
 
 .path-label i {
   color: var(--color-primary);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .path-value {
   flex: 1;
   color: var(--color-gray-500);
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1160,7 +1160,7 @@
 }
 
 .preview-header h3 {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 600;
   color: var(--color-gray-800);
   display: flex;
@@ -1173,7 +1173,7 @@
 }
 
 .preview-count {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400);
   font-weight: 500;
 }
@@ -1185,7 +1185,7 @@
   gap: 8px;
   padding: 24px;
   color: var(--color-gray-400);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .preview-loading.preview-loading-skeleton {
@@ -1260,7 +1260,7 @@
 .preview-name {
   display: block;
   padding: 4px 6px;
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-gray-500);
   white-space: nowrap;
   overflow: hidden;
@@ -1272,7 +1272,7 @@
   text-align: center;
   padding: 20px;
   color: var(--color-gray-400);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 /* ── Preview Tabs (Cropped / Edited / Failed / Deleted) ─────────── */
@@ -1286,7 +1286,7 @@
 
 .preview-tab {
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-gray-500);
   background: none;
@@ -1312,7 +1312,7 @@
 }
 
 .preview-tab .tab-count {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   background: var(--color-gray-100);
   color: var(--color-gray-500);
@@ -1361,7 +1361,7 @@
   color: var(--color-white);
   border: none;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -1428,7 +1428,7 @@
 }
 
 .delete-confirm-modal .delete-icon {
-  font-size: 36px;
+  font-size: var(--ui-font-size-8xl, 36px);
   color: var(--color-danger, var(--color-danger));
   margin-bottom: 12px;
 }
@@ -1444,7 +1444,7 @@
   flex-shrink: 0;
 }
 .delete-confirm-modal-header h4 {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-white);
   margin: 0;
@@ -1463,7 +1463,7 @@
   color: rgba(255,255,255,0.8);
   cursor: pointer;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   transition: all 0.2s;
   flex-shrink: 0;
 }
@@ -1488,14 +1488,14 @@
 }
 
 .delete-confirm-modal h4 {
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   font-weight: 700;
   color: var(--color-gray-800, var(--color-gray-800));
   margin: 0 0 8px;
 }
 
 .delete-confirm-modal p {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-500, var(--color-gray-500));
   line-height: 1.5;
   margin: 0 0 6px;
@@ -1503,7 +1503,7 @@
 
 .delete-confirm-modal .delete-filename {
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-700, var(--color-gray-700));
   background: var(--color-gray-50, var(--color-gray-50));
   border: 1px solid var(--color-gray-200, var(--color-gray-200));
@@ -1515,7 +1515,7 @@
 }
 
 .delete-confirm-modal .delete-note {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-400, var(--color-gray-400));
   margin-bottom: 20px;
 }
@@ -1535,7 +1535,7 @@
 
 .delete-confirm-actions .btn-cancel {
   padding: 7px 18px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   border: 1px solid var(--color-gray-300, var(--color-gray-300));
   background: var(--color-white, var(--color-white));
@@ -1551,7 +1551,7 @@
 
 .delete-confirm-actions .btn-delete {
   padding: 7px 18px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   border: none;
   background: var(--color-danger, var(--color-danger));
@@ -1572,7 +1572,7 @@
   align-items: center;
   gap: 6px;
   padding: 9px 20px;
-  font-size: 13.5px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   border: none;
   border-radius: 8px;
@@ -1628,7 +1628,7 @@
 }
 
 .compress-modal-header h4 {
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   font-weight: 700;
   color: var(--color-gray-800, var(--color-gray-800));
   margin: 0;
@@ -1650,7 +1650,7 @@
 }
 
 .compress-source-info p {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-600, var(--color-gray-600));
   line-height: 1.6;
   margin: 0;
@@ -1662,7 +1662,7 @@
 }
 
 .compress-help-text {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-600, var(--color-gray-600));
   margin: 0 0 10px !important;
 }
@@ -1685,7 +1685,7 @@
 
 .compress-folder-input .input-wrapper i {
   color: var(--color-gray-400, var(--color-gray-400));
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 .compress-folder-input .input-wrapper input {
@@ -1693,7 +1693,7 @@
   border: none;
   background: transparent;
   padding: 10px 0;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   outline: none;
   color: var(--color-gray-800, var(--color-gray-800));
 }
@@ -1704,7 +1704,7 @@
 
 .compress-label {
   display: block;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-gray-700, var(--color-gray-700));
   margin-bottom: 8px;
@@ -1736,7 +1736,7 @@
   border: none;
   background: transparent;
   padding: 10px 14px;
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 600;
   outline: none;
   color: var(--color-gray-800, var(--color-gray-800));
@@ -1760,7 +1760,7 @@
 
 .compress-kb-unit {
   padding: 10px 16px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-gray-500, var(--color-gray-500));
   background: var(--color-gray-100, var(--color-gray-100));
@@ -1769,7 +1769,7 @@
 }
 
 .compress-hint {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400, var(--color-gray-400));
   margin: 10px 0 0;
   line-height: 1.7;
@@ -1778,7 +1778,7 @@
 .compress-preset {
   display: inline-block;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--color-amber-700);
   background: rgba(var(--yellow-rgb), 0.1);
@@ -1804,7 +1804,7 @@
 
 .compress-modal-footer .btn-compress {
   padding: 9px 20px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 
@@ -1839,7 +1839,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 500;
   color: var(--color-gray-700, var(--color-gray-700));
   cursor: pointer;
@@ -1929,7 +1929,7 @@
 }
 
 .rename-modal-header h4 {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-white);
   margin: 0;
@@ -1953,7 +1953,7 @@
 
 .rename-source-info p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-600, var(--color-gray-600));
 }
 
@@ -1963,7 +1963,7 @@
 
 .rename-label {
   display: block;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-gray-700, var(--color-gray-700));
   margin-bottom: 6px;
@@ -1973,7 +1973,7 @@
   width: 100%;
   height: 38px;
   padding: 8px 30px 8px 12px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .rename-params-group {
@@ -1983,7 +1983,7 @@
 .rename-input {
   width: 100%;
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   border: 1px solid var(--color-gray-300, var(--color-gray-300));
   border-radius: 8px;
   background: var(--color-white, var(--color-white));
@@ -2016,7 +2016,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   border-bottom: 1px solid var(--color-gray-100, var(--color-gray-100));
 }
 
@@ -2039,7 +2039,7 @@
 
 .rename-arrow {
   color: var(--color-gray-400, var(--color-gray-400));
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
 }
 
 .rename-new {
@@ -2053,19 +2053,19 @@
 }
 
 .rename-conflict-badge {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 .rename-preview-more {
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-400, var(--color-gray-400));
   text-align: center;
   font-style: italic;
 }
 
 .rename-preview-stats {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-500, var(--color-gray-500));
   margin: 0;
 }
@@ -2151,7 +2151,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   font-weight: 600;
   color: var(--color-slate-200);
   letter-spacing: 0.3px;
@@ -2159,11 +2159,11 @@
 
 .ae-header-title i {
   color: var(--primary-light);
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
 }
 
 .ae-header-filename {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-500);
   font-weight: 400;
   max-width: 300px;
@@ -2183,7 +2183,7 @@
   border-radius: 6px;
   color: var(--color-slate-400);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   transition: all 0.15s;
 }
 
@@ -2237,7 +2237,7 @@
 }
 
 .ae-group-label {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -2261,13 +2261,13 @@
 }
 
 .ae-slider-name {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   color: var(--color-slate-300);
 }
 
 .ae-slider-value {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--primary-light);
   font-family: 'Consolas', 'Courier New', monospace;
@@ -2357,7 +2357,7 @@
   background: rgba(129, 140, 248, 0.12);
   border: 1px solid rgba(129, 140, 248, 0.2);
   color: var(--color-indigo-300);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -2399,7 +2399,7 @@
   min-height: 30px;
   padding: 7px 10px;
   border: none;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -2434,7 +2434,7 @@
   background: linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(var(--yellow-rgb), 0.15));
   border: 1px solid rgba(250, 204, 21, 0.25);
   color: var(--color-amber-300);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -2456,11 +2456,11 @@
 }
 
 .ae-autofix-btn i {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .ae-autofix-hint {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-slate-500);
   line-height: 1.4;
   margin: 0;
@@ -2485,7 +2485,7 @@
   flex: 1;
   height: 34px;
   padding: 8px 28px 8px 10px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   background: #1a1f2e;
   border: 1px solid var(--color-slate-600);
   color: var(--color-slate-200);
@@ -2498,7 +2498,7 @@
 .ae-preset-btn {
   min-height: 30px;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   background: var(--color-slate-700);
   border: 1px solid var(--color-slate-600);
   color: var(--color-slate-200);
@@ -2547,7 +2547,7 @@
 .ae-preset-name-input {
   flex: 1;
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   background: #1a1f2e;
   border: 1px solid var(--color-slate-600);
   border-radius: 5px;
@@ -2570,7 +2570,7 @@
   background: linear-gradient(135deg, rgba(var(--green-rgb), 0.15), rgba(16, 185, 129, 0.15));
   border: 1px solid rgba(var(--green-rgb), 0.25);
   color: var(--color-green-400);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -2650,12 +2650,12 @@
 }
 
 .ae-loading i {
-  font-size: 28px;
+  font-size: var(--ui-font-size-5xl, 28px);
   color: var(--primary-light);
 }
 
 .ae-loading span {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-500);
 }
 
@@ -2708,12 +2708,12 @@
 }
 
 .ae-error-overlay i.ae-error-icon {
-  font-size: 36px;
+  font-size: var(--ui-font-size-8xl, 36px);
   color: var(--color-red-400);
 }
 
 .ae-error-overlay .ae-error-text {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-red-300);
   max-width: 340px;
   text-align: center;
@@ -2726,7 +2726,7 @@
   border: 1px solid rgba(var(--red-rgb), 0.25);
   border-radius: 5px;
   color: var(--color-red-300);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -2740,7 +2740,7 @@
 /* ── Phase 16: Version Badge ────────────────────────────────────── */
 
 .ae-version-badge {
-  font-size: 9px;
+  font-size: var(--ui-font-size-2xs-plus, 9px);
   color: var(--color-slate-600);
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -2774,7 +2774,7 @@
 
 /* Info badge */
 .ae-info-badge {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-slate-500);
   display: flex;
   align-items: center;
@@ -2782,7 +2782,7 @@
 }
 
 .ae-info-badge i {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
 }
 
 /* Footer buttons */
@@ -2790,7 +2790,7 @@
   min-height: 32px;
   padding: 8px 16px;
   border: none;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -2873,7 +2873,7 @@
   background: rgba(129, 140, 248, 0.9);
   color: var(--color-white);
   border: none;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -3074,7 +3074,7 @@
   display: flex;
   justify-content: space-between;
   padding: 4px 6px 0;
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-family: 'Consolas', 'Courier New', monospace;
 }
 
@@ -3091,7 +3091,7 @@
 }
 
 .ae-nav-group .ae-group-label {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -3112,7 +3112,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   color: var(--color-slate-400);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -3135,7 +3135,7 @@
 }
 
 .ae-nav-hint {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-slate-600);
   text-align: center;
   margin: 0;

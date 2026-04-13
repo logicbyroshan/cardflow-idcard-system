@@ -342,7 +342,7 @@
     align-items: center;
     gap: 8px;
     color: #4c1d95;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     cursor: pointer;
     user-select: none;
@@ -355,7 +355,7 @@
   }
   .download-xlsx-option-note {
     margin: 6px 0 0;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     line-height: 1.35;
     color: #6b21a8;
   }
@@ -375,7 +375,7 @@
     gap: 3px;
   }
   .download-img-summary-label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     line-height: 1;
     color: #6d28d9;
     text-transform: uppercase;
@@ -383,7 +383,7 @@
     font-weight: 700;
   }
   .download-img-summary-item strong {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     line-height: 1.25;
     color: #3b0764;
     font-weight: 700;
@@ -416,7 +416,7 @@
     box-shadow: 0 2px 8px rgba(139, 92, 246, 0.08);
   }
   .download-img-mode-helper {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: #6b21a8;
   }
   .download-img-wizard-progress {
@@ -457,7 +457,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     line-height: 1;
     flex-shrink: 0;
@@ -465,7 +465,7 @@
   }
   .download-img-wizard-chip-label {
     color: #5b21b6;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     font-weight: 700;
@@ -490,7 +490,7 @@
     color: #5b21b6;
     border-radius: 8px;
     padding: 6px 12px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -513,7 +513,7 @@
     opacity: 0.55;
   }
   .download-img-wizard-step-label {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: #5b21b6;
     font-weight: 700;
     white-space: nowrap;
@@ -525,7 +525,7 @@
   }
   .download-img-section-heading {
     margin: 0 0 10px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     line-height: 1;
     color: #6d28d9;
     text-transform: uppercase;
@@ -551,7 +551,7 @@
     padding: 10px;
   }
   .download-img-option-card .center-modal-note {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: #6b21a8;
   }
   .download-img-generate-panel {
@@ -571,7 +571,7 @@
     padding: 8px 10px;
   }
   .download-img-size-label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: #6d28d9;
     min-width: 130px;
     font-weight: 600;
@@ -582,7 +582,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: #5b21b6;
     cursor: pointer;
     user-select: none;
@@ -604,7 +604,7 @@
     border-radius: 8px;
     background: var(--color-white);
     color: #5b21b6;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     padding: 8px 10px;
     outline: none;
   }
@@ -621,7 +621,7 @@
     border-radius: 8px;
     background: var(--color-white);
     color: #5b21b6;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     padding: 8px 10px;
     outline: none;
   }
@@ -649,7 +649,7 @@
     color: #5b21b6;
     border-radius: 8px;
     padding: 5px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     line-height: 1.2;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -681,7 +681,7 @@
     border: 1px solid var(--color-violet-300);
     border-radius: 8px;
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     line-height: 1;
   }
   .download-img-selected-remove {
@@ -689,12 +689,12 @@
     background: transparent;
     color: inherit;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     line-height: 1;
     padding: 0;
   }
   .download-img-selected-empty {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-400);
   }
   .download-img-preview {
@@ -709,7 +709,7 @@
     background: var(--color-white);
     padding: 8px 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: #5b21b6;
     word-break: break-word;
   }
@@ -783,13 +783,13 @@
   }
   #reprintPickerModal .search-box .search-icon {
     left: 11px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
   }
   #reprintPickerModal .search-box .search-input {
     height: 40px;
     min-height: 40px;
     padding: 10px 38px 10px 33px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     line-height: 1.2;
     width: 100% !important;
     background: var(--bg-white,var(--color-white)) !important;
@@ -806,7 +806,7 @@
   }
   #reprintPickerModal .reprint-picker-selection {
     margin-left: 0;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--text-secondary,var(--color-slate-600));
     background: var(--bg-white,var(--color-white));
     border: 1px solid var(--color-gray-200,var(--color-slate-200));
@@ -825,7 +825,7 @@
     border: 1px solid var(--color-blue-light,var(--color-blue-200));
     border-radius: 8px;
     color: var(--color-blue-deep,#1e3a8a);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
   }
   #reprintPickerModal .reprint-picker-table-wrap {
     flex: 1;
@@ -847,7 +847,7 @@
     z-index: 2;
     background: var(--color-gray-100,var(--color-slate-100));
     color: var(--text-primary,var(--color-slate-700));
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     padding: 8px 6px;
     text-align: left;
@@ -863,7 +863,7 @@
   #reprintPickerModal .reprint-picker-table tbody td {
     padding: 7px 6px;
     border-bottom: 1px solid var(--color-gray-100,#eef2f7);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--text-primary,var(--color-gray-800));
     vertical-align: middle;
     white-space: nowrap;
@@ -1064,7 +1064,7 @@
     justify-content: center;
     cursor: pointer;
     color: var(--bg-white,var(--color-white));
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
   }
   #reprintPickerConfirmModal .reprint-preview-image-btn.upload {
     background: var(--primary,var(--color-blue-dark));
@@ -1080,7 +1080,7 @@
   }
   #reprintPickerConfirmModal .reprint-preview-photo-placeholder {
     color: var(--color-blue,var(--color-blue));
-    font-size: 26px;
+    font-size: var(--ui-font-size-4xl-plus, 26px);
   }
   #reprintPickerConfirmModal .reprint-preview-meta {
     display: grid;
@@ -1109,7 +1109,7 @@
   #reprintPickerConfirmModal .reprint-preview-meta-label {
     display: block;
     color: var(--color-gray-500,var(--color-slate-500));
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 1px;
@@ -1117,7 +1117,7 @@
   #reprintPickerConfirmModal .reprint-preview-meta-value {
     display: block;
     color: var(--text-primary,var(--color-slate-900));
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -1139,7 +1139,7 @@
     background: var(--color-blue-bg,var(--color-blue-50));
     border: 1px solid var(--color-blue-light,var(--color-blue-200));
     color: var(--primary-dark,var(--color-blue-700));
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
   }
   #reprintPickerConfirmModal .reprint-edit-toolbar .reprint-edit-left {
@@ -1157,7 +1157,7 @@
     border-radius: 8px;
     background: var(--primary,var(--color-blue-dark));
     color: var(--bg-white,var(--color-white));
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     line-height: 1;
   }
@@ -1172,7 +1172,7 @@
     padding: 4px 8px;
     background: var(--bg-white,var(--color-white));
     color: var(--text-primary,var(--color-slate-900));
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
   }
   #reprintPickerConfirmModal .reprint-preview-input::placeholder {

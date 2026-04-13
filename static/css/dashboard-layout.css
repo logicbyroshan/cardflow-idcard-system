@@ -225,7 +225,7 @@
 }
 
 .dashboard-card-header h3 {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 700;
     color: #2c3e50;
     display: flex;
@@ -236,7 +236,7 @@
 
 .dashboard-card-header h3 i {
     color: var(--color-primary);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .dashboard-card-header.updates-header {
@@ -275,7 +275,7 @@
     border-radius: 4px;
     background: #e8fdf3;
     color: var(--color-emerald-800);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     letter-spacing: 0;
     white-space: nowrap;
@@ -314,7 +314,7 @@
 
 .recent-table thead th.recent-updates-sortable .recent-sort-icon {
     margin-left: 5px;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     color: var(--color-slate-400);
     transition: color 0.15s ease;
 }
@@ -429,12 +429,12 @@
     }
 
     .dashboard-side-sticky .dashboard-card-header h3 {
-        font-size: 12px;
+        font-size: var(--ui-font-size-sm, 12px);
         gap: 6px;
     }
 
     .dashboard-side-sticky .dashboard-card-header h3 i {
-        font-size: 11px;
+        font-size: var(--ui-font-size-xs, 11px);
     }
 
     .dashboard-side-sticky .dashboard-card-body {
@@ -454,13 +454,13 @@
     .dashboard-side-sticky .quick-action-btn i {
         width: 26px;
         height: 26px;
-        font-size: 11px;
+        font-size: var(--ui-font-size-xs, 11px);
     }
 
     .dashboard-side-sticky .card-overview-label,
     .dashboard-side-sticky .quick-action-btn span,
     .dashboard-side-sticky .card-overview-value {
-        font-size: 12px;
+        font-size: var(--ui-font-size-sm, 12px);
     }
 }
 
@@ -480,13 +480,13 @@
 }
 
 .welcome-text h2 {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
     margin-bottom: 6px;
 }
 
 .welcome-text p {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     opacity: 0.9;
 }
 
@@ -495,13 +495,13 @@
 }
 
 .welcome-date .date {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     margin-bottom: 4px;
 }
 
 .welcome-date .time {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
 }
 
@@ -569,7 +569,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.2);
     color: var(--color-white);
@@ -581,7 +581,7 @@
 }
 
 .welcome-notif-title {
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
     font-weight: 700;
     line-height: 1.15;
     white-space: nowrap;
@@ -590,7 +590,7 @@
 }
 
 .welcome-notif-msg {
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     opacity: 0.9;
     line-height: 1.2;
     white-space: nowrap;
@@ -601,11 +601,11 @@
 
 @media (max-width: 900px) {
     .welcome-notif-title {
-        font-size: 17px;
+        font-size: var(--ui-font-size-xl-plus, 17px);
     }
 
     .welcome-notif-msg {
-        font-size: 14px;
+        font-size: var(--ui-font-size-base, 14px);
     }
 }
 
@@ -628,7 +628,7 @@
     justify-content: center;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 700;
     white-space: nowrap;
     padding: 0 10px;
@@ -704,7 +704,7 @@
    ==================== */
 .reprint-history-table {
     width: 100%;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     border-collapse: collapse;
     table-layout: fixed;
 }
@@ -717,7 +717,7 @@
 
 .reprint-history-table th {
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -728,7 +728,7 @@
 
 .reprint-history-table td {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-700);
     border: 1px solid var(--color-gray-200);
     vertical-align: middle;
@@ -741,7 +741,7 @@
 .rh-num {
     text-align: center;
     color: var(--color-gray-400);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
 }
 
@@ -774,12 +774,12 @@
     align-items: center;
     justify-content: center;
     color: var(--color-gray-300);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     border: 1px solid var(--color-gray-200);
 }
 
 .rh-group {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-gray-500);
     white-space: nowrap;
     overflow: hidden;
@@ -787,7 +787,7 @@
 }
 
 .rh-date {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-gray-400);
     white-space: nowrap;
 }
@@ -798,7 +798,7 @@
 
 .reprint-status-badge {
     display: inline-block;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 4px;
@@ -823,7 +823,7 @@
 }
 
 .reprint-history-count {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     background: var(--color-primary);
     color: var(--color-white);

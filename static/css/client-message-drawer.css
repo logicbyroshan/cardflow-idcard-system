@@ -16,7 +16,7 @@
   border-radius: 8px;
   background: var(--color-danger-dark);
   color: var(--color-white);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 700;
   line-height: 20px;
   text-align: center;
@@ -32,7 +32,7 @@
   border-radius: 6px;
   background: var(--color-white);
   color: var(--color-slate-500);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   padding: 0 10px;
   cursor: pointer;
@@ -76,7 +76,7 @@
   border: 2px solid var(--color-white);
   box-shadow: 0 2px 8px rgba(185, 28, 28, 0.3);
   color: var(--color-white);
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 800;
   line-height: 18px;
   text-align: center;
@@ -121,14 +121,14 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
 }
 
 .client-message-header-pill {
   margin-left: 4px;
   border-radius: 8px;
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   letter-spacing: 0.02em;
   background: rgba(255, 255, 255, 0.18);
@@ -157,7 +157,7 @@
   background: var(--color-white);
   color: var(--color-slate-500);
   text-align: center;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   padding: 18px 12px;
 }
 
@@ -189,19 +189,19 @@
 }
 
 .client-message-sender {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 700;
   color: #14532d;
 }
 
 .client-message-time {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-500);
   white-space: nowrap;
 }
 
 .client-message-text {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   line-height: 1.55;
   color: var(--color-slate-900);
   white-space: pre-wrap;
@@ -217,7 +217,7 @@
 }
 
 .client-message-meta-info {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-orange-600);
   font-weight: 700;
 }
@@ -225,7 +225,7 @@
 .client-message-chip {
   border-radius: 8px;
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
 }
 
@@ -255,7 +255,7 @@
   border-radius: 8px;
   background: var(--color-green-100);
   color: var(--color-green-800);
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   font-weight: 700;
   padding: 4px 8px;
   cursor: pointer;
@@ -263,7 +263,7 @@
 
 .client-message-read-state {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 700;
   color: var(--color-green-700);
 }

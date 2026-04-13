@@ -228,7 +228,7 @@
 }
 
 .dashboard-card-header h3 {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 700;
     color: #2c3e50;
     display: flex;
@@ -239,7 +239,7 @@
 
 .dashboard-card-header h3 i {
     color: var(--color-primary);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .dashboard-card-header.updates-header {
@@ -278,7 +278,7 @@
     border-radius: 4px;
     background: #e8fdf3;
     color: var(--color-emerald-800);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     letter-spacing: 0;
     white-space: nowrap;
@@ -317,7 +317,7 @@
 
 .recent-table thead th.recent-updates-sortable .recent-sort-icon {
     margin-left: 5px;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     color: var(--color-slate-400);
     transition: color 0.15s ease;
 }
@@ -432,12 +432,12 @@
     }
 
     .dashboard-side-sticky .dashboard-card-header h3 {
-        font-size: 12px;
+        font-size: var(--ui-font-size-sm, 12px);
         gap: 6px;
     }
 
     .dashboard-side-sticky .dashboard-card-header h3 i {
-        font-size: 11px;
+        font-size: var(--ui-font-size-xs, 11px);
     }
 
     .dashboard-side-sticky .dashboard-card-body {
@@ -457,13 +457,13 @@
     .dashboard-side-sticky .quick-action-btn i {
         width: 26px;
         height: 26px;
-        font-size: 11px;
+        font-size: var(--ui-font-size-xs, 11px);
     }
 
     .dashboard-side-sticky .card-overview-label,
     .dashboard-side-sticky .quick-action-btn span,
     .dashboard-side-sticky .card-overview-value {
-        font-size: 12px;
+        font-size: var(--ui-font-size-sm, 12px);
     }
 }
 
@@ -483,13 +483,13 @@
 }
 
 .welcome-text h2 {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
     margin-bottom: 6px;
 }
 
 .welcome-text p {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     opacity: 0.9;
 }
 
@@ -498,13 +498,13 @@
 }
 
 .welcome-date .date {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     margin-bottom: 4px;
 }
 
 .welcome-date .time {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
 }
 
@@ -572,7 +572,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.2);
     color: var(--color-white);
@@ -584,7 +584,7 @@
 }
 
 .welcome-notif-title {
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
     font-weight: 700;
     line-height: 1.15;
     white-space: nowrap;
@@ -593,7 +593,7 @@
 }
 
 .welcome-notif-msg {
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     opacity: 0.9;
     line-height: 1.2;
     white-space: nowrap;
@@ -604,11 +604,11 @@
 
 @media (max-width: 900px) {
     .welcome-notif-title {
-        font-size: 17px;
+        font-size: var(--ui-font-size-xl-plus, 17px);
     }
 
     .welcome-notif-msg {
-        font-size: 14px;
+        font-size: var(--ui-font-size-base, 14px);
     }
 }
 
@@ -631,7 +631,7 @@
     justify-content: center;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 700;
     white-space: nowrap;
     padding: 0 10px;
@@ -707,7 +707,7 @@
    ==================== */
 .reprint-history-table {
     width: 100%;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     border-collapse: collapse;
     table-layout: fixed;
 }
@@ -720,7 +720,7 @@
 
 .reprint-history-table th {
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -731,7 +731,7 @@
 
 .reprint-history-table td {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-700);
     border: 1px solid var(--color-gray-200);
     vertical-align: middle;
@@ -744,7 +744,7 @@
 .rh-num {
     text-align: center;
     color: var(--color-gray-400);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
 }
 
@@ -777,12 +777,12 @@
     align-items: center;
     justify-content: center;
     color: var(--color-gray-300);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     border: 1px solid var(--color-gray-200);
 }
 
 .rh-group {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-gray-500);
     white-space: nowrap;
     overflow: hidden;
@@ -790,7 +790,7 @@
 }
 
 .rh-date {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-gray-400);
     white-space: nowrap;
 }
@@ -801,7 +801,7 @@
 
 .reprint-status-badge {
     display: inline-block;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 4px;
@@ -826,7 +826,7 @@
 }
 
 .reprint-history-count {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     background: var(--color-primary);
     color: var(--color-white);
@@ -1003,21 +1003,21 @@ a.stat-card-link:hover {
 }
 
 .stat-value {
-    font-size: 22px;
+    font-size: var(--ui-font-size-3xl-lg, 22px);
     font-weight: 700;
     color: #2c3e50;
     line-height: 1.2;
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #555;
     font-weight: 500;
     margin-bottom: 2px;
 }
 
 .stat-change {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
     display: inline-flex;
     align-items: center;
@@ -1042,7 +1042,7 @@ a.stat-card-link:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
 }
 
@@ -1097,7 +1097,7 @@ a.stat-card-link:hover {
     min-width: 5ch;
     height: 20px;
     padding: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     border-radius: 2px;
     border: 1px solid transparent;
@@ -1241,7 +1241,7 @@ button.card-overview-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .card-overview-icon.pending {
@@ -1290,7 +1290,7 @@ button.card-overview-item {
 }
 
 .card-overview-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #555;
     font-weight: 600;
 }
@@ -1298,7 +1298,7 @@ button.card-overview-item {
 .card-overview-value {
     display: inline-block;
     width: 5ch;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
     color: #2c3e50;
     text-align: right;
@@ -1373,7 +1373,7 @@ button.card-overview-item {
    ==================== */
 .recent-table {
     width: 100%;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     border-collapse: collapse;
     table-layout: fixed;
 }
@@ -1406,7 +1406,7 @@ button.card-overview-item {
 
 .recent-table th {
     padding: 6px 12px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1417,7 +1417,7 @@ button.card-overview-item {
 
 .recent-table td {
     padding: 6px 12px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-700);
     border: 1px solid var(--color-gray-200);
 }
@@ -1444,7 +1444,7 @@ button.card-overview-item {
 .client-sub-row td {
     border-top: 1px solid #e8ecf4 !important;
     padding: 6px 10px !important;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 .client-sub-row td:first-child {
     padding-left: 32px !important;
@@ -1462,11 +1462,11 @@ button.card-overview-item {
     color: var(--color-primary);
 }
 .client-sub-row .sub-row-name i {
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     color: var(--color-gray-400);
 }
 .client-sub-row .count-badge {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
 }
 
@@ -1482,7 +1482,7 @@ button.card-overview-item {
     content: '\f054';
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    font-size: 9px;
+    font-size: var(--ui-font-size-2xs-plus, 9px);
     position: absolute;
     left: 8px;
     top: 50%;
@@ -1611,7 +1611,7 @@ button.card-overview-item {
    View All Link
    ==================== */
 .view-all {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
     color: var(--primary, var(--color-primary));
     text-decoration: none;
@@ -1655,7 +1655,7 @@ button.card-overview-item {
     padding: 0 8px;
     border-radius: 4px;
     border: 1px solid transparent;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     font-weight: 600;
     line-height: 1;
     text-transform: capitalize;
@@ -1724,7 +1724,7 @@ button.card-overview-item {
     top: 50%;
     transform: translateY(-50%);
     color: var(--color-gray-400);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     pointer-events: none;
 }
 
@@ -1733,7 +1733,7 @@ button.card-overview-item {
     height: 34px;
     border: 1px solid var(--color-gray-300);
     border-radius: 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-700);
     padding: 0 10px 0 30px;
     background: var(--color-white);
@@ -1919,7 +1919,7 @@ button.card-overview-item {
     text-align: center;
     padding: 30px;
     color: var(--color-gray-400);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .rh-state-cell-lg {
@@ -1931,7 +1931,7 @@ button.card-overview-item {
 }
 
 .rh-state-icon {
-    font-size: 24px;
+    font-size: var(--ui-font-size-4xl, 24px);
     display: block;
     margin-bottom: 8px;
 }
@@ -2001,13 +2001,13 @@ button.card-overview-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
     color: var(--color-white);
 }
 
 .quick-action-btn span {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     color: var(--color-gray-800);
 }
@@ -2034,7 +2034,7 @@ button.card-overview-item {
 }
 
 .bulk-select-group label {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     color: var(--color-gray-500);
     text-transform: uppercase;
@@ -2062,7 +2062,7 @@ button.card-overview-item {
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border: 1px solid var(--color-gray-300);
     border-radius: 0;
@@ -2086,14 +2086,14 @@ button.card-overview-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
     color: var(--color-white);
     flex-shrink: 0;
 }
 
 .bulk-action-btn span {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     color: var(--color-gray-800);
 }
@@ -2155,7 +2155,7 @@ button.card-overview-item {
 }
 
 .dashboard-quick-action-drawer-title {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
     color: var(--color-gray-800);
 }
@@ -2248,7 +2248,7 @@ button.card-overview-item {
 }
 
 .recent-activity-filter-inline label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     color: var(--color-slate-500);
     text-transform: uppercase;
@@ -2262,7 +2262,7 @@ button.card-overview-item {
     border-radius: 8px;
     background: var(--color-white);
     color: var(--color-gray-700);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 0 8px;
 }
@@ -2330,7 +2330,7 @@ button.card-overview-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     flex-shrink: 0;
 }
 
@@ -2367,7 +2367,7 @@ button.card-overview-item {
 }
 
 .activity-text {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #2c3e50;
     margin-bottom: 4px;
 }
@@ -2377,7 +2377,7 @@ button.card-overview-item {
 }
 
 .activity-time {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #999;
 }
 
@@ -2421,7 +2421,7 @@ button.card-overview-item {
     cursor: pointer;
     background: none;
     border: none;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
 }
 .notif-mark-all-btn:hover {

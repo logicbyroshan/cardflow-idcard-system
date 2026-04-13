@@ -15,7 +15,7 @@
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border-radius: 4px;
     cursor: pointer;
@@ -38,7 +38,7 @@
 }
 
 .action-buttons-group .btn.action-btn i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 /* Blue buttons - flat solid */
@@ -113,7 +113,7 @@
     position: absolute;
     left: 8px;
     color: var(--gray-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     pointer-events: none;
     transition: color 0.2s ease;
 }
@@ -123,7 +123,7 @@
     padding: 3px 34px 3px 24px;
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     transition: all 0.2s ease;
     background: transparent;
 }
@@ -259,7 +259,7 @@
 
 .idcard-table thead th {
     padding: 4px 1px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -291,7 +291,7 @@
 
 .idcard-table tbody td {
     padding: 2px 4px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-gray-700);
     vertical-align: middle;
 }
@@ -314,7 +314,7 @@
     right: 2px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-blue);
     opacity: 0;
     transition: opacity 0.15s ease;
@@ -331,7 +331,7 @@
     justify-content: center;
     gap: 0;
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
     border-radius: 6px;
     border: none;
@@ -428,7 +428,7 @@
     color: var(--color-blue);
     border: none;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
     cursor: pointer;
     display: block;
@@ -454,7 +454,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .colorful-placeholder {
@@ -470,7 +470,7 @@
    Only page-specific overrides below */
 
 .pagination-selected {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-blue);
     background: var(--color-blue-50);
     padding: 2px 6px;
@@ -485,7 +485,7 @@
     padding: 10px 14px;
     text-align: center;
     color: var(--color-slate-500);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -685,13 +685,13 @@
     align-items: center;
     justify-content: center;
     color: var(--color-white);
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .wf-confirm-title {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     color: var(--color-slate-800);
     flex: 1;
@@ -708,7 +708,7 @@
     align-items: center;
     justify-content: center;
     color: var(--color-slate-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     transition: all 0.15s ease;
     flex-shrink: 0;
 }
@@ -726,7 +726,7 @@
 }
 
 .wf-confirm-msg {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-slate-700);
     line-height: 1.6;
     margin: 0 0 16px 0;
@@ -747,7 +747,7 @@
 }
 
 .wf-status-badge {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 5px 14px;
     border-radius: 8px;
@@ -756,7 +756,7 @@
 }
 
 .wf-flow-arrow {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     animation: wfArrowPulse 1.5s ease-in-out infinite;
 }
 
@@ -770,7 +770,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 6px 14px;
     border-radius: 8px;
@@ -778,7 +778,7 @@
 }
 
 .wf-count-badge i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 /* Info note */
@@ -790,7 +790,7 @@
     background: var(--color-gray-50);
     border-radius: 8px;
     border: 1px solid var(--color-slate-200);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-500);
     line-height: 1.5;
 }
@@ -810,7 +810,7 @@
 .wf-confirm-code {
     font-weight: 700;
     letter-spacing: 0.28em;
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     padding: 8px 12px;
     border: 1px dashed rgba(var(--yellow-rgb), 0.4);
     border-radius: 10px;
@@ -844,7 +844,7 @@
     display: none;
     margin-top: 8px;
     color: var(--color-danger);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     text-align: center;
 }
 
@@ -863,7 +863,7 @@
     align-items: center;
     gap: 6px;
     padding: 8px 18px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border: none;
     border-radius: 8px;
@@ -905,7 +905,7 @@
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .row-action-btn {
@@ -913,12 +913,12 @@
     min-height: 26px;
     padding: 3px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .wf-btn {
     min-height: 34px;
     padding: 8px 16px;
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }

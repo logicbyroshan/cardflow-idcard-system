@@ -99,7 +99,7 @@
     border-bottom: 1px solid var(--color-gray-100, #edf2f7);
     background: color-mix(in srgb, var(--audit-surface-soft) 70%, var(--color-white) 30%);
   }
-  .audit-user-meta { font-size: 12px; color: var(--audit-muted); }
+  .audit-user-meta { font-size: var(--ui-font-size-sm, 12px); color: var(--audit-muted); }
   .audit-stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -113,8 +113,8 @@
     border-radius: 8px;
     padding: 10px;
   }
-  .audit-stat-label { font-size: 11px; color: var(--audit-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .audit-stat-value { font-size: 18px; font-weight: 700; color: var(--audit-text); line-height: 1.2; }
+  .audit-stat-label { font-size: var(--ui-font-size-xs, 11px); color: var(--audit-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .audit-stat-value { font-size: var(--ui-font-size-2xl, 18px); font-weight: 700; color: var(--audit-text); line-height: 1.2; }
   .audit-log-list { flex: 1; min-height: 0; overflow-y: auto; }
   .audit-log-item {
     display: grid;
@@ -136,21 +136,21 @@
   }
   .audit-log-main { min-width: 0; }
   .audit-log-title {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     color: var(--audit-text);
     margin-bottom: 3px;
     line-height: 1.35;
   }
   .audit-log-sub {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--audit-muted);
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
   }
   .audit-log-tag {
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     padding: 2px 6px;
     border-radius: 4px;
     border: 1px solid color-mix(in srgb, var(--color-blue, var(--color-blue)) 28%, var(--color-white) 72%);
@@ -233,17 +233,17 @@
       <a href="{% url 'pro_user_activity_logs' %}" class="btn btn-sm btn-outline-secondary">
         <i class="fa-solid fa-arrow-left"></i> Back To Users
       </a>
-      <div style="font-size:14px;font-weight:700;color:var(--text-primary,var(--color-gray-800));">{{ audit_target.name }} - Deep History</div>
+      <div style="font-size: var(--ui-font-size-base, 14px);font-weight:700;color:var(--text-primary,var(--color-gray-800));">{{ audit_target.name }} - Deep History</div>
     </div>
     <div class="action-right">
-      <span style="font-size:12px;color:var(--text-secondary,#666);">{{ audit_target.role_display }}</span>
+      <span style="font-size: var(--ui-font-size-sm, 12px);color:var(--text-secondary,#666);">{{ audit_target.role_display }}</span>
     </div>
   </div>
 
   <div id="auditHistory" class="audit-history">
     <div class="audit-history-head">
       <div>
-        <div id="auditSelectedName" style="font-size:14px;font-weight:700;color:var(--text-primary,var(--color-gray-800));">{{ audit_target.name }} - Deep History</div>
+        <div id="auditSelectedName" style="font-size: var(--ui-font-size-base, 14px);font-weight:700;color:var(--text-primary,var(--color-gray-800));">{{ audit_target.name }} - Deep History</div>
         <div id="auditSelectedMeta" class="audit-user-meta">{{ audit_target.role_display }} | {{ audit_target.email_or_username }}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">

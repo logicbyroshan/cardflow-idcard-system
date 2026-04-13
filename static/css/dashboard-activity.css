@@ -21,7 +21,7 @@
 }
 
 .recent-activity-filter-inline label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     color: var(--color-slate-500);
     text-transform: uppercase;
@@ -35,7 +35,7 @@
     border-radius: 8px;
     background: var(--color-white);
     color: var(--color-gray-700);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 0 8px;
 }
@@ -103,7 +103,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     flex-shrink: 0;
 }
 
@@ -140,7 +140,7 @@
 }
 
 .activity-text {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #2c3e50;
     margin-bottom: 4px;
 }
@@ -150,7 +150,7 @@
 }
 
 .activity-time {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #999;
 }
 
@@ -194,7 +194,7 @@
     cursor: pointer;
     background: none;
     border: none;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
 }
 .notif-mark-all-btn:hover {

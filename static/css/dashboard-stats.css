@@ -76,21 +76,21 @@ a.stat-card-link:hover {
 }
 
 .stat-value {
-    font-size: 22px;
+    font-size: var(--ui-font-size-3xl-lg, 22px);
     font-weight: 700;
     color: #2c3e50;
     line-height: 1.2;
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #555;
     font-weight: 500;
     margin-bottom: 2px;
 }
 
 .stat-change {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
     display: inline-flex;
     align-items: center;
@@ -115,7 +115,7 @@ a.stat-card-link:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
 }
 
@@ -170,7 +170,7 @@ a.stat-card-link:hover {
     min-width: 5ch;
     height: 20px;
     padding: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     border-radius: 2px;
     border: 1px solid transparent;
@@ -314,7 +314,7 @@ button.card-overview-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .card-overview-icon.pending {
@@ -363,7 +363,7 @@ button.card-overview-item {
 }
 
 .card-overview-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #555;
     font-weight: 600;
 }
@@ -371,7 +371,7 @@ button.card-overview-item {
 .card-overview-value {
     display: inline-block;
     width: 5ch;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
     color: #2c3e50;
     text-align: right;

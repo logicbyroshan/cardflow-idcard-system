@@ -10,7 +10,7 @@
 .form-control {
     width: 100%;
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-family: inherit;
     color: var(--color-gray-700);
     background: var(--color-white);
@@ -36,7 +36,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 .form-fields-grid .form-group.full-width { grid-column: 1 / -1; }
 .form-fields-grid .form-group label {
     display: block;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 600;
     color: var(--color-indigo-500);
     text-transform: uppercase;
@@ -54,7 +54,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     color: var(--text-white);
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 400;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -91,7 +91,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 
 /* Image Field Title - OUTSIDE the card, above it */
 .image-field-title {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     color: var(--color-slate-600);
     text-transform: uppercase;
@@ -150,7 +150,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     color: var(--color-white);
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 400;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -164,7 +164,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .btn.btn-upload-field i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 /* Remove Button for fields */
@@ -177,7 +177,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     color: var(--color-white);
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 400;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -191,7 +191,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .btn.btn-remove-field i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 /* Download Image Button - Side modal */
@@ -204,7 +204,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     color: var(--color-white);
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 400;
     cursor: pointer;
     text-decoration: none;
@@ -217,7 +217,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .btn.btn-download-field i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 /* Image Preview Box - Base - Larger like staff/client modals */
@@ -235,7 +235,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .image-preview-box i {
-    font-size: 28px;
+    font-size: var(--ui-font-size-5xl, 28px);
     color: var(--color-slate-400);
 }
 
@@ -376,7 +376,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 .image-preview-box.pending-image.pending-image-skeleton .image-preview-skeleton-text {
     display: block;
     margin-top: 4px;
-    font-size: 10px;
+    font-size: var(--ui-font-size-2xs, 10px);
     line-height: 1.2;
     color: var(--color-slate-400);
     text-align: center;
@@ -398,7 +398,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     color: var(--color-white);
     border: none;
     border-radius: 8px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 2px 4px rgba(var(--blue-rgb), 0.3);
@@ -413,7 +413,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 
 /* Upload hint text */
 .upload-hint-text {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-slate-400);
     margin-top: 2px;
 }
@@ -422,7 +422,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 .image-path-input {
     width: 100%;
     padding: 6px 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-family: 'Consolas', 'Monaco', monospace;
     color: var(--color-slate-600);
     background: var(--color-gray-50);
@@ -498,7 +498,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .image-preview-small i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-slate-400);
 }
 
@@ -533,7 +533,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .image-path-display {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: #666;
     max-width: 200px;
     overflow: hidden;
@@ -547,7 +547,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 
 /* Image path display in modal image cards */
 .image-field-card .image-path-display {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     max-width: 100%;
     text-align: center;
     margin-top: 2px;
@@ -575,7 +575,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     background: var(--color-primary);
     color: var(--color-white);
     border: none;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -598,7 +598,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .image-preview i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-slate-400);
 }
 
@@ -621,7 +621,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     color: var(--color-white);
     border: none;
     border-radius: 4px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -666,7 +666,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     min-height: 32px;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .btn.btn-upload-sm {
@@ -743,7 +743,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     background: rgba(255, 255, 255, 0.24);
     color: var(--color-white);
     border: 1px solid rgba(255, 255, 255, 0.55);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     line-height: 1;
 }
@@ -782,7 +782,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border-radius: 4px;
     cursor: pointer;
@@ -798,7 +798,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .action-buttons-group .btn.action-btn i {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .action-buttons-group .btn.action-btn:disabled {
@@ -941,7 +941,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 
 .action-bar .btn.action-btn {
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border-radius: 4px;
     cursor: pointer;
@@ -955,7 +955,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .action-bar .btn.action-btn i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .action-bar .btn.action-btn:disabled {
@@ -1007,7 +1007,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     gap: 4px;
     padding: 2px 6px;
     border-radius: 2px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 400;
     text-decoration: none;
     cursor: pointer;
@@ -1027,7 +1027,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     height: 16px;
     padding: 0 5px;
     border-radius: 8px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
     line-height: 1;
     vertical-align: middle;
@@ -1320,19 +1320,19 @@ textarea.form-control { resize: vertical; min-height: 60px; }
 }
 
 .reprint-datetime-filter-group .datetime-label {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .reprint-datetime-filter-group .datetime-input {
     height: 28px !important;
     line-height: 28px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .reprint-datetime-filter-group .btn.btn-sm {
     height: 28px;
     min-height: 28px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 /* Confirmed list datetime filter: remove extra padding/min-height density */
@@ -1353,7 +1353,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .reprint-datetime-filter-group .btn.btn-sm,
@@ -1362,7 +1362,7 @@ textarea.form-control { resize: vertical; min-height: 60px; }
     min-height: 30px;
     padding: 0 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 
@@ -1543,14 +1543,14 @@ body:has(.idcard-actions-page) {
 /* Action Bar Button Styles - Compact */
 .action-buttons-group .btn {
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     gap: 4px;
     border-radius: 4px;
     height: 28px;
 }
 
 .action-buttons-group .btn i {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 /* Duplicate color block removed — colors consolidated above (L~1113). */
@@ -1560,7 +1560,7 @@ body:has(.idcard-actions-page) {
 /* Compact table cells — shared */
 .idcard-table th,
 .idcard-table td {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 400;
     letter-spacing: 0;
     white-space: normal;
@@ -1697,7 +1697,7 @@ body:has(.idcard-actions-page) {
     justify-content: center;
 }
 .idcard-table .no-data-row td.no-data-cell i {
-    font-size: 48px;
+    font-size: var(--ui-font-size-10xl, 48px);
     margin-bottom: 12px;
     display: block;
     opacity: 0.45;
@@ -1705,7 +1705,7 @@ body:has(.idcard-actions-page) {
 }
 .idcard-table .no-data-row td.no-data-cell span {
     display: block;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
     color: var(--color-slate-400);
 }
@@ -1880,7 +1880,7 @@ body:has(.idcard-actions-page) {
 }
 
 .no-image i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-slate-400);
 }
 
@@ -1891,7 +1891,7 @@ body:has(.idcard-actions-page) {
 }
 
 .no-image.passport-placeholder i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-slate-400);
 }
 
@@ -1902,7 +1902,7 @@ body:has(.idcard-actions-page) {
 }
 
 .no-image.passport-placeholder.not-found i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-gray-400);
 }
 
@@ -1914,7 +1914,7 @@ body:has(.idcard-actions-page) {
 }
 
 .no-image.colorful-placeholder i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-500);
     text-shadow: none;
 }
@@ -1932,7 +1932,7 @@ body:has(.idcard-actions-page) {
 .no-image.colorful-placeholder.pending-image i,
 .no-image.pending-image i,
 .no-image.pending-placeholder i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-white);
 }
 
@@ -1943,12 +1943,12 @@ body:has(.idcard-actions-page) {
 }
 
 .no-image.passport-placeholder.no-image-given i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: #888888;
 }
 
 .no-image i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-slate-400);
 }
 
@@ -1989,7 +1989,7 @@ body:has(.idcard-actions-page) {
 .back-approved-row-btn,
 .retrieve-row-btn {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     color: var(--color-white);
     border: none;
@@ -2051,7 +2051,7 @@ body:has(.idcard-actions-page) {
 .edit-photo-btn {
     min-height: 24px;
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     background: transparent;
     color: var(--color-blue);
@@ -2066,7 +2066,7 @@ body:has(.idcard-actions-page) {
 }
 
 .edit-photo-btn i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     margin-right: 1px;
 }
 
@@ -2131,7 +2131,7 @@ body:has(.idcard-actions-page) {
     padding: 1px 2px;
     border: 1px solid var(--color-primary);
     border-radius: 2px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 400;
     letter-spacing: 0;
     font-family: inherit;
@@ -2152,7 +2152,7 @@ body:has(.idcard-actions-page) {
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .verify-row-btn,
@@ -2167,7 +2167,7 @@ body:has(.idcard-actions-page) {
     min-height: 26px;
     padding: 3px 8px !important;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 
@@ -2240,7 +2240,7 @@ body:has(.idcard-actions-page) {
 
 .upload-modal-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -2305,7 +2305,7 @@ body:has(.idcard-actions-page) {
 }
 
 .file-select-icon i {
-    font-size: 40px;
+    font-size: var(--ui-font-size-9xl, 40px);
     color: white;
 }
 
@@ -2384,16 +2384,16 @@ body:has(.idcard-actions-page) {
 
 .upload-status .success-icon {
     color: var(--color-emerald-500);
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .upload-status .error-icon {
     color: var(--color-danger);
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .upload-status span {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     color: var(--color-emerald-800);
 }
@@ -2431,7 +2431,7 @@ body:has(.idcard-actions-page) {
 }
 
 .match-title {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -2465,7 +2465,7 @@ body:has(.idcard-actions-page) {
     gap: 4px;
     padding: 4px 10px;
     border-radius: 20px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
 }
 
@@ -2497,7 +2497,7 @@ body:has(.idcard-actions-page) {
 
 .match-arrow {
     color: var(--color-gray-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .data-rows-info {
@@ -2513,11 +2513,11 @@ body:has(.idcard-actions-page) {
 
 .data-rows-info i {
     color: var(--color-blue);
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .data-rows-info span {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     color: var(--color-blue-700);
 }
@@ -2535,14 +2535,14 @@ body:has(.idcard-actions-page) {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-amber-800);
     margin-bottom: 10px;
 }
 
 .zip-upload-header i {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-warning-dark);
 }
 
@@ -2551,7 +2551,7 @@ body:has(.idcard-actions-page) {
 }
 
 .zip-upload-info p {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: #78350f;
     margin: 0;
     line-height: 1.5;
@@ -2562,7 +2562,7 @@ body:has(.idcard-actions-page) {
     background: rgba(255, 255, 255, 0.7);
     border-radius: 6px;
     padding: 12px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .zip-info-box p {
@@ -2586,7 +2586,7 @@ body:has(.idcard-actions-page) {
 
 .zip-info-box li i {
     color: var(--color-emerald-600);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 /* Unified ZIP Input */
@@ -2607,7 +2607,7 @@ body:has(.idcard-actions-page) {
     color: var(--color-warning-dark);
     border: 2px dashed var(--color-warning-dark);
     border-radius: 8px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -2644,7 +2644,7 @@ body:has(.idcard-actions-page) {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-emerald-800);
 }
@@ -2672,7 +2672,7 @@ body:has(.idcard-actions-page) {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: #78350f;
     margin-top: 8px;
 }
@@ -2700,11 +2700,11 @@ body:has(.idcard-actions-page) {
 .zip-upload-row .zip-file-status {
     margin-top: 0;
     padding: 6px 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .zip-file-name {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #78350f;
     font-style: italic;
 }
@@ -2728,11 +2728,11 @@ body:has(.idcard-actions-page) {
 
 .zip-file-status i {
     color: var(--color-emerald-600);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .zip-file-status span {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-emerald-800);
 }
@@ -2754,7 +2754,7 @@ body:has(.idcard-actions-page) {
 }
 
 .progress-title {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-green-800);
     display: flex;
@@ -2763,7 +2763,7 @@ body:has(.idcard-actions-page) {
 }
 
 .progress-title i {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     animation: bounce 1s infinite;
 }
 
@@ -2773,7 +2773,7 @@ body:has(.idcard-actions-page) {
 }
 
 .progress-percentage {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 700;
     color: var(--color-green-700);
 }
@@ -2837,7 +2837,7 @@ body:has(.idcard-actions-page) {
     justify-content: space-between;
     align-items: center;
     margin-top: 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
 }
 
 .progress-size {
@@ -2869,7 +2869,7 @@ body:has(.idcard-actions-page) {
 
 .upload-modal-footer .btn {
     padding: 7px 16px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
@@ -2926,7 +2926,7 @@ body:has(.idcard-actions-page) {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-gray-400);
     transition: all 0.3s ease;
@@ -2939,7 +2939,7 @@ body:has(.idcard-actions-page) {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
     background: var(--color-gray-200);
     color: var(--color-gray-500);
@@ -2995,7 +2995,7 @@ body:has(.idcard-actions-page) {
     gap: 5px;
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
 }
 
@@ -3028,7 +3028,7 @@ body:has(.idcard-actions-page) {
     padding: 8px 12px;
     background: var(--color-slate-100);
     border-bottom: 1px solid var(--color-gray-200);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -3063,7 +3063,7 @@ body:has(.idcard-actions-page) {
 }
 
 .fm-cell.fm-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     color: var(--color-slate-800);
     white-space: nowrap;
@@ -3080,7 +3080,7 @@ body:has(.idcard-actions-page) {
     padding: 6px 10px;
     border: 1px solid var(--color-gray-300);
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-700);
     background: var(--color-white);
     cursor: pointer;
@@ -3096,7 +3096,7 @@ body:has(.idcard-actions-page) {
 
 .fm-cell.fm-status-icon {
     text-align: center;
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
 }
 
 .fm-status-icon.mapped {
@@ -3135,7 +3135,7 @@ body:has(.idcard-actions-page) {
 }
 
 .step-progress-text {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-gray-500);
     white-space: nowrap;
 }
@@ -3157,7 +3157,7 @@ body:has(.idcard-actions-page) {
     min-height: 34px;
     padding: 8px 16px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 
@@ -3179,17 +3179,17 @@ body:has(.idcard-actions-page) {
 }
 
 .no-images-notice .no-images-icon {
-    font-size: 48px;
+    font-size: var(--ui-font-size-10xl, 48px);
     margin-bottom: 12px;
 }
 
 .no-images-notice p {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     margin: 0;
 }
 
 .zip-upload-hint {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: #78350f;
     margin: 0 0 10px 0;
     line-height: 1.4;
@@ -3222,7 +3222,7 @@ body:has(.idcard-actions-page) {
 }
 
 .delete-warning-icon i {
-    font-size: 36px;
+    font-size: var(--ui-font-size-8xl, 36px);
     color: var(--color-danger-dark);
 }
 
@@ -3231,7 +3231,7 @@ body:has(.idcard-actions-page) {
 }
 
 .delete-count {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-800);
     margin-bottom: 20px;
 }
@@ -3254,12 +3254,12 @@ body:has(.idcard-actions-page) {
     gap: 10px;
     padding: 8px 0;
     color: var(--color-red-800);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .warning-item i {
     color: var(--color-danger-dark);
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
 }
 
@@ -3310,13 +3310,13 @@ body:has(.idcard-actions-page) {
 }
 
 .verification-label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-700);
     font-weight: 500;
 }
 
 .verification-code {
-    font-size: 21px;
+    font-size: var(--ui-font-size-3xl-plus, 21px);
     font-weight: 800;
     font-family: 'Courier New', monospace;
     letter-spacing: 0.12em;
@@ -3341,7 +3341,7 @@ body:has(.idcard-actions-page) {
 .verification-input {
     width: 100%;
     text-align: center;
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
     font-weight: 700;
     font-family: 'Courier New', monospace;
     letter-spacing: 3px;
@@ -3369,7 +3369,7 @@ body:has(.idcard-actions-page) {
 }
 
 .verification-status {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 500;
     min-height: 16px;
 }
@@ -3409,18 +3409,18 @@ body:has(.idcard-actions-page) {
 }
 
 .simple-delete-icon i {
-    font-size: 30px;
+    font-size: var(--ui-font-size-6xl, 30px);
     color: var(--color-warning-dark);
 }
 
 .simple-delete-text p {
     margin: 0 0 8px 0;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-800);
 }
 
 .simple-delete-text .delete-info {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-500);
 }
 
@@ -3442,7 +3442,7 @@ body:has(.idcard-actions-page) {
 }
 
 .image-sort-form label {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-gray-700);
     display: flex;
@@ -3452,7 +3452,7 @@ body:has(.idcard-actions-page) {
 
 .image-sort-form label i {
     color: var(--color-gray-500);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 .image-sort-form .form-select {
@@ -3525,13 +3525,13 @@ body:has(.idcard-actions-page) {
     position: absolute;
     left: 14px;
     color: var(--color-gray-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .search-input-wrapper input {
     width: 100%;
     padding: 12px 40px 12px 40px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     border: 2px solid var(--color-gray-200);
     border-radius: 10px;
     outline: none;
@@ -3570,7 +3570,7 @@ body:has(.idcard-actions-page) {
 
 .search-info {
     margin-top: 10px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-500);
 }
 
@@ -3646,7 +3646,7 @@ body:has(.idcard-actions-page) {
 .search-loading-skeleton-line-sm { width: 56%; }
 
 .search-loading i {
-    font-size: 30px;
+    font-size: var(--ui-font-size-6xl, 30px);
     margin-bottom: 10px;
     color: var(--color-blue);
 }
@@ -3700,7 +3700,7 @@ body:has(.idcard-actions-page) {
 
 .search-result-photo-placeholder i {
     color: var(--color-slate-400);
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
 }
 
 .search-result-info {
@@ -3709,7 +3709,7 @@ body:has(.idcard-actions-page) {
 }
 
 .search-result-name {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     color: var(--color-gray-800);
     margin-bottom: 4px;
@@ -3719,7 +3719,7 @@ body:has(.idcard-actions-page) {
 }
 
 .search-result-match {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     color: var(--color-gray-500);
     margin-bottom: 4px;
 }
@@ -3731,7 +3731,7 @@ body:has(.idcard-actions-page) {
 .search-result-status {
     display: inline-block;
     padding: 3px 8px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 600;
     text-transform: uppercase;
     border-radius: 4px;
@@ -3768,7 +3768,7 @@ body:has(.idcard-actions-page) {
     padding: 10px 15px;
     background: var(--color-white);
     border-bottom: 1px solid var(--color-gray-200);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--color-gray-700);
 }
@@ -3786,7 +3786,7 @@ body:has(.idcard-actions-page) {
 }
 
 .format-info {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-500);
     margin-bottom: 20px;
     display: flex;
@@ -3839,7 +3839,7 @@ body:has(.idcard-actions-page) {
 }
 
 .format-icon i {
-    font-size: 24px;
+    font-size: var(--ui-font-size-4xl, 24px);
     color: var(--color-white);
 }
 
@@ -3853,14 +3853,14 @@ body:has(.idcard-actions-page) {
 
 .format-details h4 {
     margin: 0 0 4px 0;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     color: var(--color-gray-800);
 }
 
 .format-details p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-500);
 }
 
@@ -3868,7 +3868,7 @@ body:has(.idcard-actions-page) {
     display: inline-block;
     padding: 3px 8px;
     border-radius: 4px;
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     text-transform: uppercase;
     margin-top: 6px;
@@ -3901,12 +3901,12 @@ body:has(.idcard-actions-page) {
 }
 
 .table-loading-overlay i {
-    font-size: 32px;
+    font-size: var(--ui-font-size-7xl, 32px);
     color: var(--color-primary);
 }
 
 .table-loading-overlay span {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: #666;
 }
 
@@ -3959,7 +3959,7 @@ body:has(.idcard-actions-page) {
 }
 .crop-modal-header h3 {
   display: flex; align-items: center; gap: 8px;
-  font-size: 14px; font-weight: 700; margin: 0;
+  font-size: var(--ui-font-size-base, 14px); font-weight: 700; margin: 0;
 }
 .crop-modal-close {
   display: flex; align-items: center; justify-content: center;
@@ -4001,7 +4001,7 @@ body:has(.idcard-actions-page) {
 }
 .crop-aspect-btn {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 8px; font-size: 11px; font-weight: 600;
+  padding: 4px 8px; font-size: var(--ui-font-size-xs, 11px); font-weight: 600;
   border: 1px solid var(--color-gray-300); border-radius: 6px;
   background: var(--color-white); color: var(--color-gray-500);
   cursor: pointer; transition: all 0.15s;
@@ -4024,7 +4024,7 @@ body:has(.idcard-actions-page) {
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 
@@ -4053,7 +4053,7 @@ body:has(.idcard-actions-page) {
   }
   
   .page-header h1 {
-    font-size: 22px;
+    font-size: var(--ui-font-size-3xl-lg, 22px);
     font-weight: 700;
     color: var(--text-primary, var(--color-gray-50));
     display: flex;
@@ -4068,7 +4068,7 @@ body:has(.idcard-actions-page) {
     border-radius: 8px;
     color: var(--text-secondary, var(--color-slate-400));
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -4095,13 +4095,13 @@ body:has(.idcard-actions-page) {
   }
   
   .filter-group label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-secondary, var(--color-slate-400));
   }
   
   .filter-group input {
     padding: 8px 12px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     min-width: 140px;
     min-height: 36px;
   }
@@ -4126,7 +4126,7 @@ body:has(.idcard-actions-page) {
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
     border-radius: 8px;
     color: var(--text-primary, var(--color-gray-50));
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
   }
   
   .search-box i {
@@ -4135,7 +4135,7 @@ body:has(.idcard-actions-page) {
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary, var(--color-slate-400));
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
   }
   
   .cards-table-container {
@@ -4168,7 +4168,7 @@ body:has(.idcard-actions-page) {
   
   .cards-table th {
     background: rgba(255,255,255,0.02);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
@@ -4183,7 +4183,7 @@ body:has(.idcard-actions-page) {
   }
   
   .cards-table td {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-primary, var(--color-gray-50));
   }
   
@@ -4200,7 +4200,7 @@ body:has(.idcard-actions-page) {
     align-items: center;
     justify-content: center;
     color: var(--text-secondary, var(--color-slate-400));
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
   }
   
   .status-badge {
@@ -4209,7 +4209,7 @@ body:has(.idcard-actions-page) {
     gap: 6px;
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
   }
   
@@ -4227,7 +4227,7 @@ body:has(.idcard-actions-page) {
     border-radius: 6px;
     color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     transition: all 0.2s;
   }
   
@@ -4256,7 +4256,7 @@ body:has(.idcard-actions-page) {
   }
   
   .pagination-info {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-secondary, var(--color-slate-400));
   }
   
@@ -4273,7 +4273,7 @@ body:has(.idcard-actions-page) {
     border-radius: 6px;
     color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     transition: all 0.2s;
   }
   
@@ -4328,7 +4328,7 @@ body:has(.idcard-actions-page) {
   }
   
   .modal-header h2 {
-    font-size: 18px;
+    font-size: var(--ui-font-size-2xl, 18px);
     font-weight: 600;
     color: var(--text-primary, var(--color-gray-50));
   }
@@ -4373,7 +4373,7 @@ body:has(.idcard-actions-page) {
   }
   
   .card-detail-item label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -4382,7 +4382,7 @@ body:has(.idcard-actions-page) {
   }
   
   .card-detail-item .value {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--text-primary, var(--color-gray-50));
     font-weight: 500;
   }
@@ -4415,7 +4415,7 @@ body:has(.idcard-actions-page) {
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border-radius: 4px;
     cursor: pointer;
@@ -4438,7 +4438,7 @@ body:has(.idcard-actions-page) {
 }
 
 .action-buttons-group .btn.action-btn i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 /* Blue buttons - flat solid */
@@ -4513,7 +4513,7 @@ body:has(.idcard-actions-page) {
     position: absolute;
     left: 8px;
     color: var(--gray-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     pointer-events: none;
     transition: color 0.2s ease;
 }
@@ -4523,7 +4523,7 @@ body:has(.idcard-actions-page) {
     padding: 3px 34px 3px 24px;
     border: none;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     transition: all 0.2s ease;
     background: transparent;
 }
@@ -4659,7 +4659,7 @@ body:has(.idcard-actions-page) {
 
 .idcard-table thead th {
     padding: 4px 1px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -4691,7 +4691,7 @@ body:has(.idcard-actions-page) {
 
 .idcard-table tbody td {
     padding: 2px 4px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-gray-700);
     vertical-align: middle;
 }
@@ -4714,7 +4714,7 @@ body:has(.idcard-actions-page) {
     right: 2px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--color-blue);
     opacity: 0;
     transition: opacity 0.15s ease;
@@ -4731,7 +4731,7 @@ body:has(.idcard-actions-page) {
     justify-content: center;
     gap: 0;
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
     border-radius: 6px;
     border: none;
@@ -4828,7 +4828,7 @@ body:has(.idcard-actions-page) {
     color: var(--color-blue);
     border: none;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
     cursor: pointer;
     display: block;
@@ -4854,7 +4854,7 @@ body:has(.idcard-actions-page) {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
 }
 
 .colorful-placeholder {
@@ -4870,7 +4870,7 @@ body:has(.idcard-actions-page) {
    Only page-specific overrides below */
 
 .pagination-selected {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-blue);
     background: var(--color-blue-50);
     padding: 2px 6px;
@@ -4885,7 +4885,7 @@ body:has(.idcard-actions-page) {
     padding: 10px 14px;
     text-align: center;
     color: var(--color-slate-500);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -5085,13 +5085,13 @@ body:has(.idcard-actions-page) {
     align-items: center;
     justify-content: center;
     color: var(--color-white);
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .wf-confirm-title {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 600;
     color: var(--color-slate-800);
     flex: 1;
@@ -5108,7 +5108,7 @@ body:has(.idcard-actions-page) {
     align-items: center;
     justify-content: center;
     color: var(--color-slate-400);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     transition: all 0.15s ease;
     flex-shrink: 0;
 }
@@ -5126,7 +5126,7 @@ body:has(.idcard-actions-page) {
 }
 
 .wf-confirm-msg {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-slate-700);
     line-height: 1.6;
     margin: 0 0 16px 0;
@@ -5147,7 +5147,7 @@ body:has(.idcard-actions-page) {
 }
 
 .wf-status-badge {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 5px 14px;
     border-radius: 8px;
@@ -5156,7 +5156,7 @@ body:has(.idcard-actions-page) {
 }
 
 .wf-flow-arrow {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     animation: wfArrowPulse 1.5s ease-in-out infinite;
 }
 
@@ -5170,7 +5170,7 @@ body:has(.idcard-actions-page) {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     padding: 6px 14px;
     border-radius: 8px;
@@ -5178,7 +5178,7 @@ body:has(.idcard-actions-page) {
 }
 
 .wf-count-badge i {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
 }
 
 /* Info note */
@@ -5190,7 +5190,7 @@ body:has(.idcard-actions-page) {
     background: var(--color-gray-50);
     border-radius: 8px;
     border: 1px solid var(--color-slate-200);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-500);
     line-height: 1.5;
 }
@@ -5210,7 +5210,7 @@ body:has(.idcard-actions-page) {
 .wf-confirm-code {
     font-weight: 700;
     letter-spacing: 0.28em;
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     padding: 8px 12px;
     border: 1px dashed rgba(var(--yellow-rgb), 0.4);
     border-radius: 10px;
@@ -5244,7 +5244,7 @@ body:has(.idcard-actions-page) {
     display: none;
     margin-top: 8px;
     color: var(--color-danger);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     text-align: center;
 }
 
@@ -5263,7 +5263,7 @@ body:has(.idcard-actions-page) {
     align-items: center;
     gap: 6px;
     padding: 8px 18px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     border: none;
     border-radius: 8px;
@@ -5305,7 +5305,7 @@ body:has(.idcard-actions-page) {
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .row-action-btn {
@@ -5313,14 +5313,14 @@ body:has(.idcard-actions-page) {
     min-height: 26px;
     padding: 3px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .wf-btn {
     min-height: 34px;
     padding: 8px 16px;
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 
@@ -5333,7 +5333,7 @@ body:has(.idcard-actions-page) {
   box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
   margin-top: 6px !important;
   overflow: visible !important;
-  font-family: var(--font-sans, 'Saira Semi Condensed', sans-serif) !important;
+  font-family: var(--ui-font-family-sans) !important;
   padding-bottom: 0 !important;
 }
 .flatpickr-calendar.hasTime {
@@ -5349,7 +5349,7 @@ body:has(.idcard-actions-page) {
   height: 32px;
 }
 .flatpickr-current-month {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-gray-700);
 }
@@ -5366,12 +5366,12 @@ body:has(.idcard-actions-page) {
 }
 span.flatpickr-weekday {
   color: var(--color-gray-400) !important;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 500;
 }
 .flatpickr-day {
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-700);
   line-height: 36px;
   height: 36px;
@@ -5407,7 +5407,7 @@ span.flatpickr-weekday {
   display: block;
   width: 100%;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--color-primary);
   text-transform: uppercase;
@@ -5427,7 +5427,7 @@ span.flatpickr-weekday {
   justify-content: center;
 }
 .flatpickr-time input {
-  font-size: 15px !important;
+  font-size: var(--ui-font-size-lg, 15px) !important;
   color: var(--color-gray-700) !important;
   font-weight: 600;
   background: var(--color-white) !important;
@@ -5443,7 +5443,7 @@ span.flatpickr-weekday {
   box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15) !important;
 }
 .flatpickr-time .flatpickr-am-pm {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-500);
   background: var(--color-white);
   border: 1.5px solid var(--color-slate-300);
@@ -5458,7 +5458,7 @@ span.flatpickr-weekday {
 }
 .flatpickr-time .flatpickr-time-separator {
   color: var(--color-primary);
-  font-size: 18px;
+  font-size: var(--ui-font-size-2xl, 18px);
   font-weight: 700;
   line-height: 32px;
 }

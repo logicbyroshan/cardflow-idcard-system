@@ -1,14 +1,100 @@
 /* Cross-page control/table consistency layer.
    Keeps icon sizes, control typography, and table typography aligned. */
 :root {
-  --ui-consistent-control-font-size: 13px;
+  --ui-font-family-sans: var(--font-sans, var(--font-family, "Saira Semi Condensed", "Segoe UI", "Helvetica Neue", Arial, sans-serif));
+
+  /* Core UI type scale (small-to-large). */
+  --ui-font-size-5xs: 6px;
+  --ui-font-size-4xs: 7px;
+  --ui-font-size-3xs: 8px;
+  --ui-font-size-3xs-plus: 8.5px;
+  --ui-font-size-2xs: 10px;
+  --ui-font-size-2xs-plus: 9px;
+  --ui-font-size-xs-tight: 10.8px;
+  --ui-font-size-xs: 11px;
+  --ui-font-size-sm-tight: 11.8px;
+  --ui-font-size-sm: 12px;
+  --ui-font-size-md-tight: 12.8px;
+  --ui-font-size-md: 13px;
+  --ui-font-size-base: 14px;
+  --ui-font-size-lg: 15px;
+  --ui-font-size-xl: 16px;
+  --ui-font-size-xl-plus: 17px;
+  --ui-font-size-2xl: 18px;
+  --ui-font-size-2xl-plus: 19px;
+  --ui-font-size-3xl: 20px;
+  --ui-font-size-3xl-plus: 21px;
+  --ui-font-size-3xl-lg: 22px;
+  --ui-font-size-4xl: 24px;
+  --ui-font-size-4xl-plus: 26px;
+  --ui-font-size-5xl: 28px;
+  --ui-font-size-6xl: 30px;
+  --ui-font-size-7xl: 32px;
+  --ui-font-size-8xl: 36px;
+  --ui-font-size-9xl: 40px;
+  --ui-font-size-10xl: 48px;
+
+  --ui-line-height-tight: 1.2;
+  --ui-line-height-body: 1.4;
+  --ui-line-height-relaxed: 1.5;
+
+  /* Hierarchy aliases. */
+  --ui-heading-h1-size: var(--ui-font-size-5xl);
+  --ui-heading-h2-size: var(--ui-font-size-4xl);
+  --ui-heading-h3-size: var(--ui-font-size-3xl);
+  --ui-heading-h4-size: var(--ui-font-size-2xl);
+  --ui-heading-h5-size: var(--ui-font-size-xl);
+  --ui-heading-h6-size: var(--ui-font-size-lg);
+
+  --ui-consistent-control-font-size: var(--ui-font-size-md);
   --ui-consistent-control-font-weight: 500;
   --ui-consistent-input-font-weight: 400;
-  --ui-consistent-table-head-font-size: 13px;
+  --ui-consistent-table-head-font-size: var(--ui-font-size-md);
   --ui-consistent-table-head-font-weight: 600;
-  --ui-consistent-table-body-font-size: 13px;
+  --ui-consistent-table-body-font-size: var(--ui-font-size-md);
   --ui-consistent-table-body-font-weight: 500;
-  --ui-consistent-icon-size: 12px;
+  --ui-consistent-icon-size: var(--ui-font-size-sm);
+}
+
+html,
+body,
+input,
+button,
+select,
+textarea {
+  font-family: var(--ui-font-family-sans);
+}
+
+body {
+  font-size: var(--ui-font-size-lg);
+  line-height: var(--ui-line-height-body);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ui-font-family-sans);
+  line-height: var(--ui-line-height-tight);
+}
+
+h1 { font-size: var(--ui-heading-h1-size); }
+h2 { font-size: var(--ui-heading-h2-size); }
+h3 { font-size: var(--ui-heading-h3-size); }
+h4 { font-size: var(--ui-heading-h4-size); }
+h5 { font-size: var(--ui-heading-h5-size); }
+h6 { font-size: var(--ui-heading-h6-size); }
+
+small,
+.text-xs,
+.caption,
+.helper-text {
+  font-size: var(--ui-font-size-sm);
+  line-height: var(--ui-line-height-relaxed);
+}
+
+label,
+.form-label,
+.field-label {
+  font-size: var(--ui-font-size-md);
+  line-height: var(--ui-line-height-tight);
 }
 
 .main .btn,

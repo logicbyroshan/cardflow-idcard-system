@@ -46,7 +46,7 @@
     flex-shrink: 0;
 }
 .wa-modal-header h3 {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
     color: var(--color-white);
     margin: 0;
@@ -59,7 +59,7 @@
     height: 30px;
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.25);
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: rgba(255,255,255,0.9);
     cursor: pointer;
     border-radius: 8px;
@@ -126,7 +126,7 @@
     padding-top: 14px;
 }
 .wa-detail-row label {
-    font-size: 11.5px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 700;
     color: var(--wa-gray-500, var(--color-slate-500));
     text-transform: uppercase;
@@ -141,11 +141,11 @@
     width: 14px;
     text-align: center;
     color: var(--color-primary);
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 .wa-detail-row > span,
 .wa-detail-row > div:not(.wa-message-content) {
-    font-size: 13.5px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--wa-gray-800, var(--color-slate-800));
     line-height: 1.5;
     word-break: break-word;
@@ -162,7 +162,7 @@
     border: 1px solid #e0e8ff;
     border-radius: 8px;
     padding: 14px 16px;
-    font-size: 13.5px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--wa-gray-800, var(--color-slate-800));
     line-height: 1.65;
     white-space: pre-wrap;
@@ -237,7 +237,7 @@
     height: 48px;
     border-radius: 8px;
     margin: 0 auto 12px;
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
     background: var(--wa-yellow-bg);
     color: var(--wa-yellow);
 }
@@ -245,13 +245,13 @@
 .wa-confirm-icon.warning { background: var(--wa-yellow-bg); color: var(--wa-yellow); }
 .wa-confirm-icon.info { background: var(--wa-blue-bg); color: var(--wa-blue); }
 .wa-confirm-title {
-    font-size: 15px;
+    font-size: var(--ui-font-size-lg, 15px);
     font-weight: 700;
     color: var(--wa-gray-800);
     margin: 0 0 4px;
 }
 .wa-confirm-text {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--wa-gray-500);
     margin: 0 0 10px;
     line-height: 1.5;
@@ -266,7 +266,7 @@
     margin-bottom: 16px;
 }
 .wa-confirm-warning-title {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-red-800);
     font-weight: 600;
     margin: 0 0 6px;
@@ -277,7 +277,7 @@
 .wa-confirm-warning-list {
     margin: 0;
     padding: 0 0 0 16px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-red-800);
     line-height: 1.7;
 }
@@ -287,5 +287,5 @@
     min-height: 34px;
     padding: 8px 16px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }

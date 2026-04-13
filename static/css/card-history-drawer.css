@@ -76,17 +76,17 @@
 
 .card-history-client-logo i {
   color: rgba(255, 255, 255, 0.92);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .card-history-title {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-white);
 }
 
 .card-history-subtitle {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: rgba(255, 255, 255, 0.82);
   margin-top: 2px;
 }
@@ -107,7 +107,7 @@
   border-radius: 10px;
   padding: 14px;
   color: var(--color-slate-600);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
 }
 
 .card-history-list {
@@ -124,19 +124,19 @@
 }
 
 .card-history-when {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-500);
 }
 
 .card-history-what {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-slate-900);
   font-weight: 600;
 }
 
 .card-history-meta {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-slate-700);
 }

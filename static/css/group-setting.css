@@ -89,7 +89,7 @@
 }
 
 .gs-required-label {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 500;
   color: var(--color-gray-500);
   display: flex;
@@ -98,7 +98,7 @@
 }
 
 .gs-required-label i {
-  font-size: 8px;
+  font-size: var(--ui-font-size-3xs, 8px);
   color: var(--color-danger);
 }
 
@@ -120,7 +120,7 @@
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   color: var(--color-white);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 700;
   padding: 1px 8px;
   border-radius: 10px;
@@ -129,7 +129,7 @@
 
 /* Hint text below section title */
 .gs-field-hint {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400);
   margin: 0 0 10px 0;
   display: flex;
@@ -138,7 +138,7 @@
 }
 
 .gs-field-hint i {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-violet-300);
 }
 
@@ -153,13 +153,13 @@
   border: 1px dashed var(--color-gray-200);
   border-radius: 8px;
   color: var(--color-gray-400);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 500;
 }
 
 .no-fields-message i {
   color: var(--color-blue-300);
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 /* ==================== 
@@ -179,7 +179,7 @@
 .field-list-item {
   display: table-row;
   background: var(--color-white);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--text-primary);
   user-select: none;
   cursor: grab;
@@ -221,14 +221,14 @@
   cursor: grab;
   width: 24px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
 }
 
 .field-name {
   position: relative;
   min-width: 140px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-700);
 }
 
@@ -244,7 +244,7 @@
   padding: 5px 20px 5px 10px;
   border: 1px solid var(--color-gray-200);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 500;
   color: var(--color-gray-700);
   background-color: var(--color-white);
@@ -279,7 +279,7 @@
   border: none;
   color: var(--color-gray-300);
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   padding: 6px 8px;
   border-radius: 6px;
   transition: all 0.15s ease;
@@ -305,7 +305,7 @@
   gap: 4px;
   cursor: pointer;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   color: var(--text-secondary);
 }
 
@@ -323,7 +323,7 @@
 .mandatory-indicator {
   color: var(--color-danger);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   line-height: 1;
 }
 

@@ -124,7 +124,7 @@
   }
 
   .group-msg-inline-title {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--msg-muted);
     font-weight: 700;
     margin-right: 3px;
@@ -164,7 +164,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: #234760;
     border: 1px solid #d2e7fb;
     border-radius: 8px;
@@ -196,7 +196,7 @@
     height: 34px;
     min-height: 34px;
     padding: 0 11px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     border-radius: 9px;
     border-color: #cfe2f5;
     background: #fcfeff;
@@ -216,7 +216,7 @@
     height: 34px !important;
     min-height: 34px !important;
     padding: 0 12px !important;
-    font-size: 12px !important;
+    font-size: var(--ui-font-size-sm, 12px) !important;
     font-weight: 600 !important;
     line-height: 1 !important;
     transition: all 0.18s ease;
@@ -315,7 +315,7 @@
 
   .group-msg-client-avatar i {
     color: #67819a;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
   }
 
   .group-msg-client-meta {
@@ -328,7 +328,7 @@
 
   .group-msg-client-name {
     color: var(--msg-text);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -337,7 +337,7 @@
 
   .group-msg-client-sub {
     color: var(--msg-muted);
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
   }
 
   .group-msg-client-row.selected .group-msg-client-name {
@@ -438,7 +438,7 @@
   }
 
   .group-msg-counter {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-500);
     font-weight: 700;
   }
@@ -447,7 +447,7 @@
     text-align: center;
     padding: 18px 12px;
     color: var(--color-slate-500);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
   }
 
   .group-msg-history-item {
@@ -474,13 +474,13 @@
   }
 
   .group-msg-history-title {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 700;
     color: #0f3f67;
   }
 
   .group-msg-history-time {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-500);
     white-space: nowrap;
   }
@@ -508,7 +508,7 @@
   }
 
   .group-msg-history-text {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     line-height: 1.55;
     color: var(--color-slate-800);
     white-space: pre-wrap;
@@ -521,12 +521,12 @@
     justify-content: space-between;
     gap: 8px;
     flex-wrap: wrap;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--color-slate-500);
   }
 
   .group-msg-history-expiry {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: #9a3412;
     font-weight: 700;
   }
@@ -627,7 +627,7 @@
         <section class="group-msg-panel">
           <div class="group-msg-panel-head">
             <div style="display:flex;flex-direction:column;min-width:0;">
-              <div id="groupMessageTargetSummary" style="font-size:13px;color:var(--color-slate-900);font-weight:700;">Sending to all clients</div>
+              <div id="groupMessageTargetSummary" style="font-size: var(--ui-font-size-md, 13px);color:var(--color-slate-900);font-weight:700;">Sending to all clients</div>
             </div>
             <div class="group-msg-panel-head-right">
               <div class="group-msg-top-controls">

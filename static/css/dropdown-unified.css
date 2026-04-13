@@ -37,7 +37,7 @@ select.wa-status-select,
   border-radius: var(--dropdown-unified-radius) !important;
   color: var(--dropdown-unified-text) !important;
   font-family: inherit !important;
-  font-size: 13px !important;
+  font-size: var(--ui-font-size-md, 13px) !important;
   font-weight: 400 !important;
   line-height: 1.2 !important;
   height: var(--dropdown-unified-height) !important;
@@ -126,7 +126,7 @@ select.wa-status-select:disabled,
   height: var(--dropdown-unified-height) !important;
   min-height: var(--dropdown-unified-height) !important;
   padding: 4px 30px 4px 10px !important;
-  font-size: 13px !important;
+  font-size: var(--ui-font-size-md, 13px) !important;
 }
 
 .main.wa-page .main-content select.form-select,
@@ -163,7 +163,7 @@ select.wa-status-select:disabled,
   height: var(--dropdown-unified-height) !important;
   min-height: var(--dropdown-unified-height) !important;
   padding: 4px 10px !important;
-  font-size: 13px !important;
+  font-size: var(--ui-font-size-md, 13px) !important;
   font-weight: 400 !important;
   line-height: 1.2 !important;
   box-shadow: none !important;
@@ -208,7 +208,7 @@ select.wa-status-select:disabled,
 
 .dropdown-option {
   color: var(--color-slate-600) !important;
-  font-size: 13px !important;
+  font-size: var(--ui-font-size-md, 13px) !important;
   font-weight: 400 !important;
   margin: 0 4px !important;
   border-radius: 4px !important;
@@ -264,7 +264,7 @@ select.wa-status-select:disabled,
 }
 
 .notif-search-box input {
-  font-size: 13px !important;
+  font-size: var(--ui-font-size-md, 13px) !important;
   line-height: 1.1 !important;
 }
 

@@ -38,7 +38,7 @@
 }
 
 .delete-confirm-modal .delete-icon {
-  font-size: 36px;
+  font-size: var(--ui-font-size-8xl, 36px);
   color: var(--color-danger, var(--color-danger));
   margin-bottom: 12px;
 }
@@ -54,7 +54,7 @@
   flex-shrink: 0;
 }
 .delete-confirm-modal-header h4 {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-white);
   margin: 0;
@@ -73,7 +73,7 @@
   color: rgba(255,255,255,0.8);
   cursor: pointer;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   transition: all 0.2s;
   flex-shrink: 0;
 }
@@ -98,14 +98,14 @@
 }
 
 .delete-confirm-modal h4 {
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   font-weight: 700;
   color: var(--color-gray-800, var(--color-gray-800));
   margin: 0 0 8px;
 }
 
 .delete-confirm-modal p {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-500, var(--color-gray-500));
   line-height: 1.5;
   margin: 0 0 6px;
@@ -113,7 +113,7 @@
 
 .delete-confirm-modal .delete-filename {
   font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-700, var(--color-gray-700));
   background: var(--color-gray-50, var(--color-gray-50));
   border: 1px solid var(--color-gray-200, var(--color-gray-200));
@@ -125,7 +125,7 @@
 }
 
 .delete-confirm-modal .delete-note {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-400, var(--color-gray-400));
   margin-bottom: 20px;
 }
@@ -145,7 +145,7 @@
 
 .delete-confirm-actions .btn-cancel {
   padding: 7px 18px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   border: 1px solid var(--color-gray-300, var(--color-gray-300));
   background: var(--color-white, var(--color-white));
@@ -161,7 +161,7 @@
 
 .delete-confirm-actions .btn-delete {
   padding: 7px 18px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   border: none;
   background: var(--color-danger, var(--color-danger));
@@ -182,7 +182,7 @@
   align-items: center;
   gap: 6px;
   padding: 9px 20px;
-  font-size: 13.5px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   border: none;
   border-radius: 8px;
@@ -238,7 +238,7 @@
 }
 
 .compress-modal-header h4 {
-  font-size: 16px;
+  font-size: var(--ui-font-size-xl, 16px);
   font-weight: 700;
   color: var(--color-gray-800, var(--color-gray-800));
   margin: 0;
@@ -260,7 +260,7 @@
 }
 
 .compress-source-info p {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-600, var(--color-gray-600));
   line-height: 1.6;
   margin: 0;
@@ -272,7 +272,7 @@
 }
 
 .compress-help-text {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-600, var(--color-gray-600));
   margin: 0 0 10px !important;
 }
@@ -295,7 +295,7 @@
 
 .compress-folder-input .input-wrapper i {
   color: var(--color-gray-400, var(--color-gray-400));
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 .compress-folder-input .input-wrapper input {
@@ -303,7 +303,7 @@
   border: none;
   background: transparent;
   padding: 10px 0;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   outline: none;
   color: var(--color-gray-800, var(--color-gray-800));
 }
@@ -314,7 +314,7 @@
 
 .compress-label {
   display: block;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--color-gray-700, var(--color-gray-700));
   margin-bottom: 8px;
@@ -346,7 +346,7 @@
   border: none;
   background: transparent;
   padding: 10px 14px;
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 600;
   outline: none;
   color: var(--color-gray-800, var(--color-gray-800));
@@ -370,7 +370,7 @@
 
 .compress-kb-unit {
   padding: 10px 16px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-gray-500, var(--color-gray-500));
   background: var(--color-gray-100, var(--color-gray-100));
@@ -379,7 +379,7 @@
 }
 
 .compress-hint {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-400, var(--color-gray-400));
   margin: 10px 0 0;
   line-height: 1.7;
@@ -388,7 +388,7 @@
 .compress-preset {
   display: inline-block;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--color-amber-700);
   background: rgba(var(--yellow-rgb), 0.1);
@@ -414,7 +414,7 @@
 
 .compress-modal-footer .btn-compress {
   padding: 9px 20px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 
@@ -449,7 +449,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 500;
   color: var(--color-gray-700, var(--color-gray-700));
   cursor: pointer;
@@ -539,7 +539,7 @@
 }
 
 .rename-modal-header h4 {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-white);
   margin: 0;
@@ -563,7 +563,7 @@
 
 .rename-source-info p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-gray-600, var(--color-gray-600));
 }
 
@@ -573,7 +573,7 @@
 
 .rename-label {
   display: block;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 600;
   color: var(--color-gray-700, var(--color-gray-700));
   margin-bottom: 6px;
@@ -583,7 +583,7 @@
   width: 100%;
   height: 38px;
   padding: 8px 30px 8px 12px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 
 .rename-params-group {
@@ -593,7 +593,7 @@
 .rename-input {
   width: 100%;
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   border: 1px solid var(--color-gray-300, var(--color-gray-300));
   border-radius: 8px;
   background: var(--color-white, var(--color-white));
@@ -626,7 +626,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   border-bottom: 1px solid var(--color-gray-100, var(--color-gray-100));
 }
 
@@ -649,7 +649,7 @@
 
 .rename-arrow {
   color: var(--color-gray-400, var(--color-gray-400));
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
 }
 
 .rename-new {
@@ -663,19 +663,19 @@
 }
 
 .rename-conflict-badge {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
 }
 
 .rename-preview-more {
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--color-gray-400, var(--color-gray-400));
   text-align: center;
   font-style: italic;
 }
 
 .rename-preview-stats {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-gray-500, var(--color-gray-500));
   margin: 0;
 }

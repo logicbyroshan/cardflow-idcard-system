@@ -10,7 +10,7 @@
 
 .idcard-table th {
     color: var(--color-white);
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -22,7 +22,7 @@
 
 .idcard-table td {
     padding: 12px 12px;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     color: var(--color-gray-700);
     border: 1px solid var(--color-gray-200);
     vertical-align: middle;
@@ -53,7 +53,7 @@
 
 /* Editable cell input style */
 .idcard-table td input[type="text"] {
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     border: 1px solid var(--color-gray-300);
     padding: 1px 3px;
     border-radius: 2px;
@@ -74,7 +74,7 @@
   table-layout: auto;
   width: max-content;
   min-width: 100%;
-    font-family: var(--font-family);
+    font-family: var(--ui-font-family-sans);
 }
 
 /* Name column */
@@ -86,7 +86,7 @@
   overflow: visible;
   text-overflow: clip;
     font-weight: 400;
-    font-size: 14px;
+    font-size: var(--ui-font-size-base, 14px);
     text-align: left;
     padding-left: 10px;
 }
@@ -138,7 +138,7 @@
     padding: 3px 8px;
     border: none;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -161,7 +161,7 @@
     height: 16px;
     padding: 0 5px;
     border-radius: 8px;
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     font-weight: 500;
     margin-left: 4px;
     text-align: center;
@@ -274,7 +274,7 @@
   padding: 3px 8px;
     border: none;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -355,25 +355,25 @@
   .idcard-table th:nth-child(1),
   .idcard-table td:nth-child(1) {
     min-width: 180px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
   }
     
     .list-btn {
     padding: 4px 8px;
-        font-size: 13px;
+        font-size: var(--ui-font-size-md, 13px);
     min-width: 90px;
     }
     
     .count-badge {
         min-width: 24px;
         height: 10px;
-        font-size: 6px;
+      font-size: var(--ui-font-size-5xs, 6px);
         padding: 0 2px;
     }
     
     .bulk-btn {
       padding: 4px 8px;
-        font-size: 13px;
+        font-size: var(--ui-font-size-md, 13px);
       min-width: 90px;
     }
 }
@@ -381,19 +381,19 @@
 @media (min-width: 1201px) and (max-width: 1400px) {
     .list-btn {
     padding: 4px 8px;
-        font-size: 13px;
+        font-size: var(--ui-font-size-md, 13px);
     min-width: 95px;
     }
     
     .count-badge {
         min-width: 26px;
         height: 11px;
-        font-size: 13px;
+        font-size: var(--ui-font-size-md, 13px);
     }
     
     .bulk-btn {
       padding: 4px 8px;
-        font-size: 13px;
+        font-size: var(--ui-font-size-md, 13px);
       min-width: 95px;
     }
 }
@@ -420,7 +420,7 @@
   }
   
   .page-header h1 {
-    font-size: 24px;
+    font-size: var(--ui-font-size-4xl, 24px);
     font-weight: 700;
     color: var(--text-primary, var(--color-gray-50));
   }
@@ -462,7 +462,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
   }
   
   .group-info {
@@ -470,14 +470,14 @@
   }
   
   .group-info h3 {
-    font-size: 16px;
+    font-size: var(--ui-font-size-xl, 16px);
     font-weight: 600;
     color: var(--text-primary, var(--color-gray-50));
     margin-bottom: 4px;
   }
   
   .group-info .group-meta {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-secondary, var(--color-slate-400));
   }
   
@@ -500,13 +500,13 @@
   }
   
   .group-stat .value {
-    font-size: 20px;
+    font-size: var(--ui-font-size-3xl, 20px);
     font-weight: 700;
     color: var(--text-primary, var(--color-gray-50));
   }
   
   .group-stat .label {
-    font-size: 11px;
+    font-size: var(--ui-font-size-xs, 11px);
     color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -525,7 +525,7 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -572,7 +572,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     transition: all 0.2s;
   }
   
@@ -618,7 +618,7 @@
   }
   
   .table-item .table-name {
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--text-primary, var(--color-gray-50));
     display: flex;
     align-items: center;
@@ -626,7 +626,7 @@
   }
   
   .table-item .table-count {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--text-secondary, var(--color-slate-400));
     background: rgba(72, 187, 120, 0.1);
     padding: 4px 10px;
@@ -640,7 +640,7 @@
     border-radius: 6px;
     color: var(--color-green-500);
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     text-decoration: none;
     transition: all 0.2s;
   }
@@ -655,7 +655,7 @@
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
 }
 
 .group-card-footer .btn {

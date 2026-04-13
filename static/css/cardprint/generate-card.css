@@ -46,7 +46,7 @@
 }
 
 .gen-section-header h3 {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   color: var(--text-primary, var(--color-gray-900));
   flex: 1;
@@ -56,7 +56,7 @@
 .gen-count-badge {
   background: var(--color-blue-100);
   color: var(--color-blue-700);
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 700;
   border-radius: 8px;
   padding: 1px 8px;
@@ -75,7 +75,7 @@
 .gen-search-input {
   flex: 1;
   height: 30px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   border: 1px solid var(--border-color, var(--color-gray-300));
   border-radius: 6px;
   padding: 0 8px;
@@ -107,7 +107,7 @@
   border-radius: 6px;
   border: 1px solid var(--border-color, var(--color-gray-200));
   background: var(--bg-body, var(--color-gray-50));
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -139,7 +139,7 @@
 }
 
 .gen-card-id {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--text-muted, var(--color-gray-400));
   flex-shrink: 0;
 }
@@ -150,13 +150,13 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
 }
 
 .gen-row label {
   width: 72px;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--text-secondary, var(--color-gray-600));
   font-weight: 500;
 }
@@ -164,14 +164,14 @@
 .gen-row .form-select {
   flex: 1;
   height: 30px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   padding: 0 22px 0 6px;
 }
 
 .gen-mini-input {
   width: 54px;
   height: 30px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   border: 1px solid var(--border-color, var(--color-gray-300));
   border-radius: 6px;
   padding: 0 6px;
@@ -181,7 +181,7 @@
 }
 
 .gen-unit {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--text-muted, var(--color-gray-400));
 }
 
@@ -195,7 +195,7 @@
 
 .gen-toggle-btn {
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   background: var(--bg-input, var(--color-gray-50));
   border: none;
@@ -215,7 +215,7 @@
 
 /* ── Active side info ── */
 .gen-active-side-info {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--text-muted, var(--color-gray-400));
   margin-bottom: 8px;
 }
@@ -226,7 +226,7 @@
 
 /* ── Draw hint ── */
 .gen-hint {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--text-muted, var(--color-gray-400));
   margin-top: 4px;
   line-height: 1.4;
@@ -248,12 +248,12 @@
   border-radius: 6px;
   background: var(--color-blue-50);
   border: 1px solid var(--color-blue-200);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--color-blue-700);
 }
 
 .gen-placed-field-item .field-side-tag {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   background: var(--color-blue-200);
   border-radius: 3px;
   padding: 1px 4px;
@@ -271,7 +271,7 @@
 }
 
 .gen-placed-field-type {
-  font-size: 10px;
+  font-size: var(--ui-font-size-2xs, 10px);
   color: var(--color-gray-500);
   flex-shrink: 0;
 }
@@ -281,7 +281,7 @@
   border: none;
   cursor: pointer;
   color: var(--color-blue-300);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   line-height: 1;
   padding: 0 2px;
   flex-shrink: 0;
@@ -310,7 +310,7 @@
 
 /* ── Empty / loading messages ── */
 .gen-empty-msg {
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--text-muted, var(--color-gray-400));
   text-align: center;
   padding: 10px 0;
@@ -346,7 +346,7 @@
 
 .gen-side-btn {
   padding: 5px 14px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   background: transparent;
   border: none;
@@ -377,7 +377,7 @@
   color: var(--color-amber-800);
   border-radius: 8px;
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   animation: genPulse 1.8s ease-in-out infinite;
 }
@@ -392,7 +392,7 @@
   border: 1px solid var(--color-red-300);
   color: var(--color-danger-dark);
   border-radius: 5px;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   padding: 2px 7px;
   cursor: pointer;
   margin-left: 4px;
@@ -445,7 +445,7 @@
   justify-content: center;
   gap: 8px;
   background: rgba(255,255,255,0.9);
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--text-muted, var(--color-gray-400));
   text-align: center;
   padding: 20px;
@@ -454,7 +454,7 @@
 }
 
 .gen-no-template i {
-  font-size: 36px;
+  font-size: var(--ui-font-size-8xl, 36px);
   color: var(--color-gray-300);
 }
 
@@ -493,7 +493,7 @@
 }
 
 .gen-canvas-info {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   color: var(--text-muted, var(--color-gray-400));
 }
 
@@ -503,14 +503,14 @@
   border: 1px solid #bae6fd;
   border-radius: 8px;
   padding: 12px 16px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: #0c4a6e;
   max-width: 650px;
   align-self: flex-start;
 }
 
 .gen-help-box h4 {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
   margin: 0 0 8px;
   display: flex;
@@ -577,7 +577,7 @@
 }
 
 .gen-overview-header h2 {
-  font-size: 20px;
+  font-size: var(--ui-font-size-3xl, 20px);
   font-weight: 700;
   color: var(--text-primary, var(--color-gray-900));
   display: flex;
@@ -587,7 +587,7 @@
 }
 
 .gen-overview-header p {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--text-muted, var(--color-gray-500));
   margin: 0;
 }
@@ -615,7 +615,7 @@
 }
 
 .gen-overview-card-client {
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   font-weight: 600;
   color: var(--text-muted, var(--color-gray-500));
   text-transform: uppercase;
@@ -627,7 +627,7 @@
 }
 
 .gen-overview-card-title {
-  font-size: 15px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--text-primary, var(--color-gray-900));
   line-height: 1.3;
@@ -636,7 +636,7 @@
 .gen-overview-card-meta {
   display: flex;
   gap: 14px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   color: var(--text-muted, var(--color-gray-500));
 }
 
@@ -658,14 +658,14 @@
 }
 
 .gen-overview-empty i {
-  font-size: 48px;
+  font-size: var(--ui-font-size-10xl, 48px);
   display: block;
   margin-bottom: 14px;
   color: var(--color-gray-300);
 }
 
 .gen-overview-empty p {
-  font-size: 14px;
+  font-size: var(--ui-font-size-base, 14px);
   margin: 0;
 }
 
@@ -699,7 +699,7 @@
 }
 
 .cp-generate-banner-text {
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
   color: var(--color-amber-800);
 }
 
@@ -712,7 +712,7 @@
 .gen-overview-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--ui-font-size-md, 13px);
 }
 .gen-overview-table thead th {
   background: var(--bg-surface-raised, var(--color-gray-50));
@@ -721,7 +721,7 @@
   font-weight: 600;
   color: var(--text-muted, var(--color-gray-500));
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: var(--ui-font-size-xs, 11px);
   letter-spacing: .03em;
   white-space: nowrap;
 }
@@ -744,7 +744,7 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 700;
   line-height: 1;
 }
@@ -775,7 +775,7 @@
   background: var(--color-gray-100);
   border: 1px solid var(--color-gray-200);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   cursor: pointer;
   user-select: none;
   transition: background .15s, border-color .15s;
@@ -791,7 +791,7 @@
   border: 1px solid var(--color-gray-300);
   border-radius: 6px;
   background: var(--color-white);
-  font-size: 12px;
+  font-size: var(--ui-font-size-sm, 12px);
   font-weight: 500;
   cursor: pointer;
   transition: all .15s;

@@ -16,7 +16,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 700;
     color: var(--color-slate-800);
     padding: 8px 14px;
@@ -28,7 +28,7 @@
 }
 .wa-form-group-title:first-child { margin-top: 0; }
 .wa-form-group-title i {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     color: var(--wa-primary);
 }
 .wa-form-row {
@@ -47,14 +47,14 @@
     margin-bottom: 12px;
 }
 .wa-form-group label {
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     color: var(--wa-gray-600);
     display: flex;
     align-items: center;
     gap: 4px;
 }
-.wa-form-group label i { font-size: 12px; }
+.wa-form-group label i { font-size: var(--ui-font-size-sm, 12px); }
 .wa-form-group input[type="text"],
 .wa-form-group input[type="email"],
 .wa-form-group input[type="url"],
@@ -63,7 +63,7 @@
 .wa-form-group textarea {
     height: 34px;
     padding: 0 10px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
     color: var(--wa-gray-700);
     background: var(--color-white);
@@ -86,11 +86,11 @@
 
 .wa-form-group .form-select {
     height: 34px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     font-weight: 500;
 }
 .wa-form-group input[type="file"] {
-    font-size: 12.5px;
+    font-size: var(--ui-font-size-sm, 12px);
     padding: 4px 12px;
     border: 2px dashed var(--wa-gray-300, var(--color-slate-300));
     background: linear-gradient(135deg, #fafbff 0%, var(--color-gray-50) 100%);
@@ -111,7 +111,7 @@
     border: none;
     padding: 5px 14px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 700;
     cursor: pointer;
     margin-right: 10px;
@@ -125,11 +125,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-sm, 12px);
     font-weight: 600;
     color: var(--wa-gray-500);
 }
-.wa-file-label i { font-size: 12px; color: var(--wa-primary); }
+.wa-file-label i { font-size: var(--ui-font-size-sm, 12px); color: var(--wa-primary); }
 .wa-form-actions {
     display: flex;
     justify-content: flex-end;
@@ -145,7 +145,7 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--wa-gray-700);
     font-weight: 500;
 }
@@ -243,7 +243,7 @@
         min-height: 30px;
         padding: 5px 10px;
         border-radius: 6px;
-        font-size: 12px;
+        font-size: var(--ui-font-size-sm, 12px);
     }
 
 /* ===== IMAGE PREVIEW ===== */
@@ -273,7 +273,7 @@
 .wa-bulk-file-count {
     margin-top: 6px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--ui-font-size-md, 13px);
     color: var(--primary, var(--color-blue));
 }
 .wa-bulk-progress { margin-bottom: 10px; }
