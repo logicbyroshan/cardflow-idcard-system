@@ -2096,6 +2096,9 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 		self.assertIn('async tryCameraRecovery()', content)
 		self.assertIn('ensureImageInput(file, sourceLabel)', content)
 		self.assertIn('Video captured from ', content)
+		self.assertIn("window.addEventListener('pageshow'", content)
+		self.assertIn("document.addEventListener('visibilitychange'", content)
+		self.assertIn("if (document.visibilityState === 'hidden')", content)
 		self.assertIn('bridge.uploadFormDataWithRetry(uploadUrl, buildUploadFormData', content)
 
 	def test_website_upload_template_uses_native_picker_and_retryable_batches(self):

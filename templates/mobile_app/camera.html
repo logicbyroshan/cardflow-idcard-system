@@ -216,6 +216,22 @@ function cameraApp() {
             this._onPageHide = () => this.stopStream();
             window.addEventListener('pagehide', this._onPageHide, { passive: true });
 
+            this._onPageShow = () => {
+                if (this.isNativeShell || this.photoTaken || this.cameraBusy || this.uploading || this.stream) return;
+                this.startCamera();
+            };
+            window.addEventListener('pageshow', this._onPageShow, { passive: true });
+
+            this._onVisibilityChange = () => {
+                if (document.visibilityState === 'hidden') {
+                    this.stopStream();
+                    return;
+                }
+                if (this.isNativeShell || this.photoTaken || this.cameraBusy || this.uploading || this.stream) return;
+                this.startCamera();
+            };
+            document.addEventListener('visibilitychange', this._onVisibilityChange, { passive: true });
+
             this.$watch('showCropper', (isOpen) => {
                 if (isOpen) {
                     if (!this.cropperOverlayToken && window.mobileOverlay) {
@@ -301,6 +317,10 @@ function cameraApp() {
                 });
 
                 this.stream = await Promise.race([streamPromise, timeoutPromise]);
+                if (document.visibilityState === 'hidden') {
+                    this.stopStream();
+                    return;
+                }
                 if (this.$refs.video) this.$refs.video.srcObject = this.stream;
             } catch (err) { this.cameraError = true; }
         },
