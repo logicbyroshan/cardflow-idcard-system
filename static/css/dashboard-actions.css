@@ -307,3 +307,30 @@
         max-width: min(640px, 100vw);
     }
 }
+
+@media (min-width: 1000px) and (max-width: 1180px) {
+    .quick-actions,
+    .bulk-actions-buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-action-btn {
+        margin-left: 0;
+    }
+
+    .quick-action-btn:first-child {
+        margin-top: 0;
+    }
+
+    .quick-action-btn + .quick-action-btn {
+        margin-top: -1px;
+    }
+
+    .bulk-actions-buttons {
+        gap: 6px;
+    }
+
+    .bulk-action-btn {
+        min-height: 32px;
+    }
+}

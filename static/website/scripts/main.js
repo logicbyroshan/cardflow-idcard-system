@@ -152,29 +152,60 @@ function initTypingEffect() {
 function initMobileMenu() {
     const hamburger = document.querySelector('.hamburger');
     const navLinks = document.querySelector('.nav-links');
+    const overlay = document.querySelector('.mobile-menu-overlay');
+    const closeBtn = document.querySelector('.mobile-menu-close');
 
-    if (!hamburger) return;
+    if (!hamburger || !navLinks) return;
+
+    function setMenuState(isOpen) {
+        navLinks.classList.toggle('active', isOpen);
+        hamburger.classList.toggle('active', isOpen);
+        hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        document.body.classList.toggle('mobile-menu-open', isOpen);
+        document.documentElement.classList.toggle('mobile-menu-open', isOpen);
+        if (overlay) {
+            overlay.classList.toggle('active', isOpen);
+        }
+    }
+
+    function closeMenu() {
+        setMenuState(false);
+    }
 
     hamburger.addEventListener('click', (e) => {
         e.stopPropagation();
-        navLinks.classList.toggle('active');
-        hamburger.classList.toggle('active');
-        hamburger.setAttribute('aria-expanded', hamburger.classList.contains('active'));
+        setMenuState(!navLinks.classList.contains('active'));
     });
 
     document.querySelectorAll('.nav-links a').forEach(link => {
         link.addEventListener('click', () => {
-            navLinks.classList.remove('active');
-            hamburger.classList.remove('active');
-            hamburger.setAttribute('aria-expanded', 'false');
+            closeMenu();
         });
+    });
+
+    if (overlay) {
+        overlay.addEventListener('click', closeMenu);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeMenu);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeMenu();
+        }
     });
 
     document.addEventListener('click', (e) => {
         if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
-            navLinks.classList.remove('active');
-            hamburger.classList.remove('active');
-            hamburger.setAttribute('aria-expanded', 'false');
+            closeMenu();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 999) {
+            closeMenu();
         }
     });
 }

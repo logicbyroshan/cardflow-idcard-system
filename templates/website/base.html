@@ -113,6 +113,12 @@
                     </a>
                 </div>
                 <ul class="nav-links">
+                    <li class="mobile-menu-close-item">
+                        <button type="button" class="mobile-menu-close" aria-label="Close navigation menu">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            <span>Close</span>
+                        </button>
+                    </li>
                     <li><a href="{% url 'website:home' %}">Home</a></li>
                     <li><a href="{% url 'website:our_work' %}">Our Products</a></li>
                     <li><a href="{% url 'website:why_choose_us' %}">Why Choose Us</a></li>
@@ -130,6 +136,7 @@
             </div>
         </div>
     </nav>
+    <button type="button" class="mobile-menu-overlay" aria-label="Close navigation menu" tabindex="-1"></button>
 
     <!-- Main Content Block -->
     <main id="main-content">

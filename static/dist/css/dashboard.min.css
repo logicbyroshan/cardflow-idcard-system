@@ -1523,6 +1523,9 @@ button.card-overview-item {
     color: var(--color-white);
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
     border: 1px solid rgba(255,255,255,0.15);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .recent-table td {
@@ -1530,6 +1533,14 @@ button.card-overview-item {
     font-size: var(--ui-font-size-md, 13px);
     color: var(--color-gray-700);
     border: 1px solid var(--color-gray-200);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-table th:first-child,
+.recent-table td:first-child {
+    overflow: hidden;
 }
 
 .recent-table tbody tr:nth-child(odd) {
@@ -1563,9 +1574,15 @@ button.card-overview-item {
     color: var(--color-gray-600);
     text-decoration: none;
     font-weight: 500;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     transition: color 0.15s;
 }
 .client-sub-row .sub-row-name:hover {
@@ -1574,6 +1591,7 @@ button.card-overview-item {
 .client-sub-row .sub-row-name i {
     font-size: var(--ui-font-size-2xs, 10px);
     color: var(--color-gray-400);
+    flex-shrink: 0;
 }
 .client-sub-row .count-badge {
     font-size: var(--ui-font-size-sm, 12px);
@@ -1739,20 +1757,33 @@ button.card-overview-item {
    Client Name Link (clickable in tables)
    ==================== */
 .client-name-link {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     color: var(--color-gray-700);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.15s;
 }
+
+.client-name-link .dashboard-client-status-badge {
+    flex: 0 0 auto;
+}
+
 .client-name-link:hover {
     color: var(--color-primary);
     text-decoration: none;
 }
 
 .client-name-text {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
@@ -2071,6 +2102,119 @@ button.card-overview-item {
     .dashboard-client-status-badge {
         min-width: 56px;
     }
+
+    .client-name-link {
+        gap: 4px;
+    }
+
+    .client-name-text {
+        max-width: 100%;
+    }
+}
+
+@media (min-width: 1000px) and (max-width: 1279px) {
+    .recent-table.recent-table-6col th:nth-child(1),
+    .recent-table.recent-table-6col td:nth-child(1),
+    .recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(1),
+    .recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(1) {
+        width: 44%;
+    }
+
+    .recent-table.recent-table-6col th:nth-child(2),
+    .recent-table.recent-table-6col td:nth-child(2),
+    .recent-table.recent-table-6col th:nth-child(3),
+    .recent-table.recent-table-6col td:nth-child(3),
+    .recent-table.recent-table-6col th:nth-child(4),
+    .recent-table.recent-table-6col td:nth-child(4),
+    .recent-table.recent-table-6col th:nth-child(5),
+    .recent-table.recent-table-6col td:nth-child(5),
+    .recent-table.recent-table-6col th:nth-child(6),
+    .recent-table.recent-table-6col td:nth-child(6),
+    .recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(2),
+    .recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(2),
+    .recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(3),
+    .recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(3),
+    .recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(4),
+    .recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(4),
+    .recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(5),
+    .recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(5),
+    .recent-table.dashboard-scroll-table.recent-table-6col th:nth-child(6),
+    .recent-table.dashboard-scroll-table.recent-table-6col td:nth-child(6) {
+        width: 11.2%;
+    }
+
+    .recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(1),
+    .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(1) {
+        width: 48%;
+    }
+
+    .recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(2),
+    .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(2),
+    .recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(3),
+    .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(3),
+    .recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(4),
+    .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(4),
+    .recent-table.dashboard-scroll-table.recent-table-5col th:nth-child(5),
+    .recent-table.dashboard-scroll-table.recent-table-5col td:nth-child(5) {
+        width: 13%;
+    }
+
+    .recent-table.recent-table-4col th:nth-child(1),
+    .recent-table.recent-table-4col td:nth-child(1),
+    .recent-table.client-staff-recent-table th:nth-child(1),
+    .recent-table.client-staff-recent-table td:nth-child(1) {
+        width: 46%;
+    }
+
+    .recent-table.recent-table-4col th:nth-child(2),
+    .recent-table.recent-table-4col td:nth-child(2),
+    .recent-table.recent-table-4col th:nth-child(3),
+    .recent-table.recent-table-4col td:nth-child(3),
+    .recent-table.recent-table-4col th:nth-child(4),
+    .recent-table.recent-table-4col td:nth-child(4) {
+        width: 18%;
+    }
+
+    .recent-table.client-staff-recent-table th:nth-child(2),
+    .recent-table.client-staff-recent-table td:nth-child(2) {
+        width: 14%;
+    }
+
+    .recent-table.client-staff-recent-table th:nth-child(3),
+    .recent-table.client-staff-recent-table td:nth-child(3) {
+        width: 24%;
+    }
+
+    .recent-table.client-staff-recent-table th:nth-child(4),
+    .recent-table.client-staff-recent-table td:nth-child(4) {
+        width: 16%;
+    }
+
+    .recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(1),
+    .recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(1) {
+        width: 54%;
+    }
+
+    .recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(2),
+    .recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(2),
+    .recent-table.dashboard-scroll-table.recent-table-3col th:nth-child(3),
+    .recent-table.dashboard-scroll-table.recent-table-3col td:nth-child(3) {
+        width: 23%;
+    }
+
+    .count-badge {
+        width: auto;
+        min-width: 4ch;
+        height: 18px;
+        padding: 0 5px;
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .dashboard-client-status-badge {
+        min-width: 52px;
+        padding: 0 6px;
+        font-size: var(--ui-font-size-3xs, 9px);
+    }
 }
 
 
@@ -2383,6 +2527,33 @@ button.card-overview-item {
     .dashboard-quick-action-drawer {
         width: min(640px, 100vw);
         max-width: min(640px, 100vw);
+    }
+}
+
+@media (min-width: 1000px) and (max-width: 1180px) {
+    .quick-actions,
+    .bulk-actions-buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-action-btn {
+        margin-left: 0;
+    }
+
+    .quick-action-btn:first-child {
+        margin-top: 0;
+    }
+
+    .quick-action-btn + .quick-action-btn {
+        margin-top: -1px;
+    }
+
+    .bulk-actions-buttons {
+        gap: 6px;
+    }
+
+    .bulk-action-btn {
+        min-height: 32px;
     }
 }
 
