@@ -82,6 +82,25 @@ h4 { font-size: var(--ui-heading-h4-size); }
 h5 { font-size: var(--ui-heading-h5-size); }
 h6 { font-size: var(--ui-heading-h6-size); }
 
+/* Keep the app/sidebar brand title on one compact, uniform scale everywhere. */
+.sidebar .sidebar-logo {
+  min-width: 0;
+}
+
+.sidebar .sidebar-logo h3,
+.sidebar .sidebar-logo .sidebar-brand-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  font-size: var(--ui-font-size-md) !important;
+  font-weight: 700 !important;
+}
+
 small,
 .text-xs,
 .caption,

@@ -520,6 +520,15 @@ textarea:focus-visible {
 
 .pwa-brand-title {
     color: #1f2937;
+    font-size: 13px !important;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+}
+
+.mobile-sidebar-brand-title {
+    font-size: 13px !important;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
 }
 
 .pwa-bottom-nav-spacer {
