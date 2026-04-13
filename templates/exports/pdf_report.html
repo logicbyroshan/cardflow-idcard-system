@@ -32,13 +32,15 @@
 }
 @font-face {
     font-family: 'AbbasiNatraj';
-    src: url('{{ font_dir }}/ABBANM__.TTF');
+    src: url('{{ font_dir }}/ABBANM__.TTF') format('truetype'),
+         url('{{ font_dir }}/ABBANN__.TTF') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
 @font-face {
     font-family: 'AbbasiNagari';
-    src: url('{{ font_dir }}/ABBANN__.TTF');
+    src: url('{{ font_dir }}/ABBANN__.TTF') format('truetype'),
+         url('{{ font_dir }}/ABBANM__.TTF') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -126,7 +128,7 @@
 }
 #ftr-left {
     position: running(ftr-left);
-    font-family: {% if template_font == 'hindi' %}AbbasiNatraj, AbbasiNagari, Arial, sans-serif{% else %}Arial, Helvetica, sans-serif{% endif %};
+    font-family: {% if template_use_abbasi %}AbbasiNatraj, AbbasiNagari, Arial, sans-serif{% else %}Arial, Helvetica, sans-serif{% endif %};
     font-size: 9pt;
     font-weight: {% if template_bold %}700{% else %}600{% endif %};
     color: #333;

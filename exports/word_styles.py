@@ -10,6 +10,34 @@ from django.utils import timezone
 class WordStylesMixin:
     """Mixin providing page layout, header/footer, and cell styling methods."""
 
+    @staticmethod
+    def _is_hindi_abbasi_font(font_name_value) -> bool:
+        """Return True when template font should use Abbasi."""
+        val = str(font_name_value or '').strip().lower()
+        return val in {'hindi', 'abbasi', 'abbasinatraj', 'abbasi_natraj'}
+
+    @staticmethod
+    def _force_run_font(run, font_name):
+        """Force Word run font across ascii/hAnsi/eastAsia/complex scripts."""
+        if not run or not font_name:
+            return
+        run.font.name = font_name
+        try:
+            from docx.oxml.ns import qn
+            from docx.oxml import OxmlElement
+
+            rPr = run._r.get_or_add_rPr()
+            rFonts = rPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = OxmlElement('w:rFonts')
+                rPr.append(rFonts)
+            rFonts.set(qn('w:ascii'), font_name)
+            rFonts.set(qn('w:hAnsi'), font_name)
+            rFonts.set(qn('w:eastAsia'), font_name)
+            rFonts.set(qn('w:cs'), font_name)
+        except Exception:
+            pass
+
     def _setup_page(self, doc, Cm, WD_ORIENT, parse_xml, nsdecls):
         """Configure page to landscape A4 with margins."""
         section = doc.sections[0]
@@ -114,7 +142,7 @@ class WordStylesMixin:
             try:
                 tpl = ExportTemplate.objects.get(id=template_id)
                 note_line = (tpl.instructions or '').strip()
-                note_font_name = 'AbbasiNatraj' if tpl.font_name == 'hindi' else 'Arial'
+                note_font_name = 'AbbasiNatraj' if self._is_hindi_abbasi_font(tpl.font_name) else 'Arial'
                 note_is_bold = bool(tpl.is_bold)
             except ExportTemplate.DoesNotExist:
                 pass
@@ -128,7 +156,7 @@ class WordStylesMixin:
                     footer_para1.add_run().add_break()
                 footer_run = footer_para1.add_run(line_text)
                 footer_run.bold = note_is_bold
-                footer_run.font.name = note_font_name
+                self._force_run_font(footer_run, note_font_name)
                 footer_run.font.size = Pt(7)
                 footer_run.font.color.rgb = RGBColor(0, 0, 0)
             footer_para1.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -298,7 +326,7 @@ class WordStylesMixin:
             return
         
         # Determine font from template settings
-        use_hindi = tpl.font_name == 'hindi'
+        use_hindi = self._is_hindi_abbasi_font(tpl.font_name)
         font_name = 'AbbasiNatraj' if use_hindi else 'Arial'
         use_bold = tpl.is_bold
         
@@ -310,7 +338,7 @@ class WordStylesMixin:
         heading_run = heading_para.add_run('INSTRUCTIONS:')
         heading_run.bold = True
         heading_run.underline = True
-        heading_run.font.name = font_name
+        self._force_run_font(heading_run, font_name)
         heading_run.font.size = Pt(9)
         heading_run.font.color.rgb = RGBColor(0, 0, 0)
         heading_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -324,7 +352,7 @@ class WordStylesMixin:
             body_para = doc.add_paragraph()
             body_run = body_para.add_run(line.upper())
             body_run.bold = use_bold
-            body_run.font.name = font_name
+            self._force_run_font(body_run, font_name)
             body_run.font.size = Pt(8)
             body_run.font.color.rgb = RGBColor(0, 0, 0)
             body_para.alignment = WD_ALIGN_PARAGRAPH.LEFT

@@ -444,12 +444,14 @@ class PdfExporter:
             from core.models import ExportTemplate
             template_footer_text = ''
             template_font = 'arial'
+            template_use_abbasi = False
             template_bold = False
             if template_id:
                 try:
                     tpl = ExportTemplate.objects.get(id=template_id)
                     template_footer_text = (tpl.instructions or '').strip()
-                    template_font = tpl.font_name or 'arial'
+                    template_font = str(tpl.font_name or 'arial').strip().lower()
+                    template_use_abbasi = template_font in {'hindi', 'abbasi', 'abbasinatraj', 'abbasi_natraj'}
                     template_bold = tpl.is_bold
                 except ExportTemplate.DoesNotExist:
                     pass
@@ -489,6 +491,7 @@ class PdfExporter:
                 'current_date': _now.strftime('%d-%m-%Y'),
                 'template_footer_text': template_footer_text,
                 'template_font': template_font,
+                'template_use_abbasi': template_use_abbasi,
                 'template_bold': template_bold,
                 'row_height_cm': row_height_cm,
                 # Font-mode context for template

@@ -1779,6 +1779,7 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertIn('border: none;', content)
         self.assertIn('table.data-table td.img-cell.photo-cell img {', content)
         self.assertIn('border: 0.5pt solid #111;', content)
+        self.assertIn('template_use_abbasi', content)
 
     def test_word_data_row_removes_photo_cell_box_border(self):
         from exports.word import WordExporter
@@ -1829,3 +1830,34 @@ class WordLayoutTuningTests(SimpleTestCase):
 
         self.assertTrue(mocked_add_image.called)
         self.assertTrue(mocked_remove_borders.called)
+
+    def test_word_baked_photo_border_stream_adds_black_edge(self):
+        from exports.word import WordExporter
+        from PIL import Image as PILImage, ImageOps as PILImageOps
+        import io
+
+        exporter = WordExporter()
+
+        src_stream = io.BytesIO()
+        PILImage.new('RGB', (20, 30), (255, 0, 0)).save(src_stream, format='JPEG', quality=90)
+        src_bytes = src_stream.getvalue()
+
+        bordered_stream = exporter._build_word_image_stream(
+            src_bytes,
+            PILImage,
+            PILImageOps,
+            add_photo_border=True,
+        )
+
+        with PILImage.open(bordered_stream) as bordered:
+            self.assertEqual(bordered.size, (22, 32))
+            self.assertEqual(bordered.getpixel((0, 0)), (0, 0, 0))
+
+    def test_word_hindi_font_detection_is_normalized(self):
+        from exports.word import WordExporter
+
+        exporter = WordExporter()
+        self.assertTrue(exporter._is_hindi_abbasi_font('hindi'))
+        self.assertTrue(exporter._is_hindi_abbasi_font(' Hindi '))
+        self.assertTrue(exporter._is_hindi_abbasi_font('abbasi'))
+        self.assertFalse(exporter._is_hindi_abbasi_font('arial'))
