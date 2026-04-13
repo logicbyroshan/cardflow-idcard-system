@@ -71,7 +71,7 @@ def _parse_json_body(request):
 
 def _get_dashboard_recent_activities(*, user, limit):
     """Return latest activity entries for the dashboard recent-updates feed."""
-    return ActivityService.get_recent(limit=limit, hours=None, user=user)
+    return ActivityService.get_recent(limit=limit, hours=None, user=user, merge_card_activity=False)
 
 
 def _normalize_activity_name(value):

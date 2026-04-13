@@ -539,7 +539,7 @@ class ActivityService:
     # ── query methods ───────────────────────────────────────
 
     @classmethod
-    def get_recent(cls, limit=8, hours=24, user=None, hide_admin_names=False):
+    def get_recent(cls, limit=8, hours=24, user=None, hide_admin_names=False, merge_card_activity=True):
         """
         Return the most recent activity entries for the dashboard.
         Only shows entries from the last `hours` hours (default 24).
@@ -554,6 +554,7 @@ class ActivityService:
                 - client_staff: Only their own activities
             hide_admin_names: If True, replace admin/admin_staff names with "System".
                 Automatically enabled for client and client_staff users.
+            merge_card_activity: If True, collapse similar card-status rows into grouped entries.
         
         Returns:
             List of dicts ready for template rendering.
@@ -573,10 +574,13 @@ class ActivityService:
             if user.role in ('client', 'client_staff'):
                 hide_admin_names = True
         
-        fetch_limit = min(
-            max(limit * cls.RECENT_ACTIVITY_FETCH_MULTIPLIER, limit),
-            cls.RECENT_ACTIVITY_FETCH_CAP,
-        )
+        if merge_card_activity:
+            fetch_limit = min(
+                max(limit * cls.RECENT_ACTIVITY_FETCH_MULTIPLIER, limit),
+                cls.RECENT_ACTIVITY_FETCH_CAP,
+            )
+        else:
+            fetch_limit = max(limit, 1)
 
         raw_results = []
         for entry in qs[:fetch_limit]:
@@ -605,7 +609,7 @@ class ActivityService:
                 'created_at_dt': entry.created_at,
             })
 
-        merged_results = cls._merge_recent_card_activities(raw_results)
+        merged_results = cls._merge_recent_card_activities(raw_results) if merge_card_activity else raw_results
 
         results = []
         for item in merged_results[:limit]:

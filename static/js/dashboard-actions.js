@@ -867,12 +867,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 const stats = data.stats || {};
-                setDashboardTabCount(dashboardTabCountBatchJobs, Number(stats.active) || 0);
-                if (activeCountEl) activeCountEl.textContent = (Number(stats.active) || 0).toLocaleString();
-                if (pendingCountEl) pendingCountEl.textContent = (Number(stats.pending) || 0).toLocaleString();
-                if (processingCountEl) processingCountEl.textContent = (Number(stats.processing) || 0).toLocaleString();
-                if (completedCountEl) completedCountEl.textContent = (Number(stats.completed_24h) || 0).toLocaleString();
-                if (failedCountEl) failedCountEl.textContent = (Number(stats.failed_24h) || 0).toLocaleString();
+                const activeCount = Number(stats.active) || 0;
+                const pendingCount = Number(stats.pending) || 0;
+                const processingCount = Number(stats.processing) || 0;
+                const completed24hCount = Number(stats.completed_24h) || 0;
+                const failed24hCount = Number(stats.failed_24h) || 0;
+                const sectionBatchCount = pendingCount + processingCount + completed24hCount + failed24hCount;
+                const tasksLen = Array.isArray(data.tasks) ? data.tasks.length : 0;
+
+                setDashboardTabCount(dashboardTabCountBatchJobs, sectionBatchCount || activeCount || tasksLen);
+                if (activeCountEl) activeCountEl.textContent = activeCount.toLocaleString();
+                if (pendingCountEl) pendingCountEl.textContent = pendingCount.toLocaleString();
+                if (processingCountEl) processingCountEl.textContent = processingCount.toLocaleString();
+                if (completedCountEl) completedCountEl.textContent = completed24hCount.toLocaleString();
+                if (failedCountEl) failedCountEl.textContent = failed24hCount.toLocaleString();
                 if (updatedAtEl) updatedAtEl.textContent = formatBatchJobUpdatedAt();
 
                 listEl.innerHTML = renderBatchJobProgressRows(data.tasks || []);

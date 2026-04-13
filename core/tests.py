@@ -1681,6 +1681,29 @@ class DashboardAndLogsHardeningTests(TestCase):
         self.assertIn(old_entry.pk, ids)
         self.assertIn(recent_entry.pk, ids)
 
+    def test_recent_activity_api_returns_full_last_100_without_merge_collapse(self):
+        from core.models import ActivityLog
+
+        admin = _create_super_admin('activity-last-100-admin@test.com', 'adminpass1')
+
+        for i in range(130):
+            ActivityLog.objects.create(
+                user=admin,
+                action='card_status',
+                description='1 card verified',
+                target_model='IDCard',
+                target_id=1000 + i,
+                target_name=f'Card #{1000 + i}',
+            )
+
+        self.client.force_login(admin)
+        response = self.client.get('/panel/api/recent-activity/', {'limit': 100})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(len(payload.get('activities', [])), 100)
+
     def test_activity_logs_handles_invalid_limit_offset(self):
         from core.models import ActivityLog
 
