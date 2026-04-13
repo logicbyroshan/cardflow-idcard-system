@@ -323,6 +323,36 @@
 }
 
 /* ===== RESPONSIVE (Layout) ===== */
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .wa-tabs {
+        padding: 0 14px;
+    }
+
+    .wa-tab {
+        padding: 9px 12px;
+    }
+
+    .wa-status-banner {
+        padding: 10px 14px;
+    }
+
+    .wa-control-grid {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .wa-dashboard-section-header {
+        padding: 10px 14px;
+    }
+
+    .wa-dashboard-section > .wa-stats-grid,
+    .wa-dashboard-section > .wa-quick-links-grid,
+    .wa-dashboard-section > .wa-quick-links,
+    .wa-dashboard-section > .wa-activity-list {
+        padding: 12px 14px;
+    }
+}
+
 @media (max-width: 640px) {
     .wa-tabs { padding: 0 12px; }
     .wa-tab { padding: 8px 12px; font-size: var(--ui-font-size-sm, 12px); }
@@ -332,7 +362,7 @@
     }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 999px) {
     .wa-control-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

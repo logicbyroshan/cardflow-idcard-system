@@ -532,7 +532,20 @@
 }
 
 /* ── Responsive guard: if viewport too narrow to show the canvas ── */
-@media (max-width: 1100px) {
+@media (min-width: 1000px) and (max-width: 1200px) {
+  .gen-left-panel {
+    width: 320px;
+  }
+  .gen-right-panel {
+    padding: 14px;
+  }
+  .gen-card-wrapper {
+    transform: scale(0.92);
+    transform-origin: top center;
+  }
+}
+
+@media (max-width: 999px) {
   .gen-left-panel {
     width: 300px;
   }
@@ -827,7 +840,18 @@
 }
 
 /* Scale card canvas down slightly so it fits comfortably at 90vw */
-@media (max-width: 1200px) {
+@media (min-width: 1000px) and (max-width: 1200px) {
+  .gc-editor-body .gen-card-wrapper,
+  .gc-editor-body .gen-card-wrapper canvas {
+    transform: scale(0.9);
+    transform-origin: top center;
+  }
+  .gc-editor-body .gen-canvas-container {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 999px) {
   .gc-editor-body .gen-card-wrapper,
   .gc-editor-body .gen-card-wrapper canvas {
     transform: scale(0.85);

@@ -660,7 +660,34 @@
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 1024px) {
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .settings-container {
+        grid-template-columns: 280px 1fr;
+    }
+
+    .profile-avatar-section {
+        padding: 24px 20px 22px;
+    }
+
+    .profile-info {
+        padding: 16px 16px 14px;
+    }
+
+    .settings-right {
+        padding: 18px;
+        gap: 16px;
+    }
+
+    .section-header {
+        padding: 12px 16px;
+    }
+
+    .section-body {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 999px) {
     .settings-container {
         grid-template-columns: 1fr;
         height: auto;

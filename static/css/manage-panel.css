@@ -2499,6 +2499,48 @@ textarea.panel-form-input {
 /* ================================
    RESPONSIVE
    ================================ */
+@media (min-width: 1000px) and (max-width: 1366px) {
+  .notif-actions-bar,
+  .templates-panel-theme .notif-actions-bar,
+  .monitor-panel-theme .notif-actions-bar,
+  .maintenance-panel-theme .notif-actions-bar,
+  .backup-panel-theme .backup-tab-actions {
+    padding-left: 14px;
+    padding-right: 14px;
+    gap: 8px;
+  }
+
+  .panel-section-strip,
+  .panel-section-strip-backup,
+  .panel-section-strip-templates,
+  .panel-section-strip-monitor,
+  .panel-section-strip-maintenance,
+  .panel-section-strip-log {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .notif-actions-left,
+  .notif-actions-right {
+    gap: 8px;
+  }
+
+  .notif-search-box {
+    min-width: 180px;
+  }
+
+  .notif-table th,
+  .notif-table td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .ops-summary-strip {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+
 @media (max-width: 900px) {
   .notif-stats { grid-template-columns: repeat(2, 1fr); }
   .notif-panel-theme .notif-actions-right {

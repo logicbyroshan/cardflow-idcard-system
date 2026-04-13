@@ -568,14 +568,29 @@
    ========================================== */
 
 /* 1200px+ UI lock: cap table page width so it doesn't over-stretch */
-@media (min-width: 1201px) {
+@media (min-width: 1000px) {
     .idcard-actions-page {
         max-width: 100vw;
         overflow-x: hidden;
     }
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .action-buttons-group .btn.action-btn,
+    .action-bar .btn.action-btn {
+        padding: 4px 8px;
+    }
+
+    .search-box {
+        min-width: 180px;
+    }
+
+    .idcard-table td.dynamic-field:not(.image-field) {
+        max-width: 180px;
+    }
+}
+
+@media (max-width: 999px) {
     .action-buttons-group .btn.action-btn .btn-text,
     .action-bar .btn.action-btn .btn-text {
         display: none;

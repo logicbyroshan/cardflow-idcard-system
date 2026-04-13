@@ -423,3 +423,28 @@
         margin-left: 0;
     }
 }
+
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .activity-item {
+        gap: 8px;
+        padding: 6px 0;
+    }
+
+    .activity-icon {
+        width: 24px;
+        height: 24px;
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .activity-text,
+    .activity-time,
+    .recent-activity-time-filter,
+    .recent-activity-filter-inline label {
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .recent-activity-time-filter {
+        min-width: 104px;
+        height: 26px;
+    }
+}

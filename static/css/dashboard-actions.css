@@ -280,3 +280,30 @@
     padding: 7px 12px;
     border-radius: 6px;
 }
+
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .quick-action-btn,
+    .bulk-action-btn {
+        gap: 6px;
+        padding: 6px 10px;
+        min-height: 32px;
+    }
+
+    .quick-action-btn i,
+    .bulk-action-btn i {
+        width: 28px;
+        height: 28px;
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .quick-action-btn span,
+    .bulk-action-btn span,
+    .bulk-select-group label {
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .dashboard-quick-action-drawer {
+        width: min(640px, 100vw);
+        max-width: min(640px, 100vw);
+    }
+}

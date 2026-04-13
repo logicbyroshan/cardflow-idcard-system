@@ -386,7 +386,55 @@
     height: 28px;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .dashboard-workspace {
+        grid-template-columns: minmax(0, 2.6fr) minmax(260px, 1fr);
+    }
+
+    .dashboard-card-header {
+        padding: 10px 12px;
+    }
+
+    .dashboard-card-body {
+        padding: 10px 12px;
+    }
+
+    .dashboard-card-body.tall-body {
+        min-height: 170px;
+    }
+
+    .recent-updates-search-inline {
+        flex-basis: 300px;
+        min-width: 160px;
+    }
+
+    .overview-search-inline {
+        flex-basis: 260px;
+        min-width: 150px;
+    }
+
+    .welcome-banner {
+        padding: 12px 14px;
+    }
+
+    .welcome-text h2 {
+        font-size: var(--ui-font-size-base, 14px);
+    }
+
+    .welcome-text p {
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .welcome-date .date {
+        font-size: var(--ui-font-size-md, 13px);
+    }
+
+    .welcome-date .time {
+        font-size: var(--ui-font-size-base, 14px);
+    }
+}
+
+@media (max-width: 999px) {
     .dashboard-workspace {
         grid-template-columns: 1fr;
     }
@@ -448,7 +496,7 @@
     }
 }
 
-@media (min-width: 1025px) and (max-height: 860px) {
+@media (min-width: 1000px) and (max-height: 860px) {
     .dashboard-side-sticky .dashboard-card-header {
         padding: 8px 10px;
     }

@@ -570,3 +570,30 @@
     display: block;
     margin-bottom: 8px;
 }
+
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .recent-table th,
+    .recent-table td {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .recent-table td,
+    .client-sub-row td,
+    .recent-updates-search-input,
+    .client-name-link {
+        font-size: var(--ui-font-size-sm, 12px);
+    }
+
+    .recent-updates-search-wrap {
+        padding: 8px 10px;
+    }
+
+    .recent-updates-search-input {
+        height: 30px;
+    }
+
+    .dashboard-client-status-badge {
+        min-width: 56px;
+    }
+}

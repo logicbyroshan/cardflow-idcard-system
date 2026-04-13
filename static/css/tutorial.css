@@ -496,7 +496,7 @@
     font-style: italic;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 999px) {
     .tutorial-hero {
         grid-template-columns: 1fr;
     }

@@ -351,7 +351,7 @@
 }
 
 /* Responsive adjustments */
-@media (min-width: 1024px) and (max-width: 1200px) {
+@media (min-width: 1000px) and (max-width: 1200px) {
   .idcard-table th:nth-child(1),
   .idcard-table td:nth-child(1) {
     min-width: 180px;
@@ -395,6 +395,17 @@
       padding: 4px 8px;
         font-size: var(--ui-font-size-md, 13px);
       min-width: 95px;
+    }
+}
+
+@media (min-width: 1000px) and (max-width: 1366px) {
+    .page-content {
+        padding: 18px;
+    }
+
+    .groups-container {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
     }
 }
 
