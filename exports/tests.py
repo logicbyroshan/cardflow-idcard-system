@@ -1752,3 +1752,20 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertTrue(mocked_empty_box.called)
         args = mocked_empty_box.call_args.args
         self.assertAlmostEqual(args[8], exporter.ROW_HEIGHT_CM, places=2)
+
+    def test_word_photo_border_decision_for_parent_photo_columns(self):
+        from exports.word import WordExporter
+
+        exporter = WordExporter()
+
+        self.assertTrue(exporter._should_add_photo_border(image_subtype='photo', field_name='PHOTO'))
+        self.assertTrue(exporter._should_add_photo_border(image_subtype='father_photo', field_name='FATHER PHOTO'))
+        self.assertTrue(exporter._should_add_photo_border(image_subtype='mother_photo', field_name='MOTHER PHOTO'))
+
+        # Subtype-missing fallback should still border photo columns.
+        self.assertTrue(exporter._should_add_photo_border(image_subtype=None, field_name='FATHER PHOTO'))
+        self.assertTrue(exporter._should_add_photo_border(image_subtype=None, field_name='MOTHER IMAGE'))
+
+        # Non-photo image types and normal text columns should not get this border.
+        self.assertFalse(exporter._should_add_photo_border(image_subtype='signature', field_name='SIGNATURE'))
+        self.assertFalse(exporter._should_add_photo_border(image_subtype=None, field_name='DESIGNATION'))

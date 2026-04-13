@@ -5,6 +5,7 @@ Image embedding, VML conversion, and empty placeholder rendering
 for Word document generation.
 """
 import logging
+import re
 from io import BytesIO
 
 from django.core.files.storage import default_storage
@@ -20,10 +21,27 @@ class WordImagesMixin:
     # Border is intentionally limited to portrait photos only.
     BORDERED_IMAGE_SUBTYPES = {'photo', 'mother_photo', 'father_photo'}
 
+    def _should_add_photo_border(self, image_subtype=None, field_name=None):
+        """Return True when the image should be rendered with a 0.5pt border."""
+        subtype = str(image_subtype or '').strip().lower()
+        if subtype in self.BORDERED_IMAGE_SUBTYPES:
+            return True
+
+        # Fallback: if subtype is missing, infer from field name safely.
+        name = str(field_name or '').strip().lower()
+        if not name:
+            return False
+
+        if re.search(r'\b(?:father|mother)\b.*\b(?:photo|image|pic|picture)\b', name):
+            return True
+        if re.search(r'\b(?:photo|image|pic|picture)\b', name) and not re.search(r'\b(?:signature|sign|barcode|qr)\b', name):
+            return True
+        return False
+
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
                            fixed_width_cm=None, fixed_height_cm=None,
-                           image_subtype=None):
+                           image_subtype=None, field_name=None):
         """Add an image to a cell using VML for Word 97-2003 compatibility.
         
         Uses VML (Vector Markup Language) instead of DrawingML to ensure
@@ -66,7 +84,10 @@ class WordImagesMixin:
                             self._convert_to_vml(
                                 run,
                                 inline_shape,
-                                add_border=(image_subtype in self.BORDERED_IMAGE_SUBTYPES),
+                                add_border=self._should_add_photo_border(
+                                    image_subtype=image_subtype,
+                                    field_name=field_name,
+                                ),
                             )
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             self._set_para_spacing(para, parse_xml, nsdecls)
@@ -153,7 +174,8 @@ class WordImagesMixin:
         # Remove the DrawingML element from the run
         run._r.remove(drawing_elem)
         
-        # Create VML <w:pict> element (universally compatible)
+        # Create VML <w:pict> element (universally compatible).
+        # Use <v:rect> so stroke is consistently rendered around the image.
         border_attrs = 'stroked="t" strokecolor="#000000" strokeweight="0.5pt"' if add_border else 'stroked="f"'
         vml_xml = (
             '<w:pict '
@@ -161,10 +183,10 @@ class WordImagesMixin:
             'xmlns:v="urn:schemas-microsoft-com:vml" '
             'xmlns:o="urn:schemas-microsoft-com:office:office" '
             'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            f'<v:shape type="#_x0000_t75" {border_attrs} '
+            f'<v:rect {border_attrs} '
             f'style="width:{width_pt:.1f}pt;height:{height_pt:.1f}pt">'
             f'<v:imagedata r:id="{rId}" o:title=""/>'
-            '</v:shape></w:pict>'
+            '</v:rect></w:pict>'
         )
         pict_elem = etree.fromstring(vml_xml)
         run._r.append(pict_elem)
