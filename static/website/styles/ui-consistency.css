@@ -563,3 +563,266 @@ h6 {
         font-size: 0.7rem;
     }
 }
+
+/* Deep mobile polish pass for landing + inner website pages. */
+@media (max-width: 991px) {
+    .section-title,
+    .section-header h2 {
+        font-size: clamp(1.65rem, 4.8vw, 2.2rem) !important;
+        line-height: 1.2;
+    }
+
+    .section-header {
+        margin-bottom: 2rem;
+    }
+
+    .section-header p,
+    .hero .hero-subtitle,
+    .page-hero .hero-subtitle,
+    .download-app-desc,
+    .contact-section .section-subtitle {
+        font-size: 0.95rem;
+        line-height: 1.55;
+    }
+
+    .hero-buttons,
+    .download-app-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+        width: 100%;
+        max-width: 380px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .hero-buttons .btn,
+    .download-app-actions .download-app-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero .hero-content h1,
+    .page-hero .hero-content h1 {
+        max-width: 16ch;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .portfolio-grid {
+        columns: 2 170px;
+        column-gap: 12px;
+    }
+
+    .portfolio-item,
+    .portfolio-skeleton-card {
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-width: 767px) {
+    .top-bar {
+        padding: 7px 0;
+    }
+
+    .top-bar-content {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+    }
+
+    .top-bar-item {
+        font-size: 0.76rem;
+    }
+
+    .hero {
+        padding-top: 20px;
+        padding-bottom: 18px;
+    }
+
+    .hero .hero-content h1 {
+        max-width: 15ch;
+    }
+
+    .hero .hero-subtitle {
+        margin-bottom: 1rem;
+    }
+
+    .btn,
+    .btn-gradient,
+    .btn-outline,
+    .download-app-btn,
+    .form-btn,
+    .btn-login,
+    .btn-cta {
+        min-height: 44px;
+    }
+
+    .trusted-schools h2,
+    .why-choose-us h2,
+    .our-works h2,
+    .testimonials h2,
+    .contact-section h2 {
+        margin-bottom: 1rem;
+    }
+
+    .logos-track {
+        gap: 18px;
+    }
+
+    .logo-item {
+        min-width: 96px;
+        height: 74px;
+    }
+
+    .works-track {
+        gap: 0.8rem;
+        padding: 0 10px;
+    }
+
+    .work-item {
+        width: 168px;
+        height: 126px;
+    }
+
+    .testimonials-grid {
+        gap: 0.85rem;
+    }
+
+    .testimonial-card {
+        border-left-width: 2px;
+        box-shadow: 0 6px 16px rgba(16, 15, 87, 0.08);
+    }
+
+    .contact-form-side,
+    .info-box {
+        box-shadow: 0 8px 22px rgba(16, 15, 87, 0.08);
+    }
+
+    .download-app-features {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+        justify-items: center;
+    }
+
+    .download-app-actions {
+        grid-template-columns: 1fr;
+        max-width: 320px;
+    }
+
+    .download-app-phone .phone-mockup {
+        width: 188px;
+        height: 368px;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr !important;
+        gap: 1.1rem;
+    }
+
+    .footer-section,
+    .footer-section:first-child,
+    .footer-section:nth-child(2),
+    .footer-section:nth-child(3),
+    .footer-section:last-child {
+        grid-column: auto !important;
+        text-align: left;
+    }
+
+    .social-links {
+        justify-content: flex-start;
+    }
+
+    .footer-map-container iframe {
+        height: 170px;
+    }
+
+    .footer-bottom p {
+        font-size: 0.8rem;
+        line-height: 1.5;
+    }
+}
+
+@media (max-width: 575px) {
+    .hero-buttons {
+        grid-template-columns: 1fr;
+        max-width: 300px;
+    }
+
+    .hero .hero-content h1,
+    .page-hero .hero-content h1 {
+        font-size: 1.45rem !important;
+        max-width: 14ch;
+    }
+
+    .section-title,
+    .section-header h2 {
+        font-size: 1.45rem !important;
+    }
+
+    .portfolio-grid,
+    .portfolio-load-skeleton {
+        columns: 2 140px;
+        column-gap: 8px;
+    }
+
+    .filter-tab,
+    .extra-category-tag {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .form-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 479px) {
+    .top-bar {
+        display: block;
+    }
+
+    .top-bar-content {
+        gap: 6px 10px;
+    }
+
+    .hero .hero-content h1,
+    .page-hero .hero-content h1 {
+        font-size: 1.3rem !important;
+        line-height: 1.25;
+    }
+
+    .hero .hero-subtitle,
+    .page-hero .hero-subtitle,
+    .download-app-desc,
+    .contact-section .section-subtitle {
+        font-size: 0.86rem;
+    }
+
+    .download-app-title {
+        font-size: 1.45rem;
+    }
+
+    .portfolio-grid,
+    .portfolio-load-skeleton {
+        columns: 2;
+        column-gap: 6px;
+    }
+
+    .portfolio-item,
+    .portfolio-skeleton-card {
+        margin-bottom: 6px;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .btn:active,
+    .btn-gradient:active,
+    .btn-outline:active,
+    .download-app-btn:active,
+    .filter-tab:active,
+    .extra-category-tag:active {
+        transform: scale(0.98);
+    }
+}
