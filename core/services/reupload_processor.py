@@ -184,6 +184,7 @@ def process_reupload_images(task):
     target_field = metadata.get('target_field', image_field_names[0])
     if target_field not in image_field_names:
         target_field = image_field_names[0]
+    target_image_fields = [target_field]
     
     # Get cards to process
     card_ids = metadata.get('card_ids', [])
@@ -225,7 +226,7 @@ def process_reupload_images(task):
 
         preflight = _run_reupload_preflight(
             cards_qs=cards_qs,
-            image_field_names=image_field_names,
+            image_field_names=target_image_fields,
             zip_image_index=zip_image_index,
         )
 
@@ -259,7 +260,7 @@ def process_reupload_images(task):
                 field_data = card.field_data or {}
                 card_updated = False
                 
-                for img_field in image_field_names:
+                for img_field in target_image_fields:
                     current_value = field_data.get(img_field) or ''
                     
                     # ── Determine what to match against ──────────────────

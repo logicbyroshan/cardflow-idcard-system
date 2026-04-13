@@ -2297,6 +2297,122 @@ class ReuploadDirectTaskFlowTests(TestCase):
             'adarshimg/22_121314.jpg',
         )
 
+    def test_sync_reupload_processes_only_requested_target_field(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        _group, table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+            {'name': 'SIGN', 'type': 'photo', 'order': 3},
+        ])
+        card = _create_card(
+            table,
+            field_data={
+                'NAME': 'TARGET USER',
+                'PHOTO': 'adarshimg/20240101121212.jpg',
+                'SIGN': 'adarshimg/20240202131313.jpg',
+            },
+            status='pending',
+        )
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'photo-bytes')
+            zf.writestr('SIGN/20240202131313.jpg', b'sign-bytes')
+        upload = SimpleUploadedFile('reupload.zip', buf.getvalue(), content_type='application/zip')
+
+        with patch('core.views.idcard_bulk_api.validate_image_bytes', return_value=(True, None)), \
+             patch('core.views.idcard_bulk_api._resolve_reupload_photo', return_value=None) as mock_resolve:
+            response = self.client.post(
+                f'/panel/api/table/{table.id}/cards/reupload-images/',
+                data={
+                    'photos_zip': upload,
+                    'target_field': 'PHOTO',
+                    'card_ids': json.dumps([card.id]),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.assertEqual(mock_resolve.call_count, 1)
+        self.assertEqual(mock_resolve.call_args.args[0], '20240101121212')
+
+    def test_async_reupload_processor_processes_only_requested_target_field(self):
+        from core.models import BackgroundTask
+        from core.services.reupload_processor import process_reupload_images
+
+        _group, table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+            {'name': 'SIGN', 'type': 'photo', 'order': 3},
+        ])
+        card = _create_card(
+            table,
+            field_data={
+                'NAME': 'ASYNC TARGET USER',
+                'PHOTO': 'adarshimg/20240101121212.jpg',
+                'SIGN': 'adarshimg/20240202131313.jpg',
+            },
+            status='pending',
+        )
+
+        temp_dir = os.path.join(self._tmp_media.name, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        zip_abs_path = os.path.join(temp_dir, 'async-reupload.zip')
+        with zipfile.ZipFile(zip_abs_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'photo-bytes')
+
+        task = BackgroundTask.objects.create(
+            user=self.admin,
+            task_type='reupload_images',
+            file_path=os.path.relpath(zip_abs_path, self._tmp_media.name),
+            metadata={
+                'table_id': table.id,
+                'target_field': 'PHOTO',
+                'card_ids': [card.id],
+            },
+        )
+
+        with patch('core.services.reupload_processor._run_reupload_preflight', return_value={}), \
+             patch('core.services.reupload_processor._resolve_reupload_zip_entry', return_value=None) as mock_resolve:
+            process_reupload_images(task)
+
+        task.refresh_from_db()
+        self.assertEqual(task.status, 'completed')
+        self.assertEqual(mock_resolve.call_count, 1)
+        self.assertEqual(mock_resolve.call_args.args[0], '20240101121212')
+
+    def test_bulk_upload_task_cleans_temp_files_when_zip_validation_fails(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        spreadsheet = SimpleUploadedFile('cards.csv', b'NAME\nTarget User\n', content_type='text/csv')
+
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'photo-bytes')
+        upload_zip = SimpleUploadedFile('photos.zip', zip_buf.getvalue(), content_type='application/zip')
+
+        with patch('core.views.task_api.validate_zip_safety', return_value=(False, 'Unsafe ZIP')):
+            response = self.client.post(
+                f'/panel/api/table/{self.table.id}/bulk-upload-task/',
+                data={
+                    'file': spreadsheet,
+                    'zip_field_names': json.dumps(['PHOTO']),
+                    'photos_zip_PHOTO': upload_zip,
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('unsafe zip', response.json().get('message', '').lower())
+
+        temp_dir = os.path.join(self._tmp_media.name, 'temp')
+        remaining_files = []
+        if os.path.exists(temp_dir):
+            for _root, _dirs, files in os.walk(temp_dir):
+                remaining_files.extend(files)
+
+        self.assertEqual(remaining_files, [])
+
 
 class ClientMessageApiTests(TestCase):
     def setUp(self):

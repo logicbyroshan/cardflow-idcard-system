@@ -526,6 +526,11 @@ def api_create_bulk_upload_task(request, table_id):
     if not _acquire_task_lock(request.user.id, 'bulk_upload'):
         return JsonResponse({'success': False, 'message': 'Request already in progress. Please wait.'}, status=429)
     
+    main_file_path = None
+    zip_paths = {}  # {field_name: relative_path}
+    unified_zip_paths = []  # [relative_path, ...]
+    keep_uploaded_files = False
+
     try:
         # Validate table exists
         table = get_object_or_404(IDCardTable, id=table_id)
@@ -552,10 +557,8 @@ def api_create_bulk_upload_task(request, table_id):
         # Save main file to disk
         main_file_path = save_uploaded_file_to_disk(uploaded_file)
         field_mapping = _parse_field_mapping_payload(request.POST.get('field_mapping', ''))
-        
+
         # Process ZIP files
-        zip_paths = {}  # {field_name: relative_path}
-        unified_zip_paths = []  # [relative_path, ...]
         
         # Field-specific ZIPs
         zip_field_names_str = request.POST.get('zip_field_names', '[]')
@@ -575,6 +578,7 @@ def api_create_bulk_upload_task(request, table_id):
                 # ZIP bomb/safety check
                 zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
                 if not zok:
+                    cleanup_temp_file(zip_path)
                     return JsonResponse({'success': False, 'message': zerr}, status=400)
                 zip_paths[field_name] = zip_path
         
@@ -591,6 +595,7 @@ def api_create_bulk_upload_task(request, table_id):
             # ZIP bomb/safety check
             zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
             if not zok:
+                cleanup_temp_file(zip_path)
                 return JsonResponse({'success': False, 'message': zerr}, status=400)
             zip_paths[first_field] = zip_path
         
@@ -612,6 +617,7 @@ def api_create_bulk_upload_task(request, table_id):
                 # ZIP bomb/safety check
                 zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
                 if not zok:
+                    cleanup_temp_file(zip_path)
                     return JsonResponse({'success': False, 'message': zerr}, status=400)
                 unified_zip_paths.append(zip_path)
         
@@ -630,18 +636,13 @@ def api_create_bulk_upload_task(request, table_id):
         )
         
         if not task:
-            # Cleanup uploaded files since task creation failed
-            from core.services.background_worker import cleanup_temp_file
-            cleanup_temp_file(main_file_path)
-            for zp in zip_paths.values():
-                cleanup_temp_file(zp)
-            for zp in unified_zip_paths:
-                cleanup_temp_file(zp)
-            
             return JsonResponse({
                 'success': False,
                 'message': error_msg
             }, status=429)
+
+        # Task owns these files after creation.
+        keep_uploaded_files = True
         
         # Submit to background worker
         background_worker.submit_task(task.id)
@@ -659,6 +660,12 @@ def api_create_bulk_upload_task(request, table_id):
             'message': 'Error creating upload task'
         }, status=400)
     finally:
+        if not keep_uploaded_files:
+            cleanup_temp_file(main_file_path)
+            for zp in zip_paths.values():
+                cleanup_temp_file(zp)
+            for zp in unified_zip_paths:
+                cleanup_temp_file(zp)
         _release_task_lock(request.user.id, 'bulk_upload')
 
 

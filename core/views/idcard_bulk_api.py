@@ -539,6 +539,7 @@ def api_idcard_reupload_images(request, table_id):
         target_field = request.POST.get('target_field', image_field_names[0])
         if target_field not in image_field_names:
             target_field = image_field_names[0]
+        image_fields_to_process = [target_field]
         
         # Extract photos from ZIP — use temp file if available (avoids OOM on large uploads)
         # Uses strict canonical stem keys for exact matching consistency.
@@ -664,7 +665,7 @@ def api_idcard_reupload_images(request, table_id):
                         field_data = card.field_data or {}
                         card_updated = False
 
-                        for img_field in image_field_names:
+                        for img_field in image_fields_to_process:
                             current_value = field_data.get(img_field, '')
 
                             # Determine what to match against
