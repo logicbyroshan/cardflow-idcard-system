@@ -9,7 +9,7 @@ from django.core.files.storage import default_storage
 from mediafiles.services import ImageService
 
 from .utils import is_valid_image_path, format_field_value
-from .column_spec import get_column_spec, is_nowrap_column
+from .column_spec import get_column_spec, is_nowrap_column, classify_column
 
 
 class WordTablesMixin:
@@ -561,6 +561,11 @@ class WordTablesMixin:
             cell.width = Cm(column_widths[col_idx])
             
             if field['is_image']:
+                image_category = classify_column(field.get('name', ''), field.get('type', ''))
+                if image_category == 'photo':
+                    # Keep the 0.5pt border on the image itself; remove cell box border.
+                    self._remove_cell_borders(cell, parse_xml, nsdecls)
+
                 # Phase 3: DOCX always uses ORIGINAL images for print quality
                 image_path = ImageService.get_image_path_for_export(
                     card=card,

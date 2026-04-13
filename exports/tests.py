@@ -1769,3 +1769,63 @@ class WordLayoutTuningTests(SimpleTestCase):
         # Non-photo image types and normal text columns should not get this border.
         self.assertFalse(exporter._should_add_photo_border(image_subtype='signature', field_name='SIGNATURE'))
         self.assertFalse(exporter._should_add_photo_border(image_subtype=None, field_name='DESIGNATION'))
+
+    def test_pdf_template_uses_image_border_not_photo_cell_box_border(self):
+        template_path = os.path.join(settings.BASE_DIR, 'templates', 'exports', 'pdf_report.html')
+        with open(template_path, 'r', encoding='utf-8') as handle:
+            content = handle.read()
+
+        self.assertIn('table.data-table td.img-cell.photo-cell {', content)
+        self.assertIn('border: none;', content)
+        self.assertIn('table.data-table td.img-cell.photo-cell img {', content)
+        self.assertIn('border: 0.5pt solid #111;', content)
+
+    def test_word_data_row_removes_photo_cell_box_border(self):
+        from exports.word import WordExporter
+        from docx import Document
+        from docx.shared import Cm, Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import nsdecls
+        from PIL import Image, ImageOps
+
+        exporter = WordExporter()
+        doc = Document()
+        table = doc.add_table(rows=1, cols=2)
+
+        card = type('Card', (), {'field_data': {'FATHER PHOTO': ''}})()
+        ordered_fields = [{
+            'name': 'FATHER PHOTO',
+            'is_image': True,
+            'type': 'father_photo',
+            'image_subtype': 'father_photo',
+            'image_width_cm': 1.9,
+            'image_height_cm': 2.5,
+        }]
+        column_widths = {0: 1.0, 1: 1.9}
+
+        with mock.patch.object(exporter, '_add_image_to_cell') as mocked_add_image:
+            with mock.patch.object(exporter, '_remove_cell_borders') as mocked_remove_borders:
+                exporter._add_data_row(
+                    table=table,
+                    card=card,
+                    ordered_fields=ordered_fields,
+                    column_widths=column_widths,
+                    sr_no=1,
+                    Cm=Cm,
+                    Pt=Pt,
+                    RGBColor=RGBColor,
+                    WD_ALIGN_PARAGRAPH=WD_ALIGN_PARAGRAPH,
+                    parse_xml=parse_xml,
+                    nsdecls=nsdecls,
+                    Image=Image,
+                    ImageOps=ImageOps,
+                    image_fixed_widths={'FATHER PHOTO': 1.9},
+                    image_fixed_heights={'FATHER PHOTO': 2.5},
+                    row_height_cm=2.5,
+                    font_pt=9,
+                    h_rule='atLeast',
+                )
+
+        self.assertTrue(mocked_add_image.called)
+        self.assertTrue(mocked_remove_borders.called)
