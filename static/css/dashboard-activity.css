@@ -23,7 +23,7 @@
 .recent-activity-filter-inline label {
     font-size: 11px;
     font-weight: 700;
-    color: #64748b;
+    color: var(--color-slate-500);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -31,10 +31,10 @@
 .recent-activity-time-filter {
     height: 28px;
     min-width: 112px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--color-gray-300);
     border-radius: 8px;
-    background: #ffffff;
-    color: #374151;
+    background: var(--color-white);
+    color: var(--color-gray-700);
     font-size: 12px;
     font-weight: 600;
     padding: 0 8px;
@@ -42,8 +42,8 @@
 
 .recent-activity-time-filter:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
 }
 
 .activity-list::-webkit-scrollbar {
@@ -108,28 +108,28 @@
 }
 
 .activity-icon.add {
-    background: #dcfce7;
-    color: #16a34a;
+    background: var(--color-green-100);
+    color: var(--color-success-dark);
 }
 
 .activity-icon.edit {
-    background: #dbeafe;
-    color: #2563eb;
+    background: var(--color-blue-100);
+    color: var(--color-blue-dark);
 }
 
 .activity-icon.delete {
-    background: #fee2e2;
-    color: #dc2626;
+    background: var(--color-red-100);
+    color: var(--color-danger-dark);
 }
 
 .activity-icon.verify {
-    background: #ede9fe;
-    color: #7c3aed;
+    background: var(--color-violet-100);
+    color: var(--color-purple-dark);
 }
 
 .activity-icon.approve {
-    background: #fef3c7;
-    color: #d97706;
+    background: var(--color-amber-100);
+    color: var(--color-warning-dark);
 }
 
 .activity-content {
@@ -167,30 +167,30 @@
    (The notif-* classes in tailwind-input.css use dark fallbacks)
    ==================== */
 .notif-btn {
-    color: #64748b;
+    color: var(--color-slate-500);
 }
 .notif-btn:hover {
-    background: #f1f5f9;
-    color: #334155;
+    background: var(--color-slate-100);
+    color: var(--color-slate-700);
 }
 .notif-badge {
-    border-color: #fff;
+    border-color: var(--color-white);
 }
 .notif-dropdown {
-    background: #fff;
-    border-color: #e2e8f0;
+    background: var(--color-white);
+    border-color: var(--color-slate-200);
     box-shadow: 0 12px 32px rgba(0,0,0,.12);
     border-radius: 12px;
 }
 .notif-dropdown-header {
-    border-bottom-color: #e2e8f0;
+    border-bottom-color: var(--color-slate-200);
 }
 .notif-dropdown-header h4 {
-    color: #1e293b;
+    color: var(--color-slate-800);
 }
 .notif-dropdown-header span,
 .notif-mark-all-btn {
-    color: #667eea;
+    color: var(--color-primary);
     cursor: pointer;
     background: none;
     border: none;
@@ -201,34 +201,34 @@
     text-decoration: underline;
 }
 .notif-item:hover {
-    background: #f8fafc;
+    background: var(--color-gray-50);
 }
 .notif-item .notif-title {
-    color: #1e293b;
+    color: var(--color-slate-800);
 }
 .notif-item .notif-text {
-    color: #64748b;
+    color: var(--color-slate-500);
 }
 .notif-item .notif-time {
-    color: #94a3b8;
+    color: var(--color-slate-400);
 }
 .notif-empty {
-    color: #94a3b8;
+    color: var(--color-slate-400);
 }
 .notif-empty i {
-    color: #cbd5e1;
+    color: var(--color-slate-300);
 }
 .notif-item.unread {
-    background: #f0f4ff;
+    background: var(--color-indigo-50);
 }
 .notif-item.unread:hover {
-    background: #e8edff;
+    background: var(--color-indigo-50);
 }
 .notif-unread-dot {
     width: 6px;
     height: 6px;
     border-radius: 3px;
-    background: #667eea;
+    background: var(--color-primary);
     flex-shrink: 0;
     margin-top: 6px;
 }

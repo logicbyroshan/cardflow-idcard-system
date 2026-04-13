@@ -31,7 +31,7 @@
             display: none;
             pointer-events: none;
             background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,255,0.98) 100%);
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--color-slate-200);
             border-top: none;
             padding: 14px;
             gap: 12px;
@@ -42,9 +42,9 @@
         }
 
         .wa-page-loading-card {
-            border: 1px solid #dbeafe;
+            border: 1px solid var(--color-blue-100);
             border-radius: 12px;
-            background: #fff;
+            background: var(--color-white);
             padding: 12px;
             display: flex;
             flex-direction: column;
@@ -61,7 +61,7 @@
             display: block;
             height: 11px;
             border-radius: 8px;
-            background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+            background: linear-gradient(90deg, var(--color-slate-200) 25%, #f8fafc 37%, var(--color-slate-200) 63%);
             background-size: 200% 100%;
             animation: waPageSkeletonShimmer 1.25s linear infinite;
         }

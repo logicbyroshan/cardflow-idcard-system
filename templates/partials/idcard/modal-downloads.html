@@ -333,7 +333,7 @@
   .download-xlsx-option-card {
     border: 1px solid #ddd6fe;
     border-radius: 10px;
-    background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+    background: linear-gradient(180deg, var(--color-white) 0%, #faf5ff 100%);
     padding: 10px 12px;
     margin: 10px 0 12px;
   }
@@ -350,7 +350,7 @@
   .download-xlsx-option-checkbox {
     width: 16px;
     height: 16px;
-    accent-color: #7c3aed;
+    accent-color: var(--color-purple-dark);
     cursor: pointer;
   }
   .download-xlsx-option-note {
@@ -368,7 +368,7 @@
   .download-img-summary-item {
     border: 1px solid #ddd6fe;
     border-radius: 10px;
-    background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+    background: linear-gradient(180deg, var(--color-white) 0%, #faf5ff 100%);
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
@@ -404,7 +404,7 @@
   .download-img-mode-pill {
     border: 1px solid #d8b4fe;
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 8px 10px;
     color: #4c1d95;
     font-weight: 600;
@@ -427,7 +427,7 @@
   }
   .download-img-wizard-chip {
     border: 1px solid #d8b4fe;
-    background: #ffffff;
+    background: var(--color-white);
     border-radius: 10px;
     padding: 7px 8px;
     display: flex;
@@ -437,13 +437,13 @@
     transition: all 0.15s ease;
   }
   .download-img-wizard-chip.is-active {
-    border-color: #7c3aed;
-    background: #ede9fe;
+    border-color: var(--color-purple-dark);
+    background: var(--color-violet-100);
     box-shadow: 0 2px 8px rgba(124, 58, 237, 0.16);
   }
   .download-img-wizard-chip.is-complete {
     border-color: #a78bfa;
-    background: #f5f3ff;
+    background: var(--color-purple-50);
   }
   .download-img-wizard-chip.is-disabled {
     opacity: 0.6;
@@ -474,7 +474,7 @@
   .download-img-wizard-step {
     border: 1px solid #ddd6fe;
     border-radius: 12px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 10px;
   }
   .download-img-wizard-nav {
@@ -485,8 +485,8 @@
     gap: 8px;
   }
   .download-img-wizard-nav-btn {
-    border: 1px solid #c4b5fd;
-    background: #ffffff;
+    border: 1px solid var(--color-violet-300);
+    background: var(--color-white);
     color: #5b21b6;
     border-radius: 8px;
     padding: 6px 12px;
@@ -496,13 +496,13 @@
     transition: all 0.15s ease;
   }
   .download-img-wizard-nav-btn:hover:not(:disabled) {
-    border-color: #8b5cf6;
-    background: #f5f3ff;
+    border-color: var(--purple);
+    background: var(--color-purple-50);
   }
   .download-img-wizard-nav-btn.is-primary {
-    border-color: #7c3aed;
-    background: #7c3aed;
-    color: #ffffff;
+    border-color: var(--color-purple-dark);
+    background: var(--color-purple-dark);
+    color: var(--color-white);
   }
   .download-img-wizard-nav-btn.is-primary:hover:not(:disabled) {
     background: #6d28d9;
@@ -520,7 +520,7 @@
   }
   .download-img-main-panel {
     border-color: #ddd6fe;
-    background: linear-gradient(180deg, #faf5ff 0%, #f5f3ff 100%);
+    background: linear-gradient(180deg, #faf5ff 0%, var(--color-purple-50) 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
   }
   .download-img-section-heading {
@@ -547,7 +547,7 @@
   .download-img-option-card {
     border: 1px solid #ddd6fe;
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 10px;
   }
   .download-img-option-card .center-modal-note {
@@ -567,7 +567,7 @@
     gap: 8px 14px;
     border: 1px solid #ddd6fe;
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 8px 10px;
   }
   .download-img-size-label {
@@ -592,7 +592,7 @@
   .download-img-generate-field-row {
     border: 1px solid #ddd6fe;
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 9px 10px;
   }
   .download-img-generate-field-row .center-modal-select {
@@ -600,16 +600,16 @@
   }
   .download-img-generate-input {
     width: 100%;
-    border: 1px solid #c4b5fd;
+    border: 1px solid var(--color-violet-300);
     border-radius: 8px;
-    background: #fff;
+    background: var(--color-white);
     color: #5b21b6;
     font-size: 13px;
     padding: 8px 10px;
     outline: none;
   }
   .download-img-generate-input:focus {
-    border-color: #8b5cf6;
+    border-color: var(--purple);
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
   }
   .download-img-compress-target {
@@ -617,16 +617,16 @@
   }
   .download-img-kb-input {
     width: 100%;
-    border: 1px solid #c4b5fd;
+    border: 1px solid var(--color-violet-300);
     border-radius: 8px;
-    background: #fff;
+    background: var(--color-white);
     color: #5b21b6;
     font-size: 13px;
     padding: 8px 10px;
     outline: none;
   }
   .download-img-kb-input:focus {
-    border-color: #8b5cf6;
+    border-color: var(--purple);
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
   }
   .download-img-option-col .center-modal-select {
@@ -639,13 +639,13 @@
     max-height: 180px;
     overflow-y: auto;
     padding: 8px;
-    border: 1px solid #8b5cf6;
+    border: 1px solid var(--purple);
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--color-white);
   }
   .download-img-field-chip {
-    border: 1px solid #c4b5fd;
-    background: #ffffff;
+    border: 1px solid var(--color-violet-300);
+    background: var(--color-white);
     color: #5b21b6;
     border-radius: 8px;
     padding: 5px 10px;
@@ -656,13 +656,13 @@
     user-select: none;
   }
   .download-img-field-chip:hover {
-    border-color: #8b5cf6;
-    background: #ede9fe;
+    border-color: var(--purple);
+    background: var(--color-violet-100);
   }
   .download-img-field-chip.is-active {
-    border-color: #7c3aed;
-    background: #8b5cf6;
-    color: #ffffff;
+    border-color: var(--color-purple-dark);
+    background: var(--purple);
+    color: var(--color-white);
     box-shadow: 0 2px 6px rgba(139, 92, 246, 0.25);
   }
   .download-img-field-selected {
@@ -676,9 +676,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #ede9fe;
+    background: var(--color-violet-100);
     color: #5b21b6;
-    border: 1px solid #c4b5fd;
+    border: 1px solid var(--color-violet-300);
     border-radius: 8px;
     padding: 4px 10px;
     font-size: 12px;
@@ -695,18 +695,18 @@
   }
   .download-img-selected-empty {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--color-gray-400);
   }
   .download-img-preview {
-    border: 1px solid #c4b5fd;
+    border: 1px solid var(--color-violet-300);
     border-radius: 10px;
-    background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #faf5ff 0%, var(--color-white) 100%);
     padding: 10px;
   }
   .download-img-preview-value {
     border: 1px solid #ddd6fe;
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 8px 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     font-size: 12px;
@@ -751,7 +751,7 @@
     min-height: 0;
   }
   #reprintPickerModal .reprint-picker-header {
-    background: linear-gradient(135deg, var(--color-warning-dark,#d97706), var(--color-warning,#f59e0b));
+    background: linear-gradient(135deg, var(--color-warning-dark,var(--color-warning-dark)), var(--color-warning,var(--color-warning)));
     padding: 14px 18px;
   }
   #reprintPickerModal .reprint-picker-body {
@@ -777,8 +777,8 @@
     width: 100% !important;
     max-width: none !important;
     min-width: 0;
-    background: var(--bg-white,#fff) !important;
-    border: 1px solid var(--color-gray-300,#d1d5db);
+    background: var(--bg-white,var(--color-white)) !important;
+    border: 1px solid var(--color-gray-300,var(--color-gray-300));
     border-radius: 8px;
   }
   #reprintPickerModal .search-box .search-icon {
@@ -792,12 +792,12 @@
     font-size: 14px;
     line-height: 1.2;
     width: 100% !important;
-    background: var(--bg-white,#fff) !important;
-    color: var(--text-primary,#111827) !important;
+    background: var(--bg-white,var(--color-white)) !important;
+    color: var(--text-primary,var(--color-gray-900)) !important;
     border: none !important;
   }
   #reprintPickerModal .search-box .search-input::placeholder {
-    color: var(--color-gray-400,#9ca3af) !important;
+    color: var(--color-gray-400,var(--color-gray-400)) !important;
   }
   #reprintPickerModal .search-box .search-clear-btn {
     right: 10px;
@@ -807,9 +807,9 @@
   #reprintPickerModal .reprint-picker-selection {
     margin-left: 0;
     font-size: 12px;
-    color: var(--text-secondary,#475569);
-    background: var(--bg-white,#fff);
-    border: 1px solid var(--color-gray-200,#e2e8f0);
+    color: var(--text-secondary,var(--color-slate-600));
+    background: var(--bg-white,var(--color-white));
+    border: 1px solid var(--color-gray-200,var(--color-slate-200));
     border-radius: 8px;
     padding: 0 12px;
     height: 28px;
@@ -821,8 +821,8 @@
   #reprintPickerModal #reprintPickerPreview {
     display: none;
     padding: 8px 10px;
-    background: var(--color-blue-bg,#eff6ff);
-    border: 1px solid var(--color-blue-light,#bfdbfe);
+    background: var(--color-blue-bg,var(--color-blue-50));
+    border: 1px solid var(--color-blue-light,var(--color-blue-200));
     border-radius: 8px;
     color: var(--color-blue-deep,#1e3a8a);
     font-size: 12px;
@@ -833,7 +833,7 @@
     border: 1px solid var(--color-gray-200,#dbe3ec);
     border-radius: 0;
     overflow: auto;
-    background: var(--bg-white,#fff);
+    background: var(--bg-white,var(--color-white));
   }
   #reprintPickerModal .reprint-picker-table {
     width: 100%;
@@ -845,8 +845,8 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    background: var(--color-gray-100,#f1f5f9);
-    color: var(--text-primary,#334155);
+    background: var(--color-gray-100,var(--color-slate-100));
+    color: var(--text-primary,var(--color-slate-700));
     font-size: 11px;
     font-weight: 700;
     padding: 8px 6px;
@@ -864,7 +864,7 @@
     padding: 7px 6px;
     border-bottom: 1px solid var(--color-gray-100,#eef2f7);
     font-size: 12px;
-    color: var(--text-primary,#1f2937);
+    color: var(--text-primary,var(--color-gray-800));
     vertical-align: middle;
     white-space: nowrap;
   }
@@ -917,7 +917,7 @@
     border: 1px solid var(--color-gray-200,#dbe3ec);
     display: block;
     margin: 0 auto;
-    background: var(--color-gray-100,#f3f4f6);
+    background: var(--color-gray-100,var(--color-gray-100));
   }
   #reprintPickerModal .reprint-picker-table .photo-cell,
   #reprintPickerModal .reprint-picker-table .image-cell {
@@ -928,7 +928,7 @@
     padding: 2px;
   }
   #reprintPickerModal .reprint-picker-footer {
-    border-top: 1px solid var(--color-gray-200,#e5e7eb);
+    border-top: 1px solid var(--color-gray-200,var(--color-gray-200));
     background: var(--color-gray-50,#f8fafc);
     padding: 12px 16px;
     gap: 10px;
@@ -938,8 +938,8 @@
   }
   #reprintPickerModal #reprintPickerRequestBtn {
     min-width: 150px;
-    background: linear-gradient(135deg, var(--color-warning-dark,#d97706), var(--color-warning,#f59e0b));
-    color: var(--bg-white,#fff);
+    background: linear-gradient(135deg, var(--color-warning-dark,var(--color-warning-dark)), var(--color-warning,var(--color-warning)));
+    color: var(--bg-white,var(--color-white));
     border: none;
     opacity: 1;
   }
@@ -949,13 +949,13 @@
   #reprintPickerModal #reprintPickerRequestBtn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
-    background: linear-gradient(135deg, var(--color-warning,#f59e0b), #fbbf24);
-    color: var(--bg-white,#fff);
+    background: linear-gradient(135deg, var(--color-warning,var(--color-warning)), #fbbf24);
+    color: var(--bg-white,var(--color-white));
   }
   #reprintPickerConfirmModal #reprintPickerEditBtn {
     min-width: 110px;
-    background: var(--primary,#2563eb);
-    color: var(--bg-white,#fff);
+    background: var(--primary,var(--color-blue-dark));
+    color: var(--bg-white,var(--color-white));
     border: none;
   }
   #reprintPickerConfirmModal #reprintPickerEditBtn:disabled {
@@ -964,8 +964,8 @@
   }
   #reprintPickerConfirmModal #reprintPickerConfirmBtn {
     min-width: 150px;
-    background: linear-gradient(135deg, var(--color-warning-dark,#d97706), var(--color-warning,#f59e0b));
-    color: var(--bg-white,#fff);
+    background: linear-gradient(135deg, var(--color-warning-dark,var(--color-warning-dark)), var(--color-warning,var(--color-warning)));
+    color: var(--bg-white,var(--color-white));
     border: none;
   }
   #reprintPickerConfirmModal #reprintPickerConfirmBtn:hover:not(:disabled) {
@@ -986,14 +986,14 @@
     }
   }
   #reprintPickerConfirmModal .reprint-confirm-header {
-    background: linear-gradient(135deg, var(--primary,#2563eb), var(--color-blue,#3b82f6));
+    background: linear-gradient(135deg, var(--primary,var(--color-blue-dark)), var(--color-blue,var(--color-blue)));
   }
   #reprintPickerConfirmModal .reprint-confirm-preview {
     display: none;
     margin-top: 10px;
     padding: 10px;
     background: var(--color-gray-50,#f8fafc);
-    border: 1px solid var(--color-blue-bg,#dbeafe);
+    border: 1px solid var(--color-blue-bg,var(--color-blue-100));
     border-radius: 10px;
   }
   #reprintPickerConfirmModal .reprint-preview-card {
@@ -1007,9 +1007,9 @@
     width: 84px;
     height: 106px;
     border-radius: 6px;
-    border: 1px solid var(--color-blue-light,#bfdbfe);
+    border: 1px solid var(--color-blue-light,var(--color-blue-200));
     overflow: hidden;
-    background: var(--color-blue-bg,#eff6ff);
+    background: var(--color-blue-bg,var(--color-blue-50));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1031,9 +1031,9 @@
     width: 84px;
     height: 106px;
     border-radius: 6px;
-    border: 1px solid var(--color-blue-light,#bfdbfe);
+    border: 1px solid var(--color-blue-light,var(--color-blue-200));
     overflow: hidden;
-    background: var(--color-blue-bg,#eff6ff);
+    background: var(--color-blue-bg,var(--color-blue-50));
   }
   #reprintPickerConfirmModal .reprint-preview-extra-image img {
     width: 100%;
@@ -1063,14 +1063,14 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: var(--bg-white,#fff);
+    color: var(--bg-white,var(--color-white));
     font-size: 10px;
   }
   #reprintPickerConfirmModal .reprint-preview-image-btn.upload {
-    background: var(--primary,#2563eb);
+    background: var(--primary,var(--color-blue-dark));
   }
   #reprintPickerConfirmModal .reprint-preview-image-btn.remove {
-    background: var(--color-danger,#dc2626);
+    background: var(--color-danger,var(--color-danger-dark));
   }
   #reprintPickerConfirmModal .reprint-preview-photo img {
     width: 100%;
@@ -1079,7 +1079,7 @@
     display: block;
   }
   #reprintPickerConfirmModal .reprint-preview-photo-placeholder {
-    color: var(--color-blue,#3b82f6);
+    color: var(--color-blue,var(--color-blue));
     font-size: 26px;
   }
   #reprintPickerConfirmModal .reprint-preview-meta {
@@ -1094,21 +1094,21 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   #reprintPickerConfirmModal .reprint-preview-meta-item {
-    background: var(--bg-white,#fff);
-    border: 1px solid var(--color-gray-200,#e2e8f0);
+    background: var(--bg-white,var(--color-white));
+    border: 1px solid var(--color-gray-200,var(--color-slate-200));
     border-radius: 6px;
     padding: 5px 7px;
     min-width: 0;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
   #reprintPickerConfirmModal .reprint-preview-meta-item.is-dirty {
-    border-color: var(--color-blue,#60a5fa);
-    background: var(--color-blue-bg,#eff6ff);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.16);
+    border-color: var(--color-blue,var(--blue-light));
+    background: var(--color-blue-bg,var(--color-blue-50));
+    box-shadow: 0 0 0 1px rgba(var(--blue-rgb), 0.16);
   }
   #reprintPickerConfirmModal .reprint-preview-meta-label {
     display: block;
-    color: var(--color-gray-500,#64748b);
+    color: var(--color-gray-500,var(--color-slate-500));
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1116,7 +1116,7 @@
   }
   #reprintPickerConfirmModal .reprint-preview-meta-value {
     display: block;
-    color: var(--text-primary,#0f172a);
+    color: var(--text-primary,var(--color-slate-900));
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
@@ -1124,7 +1124,7 @@
     text-overflow: ellipsis;
   }
   #reprintPickerConfirmModal .reprint-preview-meta-value.is-empty {
-    color: var(--color-gray-400,#9ca3af);
+    color: var(--color-gray-400,var(--color-gray-400));
     font-style: italic;
     font-weight: 500;
   }
@@ -1136,9 +1136,9 @@
     margin-top: 10px;
     padding: 7px 10px;
     border-radius: 8px;
-    background: var(--color-blue-bg,#eff6ff);
-    border: 1px solid var(--color-blue-light,#bfdbfe);
-    color: var(--primary-dark,#1d4ed8);
+    background: var(--color-blue-bg,var(--color-blue-50));
+    border: 1px solid var(--color-blue-light,var(--color-blue-200));
+    color: var(--primary-dark,var(--color-blue-700));
     font-size: 12px;
     font-weight: 600;
   }
@@ -1155,8 +1155,8 @@
     height: 18px;
     padding: 0 6px;
     border-radius: 8px;
-    background: var(--primary,#2563eb);
-    color: var(--bg-white,#fff);
+    background: var(--primary,var(--color-blue-dark));
+    color: var(--bg-white,var(--color-white));
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
@@ -1167,28 +1167,28 @@
   #reprintPickerConfirmModal .reprint-preview-input {
     width: 100%;
     height: 28px;
-    border: 1px solid var(--color-gray-300,#cbd5e1);
+    border: 1px solid var(--color-gray-300,var(--color-slate-300));
     border-radius: 6px;
     padding: 4px 8px;
-    background: var(--bg-white,#fff);
-    color: var(--text-primary,#0f172a);
+    background: var(--bg-white,var(--color-white));
+    color: var(--text-primary,var(--color-slate-900));
     font-size: 12px;
     font-weight: 600;
   }
   #reprintPickerConfirmModal .reprint-preview-input::placeholder {
-    color: var(--color-gray-400,#9ca3af);
+    color: var(--color-gray-400,var(--color-gray-400));
     font-style: italic;
     font-weight: 500;
   }
   #reprintPickerConfirmModal .reprint-preview-input:focus {
     outline: none;
-    border-color: var(--color-blue,#3b82f6);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+    border-color: var(--color-blue,var(--color-blue));
+    box-shadow: 0 0 0 2px rgba(var(--blue-rgb), 0.12);
   }
   #reprintPickerConfirmModal .reprint-preview-input[readonly] {
     border-style: dashed;
     background: var(--color-gray-50,#f8fafc);
-    color: var(--color-gray-500,#64748b);
+    color: var(--color-gray-500,var(--color-slate-500));
   }
   @media (max-width: 760px) {
     #reprintPickerConfirmModal .reprint-preview-card {
@@ -1240,7 +1240,7 @@
         <table class="reprint-picker-table">
           <thead id="reprintPickerTableHead"></thead>
           <tbody id="reprintPickerTableBody">
-            <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--color-gray-500,#6b7280);">Loading...</td></tr>
+            <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--color-gray-500,var(--color-gray-500));">Loading...</td></tr>
           </tbody>
         </table>
       </div>

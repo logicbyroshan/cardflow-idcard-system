@@ -5,18 +5,18 @@
 
 /* CSS Custom Properties */
 :root {
-    --auth-primary: #667eea;
-    --auth-primary-dark: #5a67d8;
-    --auth-primary-light: #818cf8;
+    --auth-primary: var(--color-primary);
+    --auth-primary-dark: var(--color-primary-dark);
+    --auth-primary-light: var(--primary-light);
     --auth-bg: linear-gradient(135deg, #1a1c2e 0%, #2d1f3d 50%, #1a1c2e 100%);
     --auth-card-bg: rgba(30, 32, 48, 0.95);
-    --auth-text-primary: #f8fafc;
-    --auth-text-secondary: #a0aec0;
-    --auth-text-muted: #718096;
-    --auth-border: rgba(102, 126, 234, 0.2);
-    --auth-success: #48bb78;
+    --auth-text-primary: var(--color-gray-50);
+    --auth-text-secondary: var(--color-slate-400);
+    --auth-text-muted: var(--color-slate-500);
+    --auth-border: rgba(var(--primary-rgb), 0.2);
+    --auth-success: var(--color-green-500);
     --auth-error: #fc8181;
-    --auth-warning: #f6ad55;
+    --auth-warning: var(--color-orange-400);
 }
 
 /* Body background gradient */
@@ -32,7 +32,7 @@ body.auth-page {
     background: transparent;
 }
 .login-card::-webkit-scrollbar-thumb {
-    background: rgba(102, 126, 234, 0.3);
+    background: rgba(var(--primary-rgb), 0.3);
     border-radius: 3px;
 }
 
@@ -45,7 +45,7 @@ body.auth-page {
     transition: all 0.3s ease;
 }
 .step-dot.active {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, var(--color-primary), var(--secondary));
     width: 24px;
     border-radius: 4px;
 }
@@ -69,13 +69,13 @@ body.auth-page {
 
 /* Role option – selected compound state (JS-toggled) */
 .role-option.selected {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.18);
+    border-color: var(--color-primary);
+    background: rgba(var(--primary-rgb), 0.18);
     box-shadow: none;
 }
 .role-option.selected .role-check {
-    border-color: #667eea;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary), var(--secondary));
     color: white;
 }
 
@@ -92,7 +92,7 @@ body.auth-page {
     text-align: center;
     font-size: 20px;
     font-weight: 600;
-    background: rgba(102, 126, 234, 0.05);
+    background: rgba(var(--primary-rgb), 0.05);
     border: 1px solid var(--auth-border);
     border-radius: 0;
     color: var(--auth-text-primary);
@@ -100,9 +100,9 @@ body.auth-page {
 }
 .otp-inputs input:focus {
     outline: none;
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.1);
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    border-color: var(--color-primary);
+    background: rgba(var(--primary-rgb), 0.1);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
 }
 
 /* Message states – JS-toggled */
@@ -116,7 +116,7 @@ body.auth-page {
 .message.error {
     background: rgba(252, 129, 129, 0.12);
     border: 1px solid rgba(252, 129, 129, 0.35);
-    color: #fca5a5;
+    color: var(--color-red-300);
     display: block;
 }
 .message.success {
@@ -147,7 +147,7 @@ body.auth-page {
     margin-top: 14px;
 }
 .resend-timer button {
-    color: #818cf8;
+    color: var(--primary-light);
     background: none;
     border: none;
     cursor: pointer;
@@ -168,12 +168,12 @@ body.auth-page {
     margin-bottom: 14px;
 }
 .dev-otp span {
-    color: #f6ad55;
+    color: var(--color-orange-400);
     font-size: 12px;
 }
 .dev-otp strong {
     display: block;
-    color: #f6ad55;
+    color: var(--color-orange-400);
     font-size: 22px;
     letter-spacing: 4px;
     margin-top: 4px;
@@ -184,15 +184,15 @@ body.auth-page {
     animation: pulse-ring 2s ease-in-out infinite;
 }
 @keyframes pulse-ring {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
-    50%       { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.3); }
+    50%       { box-shadow: 0 0 0 12px rgba(var(--yellow-rgb), 0); }
 }
 .status-dot {
     display: inline-block;
     width: 8px;
     height: 8px;
     border-radius: 8px;
-    background: #f59e0b;
+    background: var(--color-warning);
     margin-right: 6px;
     animation: blink-dot 1.5s ease-in-out infinite;
 }
@@ -201,8 +201,8 @@ body.auth-page {
     50%       { opacity: 0.3; }
 }
 .maintenance-status-bar {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--color-gray-50);
+    border: 1px solid var(--color-slate-200);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     margin-bottom: 1.5rem;
@@ -210,7 +210,7 @@ body.auth-page {
 }
 .maintenance-status-bar span {
     font-size: 0.8125rem;
-    color: #475569;
+    color: var(--color-slate-600);
     font-weight: 500;
 }
 

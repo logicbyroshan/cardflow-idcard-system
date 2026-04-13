@@ -84,14 +84,14 @@
   width: 14px;
   height: 14px;
   cursor: pointer;
-  accent-color: #ef4444;
+  accent-color: var(--color-danger);
   border-radius: 3px;
 }
 
 .gs-required-label {
   font-size: 13px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-gray-500);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -99,11 +99,11 @@
 
 .gs-required-label i {
   font-size: 8px;
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .gs-required-toggle input:checked ~ .gs-required-label {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .form-label .gs-label-required {
@@ -119,7 +119,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  color: var(--color-white);
   font-size: 11px;
   font-weight: 700;
   padding: 1px 8px;
@@ -130,7 +130,7 @@
 /* Hint text below section title */
 .gs-field-hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin: 0 0 10px 0;
   display: flex;
   align-items: center;
@@ -139,7 +139,7 @@
 
 .gs-field-hint i {
   font-size: 11px;
-  color: #c4b5fd;
+  color: var(--color-violet-300);
 }
 
 /* No-fields empty state polish */
@@ -149,16 +149,16 @@
   justify-content: center;
   gap: 6px;
   padding: 20px 16px;
-  background: #f9fafb;
-  border: 1px dashed #e5e7eb;
+  background: var(--color-gray-50);
+  border: 1px dashed var(--color-gray-200);
   border-radius: 8px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   font-size: 13px;
   font-weight: 500;
 }
 
 .no-fields-message i {
-  color: #93c5fd;
+  color: var(--color-blue-300);
   font-size: 14px;
 }
 
@@ -178,7 +178,7 @@
 
 .field-list-item {
   display: table-row;
-  background: #ffffff;
+  background: var(--color-white);
   font-size: 13px;
   color: var(--text-primary);
   user-select: none;
@@ -199,25 +199,25 @@
   display: table-cell;
   vertical-align: middle;
   padding: 8px 6px;
-  background: #ffffff;
-  border-top: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
+  background: var(--color-white);
+  border-top: 1px solid var(--color-gray-100);
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 .field-list-item > *:first-child {
   border-radius: 6px 0 0 6px;
-  border-left: 3px solid #818cf8;
+  border-left: 3px solid var(--primary-light);
   padding-left: 8px;
 }
 
 .field-list-item > *:last-child {
   border-radius: 0 6px 6px 0;
-  border-right: 1px solid #f3f4f6;
+  border-right: 1px solid var(--color-gray-100);
   padding-right: 8px;
 }
 
 .field-drag {
-  color: #c4b5fd;
+  color: var(--color-violet-300);
   cursor: grab;
   width: 24px;
   text-align: center;
@@ -229,7 +229,7 @@
   min-width: 140px;
   font-weight: 600;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 
 .field-name-input-wrap {
@@ -242,19 +242,19 @@
   min-width: 140px;
   box-sizing: border-box;
   padding: 5px 20px 5px 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-gray-200);
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
-  background-color: #fff;
+  color: var(--color-gray-700);
+  background-color: var(--color-white);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   line-height: 1.4;
 }
 
 .field-name-input:focus {
-  border-color: #818cf8;
+  border-color: var(--primary-light);
   box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15);
 }
 
@@ -277,7 +277,7 @@
 .remove-field-btn {
   background: none;
   border: none;
-  color: #d1d5db;
+  color: var(--color-gray-300);
   cursor: pointer;
   font-size: 16px;
   padding: 6px 8px;
@@ -291,8 +291,8 @@
 }
 
 .remove-field-btn:hover {
-  color: #ef4444;
-  background: #fef2f2;
+  color: var(--color-danger);
+  background: var(--color-red-50);
 }
 
 /* ==================== 
@@ -321,7 +321,7 @@
 }
 
 .mandatory-indicator {
-  color: #ef4444;
+  color: var(--color-danger);
   font-weight: 700;
   font-size: 13px;
   line-height: 1;
@@ -371,7 +371,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #9ca3af;
+  background-color: var(--color-gray-400);
   transition: 0.3s;
   border-radius: 20px;
 }
@@ -383,7 +383,7 @@
   width: 12px;
   left: 2px;
   bottom: 2px;
-  background-color: #fff;
+  background-color: var(--color-white);
   transition: 0.3s;
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -403,15 +403,15 @@
 
 .drawer-modal.view-mode .field-type-select {
   pointer-events: none;
-  background: #f9fafb;
-  color: #6b7280;
+  background: var(--color-gray-50);
+  color: var(--color-gray-500);
 }
 
 .drawer-modal.view-mode .field-name-input {
   pointer-events: none;
-  background: #f9fafb;
-  color: #6b7280;
-  border-color: #f3f4f6;
+  background: var(--color-gray-50);
+  color: var(--color-gray-500);
+  border-color: var(--color-gray-100);
 }
 
 .drawer-modal.view-mode .remove-field-btn {
@@ -438,11 +438,11 @@
 }
 
 #tablesBody tr:hover:not(.no-data-row) {
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(var(--blue-rgb), 0.05);
 }
 
 #tablesBody tr.selected {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(var(--blue-rgb), 0.1);
 }
 
 #tablesBody tr.no-data-row {
@@ -456,9 +456,9 @@
 /* Rows soft-deleted by the client — shown to admin only, muted style */
 #tablesBody tr.row-deleted-by-client {
   opacity: 0.6;
-  background: #fafafa;
+  background: var(--color-slate-50);
 }
 #tablesBody tr.row-deleted-by-client:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
   opacity: 0.75;
 }

@@ -5,7 +5,7 @@
   <div class="sidebar-header">
     <div class="sidebar-logo">
       {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
-      <div class="profile square" style="overflow:hidden;background:#fff;">
+      <div class="profile square" style="overflow:hidden;background:var(--color-white);">
         <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" width="26" height="26" style="width:100%;height:100%;object-fit:contain;">
       </div>
       <h3>{{ current_client.name|default:"Adarsh ID Cards" }}</h3>

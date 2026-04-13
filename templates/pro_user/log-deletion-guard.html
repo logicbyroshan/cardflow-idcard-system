@@ -29,7 +29,7 @@
     border: 1px solid #dbe5f1;
     border-left: 0;
     border-right: 0;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    background: linear-gradient(180deg, var(--color-white) 0%, #f8fbff 100%);
   }
 
   .guard-page .pro-feature-tab {
@@ -38,9 +38,9 @@
   }
 
   .guard-page .pro-feature-tab.active {
-    border-color: #bfdbfe;
-    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-    color: #1d4ed8;
+    border-color: var(--color-blue-200);
+    background: linear-gradient(180deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
+    color: var(--color-blue-700);
   }
 
   .guard-page .action-bar {
@@ -48,7 +48,7 @@
     top: auto !important;
     z-index: 22;
     margin: 0;
-    background: #ffffff;
+    background: var(--color-white);
     border: 1px solid #dbe5f1;
     border-left: 0;
     border-right: 0;
@@ -80,8 +80,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    color: var(--color-white);
+    background: linear-gradient(135deg, #0ea5e9 0%, var(--color-blue-dark) 100%);
     box-shadow: 0 8px 20px rgba(37, 99, 235, 0.24);
     flex-shrink: 0;
   }
@@ -89,23 +89,23 @@
   .guard-head-main {
     font-size: 14px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--color-slate-900);
     line-height: 1.2;
   }
 
   .guard-head-sub {
     margin-top: 1px;
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-slate-500);
     line-height: 1.35;
   }
 
   .guard-head-right {
     font-size: 12px;
-    color: #475569;
+    color: var(--color-slate-600);
     font-weight: 600;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--color-slate-200);
     border-radius: 999px;
     padding: 6px 10px;
     white-space: nowrap;
@@ -126,7 +126,7 @@
   }
 
   .guard-card {
-    background: #fff;
+    background: var(--color-white);
     border: 1px solid #dbe5f1;
     border-radius: 14px;
     padding: 16px;
@@ -134,8 +134,8 @@
   }
 
   .guard-card-contract {
-    border-color: #bfdbfe;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-color: var(--color-blue-200);
+    background: linear-gradient(180deg, var(--color-white) 0%, #f8fbff 100%);
   }
 
   .guard-title {
@@ -144,7 +144,7 @@
     gap: 8px;
     font-size: 15px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--color-slate-900);
     margin-bottom: 8px;
   }
 
@@ -155,14 +155,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #1d4ed8;
-    background: #dbeafe;
+    color: var(--color-blue-700);
+    background: var(--color-blue-100);
     font-size: 11px;
   }
 
   .guard-note {
     font-size: 12.5px;
-    color: #334155;
+    color: var(--color-slate-700);
     line-height: 1.6;
   }
 
@@ -180,8 +180,8 @@
   }
 
   .guard-state-pill.idle {
-    border-color: #e2e8f0;
-    color: #475569;
+    border-color: var(--color-slate-200);
+    color: var(--color-slate-600);
     background: #f8fafc;
   }
 
@@ -195,7 +195,7 @@
     display: block;
     font-size: 10.5px;
     font-weight: 800;
-    color: #334155;
+    color: var(--color-slate-700);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 7px;
@@ -204,12 +204,12 @@
   .guard-field input {
     width: 100%;
     height: 42px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--color-slate-300);
     border-radius: 10px;
     padding: 0 12px;
     font-size: 15px;
     letter-spacing: 0.13em;
-    color: #0f172a;
+    color: var(--color-slate-900);
     background: #f8fafc;
     font-family: Consolas, "Courier New", monospace;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -217,8 +217,8 @@
 
   .guard-field input:focus {
     outline: none;
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+    border-color: var(--blue-light);
+    box-shadow: 0 0 0 3px rgba(var(--blue-rgb), 0.16);
   }
 
   .guard-actions {
@@ -236,11 +236,11 @@
   }
 
   .guard-actions .btn.btn-danger {
-    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.22);
+    box-shadow: 0 8px 18px rgba(var(--red-rgb), 0.22);
   }
 
   .guard-actions .btn.btn-success {
-    box-shadow: 0 8px 18px rgba(34, 197, 94, 0.24);
+    box-shadow: 0 8px 18px rgba(var(--green-rgb), 0.24);
   }
 
   #guardRoleHint {
@@ -251,7 +251,7 @@
     min-height: 42px;
     display: flex;
     align-items: center;
-    color: #475569;
+    color: var(--color-slate-600);
     line-height: 1.45;
   }
 
@@ -260,7 +260,7 @@
     padding-top: 10px;
     border-top: 1px dashed #dbe5f1;
     font-size: 12px;
-    color: #475569;
+    color: var(--color-slate-600);
     line-height: 1.45;
   }
 

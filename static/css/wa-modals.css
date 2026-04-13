@@ -17,7 +17,7 @@
 }
 .wa-modal-overlay.show { display: flex; }
 .wa-modal {
-    background: #fff;
+    background: var(--color-white);
     border-radius: 10px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
     width: 650px;
@@ -39,7 +39,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 14px 20px 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
     border-radius: 10px 10px 0 0;
     border-bottom: none;
     /* Header never scrolls */
@@ -48,7 +48,7 @@
 .wa-modal-header h3 {
     font-size: 15px;
     font-weight: 700;
-    color: #fff;
+    color: var(--color-white);
     margin: 0;
 }
 .wa-modal-close {
@@ -68,7 +68,7 @@
     flex-shrink: 0;
 }
 .wa-modal-close:hover {
-    color: #fff;
+    color: var(--color-white);
     background: rgba(255,255,255,0.28);
     border-color: rgba(255,255,255,0.5);
     transform: rotate(90deg);
@@ -95,7 +95,7 @@
     gap: 8px;
     padding: 14px 22px 18px;
     border-top: 1px solid var(--wa-gray-100);
-    background: #fafafa;
+    background: var(--color-slate-50);
     border-radius: 0 0 10px 10px;
     /* Always visible — sticks to bottom of the scrolling form or modal */
     flex-shrink: 0;
@@ -115,7 +115,7 @@
     align-items: flex-start;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid var(--wa-gray-100, #f1f5f9);
+    border-bottom: 1px solid var(--wa-gray-100, var(--color-slate-100));
 }
 .wa-detail-row:last-child {
     border-bottom: none;
@@ -128,7 +128,7 @@
 .wa-detail-row label {
     font-size: 11.5px;
     font-weight: 700;
-    color: var(--wa-gray-500, #64748b);
+    color: var(--wa-gray-500, var(--color-slate-500));
     text-transform: uppercase;
     letter-spacing: 0.04em;
     display: flex;
@@ -140,18 +140,18 @@
 .wa-detail-row label i {
     width: 14px;
     text-align: center;
-    color: #667eea;
+    color: var(--color-primary);
     font-size: 12px;
 }
 .wa-detail-row > span,
 .wa-detail-row > div:not(.wa-message-content) {
     font-size: 13.5px;
-    color: var(--wa-gray-800, #1e293b);
+    color: var(--wa-gray-800, var(--color-slate-800));
     line-height: 1.5;
     word-break: break-word;
 }
 .wa-detail-row a {
-    color: #667eea;
+    color: var(--color-primary);
     text-decoration: none;
 }
 .wa-detail-row a:hover {
@@ -163,7 +163,7 @@
     border-radius: 8px;
     padding: 14px 16px;
     font-size: 13.5px;
-    color: var(--wa-gray-800, #1e293b);
+    color: var(--wa-gray-800, var(--color-slate-800));
     line-height: 1.65;
     white-space: pre-wrap;
     word-break: break-word;
@@ -190,7 +190,7 @@
 }
 .wa-confirm-overlay.show { display: flex; }
 .wa-confirm-box {
-    background: #fff;
+    background: var(--color-white);
     border-radius: 10px;
     box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
     width: 420px;
@@ -220,8 +220,8 @@
     gap: 8px;
     justify-content: center;
     padding: 14px 24px 18px;
-    border-top: 1px solid #e5e7eb;
-    background: #fafafa;
+    border-top: 1px solid var(--color-gray-200);
+    background: var(--color-slate-50);
     border-radius: 0 0 10px 10px;
     flex-shrink: 0;
 }
@@ -258,8 +258,8 @@
 }
 .wa-confirm-warning {
     width: 100%;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: var(--color-red-50);
+    border: 1px solid var(--color-red-200);
     border-radius: 8px;
     padding: 10px 14px;
     text-align: left;
@@ -267,7 +267,7 @@
 }
 .wa-confirm-warning-title {
     font-size: 12px;
-    color: #991b1b;
+    color: var(--color-red-800);
     font-weight: 600;
     margin: 0 0 6px;
     display: flex;
@@ -278,7 +278,7 @@
     margin: 0;
     padding: 0 0 0 16px;
     font-size: 12px;
-    color: #7f1d1d;
+    color: var(--color-red-800);
     line-height: 1.7;
 }
 

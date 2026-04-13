@@ -20,7 +20,7 @@ and the JS block at the bottom which wires up the logic.
     border-radius: 8px;
     margin: 0 auto 10px;
     display: block;
-    background: linear-gradient(90deg, var(--color-success-bg,#dcfce7) 25%, var(--color-success-bg,#f0fdf4) 37%, var(--color-success-bg,#dcfce7) 63%);
+    background: linear-gradient(90deg, var(--color-success-bg,var(--color-green-100)) 25%, var(--color-success-bg,var(--color-green-50)) 37%, var(--color-success-bg,var(--color-green-100)) 63%);
     background-size: 200% 100%;
     animation: cx-progress-skeleton-shimmer 1.2s linear infinite;
   }
@@ -45,11 +45,11 @@ and the JS block at the bottom which wires up the logic.
 
     <!-- Step indicator (3 steps) -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <div id="cxStep1Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-success,#22c55e);"></div>
-      <div style="flex:1;height:2px;background:var(--color-gray-200,#e5e7eb);" id="cxStepLine1"><div id="cxStepLineFill1" style="width:0%;height:100%;background:var(--color-success,#22c55e);transition:width 0.3s;"></div></div>
-      <div id="cxStep2Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-gray-200,#e5e7eb);"></div>
-      <div style="flex:1;height:2px;background:var(--color-gray-200,#e5e7eb);" id="cxStepLine2"><div id="cxStepLineFill2" style="width:0%;height:100%;background:var(--color-success,#22c55e);transition:width 0.3s;"></div></div>
-      <div id="cxStep3Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-gray-200,#e5e7eb);"></div>
+      <div id="cxStep1Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-success,var(--color-success));"></div>
+      <div style="flex:1;height:2px;background:var(--color-gray-200,var(--color-gray-200));" id="cxStepLine1"><div id="cxStepLineFill1" style="width:0%;height:100%;background:var(--color-success,var(--color-success));transition:width 0.3s;"></div></div>
+      <div id="cxStep2Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-gray-200,var(--color-gray-200));"></div>
+      <div style="flex:1;height:2px;background:var(--color-gray-200,var(--color-gray-200));" id="cxStepLine2"><div id="cxStepLineFill2" style="width:0%;height:100%;background:var(--color-success,var(--color-success));transition:width 0.3s;"></div></div>
+      <div id="cxStep3Dot" style="width:8px;height:8px;border-radius: 8px;background:var(--color-gray-200,var(--color-gray-200));"></div>
     </div>
 
     <!-- Step 1: XLSX Upload -->
@@ -60,17 +60,17 @@ and the JS block at the bottom which wires up the logic.
 
       <div class="center-modal-dropzone" id="cxDropzone" style="border-radius:6px;margin-top:10px;">
         <div style="text-align:center;">
-          <i class="fa-solid fa-cloud-arrow-up" style="font-size:24px;color:var(--color-success,#22c55e);margin-bottom:6px;display:block;"></i>
-          <p style="margin:0;font-size:13px;color:var(--color-gray-500,#6b7280);">Drop XLSX/CSV here or <span style="color:var(--color-success,#22c55e);font-weight:600;cursor:pointer;" id="cxBrowse">browse</span></p>
-          <p style="margin:4px 0 0;font-size:11px;color:var(--color-gray-400,#9ca3af);">Max 50 MB &middot; .xlsx, .xls, .csv</p>
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:24px;color:var(--color-success,var(--color-success));margin-bottom:6px;display:block;"></i>
+          <p style="margin:0;font-size:13px;color:var(--color-gray-500,var(--color-gray-500));">Drop XLSX/CSV here or <span style="color:var(--color-success,var(--color-success));font-weight:600;cursor:pointer;" id="cxBrowse">browse</span></p>
+          <p style="margin:4px 0 0;font-size:11px;color:var(--color-gray-400,var(--color-gray-400));">Max 50 MB &middot; .xlsx, .xls, .csv</p>
         </div>
       </div>
       <input type="file" id="cxFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-      <div id="cxFileInfo" style="display:none;margin-top:8px;padding:8px 10px;background:var(--color-success-bg,#f0fdf4);border-radius:6px;border:1px solid #bbf7d0;">
+      <div id="cxFileInfo" style="display:none;margin-top:8px;padding:8px 10px;background:var(--color-success-bg,var(--color-green-50));border-radius:6px;border:1px solid var(--color-emerald-200);">
         <div style="display:flex;align-items:center;gap:8px;">
-          <i class="fa-solid fa-file-excel" style="color:var(--color-success,#22c55e);"></i>
-          <span id="cxFileName" style="font-size:12px;font-weight:500;color:var(--text-primary,#1e293b);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-          <button type="button" id="cxFileRemove" style="background:none;border:none;color:var(--color-danger,#ef4444);cursor:pointer;font-size:13px;padding:2px;"><i class="fa-solid fa-xmark"></i></button>
+          <i class="fa-solid fa-file-excel" style="color:var(--color-success,var(--color-success));"></i>
+          <span id="cxFileName" style="font-size:12px;font-weight:500;color:var(--text-primary,var(--color-slate-800));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+          <button type="button" id="cxFileRemove" style="background:none;border:none;color:var(--color-danger,var(--color-danger));cursor:pointer;font-size:13px;padding:2px;"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ and the JS block at the bottom which wires up the logic.
 
     <!-- Step 2: Field Preview -->
     <div id="cxStep2" style="display:none;">
-      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-table-columns" style="font-size:28px;color:var(--color-blue,#3b82f6);"></i></div>
+      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-table-columns" style="font-size:28px;color:var(--color-blue,var(--color-blue));"></i></div>
       <h4 class="center-modal-title" style="text-align:center;">Field Preview</h4>
       <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">
         Review detected columns, their types, and mark mandatory fields.
@@ -131,15 +131,15 @@ and the JS block at the bottom which wires up the logic.
 
     <!-- Step 3: Optional ZIP Photos -->
     <div id="cxStep3" style="display:none;">
-      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size:28px;color:var(--color-success,#22c55e);"></i></div>
+      <div class="center-modal-icon" style="text-align:center;"><i class="fa-solid fa-images" style="font-size:28px;color:var(--color-success,var(--color-success));"></i></div>
       <h4 class="center-modal-title" style="text-align:center;">Add Photo ZIPs <span class="form-label-hint" style="font-size:12px;">(optional)</span></h4>
       <p class="center-modal-subtitle" style="text-align:center;font-size:13px;">Upload ZIP files containing images to match with cards. Skip this step if no photos.</p>
 
       <div class="center-modal-dropzone" id="cxZipDropzone" style="border-radius:6px;margin-top:10px;">
         <div style="text-align:center;">
-          <i class="fa-solid fa-file-zipper" style="font-size:24px;color:var(--color-blue,#3b82f6);margin-bottom:6px;display:block;"></i>
-          <p style="margin:0;font-size:13px;color:var(--color-gray-500,#6b7280);">Drop ZIP files here or <span style="color:var(--color-blue,#3b82f6);font-weight:600;cursor:pointer;" id="cxZipBrowse">browse</span></p>
-          <p style="margin:4px 0 0;font-size:11px;color:var(--color-gray-400,#9ca3af);">Max 1 GB per ZIP &middot; .zip only</p>
+          <i class="fa-solid fa-file-zipper" style="font-size:24px;color:var(--color-blue,var(--color-blue));margin-bottom:6px;display:block;"></i>
+          <p style="margin:0;font-size:13px;color:var(--color-gray-500,var(--color-gray-500));">Drop ZIP files here or <span style="color:var(--color-blue,var(--color-blue));font-weight:600;cursor:pointer;" id="cxZipBrowse">browse</span></p>
+          <p style="margin:4px 0 0;font-size:11px;color:var(--color-gray-400,var(--color-gray-400));">Max 1 GB per ZIP &middot; .zip only</p>
         </div>
       </div>
       <input type="file" id="cxZipInput" accept=".zip" multiple style="display:none;">
@@ -149,7 +149,7 @@ and the JS block at the bottom which wires up the logic.
         <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxBackBtn">
           <i class="fa-solid fa-arrow-left" style="margin-right:4px;font-size:11px;"></i> Back
         </button>
-        <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxSkipBtn" style="background:var(--color-gray-500,#6b7280);">
+        <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxSkipBtn" style="background:var(--color-gray-500,var(--color-gray-500));">
           Skip &amp; Create
         </button>
         <button type="button" class="center-modal-btn center-modal-btn-confirm" id="cxUploadBtn">
@@ -161,11 +161,11 @@ and the JS block at the bottom which wires up the logic.
     <!-- Progress (shown during upload) -->
     <div id="cxProgress" style="display:none;text-align:center;padding:20px 0;">
       <i id="cxProgressIcon" class="cx-progress-skeleton-icon" aria-hidden="true"></i>
-      <p style="margin:0;font-size:13px;color:var(--text-secondary,#374151);font-weight:500;" id="cxProgressText">Creating table and importing data...</p>
-      <div style="margin-top:12px;background:var(--color-gray-200,#e5e7eb);border-radius:4px;height:6px;overflow:hidden;">
-        <div id="cxProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--color-success,#22c55e),#16a34a);border-radius:4px;transition:width 0.3s;"></div>
+      <p style="margin:0;font-size:13px;color:var(--text-secondary,var(--color-gray-700));font-weight:500;" id="cxProgressText">Creating table and importing data...</p>
+      <div style="margin-top:12px;background:var(--color-gray-200,var(--color-gray-200));border-radius:4px;height:6px;overflow:hidden;">
+        <div id="cxProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--color-success,var(--color-success)),var(--color-success-dark));border-radius:4px;transition:width 0.3s;"></div>
       </div>
-      <p style="margin:6px 0 0;font-size:11px;color:var(--color-gray-400,#9ca3af);" id="cxProgressPct"></p>
+      <p style="margin:6px 0 0;font-size:11px;color:var(--color-gray-400,var(--color-gray-400));" id="cxProgressPct"></p>
       <div style="margin-top:14px;">
         <button type="button" class="center-modal-btn center-modal-btn-cancel" id="cxProgressCancelBtn">Cancel Upload</button>
       </div>

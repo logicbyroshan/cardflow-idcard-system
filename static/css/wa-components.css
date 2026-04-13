@@ -155,7 +155,7 @@
     font-size: 12px;
     font-weight: 700;
     color: var(--wa-gray-500);
-    background: #fff;
+    background: var(--color-white);
     border: 1px solid var(--wa-gray-200);
     border-radius: 20px;
     cursor: pointer;
@@ -163,15 +163,15 @@
     white-space: nowrap;
 }
 .wa-filter-btn:hover {
-    background: #eff6ff;
+    background: var(--color-blue-50);
     border-color: var(--wa-blue);
     color: var(--wa-blue);
 }
 .wa-filter-btn.active {
-    background: linear-gradient(135deg, var(--wa-primary) 0%, #764ba2 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--wa-primary) 0%, var(--secondary) 100%);
+    color: var(--color-white);
     border-color: var(--wa-primary);
-    box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
 }
 
 /* ===== CATEGORY CHIPS (Portfolio) — Card-style ===== */
@@ -186,7 +186,7 @@
     align-items: center;
     gap: 10px;
     padding: 12px 14px;
-    background: #fff;
+    background: var(--color-white);
     border: 1.5px solid var(--wa-gray-200);
     border-radius: 10px;
     font-size: 13px;
@@ -198,7 +198,7 @@
 }
 .wa-category-chip:hover {
     border-color: var(--wa-primary);
-    box-shadow: 0 3px 12px rgba(102,126,234,0.14);
+    box-shadow: 0 3px 12px rgba(var(--primary-rgb), 0.14);
     transform: translateY(-1px);
 }
 .wa-category-chip .wa-chip-icon {
@@ -208,17 +208,17 @@
     width: 34px;
     height: 34px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    background: linear-gradient(135deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
     color: var(--wa-blue);
     font-size: 14px;
     flex-shrink: 0;
 }
 .wa-category-chip.default .wa-chip-icon {
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    background: linear-gradient(135deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
     color: var(--wa-blue);
 }
 .wa-category-chip.bento .wa-chip-icon {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    background: linear-gradient(135deg, var(--color-green-50) 0%, var(--color-green-100) 100%);
     color: var(--wa-green);
 }
 .wa-chip-label {
@@ -249,7 +249,7 @@
     border-radius: 8px;
     font-size: 11px;
     font-weight: 700;
-    border: 1px solid rgba(59,130,246,0.15);
+    border: 1px solid rgba(var(--blue-rgb), 0.15);
 }
 .wa-bento-badge {
     background: var(--wa-green-bg);
@@ -260,7 +260,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border: 1px solid rgba(34,197,94,0.2);
+    border: 1px solid rgba(var(--green-rgb), 0.2);
 }
 .wa-chip-actions {
     display: flex;
@@ -284,7 +284,7 @@
     border-radius: 6px;
     transition: all 0.15s;
 }
-.wa-chip-btn:hover { background: #eff6ff; border-color: var(--wa-blue); color: var(--wa-blue); }
+.wa-chip-btn:hover { background: var(--color-blue-50); border-color: var(--wa-blue); color: var(--wa-blue); }
 .wa-chip-btn.danger:hover { background: var(--wa-red-bg); border-color: var(--wa-red); color: var(--wa-red); }
 
 /* ===== STARS (Reviews) ===== */
@@ -385,17 +385,17 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
-    background: #fff;
+    background: var(--color-white);
     border: 1.5px solid var(--wa-gray-200);
 }
 .wa-filter-tab:hover {
-    background: #eff6ff;
+    background: var(--color-blue-50);
     color: var(--wa-primary);
     border-color: var(--wa-primary);
 }
 .wa-filter-tab.active {
     background: var(--wa-primary);
-    color: #fff;
+    color: var(--color-white);
     border-color: var(--wa-primary);
     box-shadow: var(--wa-shadow);
 }
@@ -412,8 +412,8 @@
     background: rgba(255, 255, 255, 0.25);
 }
 .wa-filter-tab .badge.new {
-    background: #ef4444;
-    color: #fff;
+    background: var(--color-danger);
+    color: var(--color-white);
 }
 
 /* ===== EMAIL LINK (Contacts table) ===== */
@@ -472,7 +472,7 @@
     top: 4px;
     left: 4px;
     background: rgba(0, 0, 0, 0.6);
-    color: #fff;
+    color: var(--color-white);
     font-size: 0.75rem;
     padding: 2px 6px;
     border-radius: 4px;
@@ -483,7 +483,7 @@
     top: 4px;
     right: 4px;
     background: #e74c3c;
-    color: #fff;
+    color: var(--color-white);
     font-size: 0.7rem;
     padding: 2px 6px;
     border-radius: 4px;

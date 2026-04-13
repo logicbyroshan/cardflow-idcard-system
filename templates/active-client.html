@@ -13,9 +13,9 @@
       min-width: 112px;
       padding: 4px 10px;
       border-radius: 8px;
-      border: 1px solid #dbeafe;
-      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-      color: #1d4ed8;
+      border: 1px solid var(--color-blue-100);
+      background: linear-gradient(135deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
+      color: var(--color-blue-700);
       font-size: 12px;
       font-weight: 400;
       text-decoration: none;
@@ -24,7 +24,7 @@
 
     .active-client-group-btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.22);
+      box-shadow: 0 4px 10px rgba(var(--blue-rgb), 0.22);
       color: #1e3a8a;
       text-decoration: none;
     }
@@ -50,7 +50,7 @@
       height: 28px;
       border-radius: 7px;
       border: 1px solid #dbe2ea;
-      background: #ffffff;
+      background: var(--color-white);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -62,11 +62,11 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      background: #ffffff;
+      background: var(--color-white);
     }
 
     .client-logo-badge i {
-      color: #64748b;
+      color: var(--color-slate-500);
       font-size: 12px;
     }
 
@@ -148,7 +148,7 @@
     .active-client-stats-row .count-badge.verified {
       --badge-width: var(--stat-w-verified);
       background: #e8fdf3;
-      color: #065f46;
+      color: var(--color-emerald-800);
       border-color: #9fe8c9;
     }
 
@@ -161,16 +161,16 @@
 
     .active-client-stats-row .count-badge.downloaded {
       --badge-width: var(--stat-w-downloaded);
-      background: #f9fafb;
-      color: #374151;
-      border-color: #d1d5db;
+      background: var(--color-gray-50);
+      color: var(--color-gray-700);
+      border-color: var(--color-gray-300);
     }
 
     .active-client-stats-row .count-badge.pool {
       --badge-width: var(--stat-w-pool);
-      background: #fee2e2;
-      color: #991b1b;
-      border-color: #fca5a5;
+      background: var(--color-red-100);
+      color: var(--color-red-800);
+      border-color: var(--color-red-300);
     }
 
     .active-client-stats-row .stat-label {

@@ -1,6 +1,6 @@
 <style>
   #group-message-drawer {
-    --msg-surface: #ffffff;
+    --msg-surface: var(--color-white);
     --msg-surface-soft: #f8fbff;
     --msg-border: #d9e8f7;
     --msg-text: #16324a;
@@ -298,7 +298,7 @@
     height: 28px;
     border-radius: 7px;
     border: 1px solid #d6e6f7;
-    background: #ffffff;
+    background: var(--color-white);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -310,7 +310,7 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    background: #ffffff;
+    background: var(--color-white);
   }
 
   .group-msg-client-avatar i {
@@ -421,7 +421,7 @@
   #sendGroupMessageBtn {
     background: linear-gradient(130deg, var(--msg-accent) 0%, var(--msg-accent-2) 100%) !important;
     border: 0 !important;
-    color: #ffffff !important;
+    color: var(--color-white) !important;
     box-shadow: 0 8px 18px rgba(31, 140, 240, 0.34);
   }
 
@@ -439,21 +439,21 @@
 
   .group-msg-counter {
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-weight: 700;
   }
 
   .group-msg-history-state {
     text-align: center;
     padding: 18px 12px;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-size: 13px;
   }
 
   .group-msg-history-item {
     border: 0;
     border-radius: 14px 14px 14px 4px;
-    background: #ffffff;
+    background: var(--color-white);
     box-shadow: 0 8px 18px rgba(15, 68, 120, 0.12);
     padding: 10px 12px;
     display: flex;
@@ -481,7 +481,7 @@
 
   .group-msg-history-time {
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-slate-500);
     white-space: nowrap;
   }
 
@@ -493,13 +493,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--color-red-100);
+    color: var(--color-red-700);
     cursor: pointer;
   }
 
   .group-msg-history-delete:hover {
-    background: #fecaca;
+    background: var(--color-red-200);
   }
 
   .group-msg-history-delete:disabled {
@@ -510,7 +510,7 @@
   .group-msg-history-text {
     font-size: 13px;
     line-height: 1.55;
-    color: #1e293b;
+    color: var(--color-slate-800);
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -522,7 +522,7 @@
     gap: 8px;
     flex-wrap: wrap;
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-slate-500);
   }
 
   .group-msg-history-expiry {
@@ -627,7 +627,7 @@
         <section class="group-msg-panel">
           <div class="group-msg-panel-head">
             <div style="display:flex;flex-direction:column;min-width:0;">
-              <div id="groupMessageTargetSummary" style="font-size:13px;color:#0f172a;font-weight:700;">Sending to all clients</div>
+              <div id="groupMessageTargetSummary" style="font-size:13px;color:var(--color-slate-900);font-weight:700;">Sending to all clients</div>
             </div>
             <div class="group-msg-panel-head-right">
               <div class="group-msg-top-controls">

@@ -7,31 +7,31 @@
 
 /* ===== CSS VARIABLES ===== */
 :root {
-    --wa-primary: #667eea;
-    --wa-primary-dark: #5a67d8;
-    --wa-green: #22c55e;
-    --wa-green-bg: #f0fdf4;
-    --wa-red: #ef4444;
-    --wa-red-bg: #fef2f2;
-    --wa-yellow: #f59e0b;
-    --wa-yellow-bg: #fffbeb;
-    --wa-blue: #3b82f6;
-    --wa-blue-bg: #eff6ff;
-    --wa-purple: #8b5cf6;
-    --wa-purple-bg: #f5f3ff;
-    --wa-teal: #14b8a6;
+    --wa-primary: var(--color-primary);
+    --wa-primary-dark: var(--color-primary-dark);
+    --wa-green: var(--color-success);
+    --wa-green-bg: var(--color-green-50);
+    --wa-red: var(--color-danger);
+    --wa-red-bg: var(--color-red-50);
+    --wa-yellow: var(--color-warning);
+    --wa-yellow-bg: var(--color-amber-50);
+    --wa-blue: var(--color-blue);
+    --wa-blue-bg: var(--color-blue-50);
+    --wa-purple: var(--purple);
+    --wa-purple-bg: var(--color-purple-50);
+    --wa-teal: var(--teal);
     --wa-teal-bg: #f0fdfa;
     --wa-orange: #f97316;
-    --wa-orange-bg: #fff7ed;
-    --wa-gray-50: #f9fafb;
-    --wa-gray-100: #f3f4f6;
-    --wa-gray-200: #e5e7eb;
-    --wa-gray-300: #d1d5db;
-    --wa-gray-400: #9ca3af;
-    --wa-gray-500: #6b7280;
-    --wa-gray-600: #4b5563;
-    --wa-gray-700: #374151;
-    --wa-gray-800: #1f2937;
+    --wa-orange-bg: var(--color-orange-50);
+    --wa-gray-50: var(--color-gray-50);
+    --wa-gray-100: var(--color-gray-100);
+    --wa-gray-200: var(--color-gray-200);
+    --wa-gray-300: var(--color-gray-300);
+    --wa-gray-400: var(--color-gray-400);
+    --wa-gray-500: var(--color-gray-500);
+    --wa-gray-600: var(--color-gray-600);
+    --wa-gray-700: var(--color-gray-700);
+    --wa-gray-800: var(--color-gray-800);
     --wa-radius: 8px;
     --wa-radius-lg: 12px;
     --wa-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
@@ -55,8 +55,8 @@
     flex-shrink: 0;
     gap: 0;
     padding: 0 20px;
-    background: #fff;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-slate-200);
     overflow-x: auto;
     scrollbar-width: none;
     z-index: 15;
@@ -67,7 +67,7 @@
     align-items: center;
     gap: 6px;
     padding: 10px 14px;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-size: 12.5px;
     font-weight: 600;
     text-decoration: none;
@@ -76,18 +76,18 @@
     white-space: nowrap;
 }
 .wa-tab:hover {
-    color: #334155;
-    background: #f8fafc;
+    color: var(--color-slate-700);
+    background: var(--color-gray-50);
 }
 .wa-tab.active {
     color: var(--wa-primary);
     border-bottom-color: var(--wa-primary);
-    background: rgba(102,126,234,0.06);
+    background: rgba(var(--primary-rgb), 0.06);
     font-weight: 700;
 }
 .wa-tab:focus-visible {
     outline: none;
-    box-shadow: inset 0 0 0 2px rgba(102,126,234,0.24);
+    box-shadow: inset 0 0 0 2px rgba(var(--primary-rgb), 0.24);
 }
 .wa-tab i { font-size: 12px; }
 
@@ -137,27 +137,27 @@
     max-width: 380px;
     height: 34px;
     padding: 0 10px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--color-gray-300);
     border-radius: 8px;
-    background: #fff;
-    color: #334155;
+    background: var(--color-white);
+    color: var(--color-slate-700);
     font-size: 13px;
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .wa-inline-email-input:focus {
     border-color: var(--wa-primary);
-    box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
 }
 .wa-status-banner.live {
-    background: #f0fdf4;
-    color: #166534;
-    border: 1px solid #bbf7d0;
+    background: var(--color-green-50);
+    color: var(--color-green-800);
+    border: 1px solid var(--color-emerald-200);
 }
 .wa-status-banner.draft {
-    background: #fffbeb;
-    color: #92400e;
-    border: 1px solid #fde68a;
+    background: var(--color-amber-50);
+    color: var(--color-amber-800);
+    border: 1px solid var(--color-amber-200);
 }
 .wa-status-label {
     display: flex;
@@ -181,7 +181,7 @@
 .wa-control-card {
     border: 1px solid var(--wa-gray-200);
     border-radius: 10px;
-    background: #fff;
+    background: var(--color-white);
     padding: 12px;
     display: flex;
     flex-direction: column;
@@ -189,12 +189,12 @@
 }
 
 .wa-control-card.is-live {
-    background: linear-gradient(180deg, #f8fffb 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #f8fffb 0%, var(--color-white) 100%);
     border-color: #c7f0d7;
 }
 
 .wa-control-card.is-draft {
-    background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #fffdf5 0%, var(--color-white) 100%);
     border-color: #fde7a8;
 }
 
@@ -212,7 +212,7 @@
     align-items: center;
     justify-content: center;
     color: var(--wa-primary);
-    background: rgba(102, 126, 234, 0.12);
+    background: rgba(var(--primary-rgb), 0.12);
     flex-shrink: 0;
 }
 
@@ -246,7 +246,7 @@
     gap: 4px;
     font-size: 11px;
     color: var(--wa-gray-700);
-    background: #f8fafc;
+    background: var(--color-gray-50);
     border: 1px solid var(--wa-gray-200);
     border-radius: 8px;
     padding: 3px 9px;
@@ -261,7 +261,7 @@
 
 /* ===== DASHBOARD SECTIONS ===== */
 .wa-dashboard-section {
-    background: #fff;
+    background: var(--color-white);
     border: none;
     border-bottom: 1px solid var(--wa-gray-200);
     border-radius: 0;

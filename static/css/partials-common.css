@@ -10,7 +10,7 @@
    Overlay → .center-modal-overlay in tailwind-input.css
    ==================== */
 .center-modal {
-  background: var(--bg-white, #fff);
+  background: var(--bg-white, var(--color-white));
   border-radius: 6px;
   box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.35);
   width: 420px;
@@ -30,14 +30,14 @@
 
 .center-modal .modal-header {
   padding: 20px 24px;
-  background: linear-gradient(135deg, var(--red, #ef4444) 0%, var(--red-dark, #dc2626) 100%);
+  background: linear-gradient(135deg, var(--red, var(--color-danger)) 0%, var(--red-dark, var(--color-danger-dark)) 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .center-modal .modal-header h3 {
   margin: 0; font-size: 15px; font-weight: 600;
-  color: #fff; display: flex; align-items: center; gap: 10px;
+  color: var(--color-white); display: flex; align-items: center; gap: 10px;
 }
 .center-modal .modal-header h3 i { font-size: 20px; }
 
@@ -45,21 +45,21 @@
   width: 34px; height: 34px; border: none;
   background: rgba(255, 255, 255, 0.2); border-radius: 8px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 14px; transition: all 0.2s;
+  color: var(--color-white); font-size: 14px; transition: all 0.2s;
 }
 .center-modal .modal-close:hover {
   background: rgba(255, 255, 255, 0.35); transform: rotate(90deg);
 }
 
 .center-modal .modal-body {
-  padding: 32px 24px; background: var(--bg-white, #fff);
+  padding: 32px 24px; background: var(--bg-white, var(--color-white));
   overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0;
 }
 
 .center-modal .modal-footer {
   padding: 16px 24px 20px;
-  background: var(--gray-50, #f9fafb);
-  border-top: 1px solid var(--gray-200, #e5e7eb);
+  background: var(--gray-50, var(--color-gray-50));
+  border-top: 1px solid var(--gray-200, var(--color-gray-200));
   display: flex; justify-content: flex-end; gap: 12px;
 }
 .center-modal .modal-footer .btn {
@@ -72,22 +72,22 @@
   transition: all 0.2s;
 }
 .center-modal .modal-footer .btn-secondary {
-  background: var(--gray-200, #e5e7eb); color: var(--gray-700, #374151); border: none;
+  background: var(--gray-200, var(--color-gray-200)); color: var(--gray-700, var(--color-gray-700)); border: none;
 }
 .center-modal .modal-footer .btn-secondary:hover {
-  background: var(--gray-300, #d1d5db);
+  background: var(--gray-300, var(--color-gray-300));
 }
 .center-modal .modal-footer .btn-danger {
-  background: linear-gradient(135deg, var(--red, #ef4444) 0%, var(--red-dark, #dc2626) 100%);
-  color: #fff; border: none;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  background: linear-gradient(135deg, var(--red, var(--color-danger)) 0%, var(--red-dark, var(--color-danger-dark)) 100%);
+  color: var(--color-white); border: none;
+  box-shadow: 0 4px 12px rgba(var(--red-rgb), 0.35);
 }
 .center-modal .modal-footer .btn-danger:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
+  box-shadow: 0 6px 16px rgba(var(--red-rgb), 0.45);
 }
 
-.center-modal.delete-modal .modal-header h3 { color: #fff; }
+.center-modal.delete-modal .modal-header h3 { color: var(--color-white); }
 
 /* ── Phone / Email / Date / Number table-cell break rules ───────── */
 /* Phone numbers, dates, and numeric IDs must never break mid-word. */

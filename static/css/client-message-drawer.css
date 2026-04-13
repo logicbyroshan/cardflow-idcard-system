@@ -14,8 +14,8 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 8px;
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--color-danger-dark);
+  color: var(--color-white);
   font-size: 11px;
   font-weight: 700;
   line-height: 20px;
@@ -28,10 +28,10 @@
   align-items: center;
   gap: 6px;
   height: 32px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-slate-200);
   border-radius: 6px;
-  background: #ffffff;
-  color: #64748b;
+  background: var(--color-white);
+  color: var(--color-slate-500);
   font-size: 12px;
   font-weight: 600;
   padding: 0 10px;
@@ -39,13 +39,13 @@
 }
 
 .client-message-top-shortcut:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
 }
 
 .client-message-top-shortcut.has-unread {
-  border-color: #fecaca;
-  color: #991b1b;
+  border-color: var(--color-red-200);
+  color: var(--color-red-800);
 }
 
 .client-message-top-shortcut-icon,
@@ -72,10 +72,10 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 8px;
-  background: #b91c1c;
-  border: 2px solid #ffffff;
+  background: var(--color-red-700);
+  border: 2px solid var(--color-white);
   box-shadow: 0 2px 8px rgba(185, 28, 28, 0.3);
-  color: #ffffff;
+  color: var(--color-white);
   font-size: 10px;
   font-weight: 800;
   line-height: 18px;
@@ -95,8 +95,8 @@
   width: 32px;
   height: 32px;
   border-radius: 2px;
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-danger-dark) 0%, var(--color-red-700) 100%);
+  color: var(--color-white);
   flex-shrink: 0;
 }
 
@@ -108,12 +108,12 @@
   width: min(820px, 100vw);
   max-width: 100vw;
   z-index: var(--z-drawer);
-  background: #ffffff;
+  background: var(--color-white);
 }
 
 .client-message-drawer-header {
   background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-  color: #ffffff;
+  color: var(--color-white);
 }
 
 .client-message-drawer-header h3 {
@@ -132,16 +132,16 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  color: var(--color-white);
 }
 
 .client-message-header-pill.has-unread {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
 }
 
 .client-message-drawer-body {
-  background: #ffffff;
+  background: var(--color-white);
   padding: 20px 24px;
 }
 
@@ -152,10 +152,10 @@
 }
 
 .client-message-thread-state {
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--color-slate-300);
   border-radius: 12px;
-  background: #ffffff;
-  color: #64748b;
+  background: var(--color-white);
+  color: var(--color-slate-500);
   text-align: center;
   font-size: 13px;
   padding: 18px 12px;
@@ -168,15 +168,15 @@
 
 .client-message-bubble {
   width: 100%;
-  border: 1px solid #d1fae5;
+  border: 1px solid var(--color-emerald-100);
   border-radius: 14px 14px 14px 4px;
-  background: #ffffff;
+  background: var(--color-white);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
   padding: 10px 12px;
 }
 
 .client-message-row.unread .client-message-bubble {
-  border-color: #86efac;
+  border-color: var(--color-green-300);
   box-shadow: 0 10px 22px rgba(21, 128, 61, 0.18);
 }
 
@@ -196,14 +196,14 @@
 
 .client-message-time {
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-slate-500);
   white-space: nowrap;
 }
 
 .client-message-text {
   font-size: 13px;
   line-height: 1.55;
-  color: #0f172a;
+  color: var(--color-slate-900);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -218,7 +218,7 @@
 
 .client-message-meta-info {
   font-size: 11px;
-  color: #9a3412;
+  color: var(--color-orange-600);
   font-weight: 700;
 }
 
@@ -230,31 +230,31 @@
 }
 
 .client-message-chip.scope {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-blue-100);
+  color: var(--color-blue-700);
 }
 
 .client-message-chip.read {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-green-100);
+  color: var(--color-green-800);
 }
 
 .client-message-chip.unread {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-red-100);
+  color: var(--color-red-800);
 }
 
 .client-message-chip.temp {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
 }
 
 .client-message-read-btn {
   margin-left: auto;
   border: 0;
   border-radius: 8px;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-green-100);
+  color: var(--color-green-800);
   font-size: 10px;
   font-weight: 700;
   padding: 4px 8px;
@@ -265,12 +265,12 @@
   margin-left: auto;
   font-size: 11px;
   font-weight: 700;
-  color: #15803d;
+  color: var(--color-green-700);
 }
 
 .client-message-drawer-footer {
   gap: 8px;
-  background: #fafbfc;
+  background: var(--color-slate-50);
 }
 
 @media (max-width: 720px) {

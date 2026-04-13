@@ -3,11 +3,11 @@
   --dropdown-unified-height: 28px;
   --control-unified-height: 28px;
   --dropdown-unified-radius: 4px;
-  --dropdown-unified-border: #e5e7eb;
-  --dropdown-unified-border-hover: #d1d5db;
-  --dropdown-unified-border-focus: #667eea;
-  --dropdown-unified-text: #475569;
-  --dropdown-unified-bg: #ffffff;
+  --dropdown-unified-border: var(--color-gray-200);
+  --dropdown-unified-border-hover: var(--color-gray-300);
+  --dropdown-unified-border-focus: var(--color-primary);
+  --dropdown-unified-text: var(--color-slate-600);
+  --dropdown-unified-bg: var(--color-white);
   --dropdown-unified-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394a3b8' d='M1.2.8L5 4.6 8.8.8 10 2 5 7 0 2z'/%3E%3C/svg%3E");
 }
 
@@ -94,7 +94,7 @@ select.wa-status-select:focus,
 .bulk-select-group select:focus {
   outline: none !important;
   border-color: var(--dropdown-unified-border-focus) !important;
-  box-shadow: 0 0 0 1px rgba(102, 126, 234, 0.2) !important;
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.2) !important;
 }
 
 select:not([multiple]):not([size]):disabled,
@@ -116,8 +116,8 @@ select.template-font-select:disabled,
 select.ae-preset-select:disabled,
 select.wa-status-select:disabled,
 .bulk-select-group select:disabled {
-  background-color: #f8fafc !important;
-  color: #94a3b8 !important;
+  background-color: var(--color-gray-50) !important;
+  color: var(--color-slate-400) !important;
   cursor: not-allowed !important;
   opacity: 0.8 !important;
 }
@@ -189,7 +189,7 @@ select.wa-status-select:disabled,
 .wa-status-dropdown .dropdown-options {
   border: 1px solid var(--dropdown-unified-border) !important;
   border-radius: 7px !important;
-  background: #ffffff !important;
+  background: var(--color-white) !important;
   margin-top: 4px !important;
   padding: 4px 0 !important;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
@@ -207,7 +207,7 @@ select.wa-status-select:disabled,
 }
 
 .dropdown-option {
-  color: #475569 !important;
+  color: var(--color-slate-600) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
   margin: 0 4px !important;
@@ -222,12 +222,12 @@ select.wa-status-select:disabled,
 }
 
 .dropdown-option:hover {
-  background-color: #f8fafc !important;
+  background-color: var(--color-gray-50) !important;
 }
 
 .dropdown-option.selected {
-  background-color: rgba(102, 126, 234, 0.1) !important;
-  color: #4f46e5 !important;
+  background-color: rgba(var(--primary-rgb), 0.1) !important;
+  color: var(--color-indigo-600) !important;
   font-weight: 500 !important;
 }
 

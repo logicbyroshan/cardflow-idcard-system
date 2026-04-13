@@ -1,7 +1,7 @@
 /* Flatpickr custom theme — rounded, gap, clean look */
 .flatpickr-calendar {
   border-radius: 10px !important;
-  border: 2px solid #667eea !important;
+  border: 2px solid var(--color-primary) !important;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
   margin-top: 6px !important;
   overflow: visible !important;
@@ -13,8 +13,8 @@
 }
 .flatpickr-months {
   border-radius: 8px 8px 0 0;
-  background: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-gray-50);
+  border-bottom: 1px solid var(--color-gray-200);
   padding: 4px 0;
 }
 .flatpickr-months .flatpickr-month {
@@ -23,55 +23,55 @@
 .flatpickr-current-month {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
 }
 .flatpickr-months .flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month {
-  fill: #6b7280;
+  fill: var(--color-gray-500);
 }
 .flatpickr-months .flatpickr-prev-month:hover,
 .flatpickr-months .flatpickr-next-month:hover {
-  fill: #374151;
+  fill: var(--color-gray-700);
 }
 .flatpickr-weekdays {
-  background: #f8fafc;
+  background: var(--color-gray-50);
 }
 span.flatpickr-weekday {
-  color: #9ca3af !important;
+  color: var(--color-gray-400) !important;
   font-size: 11px;
   font-weight: 500;
 }
 .flatpickr-day {
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-gray-700);
   line-height: 36px;
   height: 36px;
   max-width: 36px;
 }
 .flatpickr-day:hover {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: var(--color-blue-50);
+  border-color: var(--color-blue-200);
 }
 .flatpickr-day.today {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   font-weight: 600;
 }
 .flatpickr-day.today:hover {
-  background: #667eea;
-  border-color: #667eea;
-  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
 }
 .flatpickr-day.selected,
 .flatpickr-day.selected:hover {
-  background: #667eea !important;
-  border-color: #667eea !important;
-  color: #fff !important;
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-white) !important;
 }
 .flatpickr-day.prevMonthDay,
 .flatpickr-day.nextMonthDay {
-  color: #d1d5db;
+  color: var(--color-gray-300);
 }
 /* "Select Time" label above time row */
 .flatpickr-time::before {
@@ -81,18 +81,18 @@ span.flatpickr-weekday {
   text-align: center;
   font-size: 11px;
   font-weight: 600;
-  color: #667eea;
+  color: var(--color-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
 .flatpickr-time {
-  border-top: 2px solid #667eea;
+  border-top: 2px solid var(--color-primary);
   padding: 8px 12px 14px;
   max-height: none !important;
   height: auto !important;
   overflow: visible !important;
-  background: #f0f4ff;
+  background: var(--color-indigo-50);
   border-radius: 0 0 8px 8px;
   gap: 4px;
   flex-wrap: wrap;
@@ -100,10 +100,10 @@ span.flatpickr-weekday {
 }
 .flatpickr-time input {
   font-size: 15px !important;
-  color: #374151 !important;
+  color: var(--color-gray-700) !important;
   font-weight: 600;
-  background: #fff !important;
-  border: 1.5px solid #cbd5e1 !important;
+  background: var(--color-white) !important;
+  border: 1.5px solid var(--color-slate-300) !important;
   border-radius: 6px !important;
   height: 32px !important;
   padding: 0 2px !important;
@@ -111,25 +111,25 @@ span.flatpickr-weekday {
 }
 .flatpickr-time input:hover,
 .flatpickr-time input:focus {
-  border-color: #667eea !important;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15) !important;
 }
 .flatpickr-time .flatpickr-am-pm {
   font-size: 12px;
-  color: #6b7280;
-  background: #fff;
-  border: 1.5px solid #cbd5e1;
+  color: var(--color-gray-500);
+  background: var(--color-white);
+  border: 1.5px solid var(--color-slate-300);
   border-radius: 6px;
   font-weight: 500;
   height: 32px;
   line-height: 32px;
 }
 .flatpickr-time .flatpickr-am-pm:hover {
-  background: #eff6ff;
-  border-color: #667eea;
+  background: var(--color-blue-50);
+  border-color: var(--color-primary);
 }
 .flatpickr-time .flatpickr-time-separator {
-  color: #667eea;
+  color: var(--color-primary);
   font-size: 18px;
   font-weight: 700;
   line-height: 32px;

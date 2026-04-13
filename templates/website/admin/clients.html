@@ -12,11 +12,11 @@
 <link rel="stylesheet" href="{% static 'css/manage-panel.css' %}">
 <style>
     :root {
-        --wa-surface: var(--bg-white, #ffffff);
+        --wa-surface: var(--bg-white, var(--color-white));
         --wa-surface-soft: var(--color-gray-50, #f8fafc);
-        --wa-border: var(--color-gray-200, #e5e7eb);
-        --wa-text: var(--text-primary, #1e293b);
-        --wa-muted: var(--color-gray-500, #64748b);
+        --wa-border: var(--color-gray-200, var(--color-gray-200));
+        --wa-text: var(--text-primary, var(--color-slate-800));
+        --wa-muted: var(--color-gray-500, var(--color-slate-500));
     }
 
   .wa-clients-panel {
@@ -104,7 +104,7 @@
         border: 1px solid var(--wa-border);
         background: var(--wa-surface-soft);
     font-size: 11px;
-        color: var(--text-secondary, #475569);
+        color: var(--text-secondary, var(--color-slate-600));
     font-weight: 600;
   }
 
@@ -123,8 +123,8 @@
 
     .client-order-input:focus {
         outline: none;
-        border-color: var(--color-primary, #667eea);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #667eea) 18%, transparent 82%);
+        border-color: var(--color-primary, var(--color-primary));
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, var(--color-primary)) 18%, transparent 82%);
     }
 
     .client-visibility-select {
@@ -136,15 +136,15 @@
     }
 
     .client-visibility-select.status-visible {
-        border-color: color-mix(in srgb, var(--color-success, #22c55e) 35%, #ffffff 65%);
-        background: var(--color-success-bg, #f0fdf4);
-        color: var(--color-success-dark, #166534);
+        border-color: color-mix(in srgb, var(--color-success, var(--color-success)) 35%, var(--color-white) 65%);
+        background: var(--color-success-bg, var(--color-green-50));
+        color: var(--color-success-dark, var(--color-green-800));
     }
 
     .client-visibility-select.status-hidden {
-        border-color: var(--color-gray-300, #cbd5e1);
+        border-color: var(--color-gray-300, var(--color-slate-300));
         background: var(--wa-surface-soft);
-        color: var(--text-secondary, #475569);
+        color: var(--text-secondary, var(--color-slate-600));
     }
 
     .client-logo-action-block {
@@ -194,7 +194,7 @@
         width: 100%;
         min-height: 84px;
         border-radius: 8px;
-        border: 1px dashed var(--color-gray-300, #cbd5e1);
+        border: 1px dashed var(--color-gray-300, var(--color-slate-300));
         background: var(--wa-surface-soft);
         display: flex;
         align-items: center;

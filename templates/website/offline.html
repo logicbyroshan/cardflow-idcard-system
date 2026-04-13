@@ -17,8 +17,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-            color: #e2e8f0;
+            background: linear-gradient(135deg, var(--color-slate-900) 0%, #1e1b4b 50%, var(--color-slate-900) 100%);
+            color: var(--color-slate-200);
             overflow: hidden;
             position: relative;
         }
@@ -32,13 +32,13 @@
         }
         body::before {
             width: 500px; height: 500px;
-            background: #6366f1;
+            background: var(--color-indigo-500);
             top: -150px; right: -100px;
             animation-delay: 0s;
         }
         body::after {
             width: 400px; height: 400px;
-            background: #8b5cf6;
+            background: var(--purple);
             bottom: -120px; left: -80px;
             animation-delay: -4s;
         }
@@ -76,7 +76,7 @@
         }
         .offline-icon i {
             font-size: 36px;
-            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            background: linear-gradient(135deg, var(--primary-light), #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -89,20 +89,20 @@
         .offline-title {
             font-size: 28px;
             font-weight: 700;
-            color: #fff;
+            color: var(--color-white);
             margin-bottom: 10px;
             letter-spacing: -0.5px;
         }
         .offline-name {
             font-size: 15px;
-            color: #a5b4fc;
+            color: var(--color-indigo-300);
             font-weight: 600;
             margin-bottom: 8px;
         }
         .offline-text {
             font-size: 14px;
             line-height: 1.6;
-            color: #94a3b8;
+            color: var(--color-slate-400);
             margin-bottom: 32px;
         }
 
@@ -111,8 +111,8 @@
             align-items: center;
             gap: 8px;
             padding: 12px 32px;
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            color: #fff;
+            background: linear-gradient(135deg, var(--color-indigo-500) 0%, var(--color-indigo-600) 100%);
+            color: var(--color-white);
             font-family: inherit;
             font-size: 14px;
             font-weight: 600;
@@ -126,7 +126,7 @@
         .offline-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
-            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--color-indigo-500) 100%);
         }
         .offline-btn:active {
             transform: translateY(0);
@@ -137,7 +137,7 @@
             padding-top: 20px;
             border-top: 1px solid rgba(99, 102, 241, 0.15);
             font-size: 12px;
-            color: #64748b;
+            color: var(--color-slate-500);
         }
         .offline-footer i { margin-right: 4px; }
 

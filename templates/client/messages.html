@@ -20,8 +20,8 @@
   .client-msg-sidebar {
     border: 1px solid #dbe3f1;
     border-radius: 18px;
-    background: linear-gradient(145deg, #0f172a 0%, #1e293b 55%, #334155 100%);
-    color: #e2e8f0;
+    background: linear-gradient(145deg, var(--color-slate-900) 0%, var(--color-slate-800) 55%, var(--color-slate-700) 100%);
+    color: var(--color-slate-200);
     padding: 16px;
     box-shadow: 0 16px 34px rgba(15, 23, 42, 0.26);
     display: flex;
@@ -41,7 +41,7 @@
   .client-msg-sidebar-subtitle {
     margin: 0;
     font-size: 0.86rem;
-    color: #cbd5e1;
+    color: var(--color-slate-300);
     line-height: 1.55;
   }
 
@@ -66,14 +66,14 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #cbd5e1;
+    color: var(--color-slate-300);
     font-weight: 700;
   }
 
   .client-msg-stat-card .value {
     font-size: 1.15rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--color-white);
   }
 
   .client-msg-stat-card.unread.has-unread .value {
@@ -81,7 +81,7 @@
   }
 
   .client-msg-stat-card.unread.no-unread .value {
-    color: #86efac;
+    color: var(--color-green-300);
   }
 
   .client-msg-sidebar-footnote {
@@ -89,14 +89,14 @@
     border-top: 1px solid rgba(148, 163, 184, 0.28);
     padding-top: 12px;
     font-size: 12px;
-    color: #cbd5e1;
+    color: var(--color-slate-300);
     line-height: 1.55;
   }
 
   .client-chat-panel {
     border: 1px solid #dbe3f1;
     border-radius: 18px;
-    background: #ffffff;
+    background: var(--color-white);
     overflow: hidden;
     box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
     display: flex;
@@ -106,8 +106,8 @@
 
   .client-chat-head {
     padding: 14px 16px;
-    border-bottom: 1px solid #e2e8f0;
-    background: linear-gradient(120deg, #eff6ff 0%, #f8fafc 75%);
+    border-bottom: 1px solid var(--color-slate-200);
+    background: linear-gradient(120deg, var(--color-blue-50) 0%, #f8fafc 75%);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -125,8 +125,8 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 100%);
-    color: #ffffff;
+    background: linear-gradient(145deg, var(--color-blue-dark) 0%, var(--color-blue-700) 100%);
+    color: var(--color-white);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -136,21 +136,21 @@
   .client-chat-head h2 {
     margin: 0;
     font-size: 1.02rem;
-    color: #0f172a;
+    color: var(--color-slate-900);
     line-height: 1.35;
   }
 
   .client-chat-head p {
     margin: 2px 0 0 0;
     font-size: 12px;
-    color: #475569;
+    color: var(--color-slate-600);
     line-height: 1.45;
   }
 
   .client-chat-head-pill {
     border-radius: 8px;
-    background: #e2e8f0;
-    color: #1e293b;
+    background: var(--color-slate-200);
+    color: var(--color-slate-800);
     font-size: 11px;
     font-weight: 700;
     padding: 6px 10px;
@@ -160,9 +160,9 @@
   .client-chat-body {
     padding: 16px;
     background:
-      radial-gradient(circle at 24% 16%, rgba(59, 130, 246, 0.08), transparent 32%),
-      radial-gradient(circle at 76% 82%, rgba(34, 197, 94, 0.08), transparent 30%),
-      linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      radial-gradient(circle at 24% 16%, rgba(var(--blue-rgb), 0.08), transparent 32%),
+      radial-gradient(circle at 76% 82%, rgba(var(--green-rgb), 0.08), transparent 30%),
+      linear-gradient(180deg, #f8fafc 0%, var(--color-indigo-50) 100%);
     flex: 1;
     overflow: auto;
   }
@@ -184,8 +184,8 @@
     width: 36px;
     height: 36px;
     border-radius: 11px;
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--color-blue-100);
+    color: var(--color-blue-700);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -200,13 +200,13 @@
     position: relative;
     border: 1px solid #dbe3f1;
     border-radius: 14px 14px 14px 4px;
-    background: #ffffff;
+    background: var(--color-white);
     padding: 12px 13px;
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
   }
 
   .client-chat-row.is-unread .client-chat-bubble {
-    border-color: #60a5fa;
+    border-color: var(--blue-light);
     box-shadow: 0 12px 22px rgba(37, 99, 235, 0.2);
   }
 
@@ -218,7 +218,7 @@
     width: 8px;
     height: 8px;
     border-radius: 3px;
-    background: #2563eb;
+    background: var(--color-blue-dark);
   }
 
   .client-chat-meta {
@@ -237,13 +237,13 @@
 
   .client-chat-time {
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-slate-500);
     white-space: nowrap;
   }
 
   .client-chat-text {
     margin: 0;
-    color: #0f172a;
+    color: var(--color-slate-900);
     line-height: 1.64;
     white-space: pre-wrap;
     word-break: break-word;
@@ -266,13 +266,13 @@
 
   .client-chat-read-state {
     font-size: 11px;
-    color: #15803d;
+    color: var(--color-green-700);
     font-weight: 700;
   }
 
   .client-chat-footer {
-    border-top: 1px solid #e2e8f0;
-    background: #ffffff;
+    border-top: 1px solid var(--color-slate-200);
+    background: var(--color-white);
     padding: 10px 12px;
     display: flex;
     align-items: center;
@@ -281,11 +281,11 @@
   }
 
   .client-chat-empty {
-    border: 1px dashed #cbd5e1;
+    border: 1px dashed var(--color-slate-300);
     border-radius: 14px;
     padding: 34px 16px;
     text-align: center;
-    color: #64748b;
+    color: var(--color-slate-500);
     background: rgba(255, 255, 255, 0.8);
   }
 

@@ -75,14 +75,14 @@
   }
   .imp-role-pill {
     color: #a0aec0;
-    border-color: rgba(102,126,234,0.2);
+    border-color: rgba(var(--primary-rgb), 0.2);
     background: transparent;
     cursor: pointer;
   }
   .imp-role-pill:hover, .imp-role-pill.active {
     color: #f8fafc;
-    border-color: #667eea;
-    background: rgba(102,126,234,0.15);
+    border-color: var(--color-primary);
+    background: rgba(var(--primary-rgb), 0.15);
   }
   .imp-user-card {
     display: flex;
@@ -95,8 +95,8 @@
     border: 1px solid transparent;
   }
   .imp-user-card:hover {
-    background: rgba(102,126,234,0.08);
-    border-color: rgba(102,126,234,0.2);
+    background: rgba(var(--primary-rgb), 0.08);
+    border-color: rgba(var(--primary-rgb), 0.2);
   }
   .imp-user-card .imp-role-badge {
     font-size: 0.65rem;
@@ -106,8 +106,8 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
-  .imp-role-badge.role-super_admin { background: rgba(102,126,234,0.2); color: #a5b4fc; }
-  .imp-role-badge.role-admin_staff { background: rgba(245,158,11,0.2); color: #fbbf24; }
+  .imp-role-badge.role-super_admin { background: rgba(var(--primary-rgb), 0.2); color: var(--color-indigo-300); }
+  .imp-role-badge.role-admin_staff { background: rgba(var(--yellow-rgb), 0.2); color: #fbbf24; }
   .imp-role-badge.role-client { background: rgba(72,187,120,0.2); color: #68d391; }
   .imp-role-badge.role-client_staff { background: rgba(99,179,237,0.2); color: #63b3ed; }
   .imp-user-skeleton-row {

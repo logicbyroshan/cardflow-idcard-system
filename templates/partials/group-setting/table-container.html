@@ -29,7 +29,7 @@ Required context:
                 data-table-name="{{ table.name }}"
                 data-table-fields="{{ table.fields|json_encode }}"
                 {% if table.deleted_by_client %}class="row-deleted-by-client"{% endif %}>
-                <td>{{ table.name }}{% if table.deleted_by_client %} <small style="color:#9ca3af;">(removed by client)</small>{% endif %}</td>
+                <td>{{ table.name }}{% if table.deleted_by_client %} <small style="color:var(--color-gray-400);">(removed by client)</small>{% endif %}</td>
                 <td>
                   {% if table.deleted_by_client %}
                     <span class="status-badge deleted">User Deleted</span>

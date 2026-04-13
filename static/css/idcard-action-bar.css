@@ -8,9 +8,9 @@
    ========================================== */
 
 .action-buttons-bar {
-    background: #fff;
+    background: var(--color-white);
     border: none;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--color-gray-200);
     border-radius: 0;
     padding: 4px 10px;
     margin-bottom: 0;
@@ -25,14 +25,14 @@
 .pool-danger-zone {
     margin-left: auto;
     padding-left: 10px;
-    border-left: 2px solid #fee2e2;
+    border-left: 2px solid var(--color-red-100);
 }
 
 /* Navigation Group - right aligned */
 .action-nav-group {
     margin-left: auto;
     padding-left: 10px;
-    border-left: 1px solid #e5e7eb;
+    border-left: 1px solid var(--color-gray-200);
 }
 
 .action-nav-group .btn.action-btn {
@@ -61,7 +61,7 @@
     padding: 0 6px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.24);
-    color: #fff;
+    color: var(--color-white);
     border: 1px solid rgba(255, 255, 255, 0.55);
     font-size: 11px;
     font-weight: 700;
@@ -76,14 +76,14 @@
 
 /* Danger Zone Button Style */
 .btn.action-btn.btn-danger-zone {
-    background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%) !important;
-    color: #fff !important;
-    border: 2px solid #fca5a5 !important;
+    background: linear-gradient(135deg, var(--color-red-800) 0%, var(--color-red-800) 100%) !important;
+    color: var(--color-white) !important;
+    border: 2px solid var(--color-red-300) !important;
     animation: danger-pulse 2s ease-in-out infinite;
 }
 
 .btn.action-btn.btn-danger-zone:hover:not(:disabled) {
-    background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%) !important;
+    background: linear-gradient(135deg, var(--color-red-800) 0%, #450a0a 100%) !important;
     transform: scale(1.02);
 }
 
@@ -123,8 +123,8 @@
 
 .action-buttons-group .btn.action-btn:disabled {
     opacity: 1;
-    background: #d1d5db !important;
-    color: #6b7280 !important;
+    background: var(--color-gray-300) !important;
+    color: var(--color-gray-500) !important;
     cursor: not-allowed;
 }
 
@@ -182,73 +182,73 @@
    BUTTON COLORS — .action-bar scope
    ========================================== */
 .action-bar .btn.btn-blue {
-    background: #3b82f6;
-    color: #fff !important;
+    background: var(--color-blue);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-blue:hover:not(:disabled) {
-    background: #2563eb;
+    background: var(--color-blue-dark);
 }
 .action-bar .btn.btn-green {
-    background: #22c55e;
-    color: #fff !important;
+    background: var(--color-success);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-green:hover:not(:disabled) {
-    background: #16a34a;
+    background: var(--color-success-dark);
 }
 .action-bar .btn.btn-red {
-    background: #ef4444;
-    color: #fff !important;
+    background: var(--color-danger);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-red:hover:not(:disabled) {
-    background: #dc2626;
+    background: var(--color-danger-dark);
 }
 .action-bar .btn.btn-purple {
-    background: #8b5cf6;
-    color: #fff !important;
+    background: var(--purple);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-purple:hover:not(:disabled) {
-    background: #7c3aed;
+    background: var(--color-purple-dark);
 }
 .action-bar .btn.btn-gray {
-    background: #6b7280;
-    color: #fff !important;
+    background: var(--color-gray-500);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-gray:hover:not(:disabled) {
-    background: #4b5563;
+    background: var(--color-gray-600);
 }
 .action-bar .btn.btn-amber {
-    background: #f59e0b;
-    color: #fff !important;
+    background: var(--color-warning);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-amber:hover:not(:disabled) {
-    background: #d97706;
+    background: var(--color-warning-dark);
 }
 .action-bar .btn.btn-orange {
     background: #f97316;
-    color: #fff !important;
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-orange:hover:not(:disabled) {
-    background: #ea580c;
+    background: var(--color-orange-600);
 }
 .action-bar .btn.btn-danger-zone {
-    background: #b91c1c;
-    color: #fff !important;
+    background: var(--color-red-700);
+    color: var(--color-white) !important;
     border: none;
 }
 .action-bar .btn.btn-danger-zone:hover:not(:disabled) {
-    background: #991b1b;
+    background: var(--color-red-800);
 }
 .action-bar .btn:not(.btn-danger-zone):disabled {
     opacity: 1;
-    background: #d1d5db !important;
-    color: #6b7280 !important;
+    background: var(--color-gray-300) !important;
+    color: var(--color-gray-500) !important;
     cursor: not-allowed;
     box-shadow: none !important;
 }
@@ -355,281 +355,281 @@
 
 /* Pending Tab - Yellow */
 .pending-tab {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fcd34d;
+    background: var(--color-amber-100);
+    color: var(--color-amber-800);
+    border: 1px solid var(--color-amber-300);
 }
 
 .pending-tab:hover {
-    background: #fde68a;
+    background: var(--color-amber-200);
 }
 
 .pending-tab .tab-count {
-    background: #f59e0b;
-    color: #fff;
+    background: var(--color-warning);
+    color: var(--color-white);
 }
 
 .pending-tab.active {
-    background: #f59e0b;
-    color: #fff;
-    border-color: #d97706;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    background: var(--color-warning);
+    color: var(--color-white);
+    border-color: var(--color-warning-dark);
+    box-shadow: 0 2px 8px rgba(var(--yellow-rgb), 0.4);
 }
 
 .pending-tab.active .tab-count {
-    background: #fff;
-    color: #f59e0b;
+    background: var(--color-white);
+    color: var(--color-warning);
 }
 
 /* Verified Tab - Green */
 .verified-tab {
-    background: #d1fae5;
-    color: #065f46;
-    border: 1px solid #6ee7b7;
+    background: var(--color-emerald-100);
+    color: var(--color-emerald-800);
+    border: 1px solid var(--color-emerald-300);
 }
 
 .verified-tab:hover {
-    background: #a7f3d0;
+    background: var(--color-emerald-200);
 }
 
 .verified-tab .tab-count {
-    background: #10b981;
-    color: #fff;
+    background: var(--color-emerald-500);
+    color: var(--color-white);
 }
 
 .verified-tab.active {
-    background: #10b981;
-    color: #fff;
-    border-color: #059669;
+    background: var(--color-emerald-500);
+    color: var(--color-white);
+    border-color: var(--color-emerald-600);
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
 }
 
 .verified-tab.active .tab-count {
-    background: #fff;
-    color: #10b981;
+    background: var(--color-white);
+    color: var(--color-emerald-500);
 }
 
 /* Pool Tab - Red */
 .pool-tab {
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fca5a5;
+    background: var(--color-red-100);
+    color: var(--color-red-800);
+    border: 1px solid var(--color-red-300);
 }
 
 .pool-tab:hover {
-    background: #fecaca;
+    background: var(--color-red-200);
 }
 
 .pool-tab .tab-count {
-    background: #ef4444;
-    color: #fff;
+    background: var(--color-danger);
+    color: var(--color-white);
 }
 
 .pool-tab.active {
-    background: #ef4444;
-    color: #fff;
-    border-color: #dc2626;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    background: var(--color-danger);
+    color: var(--color-white);
+    border-color: var(--color-danger-dark);
+    box-shadow: 0 2px 8px rgba(var(--red-rgb), 0.4);
 }
 
 .pool-tab.active .tab-count {
-    background: #fff;
-    color: #ef4444;
+    background: var(--color-white);
+    color: var(--color-danger);
 }
 
 /* Approved Tab - Blue */
 .approved-tab {
-    background: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #93c5fd;
+    background: var(--color-blue-100);
+    color: var(--color-blue-700);
+    border: 1px solid var(--color-blue-300);
 }
 
 .approved-tab:hover {
-    background: #bfdbfe;
+    background: var(--color-blue-200);
 }
 
 .approved-tab .tab-count {
-    background: #3b82f6;
-    color: #fff;
+    background: var(--color-blue);
+    color: var(--color-white);
 }
 
 .approved-tab.active {
-    background: #3b82f6;
-    color: #fff;
-    border-color: #2563eb;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    background: var(--color-blue);
+    color: var(--color-white);
+    border-color: var(--color-blue-dark);
+    box-shadow: 0 2px 8px rgba(var(--blue-rgb), 0.4);
 }
 
 .approved-tab.active .tab-count {
-    background: #fff;
-    color: #3b82f6;
+    background: var(--color-white);
+    color: var(--color-blue);
 }
 
 /* Download Tab - Gray */
 .download-tab {
-    background: #f3f4f6;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+    border: 1px solid var(--color-gray-300);
 }
 
 .download-tab:hover {
-    background: #e5e7eb;
+    background: var(--color-gray-200);
 }
 
 .download-tab .tab-count {
-    background: #6b7280;
-    color: #fff;
+    background: var(--color-gray-500);
+    color: var(--color-white);
 }
 
 .download-tab.active {
-    background: #6b7280;
-    color: #fff;
-    border-color: #4b5563;
+    background: var(--color-gray-500);
+    color: var(--color-white);
+    border-color: var(--color-gray-600);
     box-shadow: 0 2px 8px rgba(107, 114, 128, 0.4);
 }
 
 .download-tab.active .tab-count {
-    background: #fff;
-    color: #6b7280;
+    background: var(--color-white);
+    color: var(--color-gray-500);
 }
 
 /* Print List Tab - Blue */
 .print-list-tab {
-    background: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #93c5fd;
+    background: var(--color-blue-100);
+    color: var(--color-blue-700);
+    border: 1px solid var(--color-blue-300);
 }
 
 .print-list-tab:hover {
-    background: #bfdbfe;
+    background: var(--color-blue-200);
 }
 
 .print-list-tab .tab-count {
-    background: #3b82f6;
-    color: #fff;
+    background: var(--color-blue);
+    color: var(--color-white);
 }
 
 .print-list-tab.active {
-    background: #3b82f6;
-    color: #fff;
-    border-color: #2563eb;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    background: var(--color-blue);
+    color: var(--color-white);
+    border-color: var(--color-blue-dark);
+    box-shadow: 0 2px 8px rgba(var(--blue-rgb), 0.4);
 }
 
 .print-list-tab.active .tab-count {
-    background: #fff;
-    color: #3b82f6;
+    background: var(--color-white);
+    color: var(--color-blue);
 }
 
 /* Print Finalized Tab - Green */
 .print-finalized-tab {
-    background: #d1fae5;
-    color: #065f46;
-    border: 1px solid #6ee7b7;
+    background: var(--color-emerald-100);
+    color: var(--color-emerald-800);
+    border: 1px solid var(--color-emerald-300);
 }
 
 .print-finalized-tab:hover {
-    background: #a7f3d0;
+    background: var(--color-emerald-200);
 }
 
 .print-finalized-tab .tab-count {
-    background: #10b981;
-    color: #fff;
+    background: var(--color-emerald-500);
+    color: var(--color-white);
 }
 
 .print-finalized-tab.active {
-    background: #10b981;
-    color: #fff;
-    border-color: #059669;
+    background: var(--color-emerald-500);
+    color: var(--color-white);
+    border-color: var(--color-emerald-600);
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
 }
 
 .print-finalized-tab.active .tab-count {
-    background: #fff;
-    color: #10b981;
+    background: var(--color-white);
+    color: var(--color-emerald-500);
 }
 
 /* Print Generate Tab - Amber */
 .print-generate-tab {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fcd34d;
+    background: var(--color-amber-100);
+    color: var(--color-amber-800);
+    border: 1px solid var(--color-amber-300);
 }
 
 .print-generate-tab:hover {
-    background: #fde68a;
+    background: var(--color-amber-200);
 }
 
 .print-generate-tab .tab-count {
-    background: #f59e0b;
-    color: #fff;
+    background: var(--color-warning);
+    color: var(--color-white);
 }
 
 .print-generate-tab.active {
-    background: #f59e0b;
-    color: #fff;
-    border-color: #d97706;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    background: var(--color-warning);
+    color: var(--color-white);
+    border-color: var(--color-warning-dark);
+    box-shadow: 0 2px 8px rgba(var(--yellow-rgb), 0.4);
 }
 
 .print-generate-tab.active .tab-count {
-    background: #fff;
-    color: #d97706;
+    background: var(--color-white);
+    color: var(--color-warning-dark);
 }
 
 /* Reprint Request/Confirmed tabs */
 .reprint-confirm-tab {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fcd34d;
+    background: var(--color-amber-100);
+    color: var(--color-amber-800);
+    border: 1px solid var(--color-amber-300);
 }
 
 .reprint-confirm-tab:hover {
-    background: #fde68a;
+    background: var(--color-amber-200);
 }
 
 .reprint-confirm-tab .tab-count {
-    background: #f59e0b;
-    color: #fff;
+    background: var(--color-warning);
+    color: var(--color-white);
 }
 
 .reprint-confirm-tab.active {
-    background: #f59e0b;
-    color: #fff;
-    border-color: #d97706;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    background: var(--color-warning);
+    color: var(--color-white);
+    border-color: var(--color-warning-dark);
+    box-shadow: 0 2px 8px rgba(var(--yellow-rgb), 0.4);
 }
 
 .reprint-confirm-tab.active .tab-count {
-    background: #fff;
-    color: #f59e0b;
+    background: var(--color-white);
+    color: var(--color-warning);
 }
 
 .reprint-pool-tab {
-    background: #e0e7ff;
-    color: #3730a3;
-    border: 1px solid #a5b4fc;
+    background: var(--color-indigo-100);
+    color: var(--color-indigo-700);
+    border: 1px solid var(--color-indigo-300);
 }
 
 .reprint-pool-tab:hover {
-    background: #c7d2fe;
+    background: var(--color-indigo-200);
 }
 
 .reprint-pool-tab .tab-count {
-    background: #6366f1;
-    color: #fff;
+    background: var(--color-indigo-500);
+    color: var(--color-white);
 }
 
 .reprint-pool-tab.active {
-    background: #6366f1;
-    color: #fff;
-    border-color: #4f46e5;
+    background: var(--color-indigo-500);
+    color: var(--color-white);
+    border-color: var(--color-indigo-600);
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
 .reprint-pool-tab.active .tab-count {
-    background: #fff;
-    color: #6366f1;
+    background: var(--color-white);
+    color: var(--color-indigo-500);
 }
 
 /* Compact datetime filter controls (shared across print/reprint lists) */

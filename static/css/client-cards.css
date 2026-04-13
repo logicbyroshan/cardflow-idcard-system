@@ -23,7 +23,7 @@
   .page-header h1 {
     font-size: 22px;
     font-weight: 700;
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
     display: flex;
     align-items: center;
     gap: 12px;
@@ -34,7 +34,7 @@
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
     border-radius: 8px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     text-decoration: none;
     font-size: 13px;
     display: flex;
@@ -45,7 +45,7 @@
   
   .back-btn:hover {
     background: rgba(255,255,255,0.1);
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
   }
   
   .filters-bar {
@@ -64,7 +64,7 @@
   
   .filter-group label {
     font-size: 13px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
   }
   
   .filter-group input {
@@ -76,7 +76,7 @@
   
   .filter-group input:focus {
     outline: none;
-    border-color: #48bb78;
+    border-color: var(--color-green-500);
     box-shadow: 0 0 0 2px rgba(72, 187, 120, 0.15);
   }
   
@@ -93,7 +93,7 @@
     background: var(--card-bg, #1e2030);
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
     border-radius: 8px;
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
     font-size: 13px;
   }
   
@@ -102,7 +102,7 @@
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     font-size: 14px;
   }
   
@@ -138,7 +138,7 @@
     background: rgba(255,255,255,0.02);
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
     letter-spacing: 0.5px;
     position: sticky;
@@ -152,7 +152,7 @@
   
   .cards-table td {
     font-size: 13px;
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
   }
   
   .card-photo {
@@ -167,7 +167,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     font-size: 18px;
   }
   
@@ -181,10 +181,10 @@
     font-weight: 500;
   }
   
-  .status-badge.pending { background: rgba(246, 173, 85, 0.15); color: #f6ad55; }
+  .status-badge.pending { background: rgba(246, 173, 85, 0.15); color: var(--color-orange-400); }
   .status-badge.verified { background: rgba(99, 179, 237, 0.15); color: #63b3ed; }
-  .status-badge.pool { background: rgba(160, 174, 192, 0.15); color: #a0aec0; }
-  .status-badge.approved { background: rgba(72, 187, 120, 0.15); color: #48bb78; }
+  .status-badge.pool { background: rgba(160, 174, 192, 0.15); color: var(--color-slate-400); }
+  .status-badge.approved { background: rgba(72, 187, 120, 0.15); color: var(--color-green-500); }
   .status-badge.download { background: rgba(128, 90, 213, 0.15); color: #805ad5; }
   .status-badge.reprint { background: rgba(237, 100, 166, 0.15); color: #ed64a6; }
   
@@ -193,7 +193,7 @@
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
     border-radius: 6px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
@@ -201,13 +201,13 @@
   
   .action-btn:hover {
     background: rgba(255,255,255,0.1);
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
   }
   
   .action-btn.primary {
     background: rgba(72, 187, 120, 0.1);
     border-color: rgba(72, 187, 120, 0.2);
-    color: #48bb78;
+    color: var(--color-green-500);
   }
   
   .action-btn.primary:hover {
@@ -225,7 +225,7 @@
   
   .pagination-info {
     font-size: 13px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
   }
   
   .pagination-controls {
@@ -239,7 +239,7 @@
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--border-color, rgba(255,255,255,0.1));
     border-radius: 6px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
@@ -247,7 +247,7 @@
   
   .pagination-btn:hover:not(:disabled) {
     background: rgba(255,255,255,0.1);
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
   }
   
   .pagination-btn:disabled {
@@ -298,7 +298,7 @@
   .modal-header h2 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
   }
   
   .modal-close {
@@ -307,7 +307,7 @@
     background: rgba(255,255,255,0.05);
     border: none;
     border-radius: 8px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -317,7 +317,7 @@
   
   .modal-close:hover {
     background: rgba(255,255,255,0.1);
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
   }
   
   .modal-body {
@@ -342,7 +342,7 @@
   
   .card-detail-item label {
     font-size: 11px;
-    color: var(--text-secondary, #a0aec0);
+    color: var(--text-secondary, var(--color-slate-400));
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 4px;
@@ -351,7 +351,7 @@
   
   .card-detail-item .value {
     font-size: 14px;
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, var(--color-gray-50));
     font-weight: 500;
   }
   

@@ -10,15 +10,15 @@
 }
 
 .tutorial-page-wrap {
-    background: #f8fafc;
+    background: var(--color-gray-50);
 }
 
 .tutorial-hero {
     display: grid;
     grid-template-columns: 1.5fr 0.9fr;
     gap: 14px;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fff;
+    border-bottom: 1px solid var(--color-gray-200);
+    background: var(--color-white);
     padding: 16px 18px;
 }
 
@@ -30,7 +30,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #667eea;
+    color: var(--color-primary);
     margin-bottom: 6px;
 }
 
@@ -38,19 +38,19 @@
     content: "";
     width: 8px;
     height: 8px;
-    background: #667eea;
+    background: var(--color-primary);
 }
 
 .tutorial-hero-content h1 {
     margin: 0 0 6px;
     font-size: 22px;
     line-height: 1.25;
-    color: #1e293b;
+    color: var(--color-slate-800);
 }
 
 .tutorial-hero-content p {
     margin: 0;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-size: 13px;
     line-height: 1.55;
 }
@@ -70,29 +70,29 @@
 }
 
 .tutorial-hero-actions .btn.tutorial-personal-guide-btn {
-    border-color: #93c5fd;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    color: #1d4ed8;
+    border-color: var(--color-blue-300);
+    background: linear-gradient(135deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
+    color: var(--color-blue-700);
     font-weight: 600;
     box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
 }
 
 .tutorial-hero-actions .btn.tutorial-personal-guide-btn:hover {
-    border-color: #60a5fa;
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-color: var(--blue-light);
+    background: linear-gradient(135deg, var(--color-blue-100) 0%, var(--color-blue-200) 100%);
     color: #1e3a8a;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.24);
 }
 
 .tutorial-hero-actions .btn.tutorial-personal-guide-btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.24), 0 4px 12px rgba(37, 99, 235, 0.24);
+    box-shadow: 0 0 0 2px rgba(var(--blue-rgb), 0.24), 0 4px 12px rgba(37, 99, 235, 0.24);
 }
 
 .tutorial-video-card {
     height: 100%;
-    background: #f8fafc;
-    border: 1px solid #e5e7eb;
+    background: var(--color-gray-50);
+    border: 1px solid var(--color-gray-200);
     padding: 12px;
 }
 
@@ -103,25 +103,25 @@
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--color-red-100);
+    color: var(--color-red-700);
 }
 
 .tutorial-video-card h3 {
     margin: 8px 0 5px;
     font-size: 14px;
-    color: #1e293b;
+    color: var(--color-slate-800);
 }
 
 .tutorial-video-card p {
     margin: 0 0 6px;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-size: 12px;
     line-height: 1.5;
 }
 
 .tutorial-video-card a {
-    color: #4f46e5;
+    color: var(--color-indigo-600);
     font-weight: 600;
     font-size: 12px;
     text-decoration: none;
@@ -141,8 +141,8 @@
     display: flex;
     gap: 0;
     overflow-x: auto;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fff;
+    border-bottom: 1px solid var(--color-gray-200);
+    background: var(--color-white);
     position: sticky;
     top: 0;
     z-index: 5;
@@ -160,7 +160,7 @@
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-size: 12px;
     font-weight: 600;
     padding: 10px 12px;
@@ -174,28 +174,28 @@
 }
 
 .tutorial-tab-btn:hover {
-    color: #334155;
-    background: #f8fafc;
+    color: var(--color-slate-700);
+    background: var(--color-gray-50);
 }
 
 .tutorial-tab-btn.is-active {
-    color: #667eea;
-    border-bottom-color: #667eea;
-    background: rgba(102, 126, 234, 0.06);
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background: rgba(var(--primary-rgb), 0.06);
 }
 
 .tutorial-tab-btn:focus-visible {
     outline: none;
-    box-shadow: inset 0 0 0 2px rgba(102, 126, 234, 0.24);
+    box-shadow: inset 0 0 0 2px rgba(var(--primary-rgb), 0.24);
 }
 
 .tutorial-panels {
-    background: #fff;
+    background: var(--color-white);
 }
 
 .tutorial-panel {
     display: none;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--color-gray-200);
     padding: 16px 18px;
 }
 
@@ -206,19 +206,19 @@
 .tutorial-panel h2 {
     margin: 0 0 8px;
     font-size: 16px;
-    color: #1e293b;
+    color: var(--color-slate-800);
     font-weight: 700;
 }
 
 .tutorial-panel h3 {
     margin: 14px 0 7px;
     font-size: 13px;
-    color: #334155;
+    color: var(--color-slate-700);
     font-weight: 700;
 }
 
 .tutorial-panel p {
-    color: #64748b;
+    color: var(--color-slate-500);
     margin: 0;
     font-size: 13px;
     line-height: 1.6;
@@ -229,7 +229,7 @@
     margin: 8px 0 0;
     padding: 0;
     list-style: none;
-    color: #334155;
+    color: var(--color-slate-700);
     display: grid;
     gap: 8px;
     font-size: 13px;
@@ -240,15 +240,15 @@
 .tutorial-panel ol li {
     position: relative;
     padding: 8px 10px 8px 34px;
-    border: 1px solid #e5e7eb;
-    background: #f8fafc;
+    border: 1px solid var(--color-gray-200);
+    background: var(--color-gray-50);
 }
 
 .tutorial-panel ul li::before {
     content: "\f058";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
-    color: #2563eb;
+    color: var(--color-blue-dark);
     position: absolute;
     left: 11px;
     top: 8px;
@@ -265,8 +265,8 @@
     width: 18px;
     height: 18px;
     border-radius: 8px;
-    background: #667eea;
-    color: #fff;
+    background: var(--color-primary);
+    color: var(--color-white);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -286,8 +286,8 @@
 
 .quick-grid article {
     position: relative;
-    border: 1px solid #e2e8f0;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid var(--color-slate-200);
+    background: linear-gradient(180deg, var(--color-white) 0%, var(--color-blue-50) 100%);
     padding: 10px;
     display: grid;
     grid-template-columns: 24px 22px minmax(0, 1fr);
@@ -306,39 +306,39 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--color-white);
     font-size: 12px;
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    background: linear-gradient(135deg, var(--color-blue-dark) 0%, var(--color-blue-700) 100%);
 }
 
 .quick-grid article:nth-child(2)::before {
     content: "\f0ce";
-    background: linear-gradient(135deg, #0f766e 0%, #0e7490 100%);
+    background: linear-gradient(135deg, #0f766e 0%, var(--color-cyan-700) 100%);
 }
 
 .quick-grid article:nth-child(3)::before {
     content: "\f093";
-    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    background: linear-gradient(135deg, var(--color-purple-dark) 0%, var(--color-purple-600) 100%);
 }
 
 .quick-grid article:nth-child(4)::before {
     content: "\f0ad";
-    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    background: linear-gradient(135deg, var(--color-orange-600) 0%, #c2410c 100%);
 }
 
 .quick-grid article:nth-child(5)::before {
     content: "\f058";
-    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    background: linear-gradient(135deg, var(--color-success-dark) 0%, var(--color-green-700) 100%);
 }
 
 .quick-grid article:nth-child(6)::before {
     content: "\f14a";
-    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+    background: linear-gradient(135deg, var(--color-teal-dark) 0%, var(--color-cyan-700) 100%);
 }
 
 .quick-grid article:nth-child(7)::before {
     content: "\f019";
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    background: linear-gradient(135deg, var(--color-blue-dark) 0%, var(--color-blue-700) 100%);
 }
 
 .quick-grid article:nth-child(8)::before {
@@ -349,8 +349,8 @@
 .quick-grid article span {
     width: 22px;
     height: 22px;
-    background: #667eea;
-    color: #fff;
+    background: var(--color-primary);
+    color: var(--color-white);
     font-size: 11px;
     font-weight: 700;
     display: inline-flex;
@@ -363,21 +363,21 @@
 .quick-grid article p {
     margin: 0;
     font-size: 12.5px;
-    color: #334155;
+    color: var(--color-slate-700);
     line-height: 1.45;
 }
 
 .callout {
-    border-left: 3px solid #dc2626;
+    border-left: 3px solid var(--color-danger-dark);
     background: #fff7f7;
     padding: 9px 10px;
-    color: #7f1d1d;
+    color: var(--color-red-800);
     margin-top: 10px;
     font-size: 12.5px;
 }
 
 .callout-soft {
-    border-left-color: #0284c7;
+    border-left-color: var(--color-sky-700);
     background: #f4fbff;
     color: #0c4a6e;
 }
@@ -385,7 +385,7 @@
 .tutorial-table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--color-gray-200);
     margin-top: 10px;
 }
 
@@ -393,10 +393,10 @@
 .tutorial-table td {
     text-align: left;
     padding: 8px 9px;
-    border-bottom: 1px solid #eef2f7;
-    border-right: 1px solid #eef2f7;
+    border-bottom: 1px solid var(--color-slate-100);
+    border-right: 1px solid var(--color-slate-100);
     font-size: 12.5px;
-    color: #475569;
+    color: var(--color-slate-600);
     vertical-align: top;
 }
 
@@ -406,8 +406,8 @@
 }
 
 .tutorial-table th {
-    background: #f8fafc;
-    color: #334155;
+    background: var(--color-gray-50);
+    color: var(--color-slate-700);
     font-weight: 700;
 }
 
@@ -415,7 +415,7 @@
     position: relative;
     padding-left: 26px;
     font-weight: 600;
-    color: #334155;
+    color: var(--color-slate-700);
 }
 
 .tutorial-table tbody td:first-child::before {
@@ -423,7 +423,7 @@
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     font-size: 7px;
-    color: #667eea;
+    color: var(--color-primary);
     position: absolute;
     left: 10px;
     top: 13px;
@@ -433,15 +433,15 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--color-gray-200);
     margin-top: 10px;
 }
 
 .faq-grid article {
-    border-right: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid var(--color-gray-200);
+    border-bottom: 1px solid var(--color-gray-200);
     padding: 10px;
-    background: #fff;
+    background: var(--color-white);
 }
 
 .faq-grid article:nth-child(2n) {
@@ -450,7 +450,7 @@
 
 .faq-grid h4 {
     margin: 0 0 5px;
-    color: #334155;
+    color: var(--color-slate-700);
     font-size: 13px;
     font-weight: 700;
 }
@@ -458,14 +458,14 @@
 .faq-grid p {
     margin: 0;
     font-size: 12px;
-    color: #64748b;
+    color: var(--color-slate-500);
     line-height: 1.5;
 }
 
 .daily-checklist {
     display: grid;
     gap: 0;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--color-gray-200);
     margin-top: 10px;
 }
 
@@ -473,10 +473,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border-bottom: 1px solid #eef2f7;
-    background: #fff;
+    border-bottom: 1px solid var(--color-slate-100);
+    background: var(--color-white);
     padding: 9px 10px;
-    color: #475569;
+    color: var(--color-slate-600);
     font-size: 12.5px;
 }
 
@@ -492,7 +492,7 @@
 .tutorial-note {
     margin-top: 8px;
     font-size: 12px;
-    color: #64748b;
+    color: var(--color-slate-500);
     font-style: italic;
 }
 

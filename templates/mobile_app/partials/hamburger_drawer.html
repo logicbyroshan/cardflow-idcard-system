@@ -176,7 +176,7 @@
                           <a href="{% url 'mobile_app:clients_list' %}"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
-                       style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
+                       style="background:linear-gradient(135deg,var(--color-blue),var(--color-blue-dark));">
                             <i class="fa-solid fa-building text-base flex-shrink-0"></i>
                         <span>Manage Client</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
@@ -187,7 +187,7 @@
                     <a href="{% url 'mobile_app:staff_manage' %}"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
-                       style="background:linear-gradient(135deg,#10b981,#059669);">
+                       style="background:linear-gradient(135deg,var(--color-emerald-500),var(--color-emerald-600));">
                             <i class="fa-solid fa-user-cog text-base flex-shrink-0"></i>
                         <span>{% if is_super_admin %}Manage Operator{% else %}Manage Assistent{% endif %}</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
@@ -198,7 +198,7 @@
                     <a href="{% url 'mobile_app:profile' %}"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
-                       style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">
+                       style="background:linear-gradient(135deg,var(--purple),var(--color-purple-dark));">
                         <i class="fa-solid fa-user text-base flex-shrink-0"></i>
                         <span>My Profile</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>
@@ -218,7 +218,7 @@
                     <a href="{% url 'mobile_app:groups_overview' %}"
                        @click="close()"
                        class="flex items-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-[13px] text-white shadow-md active:opacity-90 transition-opacity"
-                       style="background:linear-gradient(135deg,#6366f1,#4f46e5);">
+                       style="background:linear-gradient(135deg,var(--color-indigo-500),var(--color-indigo-600));">
                         <i class="fa-solid fa-layer-group text-base flex-shrink-0"></i>
                         <span>Open Groups</span>
                         <i class="fa-solid fa-chevron-right text-white/60 text-xs ml-auto"></i>

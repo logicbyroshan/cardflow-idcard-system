@@ -10,10 +10,10 @@ tr.reprint-requested {
   background: #faf5ff !important;
 }
 tr.reprint-requested td {
-  color: #7c3aed;
+  color: var(--color-purple-dark);
 }
 tr.reprint-requested:hover {
-  background: #f5f3ff !important;
+  background: var(--color-purple-50) !important;
 }
 
 /* ===========================================
@@ -25,8 +25,8 @@ tr.reprint-requested:hover {
   gap: 4px;
   font-size: 15px;
   font-weight: 600;
-  color: #7c3aed;
-  background: #ede9fe;
+  color: var(--color-purple-dark);
+  background: var(--color-violet-100);
   padding: 3px 8px;
   border-radius: 10px;
   white-space: nowrap;
@@ -42,16 +42,16 @@ tr.reprint-requested:hover {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid #c4b5fd;
-  background: #f5f3ff;
-  color: #7c3aed;
+  border: 1px solid var(--color-violet-300);
+  background: var(--color-purple-50);
+  color: var(--color-purple-dark);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .btn-reprint-single:hover {
-  background: #8b5cf6;
-  color: #fff;
-  border-color: #7c3aed;
+  background: var(--purple);
+  color: var(--color-white);
+  border-color: var(--color-purple-dark);
 }
 
 /* ===========================================
@@ -68,7 +68,7 @@ tr.reprint-requested:hover {
   animation: fadeIn 0.15s ease;
 }
 .reprint-reason-modal {
-  background: #fff;
+  background: var(--color-white);
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   width: 420px;
@@ -77,20 +77,20 @@ tr.reprint-requested:hover {
 }
 .reprint-reason-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-gray-200);
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .reprint-reason-header i {
-  color: #8b5cf6;
+  color: var(--purple);
   font-size: 15px;
 }
 .reprint-reason-header h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-gray-900);
 }
 .reprint-reason-body {
   padding: 20px;
@@ -99,12 +99,12 @@ tr.reprint-requested:hover {
   display: block;
   font-size: 15px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-gray-700);
   margin-bottom: 6px;
 }
 .reprint-reason-body textarea {
   width: 100%;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-gray-300);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 13px;
@@ -115,17 +115,17 @@ tr.reprint-requested:hover {
 }
 .reprint-reason-body textarea:focus {
   outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(var(--purple-rgb), 0.1);
 }
 .reprint-reason-body .reason-hint {
   font-size: 15px;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-top: 4px;
 }
 .reprint-reason-footer {
   padding: 12px 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-gray-200);
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -133,27 +133,27 @@ tr.reprint-requested:hover {
 .reprint-reason-footer .btn-cancel {
   padding: 7px 16px;
   border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--color-gray-300);
+  background: var(--color-white);
+  color: var(--color-gray-700);
   font-size: 13px;
   cursor: pointer;
 }
 .reprint-reason-footer .btn-cancel:hover {
-  background: #f3f4f6;
+  background: var(--color-gray-100);
 }
 .reprint-reason-footer .btn-submit {
   padding: 7px 16px;
   border-radius: 6px;
-  border: 1px solid #7c3aed;
-  background: #8b5cf6;
-  color: #fff;
+  border: 1px solid var(--color-purple-dark);
+  background: var(--purple);
+  color: var(--color-white);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 .reprint-reason-footer .btn-submit:hover {
-  background: #7c3aed;
+  background: var(--color-purple-dark);
 }
 .reprint-reason-footer .btn-submit:disabled {
   opacity: 0.6;
@@ -195,9 +195,9 @@ tr.reprint-requested:hover {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid var(--color-blue-200);
+  background: var(--color-blue-50);
+  color: var(--color-blue-700);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -208,29 +208,29 @@ tr.reprint-requested:hover {
 
 .btn-request-edit-single:hover,
 .btn-confirmed-edit-single:hover {
-  background: #1d4ed8;
-  color: #fff;
-  border-color: #1d4ed8;
+  background: var(--color-blue-700);
+  color: var(--color-white);
+  border-color: var(--color-blue-700);
 }
 .btn-confirm-single {
-  background: #ecfdf5;
-  color: #059669;
-  border-color: #a7f3d0;
+  background: var(--color-emerald-50);
+  color: var(--color-emerald-600);
+  border-color: var(--color-emerald-200);
 }
 .btn-confirm-single:hover {
-  background: #059669;
-  color: #fff;
-  border-color: #059669;
+  background: var(--color-emerald-600);
+  color: var(--color-white);
+  border-color: var(--color-emerald-600);
 }
 .btn-reject-single {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background: var(--color-red-50);
+  color: var(--color-danger-dark);
+  border-color: var(--color-red-200);
 }
 .btn-reject-single:hover {
-  background: #dc2626;
-  color: #fff;
-  border-color: #dc2626;
+  background: var(--color-danger-dark);
+  color: var(--color-white);
+  border-color: var(--color-danger-dark);
 }
 
 /* ===========================================
@@ -242,9 +242,9 @@ tr.reprint-requested:hover {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid #a7f3d0;
-  background: #ecfdf5;
-  color: #059669;
+  border: 1px solid var(--color-emerald-200);
+  background: var(--color-emerald-50);
+  color: var(--color-emerald-600);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -253,9 +253,9 @@ tr.reprint-requested:hover {
   transition: all 0.15s;
 }
 .btn-download-single:hover {
-  background: #059669;
-  color: #fff;
-  border-color: #059669;
+  background: var(--color-emerald-600);
+  color: var(--color-white);
+  border-color: var(--color-emerald-600);
 }
 
 /* Reprint confirm modal layout + accent (replaces inline styles) */
@@ -266,7 +266,7 @@ tr.reprint-requested:hover {
 }
 
 .reprint-confirm-modal .modal-header {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-dark) 100%);
 }
 
 .reprint-confirm-centered {
@@ -280,25 +280,25 @@ tr.reprint-requested:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(var(--yellow-rgb), 0.12);
   margin-bottom: 16px;
 }
 
 .reprint-confirm-icon i {
   font-size: 24px;
-  color: #d97706;
+  color: var(--color-warning-dark);
 }
 
 .reprint-confirm-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--gray-900, #111827);
+  color: var(--gray-900, var(--color-gray-900));
   margin: 0 0 6px;
 }
 
 .reprint-confirm-subtitle {
   font-size: 13px;
-  color: var(--gray-500, #6b7280);
+  color: var(--gray-500, var(--color-gray-500));
   margin: 0 0 16px;
 }
 
@@ -306,7 +306,7 @@ tr.reprint-requested:hover {
   text-align: left;
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed var(--color-gray-200);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -315,7 +315,7 @@ tr.reprint-requested:hover {
 
 .reprint-confirm-edit-note {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-gray-500);
 }
 
 /* ===========================================
@@ -333,10 +333,10 @@ tr.reprint-requested:hover {
 }
 
 .reprint-confirm-submit {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-dark) 100%);
+  color: var(--color-white);
   border: none;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 12px rgba(var(--yellow-rgb), 0.35);
 }
 
 /* Strict button consistency overrides */

@@ -33,7 +33,7 @@
   <style>
     /* -- Configure Modal Container -- */
     .modal-container {
-      background: #fff;
+      background: var(--color-white);
       border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       width: 100%;
@@ -44,17 +44,17 @@
     }
     .modal-container .modal-header {
       padding: 14px 20px;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--color-gray-200);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #f9fafb;
+      background: var(--color-gray-50);
       border-radius: 12px 12px 0 0;
     }
     .modal-container .modal-header h3 {
       font-size: 14px;
       font-weight: 600;
-      color: #111827;
+      color: var(--color-gray-900);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -63,40 +63,40 @@
       background: none;
       border: none;
       cursor: pointer;
-      color: #9ca3af;
+      color: var(--color-gray-400);
       font-size: 16px;
       padding: 4px 8px;
       border-radius: 6px;
       transition: color .15s, background .15s;
     }
-    .modal-container .modal-close-btn:hover { color: #ef4444; background: #fee2e2; }
+    .modal-container .modal-close-btn:hover { color: var(--color-danger); background: var(--color-red-100); }
     .modal-container .modal-footer {
-      background: #f9fafb;
+      background: var(--color-gray-50);
       border-radius: 0 0 12px 12px;
     }
 
     /* -- Generate-Card Editor Modal -- */
     .gc-editor-overlay { position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px); }
     .gc-editor-overlay.hidden { display:none; }
-    .gc-editor-box { width:90vw;height:90vh;background:var(--bg-surface,#fff);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.28);display:flex;flex-direction:column;overflow:hidden; }
-    .gc-editor-header { display:flex;align-items:center;gap:10px;padding:13px 20px;border-bottom:1px solid var(--border-color,#e5e7eb);background:var(--bg-surface,#fff);flex-shrink:0; }
-    .gc-editor-header .gc-modal-title { font-size:14px;font-weight:600;color:var(--text-primary,#111827);flex:1; }
-    .gc-editor-header .gc-modal-close { background:none;border:none;cursor:pointer;color:var(--text-muted,#9ca3af);font-size:18px;line-height:1;padding:2px 6px;border-radius:6px;transition:color .15s,background .15s; }
-    .gc-editor-header .gc-modal-close:hover { color:#ef4444;background:#fee2e2; }
+    .gc-editor-box { width:90vw;height:90vh;background:var(--bg-surface,var(--color-white));border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.28);display:flex;flex-direction:column;overflow:hidden; }
+    .gc-editor-header { display:flex;align-items:center;gap:10px;padding:13px 20px;border-bottom:1px solid var(--border-color,var(--color-gray-200));background:var(--bg-surface,var(--color-white));flex-shrink:0; }
+    .gc-editor-header .gc-modal-title { font-size:14px;font-weight:600;color:var(--text-primary,var(--color-gray-900));flex:1; }
+    .gc-editor-header .gc-modal-close { background:none;border:none;cursor:pointer;color:var(--text-muted,var(--color-gray-400));font-size:18px;line-height:1;padding:2px 6px;border-radius:6px;transition:color .15s,background .15s; }
+    .gc-editor-header .gc-modal-close:hover { color:var(--color-danger);background:var(--color-red-100); }
     .gc-editor-body { flex:1;overflow:hidden;display:flex;flex-direction:column; }
     .gc-editor-body .gen-layout { flex:1;overflow:hidden; }
-    .gc-editor-footer { display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 20px;border-top:1px solid var(--border-color,#e5e7eb);background:var(--bg-surface,#fff);flex-shrink:0; }
+    .gc-editor-footer { display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 20px;border-top:1px solid var(--border-color,var(--color-gray-200));background:var(--bg-surface,var(--color-white));flex-shrink:0; }
     #gcDownloadPdfBtn:disabled { opacity:0.45;cursor:not-allowed; }
 
     /* -- Global btn colour / size variants (not scoped to action-bar) -- */
-    .btn-green  { background:#22c55e;color:#fff!important;border-color:#22c55e; }
-    .btn-green:hover:not(:disabled)  { background:#16a34a;border-color:#16a34a; }
-    .btn-blue   { background:#3b82f6;color:#fff!important;border-color:#3b82f6; }
-    .btn-blue:hover:not(:disabled)   { background:#2563eb;border-color:#2563eb; }
-    .btn-gray   { background:#6b7280;color:#fff!important;border-color:#6b7280; }
-    .btn-gray:hover:not(:disabled)   { background:#4b5563;border-color:#4b5563; }
-    .btn-outline { background:#fff;color:#374151;border:1px solid #d1d5db; }
-    .btn-outline:hover:not(:disabled){ background:#f9fafb;border-color:#9ca3af; }
+    .btn-green  { background:var(--color-success);color:var(--color-white)!important;border-color:var(--color-success); }
+    .btn-green:hover:not(:disabled)  { background:var(--color-success-dark);border-color:var(--color-success-dark); }
+    .btn-blue   { background:var(--color-blue);color:var(--color-white)!important;border-color:var(--color-blue); }
+    .btn-blue:hover:not(:disabled)   { background:var(--color-blue-dark);border-color:var(--color-blue-dark); }
+    .btn-gray   { background:var(--color-gray-500);color:var(--color-white)!important;border-color:var(--color-gray-500); }
+    .btn-gray:hover:not(:disabled)   { background:var(--color-gray-600);border-color:var(--color-gray-600); }
+    .btn-outline { background:var(--color-white);color:var(--color-gray-700);border:1px solid var(--color-gray-300); }
+    .btn-outline:hover:not(:disabled){ background:var(--color-gray-50);border-color:var(--color-gray-400); }
     .btn-xs { height:24px;padding:2px 7px;font-size:11px; }
   </style>
 </head>

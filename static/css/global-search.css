@@ -32,7 +32,7 @@
     width: 100%;
     max-width: 650px;
     max-height: 70vh;
-    background: #fff;
+    background: var(--color-white);
     border-radius: 12px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
     overflow: hidden;
@@ -52,8 +52,8 @@
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    background: #fff;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-gray-200);
 }
 
 .search-input-group {
@@ -66,7 +66,7 @@
 .search-input-group > i {
     position: absolute;
     left: 0;
-    color: #9ca3af;
+    color: var(--color-gray-400);
     font-size: 15px;
     pointer-events: none;
 }
@@ -79,7 +79,7 @@
     border-radius: 0;
     outline: none;
     background: transparent;
-    color: #1f2937;
+    color: var(--color-gray-800);
     font-family: inherit;
 }
 
@@ -90,14 +90,14 @@
 }
 
 .search-input-group input::placeholder {
-    color: #9ca3af;
+    color: var(--color-gray-400);
     font-weight: 400;
 }
 
 .clear-global-search {
     position: absolute;
     right: 2px;
-    background: #f3f4f6;
+    background: var(--color-gray-100);
     border: none;
     width: 22px;
     height: 22px;
@@ -106,14 +106,14 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #6b7280;
+    color: var(--color-gray-500);
     font-size: 11px;
     transition: all 0.15s;
 }
 
 .clear-global-search:hover {
-    background: #e5e7eb;
-    color: #374151;
+    background: var(--color-gray-200);
+    color: var(--color-gray-700);
 }
 
 /* Filter group */
@@ -126,7 +126,7 @@
 
 .search-filter-group label {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--color-gray-400);
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -139,7 +139,7 @@
     height: 30px;
     padding: 5px 24px 5px 8px;
     font-size: 12px;
-    background-color: #f3f4f6;
+    background-color: var(--color-gray-100);
 }
 
 /* Close button */
@@ -147,12 +147,12 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
+    background: var(--color-gray-100);
+    border: 1px solid var(--color-gray-200);
     border-radius: 6px;
     padding: 5px 8px;
     cursor: pointer;
-    color: #6b7280;
+    color: var(--color-gray-500);
     font-size: 11px;
     font-family: inherit;
     transition: all 0.15s;
@@ -170,8 +170,8 @@
 }
 
 .close-global-search:hover {
-    background: #e5e7eb;
-    color: #374151;
+    background: var(--color-gray-200);
+    color: var(--color-gray-700);
 }
 
 /* Global search placeholder */
@@ -183,7 +183,7 @@
 
 .global-search-body .search-placeholder i {
     font-size: 40px;
-    color: #d1d5db;
+    color: var(--color-gray-300);
     margin-bottom: 12px;
     display: block;
 }
@@ -192,19 +192,19 @@
     font-size: 15px;
     font-weight: 600;
     margin: 0 0 4px 0;
-    color: #4b5563;
+    color: var(--color-gray-600);
 }
 
 .global-search-body .search-placeholder span {
     font-size: 13px;
-    color: #9ca3af;
+    color: var(--color-gray-400);
 }
 
 /* Loading */
 .global-search-loading {
     padding: 40px 20px;
     text-align: center;
-    color: #6b7280;
+    color: var(--color-gray-500);
     font-size: 14px;
 }
 
@@ -234,7 +234,7 @@
 .result-skeleton-icon,
 .result-skeleton-line {
     border-radius: 8px;
-    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background: linear-gradient(90deg, var(--color-slate-200) 25%, var(--color-gray-50) 37%, var(--color-slate-200) 63%);
     background-size: 200% 100%;
     animation: global-search-skeleton-shimmer 1.3s linear infinite;
 }
@@ -257,7 +257,7 @@
 
 .global-search-loading i {
     font-size: 20px;
-    color: #667eea;
+    color: var(--color-primary);
     margin-bottom: 8px;
     display: block;
 }
@@ -265,11 +265,11 @@
 /* Search Results List */
 .global-search-results-header {
     padding: 8px 16px;
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--color-gray-50);
+    border-bottom: 1px solid var(--color-gray-200);
     font-size: 11px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--color-gray-500);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -286,12 +286,12 @@
     padding: 10px 16px;
     cursor: pointer;
     transition: background 0.1s;
-    border-bottom: 1px solid #f3f4f6;
-    background: #fff;
+    border-bottom: 1px solid var(--color-gray-100);
+    background: var(--color-white);
 }
 
 .global-search-result-item:hover {
-    background: #f0f4ff;
+    background: var(--color-indigo-50);
 }
 
 .global-search-result-item:last-child {
@@ -310,13 +310,13 @@
 }
 
 .result-icon.client {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
+    color: var(--color-white);
 }
 
 .result-icon.idcard {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--color-emerald-500) 0%, var(--color-emerald-600) 100%);
+    color: var(--color-white);
 }
 
 .result-icon.result-skeleton-icon {
@@ -351,7 +351,7 @@
     height: 48px;
     border-radius: 4px;
     object-fit: cover;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--color-gray-200);
     flex-shrink: 0;
 }
 
@@ -363,7 +363,7 @@
 .result-title {
     font-size: 14px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--color-gray-800);
     margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;
@@ -372,7 +372,7 @@
 
 .result-subtitle {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--color-gray-500);
     margin-bottom: 2px;
 }
 
@@ -385,7 +385,7 @@
 
 .result-list-name {
     font-size: 11px;
-    color: #64748b;
+    color: var(--color-slate-500);
 }
 
 .result-status-pill {
@@ -394,72 +394,72 @@
     justify-content: center;
     padding: 1px 8px;
     border-radius: 8px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--color-slate-300);
     font-size: 10px;
     font-weight: 700;
     line-height: 1.4;
     text-transform: capitalize;
-    color: #334155;
-    background: #f8fafc;
+    color: var(--color-slate-700);
+    background: var(--color-gray-50);
 }
 
 .result-status-pill.pending {
-    color: #a16207;
-    border-color: #fcd34d;
-    background: #fffbeb;
+    color: var(--color-amber-700);
+    border-color: var(--color-amber-300);
+    background: var(--color-amber-50);
 }
 
 .result-status-pill.verified {
-    color: #047857;
-    border-color: #6ee7b7;
-    background: #ecfdf5;
+    color: var(--color-emerald-700);
+    border-color: var(--color-emerald-300);
+    background: var(--color-emerald-50);
 }
 
 .result-status-pill.pool {
-    color: #b91c1c;
-    border-color: #fecaca;
+    color: var(--color-red-700);
+    border-color: var(--color-red-200);
     background: #fff1f2;
 }
 
 .result-status-pill.approved {
-    color: #1d4ed8;
-    border-color: #93c5fd;
-    background: #eff6ff;
+    color: var(--color-blue-700);
+    border-color: var(--color-blue-300);
+    background: var(--color-blue-50);
 }
 
 .result-status-pill.download {
-    color: #374151;
-    border-color: #d1d5db;
-    background: #f3f4f6;
+    color: var(--color-gray-700);
+    border-color: var(--color-gray-300);
+    background: var(--color-gray-100);
 }
 
 .result-status-pill.reprint {
-    color: #7c3aed;
-    border-color: #c4b5fd;
-    background: #f5f3ff;
+    color: var(--color-purple-dark);
+    border-color: var(--color-violet-300);
+    background: var(--color-purple-50);
 }
 
 .result-match {
     font-size: 11px;
-    color: #9ca3af;
-    background: #f3f4f6;
+    color: var(--color-gray-400);
+    background: var(--color-gray-100);
     padding: 1px 6px;
     border-radius: 3px;
     display: inline-block;
 }
 
 .result-match strong {
-    color: #667eea;
+    color: var(--color-primary);
 }
 
 .result-arrow {
-    color: #d1d5db;
+    color: var(--color-gray-300);
     font-size: 12px;
     transition: all 0.15s;
 }
 
 .global-search-result-item:hover .result-arrow {
-    color: #667eea;
+    color: var(--color-primary);
     transform: translateX(2px);
 }
 
@@ -476,7 +476,7 @@
 }
 .global-search-no-results p {
     font-size: 14px;
-    color: #6b7280;
+    color: var(--color-gray-500);
     margin: 0;
 }
 

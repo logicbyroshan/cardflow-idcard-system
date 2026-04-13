@@ -18,11 +18,11 @@
     gap: 8px;
     font-size: 13px;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--color-slate-800);
     padding: 8px 14px;
     border-radius: 6px;
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-    border: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, var(--color-slate-100) 0%, var(--color-slate-200) 100%);
+    border: 1px solid var(--color-slate-200);
     margin-top: 18px;
     margin-bottom: 12px;
 }
@@ -66,7 +66,7 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--wa-gray-700);
-    background: #fff;
+    background: var(--color-white);
     border: 1px solid var(--wa-gray-200);
     border-radius: 6px;
     outline: none;
@@ -81,7 +81,7 @@
 .wa-form-group input:focus,
 .wa-form-group textarea:focus {
     border-color: var(--wa-primary);
-    box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
 }
 
 .wa-form-group .form-select {
@@ -92,8 +92,8 @@
 .wa-form-group input[type="file"] {
     font-size: 12.5px;
     padding: 4px 12px;
-    border: 2px dashed var(--wa-gray-300, #cbd5e1);
-    background: linear-gradient(135deg, #fafbff 0%, #f8fafc 100%);
+    border: 2px dashed var(--wa-gray-300, var(--color-slate-300));
+    background: linear-gradient(135deg, #fafbff 0%, var(--color-gray-50) 100%);
     color: var(--wa-gray-600);
     height: 34px;
     border-radius: 8px;
@@ -102,12 +102,12 @@
     width: 100%;
 }
 .wa-form-group input[type="file"]:hover {
-    border-color: var(--wa-primary, #667eea);
-    background: linear-gradient(135deg, #f0f4ff 0%, #f1f5f9 100%);
+    border-color: var(--wa-primary, var(--color-primary));
+    background: linear-gradient(135deg, var(--color-indigo-50) 0%, var(--color-slate-100) 100%);
 }
 .wa-form-group input[type="file"]::file-selector-button {
-    background: linear-gradient(135deg, var(--wa-primary, #667eea) 0%, #764ba2 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--wa-primary, var(--color-primary)) 0%, var(--secondary) 100%);
+    color: var(--color-white);
     border: none;
     padding: 5px 14px;
     border-radius: 6px;
@@ -193,8 +193,8 @@
     height: 22px;
     border-radius: 8px;
     border: none;
-    background: rgba(239, 68, 68, 0.85);
-    color: #fff;
+    background: rgba(var(--red-rgb), 0.85);
+    color: var(--color-white);
     font-size: 1rem;
     line-height: 1;
     display: flex;
@@ -205,13 +205,13 @@
     transition: opacity 0.2s ease, background 0.2s ease;
 }
 .hero-image-card:hover .hero-remove-btn { opacity: 1; }
-.hero-remove-btn:hover { background: rgba(239, 68, 68, 1); }
+.hero-remove-btn:hover { background: rgba(var(--red-rgb), 1); }
 .hero-order-badge {
     position: absolute;
     top: 4px;
     left: 4px;
     background: var(--wa-primary);
-    color: #fff;
+    color: var(--color-white);
     font-size: 0.7rem;
     font-weight: 700;
     width: 20px;
@@ -226,7 +226,7 @@
     top: 4px;
     right: 4px;
     background: var(--wa-red);
-    color: #fff;
+    color: var(--color-white);
     font-size: 0.6rem;
     font-weight: 600;
     padding: 1px 6px;
@@ -274,11 +274,11 @@
     margin-top: 6px;
     font-weight: 600;
     font-size: 13px;
-    color: var(--primary, #3b82f6);
+    color: var(--primary, var(--color-blue));
 }
 .wa-bulk-progress { margin-bottom: 10px; }
 .wa-bulk-progress-track {
-    background: var(--gray-200, #e5e7eb);
+    background: var(--gray-200, var(--color-gray-200));
     border-radius: 6px;
     height: 8px;
     overflow: hidden;
@@ -287,7 +287,7 @@
 .wa-bulk-progress-bar {
     height: 100%;
     width: 0%;
-    background: var(--primary, #3b82f6);
+    background: var(--primary, var(--color-blue));
     border-radius: 6px;
     transition: width 0.3s;
 }

@@ -27,8 +27,8 @@
     position: sticky;
     top: 0;
     z-index: 40;
-    background: var(--color-white, #ffffff) !important;
-    border-bottom: 1px solid var(--color-gray-200, #e5e7eb);
+    background: var(--color-white, var(--color-white)) !important;
+    border-bottom: 1px solid var(--color-gray-200, var(--color-gray-200));
     box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
   }
 
@@ -58,10 +58,10 @@
     margin: 0;
     padding: 0 20px;
     min-height: 42px;
-    border: 1px solid var(--color-gray-200, #e5e7eb);
+    border: 1px solid var(--color-gray-200, var(--color-gray-200));
     border-left: 0;
     border-right: 0;
-    background: #fff;
+    background: var(--color-white);
   }
 
   .imp-page .action-bar {
@@ -69,8 +69,8 @@
     top: auto !important;
     z-index: 22;
     margin: 0;
-    background: var(--color-white, #ffffff);
-    border: 1px solid var(--color-gray-200, #e5e7eb);
+    background: var(--color-white, var(--color-white));
+    border: 1px solid var(--color-gray-200, var(--color-gray-200));
     border-left: 0;
     border-right: 0;
     border-radius: 0;
@@ -123,9 +123,9 @@
     white-space: nowrap;
   }
   .imp-pill:hover, .imp-pill.active {
-    color: #fff;
-    border-color: var(--primary, #667eea);
-    background: var(--primary, #667eea);
+    color: var(--color-white);
+    border-color: var(--primary, var(--color-primary));
+    background: var(--primary, var(--color-primary));
   }
   .imp-pill-count {
     display: inline-flex;
@@ -146,7 +146,7 @@
   .imp-pill.active .imp-pill-count {
     border-color: rgba(255, 255, 255, 0.35);
     background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    color: var(--color-white);
   }
 
   /* Users table + global pagination */
@@ -158,7 +158,7 @@
     border: 1px solid var(--border-color, #e0e0e0);
     border-left: 0;
     border-right: 0;
-    background: #fff;
+    background: var(--color-white);
   }
 
   .imp-table-wrap {
@@ -178,11 +178,11 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--secondary) 100%);
   }
 
   .imp-table th {
-    color: #fff;
+    color: var(--color-white);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -199,7 +199,7 @@
   }
 
   .imp-table tbody tr:hover td {
-    background: rgba(102, 126, 234, 0.04);
+    background: rgba(var(--primary-rgb), 0.04);
   }
 
   .imp-table tbody tr.is-clickable {
@@ -209,7 +209,7 @@
   .imp-col-index {
     width: 56px;
     text-align: center;
-    color: #94a3b8;
+    color: var(--color-slate-400);
     font-weight: 600;
   }
 
@@ -227,7 +227,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--color-white);
     font-size: 12px;
     font-weight: 700;
     flex-shrink: 0;
@@ -257,7 +257,7 @@
   }
 
   .imp-client-meta {
-    color: #64748b;
+    color: var(--color-slate-500);
     font-size: 10px;
     margin-top: 2px;
     white-space: nowrap;
@@ -277,10 +277,10 @@
     white-space: nowrap;
   }
 
-  .imp-role-tag.r-super_admin  { background: #ede9fe; color: #6d28d9; }
-  .imp-role-tag.r-admin_staff  { background: #fef3c7; color: #d97706; }
-  .imp-role-tag.r-client       { background: #d1fae5; color: #065f46; }
-  .imp-role-tag.r-client_staff { background: #dbeafe; color: #1e40af; }
+  .imp-role-tag.r-super_admin  { background: var(--color-violet-100); color: #6d28d9; }
+  .imp-role-tag.r-admin_staff  { background: var(--color-amber-100); color: var(--color-warning-dark); }
+  .imp-role-tag.r-client       { background: var(--color-emerald-100); color: var(--color-emerald-800); }
+  .imp-role-tag.r-client_staff { background: var(--color-blue-100); color: #1e40af; }
 
   .imp-status-pill {
     display: inline-flex;
@@ -295,15 +295,15 @@
   }
 
   .imp-status-pill.active {
-    color: #166534;
-    background: #dcfce7;
-    border-color: #86efac;
+    color: var(--color-green-800);
+    background: var(--color-green-100);
+    border-color: var(--color-green-300);
   }
 
   .imp-status-pill.inactive {
-    color: #991b1b;
-    background: #fee2e2;
-    border-color: #fca5a5;
+    color: var(--color-red-800);
+    background: var(--color-red-100);
+    border-color: var(--color-red-300);
   }
 
   .imp-action-btn {
@@ -311,9 +311,9 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    border: 1px solid #4f46e5;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
+    border: 1px solid var(--color-indigo-600);
+    background: linear-gradient(135deg, var(--color-primary), var(--secondary));
+    color: var(--color-white);
     font-size: 11px;
     font-weight: 600;
     border-radius: 4px;
@@ -351,7 +351,7 @@
     width: 100%;
     height: 10px;
     border-radius: 8px;
-    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 37%, #e2e8f0 63%);
+    background: linear-gradient(90deg, var(--color-slate-200) 25%, #f8fafc 37%, var(--color-slate-200) 63%);
     background-size: 200% 100%;
     animation: imp-skeleton-shimmer 1.35s linear infinite;
   }
@@ -696,7 +696,7 @@
         + '<td class="imp-col-index">' + rowIndex + '</td>'
         + '<td>'
           + '<div class="imp-user-cell">'
-            + '<div class="imp-avatar" style="background:' + (COLORS[u.role] || '#667eea') + (canImpersonate ? '' : ';opacity:0.6') + '">' + init + '</div>'
+            + '<div class="imp-avatar" style="background:' + (COLORS[u.role] || 'var(--color-primary)') + (canImpersonate ? '' : ';opacity:0.6') + '">' + init + '</div>'
             + '<div class="imp-info">'
               + '<div class="imp-name">' + _esc(nameText) + '</div>'
               + '<div class="imp-email">' + _esc(u.email || '-') + '</div>'

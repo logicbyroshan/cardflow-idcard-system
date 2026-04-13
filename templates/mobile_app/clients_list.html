@@ -33,9 +33,9 @@
             <div class="relative flex-shrink-0">
                 <select x-model="filterStatus"
                         class="appearance-none text-[10px] font-bold pl-3 pr-7 py-2 rounded-xl transition-all bg-white/20 text-white border border-white/30 focus:outline-none focus:bg-white/30 cursor-pointer">
-                    <option value="all" style="color:#374151;">All Clients</option>
-                    <option value="active" style="color:#374151;">Active Only</option>
-                    <option value="inactive" style="color:#374151;">Inactive Only</option>
+                    <option value="all" style="color:var(--color-gray-700);">All Clients</option>
+                    <option value="active" style="color:var(--color-gray-700);">Active Only</option>
+                    <option value="inactive" style="color:var(--color-gray-700);">Inactive Only</option>
                 </select>
                 <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-white text-[8px] pointer-events-none"></i>
             </div>
@@ -78,7 +78,7 @@
                         </template>
                         <template x-if="!c.logo_url">
                             <div class="w-full h-full flex items-center justify-center"
-                                 :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));' : 'background: linear-gradient(135deg, #94a3b8, #64748b);'">
+                                 :style="c.status === 'active' ? 'background: linear-gradient(135deg, var(--color-brand-light), var(--color-brand-dark));' : 'background: linear-gradient(135deg, var(--color-slate-400), var(--color-slate-500));'">
                                 <span x-text="(c.name || 'C').substring(0,1).toUpperCase()"></span>
                             </div>
                         </template>

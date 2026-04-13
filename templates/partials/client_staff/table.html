@@ -41,39 +41,39 @@
                                 {% for section_name in staff.allowed_sections %}
                                     {% with pair_index=class_offset|add:forloop.counter %}
                                     {% if pair_index <= max_visible %}
-                                        <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 2px 8px;">{{ class_name }} "{{ section_name }}"</span>
+                                        <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">{{ class_name }} "{{ section_name }}"</span>
                                     {% endif %}
                                     {% endwith %}
                                 {% endfor %}
                             {% endfor %}
                             {% if total_pairs|add:'0' > max_visible %}
-                                <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: inline-flex; align-items: center; justify-content: center; min-width: 72px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #ffffff; border: 1px dashed #93c5fd; border-radius: 6px; padding: 2px 8px; cursor: pointer;">View More</button>
+                                <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: inline-flex; align-items: center; justify-content: center; min-width: 72px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 8px; cursor: pointer;">View More</button>
                             {% endif %}
                         {% elif staff.allowed_classes %}
                             {% with total_classes=staff.allowed_classes|length %}
                             {% for class_name in staff.allowed_classes %}
                                 {% if forloop.counter <= max_visible %}
-                                    <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 2px 8px;">{{ class_name }}</span>
+                                    <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">{{ class_name }}</span>
                                 {% endif %}
                             {% endfor %}
                             {% if total_classes > max_visible %}
-                                <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: inline-flex; align-items: center; justify-content: center; min-width: 72px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #ffffff; border: 1px dashed #93c5fd; border-radius: 6px; padding: 2px 8px; cursor: pointer;">View More</button>
+                                <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: inline-flex; align-items: center; justify-content: center; min-width: 72px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 8px; cursor: pointer;">View More</button>
                             {% endif %}
                             {% endwith %}
                         {% elif staff.allowed_sections %}
                             {% with total_sections=staff.allowed_sections|length %}
                             {% for section_name in staff.allowed_sections %}
                                 {% if forloop.counter <= max_visible %}
-                                    <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 2px 8px;">"{{ section_name }}"</span>
+                                    <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: var(--color-indigo-50); border: 1px solid var(--color-indigo-200); border-radius: 6px; padding: 2px 8px;">"{{ section_name }}"</span>
                                 {% endif %}
                             {% endfor %}
                             {% if total_sections > max_visible %}
-                                <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: inline-flex; align-items: center; justify-content: center; min-width: 72px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: #ffffff; border: 1px dashed #93c5fd; border-radius: 6px; padding: 2px 8px; cursor: pointer;">View More</button>
+                                <button type="button" class="staff-assignment-view-more" data-staff-id="{{ staff.id }}" style="display: inline-flex; align-items: center; justify-content: center; min-width: 72px; font-size: 10px; font-weight: 700; color: #1e3a8a; background: var(--color-white); border: 1px dashed var(--color-blue-300); border-radius: 6px; padding: 2px 8px; cursor: pointer;">View More</button>
                             {% endif %}
                             {% endwith %}
                         {% else %}
-                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px;">All Classes</span>
-                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px;">All Sections</span>
+                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: var(--color-emerald-800); background: var(--color-emerald-50); border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px;">All Classes</span>
+                            <span class="staff-assignment-chip" style="display: inline-flex; align-items: center; justify-content: center; min-width: 56px; font-size: 10px; font-weight: 700; color: var(--color-emerald-800); background: var(--color-emerald-50); border: 1px solid #a7f3d0; border-radius: 6px; padding: 2px 8px;">All Sections</span>
                         {% endif %}
                         {% endwith %}
                     </div>

@@ -13,7 +13,7 @@
       </span>
     </div>
     <div class="notif-actions-right">
-      <span id="mtStatusLabel" style="color: #64748b; font-size: 12px;">System is running normally</span>
+      <span id="mtStatusLabel" style="color: var(--color-slate-500); font-size: 12px;">System is running normally</span>
       <button class="btn btn-sm btn-outline-primary" onclick="loadMaintenanceStatus()">
         <i class="fa-solid fa-arrows-rotate"></i> Refresh
       </button>
@@ -33,7 +33,7 @@
           <span class="system-label">Maintenance Message</span>
           <textarea id="mtMessage" rows="7" class="form-input" style="width: 100%; resize: vertical; font-size: 12px; min-height: 170px;"
                     placeholder="The system is under scheduled maintenance. Please check back shortly."></textarea>
-          <span class="system-value" style="font-size: 11px; color: #94a3b8; font-weight: 500;">
+          <span class="system-value" style="font-size: 11px; color: var(--color-slate-400); font-weight: 500;">
             This message appears on the maintenance page and in automatic user notifications.
           </span>
         </div>
@@ -58,7 +58,7 @@
         </div>
 
         <!-- Actions -->
-        <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+        <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--color-slate-100);">
           <button type="button" id="mtEnableBtn" class="btn btn-md btn-danger" onclick="toggleMaintenance('enable')">
             <i class="fa-solid fa-power-off"></i> Enable Maintenance Mode
           </button>
