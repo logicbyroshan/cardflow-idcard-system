@@ -20,9 +20,12 @@ class WordImagesMixin:
 
     # Border is intentionally limited to portrait photos only.
     BORDERED_IMAGE_SUBTYPES = {'photo', 'mother_photo', 'father_photo'}
+    PHOTO_BORDER_PX = 2  # ~1pt visual thickness on typical display scaling
+    PHOTO_BORDER_COLOR = (0, 0, 0)
+    WORD_BORDER_PT = 1.0
 
     def _should_add_photo_border(self, image_subtype=None, field_name=None):
-        """Return True when the image should be rendered with a 0.5pt border."""
+        """Return True when the image should be rendered with a 1pt border."""
         subtype = str(image_subtype or '').strip().lower()
         if subtype in self.BORDERED_IMAGE_SUBTYPES:
             return True
@@ -43,7 +46,7 @@ class WordImagesMixin:
         """Return a BytesIO stream for Word embedding.
 
         Some Word compatibility renderers ignore VML stroke on image shapes.
-        For photo-like columns, add a subtle 1px inner hairline border in the
+        For photo-like columns, add a 1pt-equivalent inner border in the
         bitmap (without changing dimensions) so border remains visible.
         """
         if not add_photo_border:
@@ -57,15 +60,16 @@ class WordImagesMixin:
             w, h = bordered.size
             if w >= 2 and h >= 2:
                 px = bordered.load()
-                # Slightly lighter than pure black so this reads like a
-                # thin 0.5pt hairline instead of a heavy frame.
-                edge = (65, 65, 65)
-                for x in range(w):
-                    px[x, 0] = edge
-                    px[x, h - 1] = edge
-                for y in range(h):
-                    px[0, y] = edge
-                    px[w - 1, y] = edge
+                border_px = WordImagesMixin.PHOTO_BORDER_PX
+                edge = WordImagesMixin.PHOTO_BORDER_COLOR
+                max_t = min(border_px, w // 2, h // 2)
+                for t in range(max_t):
+                    for x in range(t, w - t):
+                        px[x, t] = edge
+                        px[x, h - 1 - t] = edge
+                    for y in range(t, h - t):
+                        px[t, y] = edge
+                        px[w - 1 - t, y] = edge
             out_stream = BytesIO()
             bordered.save(out_stream, format='PNG', optimize=True)
             out_stream.seek(0)
@@ -184,7 +188,7 @@ class WordImagesMixin:
             'xmlns:v="urn:schemas-microsoft-com:vml" '
             'xmlns:o="urn:schemas-microsoft-com:office:office">'
             f'<v:rect style="width:{box_w_pt:.1f}pt;height:{box_h_pt:.1f}pt" '
-            f'filled="f" strokecolor="#000000" strokeweight="0.5pt">'
+            f'filled="f" strokecolor="#000000" strokeweight="{self.WORD_BORDER_PT:.1f}pt">'
             '</v:rect></w:pict>'
         )
         from lxml import etree
@@ -216,7 +220,11 @@ class WordImagesMixin:
         
         # Create VML <w:pict> element (universally compatible).
         # Use <v:rect> so stroke is consistently rendered around the image.
-        border_attrs = 'stroked="t" strokecolor="#000000" strokeweight="0.5pt"' if add_border else 'stroked="f"'
+        border_attrs = (
+            f'stroked="t" strokecolor="#000000" strokeweight="{self.WORD_BORDER_PT:.1f}pt"'
+            if add_border else
+            'stroked="f"'
+        )
         vml_xml = (
             '<w:pict '
             'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '

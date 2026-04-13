@@ -1831,7 +1831,7 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertTrue(mocked_add_image.called)
         self.assertTrue(mocked_remove_borders.called)
 
-    def test_word_photo_image_stream_keeps_original_pixels(self):
+    def test_word_photo_image_stream_adds_1pt_equivalent_edge(self):
         from exports.word import WordExporter
         from PIL import Image as PILImage, ImageOps as PILImageOps
         import io
@@ -1851,7 +1851,9 @@ class WordLayoutTuningTests(SimpleTestCase):
 
         with PILImage.open(image_stream) as image:
             self.assertEqual(image.size, (20, 30))
-            self.assertEqual(image.getpixel((0, 0)), (65, 65, 65))
+            self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
+            self.assertEqual(image.getpixel((1, 1)), (0, 0, 0))
+            self.assertEqual(image.getpixel((2, 2)), (255, 0, 0))
             self.assertEqual(image.getpixel((10, 15)), (255, 0, 0))
 
     def test_word_hindi_font_detection_is_normalized(self):
