@@ -1831,7 +1831,7 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertTrue(mocked_add_image.called)
         self.assertTrue(mocked_remove_borders.called)
 
-    def test_word_baked_photo_border_stream_adds_black_edge(self):
+    def test_word_photo_image_stream_keeps_original_pixels(self):
         from exports.word import WordExporter
         from PIL import Image as PILImage, ImageOps as PILImageOps
         import io
@@ -1839,19 +1839,19 @@ class WordLayoutTuningTests(SimpleTestCase):
         exporter = WordExporter()
 
         src_stream = io.BytesIO()
-        PILImage.new('RGB', (20, 30), (255, 0, 0)).save(src_stream, format='JPEG', quality=90)
+        PILImage.new('RGB', (20, 30), (255, 0, 0)).save(src_stream, format='PNG')
         src_bytes = src_stream.getvalue()
 
-        bordered_stream = exporter._build_word_image_stream(
+        image_stream = exporter._build_word_image_stream(
             src_bytes,
             PILImage,
             PILImageOps,
             add_photo_border=True,
         )
 
-        with PILImage.open(bordered_stream) as bordered:
-            self.assertEqual(bordered.size, (22, 32))
-            self.assertEqual(bordered.getpixel((0, 0)), (0, 0, 0))
+        with PILImage.open(image_stream) as image:
+            self.assertEqual(image.size, (20, 30))
+            self.assertEqual(image.getpixel((0, 0)), (255, 0, 0))
 
     def test_word_hindi_font_detection_is_normalized(self):
         from exports.word import WordExporter

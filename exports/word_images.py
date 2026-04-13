@@ -40,24 +40,12 @@ class WordImagesMixin:
 
     @staticmethod
     def _build_word_image_stream(img_data, Image, ImageOps, add_photo_border=False):
-        """Return a BytesIO stream for Word embedding; optionally bake image border.
+        """Return a BytesIO stream for Word embedding without pixel mutation.
 
-        VML stroke borders are not always visible in compatibility mode. For
-        photo-like columns we add a real 1px black border into the bitmap so
-        the border is consistently visible around the image itself.
+        Keep source bytes intact so photo quality remains unchanged. Border
+        thickness for photo-like columns is handled in VML as 0.5pt.
         """
-        if not add_photo_border:
-            return BytesIO(img_data)
-
-        with Image.open(BytesIO(img_data)) as src_img:
-            src_img.load()
-            if src_img.mode not in ('RGB', 'RGBA'):
-                src_img = src_img.convert('RGB')
-            bordered = ImageOps.expand(src_img, border=1, fill=(0, 0, 0))
-            out_stream = BytesIO()
-            bordered.save(out_stream, format='PNG', optimize=True)
-            out_stream.seek(0)
-            return out_stream
+        return BytesIO(img_data)
 
     def _add_image_to_cell(self, cell, img_path, Cm, Pt, RGBColor,
                            WD_ALIGN_PARAGRAPH, parse_xml, nsdecls, Image, ImageOps,
@@ -99,7 +87,6 @@ class WordImagesMixin:
                                 img_data,
                                 Image,
                                 ImageOps,
-                                add_photo_border=add_photo_border,
                             )
                             
                             para = cell.paragraphs[0]
@@ -115,7 +102,7 @@ class WordImagesMixin:
                             self._convert_to_vml(
                                 run,
                                 inline_shape,
-                                add_border=False,
+                                add_border=add_photo_border,
                             )
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             self._set_para_spacing(para, parse_xml, nsdecls)
