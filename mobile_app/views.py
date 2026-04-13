@@ -973,8 +973,8 @@ def pwa_manifest(request):
         'display': 'standalone',
         'display_override': ['standalone', 'minimal-ui', 'browser'],
         'orientation': 'portrait',
-        'background_color': '#667eea',
-        'theme_color': '#667eea',
+        'background_color': '#eaf2ff',
+        'theme_color': '#2f80ed',
         'lang': 'en',
         'prefer_related_applications': False,
         'icons': [
@@ -1091,7 +1091,7 @@ const OFFLINE_HTML = [
     '<html lang="en">',
     '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
     '<title>Offline - Adarsh IDs</title>',
-    '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#f8fafc;color:#1f2937;} .card{max-width:420px;margin:8vh auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;box-shadow:0 8px 20px rgba(15,23,42,.08);} h1{font-size:20px;margin:0 0 8px;} p{font-size:14px;line-height:1.45;color:#4b5563;margin:0;} a{display:inline-block;margin-top:12px;font-size:13px;text-decoration:none;color:#0a92dd;font-weight:600;}</style>',
+    '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;background:#eaf2ff;color:#1f2937;} .card{max-width:420px;margin:8vh auto;background:#fff;border:1px solid #d6e7f8;border-radius:14px;padding:18px 16px;box-shadow:0 8px 20px rgba(15,23,42,.08);} h1{font-size:20px;margin:0 0 8px;} p{font-size:14px;line-height:1.45;color:#4b5563;margin:0;} a{display:inline-block;margin-top:12px;font-size:13px;text-decoration:none;color:#2f80ed;font-weight:600;}</style>',
     '</head><body><div class="card"><h1>Offline Mode</h1><p>This page requires internet right now. Reconnect and try again.</p><a href="/app/login/">Open Login</a></div></body></html>'
 ].join('');
 

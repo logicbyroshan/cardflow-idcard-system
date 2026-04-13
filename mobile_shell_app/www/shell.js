@@ -15,6 +15,23 @@ let appStateGuardAttached = false;
 
 const LAST_ONLINE_STORAGE_KEY = 'adarsh.shell.lastOnlineAt';
 const APP_ROOT_PATH = '/app/';
+const SHELL_ROUTE_TRANSITION_MS = 170;
+
+function withShellRouteTransition(direction, action) {
+  const body = document.body;
+  if (!body || typeof action !== 'function') {
+    if (typeof action === 'function') action();
+    return;
+  }
+
+  const isBack = String(direction || '').toLowerCase() === 'back';
+  body.classList.remove('shell-route-transitioning', 'shell-route-forward', 'shell-route-back');
+  body.classList.add('shell-route-transitioning', isBack ? 'shell-route-back' : 'shell-route-forward');
+
+  window.setTimeout(() => {
+    action();
+  }, SHELL_ROUTE_TRANSITION_MS);
+}
 
 function markUserInteraction() {
   lastUserInteractionMs = Date.now();
@@ -46,7 +63,9 @@ function routeToDeepLink(urlValue) {
 
   const currentPath = window.location.pathname + window.location.search + window.location.hash;
   if (currentPath === targetPath) return;
-  window.location.href = targetPath;
+  withShellRouteTransition('forward', () => {
+    window.location.href = targetPath;
+  });
 }
 
 function byId(id) {
@@ -112,7 +131,9 @@ function updateNetworkUi(status) {
         clearTimeout(reconnectReloadTimer);
       }
       reconnectReloadTimer = setTimeout(() => {
-        window.location.reload();
+        withShellRouteTransition('forward', () => {
+          window.location.reload();
+        });
       }, 650);
     }
     return;
@@ -130,7 +151,9 @@ function setupOfflineRetry() {
   const retryBtn = document.getElementById('retryBtn');
   if (!retryBtn) return;
   retryBtn.addEventListener('click', () => {
-    window.location.reload();
+    withShellRouteTransition('forward', () => {
+      window.location.reload();
+    });
   });
 }
 
@@ -143,7 +166,9 @@ function setupOpenWebButton() {
       await Browser.open({ url: appUrl });
       return;
     } catch (err) {}
-    window.location.href = appUrl;
+    withShellRouteTransition('forward', () => {
+      window.location.href = appUrl;
+    });
   });
 }
 
@@ -156,7 +181,9 @@ function setupSupportButton() {
       await Browser.open({ url: supportPath });
       return;
     } catch (err) {}
-    window.location.href = supportPath;
+    withShellRouteTransition('forward', () => {
+      window.location.href = supportPath;
+    });
   });
 }
 
@@ -244,7 +271,9 @@ function setupAndroidBackHandler() {
     }
 
     if (canGoBack) {
-      window.history.back();
+      withShellRouteTransition('back', () => {
+        window.history.back();
+      });
       return;
     }
 

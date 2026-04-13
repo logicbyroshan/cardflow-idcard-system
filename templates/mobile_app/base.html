@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0A92DD">
+    <meta name="theme-color" content="#2F80ED">
     <!-- PWA Manifest  -  enables 'Add to Home Screen' on Android/Chrome -->
     <link rel="manifest" href="/app/manifest.json?v={{ APP_VERSION|urlencode }}">
     <!-- iOS PWA meta tags -->
@@ -78,7 +78,7 @@
         window.addEventListener('resize', checkDevice);
     </script>
 </head>
-<body class="bg-[#ecf4fb] font-sans overscroll-none pwa-v2">
+<body class="bg-[#eaf2ff] overscroll-none pwa-v2">
     <style>
         body.mobile-overlay-active {
             overflow: hidden !important;
@@ -587,6 +587,16 @@
     })();
 
     (function setupMobileBackBehavior() {
+        function startDirectionalLeave(direction) {
+            var navDirection = direction === 'back' ? 'back' : 'forward';
+            try {
+                sessionStorage.setItem('adarsh.mobile.nav.dir', navDirection);
+            } catch (e) {}
+            if (typeof window.mobileStartPageLeave === 'function') {
+                window.mobileStartPageLeave(navDirection);
+            }
+        }
+
         function goBackOnce(fallback) {
             if (window.mobileOverlay && window.mobileOverlay.isActive()) {
                 window.mobileOverlay.close();
@@ -594,6 +604,7 @@
             }
             try {
                 if (window.history.length > 1) {
+                    startDirectionalLeave('back');
                     window.history.back();
                     return;
                 }
@@ -603,12 +614,14 @@
                 try {
                     var ref = new URL(document.referrer, window.location.origin);
                     if (ref.origin === window.location.origin) {
+                        startDirectionalLeave('back');
                         window.location.href = ref.pathname + ref.search + ref.hash;
                         return;
                     }
                 } catch (e) {}
             }
 
+            startDirectionalLeave('back');
             window.location.href = fallback;
         }
 
@@ -631,6 +644,7 @@
                 opened = false;
             }
             if (!opened && fallbackUrl) {
+                startDirectionalLeave('forward');
                 window.location.href = fallbackUrl;
             }
             return false;

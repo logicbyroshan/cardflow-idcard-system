@@ -1,6 +1,6 @@
 /* ====================================================
    Adarsh ID Cards — Mobile PWA Custom CSS
-    Theme: Website Blue Gradient (#0a92dd -> #0878b5)
+    Theme: Unified Mobile Blue Gradient (#33b7ef -> #1f5fcf)
 
    IMPORTANT: Tailwind CSS is loaded BEFORE this file.
    This file only contains styles that Tailwind can't
@@ -30,23 +30,48 @@ body {
 }
 
 body.mobile-page-entering #mobile-app {
-    animation: mobile-page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: mobile-page-enter-forward var(--m-motion-enter-ms, 260ms) cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform, opacity;
     backface-visibility: hidden;
+}
+
+body.mobile-page-entering-back #mobile-app {
+    animation-name: mobile-page-enter-back;
 }
 
 body.mobile-page-leave #mobile-app {
     opacity: 0.9;
-    transform: translate3d(0, -2px, 0) scale(0.999);
-    transition: opacity 120ms ease, transform 140ms ease;
+    transform: translate3d(-8px, 0, 0) scale(0.998);
+    transition: opacity var(--m-motion-leave-ms, 180ms) ease, transform var(--m-motion-leave-ms, 180ms) ease;
     will-change: transform, opacity;
     backface-visibility: hidden;
 }
 
-@keyframes mobile-page-enter {
+body.mobile-page-leave-forward #mobile-app {
+    transform: translate3d(-10px, 0, 0) scale(0.998);
+}
+
+body.mobile-page-leave-back #mobile-app {
+    transform: translate3d(10px, 0, 0) scale(0.998);
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+}
+
+@keyframes mobile-page-enter-forward {
     from {
-        opacity: 0.94;
-        transform: translate3d(0, 6px, 0);
+        opacity: 0.9;
+        transform: translate3d(16px, 0, 0) scale(0.998);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes mobile-page-enter-back {
+    from {
+        opacity: 0.9;
+        transform: translate3d(-16px, 0, 0) scale(0.998);
     }
     to {
         opacity: 1;
@@ -73,15 +98,34 @@ body.mobile-page-leave [class*='backdrop-blur'] {
 }
 
 :root {
-    /* Align mobile palette with website theme */
-    --m-primary: #0a92dd;
-    --m-primary-dark: #0878b5;
-    --m-primary-soft: #e9f5fd;
+    /* Cross-surface tokens for PWA + Android shell */
+    --m-primary: #2f80ed;
+    --m-primary-dark: #1f5fcf;
+    --m-primary-accent: #33b7ef;
+    --m-primary-soft: #e8f1ff;
     --m-surface: #ffffff;
-    --m-border: #cfe3f7;
-    --m-text: #1f2d3d;
-    --m-muted: #5b6b7b;
-    --m-font-family: "Segoe UI", "Inter", "Noto Sans", sans-serif;
+    --m-border: #d6e7f8;
+    --m-text: #182235;
+    --m-muted: #61728c;
+    --m-font-family: "Segoe UI", "Inter", "Roboto", "Noto Sans", sans-serif;
+
+    /* Type hierarchy */
+    --m-type-label: 11px;
+    --m-type-body: 13px;
+    --m-type-title: 14px;
+    --m-type-title-lg: 16px;
+    --m-type-hero: 28px;
+
+    /* Layout geometry */
+    --m-app-max-width: 430px;
+    --m-sheet-max-width: 430px;
+    --m-radius-card: 14px;
+    --m-radius-control: 12px;
+    --m-radius-sheet: 20px;
+    --m-control-height: 42px;
+    --m-cta-height: 44px;
+    --m-motion-enter-ms: 260ms;
+    --m-motion-leave-ms: 180ms;
 
     /* Status palette used across lists/chips/buttons */
     --st-pending-bg: #fffbeb;
@@ -117,7 +161,7 @@ body.mobile-page-leave [class*='backdrop-blur'] {
 body {
     --primary: var(--m-primary);
     --primary-dark: var(--m-primary-dark);
-    --primary-rgb: 10, 146, 221;
+    --primary-rgb: 47, 128, 237;
     --secondary: var(--m-primary-dark);
     --color-primary: var(--m-primary);
     --color-primary-dark: var(--m-primary-dark);
@@ -143,6 +187,46 @@ body {
     display: inline-block;
     overflow: visible;
     vertical-align: middle;
+}
+
+/* Keep page/header hierarchy consistent across all mobile screens. */
+#mobile-app {
+    width: 100%;
+    max-width: var(--m-app-max-width);
+    margin-inline: auto;
+    font-size: var(--m-type-body);
+}
+
+/* Keep every sheet/page container on the same horizontal rhythm. */
+body.pwa-v2 .max-w-\[430px\],
+body.pwa-v2 #mobile-app {
+    width: min(100%, var(--m-app-max-width)) !important;
+    max-width: var(--m-app-max-width) !important;
+    margin-inline: auto;
+}
+
+body.pwa-v2 .max-w-\[390px\] {
+    width: min(100%, calc(var(--m-app-max-width) - 24px)) !important;
+    max-width: min(390px, calc(var(--m-app-max-width) - 24px)) !important;
+    margin-inline: auto;
+}
+
+#mobile-app .pwa-page-topbar h1,
+#mobile-app .pwa-topbar h1,
+#mobile-app .pwa-topbar-inner h1,
+#mobile-app .bg-gradient-to-r.from-brand-light.to-brand-dark h1.text-white,
+#mobile-app .bg-gradient-to-br.from-brand-light.to-brand-dark h1.text-white {
+    font-size: var(--m-type-title) !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.01em;
+}
+
+#mobile-app .pwa-home h2.text-\[12px\].font-black,
+#mobile-app h2.pwa-section-title,
+#mobile-app .pwa-th {
+    font-size: var(--m-type-label) !important;
+    line-height: 1.2;
+    letter-spacing: 0.06em;
 }
 
 /* Vibrant card system for mobile pages (less border, stronger color). */
@@ -399,7 +483,8 @@ textarea:focus-visible {
    ================================================================ */
 
 .font-condensed {
-    font-family: "Arial Narrow", "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
+    font-family: var(--m-font-family);
+    font-weight: 600;
     letter-spacing: -0.01em;
 }
 
@@ -1474,7 +1559,12 @@ body.pwa-v2 {
     --m-card-shadow-sm: 0 8px 20px rgba(35, 80, 156, 0.11);
     --m-glass-bg: rgba(255, 255, 255, 0.82);
     --m-glass-border: rgba(255, 255, 255, 0.56);
-    font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+    --m-radius-card: 14px;
+    --m-radius-control: 12px;
+    --m-radius-sheet: 20px;
+    --m-control-height: 42px;
+    --m-cta-height: 44px;
+    font-family: var(--m-font-family);
     background: linear-gradient(180deg, #eaf2ff 0%, #f4f8ff 50%, #eef5ff 100%);
     color: var(--m-text);
 }
@@ -1612,26 +1702,49 @@ body.pwa-v2 #mobile-app select,
 body.pwa-v2 #mobile-app textarea {
     background: rgba(255, 255, 255, 0.82) !important;
     border: 1px solid rgba(191, 213, 243, 0.8) !important;
-    border-radius: 10px !important;
+    border-radius: var(--m-radius-control) !important;
     color: #1e2f46 !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+body.pwa-v2 #mobile-app input,
+body.pwa-v2 #mobile-app select {
+    min-height: var(--m-control-height);
+    font-size: var(--m-type-body);
+}
+
+body.pwa-v2 #mobile-app textarea {
+    font-size: var(--m-type-body);
+    line-height: 1.35;
+}
+
 body.pwa-v2 #mobile-app .rounded-2xl {
-    border-radius: 12px !important;
+    border-radius: var(--m-radius-card) !important;
 }
 
 body.pwa-v2 #mobile-app .rounded-xl {
-    border-radius: 10px !important;
+    border-radius: var(--m-radius-control) !important;
 }
 
 body.pwa-v2 #mobile-app .rounded-lg {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
 }
 
 body.pwa-v2 #mobile-app .rounded-t-3xl {
-    border-top-left-radius: 20px !important;
-    border-top-right-radius: 20px !important;
+    border-top-left-radius: var(--m-radius-sheet) !important;
+    border-top-right-radius: var(--m-radius-sheet) !important;
+}
+
+/* Normalize CTA and full-width action buttons across all screens. */
+body.pwa-v2 #mobile-app button[class*='w-full'],
+body.pwa-v2 #mobile-app a[class*='w-full'],
+body.pwa-v2 .download-btn-cancel,
+body.pwa-v2 .download-btn-done {
+    min-height: var(--m-cta-height);
+    border-radius: var(--m-radius-control) !important;
+    font-size: var(--m-type-body);
+    line-height: 1.2;
+    font-weight: 700;
 }
 
 body.pwa-v2 #mobile-app input::placeholder,
@@ -1694,10 +1807,145 @@ body.pwa-v2 #mobile-app [class*='border-'] {
 
 body.pwa-v2 .download-modal-sheet,
 body.pwa-v2 .absolute.bottom-0.left-0.right-0.bg-white.rounded-t-3xl {
+    width: min(100%, var(--m-sheet-max-width));
+    max-width: var(--m-sheet-max-width);
+    margin-inline: auto;
     background: rgba(255, 255, 255, 0.95) !important;
-    border-top-left-radius: 20px !important;
-    border-top-right-radius: 20px !important;
+    border-top-left-radius: var(--m-radius-sheet) !important;
+    border-top-right-radius: var(--m-radius-sheet) !important;
     box-shadow: 0 -16px 40px rgba(35, 80, 156, 0.25);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+}
+
+/* Deep standardization: chips, badges, buttons, modals, text hierarchy, and sections. */
+body.pwa-v2 {
+    --m-chip-height: 24px;
+    --m-chip-radius: 9px;
+    --m-chip-font-size: 10px;
+    --m-chip-count-font-size: 10px;
+    --m-modal-title-size: 14px;
+    --m-modal-body-size: 12px;
+    --m-section-title-size: 10px;
+    --m-section-title-tracking: 0.08em;
+}
+
+body.pwa-v2 #mobile-app p[class*='text-[11px]'],
+body.pwa-v2 #mobile-app span[class*='text-[11px]'],
+body.pwa-v2 #mobile-app label[class*='text-[11px]'] {
+    line-height: 1.35;
+}
+
+body.pwa-v2 #mobile-app p[class*='text-[12px]'],
+body.pwa-v2 #mobile-app span[class*='text-[12px]'],
+body.pwa-v2 #mobile-app label[class*='text-[12px]'] {
+    line-height: 1.4;
+}
+
+body.pwa-v2 #mobile-app .pwa-section-title,
+body.pwa-v2 #mobile-app p[class*='uppercase'][class*='font-bold'][class*='tracking-widest'],
+body.pwa-v2 #mobile-app p[class*='uppercase'][class*='font-bold'][class*='tracking-wider'] {
+    font-size: var(--m-section-title-size) !important;
+    line-height: 1.2;
+    letter-spacing: var(--m-section-title-tracking);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+body.pwa-v2 #mobile-app .mobile-status-chip,
+body.pwa-v2 #mobile-app .mobile-status-tab,
+body.pwa-v2 #mobile-app .pwa-status-badge,
+body.pwa-v2 #mobile-app .download-items-badge {
+    min-height: var(--m-chip-height);
+    border-radius: var(--m-chip-radius) !important;
+    font-size: var(--m-chip-font-size);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+body.pwa-v2 #mobile-app span[class*='min-w-[24px]'][class*='h-[20px]'][class*='text-[10px]'] {
+    min-height: var(--m-chip-height);
+    border-radius: var(--m-chip-radius);
+    font-size: var(--m-chip-count-font-size) !important;
+    font-weight: 800;
+}
+
+body.pwa-v2 #mobile-app .mobile-chip-label {
+    font-size: var(--m-chip-font-size);
+    letter-spacing: 0.04em;
+}
+
+body.pwa-v2 #mobile-app .mobile-chip-count {
+    font-size: var(--m-chip-count-font-size);
+    min-width: 3.4ch;
+}
+
+body.pwa-v2 #mobile-app button[class*='rounded-xl'][class*='py-3'],
+body.pwa-v2 #mobile-app button[class*='rounded-2xl'][class*='py-3'],
+body.pwa-v2 #mobile-app button[class*='rounded-xl'][class*='py-4'],
+body.pwa-v2 #mobile-app button[class*='rounded-2xl'][class*='py-4'],
+body.pwa-v2 #mobile-app a[class*='rounded-xl'][class*='py-3'],
+body.pwa-v2 #mobile-app a[class*='rounded-2xl'][class*='py-3'],
+body.pwa-v2 #mobile-app a[class*='rounded-xl'][class*='py-4'],
+body.pwa-v2 #mobile-app a[class*='rounded-2xl'][class*='py-4'],
+body.pwa-v2 #mobile-app button[class*='h-11'],
+body.pwa-v2 #mobile-app a[class*='h-11'],
+body.pwa-v2 #pwa-install-cta {
+    min-height: var(--m-cta-height);
+    border-radius: var(--m-radius-control) !important;
+    font-size: var(--m-type-body) !important;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+body.pwa-v2 #mobile-app button,
+body.pwa-v2 #mobile-app a[class*='active:scale'],
+body.pwa-v2 #pwa-install-cta {
+    transition: transform 120ms ease, box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease, color 220ms ease;
+}
+
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] .absolute[class*='bottom-0'][class*='left-0'][class*='right-0'][class*='bg-white'] {
+    width: min(100%, var(--m-sheet-max-width));
+    max-width: var(--m-sheet-max-width);
+    margin-inline: auto;
+    border-top-left-radius: var(--m-radius-sheet) !important;
+    border-top-right-radius: var(--m-radius-sheet) !important;
+    border: 1px solid #c5dcf7;
+    box-shadow: 0 -16px 40px rgba(35, 80, 156, 0.25);
+}
+
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] .absolute[class*='right-0'][class*='top-0'][class*='bottom-0'][class*='bg-white'],
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] .fixed[class*='right-0'][class*='top-0'][class*='bottom-0'][class*='bg-white'] {
+    width: min(88vw, 360px) !important;
+    max-width: 360px !important;
+    border-left: 1px solid #c5dcf7;
+    box-shadow: -12px 0 34px rgba(30, 88, 172, 0.18);
+}
+
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] h3[class*='font-bold'],
+body.pwa-v2 #pwa-install-sheet p[class*='text-[14px]'][class*='font-bold'],
+body.pwa-v2 #mobile-update-screen p[class*='text-[16px]'][class*='font-bold'] {
+    font-size: var(--m-modal-title-size) !important;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+}
+
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] p[class*='text-[11px]'],
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] p[class*='text-[12px]'],
+body.pwa-v2 #mobile-app [data-mobile-overlay-root] label[class*='text-[10px]'],
+body.pwa-v2 #pwa-install-sheet p[class*='text-[11px]'],
+body.pwa-v2 #mobile-update-screen p[class*='text-[11px]'] {
+    font-size: var(--m-modal-body-size) !important;
+    line-height: 1.4;
+}
+
+body.pwa-v2 #pwa-install-sheet > div,
+body.pwa-v2 #mobile-update-screen > div {
+    border: 1px solid #c5dcf7;
+    box-shadow: 0 14px 34px rgba(30, 88, 172, 0.2);
+}
+
+body.pwa-v2 #mobile-app .pwa-snap-section [class*='rounded-2xl'][class*='border'],
+body.pwa-v2 #mobile-app .pwa-snap-section [class*='rounded-xl'][class*='border'] {
+    border-color: rgba(197, 220, 247, 0.82) !important;
 }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0A92DD">
+    <meta name="theme-color" content="#2F80ED">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Adarsh IDs">
@@ -20,26 +20,62 @@
     <script src="{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}"></script>
 
     <style>
+        :root {
+            --m-primary: #2f80ed;
+            --m-primary-dark: #1f5fcf;
+            --m-primary-accent: #33b7ef;
+            --m-border: #d6e7f8;
+            --m-text: #182235;
+            --m-surface-bg: #eaf2ff;
+            --m-font-family: "Segoe UI", "Inter", "Roboto", "Noto Sans", sans-serif;
+            --m-app-max-width: 430px;
+            --m-radius-control: 12px;
+            --m-radius-sheet: 20px;
+            --m-control-height: 42px;
+            --m-cta-height: 44px;
+        }
         * { -webkit-tap-highlight-color: transparent; }
-        body { overscroll-behavior: none; }
+        body {
+            overscroll-behavior: none;
+            font-family: var(--m-font-family);
+            background: var(--m-surface-bg);
+            color: var(--m-text);
+            animation: login-page-fade .34s ease-out;
+        }
+        .login-shell {
+            width: min(100%, var(--m-app-max-width));
+            max-width: var(--m-app-max-width);
+            margin-inline: auto;
+            animation: login-shell-enter .34s cubic-bezier(0.22, 1, 0.36, 1);
+        }
         .login-bg {
-            background: linear-gradient(160deg, #0a92dd 0%, #0878b5 55%, #0b6497 100%);
+            background: linear-gradient(160deg, var(--m-primary-accent) 0%, var(--m-primary) 55%, var(--m-primary-dark) 100%);
         }
         .glass-card {
             background: rgba(255,255,255,0.97);
             backdrop-filter: blur(20px);
+            border: 1px solid rgba(214,231,248,0.96);
+            border-top-left-radius: var(--m-radius-sheet);
+            border-top-right-radius: var(--m-radius-sheet);
+            animation: login-sheet-enter .4s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .input-field {
             transition: border-color .2s, box-shadow .2s;
+            min-height: var(--m-control-height);
+            border-radius: var(--m-radius-control);
+            font-size: 13px;
         }
         .input-field:focus {
             outline: none;
-            border-color: #0a92dd;
-            box-shadow: 0 0 0 3px rgba(10,146,221,.18);
+            border-color: var(--m-primary);
+            box-shadow: 0 0 0 3px rgba(47,128,237,.2);
         }
         .login-btn {
-            background: linear-gradient(135deg, #0a92dd, #0878b5);
+            background: linear-gradient(135deg, var(--m-primary-accent), var(--m-primary), var(--m-primary-dark));
             transition: opacity .2s, transform .1s;
+            min-height: var(--m-cta-height);
+            border-radius: var(--m-radius-control);
+            font-size: 13px;
         }
         .login-btn:active { transform: scale(0.98); }
         .login-btn:disabled { opacity: .6; cursor: not-allowed; }
@@ -50,12 +86,24 @@
             from { opacity: 0; transform: translateY(-8px); }
             to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes login-page-fade {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes login-shell-enter {
+            from { opacity: 0.94; transform: translate3d(12px, 0, 0) scale(0.998); }
+            to   { opacity: 1; transform: none; }
+        }
+        @keyframes login-sheet-enter {
+            from { opacity: 0; transform: translate3d(0, 16px, 0); }
+            to   { opacity: 1; transform: none; }
+        }
         /* Floating bubbles */
-        .bubble { position: absolute; border-radius: 8px; background: rgba(255,255,255,.08); }
+        .bubble { position: absolute; border-radius: 8px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16); }
     </style>
 </head>
-<body class="bg-gray-100 font-sans" style="overscroll-behavior:none;">
-<div class="max-w-[430px] mx-auto min-h-screen flex flex-col login-bg relative overflow-hidden">
+<body class="bg-[#eaf2ff]" style="overscroll-behavior:none;">
+<div class="login-shell min-h-screen flex flex-col login-bg relative overflow-hidden">
 
     <!-- Background bubbles -->
     <div class="bubble" style="width:220px;height:220px;top:-60px;right:-60px;"></div>
@@ -73,7 +121,7 @@
     </div>
 
     <!-- Login Card -->
-    <div class="glass-card rounded-t-3xl px-6 pt-7 pb-[calc(env(safe-area-inset-bottom,0px)+28px)] relative z-10 shadow-2xl">
+    <div class="glass-card px-6 pt-7 pb-[calc(env(safe-area-inset-bottom,0px)+28px)] relative z-10 shadow-2xl">
 
         <h2 class="text-gray-800 text-xl font-bold mb-1">Welcome back</h2>
         <p class="text-gray-400 text-sm mb-6">Sign in to continue</p>

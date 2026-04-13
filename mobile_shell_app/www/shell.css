@@ -1,14 +1,25 @@
 :root {
   color-scheme: light;
-  --shell-bg-top: #e9f6ff;
-  --shell-bg-bottom: #f8fbff;
+  --shell-bg-top: #eaf2ff;
+  --shell-bg-bottom: #f5f9ff;
   --shell-card: #ffffff;
-  --shell-border: #d9e6f3;
-  --shell-text: #0f1f33;
-  --shell-subtle: #4b6079;
-  --shell-primary: #0a92dd;
-  --shell-primary-strong: #0579bc;
+  --shell-border: #d6e7f8;
+  --shell-text: #182235;
+  --shell-subtle: #61728c;
+  --shell-primary: #2f80ed;
+  --shell-primary-strong: #1f5fcf;
+  --shell-primary-soft: #edf4ff;
   --shell-offline: #d94848;
+  --shell-font-family: "Segoe UI", "Inter", "Roboto", "Noto Sans", sans-serif;
+  --shell-type-overline: 11px;
+  --shell-type-heading: 27px;
+  --shell-type-body: 14px;
+  --shell-type-caption: 12px;
+  --shell-max-width: 430px;
+  --shell-radius-card: 24px;
+  --shell-radius-control: 12px;
+  --shell-motion-fast: 220ms;
+  --shell-motion-base: 320ms;
 }
 
 * {
@@ -20,12 +31,21 @@ body {
   margin: 0;
   width: 100%;
   min-height: 100%;
-  font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+  font-family: var(--shell-font-family);
   background:
     radial-gradient(1200px 560px at 82% -20%, #b8e5ff 0%, rgba(184, 229, 255, 0) 66%),
     radial-gradient(700px 380px at 10% 105%, #d8ecff 0%, rgba(216, 236, 255, 0) 70%),
     linear-gradient(180deg, var(--shell-bg-top), var(--shell-bg-bottom));
   color: var(--shell-text);
+}
+
+.shell-screen {
+  animation: shell-screen-fade var(--shell-motion-base) ease-out;
+}
+
+@keyframes shell-screen-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .shell-wrap {
@@ -37,24 +57,34 @@ body {
 }
 
 .shell-brand-card {
-  width: min(100%, 420px);
+  width: min(100%, var(--shell-max-width));
   border: 1px solid var(--shell-border);
   background: var(--shell-card);
-  border-radius: 24px;
+  border-radius: var(--shell-radius-card);
   padding: 22px 20px;
   box-shadow: 0 14px 36px rgba(6, 33, 61, 0.12);
   text-align: left;
-  animation: shell-in .24s ease-out;
+  animation: shell-in var(--shell-motion-base) cubic-bezier(0.22, 1, 0.36, 1);
+  transition: border-color var(--shell-motion-fast) ease, box-shadow var(--shell-motion-fast) ease, transform var(--shell-motion-fast) ease;
+}
+
+.shell-screen.shell-route-transitioning .shell-brand-card {
+  opacity: 0.92;
+  transform: translate3d(-10px, 0, 0) scale(0.998);
+}
+
+.shell-screen.shell-route-transitioning.shell-route-back .shell-brand-card {
+  transform: translate3d(10px, 0, 0) scale(0.998);
 }
 
 @keyframes shell-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translate3d(10px, 0, 0) scale(0.998);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -62,29 +92,29 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--shell-type-overline);
   line-height: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 700;
-  color: #0b6fa5;
+  color: var(--shell-primary-strong);
   padding: 6px 10px;
   border-radius: 8px;
-  background: #e6f6ff;
-  border: 1px solid #bde7ff;
+  background: var(--shell-primary-soft);
+  border: 1px solid #c5dcf7;
 }
 
 .shell-brand-card h1 {
   margin: 14px 0 4px;
-  font-size: 27px;
+  font-size: var(--shell-type-heading);
   line-height: 1.15;
   letter-spacing: -0.01em;
-  color: #10273f;
+  color: var(--shell-text);
 }
 
 .shell-brand-card p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--shell-type-body);
   line-height: 1.45;
   color: var(--shell-subtle);
 }
@@ -94,13 +124,14 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #cde4f6;
+  border: 1px solid #c5dcf7;
   border-radius: 8px;
-  background: #f4faff;
-  color: #1e4f73;
-  font-size: 12px;
+  background: #f4f8ff;
+  color: #1d4a7f;
+  font-size: var(--shell-type-caption);
   font-weight: 600;
   padding: 6px 12px;
+  transition: background-color var(--shell-motion-fast) ease, border-color var(--shell-motion-fast) ease, color var(--shell-motion-fast) ease;
 }
 
 .shell-status-strip.shell-status-offline {
@@ -135,8 +166,9 @@ body {
 
 .shell-hint {
   margin-top: 10px;
-  font-size: 12px;
-  color: #5f7288;
+  font-size: var(--shell-type-caption);
+  color: #6f8098;
+  transition: color var(--shell-motion-fast) ease;
 }
 
 .shell-actions {
@@ -152,12 +184,13 @@ body {
 .shell-btn {
   appearance: none;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--shell-radius-control);
   min-height: 44px;
   padding: 11px 14px;
-  font-size: 14px;
+  font-size: var(--shell-type-body);
   font-weight: 700;
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow var(--shell-motion-fast) ease, border-color var(--shell-motion-fast) ease, background-color var(--shell-motion-fast) ease, color var(--shell-motion-fast) ease;
 }
 
 .shell-btn:active {
@@ -170,15 +203,15 @@ body {
 }
 
 .shell-btn-secondary {
-  border: 1px solid #bfd8ea;
-  background: #f8fcff;
-  color: #1a5278;
+  border: 1px solid #c5dcf7;
+  background: #f6faff;
+  color: #205186;
 }
 
 .shell-btn-link {
   background: transparent;
-  color: #0a73ab;
-  border: 1px dashed #c4def0;
+  color: var(--shell-primary-strong);
+  border: 1px dashed #b8d6f5;
 }
 
 .shell-steps {
@@ -188,17 +221,17 @@ body {
 }
 
 .shell-steps p {
-  font-size: 12px;
+  font-size: var(--shell-type-caption);
   font-weight: 700;
-  color: #28465f;
+  color: #2a4c74;
   margin: 0;
 }
 
 .shell-steps ul {
   margin: 8px 0 0;
   padding-left: 18px;
-  color: #556a80;
-  font-size: 12px;
+  color: #5f738b;
+  font-size: var(--shell-type-caption);
   line-height: 1.5;
 }
 
@@ -206,7 +239,7 @@ body {
   margin-top: 14px;
   display: grid;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--shell-type-overline);
   color: #64748b;
 }
 
@@ -214,6 +247,11 @@ body {
   border-color: #bde7cb;
   background: #f2fff6;
   color: #12643b;
+}
+
+.shell-screen.shell-online .shell-brand-card {
+  border-color: #b7ddff;
+  box-shadow: 0 16px 34px rgba(30, 88, 172, 0.18);
 }
 
 .shell-screen.shell-online .shell-dot {
@@ -230,6 +268,11 @@ body {
   background: var(--shell-offline);
   box-shadow: none;
   animation: none;
+}
+
+.shell-screen.shell-offline .shell-brand-card {
+  border-color: #f3cdcd;
+  box-shadow: 0 12px 28px rgba(159, 29, 29, 0.12);
 }
 
 .shell-screen-boot.shell-boot-stalled .shell-actions-hidden {

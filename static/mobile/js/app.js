@@ -57,20 +57,60 @@ window.showConfirm = function showConfirm(options) {
     var ENTERING_CLASS = 'mobile-page-entering';
     var LEAVE_CLASS = 'mobile-page-leave';
     var TRANSITIONING_CLASS = 'mobile-page-transitioning';
+    var ENTERING_FORWARD_CLASS = 'mobile-page-entering-forward';
+    var ENTERING_BACK_CLASS = 'mobile-page-entering-back';
+    var LEAVE_FORWARD_CLASS = 'mobile-page-leave-forward';
+    var LEAVE_BACK_CLASS = 'mobile-page-leave-back';
+    var NAV_DIRECTION_KEY = 'adarsh.mobile.nav.dir';
     var ENTER_ANIM_MS = 240;
     var LEAVE_GUARD_MS = 900;
 
+    function saveNavDirection(direction) {
+        try {
+            sessionStorage.setItem(NAV_DIRECTION_KEY, direction === 'back' ? 'back' : 'forward');
+        } catch (err) {}
+    }
+
+    function readAndClearNavDirection() {
+        var nextDirection = 'forward';
+        try {
+            var stored = String(sessionStorage.getItem(NAV_DIRECTION_KEY) || '').trim().toLowerCase();
+            if (stored === 'back') {
+                nextDirection = 'back';
+            }
+            sessionStorage.removeItem(NAV_DIRECTION_KEY);
+        } catch (err) {}
+        return nextDirection;
+    }
+
+    function applyLeaveDirection(direction) {
+        var safeDirection = direction === 'back' ? 'back' : 'forward';
+        saveNavDirection(safeDirection);
+        document.body.classList.remove(ENTERING_CLASS, ENTERING_FORWARD_CLASS, ENTERING_BACK_CLASS);
+        document.body.classList.add(TRANSITIONING_CLASS, LEAVE_CLASS);
+        document.body.classList.remove(LEAVE_FORWARD_CLASS, LEAVE_BACK_CLASS);
+        document.body.classList.add(safeDirection === 'back' ? LEAVE_BACK_CLASS : LEAVE_FORWARD_CLASS);
+    }
+
     function clearEnterClass() {
-        document.body.classList.remove(ENTERING_CLASS);
-        document.body.classList.remove(TRANSITIONING_CLASS);
+        document.body.classList.remove(ENTERING_CLASS, ENTERING_FORWARD_CLASS, ENTERING_BACK_CLASS, TRANSITIONING_CLASS);
     }
 
     function clearLeaveClass() {
-        document.body.classList.remove(LEAVE_CLASS);
-        document.body.classList.remove(TRANSITIONING_CLASS);
+        document.body.classList.remove(LEAVE_CLASS, LEAVE_FORWARD_CLASS, LEAVE_BACK_CLASS, TRANSITIONING_CLASS);
     }
 
+    window.mobileSetNavDirection = function mobileSetNavDirection(direction) {
+        saveNavDirection(direction);
+    };
+
+    window.mobileStartPageLeave = function mobileStartPageLeave(direction) {
+        applyLeaveDirection(direction);
+    };
+
+    var incomingDirection = readAndClearNavDirection();
     document.body.classList.add(ENTERING_CLASS);
+    document.body.classList.add(incomingDirection === 'back' ? ENTERING_BACK_CLASS : ENTERING_FORWARD_CLASS);
     document.body.classList.add(TRANSITIONING_CLASS);
     setTimeout(clearEnterClass, ENTER_ANIM_MS);
 
@@ -97,9 +137,9 @@ window.showConfirm = function showConfirm(options) {
             return;
         }
 
-        document.body.classList.remove(ENTERING_CLASS);
-        document.body.classList.add(TRANSITIONING_CLASS);
-        document.body.classList.add(LEAVE_CLASS);
+        var inlineHandler = String(anchor.getAttribute('onclick') || '');
+        var isBackNav = anchor.hasAttribute('data-nav-back') || inlineHandler.indexOf('mobileGoBack') !== -1;
+        applyLeaveDirection(isBackNav ? 'back' : 'forward');
 
         // If navigation is prevented or cancelled by app handlers,
         // remove stale blur state automatically.
@@ -298,7 +338,7 @@ window.showConfirm = function showConfirm(options) {
         wrap.style.position = 'fixed';
         wrap.style.inset = '0';
         wrap.style.zIndex = '10080';
-        wrap.style.background = 'rgba(15,23,42,.94)';
+        wrap.style.background = 'rgba(12, 26, 52, .94)';
         wrap.style.color = '#fff';
         wrap.style.display = 'flex';
         wrap.style.alignItems = 'center';
@@ -310,12 +350,12 @@ window.showConfirm = function showConfirm(options) {
 
         wrap.innerHTML = '' +
             '<div style="max-width:360px;width:100%;text-align:center;">' +
-            '<div style="font-size:24px;font-weight:700;margin-bottom:8px;">Update Required</div>' +
+            '<div style="font-size:22px;font-weight:700;letter-spacing:.01em;margin-bottom:8px;">Update Required</div>' +
             '<p style="font-size:13px;line-height:1.45;opacity:.92;margin:0 0 14px;">' +
             'Your Adarsh Panel app version is no longer supported. Please update to continue.' +
             '</p>' +
             (latestVersion ? '<p style="font-size:12px;opacity:.82;margin:0 0 16px;">Latest version: ' + latestVersion + '</p>' : '') +
-            '<a href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;background:#fff;color:#0f172a;text-decoration:none;font-size:13px;font-weight:700;">Update Now</a>' +
+            '<a href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#33b7ef,#2f80ed 55%,#1f5fcf);color:#fff;text-decoration:none;font-size:13px;font-weight:700;box-shadow:0 10px 24px rgba(47,128,237,.34);">Update Now</a>' +
             '</div>';
 
         document.body.appendChild(wrap);
@@ -343,11 +383,12 @@ window.showConfirm = function showConfirm(options) {
         wrap.style.right = '12px';
         wrap.style.bottom = '12px';
         wrap.style.zIndex = '10060';
-        wrap.style.background = '#0f172a';
-        wrap.style.color = '#fff';
+        wrap.style.background = '#ffffff';
+        wrap.style.color = '#182235';
+        wrap.style.border = '1px solid #c5dcf7';
         wrap.style.borderRadius = '12px';
         wrap.style.padding = '12px 14px';
-        wrap.style.boxShadow = '0 12px 24px rgba(0,0,0,.3)';
+        wrap.style.boxShadow = '0 12px 28px rgba(31,95,207,.24)';
 
         var message = latestVersion
             ? 'A newer app version (' + latestVersion + ') is available.'
@@ -357,14 +398,14 @@ window.showConfirm = function showConfirm(options) {
             '<div style="display:flex;gap:10px;align-items:flex-start;">' +
             '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:13px;font-weight:700;line-height:1.25;">Update Available</div>' +
-            '<div style="font-size:12px;opacity:.9;line-height:1.35;margin-top:2px;">' + message + '</div>' +
+            '<div style="font-size:12px;color:#4a5c73;line-height:1.35;margin-top:2px;">' + message + '</div>' +
             (currentBuild > 0 && latestBuild > 0
-                ? '<div style="font-size:11px;opacity:.75;margin-top:4px;">Current build ' + currentBuild + ' -> Latest build ' + latestBuild + '</div>'
+                ? '<div style="font-size:11px;color:#70829b;margin-top:4px;">Current build ' + currentBuild + ' -> Latest build ' + latestBuild + '</div>'
                 : '') +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-            '<a id="mobile-shell-recommended-open" href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#fff;color:#0f172a;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
-            '<button id="mobile-shell-recommended-dismiss" type="button" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.18);border:0;color:#fff;font-size:12px;font-weight:600;">Later</button>' +
+            '<a id="mobile-shell-recommended-open" href="' + updateUrl + '" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:linear-gradient(135deg,#33b7ef,#2f80ed 55%,#1f5fcf);color:#fff;text-decoration:none;font-size:12px;font-weight:700;">Update</a>' +
+            '<button id="mobile-shell-recommended-dismiss" type="button" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:8px;background:#edf4ff;border:1px solid #c5dcf7;color:#2f80ed;font-size:12px;font-weight:600;">Later</button>' +
             '</div>' +
             '</div>';
 
@@ -419,6 +460,9 @@ window.showConfirm = function showConfirm(options) {
                 return;
             }
             if (evt && evt.canGoBack) {
+                if (typeof window.mobileStartPageLeave === 'function') {
+                    window.mobileStartPageLeave('back');
+                }
                 window.history.back();
                 return;
             }
@@ -460,6 +504,9 @@ window.showConfirm = function showConfirm(options) {
 
             var currentPath = window.location.pathname + window.location.search + window.location.hash;
             if (currentPath === nextPath) return;
+            if (typeof window.mobileStartPageLeave === 'function') {
+                window.mobileStartPageLeave('forward');
+            }
             window.location.href = nextPath;
         });
     }
