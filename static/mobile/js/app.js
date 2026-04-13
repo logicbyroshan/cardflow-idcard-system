@@ -164,6 +164,401 @@ window.showConfirm = function showConfirm(options) {
     });
 })();
 
+(function setupAndroidNativePerformanceLayer() {
+    var envGate = window.adarshMobileEnv || null;
+    var isNative = !!(envGate && typeof envGate.isNativeShell === 'function' && envGate.isNativeShell());
+    var platform = envGate && typeof envGate.getPlatform === 'function'
+        ? String(envGate.getPlatform() || '').toLowerCase()
+        : '';
+    if (!isNative || platform !== 'android') {
+        return;
+    }
+
+    document.body.classList.add('mobile-fast-tap-ready');
+
+    function ensureRouteSkeleton() {
+        var existing = document.getElementById('mobile-route-skeleton');
+        if (existing) return existing;
+
+        var shell = document.createElement('div');
+        shell.id = 'mobile-route-skeleton';
+        shell.style.position = 'fixed';
+        shell.style.inset = '0';
+        shell.style.zIndex = '10050';
+        shell.style.background = 'linear-gradient(180deg,#f6fbff 0%,#edf5ff 65%,#e6f0ff 100%)';
+        shell.style.padding = '18px 14px 88px';
+        shell.style.display = 'none';
+        shell.style.pointerEvents = 'none';
+        shell.innerHTML = '' +
+            '<div style="height:18px;width:40%;border-radius:8px;background:#dfeafb;margin-bottom:16px;"></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+                '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
+            '</div>' +
+            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
+            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
+            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;"></div>';
+
+        var style = document.createElement('style');
+        style.textContent = '' +
+            '#mobile-route-skeleton .adarsh-skeleton-block{' +
+                'background:linear-gradient(90deg,#dfeafb 20%,#eff5ff 45%,#dfeafb 70%);' +
+                'background-size:220% 100%;' +
+                'animation:adarshSkeletonShimmer 1.15s linear infinite;' +
+            '}' +
+            '@keyframes adarshSkeletonShimmer{' +
+                '0%{background-position:220% 0;}' +
+                '100%{background-position:-220% 0;}' +
+            '}';
+
+        document.head.appendChild(style);
+        document.body.appendChild(shell);
+        return shell;
+    }
+
+    var skeletonTimer = null;
+    var progressGuardTimer = null;
+    var progressHideTimer = null;
+    var progressRampTimer = null;
+    var prefetchedRoutes = Object.create(null);
+
+    function ensureRouteProgress() {
+        var existing = document.getElementById('mobile-route-progress');
+        if (existing) return existing;
+        var bar = document.createElement('div');
+        bar.id = 'mobile-route-progress';
+        document.body.appendChild(bar);
+        return bar;
+    }
+
+    function clearProgressTimers() {
+        if (progressGuardTimer) {
+            clearTimeout(progressGuardTimer);
+            progressGuardTimer = null;
+        }
+        if (progressHideTimer) {
+            clearTimeout(progressHideTimer);
+            progressHideTimer = null;
+        }
+        if (progressRampTimer) {
+            clearTimeout(progressRampTimer);
+            progressRampTimer = null;
+        }
+    }
+
+    function startRouteProgress() {
+        var bar = ensureRouteProgress();
+        clearProgressTimers();
+        document.body.classList.add('mobile-route-progress-active');
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.offsetWidth;
+        bar.style.transition = 'width 560ms cubic-bezier(0.22,1,0.36,1)';
+        bar.style.width = '70%';
+
+        progressRampTimer = setTimeout(function() {
+            bar.style.transition = 'width 1200ms linear';
+            bar.style.width = '86%';
+        }, 580);
+
+        progressGuardTimer = setTimeout(function() {
+            hideRouteProgress(true);
+        }, 1700);
+    }
+
+    function finishRouteProgress() {
+        var bar = ensureRouteProgress();
+        clearProgressTimers();
+        document.body.classList.add('mobile-route-progress-active');
+        bar.style.transition = 'width 180ms ease-out';
+        bar.style.width = '100%';
+        progressHideTimer = setTimeout(function() {
+            hideRouteProgress(true);
+        }, 220);
+    }
+
+    function hideRouteProgress(immediate) {
+        var bar = document.getElementById('mobile-route-progress');
+        clearProgressTimers();
+        if (!bar) return;
+        if (!immediate) {
+            finishRouteProgress();
+            return;
+        }
+        document.body.classList.remove('mobile-route-progress-active');
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+    }
+
+    function canPrefetchRoutes() {
+        if (!navigator.onLine) return false;
+        var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (!conn) return true;
+        if (conn.saveData) return false;
+        var effectiveType = String(conn.effectiveType || '').toLowerCase();
+        if (effectiveType.indexOf('2g') !== -1) return false;
+        return true;
+    }
+
+    function resolveTrackedRouteHref(rawHref) {
+        var href = String(rawHref || '').trim();
+        if (!href || href.charAt(0) === '#') return '';
+        if (href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) {
+            return '';
+        }
+
+        try {
+            var resolved = new URL(href, window.location.href);
+            if (resolved.origin !== window.location.origin) return '';
+            if (resolved.pathname.indexOf('/app/') !== 0 && resolved.pathname !== '/app') return '';
+            var normalized = resolved.pathname + resolved.search;
+            var current = window.location.pathname + window.location.search;
+            if (normalized === current) return '';
+            return normalized;
+        } catch (err) {
+            return '';
+        }
+    }
+
+    function prefetchRoute(href) {
+        if (!canPrefetchRoutes()) return false;
+        var normalizedHref = resolveTrackedRouteHref(href);
+        if (!normalizedHref) return false;
+        if (prefetchedRoutes[normalizedHref]) return false;
+        prefetchedRoutes[normalizedHref] = true;
+
+        try {
+            var prefetchLink = document.createElement('link');
+            prefetchLink.rel = 'prefetch';
+            prefetchLink.as = 'document';
+            prefetchLink.href = normalizedHref;
+            document.head.appendChild(prefetchLink);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function warmupLikelyRoutes() {
+        if (!canPrefetchRoutes()) return;
+        var anchors = document.querySelectorAll('.pwa-bottom-nav a[href], .pwa-nav-search-btn[href], a[href^="/app/"]');
+        var limit = 12;
+        for (var i = 0; i < anchors.length && limit > 0; i++) {
+            var anchor = anchors[i];
+            if (!anchor || anchor.hasAttribute('data-no-prefetch')) continue;
+            if (prefetchRoute(anchor.getAttribute('href'))) {
+                limit -= 1;
+            }
+        }
+    }
+
+    function scheduleWarmupLikelyRoutes() {
+        if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(warmupLikelyRoutes, { timeout: 1300 });
+            return;
+        }
+        setTimeout(warmupLikelyRoutes, 480);
+    }
+
+    var activeTapEl = null;
+    function clearTapState() {
+        if (!activeTapEl) return;
+        activeTapEl.classList.remove('mobile-tap-active');
+        activeTapEl = null;
+    }
+
+    function updateTapState(event) {
+        var target = event && event.target;
+        if (!target || !target.closest) return;
+        var tappable = target.closest('a,button,[role="button"],.pwa-nav-item,.pwa-nav-search-btn,.mab-nav-item,.mab-center-btn,label');
+        if (!tappable || tappable.disabled || tappable.getAttribute('aria-disabled') === 'true') {
+            clearTapState();
+            return;
+        }
+        if (activeTapEl === tappable) return;
+        clearTapState();
+        activeTapEl = tappable;
+        activeTapEl.classList.add('mobile-tap-active');
+    }
+
+    function showRouteSkeleton() {
+        var shell = ensureRouteSkeleton();
+        if (shell) shell.style.display = 'block';
+    }
+
+    function hideRouteSkeleton() {
+        if (skeletonTimer) {
+            clearTimeout(skeletonTimer);
+            skeletonTimer = null;
+        }
+        var shell = document.getElementById('mobile-route-skeleton');
+        if (shell) shell.style.display = 'none';
+        clearTapState();
+    }
+
+    function shouldTrackAnchor(anchor) {
+        if (!anchor) return false;
+        if (anchor.hasAttribute('download')) return false;
+        if (anchor.getAttribute('target') === '_blank') return false;
+        if (anchor.hasAttribute('data-no-page-transition')) return false;
+
+        return !!resolveTrackedRouteHref(anchor.getAttribute('href'));
+    }
+
+    function handleAnchorPrefetchIntent(event) {
+        var target = event && event.target;
+        if (!target || !target.closest) return;
+        var anchor = target.closest('a[href]');
+        if (!shouldTrackAnchor(anchor)) return;
+        prefetchRoute(anchor.getAttribute('href'));
+    }
+
+    document.addEventListener('click', function(event) {
+        var target = event.target;
+        if (!target || !target.closest) return;
+        var anchor = target.closest('a[href]');
+        if (!shouldTrackAnchor(anchor)) return;
+        if (event.defaultPrevented) return;
+
+        prefetchRoute(anchor.getAttribute('href'));
+        startRouteProgress();
+        if (skeletonTimer) clearTimeout(skeletonTimer);
+        skeletonTimer = setTimeout(showRouteSkeleton, 70);
+        setTimeout(function() {
+            hideRouteProgress(true);
+        }, 1400);
+    }, true);
+
+    document.addEventListener('pointerdown', updateTapState, true);
+    document.addEventListener('touchstart', updateTapState, true);
+    document.addEventListener('pointerup', clearTapState, true);
+    document.addEventListener('pointercancel', clearTapState, true);
+    document.addEventListener('touchcancel', clearTapState, true);
+    document.addEventListener('touchend', clearTapState, true);
+
+    document.addEventListener('pointerdown', handleAnchorPrefetchIntent, { capture: true, passive: true });
+    document.addEventListener('touchstart', handleAnchorPrefetchIntent, { capture: true, passive: true });
+    document.addEventListener('focusin', handleAnchorPrefetchIntent, true);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scheduleWarmupLikelyRoutes, { once: true });
+    } else {
+        scheduleWarmupLikelyRoutes();
+    }
+
+    window.addEventListener('pageshow', function() {
+        hideRouteSkeleton();
+        finishRouteProgress();
+        scheduleWarmupLikelyRoutes();
+    });
+    window.addEventListener('pagehide', function() {
+        hideRouteSkeleton();
+        hideRouteProgress(true);
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            hideRouteSkeleton();
+            hideRouteProgress(true);
+        }
+    });
+
+    function markMediaLazy(root) {
+        var scope = root || document;
+        if (!scope || !scope.querySelectorAll) return;
+
+        scope.querySelectorAll('img').forEach(function(img) {
+            if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy');
+            if (!img.hasAttribute('decoding')) img.setAttribute('decoding', 'async');
+            if (img.hasAttribute('fetchpriority') && img.getAttribute('fetchpriority') === 'high') return;
+            if (!img.hasAttribute('fetchpriority')) img.setAttribute('fetchpriority', 'low');
+        });
+
+        scope.querySelectorAll('video').forEach(function(video) {
+            if (!video.hasAttribute('preload')) {
+                video.setAttribute('preload', 'metadata');
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            markMediaLazy(document);
+        }, { once: true });
+    } else {
+        markMediaLazy(document);
+    }
+
+    var bridge = window.adarshDeviceBridge || null;
+    if (!bridge || typeof bridge.getDeferredSyncState !== 'function') {
+        return;
+    }
+
+    function ensureSyncBadge() {
+        var existing = document.getElementById('mobile-deferred-sync-badge');
+        if (existing) return existing;
+
+        var badge = document.createElement('div');
+        badge.id = 'mobile-deferred-sync-badge';
+        badge.style.position = 'fixed';
+        badge.style.left = '50%';
+        badge.style.bottom = '74px';
+        badge.style.transform = 'translateX(-50%)';
+        badge.style.padding = '7px 12px';
+        badge.style.borderRadius = '999px';
+        badge.style.background = 'rgba(16,24,40,0.92)';
+        badge.style.color = '#ffffff';
+        badge.style.fontSize = '11px';
+        badge.style.fontWeight = '600';
+        badge.style.boxShadow = '0 12px 30px rgba(2,8,23,0.28)';
+        badge.style.zIndex = '10055';
+        badge.style.display = 'none';
+        badge.style.pointerEvents = 'none';
+        document.body.appendChild(badge);
+        return badge;
+    }
+
+    var badgeHideTimer = null;
+    function renderSyncBadge(state) {
+        var badge = ensureSyncBadge();
+        if (!badge) return;
+
+        var pending = Number(state && state.totalPending || 0);
+        var online = !!(state && state.online);
+        if (pending <= 0) {
+            if (badgeHideTimer) clearTimeout(badgeHideTimer);
+            badgeHideTimer = setTimeout(function() {
+                badge.style.display = 'none';
+            }, 850);
+            return;
+        }
+
+        if (badgeHideTimer) {
+            clearTimeout(badgeHideTimer);
+            badgeHideTimer = null;
+        }
+
+        badge.style.display = 'block';
+        badge.textContent = online
+            ? ('Syncing ' + pending + ' saved change(s)...')
+            : ('Saved offline: ' + pending + ' change(s)');
+    }
+
+    async function refreshSyncBadge() {
+        try {
+            var state = await bridge.getDeferredSyncState();
+            renderSyncBadge(state || {});
+        } catch (err) {}
+    }
+
+    window.addEventListener('adarsh:deferred-sync-state', function(event) {
+        renderSyncBadge(event && event.detail ? event.detail : {});
+    });
+    window.addEventListener('online', refreshSyncBadge);
+    window.addEventListener('offline', refreshSyncBadge);
+    setInterval(refreshSyncBadge, 20000);
+    refreshSyncBadge();
+})();
+
 (function initAndroidShellBridge() {
     var envGate = window.adarshMobileEnv || null;
     function isNativeShellContext() {
@@ -205,6 +600,7 @@ window.showConfirm = function showConfirm(options) {
     var backPressedAt = 0;
     var backHandlerReadyAt = Date.now() + 2200;
     var userInteractedAt = 0;
+    var lastPermissionToastAt = 0;
 
     function resetBackGuardAfterSystemDialog() {
         // Permission dialogs and resume transitions can emit phantom back events.
@@ -455,7 +851,11 @@ window.showConfirm = function showConfirm(options) {
             }
 
             if (window.mobileOverlay && typeof window.mobileOverlay.isActive === 'function' && window.mobileOverlay.isActive()) {
-                window.mobileOverlay.close();
+                try {
+                    window.history.back();
+                } catch (err) {
+                    window.mobileOverlay.close();
+                }
                 return;
             }
             if (shouldSuppressHistoryBackForRecentLogin(now)) {
@@ -512,6 +912,37 @@ window.showConfirm = function showConfirm(options) {
             }
             window.location.href = nextPath;
         });
+    }
+
+    function showNativePermissionToast(message) {
+        if (!Toast || typeof Toast.show !== 'function') return;
+        var msg = String(message || '').trim();
+        if (!msg) return;
+
+        var now = Date.now();
+        if (now - lastPermissionToastAt < 2000) {
+            return;
+        }
+        lastPermissionToastAt = now;
+        Toast.show({ text: msg }).catch(function() {});
+    }
+
+    function setupNativePermissionIssueListener() {
+        window.addEventListener('adarsh:native-permission-issue', function(event) {
+            var detail = event && event.detail ? event.detail : {};
+            var fallback = 'Permission is required for this action. Please allow it from app settings.';
+            showNativePermissionToast(detail.message || fallback);
+        });
+    }
+
+    async function warmupAndroidPermissionState() {
+        if (!bridge || typeof bridge.checkPermissionBundle !== 'function') return;
+        try {
+            var state = await bridge.checkPermissionBundle();
+            if (state && (state.photos === 'denied' || state.camera === 'denied' || state.storage === 'denied')) {
+                showNativePermissionToast('Camera, gallery, or storage permission is disabled. Enable it in app settings.');
+            }
+        } catch (err) {}
     }
 
     async function registerPushToken(payloadBase, configPayload) {
@@ -606,6 +1037,7 @@ window.showConfirm = function showConfirm(options) {
         setupExternalLinkBridge();
         setupDeepLinkBridge();
         setupAndroidBackBehavior();
+        setupNativePermissionIssueListener();
 
         var installId = getInstallationId();
         var nativeInfo = await getNativeInfo();
@@ -636,6 +1068,7 @@ window.showConfirm = function showConfirm(options) {
         } catch (err) {}
 
         setupHeartbeat(payloadBase);
+        warmupAndroidPermissionState();
         registerPushToken(payloadBase, configPayload);
     }
 

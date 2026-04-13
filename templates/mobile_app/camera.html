@@ -270,7 +270,7 @@ function cameraApp() {
             });
 
             const picked = await Promise.race([
-                bridge.pickImage({ source: source, quality: quality }),
+                bridge.pickImage({ source: source, quality: quality, timeoutMs: timeoutMs }),
                 timeoutPromise,
             ]);
 
@@ -550,7 +550,10 @@ function cameraApp() {
                 }
 
                 if (data.success) {
-                    this.showMsg('Photo uploaded successfully!', 'success');
+                    const successMsg = data && data.deferred
+                        ? (data.message || 'Photo saved offline. Sync will continue in background.')
+                        : 'Photo uploaded successfully!';
+                    this.showMsg(successMsg, 'success');
                     this.photoTaken = false;
                     /* Reset selection  keep full card list available for next capture */
                     this.selectedCardId = 0;

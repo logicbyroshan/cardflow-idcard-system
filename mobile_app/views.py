@@ -2849,6 +2849,21 @@ def profile(request):
     })
 
 
+@require_mobile_client
+def permissions_center(request):
+    """Android native permission control surface for camera/gallery/storage/notifications."""
+    user = request.user
+    client, perms = _client_ctx(user)
+    if not client:
+        return redirect('/app/login/')
+
+    return render(request, 'mobile_app/permissions.html', {
+        'user_name': user.get_full_name() or user.username,
+        'client': client,
+        **perms,
+    })
+
+
 # ---------------------------------------------------------------------------
 # API VIEWS — thin proxies to existing services
 # ---------------------------------------------------------------------------

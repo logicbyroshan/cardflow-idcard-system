@@ -263,6 +263,7 @@ function websiteManageApp() {
         uploadSheetOpen: false,
         activeCategory: null,
         pendingFiles: [],
+        pickerBusy: false,
         uploading: false,
         uploadPct: 0,
         uploadStatus: '',
@@ -344,6 +345,24 @@ function websiteManageApp() {
             this.addPortfolioFiles(Array.from((e && e.target && e.target.files) || []), { source });
             if (e && e.target) e.target.value = '';
         },
+        async pickPortfolioWithTimeout(source, quality, timeoutMs) {
+            const bridge = window.adarshDeviceBridge;
+            if (!(bridge && typeof bridge.pickImage === 'function')) return null;
+
+            const timeoutPromise = new Promise((resolve) => {
+                setTimeout(() => resolve({ __timeout: true }), timeoutMs);
+            });
+
+            const picked = await Promise.race([
+                bridge.pickImage({ source: source, quality: quality, timeoutMs: timeoutMs }),
+                timeoutPromise,
+            ]);
+
+            if (picked && picked.__timeout) {
+                throw new Error('Camera/Gallery is taking too long. Please try again.');
+            }
+            return picked || null;
+        },
         addPortfolioFiles(files, options) {
             const MAX_FILES = 20;
             const MAX_IMAGE_MB = 15;
@@ -397,12 +416,21 @@ function websiteManageApp() {
             });
         },
         async pickPortfolioFromCamera() {
+            if (this.pickerBusy || this.uploading) return;
             const bridge = window.adarshDeviceBridge;
             if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
-                const picked = await bridge.pickImage({ source: 'camera', quality: 92 });
-                if (picked) {
-                    this.addPortfolioFiles([picked], { source: 'camera' });
+                this.pickerBusy = true;
+                try {
+                    const picked = await this.pickPortfolioWithTimeout('camera', 92, 15000);
+                    if (picked) {
+                        this.addPortfolioFiles([picked], { source: 'camera' });
+                    }
                     return;
+                } catch (err) {
+                    this.showToast(err && err.message ? err.message : 'Unable to open camera', false);
+                    return;
+                } finally {
+                    this.pickerBusy = false;
                 }
             }
             if (this.$refs.portfolioCameraInput) {
@@ -410,12 +438,21 @@ function websiteManageApp() {
             }
         },
         async pickPortfolioFromGallery() {
+            if (this.pickerBusy || this.uploading) return;
             const bridge = window.adarshDeviceBridge;
             if (bridge && typeof bridge.isNativeShell === 'function' && bridge.isNativeShell() && typeof bridge.pickImage === 'function') {
-                const picked = await bridge.pickImage({ source: 'gallery', quality: 92 });
-                if (picked) {
-                    this.addPortfolioFiles([picked], { source: 'gallery' });
+                this.pickerBusy = true;
+                try {
+                    const picked = await this.pickPortfolioWithTimeout('gallery', 92, 15000);
+                    if (picked) {
+                        this.addPortfolioFiles([picked], { source: 'gallery' });
+                    }
                     return;
+                } catch (err) {
+                    this.showToast(err && err.message ? err.message : 'Unable to open gallery', false);
+                    return;
+                } finally {
+                    this.pickerBusy = false;
                 }
             }
             if (this.$refs.portfolioGalleryInput) {
@@ -470,7 +507,11 @@ function websiteManageApp() {
                         queueKey: 'portfolio_upload_' + categoryId,
                     }
                 );
-                return uploadResult && uploadResult.data ? uploadResult.data : {};
+                const payload = uploadResult && uploadResult.data ? uploadResult.data : {};
+                if (uploadResult && uploadResult.deferred) {
+                    payload._deferred = true;
+                }
+                return payload;
             }
 
             const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -502,6 +543,7 @@ function websiteManageApp() {
                 const total = this.pendingFiles.length;
                 let completed = 0;
                 let uploadedCount = 0;
+                let deferredCount = 0;
                 const failedCarry = [];
 
                 for (let i = 0; i < this.pendingFiles.length; i += BATCH_SIZE) {
@@ -530,6 +572,10 @@ function websiteManageApp() {
                         continue;
                     }
 
+                    if (batchData._deferred) {
+                        deferredCount += Number(batchData.count || batch.length || 0);
+                    }
+
                     uploadedCount += (batchData.count || 0);
                     const failedNames = new Set((batchData.failed || []).map(x => x.name));
                     batch.forEach(pf => {
@@ -549,7 +595,10 @@ function websiteManageApp() {
 
                 this.pendingFiles = failedCarry;
 
-                if (uploadedCount > 0 && this.pendingFiles.length === 0) {
+                if (deferredCount > 0 && this.pendingFiles.length === 0) {
+                    this.showToast(deferredCount + ' file(s) saved offline. Sync is running in background.');
+                    this.closeUploadSheet();
+                } else if (uploadedCount > 0 && this.pendingFiles.length === 0) {
                     this.showToast(uploadedCount + ' file(s) uploaded successfully!');
                     this.closeUploadSheet();
                 } else if (uploadedCount > 0 && this.pendingFiles.length > 0) {

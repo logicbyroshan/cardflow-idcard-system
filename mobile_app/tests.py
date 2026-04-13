@@ -953,6 +953,18 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 			response = self.client.get('/app/profile/')
 			self.assertEqual(response.status_code, 200)
 			self.assertIn('Update App', response.content.decode('utf-8'))
+			self.assertIn('Permissions Center', response.content.decode('utf-8'))
+
+	def test_permissions_center_page_renders_native_controls(self):
+		self._login_mobile_super_admin()
+		response = self.client.get('/app/permissions/')
+
+		self.assertEqual(response.status_code, 200)
+		content = response.content.decode('utf-8')
+		self.assertIn('Permissions Center', content)
+		self.assertIn('Allow Camera + Gallery + Storage', content)
+		self.assertIn('Allow Notifications', content)
+		self.assertIn('openDeviceSettings()', content)
 
 	@mock.patch('mobile_app.views.IDCardService.update_card')
 	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
@@ -2076,6 +2088,9 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 		self.assertIn('async function enqueueCriticalJson(url, payload, options)', content)
 		self.assertIn('async function uploadFormDataWithRetry(url, formDataFactory, options)', content)
 		self.assertIn('async function pickImage(options)', content)
+		self.assertIn('async function checkPermissionBundle()', content)
+		self.assertIn('async function requestPermissionBundle(options)', content)
+		self.assertIn('async function openNativeSettings()', content)
 
 	def test_mobile_bridge_uses_critical_queue_and_push_refresh_hooks(self):
 		js_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
@@ -2110,6 +2125,15 @@ class MobileAppPhase4DeviceBridgeContractTests(TestCase):
 		self.assertIn('source = (e && e.target === this.$refs.portfolioCameraInput) ? \'camera\' : \'gallery\';', content)
 		self.assertIn('Camera returned video. Please switch to Photo mode and try again.', content)
 		self.assertIn('bridge.uploadFormDataWithRetry(', content)
+
+	def test_permissions_center_template_uses_bridge_permission_bundle(self):
+		permissions_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'permissions.html'
+		content = permissions_path.read_text(encoding='utf-8')
+
+		self.assertIn('x-data="permissionsCenterApp()"', content)
+		self.assertIn('bridge.checkPermissionBundle', content)
+		self.assertIn('bridge.requestPermissionBundle', content)
+		self.assertIn('bridge.openNativeSettings', content)
 
 
 class MobileAppPhase5OfflineCachingContractTests(TestCase):
@@ -2380,6 +2404,7 @@ class MobileAppPhase1SmokeAndVisualTests(MobileAppBaseTestCase):
 			f'/app/camera/{self.table.id}/{self.card.id}/',
 			'/app/notifications/',
 			'/app/profile/',
+			'/app/permissions/',
 			'/app/staff/',
 			'/app/settings/',
 			f'/app/search/?q=Student&filter=name&table_id={self.table.id}',

@@ -30,7 +30,7 @@ body {
 }
 
 body.mobile-page-entering #mobile-app {
-    animation: mobile-page-enter-forward var(--m-motion-enter-ms, 260ms) cubic-bezier(0.22, 1, 0.36, 1);
+    animation: mobile-page-enter-forward var(--m-motion-enter-ms, 220ms) cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform, opacity;
     backface-visibility: hidden;
 }
@@ -40,27 +40,27 @@ body.mobile-page-entering-back #mobile-app {
 }
 
 body.mobile-page-leave #mobile-app {
-    opacity: 0.9;
-    transform: translate3d(-8px, 0, 0) scale(0.998);
-    transition: opacity var(--m-motion-leave-ms, 180ms) ease, transform var(--m-motion-leave-ms, 180ms) ease;
+    opacity: 0.96;
+    transform: translate3d(-4px, 0, 0) scale(0.999);
+    transition: opacity var(--m-motion-leave-ms, 140ms) ease, transform var(--m-motion-leave-ms, 140ms) ease;
     will-change: transform, opacity;
     backface-visibility: hidden;
 }
 
 body.mobile-page-leave-forward #mobile-app {
-    transform: translate3d(-10px, 0, 0) scale(0.998);
+    transform: translate3d(-6px, 0, 0) scale(0.999);
 }
 
 body.mobile-page-leave-back #mobile-app {
-    transform: translate3d(10px, 0, 0) scale(0.998);
+    transform: translate3d(6px, 0, 0) scale(0.999);
     will-change: transform, opacity;
     backface-visibility: hidden;
 }
 
 @keyframes mobile-page-enter-forward {
     from {
-        opacity: 0.9;
-        transform: translate3d(16px, 0, 0) scale(0.998);
+        opacity: 0.94;
+        transform: translate3d(10px, 0, 0) scale(0.999);
     }
     to {
         opacity: 1;
@@ -70,8 +70,8 @@ body.mobile-page-leave-back #mobile-app {
 
 @keyframes mobile-page-enter-back {
     from {
-        opacity: 0.9;
-        transform: translate3d(-16px, 0, 0) scale(0.998);
+        opacity: 0.94;
+        transform: translate3d(-10px, 0, 0) scale(0.999);
     }
     to {
         opacity: 1;
@@ -85,6 +85,41 @@ body.mobile-page-entering [class*='backdrop-blur'],
 body.mobile-page-leave [class*='backdrop-blur'] {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+}
+
+#mobile-route-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0;
+    opacity: 0;
+    z-index: 10065;
+    pointer-events: none;
+    background: linear-gradient(90deg, #2f80ed 0%, #33b7ef 70%, #60d8ff 100%);
+    box-shadow: 0 2px 10px rgba(47, 128, 237, 0.45);
+    will-change: width, opacity;
+    transition: opacity 120ms ease;
+}
+
+body.mobile-route-progress-active #mobile-route-progress {
+    opacity: 1;
+}
+
+body.mobile-fast-tap-ready a,
+body.mobile-fast-tap-ready button,
+body.mobile-fast-tap-ready [role="button"],
+body.mobile-fast-tap-ready .pwa-nav-item,
+body.mobile-fast-tap-ready .pwa-nav-search-btn,
+body.mobile-fast-tap-ready .mab-nav-item,
+body.mobile-fast-tap-ready .mab-center-btn,
+body.mobile-fast-tap-ready label {
+    transition: filter 90ms ease, opacity 90ms ease;
+}
+
+body.mobile-fast-tap-ready .mobile-tap-active {
+    opacity: 0.86 !important;
+    filter: saturate(0.95) brightness(0.98);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -124,8 +159,8 @@ body.mobile-page-leave [class*='backdrop-blur'] {
     --m-radius-sheet: 20px;
     --m-control-height: 42px;
     --m-cta-height: 44px;
-    --m-motion-enter-ms: 260ms;
-    --m-motion-leave-ms: 180ms;
+    --m-motion-enter-ms: 220ms;
+    --m-motion-leave-ms: 140ms;
 
     /* Status palette used across lists/chips/buttons */
     --st-pending-bg: #fffbeb;

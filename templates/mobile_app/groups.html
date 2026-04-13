@@ -368,12 +368,43 @@ function groupsApp() {
 
             try {
                 const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-                const res = await fetch('/app/api/table/' + this.selectedTableId + '/update-fields/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-                    body: JSON.stringify({ fields }),
-                });
-                const data = await res.json();
+                const url = '/app/api/table/' + this.selectedTableId + '/update-fields/';
+                const payload = { fields };
+                let data = null;
+
+                const bridge = window.adarshDeviceBridge;
+                const envGate = window.adarshMobileEnv;
+                const isAndroidNative = !!(
+                    envGate
+                    && typeof envGate.isNativeShell === 'function'
+                    && envGate.isNativeShell()
+                    && typeof envGate.getPlatform === 'function'
+                    && String(envGate.getPlatform() || '').toLowerCase() === 'android'
+                );
+
+                if (isAndroidNative && bridge && typeof bridge.enqueueCriticalJson === 'function') {
+                    const queuedResult = await bridge.enqueueCriticalJson(url, payload, {
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                        dedupeKey: 'table_fields_' + this.selectedTableId,
+                    });
+
+                    if (queuedResult && queuedResult.queued) {
+                        this.fieldMsg = { show: true, text: 'Saved offline. Sync will run in background.', type: 'success' };
+                        setTimeout(() => { this.showFieldModal = false; this.fieldMsg.show = false; }, 1400);
+                        this.fieldSaving = false;
+                        return;
+                    }
+
+                    data = queuedResult && queuedResult.data ? queuedResult.data : null;
+                } else {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                        body: JSON.stringify(payload),
+                    });
+                    data = await res.json();
+                }
+
                 if (data.success) {
                     this.fieldMsg = { show: true, text: 'Saved successfully!', type: 'success' };
                     setTimeout(() => { this.showFieldModal = false; this.fieldMsg.show = false; }, 1200);
