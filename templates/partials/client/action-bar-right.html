@@ -2,19 +2,37 @@
     <div class="btn-group">
         {% if can_manage_clients %}
         <button class="btn btn-md btn-neutral" id="openGroupMessageBtn"><i class="fa-solid fa-paper-plane"></i> Message</button>
+        {% endif %}
+    </div>
+
+    {% if can_manage_clients %}
+    <div class="btn-separator"></div>
+    {% endif %}
+
+    <div class="btn-group">
+        {% if can_manage_clients %}
         <button class="btn btn-md btn-primary" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
         {% endif %}
         <button class="btn btn-md btn-neutral" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
         <button class="btn btn-md btn-neutral" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
         <button class="btn btn-md btn-neutral" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> Staff</button>
-    </div>
-    {% if can_manage_clients %}
-    <div class="btn-separator"></div>
-    <div class="btn-group">
         {% if is_super_admin %}
         <button class="btn btn-md btn-danger" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
         {% endif %}
         <button class="btn btn-md btn-warning" id="activeClientBtn" disabled><i class="fa-solid fa-toggle-on"></i> Active</button>
+    </div>
+
+    {% if is_super_admin or perm_idcard_setting_list %}
+    <div class="btn-separator"></div>
+    <div class="btn-group">
+        <button class="btn btn-md btn-neutral" id="group-setting-btn" disabled title="Manage Group Settings">
+            <i class="fa-solid fa-gear"></i>
+            <span>Group Setting</span>
+        </button>
+        <button class="btn btn-md btn-primary" id="idcard-group-btn" disabled title="View ID Card Groups">
+            <i class="fa-solid fa-id-card"></i>
+            <span>ID Card Group</span>
+        </button>
     </div>
     {% endif %}
 </div>

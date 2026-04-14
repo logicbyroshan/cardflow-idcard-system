@@ -153,7 +153,7 @@ def print_cards(request, table_id):
     )
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
-        return redirect('active_clients')
+        return redirect('manage_clients')
 
     _promote_legacy_print_list(table)
 
@@ -240,7 +240,7 @@ def print_cards(request, table_id):
 
     import json as _json
     context = {
-        'active_page': 'active_clients',
+        'active_page': 'manage_clients',
         'user_role': get_user_role(user),
         'table': table,
         'group': table.group,
@@ -799,7 +799,7 @@ def generate_card(request, table_id):
     )
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
-        return redirect('active_clients')
+        return redirect('manage_clients')
 
     template_obj, _ = CardTemplate.objects.get_or_create(table=table)
     generate_count = PrintRequest.objects.filter(table=table, status='generate_list').count()
@@ -820,7 +820,7 @@ def generate_card(request, table_id):
     field_config = template_obj.field_config or {}
 
     context = {
-        'active_page': 'active_clients',
+        'active_page': 'manage_clients',
         'user_role': get_user_role(user),
         'table': table,
         'group': table.group,

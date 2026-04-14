@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', function() {
       var viewStaffBtn = document.getElementById('viewStaffBtn');
       var deleteClientBtn = document.getElementById('deleteClientBtn');
       var activeClientBtn = document.getElementById('activeClientBtn');
+      var groupSettingBtn = document.getElementById('group-setting-btn');
+      var idcardGroupBtn = document.getElementById('idcard-group-btn');
       
       var table = document.getElementById('clientsTable');
       var tbody = table.querySelector('tbody');
@@ -46,6 +48,14 @@ document.addEventListener('DOMContentLoaded', function() {
       function resolveClientLogoUrl(clientData) {
         if (!clientData || typeof clientData !== 'object') return '';
         return clientData.website_logo_url || clientData.photo_url || clientData.logo_url || '';
+      }
+
+      function panelBasePath() {
+        return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+      }
+
+      function clientSettingsUrl(clientId) {
+        return panelBasePath() + '/client/' + encodeURIComponent(String(clientId)) + '/settings/';
       }
 
       function renderClientDrawerAvatar(name, logoUrl) {
@@ -183,6 +193,8 @@ document.addEventListener('DOMContentLoaded', function() {
           if (viewStaffBtn) viewStaffBtn.disabled = false;
           if (deleteClientBtn) deleteClientBtn.disabled = false;
           if (activeClientBtn) activeClientBtn.disabled = false;
+          if (groupSettingBtn) groupSettingBtn.disabled = false;
+          if (idcardGroupBtn) idcardGroupBtn.disabled = false;
           
           var status = row.dataset.clientStatus;
           if (activeClientBtn) {
@@ -247,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (e.target.closest('.client-message-btn')) return;
           var row = e.target.closest('tr');
           if (row && row.dataset.clientId) {
-            window.location.href = '/client/' + row.dataset.clientId + '/settings/';
+            window.location.href = clientSettingsUrl(row.dataset.clientId);
           }
         });
       }
@@ -471,5 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (viewStaffBtn) viewStaffBtn.disabled = true;
         if (deleteClientBtn) deleteClientBtn.disabled = true;
         if (activeClientBtn) activeClientBtn.disabled = true;
+        if (groupSettingBtn) groupSettingBtn.disabled = true;
+        if (idcardGroupBtn) idcardGroupBtn.disabled = true;
       };
 });

@@ -53,7 +53,7 @@
 
         <!-- Stats Cards -->
         <div class="stats-cards">
-          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+          <a href="{% url 'manage_clients' %}" class="stat-card-link stat-card">
             <div class="stat-icon pending">
               <i class="fa-solid fa-clock"></i>
             </div>
@@ -62,7 +62,7 @@
               <div class="stat-label">Pending Cards</div>
             </div>
           </a>
-          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+          <a href="{% url 'manage_clients' %}" class="stat-card-link stat-card">
             <div class="stat-icon verified">
               <i class="fa-solid fa-circle-check"></i>
             </div>
@@ -71,7 +71,7 @@
               <div class="stat-label">Verified Cards</div>
             </div>
           </a>
-          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+          <a href="{% url 'manage_clients' %}" class="stat-card-link stat-card">
             <div class="stat-icon approved">
               <i class="fa-solid fa-thumbs-up"></i>
             </div>
@@ -80,7 +80,7 @@
               <div class="stat-label">Approved Cards</div>
             </div>
           </a>
-          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+          <a href="{% url 'manage_clients' %}" class="stat-card-link stat-card">
             <div class="stat-icon downloaded">
               <i class="fa-solid fa-download"></i>
             </div>
@@ -89,7 +89,7 @@
               <div class="stat-label">Downloaded Cards</div>
             </div>
           </a>
-          <a href="{% url 'active_clients' %}" class="stat-card-link stat-card">
+          <a href="{% url 'manage_clients' %}" class="stat-card-link stat-card">
             <div class="stat-icon total">
               <i class="fa-solid fa-layer-group"></i>
             </div>
@@ -123,7 +123,7 @@
                 </div>
               </div>
               {% if perm_idcard_setting_list %}
-              <a href="{% url 'active_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
+              <a href="{% url 'manage_clients' %}" class="view-all">View All <i class="fa-solid fa-arrow-right"></i></a>
               {% endif %}
             </div>
             <div class="dashboard-card-body tall-body p-0">
@@ -199,13 +199,13 @@
       <div class="dashboard-bottom-fixed">
         <div class="client-quick-actions-bar">
           {% if perm_idcard_setting_list %}
-          <a href="{% url 'active_clients' %}" class="quick-action-btn">
+          <a href="{% url 'manage_clients' %}" class="quick-action-btn">
             <i class="fa-solid fa-id-card"></i>
             <span>View ID Cards</span>
           </a>
-          <a href="{% url 'active_clients' %}" class="quick-action-btn">
-            <i class="fa-solid fa-user-check"></i>
-            <span>Active Clients</span>
+          <a href="{% url 'manage_clients' %}" class="quick-action-btn">
+            <i class="fa-solid fa-users"></i>
+            <span>Manage Clients</span>
           </a>
           {% endif %}
           {% if perm_idcard_bulk_download %}

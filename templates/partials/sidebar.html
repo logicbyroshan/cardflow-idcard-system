@@ -62,20 +62,6 @@
     </a>
     {% endif %}
     
-    {% if is_super_admin or is_admin_staff %}
-    <!-- ID Card Management Section - Admin -->
-    <div class="nav-section">
-      <div class="nav-section-line"></div>
-      <span class="nav-section-title">ID Card Management</span>
-      <div class="nav-section-line"></div>
-    </div>
-    {% if is_super_admin or perm_idcard_setting_list or perm_idcard_client_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_idcard_reprint_list or perm_reprint_request_list or perm_confirmed_list %}
-    <a href="{% url 'active_clients' %}" id="activeClientsLink" class="{% if active_page == 'active_clients' %}active{% endif %}">
-      <i class="fa-solid fa-user-check"></i><span>{% if is_admin_staff %}Assigned Clients{% else %}Active Clients{% endif %}</span>
-    </a>
-    {% endif %}
-    {% endif %}
-    
     {% if is_client or is_client_staff %}
     {% if perm_idcard_setting_list or perm_idcard_pending_list or perm_idcard_verified_list or perm_idcard_approved_list or perm_idcard_download_list or perm_idcard_pool_list or perm_reprint_request_list or perm_confirmed_list %}
     <!-- ID Card Management Section - Client -->
@@ -91,7 +77,7 @@
     </a>
     {% endif %}
     {% endif %}
-    <a href="{% url 'client:idcard_group' %}" class="{% if active_page == 'idcard_group' or active_page == 'active_clients' %}active{% endif %}">
+    <a href="{% url 'client:idcard_group' %}" class="{% if active_page == 'idcard_group' %}active{% endif %}">
       <i class="fa-solid fa-id-card"></i><span>ID Card Group</span>
     </a>
     {% endif %}

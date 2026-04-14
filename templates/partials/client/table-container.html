@@ -18,6 +18,7 @@ Required context:
                 <th class="min-w-[130px] text-left">Email</th>
                 <th class="min-w-[120px] text-center">Mobile</th>
                 <th class="text-center">Status</th>
+                <th class="text-center">Group</th>
                 <th class="text-center">Created At</th>
                 <th class="text-center">Updated At</th>
                 <th class="text-center" title="Log">Log</th>
@@ -41,6 +42,14 @@ Required context:
                 <td class="email-cell text-left">{{ client.user.email|email_break }}</td>
                 <td class="phone-cell text-center">{{ client.user.phone|default:"-"|phone_break }}</td>
                 <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
+                <td class="text-center">
+                    <div class="group-badges">
+                        <a href="{% url 'idcard_group' client.id %}" class="active-client-group-btn" title="Open ID Card Group page">
+                            <i class="fa-solid fa-layer-group"></i>
+                            {{ client.group_count|default:0 }} group{{ client.group_count|default:0|pluralize }}
+                        </a>
+                    </div>
+                </td>
                 <td class="text-center">{{ client.created_at|date:"d-m-Y H:i" }}</td>
                 <td class="text-center">{{ client.updated_at|date:"d-m-Y H:i" }}</td>
                 <td class="text-center">
@@ -56,7 +65,7 @@ Required context:
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7">
+                <td colspan="8">
                     {% include 'components/empty-state.html' with id='client-table-empty-inline' icon='fa-building-slash' title='No Clients Found' message='No clients match your current filters. Try adjusting your search.' hidden=False %}
                 </td>
             </tr>
@@ -77,13 +86,13 @@ Required context:
         {% if page_obj.paginator.num_pages > 1 %}
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
-                hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+            hx-get="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if search_field and search_field != 'all' %}&search_field={{ search_field }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}><i class="fa-solid fa-angles-left"></i></button>
         <button class="pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}"
                 {% if page_obj.has_previous %}
-                hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+            hx-get="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if search_field and search_field != 'all' %}&search_field={{ search_field }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}><i class="fa-solid fa-chevron-left"></i></button>
@@ -95,7 +104,7 @@ Required context:
                 <span class="page-ellipsis">...</span>
                 {% else %}
                 <button class="page-num"
-                        hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+                    hx-get="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if search_field and search_field != 'all' %}&search_field={{ search_field }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                         hx-target="#client-table-container"
                         hx-swap="innerHTML">{{ p }}</button>
                 {% endif %}
@@ -103,13 +112,13 @@ Required context:
         </span>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
-                hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+            hx-get="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if search_field and search_field != 'all' %}&search_field={{ search_field }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}><i class="fa-solid fa-chevron-right"></i></button>
         <button class="pagination-btn {% if not page_obj.has_next %}disabled{% endif %}"
                 {% if page_obj.has_next %}
-                hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
+            hx-get="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if search_field and search_field != 'all' %}&search_field={{ search_field }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}&per_page={{ per_page }}"
                 hx-target="#client-table-container"
                 hx-swap="innerHTML"
                 {% endif %}><i class="fa-solid fa-angles-right"></i></button>

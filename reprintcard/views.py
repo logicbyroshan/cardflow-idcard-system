@@ -416,12 +416,12 @@ def reprint_cards(request, table_id):
     )
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
-        return redirect('active_clients')
+        return redirect('manage_clients')
 
     can_request_list = _can_view_reprint_request_list(user)
     can_confirmed_list = _can_view_reprint_confirmed_list(user)
     if not (can_request_list or can_confirmed_list):
-        return redirect('active_clients')
+        return redirect('manage_clients')
 
     current_step = request.GET.get('step', 'request_list')
     if current_step not in ('request_list', 'confirmed'):
@@ -502,7 +502,7 @@ def reprint_cards(request, table_id):
             })
 
     context = {
-        'active_page': 'active_clients',
+        'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
         'table': table,
         'group': table.group,

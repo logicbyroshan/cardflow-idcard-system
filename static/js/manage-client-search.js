@@ -1,58 +1,99 @@
 /**
- * Manage Client Page  Search, filter, pagination, auto-open from URL, initialization
+ * Manage Client Page  Search/filter + HTMX refresh wiring.
  * Split from manage-client-events.js
  */
 document.addEventListener('DOMContentLoaded', function() {
       var NS = window.ManageClientPage;
-
-      var table = document.getElementById('clientsTable');
-      var tbody = table.querySelector('tbody');
-
-      // ==================== SEARCH & FILTER ====================
+      var tableContainer = document.getElementById('client-table-container');
       var searchInput = document.getElementById('searchInput');
       var filterDropdown = document.getElementById('filterDropdown');
       var dropdownToggle = document.getElementById('dropdownToggle');
       var dropdownOptions = document.getElementById('dropdownOptions');
       var selectedText = document.getElementById('selectedText');
-      
-      var currentFilter = 'all';
-      
-      // Column index mapping: 0=Name, 1=Email, 2=Mobile
-      var filterColumnMap = {
-        'all': null,
-        'name': 0,
-        'email': 1,
-        'mobile': 2
-      };
-      
-      function performSearch() {
-        var searchTerm = searchInput.value.toLowerCase().trim();
-        var rows = tbody.querySelectorAll('tr:not(.no-data-row)');
-        
-        rows.forEach(function(row) {
-          var cells = row.querySelectorAll('td');
-          var match = false;
-          
-          if (currentFilter === 'all' || !searchTerm) {
-            // Search all columns
-            var text = row.textContent.toLowerCase();
-            match = text.includes(searchTerm);
-          } else {
-            // Search specific column
-            var columnIndex = filterColumnMap[currentFilter];
-            if (columnIndex !== null && cells[columnIndex]) {
-              var cellText = cells[columnIndex].textContent.toLowerCase();
-              match = cellText.includes(searchTerm);
-            }
-          }
-          
-          row.style.display = match ? '' : 'none';
-        });
+
+      if (!NS || !tableContainer || !searchInput || !filterDropdown || !dropdownToggle || !dropdownOptions || !selectedText) {
+        return;
       }
-      
+
+      function getOptionByValue(value) {
+        return dropdownOptions.querySelector('.dropdown-option[data-value="' + value + '"]');
+      }
+
+      function updateFilterDisplay(option) {
+        if (!option) return;
+        var optionText = option.textContent.trim();
+        var optionValue = option.dataset.value || 'all';
+        selectedText.textContent = optionText;
+        searchInput.placeholder = optionValue === 'all' ? 'Search All...' : ('Search ' + optionText + '...');
+      }
+
+      function setSelectedFilter(filterValue) {
+        var normalized = String(filterValue || 'all').toLowerCase();
+        var nextOption = getOptionByValue(normalized) || getOptionByValue('all');
+        dropdownOptions.querySelectorAll('.dropdown-option').forEach(function(option) {
+          option.classList.remove('selected');
+        });
+
+        if (!nextOption) return 'all';
+
+        nextOption.classList.add('selected');
+        updateFilterDisplay(nextOption);
+        if (typeof window.alpineUpdateFilter === 'function') {
+          window.alpineUpdateFilter(nextOption.dataset.value || 'all');
+        }
+
+        return nextOption.dataset.value || 'all';
+      }
+
+      function bindRowsDropdown() {
+        var rowsDropdown = document.getElementById('rowsDropdown');
+        var rowsToggle = document.getElementById('rowsToggle');
+        var rowsOptions = document.getElementById('rowsOptions');
+        var rowsSelectedText = document.getElementById('rowsSelectedText');
+
+        if (!rowsDropdown || !rowsToggle || !rowsOptions || rowsDropdown.dataset.bound === '1') {
+          return;
+        }
+
+        rowsToggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          rowsDropdown.classList.toggle('open');
+        });
+
+        rowsOptions.addEventListener('click', function(e) {
+          var option = e.target.closest('.dropdown-option');
+          if (!option) return;
+
+          rowsOptions.querySelectorAll('.dropdown-option').forEach(function(item) {
+            item.classList.remove('selected');
+          });
+          option.classList.add('selected');
+
+          if (rowsSelectedText) {
+            rowsSelectedText.textContent = String(option.dataset.value || option.textContent || '').trim();
+          }
+          rowsDropdown.classList.remove('open');
+        });
+
+        rowsDropdown.dataset.bound = '1';
+      }
+
+      var urlParams = new URLSearchParams(window.location.search);
+      var initialSearchField = String(urlParams.get('search_field') || 'all').toLowerCase();
+      setSelectedFilter(initialSearchField);
+
+      var initialSearchValue = urlParams.get('search');
+      if (initialSearchValue) {
+        searchInput.value = initialSearchValue;
+        if (typeof window.alpineUpdateSearch === 'function') {
+          window.alpineUpdateSearch(initialSearchValue);
+        }
+      }
+
       searchInput.addEventListener('input', function() {
-        performSearch();
-        if (typeof window.alpineUpdateSearch === 'function') window.alpineUpdateSearch(searchInput.value);
+        if (typeof window.alpineUpdateSearch === 'function') {
+          window.alpineUpdateSearch(searchInput.value);
+        }
       });
 
       dropdownToggle.addEventListener('click', function(e) {
@@ -60,183 +101,55 @@ document.addEventListener('DOMContentLoaded', function() {
         filterDropdown.classList.toggle('open');
       });
 
-      dropdownOptions.querySelectorAll('.dropdown-option').forEach(function(option) {
-        option.addEventListener('click', function() {
-          dropdownOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
-          this.classList.add('selected');
-          selectedText.textContent = this.textContent;
-          currentFilter = this.dataset.value;
-          filterDropdown.classList.remove('open');
-          searchInput.placeholder = 'Search ' + this.textContent + '...';
-          if (typeof window.alpineUpdateFilter === 'function') window.alpineUpdateFilter(currentFilter);
-          performSearch();
-        });
-      });
+      dropdownOptions.addEventListener('click', function(e) {
+          var option = e.target.closest('.dropdown-option');
+          if (!option) return;
 
-      // ==================== PAGINATION ====================
-      var paginationInfo = document.querySelector('.pagination-info');
-      var pageNumbers = document.querySelector('.page-numbers');
-      var firstPageBtn = document.getElementById('firstPage');
-      var prevPageBtn = document.getElementById('prevPage');
-      var nextPageBtn = document.getElementById('nextPage');
-      var lastPageBtn = document.getElementById('lastPage');
-      var rowsDropdown = document.getElementById('rowsDropdown');
-      var rowsToggle = document.getElementById('rowsToggle');
-      var rowsOptions = document.getElementById('rowsOptions');
-      var rowsSelectedText = document.getElementById('rowsSelectedText');
+          setSelectedFilter(option.dataset.value || 'all');
+          filterDropdown.classList.remove('open');
+      });
 
       document.addEventListener('click', function(e) {
         if (!filterDropdown.contains(e.target)) {
           filterDropdown.classList.remove('open');
         }
+
+        var rowsDropdown = document.getElementById('rowsDropdown');
         if (rowsDropdown && !rowsDropdown.contains(e.target)) {
           rowsDropdown.classList.remove('open');
         }
       });
-      
-      var currentPage = 1;
-      var rowsPerPage = parseInt((rowsSelectedText && rowsSelectedText.textContent) || '25', 10);
-      if (!rowsPerPage || rowsPerPage < 1) rowsPerPage = 25;
-      var allRows = Array.from(tbody.querySelectorAll('tr:not(.no-data-row)'));
-      
-      // Initialize all rows as filtered=true
-      allRows.forEach(function(row) { row.dataset.filtered = 'true'; });
-      
-      function updatePagination() {
-        // Get filtered rows (rows that match search criteria)
-        var filteredRows = allRows.filter(function(row) { return row.dataset.filtered === 'true'; });
-        var totalRows = filteredRows.length;
-        var totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
-        
-        if (currentPage > totalPages) currentPage = totalPages;
-        if (currentPage < 1) currentPage = 1;
-        
-        var startIndex = (currentPage - 1) * rowsPerPage;
-        var endIndex = Math.min(startIndex + rowsPerPage, totalRows);
-        
-        // Hide all rows first
-        allRows.forEach(function(row) { row.style.display = 'none'; });
-        
-        // Show only current page rows from filtered results
-        filteredRows.slice(startIndex, endIndex).forEach(function(row) { row.style.display = ''; });
-        
-        // Update pagination info
-        if (paginationInfo) {
-          if (totalRows === 0) {
-            paginationInfo.innerHTML = 'Showing <strong>0</strong> results';
-          } else {
-            paginationInfo.innerHTML = 'Showing <strong>' + (startIndex + 1) + '-' + endIndex + '</strong> of <strong>' + totalRows + '</strong> results';
-          }
+
+      if (typeof window.initHTMXFilters === 'function' && !window.manageClientFilterBridge) {
+        var baseUrl = tableContainer.getAttribute('hx-get') || window.location.pathname;
+        window.manageClientFilterBridge = window.initHTMXFilters({
+          baseUrl: baseUrl,
+          target: '#client-table-container',
+          searchInputId: 'searchInput',
+          filters: [
+            { name: 'search_field', optionsId: 'dropdownOptions' }
+          ],
+          tabs: [
+            { name: 'status', selector: '#status-tabs .status-tab' }
+          ],
+          debounceMs: 300
+        });
+      }
+
+      bindRowsDropdown();
+
+      document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.target && e.target.id === 'client-table-container') {
+          bindRowsDropdown();
         }
-        
-        // Update page numbers
-        if (pageNumbers) {
-          pageNumbers.innerHTML = '';
-          var maxVisiblePages = 5;
-          var startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-          var endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-          
-          if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-          }
-          
-          for (var i = startPage; i <= endPage; i++) {
-            (function(pageNum) {
-              var pageBtn = document.createElement('button');
-              pageBtn.className = 'page-num' + (pageNum === currentPage ? ' active' : '');
-              pageBtn.textContent = pageNum;
-              pageBtn.addEventListener('click', function() { goToPage(pageNum); });
-              pageNumbers.appendChild(pageBtn);
-            })(i);
-          }
-        }
-        
-        // Update button states
-        if (firstPageBtn) firstPageBtn.disabled = currentPage === 1;
-        if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
-        if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
-        if (lastPageBtn) lastPageBtn.disabled = currentPage === totalPages;
-      }
-      
-      function goToPage(page) {
-        currentPage = page;
-        // Clear selection when changing pages
-        if (NS.selectedRow) {
-          NS.selectedRow.classList.remove('selected');
-          NS.selectedRow = null;
-          NS.selectedClientId = null;
-          NS.disableActionButtons();
-        }
-        updatePagination();
-      }
-      
-      // Pagination button events
-      if (firstPageBtn) firstPageBtn.addEventListener('click', function() { goToPage(1); });
-      if (prevPageBtn) prevPageBtn.addEventListener('click', function() { goToPage(currentPage - 1); });
-      if (nextPageBtn) nextPageBtn.addEventListener('click', function() { goToPage(currentPage + 1); });
-      if (lastPageBtn) {
-        lastPageBtn.addEventListener('click', function() {
-          var filteredRows = allRows.filter(function(row) { return row.dataset.filtered === 'true'; });
-          var totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
-          goToPage(totalPages);
-        });
-      }
-      
-      // Rows per page dropdown
-      if (rowsDropdown && rowsToggle && rowsOptions) {
-        rowsToggle.addEventListener('click', function(e) {
-          e.stopPropagation();
-          rowsDropdown.classList.toggle('open');
-        });
-        
-        rowsOptions.querySelectorAll('.dropdown-option').forEach(function(option) {
-          option.addEventListener('click', function() {
-            rowsOptions.querySelectorAll('.dropdown-option').forEach(function(o) { o.classList.remove('selected'); });
-            this.classList.add('selected');
-            rowsPerPage = parseInt(this.dataset.value);
-            if (rowsSelectedText) rowsSelectedText.textContent = rowsPerPage;
-            currentPage = 1;
-            rowsDropdown.classList.remove('open');
-            updatePagination();
-          });
-        });
-      }
-      
-      // Override performSearch to work with pagination
-      var originalPerformSearch = performSearch;
-      performSearch = function() {
-        var searchTerm = searchInput.value.toLowerCase().trim();
-        
-        allRows.forEach(function(row) {
-          var cells = row.querySelectorAll('td');
-          var match = false;
-          
-          if (currentFilter === 'all' || !searchTerm) {
-            var text = row.textContent.toLowerCase();
-            match = !searchTerm || text.includes(searchTerm);
-          } else {
-            var columnIndex = filterColumnMap[currentFilter];
-            if (columnIndex !== null && cells[columnIndex]) {
-              var cellText = cells[columnIndex].textContent.toLowerCase();
-              match = cellText.includes(searchTerm);
-            }
-          }
-          
-          row.dataset.filtered = match ? 'true' : 'false';
-        });
-        
-        currentPage = 1;
-        updatePagination();
-      };
-      
-      // Initialize pagination
-      updatePagination();
+      });
 
       // Auto-open drawer if ?add=1 is in URL
-      var urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('add') === '1') {
-        NS.openDrawer();
-        // Remove the query parameter from URL without reloading
-        window.history.replaceState({}, document.title, window.location.pathname);
+        NS.openDrawer('add');
+        urlParams.delete('add');
+        var nextQuery = urlParams.toString();
+        var nextUrl = window.location.pathname + (nextQuery ? ('?' + nextQuery) : '');
+        window.history.replaceState({}, document.title, nextUrl);
       }
     });

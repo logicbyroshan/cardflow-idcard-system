@@ -15,7 +15,6 @@
  * - dashboard.js        - Dashboard page
  * - manage-staff.js     - Staff management page
  * - group-setting.js    - Group/Table settings page
- * - active-client.js    - Active clients page
  * - idcard-group.js     - ID card groups page
  * - settings.js         - User settings page
  * - idcard-actions-*.js - ID card actions modules

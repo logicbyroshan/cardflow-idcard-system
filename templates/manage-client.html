@@ -37,6 +37,30 @@
   </style>
   {% endif %}
   <style>
+    .active-client-group-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 108px;
+      padding: 3px 9px;
+      border-radius: 8px;
+      border: 1px solid var(--color-blue-100);
+      background: linear-gradient(135deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
+      color: var(--color-blue-700);
+      font-size: var(--ui-font-size-sm, 12px);
+      font-weight: 500;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .active-client-group-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(var(--blue-rgb), 0.22);
+      color: #1e3a8a;
+      text-decoration: none;
+    }
+
     .client-history-trigger {
       width: 28px;
       height: 28px;
@@ -174,62 +198,7 @@
          hx-get="{% url 'manage_clients' %}"
          hx-target="#client-table-container"
          hx-swap="innerHTML">
-      <div class="table-wrapper">
-        <table class="data-table" id="clientsTable">
-          <thead>
-            <tr>
-              <th scope="col" class="text-left">Name</th>
-              <th scope="col" class="text-left">Email</th>
-              <th scope="col" class="text-center">Mobile</th>
-              <th scope="col" class="text-center">Status</th>
-              <th scope="col" class="text-center">Created At</th>
-              <th scope="col" class="text-center">Updated At</th>
-              <th scope="col" class="text-center" title="Log">Log</th>
-            </tr>
-          </thead>
-          <tbody id="client-table-body">
-            {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}" data-client-name="{{ client.name|escape }}" data-client-logo="{% if client.website_logo %}{{ client.website_logo.url }}{% endif %}">
-              <td class="text-left">
-                <div class="client-name-cell" title="{{ client.name }}">
-                  <span class="client-logo-badge" aria-hidden="true">
-                    {% if client.website_logo %}
-                    <img src="{{ client.website_logo.url }}" alt="{{ client.name }} logo" loading="lazy">
-                    {% else %}
-                    <i class="fa-solid fa-building"></i>
-                    {% endif %}
-                  </span>
-                  <span class="client-name-text">{{ client.name }}</span>
-                </div>
-              </td>
-              <td class="text-left">{{ client.user.email }}</td>
-              <td class="text-center">{{ client.user.phone|default:"-" }}</td>
-              <td class="text-center"><span class="status-badge {% if client.status == 'active' %}active{% else %}inactive{% endif %}">{{ client.get_status_display }}</span></td>
-              <td class="text-center">{{ client.created_at|date:"d-m-Y H:i" }}</td>
-              <td class="text-center">{{ client.updated_at|date:"d-m-Y H:i" }}</td>
-              <td class="text-center">
-                <button type="button"
-                        class="client-history-trigger"
-                        data-client-id="{{ client.id }}"
-                        data-client-name="{{ client.name|escape }}"
-                        title="View log"
-                        aria-label="View log">
-                  <i class="fa-solid fa-circle-info"></i>
-                </button>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="7">
-                {% include 'components/empty-state.html' with id="client-empty" icon="fa-building-slash" title="No Clients Found" message="No clients match your current filters. Try adjusting your search." hidden=False %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      {% include 'components/pagination.html' with default_rows=per_page %}
+      {% include 'partials/client/table-container.html' %}
     </div>
   </div>
 {% endblock %}
@@ -411,7 +380,8 @@
           baseUrl: '{% url "manage_clients" %}',
           target:  '#client-table-container',
           searchInputId: 'searchInput',
-          filters: []
+          filters: [{ name: 'search_field', optionsId: 'dropdownOptions' }],
+          tabs: [{ name: 'status', selector: '#status-tabs .status-tab' }]
         });
       } catch (e) {
         console.warn('initHTMXFilters failed on manage clients page', e);

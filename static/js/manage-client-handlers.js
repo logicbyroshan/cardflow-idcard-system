@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
       var viewStaffBtn = document.getElementById('viewStaffBtn');
       var deleteClientBtn = document.getElementById('deleteClientBtn');
       var activeClientBtn = document.getElementById('activeClientBtn');
+      var groupSettingBtn = document.getElementById('group-setting-btn');
+      var idcardGroupBtn = document.getElementById('idcard-group-btn');
 
       var closeClientDrawer = document.getElementById('closeClientDrawer');
       var cancelClientDrawer = document.getElementById('cancelClientDrawer');
@@ -63,6 +65,18 @@ document.addEventListener('DOMContentLoaded', function() {
       function resolveClientLogoUrl(item) {
         if (!item || typeof item !== 'object') return '';
         return item.website_logo_url || item.photo_url || item.logo_url || '';
+      }
+
+      function panelBasePath() {
+        return window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+      }
+
+      function clientGroupsUrl(clientId) {
+        return panelBasePath() + '/client/' + encodeURIComponent(String(clientId)) + '/groups/';
+      }
+
+      function clientSettingsUrl(clientId) {
+        return panelBasePath() + '/client/' + encodeURIComponent(String(clientId)) + '/settings/';
       }
 
       function getSelectedClientName() {
@@ -347,6 +361,16 @@ document.addEventListener('DOMContentLoaded', function() {
         var currentStatus = NS.selectedRow.dataset.clientStatus;
         NS.pendingStatusClientId = NS.selectedClientId;
         NS.openStatusModalFn(clientName, currentStatus);
+      });
+
+      if (groupSettingBtn) groupSettingBtn.addEventListener('click', function() {
+        if (!NS.selectedClientId) return;
+        window.location.href = clientSettingsUrl(NS.selectedClientId);
+      });
+
+      if (idcardGroupBtn) idcardGroupBtn.addEventListener('click', function() {
+        if (!NS.selectedClientId) return;
+        window.location.href = clientGroupsUrl(NS.selectedClientId);
       });
 
       clientForm.addEventListener('submit', async function(e) {
@@ -676,6 +700,16 @@ document.addEventListener('DOMContentLoaded', function() {
           sendGroupMessage(sendGroupMessageBtn);
         });
       }
+
+      document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.target && e.target.id === 'client-table-container') {
+          NS.selectedClientId = null;
+          NS.selectedRow = null;
+          if (typeof NS.disableActionButtons === 'function') {
+            NS.disableActionButtons();
+          }
+        }
+      });
 
       // Outside click close disabled  prevent accidental closure
 

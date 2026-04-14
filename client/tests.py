@@ -223,6 +223,24 @@ class ManageClientsPaginationTests(TestCase):
         self.assertEqual(len(response.context['clients']), 12)
         self.assertEqual(response.context['page_obj'].paginator.count, 12)
 
+    def test_manage_clients_honors_page_param(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/?per_page=5&page=2')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['page_obj'].number, 2)
+        self.assertEqual(response.context['page_obj'].paginator.num_pages, 3)
+        self.assertEqual(len(response.context['clients']), 5)
+
+    def test_manage_clients_search_field_filters_specific_column(self):
+        self.client.login(username='sa-manage-clients@test.com', password='pass1234')
+        response = self.client.get('/panel/manage-clients/?search=client-owner-3@test.com&search_field=email')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['search_field'], 'email')
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+        self.assertEqual(len(response.context['clients']), 1)
+
     def test_manage_clients_shows_delete_button_for_super_admin(self):
         self.client.login(username='sa-manage-clients@test.com', password='pass1234')
         response = self.client.get('/panel/manage-clients/')

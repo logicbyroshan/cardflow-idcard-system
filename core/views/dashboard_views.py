@@ -168,7 +168,7 @@ def _build_recent_activity_link(activity, *, staff_type_map, card_meta_map, clie
             if table_id and status:
                 return f'{reverse("idcard_actions", args=[table_id])}?status={status}'
             return reverse('idcard_group', args=[client_id])
-        return reverse('active_clients')
+        return reverse('manage_clients')
 
     return ''
 

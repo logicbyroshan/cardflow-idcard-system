@@ -530,19 +530,39 @@ def manage_clients(request):
         per_page = DEFAULT_PER_PAGE
     
     search_query = request.GET.get('search', '').strip()
-    status_filter = request.GET.get('status', '').strip()
+    search_field = request.GET.get('search_field', 'all').strip().lower()
+    status_filter = request.GET.get('status', '').strip().lower()
+
+    if search_field not in ('all', 'name', 'email', 'mobile'):
+        search_field = 'all'
+
+    if status_filter not in ('all', 'active', 'inactive', 'suspended'):
+        status_filter = 'all'
     
     # Manage Clients page is a full-capability surface for super_admin and
     # admin_staff who have the Manage Client permission.
-    clients_qs = Client.objects.all().select_related('user').order_by('-id')
+    clients_qs = (
+        Client.objects
+        .all()
+        .select_related('user')
+        .annotate(group_count=Count('id_card_groups', distinct=True))
+        .order_by('-id')
+    )
     
     if search_query:
-        clients_qs = clients_qs.filter(
-            Q(name__icontains=search_query) |
-            Q(user__email__icontains=search_query) |
-            Q(user__phone__icontains=search_query)
-        )
-    if status_filter and status_filter in ('active', 'inactive', 'suspended'):
+        if search_field == 'name':
+            clients_qs = clients_qs.filter(name__icontains=search_query)
+        elif search_field == 'email':
+            clients_qs = clients_qs.filter(user__email__icontains=search_query)
+        elif search_field == 'mobile':
+            clients_qs = clients_qs.filter(user__phone__icontains=search_query)
+        else:
+            clients_qs = clients_qs.filter(
+                Q(name__icontains=search_query) |
+                Q(user__email__icontains=search_query) |
+                Q(user__phone__icontains=search_query)
+            )
+    if status_filter in ('active', 'inactive', 'suspended'):
         clients_qs = clients_qs.filter(status=status_filter)
     
     paginator = Paginator(clients_qs, per_page)
@@ -557,6 +577,7 @@ def manage_clients(request):
         'per_page': per_page,
         'per_page_options': PER_PAGE_OPTIONS,
         'search_query': search_query,
+        'search_field': search_field,
         'status_filter': status_filter,
         'can_manage_clients': can_manage_clients,
     }
@@ -569,110 +590,61 @@ def manage_clients(request):
     return _apply_drawer_embed_frame_headers(request, response)
 
 
-# Active Clients (ID Card Management)
 @login_required
 @require_any_admin
 def active_clients(request):
-    """View clients for ID card management — supports HTMX partial responses.
+    """Legacy Active Clients URL kept for backlink compatibility.
 
-    Defaults to showing ALL clients. Admins can still filter by status via
-    ?status=active / ?status=inactive / ?status=suspended.
+    Redirects to Manage Clients while preserving supported query params.
     """
-    user = request.user
-    search_query = request.GET.get('search', '').strip()
-    status_filter = request.GET.get('status', '').strip()
+    allowed_search_fields = {'all', 'name', 'email', 'mobile'}
+    allowed_status_filters = {'all', 'active', 'inactive', 'suspended'}
 
-    DEFAULT_PER_PAGE = 25
-    PER_PAGE_OPTIONS = [10, 25, 50, 100]
-    try:
-        per_page = int(request.GET.get('per_page', DEFAULT_PER_PAGE))
-        if per_page not in PER_PAGE_OPTIONS:
-            per_page = DEFAULT_PER_PAGE
-    except (ValueError, TypeError):
-        per_page = DEFAULT_PER_PAGE
+    query = request.GET.copy()
+    search_field = (query.get('search_field') or '').strip().lower()
+    status_filter = (query.get('status') or '').strip().lower()
 
-    # Default to all clients.
-    if not status_filter:
-        status_filter = 'all'
+    if search_field and search_field not in allowed_search_fields:
+        query.pop('search_field', None)
+    if status_filter and status_filter not in allowed_status_filters:
+        query.pop('status', None)
 
-    if status_filter == 'all':
-        base_qs = Client.objects.all().select_related('user')
-    elif status_filter in ('active', 'inactive', 'suspended'):
-        base_qs = Client.objects.filter(status=status_filter).select_related('user')
-    else:
-        status_filter = 'all'  # normalise invalid statuses for template awareness
-        base_qs = Client.objects.all().select_related('user')
-
-    clients_qs = PermissionService.get_accessible_clients(
-        user, base_qs
-    ).prefetch_related('id_card_groups').annotate(
-        group_count=Count('id_card_groups', distinct=True),
-        table_count=Count('id_card_groups__tables', distinct=True),
-        pending_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='pending'),
-            distinct=True,
-        ),
-        verified_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='verified'),
-            distinct=True,
-        ),
-        approved_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='approved'),
-            distinct=True,
-        ),
-        download_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='download'),
-            distinct=True,
-        ),
-        pool_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='pool'),
-            distinct=True,
-        ),
-        reprint_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='reprint'),
-            distinct=True,
-        ),
-    ).order_by('-id')
-    
-    if search_query:
-        clients_qs = clients_qs.filter(
-            Q(name__icontains=search_query) |
-            Q(user__email__icontains=search_query) |
-            Q(user__phone__icontains=search_query)
-        )
-
-    paginator = Paginator(clients_qs, per_page)
-    page_obj = paginator.get_page(request.GET.get('page', 1))
-
-    context = {
-        'active_page': 'active_clients',
-        'user_role': get_user_role(request.user),
-        'clients': page_obj.object_list,
-        'search_query': search_query,
-        'status_filter': status_filter,
-        'page_obj': page_obj,
-        'page_range': get_page_range(page_obj),
-        'per_page': per_page,
-        'per_page_options': PER_PAGE_OPTIONS,
-    }
-    
-    if is_htmx(request):
-        return render(request, 'partials/active-client/table-container.html', context)
-    
-    return render(request, 'active-client.html', context)
+    target_url = reverse('manage_clients')
+    query_string = query.urlencode()
+    if query_string:
+        target_url = f"{target_url}?{query_string}"
+    return redirect(target_url)
 
 
 @login_required
 @require_any_admin
 @require_http_methods(['GET'])
+def active_client_status_redirect(request, client_id, status):
+    """Legacy deep-link for Active Clients status cards.
+
+    Old links now land on Manage Clients with the selected client highlighted.
+    """
+    if not PermissionService.can_access_client(request.user, client_id):
+        return redirect('manage_clients')
+
+    query = request.GET.copy()
+    query['highlight'] = str(client_id)
+
+    normalized_status = (status or '').strip().lower()
+    if normalized_status in ('active', 'inactive', 'suspended'):
+        query['status'] = normalized_status
+
+    target_url = reverse('manage_clients')
+    query_string = query.urlencode()
+    if query_string:
+        target_url = f"{target_url}?{query_string}"
+    return redirect(target_url)
+
+@login_required
+@require_any_admin
+@require_http_methods(['GET'])
 def api_client_login_history(request, client_id):
-    """Return login/logout timeline for a single client for Active Clients drawer."""
+    """Return login/logout timeline for a single client in Manage Clients drawers."""
     client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
 
     if not PermissionService.can_access_client(request.user, client.id):
@@ -710,39 +682,6 @@ def api_client_login_history(request, client_id):
         'active_devices_info': device_snapshot.get('devices') or [],
         'events': events,
     })
-
-
-@login_required
-@require_any_admin
-@require_http_methods(['GET'])
-def active_client_status_redirect(request, client_id, status):
-    """Open a client's most relevant table for the requested status."""
-    normalized_status = (status or '').strip().lower()
-    allowed_statuses = ('pending', 'verified', 'approved', 'download', 'pool', 'reprint')
-
-    client = get_object_or_404(Client.objects.select_related('user'), id=client_id)
-
-    if not PermissionService.can_access_client(request.user, client.id):
-        return redirect('active_clients')
-
-    if normalized_status not in allowed_statuses:
-        return redirect('idcard_group', client_id=client.id)
-
-    table = (
-        IDCardTable.objects
-        .filter(group__client=client)
-        .annotate(
-            status_card_count=Count('id_cards', filter=Q(id_cards__status=normalized_status))
-        )
-        .order_by('-status_card_count', '-updated_at', '-id')
-        .first()
-    )
-
-    if not table:
-        return redirect('idcard_group', client_id=client.id)
-
-    return redirect(f"{reverse('idcard_actions', args=[table.id])}?status={normalized_status}")
-
 
 @login_required
 @require_any_admin
@@ -950,7 +889,7 @@ def idcard_group(request, client_id):
     # Check if user has access to this client
     user = request.user
     if not PermissionService.can_access_client(user, client_id):
-        return redirect('active_clients')
+        return redirect('manage_clients')
     
     # Get all tables for this client's groups with status counts
     tables = IDCardTable.objects.filter(group__client=client).select_related('group', 'group__client').annotate(
@@ -967,7 +906,7 @@ def idcard_group(request, client_id):
     group = IDCardService.ensure_default_group(client)
     
     context = {
-        'active_page': 'active_clients',
+        'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
         'client': client,
         'group': group,
@@ -981,7 +920,7 @@ def idcard_group(request, client_id):
 # Used by admin idcard_actions() and client client_idcard_actions()
 # ────────────────────────────────────────────────────────────
 def build_idcard_actions_context(request, table, *, default_per_page=100,
-                                  per_page_options=None, active_page='active_clients',
+                                  per_page_options=None, active_page='manage_clients',
                                   user_role=None):
     """Build the queryset, counts, and template context for idcard-actions.
 
@@ -1206,19 +1145,19 @@ def idcard_actions(request, table_id):
     # Check if user has access to this table's client
     user = request.user
     if not PermissionService.can_access_client(user, table.group.client_id):
-        return redirect('active_clients')
+        return redirect('manage_clients')
     
     status_filter = request.GET.get('status', None)
     if status_filter:
         required_perm = _STATUS_LIST_PERM.get(status_filter)
         if required_perm and not PermissionService.has_permission(user, required_perm):
-            return redirect('active_clients')
+            return redirect('manage_clients')
     
     context = build_idcard_actions_context(
         request, table,
         default_per_page=100,
         per_page_options=[100, 200, 300, 400, 500],
-        active_page='active_clients',
+        active_page='manage_clients',
         user_role=get_user_role(user),
     )
     
@@ -1248,7 +1187,7 @@ def group_settings(request, client_id):
     client = get_object_or_404(Client, id=client_id)
     user = request.user
     if not PermissionService.can_access_client(user, client_id):
-        return redirect('active_clients')
+        return redirect('manage_clients')
     
     search_query = request.GET.get('search', '').strip()
     
@@ -1273,7 +1212,7 @@ def group_settings(request, client_id):
     page_obj = paginator.get_page(request.GET.get('page', 1))
     
     context = {
-        'active_page': 'active_clients',
+        'active_page': 'manage_clients',
         'user_role': get_user_role(request.user),
         'client': client,
         'group': group,

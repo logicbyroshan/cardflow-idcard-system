@@ -1753,15 +1753,29 @@ class SecurityApiRegressionTests(TestCase):
         self.assertFalse(payload.get('success', True))
         self.assertIn('admin access required', payload.get('message', '').lower())
 
-    def test_client_role_cannot_use_active_client_status_redirect(self):
+    def test_client_role_cannot_access_manage_clients(self):
         self.client.force_login(self.client_user_a)
 
-        response = self.client.get(
-            reverse('active_client_status_redirect', args=[self.client_a.id, 'pending'])
-        )
+        response = self.client.get(reverse('manage_clients'))
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('login'))
+
+    def test_legacy_active_clients_route_redirects_to_manage_clients(self):
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        response = self.client.get(f"{reverse('active_clients')}?status=active&search=alpha&page=2")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"{reverse('manage_clients')}?status=active&search=alpha&page=2")
+
+    def test_legacy_active_client_status_redirect_targets_manage_clients(self):
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+
+        response = self.client.get(reverse('active_client_status_redirect', args=[self.client_a.id, 'pending']))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"{reverse('manage_clients')}?highlight={self.client_a.id}")
 
     def test_client_role_cannot_create_table_from_xlsx_api(self):
         self.client_a.perm_idcard_setting_add = True
