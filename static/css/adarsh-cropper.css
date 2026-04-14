@@ -10,6 +10,10 @@
   flex-direction: column;
   gap: 0;
   background: var(--color-white);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Engine Status Card ─────────────────────────────────────────── */
