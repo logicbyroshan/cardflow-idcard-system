@@ -1,4 +1,5 @@
 from collections import defaultdict
+import random
 from urllib.parse import urlsplit, parse_qsl, urlencode
 
 from django.shortcuts import render, redirect
@@ -81,6 +82,48 @@ def get_common_context():
     }
 
 
+def _interleave_random_by_category(items):
+    """
+    Shuffle items and interleave by category so adjacent cards are more likely
+    to come from different categories.
+    """
+    entries = list(items or [])
+    if len(entries) <= 2:
+        return entries
+
+    grouped = defaultdict(list)
+    uncategorized = []
+    for entry in entries:
+        category_id = getattr(entry, 'category_id', None)
+        if category_id is None:
+            uncategorized.append(entry)
+            continue
+        grouped[str(category_id)].append(entry)
+
+    rng = random.SystemRandom()
+    for bucket in grouped.values():
+        rng.shuffle(bucket)
+    rng.shuffle(uncategorized)
+
+    category_keys = [key for key, bucket in grouped.items() if bucket]
+    mixed = []
+
+    while category_keys:
+        rng.shuffle(category_keys)
+        next_round = []
+        for key in category_keys:
+            bucket = grouped.get(key) or []
+            if not bucket:
+                continue
+            mixed.append(bucket.pop())
+            if bucket:
+                next_round.append(key)
+        category_keys = next_round
+
+    mixed.extend(uncategorized)
+    return mixed
+
+
 # ==========================================
 # PAGE VIEWS
 # ==========================================
@@ -125,8 +168,21 @@ def home(request):
         cache.set('home_sections', home_sections, 60)
     context.update(home_sections)
 
-    # Split products into 2 rows so they show different images in each scroll row
-    all_products = home_sections.get('featured_portfolio') or home_sections.get('recent_portfolio') or []
+    # Build a randomized, mixed-category stream for both product rows.
+    featured_products = list(home_sections.get('featured_portfolio') or [])
+    recent_products = list(home_sections.get('recent_portfolio') or [])
+
+    deduped_products = []
+    seen_ids = set()
+    for item in featured_products + recent_products:
+        item_id = getattr(item, 'id', None)
+        key = item_id if item_id is not None else id(item)
+        if key in seen_ids:
+            continue
+        seen_ids.add(key)
+        deduped_products.append(item)
+
+    all_products = _interleave_random_by_category(deduped_products)
     if all_products:
         context['row1_portfolio'] = all_products[::2]     # even-indexed items
         context['row2_portfolio'] = all_products[1::2]    # odd-indexed items
@@ -154,13 +210,14 @@ def our_work(request):
     
     # Get all active items with custom ordering:
     # Items with order > 0 first (sorted by order ASC), then order=0 sorted by latest first
-    items = PortfolioItem.objects.filter(is_active=True).select_related('category').annotate(
+    items_qs = PortfolioItem.objects.filter(is_active=True).select_related('category').annotate(
         has_order=Case(
             When(order__gt=0, then=Value(0)),
             default=Value(1),
             output_field=IntegerField()
         )
     ).order_by('has_order', 'order', '-created_at')
+    items = _interleave_random_by_category(list(items_qs))
     
     # Build bento media + gallery modal data in one pass.
     # For bento cards, prefer images but fall back to videos so video-only
@@ -217,7 +274,7 @@ def our_work(request):
     category_items = dict(_cat_items_map)
 
     # Separate reel-type items for the reels section
-    portfolio_reels = items.filter(item_type='reel')
+    portfolio_reels = [item for item in items if item.item_type == 'reel']
 
     # Get reels count + initial page in a single queryset evaluation
     reels_qs = Reel.objects.filter(is_active=True).order_by('order')
