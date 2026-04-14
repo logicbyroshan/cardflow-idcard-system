@@ -10,9 +10,12 @@ Architecture rule:
   - All mutations go through WebsiteService methods
 """
 import logging
+import os
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.cache import cache
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -109,6 +112,72 @@ def _detect_orientation(image_file):
             return 'portrait'
     except Exception:
         return ''
+
+
+def _resolve_user_avatar_source_by_email(reviewer_email):
+    """Return a source image field for a known user email, if available."""
+    normalized_email = str(reviewer_email or '').strip().lower()
+    if not normalized_email:
+        return None
+
+    user_model = get_user_model()
+    user = (
+        user_model.objects
+        .filter(email__iexact=normalized_email)
+        .select_related('client_profile', 'staff_profile__client')
+        .first()
+    )
+    if not user:
+        return None
+
+    profile_image = getattr(user, 'profile_image', None)
+    if profile_image and getattr(profile_image, 'name', ''):
+        return profile_image
+
+    client_profile = getattr(user, 'client_profile', None)
+    if client_profile:
+        client_logo = getattr(client_profile, 'website_logo', None)
+        if client_logo and getattr(client_logo, 'name', ''):
+            return client_logo
+
+    staff_profile = getattr(user, 'staff_profile', None)
+    staff_client = getattr(staff_profile, 'client', None) if staff_profile else None
+    if staff_client:
+        staff_client_logo = getattr(staff_client, 'website_logo', None)
+        if staff_client_logo and getattr(staff_client_logo, 'name', ''):
+            return staff_client_logo
+
+    return None
+
+
+def _build_reviewer_avatar_file(reviewer_email):
+    """Create a copyable file object from the matched user's avatar source."""
+    avatar_source = _resolve_user_avatar_source_by_email(reviewer_email)
+    if not avatar_source:
+        return None
+
+    try:
+        avatar_source.open('rb')
+        raw_data = avatar_source.read()
+    except Exception:
+        logger.warning('Unable to read avatar source for reviewer email=%s', reviewer_email)
+        return None
+    finally:
+        try:
+            avatar_source.close()
+        except Exception:
+            pass
+
+    if not raw_data:
+        return None
+
+    _, ext = os.path.splitext(getattr(avatar_source, 'name', ''))
+    ext = (ext or '').lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        ext = '.jpg'
+
+    filename = f"reviewer-{uuid.uuid4().hex[:12]}{ext}"
+    return ContentFile(raw_data, name=filename)
 
 
 def _build_portfolio_item_title(category_id=None):
@@ -265,7 +334,7 @@ class TestimonialService:
         return get_object_or_404(Testimonial, pk=pk)
 
     @staticmethod
-    def create(*, reviewer_name='', reviewer_title='', reviewer_school='',
+    def create(*, reviewer_name='', reviewer_email='', reviewer_title='', reviewer_school='',
                text='', tag='', rating=5, is_active=False, reviewer_avatar=None):
         """Create a Testimonial. Returns the created instance."""
         _validate_image_upload(reviewer_avatar, 'reviewer avatar')
@@ -273,6 +342,7 @@ class TestimonialService:
         with transaction.atomic():
             review = Testimonial(
                 reviewer_name=reviewer_name,
+                reviewer_email=(reviewer_email or '').strip(),
                 reviewer_title=reviewer_title,
                 reviewer_school=reviewer_school,
                 text=text,
@@ -286,24 +356,29 @@ class TestimonialService:
         return review
 
     @staticmethod
-    def create_public(*, reviewer_name, reviewer_school, text, rating=5):
+    def create_public(*, reviewer_name, reviewer_school, text, rating=5, reviewer_email=''):
         """
         Public testimonial submission (requires admin approval).
         Always created with is_active=False.
         """
         rating_val = max(1, min(5, int(rating)))
+        avatar_file = _build_reviewer_avatar_file(reviewer_email)
         with transaction.atomic():
             review = Testimonial.objects.create(
                 reviewer_name=reviewer_name,
+                reviewer_email=(reviewer_email or '').strip(),
                 reviewer_school=reviewer_school,
                 text=text,
                 rating=rating_val,
                 is_active=False,
             )
+            if avatar_file:
+                review.reviewer_avatar = avatar_file
+                review.save(update_fields=['reviewer_avatar'])
         return review
 
     @staticmethod
-    def update(pk, *, reviewer_name=None, reviewer_title=None,
+    def update(pk, *, reviewer_name=None, reviewer_email=None, reviewer_title=None,
                reviewer_school=None, text=None, tag=None,
                rating=None, is_active=None, reviewer_avatar=None):
         """Update a Testimonial. Only non-None fields are changed."""
@@ -312,13 +387,15 @@ class TestimonialService:
             review = get_object_or_404(Testimonial, pk=pk)
             for field, value in [
                 ('reviewer_name', reviewer_name),
+                ('reviewer_email', reviewer_email),
                 ('reviewer_title', reviewer_title),
                 ('reviewer_school', reviewer_school),
                 ('text', text),
                 ('tag', tag),
             ]:
                 if value is not None:
-                    setattr(review, field, value)
+                    cleaned = value.strip() if isinstance(value, str) else value
+                    setattr(review, field, cleaned)
             if rating is not None:
                 review.rating = max(1, min(5, int(rating)))  # Clamp to 1–5
             if is_active is not None:

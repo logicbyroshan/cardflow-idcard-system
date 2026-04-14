@@ -256,6 +256,10 @@
         width: 45px;
         height: 45px;
     }
+
+    .reviewer-avatar .avatar-letter {
+        font-size: 0.95rem;
+    }
     
     .reviewer-info h4 {
         font-size: 0.95rem;
@@ -434,9 +438,20 @@
     
     /* Modal Responsive */
     .review-modal-content {
-        padding: 30px 25px;
+        padding: 38px 25px 30px;
         margin: 20px;
         border-radius: 20px;
+    }
+
+    .review-modal-toolbar {
+        top: 12px;
+        right: 12px;
+    }
+
+    .review-modal-share,
+    .review-modal-close {
+        width: 34px;
+        height: 34px;
     }
     
     .review-modal-content h3 {
@@ -994,11 +1009,22 @@
 ============================================ */
 @media (max-width: 576px) {
     .review-modal-content {
-        padding: 25px 20px;
+        padding: 34px 20px 25px;
         margin: 15px;
         width: calc(100% - 30px);
         max-height: 90vh;
         overflow-y: auto;
+    }
+
+    .review-modal-toolbar {
+        top: 10px;
+        right: 10px;
+    }
+
+    .review-modal-share,
+    .review-modal-close {
+        width: 32px;
+        height: 32px;
     }
     
     .review-modal-content h3 {

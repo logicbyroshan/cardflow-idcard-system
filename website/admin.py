@@ -85,12 +85,12 @@ class PortfolioItemAdmin(admin.ModelAdmin):
 class TestimonialAdmin(admin.ModelAdmin):
     list_display = ('reviewer_name', 'reviewer_school', 'rating_display', 'review_date', 'is_active')
     list_filter = ('rating', 'is_active', 'review_date')
-    search_fields = ('reviewer_name', 'reviewer_school', 'text')
+    search_fields = ('reviewer_name', 'reviewer_email', 'reviewer_school', 'text')
     date_hierarchy = 'review_date'
     
     fieldsets = (
         ('Reviewer Info', {
-            'fields': (('reviewer_name', 'reviewer_title'), 'reviewer_school', 'reviewer_avatar')
+            'fields': (('reviewer_name', 'reviewer_title'), 'reviewer_email', 'reviewer_school', 'reviewer_avatar')
         }),
         ('Review Content', {
             'fields': ('rating', 'tag', 'text', 'review_date', 'helpful_count')

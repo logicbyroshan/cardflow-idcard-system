@@ -71,29 +71,104 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 3. Review Submission Logic ---
     const reviewModal = document.getElementById('reviewModal');
+    const reviewShareBtn = document.getElementById('reviewModalShare');
     const stars = document.querySelectorAll('.star-rating i');
     const ratingInput = document.getElementById('selectedRating');
+    const REVIEW_MODAL_QUERY_KEY = 'review';
+    const REVIEW_MODAL_QUERY_OPEN_VALUE = 'open';
 
-    document.getElementById('heroWriteReviewBtn')?.addEventListener('click', (e) => {
-        e.preventDefault();
+    function buildReviewModalUrl() {
+        const url = new URL(window.location.href);
+        url.searchParams.set(REVIEW_MODAL_QUERY_KEY, REVIEW_MODAL_QUERY_OPEN_VALUE);
+        return url.toString();
+    }
+
+    function syncReviewModalUrl(isOpen) {
+        if (!window.history || typeof window.history.replaceState !== 'function') return;
+        const url = new URL(window.location.href);
+        if (isOpen) {
+            url.searchParams.set(REVIEW_MODAL_QUERY_KEY, REVIEW_MODAL_QUERY_OPEN_VALUE);
+        } else {
+            url.searchParams.delete(REVIEW_MODAL_QUERY_KEY);
+        }
+        const target = url.pathname + (url.search || '') + (url.hash || '');
+        window.history.replaceState(window.history.state, '', target);
+    }
+
+    function shouldAutoOpenReviewModal() {
+        const rawValue = (new URL(window.location.href)).searchParams.get(REVIEW_MODAL_QUERY_KEY);
+        const value = String(rawValue || '').trim().toLowerCase();
+        return value === REVIEW_MODAL_QUERY_OPEN_VALUE || value === '1' || value === 'true' || value === 'yes';
+    }
+
+    function openReviewModal(syncUrl = true) {
         if (!reviewModal) return;
         reviewModal.classList.add('active');
         document.body.style.overflow = 'hidden';
-    });
+        if (syncUrl) syncReviewModalUrl(true);
+    }
 
-    document.getElementById('reviewModalClose')?.addEventListener('click', () => {
+    function closeReviewModal(syncUrl = true) {
         if (!reviewModal) return;
         reviewModal.classList.remove('active');
         document.body.style.overflow = '';
+        if (syncUrl) syncReviewModalUrl(false);
+    }
+
+    async function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+        const input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+    }
+
+    document.getElementById('heroWriteReviewBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openReviewModal(true);
+    });
+
+    document.getElementById('reviewModalClose')?.addEventListener('click', () => {
+        closeReviewModal(true);
     });
 
     // Close modal on backdrop click
     reviewModal?.addEventListener('click', (e) => {
         if (e.target === reviewModal) {
-            reviewModal.classList.remove('active');
-            document.body.style.overflow = '';
+            closeReviewModal(true);
         }
     });
+
+    reviewShareBtn?.addEventListener('click', async () => {
+        const shareUrl = buildReviewModalUrl();
+        const shareTitle = document.title || 'Write a Review';
+        const shareText = 'Submit your review here';
+
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+            }
+        }
+
+        try {
+            await copyText(shareUrl);
+            showToast('Review form link copied', 'success');
+        } catch (err) {
+            showToast('Unable to share link on this device', 'error');
+        }
+    });
+
+    if (shouldAutoOpenReviewModal()) {
+        openReviewModal(false);
+    }
 
     // Star interaction - default all 5 stars selected
     stars.forEach(star => {
@@ -169,8 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 // Auto close modal after successful submission
                 setTimeout(() => {
-                    reviewModal.classList.remove('active');
-                    document.body.style.overflow = '';
+                    closeReviewModal(true);
                     reviewForm.reset();
                     // Reset stars to 5 selected
                     ratingInput.value = 5;

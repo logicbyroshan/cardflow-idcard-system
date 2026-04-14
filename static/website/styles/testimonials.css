@@ -263,39 +263,33 @@
     border-radius: 8px;
 }
 
-.reviewer-avatar .avatar-3d {
+.reviewer-avatar .avatar-letter {
     width: 100%;
     height: 100%;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 -2px 4px rgba(0,0,0,0.1);
-    overflow: hidden;
+    font-size: 1.15rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 -2px 4px rgba(0,0,0,0.12);
 }
-.reviewer-avatar .avatar-3d svg {
-    width: 38px;
-    height: 38px;
-}
-.reviewer-avatar .avatar-3d-1 {
+.reviewer-avatar .avatar-letter-1 {
     background: linear-gradient(145deg, #6366f1, #4f46e5);
-    color: #a5b4fc;
 }
-.reviewer-avatar .avatar-3d-2 {
+.reviewer-avatar .avatar-letter-2 {
     background: linear-gradient(145deg, #f472b6, #ec4899);
-    color: #fbcfe8;
 }
-.reviewer-avatar .avatar-3d-3 {
+.reviewer-avatar .avatar-letter-3 {
     background: linear-gradient(145deg, #34d399, #10b981);
-    color: #a7f3d0;
 }
-.reviewer-avatar .avatar-3d-4 {
+.reviewer-avatar .avatar-letter-4 {
     background: linear-gradient(145deg, #fbbf24, #f59e0b);
-    color: #fde68a;
 }
-.reviewer-avatar .avatar-3d-5 {
+.reviewer-avatar .avatar-letter-5 {
     background: linear-gradient(145deg, #60a5fa, #3b82f6);
-    color: #bfdbfe;
 }
 
 .reviewer-info {
@@ -700,8 +694,7 @@
     border-radius: 15px;
 }
 
-.video-modal-close,
-.review-modal-close {
+.video-modal-close {
     position: absolute;
     top: -50px;
     right: 0;
@@ -716,25 +709,49 @@
     transition: all 0.3s ease;
 }
 
-.video-modal-close:hover,
-.review-modal-close:hover {
+.video-modal-close:hover {
     background: rgba(255, 255, 255, 0.2);
 }
 
 .review-modal-content {
     background: #fff;
-    padding: 40px;
+    padding: 46px 40px 40px;
     border-radius: 25px;
     max-width: 500px;
     width: 90%;
     position: relative;
 }
 
-.review-modal-close {
+.review-modal-toolbar {
+    position: absolute;
     top: 15px;
     right: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.review-modal-share,
+.review-modal-close {
+    width: 36px;
+    height: 36px;
     background: #f1f5f9;
+    border: none;
+    border-radius: 10px;
     color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.review-modal-share:hover,
+.review-modal-close:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.review-modal-share:active,
+.review-modal-close:active {
+    transform: scale(0.96);
 }
 
 .review-modal-content h3 {

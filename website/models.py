@@ -482,6 +482,7 @@ class PortfolioItem(models.Model):
 class Testimonial(models.Model):
     """Customer text reviews"""
     reviewer_name = models.CharField(max_length=255)
+    reviewer_email = models.EmailField(blank=True, default='', db_index=True)
     reviewer_title = models.CharField(max_length=255, blank=True, help_text='e.g., Principal, Admin Head')
     reviewer_school = models.CharField(max_length=255, blank=True)
     reviewer_avatar = models.ImageField(upload_to='images/Avatars/', blank=True, null=True)

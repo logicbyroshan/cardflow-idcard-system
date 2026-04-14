@@ -360,12 +360,18 @@ def submit_testimonial(request):
     """Handles AJAX submission of a new review (Public)"""
     try:
         name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
         school = request.POST.get('school', '').strip()
         text = request.POST.get('text', '').strip()
         rating = request.POST.get('rating', '5')
 
-        if not all([name, school, text]):
+        if not all([name, email, school, text]):
             return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse({'success': False, 'message': 'Please enter a valid email address.'}, status=400)
 
         try:
             rating_val = max(1, min(5, int(rating)))
@@ -374,6 +380,7 @@ def submit_testimonial(request):
 
         TestimonialService.create_public(
             reviewer_name=name,
+            reviewer_email=email,
             reviewer_school=school,
             text=text,
             rating=rating_val,

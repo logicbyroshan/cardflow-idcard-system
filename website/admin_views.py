@@ -672,6 +672,7 @@ def api_review_list(request):
     data = [{
         'id': r.id,
         'reviewer_name': r.reviewer_name,
+        'reviewer_email': r.reviewer_email,
         'reviewer_title': r.reviewer_title,
         'reviewer_school': r.reviewer_school,
         'reviewer_avatar': r.reviewer_avatar.url if r.reviewer_avatar else None,
@@ -691,6 +692,7 @@ def api_review_create(request):
     try:
         review = TestimonialService.create(
             reviewer_name=request.POST.get('reviewer_name', ''),
+            reviewer_email=request.POST.get('reviewer_email', ''),
             reviewer_title=request.POST.get('reviewer_title', ''),
             reviewer_school=request.POST.get('reviewer_school', ''),
             text=request.POST.get('text', ''),
@@ -717,6 +719,7 @@ def api_review_get(request, pk):
         'review': {
             'id': r.id,
             'reviewer_name': r.reviewer_name,
+            'reviewer_email': r.reviewer_email,
             'reviewer_title': r.reviewer_title,
             'reviewer_school': r.reviewer_school,
             'reviewer_avatar': r.reviewer_avatar.url if r.reviewer_avatar else None,
@@ -736,6 +739,7 @@ def api_review_update(request, pk):
         TestimonialService.update(
             pk,
             reviewer_name=request.POST.get('reviewer_name'),
+            reviewer_email=request.POST.get('reviewer_email'),
             reviewer_title=request.POST.get('reviewer_title'),
             reviewer_school=request.POST.get('reviewer_school'),
             text=request.POST.get('text'),
