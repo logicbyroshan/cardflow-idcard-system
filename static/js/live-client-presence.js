@@ -45,13 +45,18 @@
     function postPresence(action, tabId, useBeacon) {
         var url = panelUrl('/api/presence/track/');
         var csrf = getCSRFToken();
+        var shouldUseBeacon = !!useBeacon && !!navigator.sendBeacon;
 
-        if (useBeacon && navigator.sendBeacon) {
-            var params = new URLSearchParams();
-            params.append('action', action);
-            params.append('tab_id', tabId);
-            params.append('csrfmiddlewaretoken', csrf);
-            return navigator.sendBeacon(url, params);
+        if (shouldUseBeacon) {
+            try {
+                var params = new URLSearchParams();
+                params.append('action', action);
+                params.append('tab_id', tabId);
+                params.append('csrfmiddlewaretoken', csrf);
+                navigator.sendBeacon(url, params);
+            } catch (_err) {
+                // Ignore beacon errors and rely on keepalive fetch fallback.
+            }
         }
 
         fetch(url, {
@@ -116,6 +121,11 @@
         });
 
         window.addEventListener('beforeunload', function () {
+            postPresence('stop', tabId, true);
+            stopHeartbeat();
+        });
+
+        window.addEventListener('unload', function () {
             postPresence('stop', tabId, true);
             stopHeartbeat();
         });
