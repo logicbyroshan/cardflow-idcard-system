@@ -623,7 +623,7 @@ def classify_column(field_name: str, field_type: str = '') -> str:
     ft = (field_type or '').lower().strip()
 
     # Explicit type shortcuts
-    if ft in ('photo', 'image', 'mother_photo', 'father_photo'):
+    if ft in ('photo', 'rel_photo', 'image', 'mother_photo', 'father_photo'):
         return 'photo'
     if ft == 'signature':
         return 'signature'

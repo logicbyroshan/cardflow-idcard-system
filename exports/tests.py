@@ -391,7 +391,7 @@ class ExportViewHelperTests(TestCase):
                     'enabled': True,
                     'image_name_fields': {
                         ' photo ': [' Student Name ', ' Class ', '', 'student name'],
-                        'father_photo': ['Father Name', None],
+                        'rel_photo': ['Father Name', None],
                         'x': [],
                     },
                 }
@@ -405,7 +405,7 @@ class ExportViewHelperTests(TestCase):
             opts['image_name_fields'],
             {
                 'PHOTO': ['Student Name', 'Class'],
-                'FATHER_PHOTO': ['Father Name'],
+                'REL_PHOTO': ['Father Name'],
             },
         )
 
@@ -1599,6 +1599,22 @@ class ExportFieldDetectionTests(SimpleTestCase):
         self.assertTrue(is_image_field(sign_field))
         self.assertEqual(classify_image_subtype(sign_field), 'signature')
 
+    def test_rel_slot_without_media_keyword_stays_text(self):
+        from exports.utils import is_image_field, classify_image_subtype
+
+        rel_slot_name_field = {'name': 'REL_1', 'type': 'text'}
+
+        self.assertFalse(is_image_field(rel_slot_name_field))
+        self.assertIsNone(classify_image_subtype(rel_slot_name_field))
+
+    def test_rel_slot_with_photo_keyword_maps_to_rel_photo(self):
+        from exports.utils import is_image_field, classify_image_subtype
+
+        rel_photo_field = {'name': 'REL_1PHOTO', 'type': 'text'}
+
+        self.assertTrue(is_image_field(rel_photo_field))
+        self.assertEqual(classify_image_subtype(rel_photo_field), 'rel_photo')
+
 
 class WordLayoutTuningTests(SimpleTestCase):
     def test_dense_width_allocator_keeps_table_inside_page(self):
@@ -1759,8 +1775,8 @@ class WordLayoutTuningTests(SimpleTestCase):
         exporter = WordExporter()
 
         self.assertTrue(exporter._should_add_photo_border(image_subtype='photo', field_name='PHOTO'))
-        self.assertTrue(exporter._should_add_photo_border(image_subtype='father_photo', field_name='FATHER PHOTO'))
-        self.assertTrue(exporter._should_add_photo_border(image_subtype='mother_photo', field_name='MOTHER PHOTO'))
+        self.assertTrue(exporter._should_add_photo_border(image_subtype='rel_photo', field_name='FATHER PHOTO'))
+        self.assertTrue(exporter._should_add_photo_border(image_subtype='rel_photo', field_name='MOTHER PHOTO'))
 
         # Subtype-missing fallback should still border photo columns.
         self.assertTrue(exporter._should_add_photo_border(image_subtype=None, field_name='FATHER PHOTO'))
@@ -1798,8 +1814,8 @@ class WordLayoutTuningTests(SimpleTestCase):
         ordered_fields = [{
             'name': 'FATHER PHOTO',
             'is_image': True,
-            'type': 'father_photo',
-            'image_subtype': 'father_photo',
+            'type': 'rel_photo',
+            'image_subtype': 'rel_photo',
             'image_width_cm': 1.9,
             'image_height_cm': 2.5,
         }]

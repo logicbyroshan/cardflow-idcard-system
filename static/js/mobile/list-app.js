@@ -1145,7 +1145,7 @@ function listApp() {
 
         _isImageFieldType(fieldType) {
             const t = this._normalizeFieldType(fieldType);
-            return ['photo', 'image', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code'].includes(t);
+            return ['photo', 'rel_photo', 'image', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code'].includes(t);
         },
 
         _isImageLikeFieldName(name) {

@@ -989,7 +989,7 @@ def api_global_search(request):
         
         results = []
         query_upper = query.upper()
-        image_field_types = {'photo', 'mother_photo', 'father_photo', 'image', 'signature'}
+        image_field_types = {'photo', 'rel_photo', 'mother_photo', 'father_photo', 'image', 'signature'}
         non_searchable_field_types = {'file', 'barcode', 'qr_code'}
         non_searchable_name_tokens = ('BARCODE', 'QR', 'FILE')
         
@@ -1119,7 +1119,7 @@ def api_global_search(request):
                 for field in card.table.fields:
                     fname = field.get('name', '')
                     ftype = field.get('type', 'text')
-                    if ftype in ('photo', 'mother_photo', 'father_photo', 'image'):
+                    if ftype in ('photo', 'rel_photo', 'mother_photo', 'father_photo', 'image'):
                         val = field_data.get(fname, '')
                         if val and not str(val).startswith('PENDING:') and val != 'NOT_FOUND':
                             photo_url = f'/media/{val}' if not str(val).startswith('/') else val

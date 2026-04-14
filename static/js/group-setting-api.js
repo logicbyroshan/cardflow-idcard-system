@@ -59,25 +59,27 @@ document.addEventListener('DOMContentLoaded', function() {
         { value: 'class', label: 'Class' },
         { value: 'section', label: 'Section' },
         { value: 'photo', label: 'Photo' },
-        { value: 'mother_photo', label: 'Mother Photo' },
-        { value: 'father_photo', label: 'Father Photo' },
+        { value: 'rel_photo', label: 'Relation Photo' },
         { value: 'barcode', label: 'Barcode' },
         { value: 'qr_code', label: 'QR Code' },
         { value: 'signature', label: 'Signature' }
     ];
 
     // Image types that have fixed names (not editable)
-    GSP.imageFieldTypes = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature'];
+    GSP.imageFieldTypes = ['photo', 'rel_photo', 'barcode', 'qr_code', 'signature'];
 
     // Map of image types to their fixed display names
     GSP.imageFieldNames = {
         'photo': 'Photo',
-        'mother_photo': 'Mother Photo',
-        'father_photo': 'Father Photo',
+        'rel_photo': 'Relation Photo',
         'barcode': 'Barcode',
         'qr_code': 'QR Code',
         'signature': 'Signature'
     };
+
+    // Image types that should auto-fill and lock field name.
+    // rel_photo is intentionally excluded so users can set REL 1 / REL 2 style labels.
+    GSP.fixedNameImageFieldTypes = ['photo', 'barcode', 'qr_code', 'signature'];
 
     // Types with auto-generated names (name input disabled)
     GSP.autoNameTypes = ['class_section', ...GSP.imageFieldTypes];
@@ -92,16 +94,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const n = name.toLowerCase().trim().replace(/[_\-]+/g, ' ');
         if (!n) return null;
 
+        // Relation-photo aliases (new canonical type rel_photo)
+        if (/^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$/i.test(n)) {
+            return 'rel_photo';
+        }
+        if (/\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b/.test(n)) {
+            return 'rel_photo';
+        }
+
         // Priority-ordered rules (most specific first)
         // Each rule: [patterns[], fieldType, mode]
         // mode: 'exact' = full string match, 'keyword' = word-boundary match, 'includes' = substring
         const rules = [
-            // Mother photo  must match before generic 'photo'
-            { type: 'mother_photo', exact: ['mother photo', "mother's photo", 'mother image', 'mother pic', 'mother photograph', 'mom photo', 'maa photo', 'm photo'],
-              keywords: ['mother photo', 'mother image', 'mother pic'] },
-            // Father photo  must match before generic 'photo'
-            { type: 'father_photo', exact: ['father photo', "father's photo", 'father image', 'father pic', 'father photograph', 'dad photo', 'papa photo', 'f photo'],
-              keywords: ['father photo', 'father image', 'father pic'] },
+            // Relation photo (includes father/mother and explicit relation photo aliases)
+            {
+                type: 'rel_photo',
+                exact: [
+                    'relation photo', 'relation image', 'relation pic', 'rel photo',
+                    'rel 1 photo', 'rel1photo', 'rel_1photo',
+                    'relation 1 photo', 'relation1photo', 'relation one photo',
+                    'rel 2 photo', 'rel2photo', 'rel_2photo',
+                    'relation 2 photo', 'relation2photo', 'relation two photo',
+                    'father photo', "father's photo", 'father image', 'father pic', 'father photograph', 'dad photo', 'papa photo', 'f photo',
+                    'mother photo', "mother's photo", 'mother image', 'mother pic', 'mother photograph', 'mom photo', 'maa photo', 'm photo'
+                ],
+                keywords: ['relation photo', 'relation image', 'relation pic', 'father photo', 'mother photo']
+            },
             // Signature  word-boundary to avoid "designation"
             { type: 'signature', exact: ['signature', 'sign', 'student signature', 'child signature', 'student sign'],
               keywords: ['signature'] },
@@ -111,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Barcode
             { type: 'barcode', exact: ['barcode', 'bar code', 'bar image'],
               keywords: ['barcode', 'bar code'] },
-            // Generic photo (after mother/father)
+                        // Generic photo (after relation-photo patterns)
             { type: 'photo', exact: ['photo', 'photograph', 'student photo', 'student image', 'student pic', 'child photo', 'pic', 'image', 'student photograph', 'passport photo'],
               keywords: ['photo', 'photograph', 'student image', 'student pic'] },
             // Class

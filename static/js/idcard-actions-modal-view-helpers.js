@@ -6,7 +6,7 @@
 
 // IMAGE FIELD TYPES  Must stay in sync with mediafiles/constants.py and idcard-actions-upload.js
 if (typeof IMAGE_FIELD_TYPES === 'undefined') {
-    var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+    var IMAGE_FIELD_TYPES = ['photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
 }
 
 function isImageFieldType(fieldType) {
@@ -24,10 +24,17 @@ function isImageFieldByNameModal(fieldName) {
     // Fallback implementation with word boundary matching
     if (!fieldName) return false;
     const normalizedName = fieldName.toLowerCase().trim();
+    const spacedName = normalizedName.replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$/.test(spacedName)) {
+        return true;
+    }
+    if (/\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b/.test(spacedName)) {
+        return true;
+    }
     const patterns = ['photo', 'sign', 'signature', 'barcode', 'qr'];
     for (const pattern of patterns) {
         const regex = new RegExp('\\b' + pattern + '\\b');
-        if (regex.test(normalizedName)) {
+        if (regex.test(spacedName)) {
             return true;
         }
     }

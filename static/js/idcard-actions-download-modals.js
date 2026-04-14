@@ -74,7 +74,10 @@ function _dlNormalizeFieldKey(value) {
 function _dlLooksImageField(field) {
     const type = String((field && field.type) || '').toLowerCase();
     const name = String((field && field.name) || '').toLowerCase();
-    if (type === 'image' || type === 'photo' || type === 'file' || type === 'signature' || type === 'father_photo' || type === 'mother_photo' || type === 'qr_code' || type === 'barcode') {
+    if (type === 'image' || type === 'photo' || type === 'rel_photo' || type === 'file' || type === 'signature' || type === 'father_photo' || type === 'mother_photo' || type === 'qr_code' || type === 'barcode') {
+        return true;
+    }
+    if (/\b(?:rel(?:ation)?)\s*[_-]?\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)\b/.test(name)) {
         return true;
     }
     return name.indexOf('photo') !== -1 ||
@@ -89,7 +92,7 @@ function _dlLooksRenameTargetImageField(field) {
     const type = String((field && field.type) || '').toLowerCase();
     const name = String((field && field.name) || '').toLowerCase();
 
-    if (type === 'photo' || type === 'image' || type === 'father_photo' || type === 'mother_photo') {
+    if (type === 'photo' || type === 'rel_photo' || type === 'image' || type === 'father_photo' || type === 'mother_photo') {
         return true;
     }
 
@@ -99,7 +102,8 @@ function _dlLooksRenameTargetImageField(field) {
 
     return name.indexOf('photo') !== -1 ||
            name.indexOf('image') !== -1 ||
-           name.indexOf('picture') !== -1;
+            name.indexOf('picture') !== -1 ||
+            /\b(?:rel(?:ation)?)\s*[_-]?\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)\b/.test(name);
 }
 
 function _dlGetRenameTargetImageFields() {

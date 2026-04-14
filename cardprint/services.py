@@ -191,7 +191,7 @@ class PrintWorkflowService:
 # PDF GENERATION SERVICE
 # ─────────────────────────────────────────────────────────────────────────────
 
-IMAGE_FIELD_TYPES = {'photo', 'image', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code'}
+IMAGE_FIELD_TYPES = {'photo', 'rel_photo', 'image', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code'}
 
 
 class GenerateCardService:

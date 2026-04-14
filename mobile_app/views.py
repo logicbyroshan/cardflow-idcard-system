@@ -423,7 +423,7 @@ def _search_cards_for_global_results(base_qs, query, limit=50, filter_type='all'
     active_filter = str(filter_type or 'all').strip().lower()
     if active_filter not in ('all', 'name', 'address', 'mobile'):
         active_filter = 'all'
-    image_field_types = {'photo', 'mother_photo', 'father_photo', 'image', 'signature'}
+    image_field_types = {'photo', 'rel_photo', 'mother_photo', 'father_photo', 'image', 'signature'}
     non_searchable_field_types = {'file', 'barcode', 'qr_code'}
     non_searchable_name_tokens = ('BARCODE', 'QR', 'FILE')
 
@@ -2026,7 +2026,7 @@ def card_list(request, table_id, status):
 
     photo_exts = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei')
     image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
-    image_field_types = ('photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
+    image_field_types = ('photo', 'rel_photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
 
     def _is_image_like_name(raw_name):
         _name = str(raw_name).strip().lower()
@@ -2632,7 +2632,7 @@ def reprint_table(request, table_id):
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
     image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
-    image_field_types = ('photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
+    image_field_types = ('photo', 'rel_photo', 'image', 'file', 'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code')
 
     def _is_image_like_name(raw_name):
         _name = str(raw_name).strip().lower()
@@ -3220,7 +3220,9 @@ def api_table_update_fields(request, table_id):
 
         VALID_FIELD_TYPES = {
             'text', 'number', 'date', 'select', 'photo', 'signature', 'qr_code',
-            'barcode', 'class_section', 'mother_photo', 'father_photo',
+            'barcode', 'class_section', 'rel_photo',
+            # Legacy aliases accepted and normalized to rel_photo.
+            'mother_photo', 'father_photo',
         }
         MAX_FIELDS = 30
 
@@ -3237,6 +3239,8 @@ def api_table_update_fields(request, table_id):
             ftype = f.get('type', 'text')
             if ftype not in VALID_FIELD_TYPES:
                 ftype = 'text'
+            elif ftype in ('mother_photo', 'father_photo'):
+                ftype = 'rel_photo'
             validated.append({
                 'name': name,
                 'type': ftype,

@@ -974,8 +974,8 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.table.fields = [
 			{'name': 'NAME', 'type': 'text', 'order': 0},
 			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
-			{'name': 'MOTHER PHOTO', 'type': 'mother_photo', 'order': 2},
-			{'name': 'FATHER PHOTO', 'type': 'father_photo', 'order': 3},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 2},
+			{'name': 'FATHER PHOTO', 'type': 'rel_photo', 'order': 3},
 		]
 		self.table.save(update_fields=['fields'])
 
@@ -1006,8 +1006,8 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.table.fields = [
 			{'name': 'NAME', 'type': 'text', 'order': 0},
 			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
-			{'name': 'MOTHER PHOTO', 'type': 'mother_photo', 'order': 2},
-			{'name': 'FATHER PHOTO', 'type': 'father_photo', 'order': 3},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 2},
+			{'name': 'FATHER PHOTO', 'type': 'rel_photo', 'order': 3},
 		]
 		self.table.save(update_fields=['fields'])
 

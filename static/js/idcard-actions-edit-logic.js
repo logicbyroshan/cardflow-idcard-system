@@ -87,7 +87,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
     
     // Check if this is an image field  image paths must NOT be uppercased
     const fieldType = (cell.getAttribute('data-field-type') || '').toLowerCase();
-    const IMAGE_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+    const IMAGE_TYPES = ['photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
     const isImageField = IMAGE_TYPES.includes(fieldType);
     
     // Convert to uppercase only for non-image text fields
@@ -294,7 +294,7 @@ function makeTableCellsEditable() {
 window.saveInlineEdit = async function (cardId, fieldName, value) {
     try {
         // Uppercase non-image text fields (same logic as saveCellEdit)
-        var IMAGE_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+        var IMAGE_TYPES = ['photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
         var finalValue = (!IMAGE_TYPES.includes(fieldName) && typeof value === 'string') ? value.toUpperCase() : value;
 
         var data = await ApiClient.post('/api/card/' + cardId + '/update-field/', {

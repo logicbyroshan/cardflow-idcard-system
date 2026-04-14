@@ -61,8 +61,9 @@ class CardMedia(models.Model):
     MEDIA_TYPE_CHOICES = [
         # Card image types (from IDCardTable.IMAGE_FIELD_TYPES)
         ('photo', 'Photo'),
-        ('mother_photo', 'Mother Photo'),
-        ('father_photo', 'Father Photo'),
+        ('rel_photo', 'Relation Photo'),
+        ('mother_photo', 'Mother Photo (Legacy)'),
+        ('father_photo', 'Father Photo (Legacy)'),
         ('barcode', 'Barcode'),
         ('qr_code', 'QR Code'),
         ('signature', 'Signature'),

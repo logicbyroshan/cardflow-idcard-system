@@ -120,8 +120,10 @@ class IDCardTable(models.Model):
         ('class', 'Class'),
         ('section', 'Section'),
         ('photo', 'Photo'),
-        ('mother_photo', 'Mother Photo'),
-        ('father_photo', 'Father Photo'),
+        ('rel_photo', 'Relation Photo'),
+        # Legacy aliases kept for existing table configurations
+        ('mother_photo', 'Mother Photo (Legacy)'),
+        ('father_photo', 'Father Photo (Legacy)'),
         ('barcode', 'Barcode'),
         ('qr_code', 'QR Code'),
         ('signature', 'Signature'),

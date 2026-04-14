@@ -23,6 +23,8 @@ _IMAGE_NAME_KEYWORDS = [
 # Fixed dimensions for each image subtype (height × width in cm)
 IMAGE_SUBTYPE_DIMENSIONS = {
     'photo':        {'height_cm': 2.5,  'width_cm': 1.95},
+    'rel_photo':    {'height_cm': 2.0,  'width_cm': 1.5},
+    # Legacy aliases retained for historical exports.
     'mother_photo': {'height_cm': 2.0,  'width_cm': 1.5},
     'father_photo': {'height_cm': 2.0,  'width_cm': 1.5},
     'signature':    {'height_cm': 0.5,  'width_cm': 1.9},
@@ -39,6 +41,16 @@ def _contains_word(text: str, word: str) -> bool:
     return re.search(r'\b' + re.escape(word) + r'\b', text) is not None
 
 
+def _looks_like_relation_photo_name(name: str) -> bool:
+    """Return True for relation-photo naming patterns like REL_1 / Relation 2."""
+    if not name:
+        return False
+    normalized = re.sub(r'[\s_-]+', ' ', str(name).strip().lower())
+    if re.match(r'^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$', normalized):
+        return True
+    return bool(re.search(r'\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b', normalized))
+
+
 # =============================================================================
 # FIELD CLASSIFICATION
 # =============================================================================
@@ -48,7 +60,7 @@ def is_image_field(field: Dict[str, Any]) -> bool:
     Check if a field is an image field.
     
     Uses two strategies:
-      1. Explicit type match (e.g. type='photo', 'mother_photo', 'signature')
+        1. Explicit type match (e.g. type='photo', 'rel_photo', 'signature')
       2. Substring match on field name (e.g. 'Student Photo' contains 'photo')
     
     Args:
@@ -61,6 +73,8 @@ def is_image_field(field: Dict[str, Any]) -> bool:
     if field_type in IMAGE_FIELD_TYPES:
         return True
     name_lower = field.get('name', '').lower().strip()
+    if _looks_like_relation_photo_name(name_lower):
+        return True
     return any(
         _contains_word(name_lower, kw) if kw in ('sign', 'qr') else (kw in name_lower)
         for kw in _IMAGE_NAME_KEYWORDS
@@ -71,7 +85,7 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     """
     Classify an image field into a specific subtype.
     
-    Returns one of: 'photo', 'mother_photo', 'father_photo', 'signature',
+    Returns one of: 'photo', 'rel_photo', 'signature',
                     'qr_code', 'barcode', or None if not an image field.
     
     The subtype determines fixed export dimensions (see IMAGE_SUBTYPE_DIMENSIONS).
@@ -80,8 +94,9 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     
     # Direct type mapping (most reliable — set explicitly in table config)
     _TYPE_MAP = {
-        'photo': 'photo', 'mother_photo': 'mother_photo',
-        'father_photo': 'father_photo', 'signature': 'signature',
+        'photo': 'photo', 'rel_photo': 'rel_photo',
+        'mother_photo': 'rel_photo', 'father_photo': 'rel_photo',
+        'signature': 'signature',
         'barcode': 'barcode', 'qr_code': 'qr_code', 'image': 'photo',
     }
     if field_type in _TYPE_MAP:
@@ -91,11 +106,9 @@ def classify_image_subtype(field: Dict[str, Any]) -> Optional[str]:
     name_lower = field.get('name', '').lower().strip()
     name_norm = re.sub(r'[\s_]+', ' ', name_lower)
     
-    # Parent photos — check before generic 'photo' to avoid false match
-    if ('mother' in name_lower and 'photo' in name_lower) or name_norm in ('m photo',):
-        return 'mother_photo'
-    if ('father' in name_lower and 'photo' in name_lower) or name_norm in ('f photo',):
-        return 'father_photo'
+    # Relation photos — includes mother/father and explicit rel_1photo style names.
+    if _looks_like_relation_photo_name(name_norm) or name_norm in ('m photo', 'f photo'):
+        return 'rel_photo'
     # Signature
     if _contains_word(name_lower, 'signature') or _contains_word(name_lower, 'sign'):
         return 'signature'

@@ -180,6 +180,10 @@ class ImageFieldsMixin:
         # Check by type
         if field_type in [t.lower() for t in IMAGE_FIELD_TYPES]:
             return True
+
+        normalized_name = re.sub(r'[\s_-]+', ' ', field_name).strip()
+        if re.search(r'\b(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)\b', normalized_name):
+            return True
         
         # Check by name pattern with word boundary matching
         # This prevents 'designation' from matching 'sign'

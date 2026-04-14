@@ -9,6 +9,7 @@ Contains:
 """
 import json
 import logging
+import re
 import secrets
 import string
 from datetime import datetime, timezone as dt_timezone
@@ -273,8 +274,11 @@ def api_idcard_table_list(request, group_id):
 # Order matters: first match wins.  All comparisons are case-insensitive.
 _HEADER_TYPE_MAP = [
     # Image-like fields
-    (['mother photo', 'm photo', 'mother_photo', 'mother pic'], 'mother_photo'),
-    (['father photo', 'f photo', 'father_photo', 'father pic'], 'father_photo'),
+    (['mother photo', 'm photo', 'mother_photo', 'mother pic'], 'rel_photo'),
+    (['father photo', 'f photo', 'father_photo', 'father pic'], 'rel_photo'),
+    (['relation photo', 'relation image', 'relation pic', 'rel photo'], 'rel_photo'),
+    (['relation 1 photo', 'relation1photo', 'relation one photo', 'rel 1 photo', 'rel1photo', 'rel_1photo'], 'rel_photo'),
+    (['relation 2 photo', 'relation2photo', 'relation two photo', 'rel 2 photo', 'rel2photo', 'rel_2photo'], 'rel_photo'),
     (['photo', 'pic', 'picture', 'image', 'student photo', 'student image'], 'photo'),
     (['signature', 'sign'], 'signature'),
     (['barcode'], 'barcode'),
@@ -286,13 +290,116 @@ _HEADER_TYPE_MAP = [
 ]
 
 
-def _infer_field_type(header_name: str) -> str:
+
+_SAMPLE_ROW_SCAN_LIMIT = 3
+_RELATION_SLOT_HEADER_RE = re.compile(
+    r'^(?:rel(?:ation)?)\s*[_-]?\s*(?:1|one|2|two)$'
+)
+_REL_PHOTO_HEADER_RE = re.compile(
+    r'^(?:rel(?:ation)?)\s*[_-]?\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$'
+)
+_IMAGE_EXTENSION_RE = re.compile(r'\.(?:jpe?g|png|gif|bmp|webp|heic|heif)$', re.IGNORECASE)
+
+
+def _is_relation_slot_header(normalized_header: str) -> bool:
+    """Return True for plain relation slots like REL_1 / REL_2 (without photo keyword)."""
+    if not normalized_header:
+        return False
+    return bool(_RELATION_SLOT_HEADER_RE.match(normalized_header))
+
+
+def _is_relation_photo_header(normalized_header: str) -> bool:
+    """Return True when XLSX header clearly indicates relation photo columns."""
+    if not normalized_header:
+        return False
+    if _REL_PHOTO_HEADER_RE.match(normalized_header):
+        return True
+    return bool(re.search(r'\b(?:father|mother)\b\s*(?:photo|image|pic|picture)', normalized_header))
+
+
+def _is_image_like_relation_value(value) -> bool:
+    """Heuristic: image identifiers are usually ids/paths/filenames, not person names."""
+    if value is None:
+        return False
+
+    text = str(value).strip()
+    if not text:
+        return False
+
+    normalized = text.lower().strip().replace('\\', '/')
+    if normalized.startswith('pending:'):
+        normalized = normalized[8:].strip()
+
+    if _IMAGE_EXTENSION_RE.search(normalized):
+        return True
+
+    if normalized.startswith(('http://', 'https://')) and (
+        '/media/' in normalized or '/card_media/' in normalized or _IMAGE_EXTENSION_RE.search(normalized)
+    ):
+        return True
+
+    if '/' in normalized and re.search(r'(?:photo|image|pic|card_media|id_photos)', normalized):
+        return True
+
+    compact = re.sub(r'[\s_-]+', '', normalized)
+    if re.match(r'^(?:img|image|photo|pic)\d{3,}$', compact):
+        return True
+    if re.match(r'^[a-z]?\d{6,}$', compact):
+        return True
+
+    return False
+
+
+def _is_text_like_relation_value(value) -> bool:
+    """Heuristic: relation-name fields usually contain alphabetic words."""
+    if value is None:
+        return False
+
+    text = str(value).strip()
+    if not text:
+        return False
+    if _is_image_like_relation_value(text):
+        return False
+
+    letters = len(re.findall(r'[A-Za-z]', text))
+    digits = len(re.findall(r'\d', text))
+
+    if letters >= 2 and (digits == 0 or letters >= digits):
+        return True
+    if ' ' in text and letters >= 1:
+        return True
+    return False
+
+
+def _infer_relation_slot_type(sample_values) -> str:
+    """Infer REL_1/REL_2 slot type using first few data rows."""
+    image_votes = 0
+    text_votes = 0
+
+    for value in (sample_values or [])[:_SAMPLE_ROW_SCAN_LIMIT]:
+        if _is_image_like_relation_value(value):
+            image_votes += 1
+            continue
+        if _is_text_like_relation_value(value):
+            text_votes += 1
+
+    if image_votes > 0 and image_votes >= text_votes:
+        return 'rel_photo'
+    return 'text'
+
+
+def _infer_field_type(header_name: str, sample_values=None) -> str:
     """Infer field type from an XLSX header name.
 
     Returns one of the VALID_FIELD_TYPES for IDCardTable.
     Falls back to 'text' for any unrecognised header.
     """
     normalized = header_name.strip().lower().replace('_', ' ')
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    if _is_relation_photo_header(normalized):
+        return 'rel_photo'
+    if _is_relation_slot_header(normalized):
+        return _infer_relation_slot_type(sample_values)
     for patterns, field_type in _HEADER_TYPE_MAP:
         if normalized in patterns:
             return field_type
@@ -360,6 +467,7 @@ def api_create_table_from_xlsx(request, group_id):
         }, status=400)
 
     # ── 2. Read headers ─────────────────────────────────────────────
+    sample_rows = []
     try:
         if file_name.endswith('.csv'):
             import csv, io
@@ -367,6 +475,10 @@ def api_create_table_from_xlsx(request, group_id):
             uploaded_file.seek(0)
             reader = csv.reader(io.StringIO(content))
             headers = next(reader, [])
+            for row in reader:
+                if len(sample_rows) >= _SAMPLE_ROW_SCAN_LIMIT:
+                    break
+                sample_rows.append(list(row))
         else:
             wb = openpyxl.load_workbook(BytesIO(uploaded_file.read()), read_only=True, data_only=True)
             uploaded_file.seek(0)
@@ -377,6 +489,12 @@ def api_create_table_from_xlsx(request, group_id):
                 if cell is not None else ''
                 for cell in raw_row
             ]
+            for row in ws.iter_rows(min_row=2, max_row=1 + _SAMPLE_ROW_SCAN_LIMIT, values_only=True):
+                sample_rows.append([
+                    str(cell).strip().replace('_x000D_', '').replace('_X000D_', '').replace('_x000d_', '').replace('\r', '')
+                    if isinstance(cell, str) else cell
+                    for cell in row
+                ])
             wb.close()
     except Exception as exc:
         logger.error("Failed to read XLSX headers: %s", exc)
@@ -385,8 +503,9 @@ def api_create_table_from_xlsx(request, group_id):
             'message': 'Could not read the spreadsheet. Please check the file format.'
         }, status=400)
 
-    # Filter out empty headers
-    headers = [h for h in headers if h]
+    # Filter out empty headers while preserving original column indices.
+    indexed_headers = [(idx, h) for idx, h in enumerate(headers) if h]
+    headers = [h for _, h in indexed_headers]
     if not headers:
         return JsonResponse({
             'success': False, 'message': 'The spreadsheet has no column headers in the first row.'
@@ -414,13 +533,21 @@ def api_create_table_from_xlsx(request, group_id):
 
     VALID_FIELD_TYPES = {
         'text', 'class', 'section', 'email', 'photo',
-        'mother_photo', 'father_photo', 'signature', 'barcode', 'qr_code',
+        'rel_photo',
+        # Legacy aliases accepted and normalized to rel_photo.
+        'mother_photo', 'father_photo',
+        'signature', 'barcode', 'qr_code',
     }
 
     fields = []
     for idx, header in enumerate(headers):
+        source_col_idx = indexed_headers[idx][0]
+        sample_values = [
+            row[source_col_idx] if source_col_idx < len(row) else None
+            for row in sample_rows
+        ]
         # Default: auto-infer
-        field_type = _infer_field_type(header)
+        field_type = _infer_field_type(header, sample_values=sample_values)
         mandatory = False
         # Default field name from the XLSX header
         field_name = header.strip().upper()
@@ -431,7 +558,7 @@ def api_create_table_from_xlsx(request, group_id):
             if isinstance(cfg, dict):
                 cfg_type = cfg.get('type', '')
                 if cfg_type in VALID_FIELD_TYPES:
-                    field_type = cfg_type
+                    field_type = 'rel_photo' if cfg_type in ('mother_photo', 'father_photo') else cfg_type
                 mandatory = bool(cfg.get('mandatory', False))
                 # Accept client-provided field name (user may have edited it in preview)
                 cfg_name = cfg.get('name', '')
@@ -442,7 +569,7 @@ def api_create_table_from_xlsx(request, group_id):
 
         fields.append({
             'name': field_name,
-            'type': field_type,
+            'type': 'rel_photo' if field_type in ('mother_photo', 'father_photo') else field_type,
             'order': idx,
             'mandatory': mandatory,
         })

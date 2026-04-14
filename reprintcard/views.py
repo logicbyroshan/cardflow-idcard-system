@@ -136,10 +136,10 @@ def _build_ordered_fields(card, table):
 
     def _infer_media_type(fname):
         n = str(fname or '').lower()
-        if 'father' in n and 'photo' in n:
-            return 'father_photo'
-        if 'mother' in n and 'photo' in n:
-            return 'mother_photo'
+        if (('father' in n or 'mother' in n) and ('photo' in n or 'image' in n or 'pic' in n)):
+            return 'rel_photo'
+        if re.search(r'\b(?:rel(?:ation)?)\s*[_-]?\s*(?:1|one|2|two)\b', n):
+            return 'rel_photo'
         if 'signature' in n or n.strip() == 'sign':
             return 'signature'
         if 'barcode' in n:
@@ -196,7 +196,14 @@ def _build_ordered_fields(card, table):
             if not fval:
                 inferred = _infer_media_type(fname)
                 if inferred:
-                    fval = media_by_type.get(inferred, '')
+                    if inferred == 'rel_photo':
+                        fval = (
+                            media_by_type.get('rel_photo', '')
+                            or media_by_type.get('father_photo', '')
+                            or media_by_type.get('mother_photo', '')
+                        )
+                    else:
+                        fval = media_by_type.get(inferred, '')
 
             # Final legacy fallback for PHOTO from deprecated ImageField
             if not fval and norm_name == 'PHOTO' and getattr(card, 'photo', None):

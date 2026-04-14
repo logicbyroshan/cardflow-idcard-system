@@ -42,7 +42,7 @@ FC.classify = function (fieldName, fieldType) {
     if (t === 'date')                                         return 'date';
     if (t === 'textarea')                                     return 'address';
     if (t === 'email')                                        return 'email';
-    if (['photo','image','mother_photo','father_photo',
+    if (['photo','rel_photo','image','mother_photo','father_photo',
          'signature','barcode','qr_code','qr','file'].indexOf(t) >= 0) return 'image';
 
     var n = _norm(fieldName);

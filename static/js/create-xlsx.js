@@ -23,8 +23,11 @@ function initCreateWithXlsx(opts) {
 
   //  Header  type map (mirrors backend _HEADER_TYPE_MAP) 
   var HEADER_TYPE_MAP = [
-    { patterns: ['mother photo', 'm photo', 'mother_photo', 'mother pic'], type: 'mother_photo' },
-    { patterns: ['father photo', 'f photo', 'father_photo', 'father pic'], type: 'father_photo' },
+    { patterns: ['mother photo', 'm photo', 'mother_photo', 'mother pic'], type: 'rel_photo' },
+    { patterns: ['father photo', 'f photo', 'father_photo', 'father pic'], type: 'rel_photo' },
+    { patterns: ['relation photo', 'relation image', 'relation pic', 'rel photo'], type: 'rel_photo' },
+    { patterns: ['relation 1 photo', 'relation1photo', 'relation one photo', 'rel 1 photo', 'rel1photo', 'rel_1photo'], type: 'rel_photo' },
+    { patterns: ['relation 2 photo', 'relation2photo', 'relation two photo', 'rel 2 photo', 'rel2photo', 'rel_2photo'], type: 'rel_photo' },
     { patterns: ['photo', 'pic', 'picture', 'image', 'student photo', 'student image'], type: 'photo' },
     { patterns: ['signature', 'sign'], type: 'signature' },
     { patterns: ['barcode'], type: 'barcode' },
@@ -34,21 +37,86 @@ function initCreateWithXlsx(opts) {
     { patterns: ['email', 'e-mail', 'email id', 'email address'], type: 'email' }
   ];
 
+  var SAMPLE_ROW_SCAN_LIMIT = 3;
+  var RELATION_SLOT_RE = /^(?:rel(?:ation)?)\s*(?:1|one|2|two)$/i;
+  var RELATION_PHOTO_RE = /^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$/i;
+  var IMAGE_EXT_RE = /\.(?:jpe?g|png|gif|bmp|webp|heic|heif)$/i;
+
   var ALL_TYPES = [
     { value: 'text',         label: 'Text' },
     { value: 'class',        label: 'Class' },
     { value: 'section',      label: 'Section' },
     { value: 'email',        label: 'Email' },
     { value: 'photo',        label: 'Photo' },
-    { value: 'mother_photo', label: 'Mother Photo' },
-    { value: 'father_photo', label: 'Father Photo' },
+    { value: 'rel_photo',    label: 'Relation Photo' },
     { value: 'signature',    label: 'Signature' },
     { value: 'barcode',      label: 'Barcode' },
     { value: 'qr_code',      label: 'QR Code' }
   ];
 
-  function inferFieldType(headerName) {
-    var normalized = headerName.trim().toLowerCase().replace(/_/g, ' ');
+  function isImageLikeRelationValue(value) {
+    if (value === null || value === undefined) return false;
+    var text = String(value).trim();
+    if (!text) return false;
+
+    var normalized = text.toLowerCase().replace(/\\/g, '/').trim();
+    if (normalized.indexOf('pending:') === 0) normalized = normalized.slice(8).trim();
+
+    if (IMAGE_EXT_RE.test(normalized)) return true;
+    if ((normalized.indexOf('http://') === 0 || normalized.indexOf('https://') === 0) &&
+        (normalized.indexOf('/media/') !== -1 || normalized.indexOf('/card_media/') !== -1 || IMAGE_EXT_RE.test(normalized))) {
+      return true;
+    }
+    if (normalized.indexOf('/') !== -1 && /(photo|image|pic|card_media|id_photos)/.test(normalized)) {
+      return true;
+    }
+
+    var compact = normalized.replace(/[\s_-]+/g, '');
+    if (/^(?:img|image|photo|pic)\d{3,}$/.test(compact)) return true;
+    if (/^[a-z]?\d{6,}$/.test(compact)) return true;
+
+    return false;
+  }
+
+  function isTextLikeRelationValue(value) {
+    if (value === null || value === undefined) return false;
+    var text = String(value).trim();
+    if (!text) return false;
+    if (isImageLikeRelationValue(text)) return false;
+
+    var letters = (text.match(/[A-Za-z]/g) || []).length;
+    var digits = (text.match(/\d/g) || []).length;
+    if (letters >= 2 && (digits === 0 || letters >= digits)) return true;
+    if (text.indexOf(' ') !== -1 && letters >= 1) return true;
+    return false;
+  }
+
+  function inferRelationSlotType(sampleValues) {
+    var imageVotes = 0;
+    var textVotes = 0;
+    var values = Array.isArray(sampleValues) ? sampleValues.slice(0, SAMPLE_ROW_SCAN_LIMIT) : [];
+    values.forEach(function(value) {
+      if (isImageLikeRelationValue(value)) {
+        imageVotes += 1;
+      } else if (isTextLikeRelationValue(value)) {
+        textVotes += 1;
+      }
+    });
+    return (imageVotes > 0 && imageVotes >= textVotes) ? 'rel_photo' : 'text';
+  }
+
+  function inferFieldType(headerName, sampleValues) {
+    var normalized = headerName.trim().toLowerCase().replace(/[_\-]+/g, ' ');
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    if (RELATION_PHOTO_RE.test(normalized)) {
+      return 'rel_photo';
+    }
+    if (/\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b/.test(normalized)) {
+      return 'rel_photo';
+    }
+    if (RELATION_SLOT_RE.test(normalized)) {
+      return inferRelationSlotType(sampleValues);
+    }
     for (var i = 0; i < HEADER_TYPE_MAP.length; i++) {
       if (HEADER_TYPE_MAP[i].patterns.indexOf(normalized) !== -1) {
         return HEADER_TYPE_MAP[i].type;
@@ -262,10 +330,15 @@ function initCreateWithXlsx(opts) {
           });
         }).length;
 
+        var sampleRows = jsonData.slice(1, 1 + SAMPLE_ROW_SCAN_LIMIT);
+
         detectedFields = headers.map(function(header, idx) {
+          var sampleValues = sampleRows.map(function(row) {
+            return Array.isArray(row) ? row[idx] : null;
+          });
           return {
             name: header.toUpperCase(),
-            type: inferFieldType(header),
+            type: inferFieldType(header, sampleValues),
             mandatory: false,
             order: idx
           };

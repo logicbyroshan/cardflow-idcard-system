@@ -42,10 +42,10 @@ function createRowFromCard(card, index) {
     // Use global IMAGE_FIELD_TYPES
     const localImageFieldTypes = (typeof IMAGE_FIELD_TYPES !== 'undefined') 
         ? IMAGE_FIELD_TYPES 
-        : ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+        : ['photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
     
     // Image field name patterns (for detecting by name when type might not be set correctly)
-    const imageFieldNamePatterns = ['photo', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
+    const imageFieldNamePatterns = ['photo', 'rel photo', 'relation photo', 'relation image', 'relation pic', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
     
     function isImageFieldType(fieldType) {
         if (!fieldType) return false;
@@ -55,15 +55,22 @@ function createRowFromCard(card, index) {
     function isImageFieldByName(fieldName) {
         if (!fieldName) return false;
         const normalizedName = fieldName.toLowerCase().trim();
+        const spacedName = normalizedName.replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        if (/^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$/.test(spacedName)) {
+            return true;
+        }
+        if (/\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b/.test(spacedName)) {
+            return true;
+        }
         // Use word boundary matching to avoid false positives like 'designation' matching 'sign'
         const patterns = ['photo', 'sign', 'signature', 'barcode', 'qr'];
         for (const pattern of patterns) {
             const regex = new RegExp('\\b' + pattern + '\\b');
-            if (regex.test(normalizedName)) {
+            if (regex.test(spacedName)) {
                 return true;
             }
         }
-        return false;
+        return imageFieldNamePatterns.some(pattern => normalizedName === pattern || spacedName === pattern);
     }
     
     function isImageField(fieldType, fieldName) {

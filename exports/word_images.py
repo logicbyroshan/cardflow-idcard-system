@@ -19,7 +19,7 @@ class WordImagesMixin:
     """Mixin providing image handling methods for Word exports."""
 
     # Border is intentionally limited to portrait photos only.
-    BORDERED_IMAGE_SUBTYPES = {'photo', 'mother_photo', 'father_photo'}
+    BORDERED_IMAGE_SUBTYPES = {'photo', 'rel_photo', 'mother_photo', 'father_photo'}
     PHOTO_BORDER_PX = 2  # ~1pt visual thickness on typical display scaling
     PHOTO_BORDER_COLOR = (0, 0, 0)
     WORD_BORDER_PT = 1.0

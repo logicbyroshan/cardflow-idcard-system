@@ -9,8 +9,8 @@
 // CONSTANTS
 // NOTE: Must stay in sync with mediafiles/constants.py
 // ==========================================
-var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
-var IMAGE_FIELD_NAME_PATTERNS = ['photo', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
+var IMAGE_FIELD_TYPES = ['photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+var IMAGE_FIELD_NAME_PATTERNS = ['photo', 'rel photo', 'relation photo', 'relation image', 'relation pic', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
 var VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.heif', '.hei'];
 
 // Populate on upload  currently empty (populated during XLSX validation)
@@ -41,14 +41,21 @@ function isImageFieldType(fieldType) {
 function isImageFieldByName(fieldName) {
     if (!fieldName) return false;
     const normalizedName = fieldName.toLowerCase().trim();
+    const spacedName = normalizedName.replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/^(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)$/.test(spacedName)) {
+        return true;
+    }
+    if (/\b(?:father|mother)\b\s*(?:photo|image|pic|picture)\b/.test(spacedName)) {
+        return true;
+    }
     const patterns = ['photo', 'sign', 'signature', 'barcode', 'qr'];
     for (const pattern of patterns) {
         const regex = new RegExp('\\b' + pattern + '\\b');
-        if (regex.test(normalizedName)) {
+        if (regex.test(spacedName)) {
             return true;
         }
     }
-    return IMAGE_FIELD_NAME_PATTERNS.some(pattern => normalizedName === pattern);
+    return IMAGE_FIELD_NAME_PATTERNS.some(pattern => normalizedName === pattern || spacedName === pattern);
 }
 
 function isImageField(field) {

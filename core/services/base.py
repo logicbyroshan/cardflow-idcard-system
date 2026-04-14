@@ -71,6 +71,7 @@ class BaseService:
     IMAGE_COLUMN_ORDER = [
         'photo', 'father photo', 'f photo',
         'mother photo', 'm photo',
+        'rel photo', 'relation photo', 'rel 1 photo', 'rel 2 photo',
         'signature', 'sign',
         'barcode',
         'qr code', 'qr_code', 'qr',
@@ -232,6 +233,11 @@ class BaseService:
             return False
         import re
         name_lower = field_name.lower()
+        normalized_name = re.sub(r'[\s_-]+', ' ', name_lower).strip()
+
+        if re.search(r'\b(?:rel(?:ation)?)\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)\b', normalized_name):
+            return True
+
         # Use word boundary matching to avoid false positives like 'designation' matching 'sign'
         for pattern in cls.IMAGE_FIELD_NAME_PATTERNS:
             # Create regex with word boundary for patterns that could be substrings
@@ -286,6 +292,8 @@ class BaseService:
             return 1   # Father Photo / F Photo
         if 'mother' in name_lower or re.match(r'^m\s+', name_lower):
             return 2   # Mother Photo / M Photo
+        if re.search(r'\b(?:rel(?:ation)?)\s*[_-]?\s*(?:1|one|2|two)\s*(?:photo|image|pic|picture)\b', name_lower):
+            return 1   # Relation photos (REL_1PHOTO / REL_2PHOTO)
         if re.search(r'\bsign\b|\bsignature\b', name_lower):
             return 3   # Signature / Sign
         if 'barcode' in name_lower:

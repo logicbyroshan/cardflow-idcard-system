@@ -23,19 +23,36 @@ class IDCardTableService(BaseService):
     MAX_FIELDS_PER_TABLE = 30
     VALID_FIELD_TYPES = [
         'text', 'number', 'date', 'email', 'image', 'textarea', 'class', 'section',
-        'photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature',
+        'photo', 'rel_photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature',
     ]
+    LEGACY_REL_PHOTO_ALIASES = {'mother_photo', 'father_photo'}
+
+    @classmethod
+    def _normalize_field_type(cls, field_type: str) -> str:
+        """Map legacy relation-photo aliases to canonical rel_photo."""
+        normalized = str(field_type or 'text').strip().lower()
+        if normalized in cls.LEGACY_REL_PHOTO_ALIASES:
+            return 'rel_photo'
+        return normalized
 
     # ==================== Serialization ====================
 
     @classmethod
     def serialize_table(cls, table: IDCardTable) -> Dict[str, Any]:
         """Serialize IDCardTable to dict"""
+        normalized_fields = []
+        for field in (table.fields or []):
+            if not isinstance(field, dict):
+                continue
+            normalized = dict(field)
+            normalized['type'] = cls._normalize_field_type(field.get('type', 'text'))
+            normalized_fields.append(normalized)
+
         return {
             'id': table.id,
             'name': table.name,
-            'fields': table.fields,
-            'field_count': len(table.fields) if table.fields else 0,
+            'fields': normalized_fields,
+            'field_count': len(normalized_fields),
             'is_active': table.is_active,
             'created_at': localtime(table.created_at).strftime('%d-%b-%Y %H:%M'),
             'updated_at': localtime(table.updated_at).strftime('%d-%b-%Y %H:%M'),
@@ -64,7 +81,7 @@ class IDCardTableService(BaseService):
             validated_fields = []
             for idx, field in enumerate(fields):
                 field_name = field.get('name', '').strip().upper()
-                field_type = field.get('type', 'text')
+                field_type = cls._normalize_field_type(field.get('type', 'text'))
                 field_mandatory = bool(field.get('mandatory', False))
 
                 if not field_name:
@@ -132,7 +149,7 @@ class IDCardTableService(BaseService):
             validated_fields = []
             for idx, field in enumerate(fields):
                 field_name = field.get('name', '').strip().upper()
-                field_type = field.get('type', 'text')
+                field_type = cls._normalize_field_type(field.get('type', 'text'))
                 field_mandatory = bool(field.get('mandatory', False))
 
                 if not field_name:

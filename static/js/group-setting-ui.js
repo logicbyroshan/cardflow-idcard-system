@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
             GSP.newFieldName.value = 'Class & Section (auto)';
             GSP.newFieldName.disabled = true;
             GSP.newFieldName.classList.add('disabled');
-        } else if (GSP.imageFieldTypes.includes(fieldType)) {
+        } else if ((GSP.fixedNameImageFieldTypes || []).includes(fieldType)) {
             // Image type: auto-fill name and disable input
             GSP.newFieldName.value = GSP.imageFieldNames[fieldType];
             GSP.newFieldName.disabled = true;

@@ -162,6 +162,26 @@ class HeaderHumanizeFilterTests(TestCase):
         self.assertEqual(humanize_header('STUDENTNAME'), 'STUDENT NAME')
 
 
+class XlsxRelationFieldInferenceTests(SimpleTestCase):
+    def test_plain_relation_slot_prefers_text_for_name_like_values(self):
+        from core.views.idcard_table_api import _infer_field_type
+
+        inferred = _infer_field_type('REL_1', sample_values=['RAMESH', 'SITA', 'RAJ'])
+        self.assertEqual(inferred, 'text')
+
+    def test_plain_relation_slot_can_become_rel_photo_for_image_like_values(self):
+        from core.views.idcard_table_api import _infer_field_type
+
+        inferred = _infer_field_type('REL_1', sample_values=['10001234', '10004567', '10007890'])
+        self.assertEqual(inferred, 'rel_photo')
+
+    def test_relation_slot_with_explicit_photo_suffix_stays_rel_photo(self):
+        from core.views.idcard_table_api import _infer_field_type
+
+        inferred = _infer_field_type('REL_1PHOTO', sample_values=['FATHER NAME'])
+        self.assertEqual(inferred, 'rel_photo')
+
+
 class CropperWebhookSecurityTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
