@@ -864,37 +864,66 @@ def engine_download(request):
     """
     Stream AdarshEngineSetup.exe (Inno Setup installer) to the browser as an attachment.
 
-    Looks for the file in:
-      1. MEDIA_ROOT/engine/AdarshEngineSetup.exe  (primary)
-      2. STATICFILES_DIRS[0]/engine/AdarshEngineSetup.exe  (legacy fallback)
-      3. STATIC_ROOT/engine/AdarshEngineSetup.exe           (legacy fallback)
+        Resolves the newest available installer from known locations, then serves it as
+        AdarshEngineSetup.exe. If the newest file is outside MEDIA_ROOT, it attempts to
+        sync a copy into MEDIA_ROOT/engine first.
     """
     from django.conf import settings
     from django.http import Http404
 
-    candidates = []
+    installer_names = ['AdarshEngineSetup.exe', 'PassportEngineSetup.exe']
+    search_dirs = []
 
-    # Primary: media directory (not processed by collectstatic)
-    if hasattr(settings, 'MEDIA_ROOT') and settings.MEDIA_ROOT:
-        candidates.append(Path(settings.MEDIA_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
+    media_engine_dir = None
+    if getattr(settings, 'MEDIA_ROOT', None):
+        media_engine_dir = Path(settings.MEDIA_ROOT) / 'engine'
+        search_dirs.append(media_engine_dir)
 
-    # Legacy fallback: staticfiles dirs (dev)
     for sdir in getattr(settings, 'STATICFILES_DIRS', []):
-        candidates.append(Path(sdir) / 'engine' / 'AdarshEngineSetup.exe')
+        search_dirs.append(Path(sdir) / 'engine')
 
-    # Legacy fallback: collected static root (production)
-    if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
-        candidates.append(Path(settings.STATIC_ROOT) / 'engine' / 'AdarshEngineSetup.exe')
+    if getattr(settings, 'STATIC_ROOT', None):
+        search_dirs.append(Path(settings.STATIC_ROOT) / 'engine')
 
-    exe_path = None
-    for candidate in candidates:
-        if candidate.exists():
-            exe_path = candidate
-            break
+    base_dir = Path(getattr(settings, 'BASE_DIR', Path(__file__).resolve().parents[2]))
+    search_dirs.extend([
+        base_dir / 'Face Cropper' / 'Output',
+        base_dir / 'Face Cropper' / 'installer',
+        base_dir / 'Face Cropper' / 'dist',
+        base_dir / 'Output',
+        base_dir / 'installer',
+    ])
 
-    if exe_path is None:
+    candidates = []
+    for folder in search_dirs:
+        for name in installer_names:
+            candidate = folder / name
+            if candidate.exists() and candidate.is_file():
+                candidates.append(candidate)
+
+    if not candidates:
         logger.error("AdarshEngineSetup.exe not found in any candidate path.")
         raise Http404("AdarshEngine installer not found.")
+
+    # Serve the newest build to avoid stale installer downloads.
+    exe_path = max(candidates, key=lambda p: p.stat().st_mtime)
+
+    if media_engine_dir:
+        target_media_exe = media_engine_dir / 'AdarshEngineSetup.exe'
+        try:
+            if (
+                not target_media_exe.exists()
+                or target_media_exe.stat().st_mtime < exe_path.stat().st_mtime
+                or target_media_exe.stat().st_size != exe_path.stat().st_size
+            ):
+                media_engine_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(exe_path), str(target_media_exe))
+                exe_path = target_media_exe
+                logger.info("Synced latest installer to MEDIA_ROOT: %s", target_media_exe)
+            elif target_media_exe.exists():
+                exe_path = target_media_exe
+        except Exception as sync_exc:
+            logger.warning("Installer sync to MEDIA_ROOT failed: %s", sync_exc)
 
     logger.info("Serving AdarshEngineSetup.exe from: %s", exe_path)
 
