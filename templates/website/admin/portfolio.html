@@ -86,6 +86,48 @@
         font-size: var(--ui-font-size-xl, 16px);
     }
 
+    .portfolio-current-media {
+        border: 1px solid var(--color-slate-200);
+        border-radius: 4px;
+        background: #f8fafc;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .portfolio-current-media .media-preview {
+        width: 100%;
+        max-height: 200px;
+        border-radius: 4px;
+        border: 1px solid var(--color-slate-200);
+        background: #fff;
+        object-fit: contain;
+    }
+
+    .portfolio-current-media .media-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .portfolio-current-media .media-type {
+        font-size: var(--ui-font-size-xs, 11px);
+        font-weight: 700;
+        color: var(--color-slate-700);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .portfolio-current-media .media-link {
+        font-size: var(--ui-font-size-xs, 11px);
+        color: var(--color-indigo-700);
+        text-decoration: underline;
+        word-break: break-all;
+    }
+
     .portfolio-items-pane .wa-cell-title,
     .portfolio-categories-pane .wa-cell-title {
         max-width: 240px;
@@ -624,7 +666,7 @@
                 </div>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-neutral" onclick="closeCategoryModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button type="button" class="btn btn-neutral btn-icon" onclick="closeCategoryModal()" title="Cancel" aria-label="Cancel"><i class="fa-solid fa-xmark"></i></button>
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
             </div>
         </form>
@@ -641,6 +683,11 @@
         <form id="portfolioForm" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" id="portfolioId" value="">
+            <div class="wa-form-group" id="pf_current_media_group" style="display:none;">
+                <label>Current Media</label>
+                <div id="pf_current_media" class="portfolio-current-media"></div>
+                <small class="form-hint">Upload a new file below to replace the current media.</small>
+            </div>
             <div class="wa-form-row">
                 <div class="wa-form-group">
                     <label for="pf_category">Category</label>
@@ -670,6 +717,11 @@
                 <small class="form-hint">Upload video for Video or Reel items.</small>
             </div>
             <div class="wa-form-group">
+                <label for="pf_video_url"><i class="fa-solid fa-link"></i> Video URL (optional)</label>
+                <input type="url" id="pf_video_url" name="video_url" placeholder="https://example.com/video.mp4">
+                <small class="form-hint">Use this when video is hosted externally.</small>
+            </div>
+            <div class="wa-form-group">
                 <label for="pf_item_type">Media Type</label>
                 <select id="pf_item_type" name="item_type" class="form-select">
                     <option value="image">Image</option>
@@ -693,7 +745,7 @@
                 </div>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-neutral" onclick="closePortfolioModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button type="button" class="btn btn-neutral btn-icon" onclick="closePortfolioModal()" title="Cancel" aria-label="Cancel"><i class="fa-solid fa-xmark"></i></button>
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
             </div>
         </form>
@@ -733,7 +785,7 @@
                 </div>
             </div>
             <div class="wa-modal-footer">
-                <button type="button" class="btn btn-neutral" onclick="closeBulkUploadModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                <button type="button" class="btn btn-neutral btn-icon" onclick="closeBulkUploadModal()" title="Cancel" aria-label="Cancel"><i class="fa-solid fa-xmark"></i></button>
                 <button type="submit" class="btn btn-primary" id="bulkUploadBtn"><i class="fa-solid fa-cloud-arrow-up"></i> Upload All</button>
             </div>
         </form>
@@ -767,7 +819,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=136"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=137"></script>
 <script>
 function switchPortfolioPane(targetId) {
     var panes = document.querySelectorAll('.portfolio-pane');

@@ -99,6 +99,7 @@ def home(request):
     # Website section data (cached 60s)
     home_sections = cache.get('home_sections')
     if home_sections is None:
+        image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
         home_sections = {
             'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
             'trusted_clients': list(
@@ -107,8 +108,18 @@ def home(request):
                 .exclude(website_logo='')
                 .order_by('website_display_order', 'name', 'id')
             ),
-            'featured_portfolio': list(PortfolioItem.objects.filter(is_active=True, is_featured=True).order_by('order')),
-            'recent_portfolio': list(PortfolioItem.objects.filter(is_active=True).order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]),
+            'featured_portfolio': list(
+                PortfolioItem.objects
+                .filter(is_active=True, is_featured=True)
+                .filter(image_products_filter)
+                .order_by('order')
+            ),
+            'recent_portfolio': list(
+                PortfolioItem.objects
+                .filter(is_active=True)
+                .filter(image_products_filter)
+                .order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]
+            ),
             'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
         }
         cache.set('home_sections', home_sections, 60)

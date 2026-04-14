@@ -5,6 +5,7 @@
     var BUTTON_CLASS = 'icon-btn-with-auto-label';
     var LABEL_CLASS = 'icon-btn-auto-label';
     var SKIP_SELECTOR = '[data-icon-label-skip="1"], .icon-label-skip';
+    var FORCE_SELECTOR = '[data-icon-label-force="1"], .icon-label-force';
 
     var ICON_LABEL_MAP = {
         'fa-angles-left': 'First',
@@ -122,12 +123,22 @@
         return '';
     }
 
+    function shouldAutoLabel(button) {
+        if (!(button instanceof HTMLElement)) return false;
+        if (button.matches(FORCE_SELECTOR) || button.closest(FORCE_SELECTOR)) return true;
+
+        // Keep auto labels on pagination controls only.
+        if (button.classList.contains('pagination-btn')) return true;
+        return false;
+    }
+
     function processButton(button) {
         if (!(button instanceof HTMLElement)) return;
         if (button.tagName !== 'BUTTON') return;
         if (button.getAttribute(APPLIED_ATTR) === '1') return;
         if (button.matches(SKIP_SELECTOR) || button.closest(SKIP_SELECTOR)) return;
         if (!button.querySelector('i,svg')) return;
+        if (!shouldAutoLabel(button)) return;
 
         if (hasVisibleText(button)) {
             button.setAttribute(APPLIED_ATTR, '1');

@@ -5,16 +5,98 @@
  */
 (function () {
     const BASE = '/website/api';
+    const portfolioForm = document.getElementById('portfolioForm');
+    const currentMediaGroup = document.getElementById('pf_current_media_group');
+    const currentMediaBox = document.getElementById('pf_current_media');
+    const itemTypeField = document.getElementById('pf_item_type');
+    const videoUrlField = document.getElementById('pf_video_url');
 
     /* ================================================================
        PORTFOLIO ITEM  MODAL
     ================================================================ */
 
+    function resetCurrentMediaPreview() {
+        if (!currentMediaGroup || !currentMediaBox) return;
+        currentMediaBox.innerHTML = '';
+        currentMediaGroup.style.display = 'none';
+    }
+
+    function mediaTypeLabel(itemType) {
+        if (itemType === 'video') return 'Video';
+        if (itemType === 'reel') return 'Reel';
+        return 'Image';
+    }
+
+    function appendMediaLink(url, text) {
+        if (!url || !currentMediaBox) return;
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'media-link';
+        link.textContent = text;
+        currentMediaBox.appendChild(link);
+    }
+
+    function renderCurrentMediaPreview(item) {
+        if (!currentMediaGroup || !currentMediaBox) return;
+        currentMediaBox.innerHTML = '';
+
+        const type = (item.item_type || 'image').toLowerCase();
+        const imageUrl = item.image || '';
+        const videoFileUrl = item.video_file || '';
+        const videoUrl = item.video_url || '';
+        const hasAnyMedia = Boolean(imageUrl || videoFileUrl || videoUrl);
+
+        if (!hasAnyMedia) {
+            currentMediaGroup.style.display = 'none';
+            return;
+        }
+
+        let previewEl = null;
+        if ((type === 'video' || type === 'reel') && videoFileUrl) {
+            previewEl = document.createElement('video');
+            previewEl.src = videoFileUrl;
+            previewEl.controls = true;
+            previewEl.preload = 'metadata';
+            previewEl.className = 'media-preview';
+            previewEl.setAttribute('playsinline', '');
+        } else if (imageUrl) {
+            previewEl = document.createElement('img');
+            previewEl.src = imageUrl;
+            previewEl.alt = 'Current media preview';
+            previewEl.className = 'media-preview';
+            previewEl.loading = 'lazy';
+            previewEl.decoding = 'async';
+        }
+
+        if (previewEl) currentMediaBox.appendChild(previewEl);
+
+        const meta = document.createElement('div');
+        meta.className = 'media-meta';
+
+        const typeTag = document.createElement('span');
+        typeTag.className = 'media-type';
+        typeTag.textContent = 'Current type: ' + mediaTypeLabel(type);
+        meta.appendChild(typeTag);
+
+        currentMediaBox.appendChild(meta);
+
+        if (videoFileUrl) appendMediaLink(videoFileUrl, 'Open uploaded video');
+        if (!videoFileUrl && videoUrl) appendMediaLink(videoUrl, 'Open linked video URL');
+        if (!previewEl && imageUrl) appendMediaLink(imageUrl, 'Open current image');
+
+        currentMediaGroup.style.display = 'block';
+    }
+
     window.openPortfolioModal = function (id) {
         document.getElementById('portfolioModalTitle').textContent = id ? 'Edit Portfolio Item' : 'Add Portfolio Item';
-        document.getElementById('portfolioForm').reset();
+        portfolioForm.reset();
         document.getElementById('portfolioId').value = id || '';
         document.getElementById('pf_item_type').value = 'image';
+        if (videoUrlField) videoUrlField.value = '';
+        resetCurrentMediaPreview();
+
         if (id) {
             ApiClient.get(`${BASE}/portfolio/${id}/`)
                 .then(d => {
@@ -23,10 +105,13 @@
                     document.getElementById('pf_category').value = p.category_id || '';
                     document.getElementById('pf_order').value = p.order || 0;
                     document.getElementById('pf_item_type').value = p.item_type || 'image';
+                    if (videoUrlField) videoUrlField.value = p.video_url || '';
                     document.getElementById('pf_active').checked = p.is_active;
                     document.getElementById('pf_featured').checked = p.is_featured;
+                    renderCurrentMediaPreview(p);
                 });
         }
+
         if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
             window.AdarshModalBridge.open('portfolioModal', { overlayClass: 'show' });
         } else {
@@ -43,15 +128,22 @@
     window.editPortfolio = function (id) { openPortfolioModal(id); };
 
     /* FORM SUBMIT */
-    document.getElementById('portfolioForm').addEventListener('submit', function (e) {
+    portfolioForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const id = document.getElementById('portfolioId').value;
         const fd = new FormData(this);
         const url = id ? `${BASE}/portfolio/${id}/update/` : `${BASE}/portfolio/create/`;
-        if (!fd.has('is_active')) fd.append('is_active', 'false');
-        else fd.set('is_active', 'true');
-        if (!fd.has('is_featured')) fd.append('is_featured', 'false');
-        else fd.set('is_featured', 'true');
+
+        const selectedType = itemTypeField ? (itemTypeField.value || 'image') : 'image';
+        fd.set('item_type', selectedType);
+        fd.set('is_active', document.getElementById('pf_active').checked ? 'true' : 'false');
+        fd.set('is_featured', document.getElementById('pf_featured').checked ? 'true' : 'false');
+
+        if (selectedType === 'image') {
+            fd.set('video_url', '');
+            fd.delete('video_file');
+        }
+
         ApiClient.upload(url, fd)
             .then(d => {
                 if (d.success) { showToast(d.message, 'success'); location.reload(); }

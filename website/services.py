@@ -111,6 +111,18 @@ def _detect_orientation(image_file):
         return ''
 
 
+def _build_portfolio_item_title(category_id=None):
+    """Generate default PortfolioItem title in '<Category> <CODE>' format."""
+    code = uuid.uuid4().hex[:6].upper()
+    if category_id:
+        try:
+            cat = PortfolioCategory.objects.only('name').get(pk=int(category_id))
+            return f"{cat.name} {code}"
+        except (PortfolioCategory.DoesNotExist, TypeError, ValueError):
+            pass
+    return f"Item {code}"
+
+
 # =============================================================================
 # WEBSITE STATUS
 # =============================================================================
@@ -379,15 +391,7 @@ class PortfolioItemService:
         if image and item_type == 'image':
             orientation = _detect_orientation(image)
 
-        title = 'Portfolio Item'
-        if category_id:
-            try:
-                cat = PortfolioCategory.objects.get(pk=int(category_id))
-                title = f"{cat.name} {uuid.uuid4().hex[:6].upper()}"
-            except PortfolioCategory.DoesNotExist:
-                title = f"Item {uuid.uuid4().hex[:6].upper()}"
-        else:
-            title = f"Item {uuid.uuid4().hex[:6].upper()}"
+        title = _build_portfolio_item_title(category_id)
 
         with transaction.atomic():
             item = PortfolioItem(
@@ -434,15 +438,22 @@ class PortfolioItemService:
 
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)
+            category_changed = False
             for field, value in [
                 ('orientation', orientation),
                 ('item_type', item_type),
-                ('video_url', video_url),
             ]:
                 if value is not None:
                     setattr(item, field, value)
+
+            if video_url is not None:
+                item.video_url = video_url
+
             if category_id is not None:
-                item.category_id = int(category_id) if category_id else None
+                new_category_id = int(category_id) if category_id else None
+                category_changed = (item.category_id != new_category_id)
+                item.category_id = new_category_id
+
             if order is not None:
                 item.order = int(order)
             if is_active is not None:
@@ -453,6 +464,21 @@ class PortfolioItemService:
                 item.image = image
             if video_file:
                 item.video_file = video_file
+
+            # Keep generated naming pattern in sync when category changes.
+            if category_changed:
+                item.title = _build_portfolio_item_title(item.category_id)
+
+            # When switching to image, clear video sources so type changes are reflected.
+            if item.item_type == 'image':
+                if item.video_file:
+                    try:
+                        item.video_file.delete(save=False)
+                    except Exception:
+                        logger.warning("Failed to delete previous video file for PortfolioItem %d", pk)
+                item.video_file = None
+                item.video_url = ''
+
             item.save()
         return item
 
