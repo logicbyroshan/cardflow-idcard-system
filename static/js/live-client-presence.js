@@ -97,11 +97,11 @@
 
         document.addEventListener('visibilitychange', function () {
             if (document.hidden) {
-                postPresence('stop', tabId, true);
-                stopHeartbeat();
+                // Keep the session live for background tabs; only close on real page exit.
+                postPresence('heartbeat', tabId, true);
                 return;
             }
-            postPresence('start', tabId, false);
+            postPresence('heartbeat', tabId, false);
             startHeartbeat();
         });
 
