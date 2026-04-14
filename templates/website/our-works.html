@@ -4,8 +4,8 @@
 {% block title %}Our Products{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=151">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=151">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=152">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=152">
 {% endblock %}
 
 {% block content %}
@@ -158,12 +158,19 @@
         </div>
     </div>
 
-    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
-        <button class="lightbox-close" id="lightboxClose" aria-label="Close image preview"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous image"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
-        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next image"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Media preview">
+        <button class="lightbox-close" id="lightboxClose" aria-label="Close media preview"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev" aria-label="Previous item"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+        <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label="Next item"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
         <div class="lightbox-content">
-            <img src="" id="lightboxImage" alt="Image preview">
+            <div class="lightbox-stage">
+                <img src="" id="lightboxImage" alt="Media preview">
+                <video id="lightboxVideo" playsinline preload="metadata"></video>
+                <button class="lightbox-video-toggle" id="lightboxVideoToggle" aria-label="Play or pause video">
+                    <i class="fa-solid fa-play" aria-hidden="true"></i>
+                </button>
+                <div class="lightbox-video-time" id="lightboxVideoTime">0:00 / 0:00</div>
+            </div>
             <div class="lightbox-footer">
                 <div class="lightbox-caption" id="lightboxCaption"></div>
                 <div class="lightbox-counter" id="lightboxCounter"></div>
@@ -174,11 +181,11 @@
     <div class="video-modal" id="videoModal" role="dialog" aria-modal="true" aria-label="Video player">
         <div class="video-modal-content">
             <button class="video-modal-close" id="videoModalClose" aria-label="Close video"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            <video id="modalVideo" controls src=""></video>
+            <video id="modalVideo" src=""></video>
         </div>
     </div>
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=151"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=152"></script>
 {% endblock %}
