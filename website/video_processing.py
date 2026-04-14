@@ -68,6 +68,18 @@ def _safe_stem(value: str) -> str:
     return stem or 'video'
 
 
+def _build_even_scale_filter(max_width: int, max_height: int) -> str:
+    # H.264 requires even frame dimensions; enforce that after aspect fit.
+    return (
+        'scale='
+        + str(max_width)
+        + ':'
+        + str(max_height)
+        + ':force_original_aspect_ratio=decrease,'
+        + 'scale=trunc(iw/2)*2:trunc(ih/2)*2'
+    )
+
+
 def _portfolio_derivative_relpaths(video_rel_path: str):
     normalized = _normalize_media_relpath(video_rel_path)
     base_name = os.path.basename(normalized)
@@ -171,13 +183,7 @@ def normalize_portfolio_video_upload(file_obj):
 
         tmp_out = tmp_in + '_normalized.mp4'
 
-        scale_filter = (
-            'scale='
-            + str(VIDEO_MAX_WIDTH)
-            + ':'
-            + str(VIDEO_MAX_HEIGHT)
-            + ':force_original_aspect_ratio=decrease'
-        )
+        scale_filter = _build_even_scale_filter(VIDEO_MAX_WIDTH, VIDEO_MAX_HEIGHT)
 
         cmd = [
             ffmpeg_exe, '-y',
@@ -308,11 +314,7 @@ def ensure_portfolio_video_derivatives(video_rel_path: str, force: bool = False)
                 ffmpeg_exe, '-y',
                 '-i', input_abs,
                 '-vf', (
-                    'scale='
-                    + str(VIDEO_MAX_WIDTH)
-                    + ':'
-                    + str(VIDEO_MAX_HEIGHT)
-                    + ':force_original_aspect_ratio=decrease'
+                    _build_even_scale_filter(VIDEO_MAX_WIDTH, VIDEO_MAX_HEIGHT)
                 ),
                 '-c:v', 'libx264',
                 '-preset', 'veryfast',
