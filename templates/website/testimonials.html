@@ -43,7 +43,7 @@
                 <button class="filter-tab" data-filter="support">Support</button>
             </div>
             
-            <div class="testimonials-masonry" id="testimonialGrid">
+            <div class="testimonials-masonry" id="testimonialGrid" data-helpful-url="{% url 'website:mark_testimonial_helpful' %}">
                 {% for t in text_testimonials %}
                 <div class="testimonial-card" data-category="{{ t.tag|lower }}">
                     <div class="card-header">
@@ -70,10 +70,11 @@
                     </div>
                     <div class="card-footer">
                         <span class="review-date"><i class="fa-regular fa-calendar-days"></i> {{ t.review_date|date:'M Y' }}</span>
-                        <div class="helpful-btn" data-id="{{ t.id }}">
+                        <button type="button" class="helpful-btn" data-id="{{ t.id }}" aria-label="Mark review by {{ t.reviewer_name }} as helpful">
                             <i class="fa-regular fa-thumbs-up"></i>
-                            <span>Helpful ({{ t.helpful_count }})</span>
-                        </div>
+                            <span class="helpful-label">Helpful</span>
+                            <span class="helpful-count">{{ t.helpful_count }}</span>
+                        </button>
                     </div>
                     {% if t.tag %}<div class="card-tag">{{ t.tag }}</div>{% endif %}
                 </div>

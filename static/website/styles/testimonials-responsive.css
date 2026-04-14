@@ -250,6 +250,12 @@
     
     .card-header {
         gap: 12px;
+        align-items: flex-start;
+        padding-right: 84px;
+    }
+
+    .reviewer-info {
+        min-width: 0;
     }
     
     .reviewer-avatar {
@@ -272,6 +278,7 @@
     .card-rating {
         padding: 5px 10px;
         font-size: 0.8rem;
+        margin-left: auto;
     }
     
     .card-content p {

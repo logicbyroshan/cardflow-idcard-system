@@ -9,7 +9,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.conf import settings as _s
-from django.db.models import Avg, Case, When, Value, IntegerField, Q
+from django.db.models import Avg, Case, When, Value, IntegerField, Q, F
 import logging
 
 from accounts.rate_limit import rate_limit
@@ -446,6 +446,26 @@ def submit_testimonial(request):
     except Exception as e:
         logger.error("Testimonial submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)
+
+
+@require_POST
+@rate_limit(max_requests=30, window_seconds=300, key_prefix='public_helpful')
+def mark_testimonial_helpful(request):
+    """Increment helpful_count for an active testimonial."""
+    raw_id = request.POST.get('id', '').strip()
+    try:
+        testimonial_id = int(raw_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid testimonial id.'}, status=400)
+
+    updated = Testimonial.objects.filter(id=testimonial_id, is_active=True).update(
+        helpful_count=F('helpful_count') + 1
+    )
+    if not updated:
+        return JsonResponse({'success': False, 'message': 'Review not found.'}, status=404)
+
+    new_count = Testimonial.objects.filter(id=testimonial_id).values_list('helpful_count', flat=True).first() or 0
+    return JsonResponse({'success': True, 'helpful_count': int(new_count)})
 
 
 @require_POST

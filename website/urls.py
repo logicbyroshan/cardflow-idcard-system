@@ -26,6 +26,7 @@ urlpatterns = [
     # --- Form Submissions (AJAX Endpoints) ---
     path('submit-contact/', views.submit_contact, name='submit_contact'),
     path('submit-testimonial/', views.submit_testimonial, name='submit_testimonial'),
+    path('testimonial-helpful/', views.mark_testimonial_helpful, name='mark_testimonial_helpful'),
     
     # --- API Endpoints ---
     path('api/reels/', views.load_more_reels, name='load_more_reels'),

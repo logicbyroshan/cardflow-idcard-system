@@ -50,6 +50,14 @@ body {
     visibility: visible;
 }
 
+a,
+a:visited,
+a:hover,
+a:focus,
+a:active {
+    text-decoration: none;
+}
+
 .container {
     max-width: 1400px;
     margin: 0 auto;
@@ -74,10 +82,10 @@ body {
 
 .top-bar-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     color: var(--text-color);
-    font-size: 0.82rem;
+    padding-right: 92px;
     text-decoration: none;
     transition: all 0.3s ease;
     border: none;
@@ -193,6 +201,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
     font-size: 1.35rem;
     font-weight: bold;
     color: var(--white);
@@ -200,16 +209,25 @@ body {
     transition: var(--transition);
     opacity: 1 !important;
     visibility: visible !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .logo-img {
     width: 34px;
     height: 34px;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     border-radius: 4px;
     object-fit: contain;
     display: block;
     opacity: 1 !important;
     visibility: visible !important;
+    flex-shrink: 0;
+    margin-left: auto;
     flex-shrink: 0;
     padding: 1px;
     animation: logoSpin 1s ease-in-out;
@@ -1351,8 +1369,20 @@ body {
     flex-wrap: wrap;
 }
 
+    border: none;
+    background: transparent;
+    padding: 0;
 .download-app-btn {
     display: inline-flex;
+
+.helpful-btn .helpful-count {
+    font-weight: 700;
+}
+
+.helpful-btn.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
     align-items: center;
     gap: 10px;
     min-height: var(--btn-web-lg-height);
@@ -1748,16 +1778,17 @@ body {
     gap: 0.4rem;
 }
 
-.form-group label {
+.contact-form .form-group label {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--secondary-color);
     display: flex;
     align-items: center;
     gap: 6px;
+    padding-left: 8px;
 }
 
-.form-group label i {
+.contact-form .form-group label i {
     color: var(--primary-color);
     font-size: 0.8rem;
 }
@@ -1993,7 +2024,7 @@ body {
 
 .footer-section a:hover {
     color: var(--white);
-    text-decoration: underline;
+    text-decoration: none;
 }
 
 .social-links {
@@ -2040,7 +2071,7 @@ body {
 }
 
 .footer-bottom a:hover {
-    text-decoration: underline;
+    text-decoration: none;
 }
 
 /* ===== Responsive Design ===== */

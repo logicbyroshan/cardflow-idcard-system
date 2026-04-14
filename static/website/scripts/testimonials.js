@@ -5,6 +5,63 @@ document.addEventListener('DOMContentLoaded', function() {
     const cards = document.querySelectorAll('.testimonial-card');
     const testimonialGrid = document.getElementById('testimonialGrid');
 
+    function initHelpfulButtons() {
+        const helpfulButtons = document.querySelectorAll('.helpful-btn[data-id]');
+        if (!helpfulButtons.length || !testimonialGrid) return;
+
+        const helpfulUrl = testimonialGrid.dataset.helpfulUrl || '/testimonial-helpful/';
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+
+        helpfulButtons.forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                if (btn.dataset.loading === '1') return;
+
+                const testimonialId = btn.dataset.id;
+                if (!testimonialId) return;
+
+                btn.dataset.loading = '1';
+                btn.classList.add('is-loading');
+
+                try {
+                    const response = await fetch(helpfulUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        body: new URLSearchParams({ id: testimonialId }).toString(),
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.message || 'Unable to update helpful count.');
+                    }
+
+                    const countEl = btn.querySelector('.helpful-count');
+                    if (countEl) {
+                        countEl.textContent = String(data.helpful_count ?? countEl.textContent);
+                    }
+
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-regular');
+                        icon.classList.add('fa-solid');
+                    }
+
+                    btn.classList.add('active');
+                } catch (_err) {
+                    showToast('Unable to mark as helpful right now.', 'error');
+                } finally {
+                    btn.dataset.loading = '0';
+                    btn.classList.remove('is-loading');
+                }
+            });
+        });
+    }
+
+    initHelpfulButtons();
+
     filterTabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const filter = this.dataset.filter;
