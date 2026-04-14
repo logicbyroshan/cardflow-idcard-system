@@ -626,7 +626,11 @@ def api_live_client_presence(request):
     """Return current live working client count + IDs for dashboard updates."""
     try:
         payload = LiveClientPresenceService.get_live_payload_for_user(request.user)
-        return JsonResponse({'success': True, **payload})
+        response = JsonResponse({'success': True, **payload})
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
     except Exception as e:
         logger.exception('api_live_client_presence error: %s', e)
         return JsonResponse({'success': False, 'message': 'Could not load live client presence.'}, status=500)
@@ -652,7 +656,7 @@ def api_live_client_presence_stream(request):
         yield _sse_event('presence', initial_payload)
 
         while (time.monotonic() - start) < stop_after_seconds:
-            time.sleep(2)
+            time.sleep(1)
             current_version = LiveClientPresenceService.get_signal_version()
             now_mono = time.monotonic()
 

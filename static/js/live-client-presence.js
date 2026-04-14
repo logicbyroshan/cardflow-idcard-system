@@ -2,7 +2,7 @@
     'use strict';
 
     var HEARTBEAT_MS = 20000;
-    var LIVE_POLL_FALLBACK_MS = 5000;
+    var LIVE_POLL_FALLBACK_MS = 2000;
 
     function panelUrl(path) {
         if (!path) return path;
@@ -152,9 +152,12 @@
         var assistantBadge = document.getElementById('recentClientUpdatesAssistantBadge');
         if (!clientBadge && !assistantBadge) return;
 
-        fetch(panelUrl('/api/presence/live-count/'), {
+        var liveCountUrl = panelUrl('/api/presence/live-count/') + '?_ts=' + Date.now();
+
+        fetch(liveCountUrl, {
             method: 'GET',
             credentials: 'same-origin',
+            cache: 'no-store',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
             .then(function (resp) { return resp.ok ? resp.json() : null; })
