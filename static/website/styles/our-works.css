@@ -519,7 +519,8 @@ body.modal-open {
     overflow: hidden;
 }
 
-.category-slider .slider-img {
+.category-slider .slider-img,
+.category-slider .slider-video {
     position: absolute;
     top: 0;
     left: 0;
@@ -530,7 +531,13 @@ body.modal-open {
     transition: opacity 1s ease-in-out;
 }
 
-.category-slider .slider-img.active {
+.category-slider .slider-video {
+    pointer-events: none;
+    background: #0b1020;
+}
+
+.category-slider .slider-img.active,
+.category-slider .slider-video.active {
     opacity: 1;
 }
 

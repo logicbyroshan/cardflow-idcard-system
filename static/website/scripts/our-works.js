@@ -682,9 +682,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Initialize Category Card Background Images with Fade Carousel
- * Shows one image at a time, stays for 3 seconds, then fades to the next.
- * Top 10 images rotate per card.
+ * Initialize Category Card Background Media with Fade Carousel
+ * Shows one item at a time (image or video), stays for 3 seconds,
+ * then fades to the next. Top 10 media items rotate per card.
  */
 function initCategoryBackgrounds() {
     const dataElement = document.getElementById('categoryImagesData');
@@ -696,43 +696,87 @@ function initCategoryBackgrounds() {
         
         categoryCards.forEach(card => {
             const catId = card.dataset.category;
-            const images = categoryImages[catId];
+            const mediaItems = categoryImages[catId];
             const slider = card.querySelector('.category-slider');
             
             if (!slider) return;
             
-            if (images && images.length > 0) {
+            if (mediaItems && mediaItems.length > 0) {
                 // Hide placeholder
                 const placeholder = card.querySelector('.bg-placeholder');
                 if (placeholder) placeholder.style.display = 'none';
                 
-                // Use top 10 images max
-                const displayImages = images.slice(0, 10);
+                // Use top 10 media items max
+                const displayMedia = mediaItems.slice(0, 10);
                 
-                // Create image elements directly inside slider
-                displayImages.forEach((url, index) => {
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.alt = `Sample ${index + 1}`;
-                    img.className = 'slider-img';
-                    img.loading = index === 0 ? 'eager' : 'lazy';
-                    img.decoding = 'async';
-                    img.setAttribute('fetchpriority', index === 0 ? 'high' : 'low');
-                    if (index === 0) img.classList.add('active');
-                    slider.appendChild(img);
+                // Create media elements directly inside slider
+                displayMedia.forEach((media, index) => {
+                    const isObject = media && typeof media === 'object';
+                    const mediaType = isObject ? String(media.type || 'image').toLowerCase() : 'image';
+                    const mediaSrc = isObject ? media.src : media;
+                    if (!mediaSrc) return;
+
+                    if (mediaType === 'video') {
+                        const video = document.createElement('video');
+                        video.src = mediaSrc;
+                        video.className = 'slider-video';
+                        video.muted = true;
+                        video.loop = true;
+                        video.playsInline = true;
+                        video.preload = 'metadata';
+                        video.setAttribute('playsinline', '');
+                        if (isObject && media.poster) {
+                            video.poster = media.poster;
+                        }
+                        if (index === 0) video.classList.add('active');
+                        slider.appendChild(video);
+                    } else {
+                        const img = document.createElement('img');
+                        img.src = mediaSrc;
+                        img.alt = `Sample ${index + 1}`;
+                        img.className = 'slider-img';
+                        img.loading = index === 0 ? 'eager' : 'lazy';
+                        img.decoding = 'async';
+                        img.setAttribute('fetchpriority', index === 0 ? 'high' : 'low');
+                        if (index === 0) img.classList.add('active');
+                        slider.appendChild(img);
+                    }
                 });
 
-                // Start auto-rotation if multiple images
-                if (displayImages.length > 1) {
-                    let currentIndex = 0;
+                const mediaElements = slider.querySelectorAll('.slider-img, .slider-video');
+                if (!mediaElements.length) return;
+
+                function activateMedia(nextIndex) {
+                    mediaElements.forEach((el, idx) => {
+                        const isActive = idx === nextIndex;
+                        el.classList.toggle('active', isActive);
+
+                        if (el.tagName === 'VIDEO') {
+                            if (isActive) {
+                                const playPromise = el.play();
+                                if (playPromise && typeof playPromise.catch === 'function') {
+                                    playPromise.catch(() => {});
+                                }
+                            } else {
+                                el.pause();
+                                el.currentTime = 0;
+                            }
+                        }
+                    });
+                }
+
+                // Ensure first media item is active and video starts if needed.
+                let currentIndex = 0;
+                activateMedia(currentIndex);
+
+                // Start auto-rotation if multiple media items.
+                if (mediaElements.length > 1) {
                     let isPaused = false;
                     const rotateInterval = setInterval(() => {
                         if (isPaused) return;
-                        const imgs = slider.querySelectorAll('.slider-img');
-                        imgs[currentIndex].classList.remove('active');
-                        currentIndex = (currentIndex + 1) % imgs.length;
-                        imgs[currentIndex].classList.add('active');
-                    }, 3000); // 3 seconds per image
+                        currentIndex = (currentIndex + 1) % mediaElements.length;
+                        activateMedia(currentIndex);
+                    }, 3000); // 3 seconds per media
 
                     card.addEventListener('mouseenter', () => {
                         isPaused = true;

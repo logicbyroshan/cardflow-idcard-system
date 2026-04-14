@@ -162,23 +162,30 @@ def our_work(request):
         )
     ).order_by('has_order', 'order', '-created_at')
     
-    # Build category images for bento card sliding effect (multiple images per category)
-    # Fetch all items with images in ONE query, then group in Python (avoids N+1)
-    items_with_images = list(
-        items.filter(image__isnull=False).exclude(image='').values_list('category_id', 'image')
-    )
-    _cat_img_map = defaultdict(list)
-    for cat_id, img_path in items_with_images:
-        if img_path and len(_cat_img_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
-            _cat_img_map[cat_id].append(f'{_s.MEDIA_URL}{img_path}')
-    category_images = {str(cat.id): _cat_img_map.get(cat.id, []) for cat in categories}
-
-    # Build category items data for gallery modal (images + videos with orientation)
+    # Build bento media + gallery modal data in one pass.
+    # For bento cards, prefer images but fall back to videos so video-only
+    # categories still show rotating media.
+    _cat_media_map = defaultdict(list)
     _cat_items_map = defaultdict(list)
     for item in items:
         cat_id = str(item.category_id) if item.category_id else None
         if not cat_id:
             continue
+
+        if len(_cat_media_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
+            if item.image:
+                _cat_media_map[cat_id].append({
+                    'type': 'image',
+                    'src': item.image.url,
+                })
+            else:
+                _video_src = item.video_file.url if item.video_file else item.video_url
+                if _video_src:
+                    _cat_media_map[cat_id].append({
+                        'type': 'video',
+                        'src': _video_src,
+                    })
+
         entry = {
             'type': item.item_type or 'image',
             'orientation': item.orientation or 'square',
@@ -191,6 +198,8 @@ def our_work(request):
         elif item.video_url:
             entry['video'] = item.video_url
         _cat_items_map[cat_id].append(entry)
+
+    category_images = {str(cat.id): _cat_media_map.get(str(cat.id), []) for cat in categories}
     category_items = dict(_cat_items_map)
     
     # Separate reel-type items for the reels section
