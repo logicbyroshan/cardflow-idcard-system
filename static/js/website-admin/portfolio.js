@@ -247,32 +247,78 @@
         }
     };
 
-    // Show file count when user selects files
-    document.getElementById('bulk_images').addEventListener('change', function () {
+    function updateBulkFileCount() {
+        var imageInput = document.getElementById('bulk_images');
+        var videoInput = document.getElementById('bulk_videos');
         var countEl = document.getElementById('bulkFileCount');
-        var count = this.files ? this.files.length : 0;
-        if (count > 0) {
-            countEl.textContent = count + ' image' + (count !== 1 ? 's' : '') + ' selected';
-            if (count > 50) countEl.textContent += ' (max 50  extra will be ignored)';
+        var imageCount = imageInput && imageInput.files ? imageInput.files.length : 0;
+        var videoCount = videoInput && videoInput.files ? videoInput.files.length : 0;
+
+        if (imageCount > 0 && videoCount > 0) {
+            countEl.textContent = imageCount + ' image(s) and ' + videoCount + ' video(s) selected (upload one media type per batch)';
             countEl.style.display = 'block';
-        } else {
-            countEl.style.display = 'none';
+            return;
         }
-    });
+
+        if (imageCount > 0) {
+            countEl.textContent = imageCount + ' image' + (imageCount !== 1 ? 's' : '') + ' selected';
+            if (imageCount > 50) countEl.textContent += ' (max 50)';
+            countEl.style.display = 'block';
+            return;
+        }
+
+        if (videoCount > 0) {
+            countEl.textContent = videoCount + ' video' + (videoCount !== 1 ? 's' : '') + ' selected';
+            if (videoCount > 10) countEl.textContent += ' (max 10)';
+            countEl.style.display = 'block';
+            return;
+        }
+
+        countEl.style.display = 'none';
+    }
+
+    var bulkImagesInput = document.getElementById('bulk_images');
+    var bulkVideosInput = document.getElementById('bulk_videos');
+    if (bulkImagesInput) bulkImagesInput.addEventListener('change', updateBulkFileCount);
+    if (bulkVideosInput) bulkVideosInput.addEventListener('change', updateBulkFileCount);
 
     // Bulk upload form submit
     document.getElementById('bulkUploadForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var fileInput = document.getElementById('bulk_images');
+        var imageInput = document.getElementById('bulk_images');
+        var videoInput = document.getElementById('bulk_videos');
         var category = document.getElementById('bulk_category').value;
+        var videoItemType = (document.getElementById('bulk_video_item_type') || {}).value || 'video';
         if (!category) { showToast('Please select a category', 'error'); return; }
-        if (!fileInput.files || fileInput.files.length === 0) { showToast('Please select images', 'error'); return; }
 
-        var files = Array.from(fileInput.files).slice(0, 50);
+        var imageCount = imageInput && imageInput.files ? imageInput.files.length : 0;
+        var videoCount = videoInput && videoInput.files ? videoInput.files.length : 0;
+
+        if (imageCount > 0 && videoCount > 0) {
+            showToast('Please upload either images or videos in one batch.', 'error');
+            return;
+        }
+
+        if (imageCount === 0 && videoCount === 0) {
+            showToast('Please select images or videos', 'error');
+            return;
+        }
+
+        var mode = imageCount > 0 ? 'images' : 'videos';
+        var files = Array.from(mode === 'images' ? imageInput.files : videoInput.files);
+        var maxFiles = mode === 'images' ? 50 : 10;
+        var mediaLabel = mode === 'images' ? 'image' : 'video';
+
+        if (files.length > maxFiles) {
+            showToast('Maximum ' + maxFiles + ' ' + mediaLabel + (maxFiles === 1 ? '' : 's') + ' allowed per upload.', 'error');
+            return;
+        }
 
         //  Client-side validation: file type + size 
-        var allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-        var maxSingleMB = 20;
+        var allowedExts = mode === 'images'
+            ? ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp']
+            : ['mp4', 'webm', 'mov', 'avi'];
+        var maxSingleMB = mode === 'images' ? 10 : 100;
         for (var vi = 0; vi < files.length; vi++) {
             var fname = files[vi].name.toLowerCase();
             var fext = fname.split('.').pop();
@@ -281,7 +327,7 @@
                 return;
             }
             if (files[vi].size > maxSingleMB * 1024 * 1024) {
-                showToast(fname + ': Too large (' + (files[vi].size / 1024 / 1024).toFixed(1) + ' MB). Max ' + maxSingleMB + ' MB per image.', 'error');
+                showToast(fname + ': Too large (' + (files[vi].size / 1024 / 1024).toFixed(1) + ' MB). Max ' + maxSingleMB + ' MB per ' + mediaLabel + '.', 'error');
                 return;
             }
         }
@@ -294,12 +340,12 @@
         btn.disabled = true;
         progressWrap.style.display = 'block';
         progressBar.style.width = '0%';
-        progressText.textContent = 'Uploading 0/' + files.length + '...';
+        progressText.textContent = 'Uploading 0/' + files.length + ' ' + mediaLabel + '(s)...';
         var _portfolioProcessingTimer = null;
         var _portfolioUploadDone = false;
 
         //  Stall detection: abort if no progress for 60 seconds 
-        // (Raised from 30s because server-side processing of 50 images is synchronous)
+        // (Raised from 30s because server-side processing can be synchronous)
         var _pfLastProgress = Date.now();
         var _pfStallTimer = setInterval(function() {
             if (_portfolioUploadDone) { clearInterval(_pfStallTimer); return; }
@@ -326,8 +372,15 @@
 
         var fd = new FormData();
         fd.append('category', category);
-        for (var i = 0; i < files.length; i++) {
-            fd.append('images', files[i]);
+        if (mode === 'images') {
+            for (var i = 0; i < files.length; i++) {
+                fd.append('images', files[i]);
+            }
+        } else {
+            for (var j = 0; j < files.length; j++) {
+                fd.append('videos', files[j]);
+            }
+            fd.append('video_item_type', videoItemType);
         }
 
         var uploadUrl = BASE + '/portfolio/bulk-upload/';
@@ -336,7 +389,7 @@
         var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
         if (csrfToken) xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        console.log('[Portfolio] Starting bulk upload to', uploadUrl, '| Files:', files.length, '| Total size:', Math.round(files.reduce(function(s,f){return s+f.size;},0) / 1024) + 'KB');
+        console.log('[Portfolio] Starting bulk upload to', uploadUrl, '| Mode:', mode, '| Files:', files.length, '| Total size:', Math.round(files.reduce(function(s,f){return s+f.size;},0) / 1024) + 'KB');
 
         // Phase 1: Upload progress (0%  80%)
         xhr.upload.onprogress = function (ev) {
@@ -355,8 +408,8 @@
             if (_portfolioUploadDone) return;
             _cleanupPortfolioUpload();
             if (_portfolioProcessingTimer) { clearInterval(_portfolioProcessingTimer); _portfolioProcessingTimer = null; }
-            progressText.textContent = 'Upload timed out  try fewer images.';
-            showToast('Upload timed out after 5 minutes. Try uploading fewer images at once.', 'error');
+            progressText.textContent = 'Upload timed out  try smaller batches.';
+            showToast('Upload timed out after 5 minutes. Try uploading fewer files at once.', 'error');
             btn.disabled = false;
         };
 
@@ -365,7 +418,7 @@
             // CRITICAL: Reset stall timer so it doesn't fire during server processing
             _pfLastProgress = Date.now();
             progressBar.style.width = '80%';
-            progressText.textContent = 'Processing ' + files.length + ' image(s) on server...';
+            progressText.textContent = 'Processing ' + files.length + ' ' + mediaLabel + '(s) on server...';
             var _procStart = Date.now();
             _portfolioProcessingTimer = setInterval(function () {
                 var el = (Date.now() - _procStart) / 1000;
@@ -412,7 +465,7 @@
                 console.error('Portfolio upload parse error:', err, 'Status:', xhr.status, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 300) : '(empty)');
                 var errMsg = 'Upload failed';
                 if (xhr.status === 413) errMsg = 'Files too large. Increase Nginx client_max_body_size (need 1000M).';
-                else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try fewer images.';
+                else if (xhr.status === 502 || xhr.status === 504) errMsg = 'Server timeout  try fewer files.';
                 else if (xhr.status === 0) errMsg = 'Connection lost  server may have rejected the upload size.';
                 showToast(errMsg, 'error');
                 btn.disabled = false;

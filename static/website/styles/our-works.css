@@ -279,6 +279,15 @@ body.modal-open {
     justify-content: center;
     pointer-events: none;
     z-index: 2;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.gallery-item.video-item.is-previewing .gallery-video-overlay,
+.gallery-item.video-item.is-playing .gallery-video-overlay {
+    opacity: 0;
+    visibility: hidden;
 }
 
 .gallery-play-btn {
@@ -309,6 +318,7 @@ body.modal-open {
     width: 100%;
     height: auto;
     display: block;
+    cursor: pointer;
 }
 
 /* Reel items - taller portrait-style like shorts/reels */
@@ -860,6 +870,11 @@ body.modal-open {
     transform: scale(1.05);
 }
 
+.portfolio-item.playing:hover .portfolio-image img,
+.portfolio-item.playing:hover .portfolio-image video {
+    transform: none;
+}
+
 /* Video type portfolio items */
 .portfolio-play-icon {
     position: absolute;
@@ -875,6 +890,12 @@ body.modal-open {
 }
 .portfolio-item:hover .portfolio-play-icon {
     transform: translate(-50%, -50%) scale(1.15);
+}
+
+.portfolio-item.playing .portfolio-play-icon {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -50%);
 }
 .portfolio-video-placeholder {
     width: 100%;

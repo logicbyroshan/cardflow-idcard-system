@@ -772,7 +772,7 @@
 <div class="wa-modal-overlay" id="bulkUploadModal">
     <div class="wa-modal">
         <div class="wa-modal-header">
-            <h3>Bulk Upload Images</h3>
+            <h3>Bulk Upload Media</h3>
             <button class="wa-modal-close" onclick="closeBulkUploadModal()" title="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="bulkUploadForm" enctype="multipart/form-data">
@@ -789,8 +789,24 @@
                 </div>
                 <div class="wa-form-group">
                     <label for="bulk_images"><i class="fa-solid fa-images"></i> Select Images (max 50)</label>
-                    <input type="file" id="bulk_images" name="images" accept="image/*" multiple required>
+                    <input type="file" id="bulk_images" name="images" accept="image/*" multiple>
                     <small class="form-hint">Select up to 50 images. Orientation is auto-detected. All will be set as Active.</small>
+                </div>
+                <div class="wa-form-group">
+                    <label for="bulk_videos"><i class="fa-solid fa-video"></i> Select Videos (max 10)</label>
+                    <input type="file" id="bulk_videos" name="videos" accept="video/*" multiple>
+                    <small class="form-hint">Select up to 10 videos. All will be set as Active.</small>
+                </div>
+                <div class="wa-form-group">
+                    <label for="bulk_video_item_type">Video Upload Type</label>
+                    <select id="bulk_video_item_type" name="video_item_type" class="form-select">
+                        <option value="video">Video</option>
+                        <option value="reel">Reel (Short Vertical)</option>
+                    </select>
+                    <small class="form-hint">Used only when uploading videos.</small>
+                </div>
+                <div class="wa-form-group">
+                    <small class="form-hint">Upload either images or videos in one batch. Mixed upload in one request is not allowed.</small>
                     <div id="bulkFileCount" class="wa-bulk-file-count" style="display:none;"></div>
                 </div>
                 <div id="bulkProgress" class="wa-bulk-progress" style="display:none;">
@@ -835,7 +851,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=138"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=139"></script>
 <script>
 function switchPortfolioPane(targetId) {
     var panes = document.querySelectorAll('.portfolio-pane');

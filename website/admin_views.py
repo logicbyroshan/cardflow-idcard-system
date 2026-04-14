@@ -825,74 +825,146 @@ def api_portfolio_create(request):
 @website_portfolio_add_required
 def api_portfolio_bulk_upload(request):
     """
-    Bulk upload portfolio images (max 50).
+    Bulk upload portfolio media.
     
     Accepts multipart form with:
-      - images: multiple image files
+      - images: multiple image files (max 50)
+      - videos: multiple video files (max 10)
       - category: category ID
+      - video_item_type: video | reel (used only when uploading videos)
     """
     MAX_BULK_IMAGES = 50
+    MAX_BULK_VIDEOS = 10
     MAX_SINGLE_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB per image (matches service validation)
+    MAX_SINGLE_VIDEO_SIZE = 100 * 1024 * 1024  # 100 MB per video (matches service validation)
     ALLOWED_IMAGE_TYPES = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
+    ALLOWED_VIDEO_TYPES = ('.mp4', '.webm', '.mov', '.avi')
     
     category_id = request.POST.get('category', '')
-    files = request.FILES.getlist('images')
+    image_files = request.FILES.getlist('images')
+    video_files = request.FILES.getlist('videos')
+    video_item_type = (request.POST.get('video_item_type', 'video') or 'video').strip().lower()
+    if video_item_type not in ('video', 'reel'):
+        video_item_type = 'video'
     
-    if not files:
-        return JsonResponse({'success': False, 'message': 'No images selected'}, status=400)
-    
-    if len(files) > MAX_BULK_IMAGES:
+    if image_files and video_files:
         return JsonResponse({
             'success': False,
-            'message': f'Maximum {MAX_BULK_IMAGES} images allowed per upload. You selected {len(files)}.'
+            'message': 'Please upload either images or videos in one request, not both.'
         }, status=400)
-    
-    # Validate every file's extension and size before processing any
-    for img_file in files:
-        ext = '.' + img_file.name.rsplit('.', 1)[-1].lower() if '.' in img_file.name else ''
-        if ext not in ALLOWED_IMAGE_TYPES:
+
+    if not image_files and not video_files:
+        return JsonResponse({'success': False, 'message': 'No files selected'}, status=400)
+
+    if image_files:
+        files = image_files
+        if len(files) > MAX_BULK_IMAGES:
             return JsonResponse({
                 'success': False,
-                'message': f'{img_file.name}: Invalid file type. Allowed: {"  ".join(ALLOWED_IMAGE_TYPES)}'
+                'message': f'Maximum {MAX_BULK_IMAGES} images allowed per upload. You selected {len(files)}.'
             }, status=400)
-        if img_file.size > MAX_SINGLE_IMAGE_SIZE:
-            size_mb = img_file.size / (1024 * 1024)
+
+        # Validate every image file before processing any
+        for img_file in files:
+            ext = '.' + img_file.name.rsplit('.', 1)[-1].lower() if '.' in img_file.name else ''
+            if ext not in ALLOWED_IMAGE_TYPES:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'{img_file.name}: Invalid file type. Allowed: {", ".join(ALLOWED_IMAGE_TYPES)}'
+                }, status=400)
+            if img_file.size > MAX_SINGLE_IMAGE_SIZE:
+                size_mb = img_file.size / (1024 * 1024)
+                return JsonResponse({
+                    'success': False,
+                    'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 10 MB per image.'
+                }, status=400)
+
+        created = 0
+        errors = []
+
+        for img_file in files:
+            try:
+                PortfolioItemService.create(
+                    category_id=category_id or None,
+                    orientation='',
+                    item_type='image',
+                    video_url='',
+                    order=0,
+                    is_active=True,
+                    is_featured=False,
+                    image=img_file,
+                    video_file=None,
+                )
+                created += 1
+            except (ValidationError, Exception) as e:
+                err_msg = e.message if hasattr(e, 'message') else str(e)
+                errors.append(f'{img_file.name}: {err_msg}')
+
+        if created == 0:
             return JsonResponse({
                 'success': False,
-                'message': f'{img_file.name}: Too large ({size_mb:.1f} MB). Max 10 MB per image.'
+                'message': 'No images were uploaded. ' + '; '.join(errors[:3])
             }, status=400)
-    
+
+        msg = f'{created} image{"s" if created != 1 else ""} uploaded successfully'
+        if errors:
+            msg += f' ({len(errors)} failed)'
+
+        return JsonResponse({'success': True, 'message': msg, 'created': created, 'errors': errors[:5]})
+
+    files = video_files
+    if len(files) > MAX_BULK_VIDEOS:
+        return JsonResponse({
+            'success': False,
+            'message': f'Maximum {MAX_BULK_VIDEOS} videos allowed per upload. You selected {len(files)}.'
+        }, status=400)
+
+    # Validate every video file before processing any
+    for vid_file in files:
+        ext = '.' + vid_file.name.rsplit('.', 1)[-1].lower() if '.' in vid_file.name else ''
+        if ext not in ALLOWED_VIDEO_TYPES:
+            return JsonResponse({
+                'success': False,
+                'message': f'{vid_file.name}: Invalid file type. Allowed: {", ".join(ALLOWED_VIDEO_TYPES)}'
+            }, status=400)
+        if vid_file.size > MAX_SINGLE_VIDEO_SIZE:
+            size_mb = vid_file.size / (1024 * 1024)
+            return JsonResponse({
+                'success': False,
+                'message': f'{vid_file.name}: Too large ({size_mb:.1f} MB). Max 100 MB per video.'
+            }, status=400)
+
     created = 0
     errors = []
-    
-    for i, img_file in enumerate(files):
+
+    for vid_file in files:
         try:
             PortfolioItemService.create(
                 category_id=category_id or None,
                 orientation='',
-                item_type='image',
+                item_type=video_item_type,
                 video_url='',
                 order=0,
                 is_active=True,
                 is_featured=False,
-                image=img_file,
-                video_file=None,
+                image=None,
+                video_file=vid_file,
             )
             created += 1
         except (ValidationError, Exception) as e:
             err_msg = e.message if hasattr(e, 'message') else str(e)
-            errors.append(f'{img_file.name}: {err_msg}')
-    
+            errors.append(f'{vid_file.name}: {err_msg}')
+
     if created == 0:
         return JsonResponse({
             'success': False,
-            'message': 'No images were uploaded. ' + '; '.join(errors[:3])
+            'message': 'No videos were uploaded. ' + '; '.join(errors[:3])
         }, status=400)
-    
-    msg = f'{created} image{"s" if created != 1 else ""} uploaded successfully'
+
+    msg = f'{created} video{"s" if created != 1 else ""} uploaded successfully'
     if errors:
         msg += f' ({len(errors)} failed)'
-    
+
     return JsonResponse({'success': True, 'message': msg, 'created': created, 'errors': errors[:5]})
 
 

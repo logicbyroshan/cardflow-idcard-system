@@ -253,31 +253,63 @@ document.addEventListener('DOMContentLoaded', function() {
                             let isPlaying = false;
                             const playBtn = playOverlay.querySelector('.gallery-play-btn');
 
+                            function updatePlayOverlay() {
+                                wrapper.classList.toggle('is-playing', isPlaying);
+                                playBtn.innerHTML = isPlaying
+                                    ? '<i class="fas fa-pause"></i>'
+                                    : '<i class="fas fa-play"></i>';
+                            }
+
                             function togglePlay(e) {
                                 e.stopPropagation();
                                 if (isPlaying) {
                                     video.pause();
-                                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
                                     isPlaying = false;
+                                    updatePlayOverlay();
                                 } else {
+                                    wrapper.classList.remove('is-previewing');
                                     video.muted = false;
                                     video.play().then(() => {
-                                        playBtn.innerHTML = '<i class="fas fa-pause"></i>';
                                         isPlaying = true;
+                                        updatePlayOverlay();
                                     }).catch(() => {});
                                 }
                             }
                             playBtn.addEventListener('click', togglePlay);
+                            video.addEventListener('click', togglePlay);
+
+                            video.addEventListener('play', () => {
+                                if (!video.muted) {
+                                    isPlaying = true;
+                                    updatePlayOverlay();
+                                }
+                            });
+
+                            video.addEventListener('pause', () => {
+                                if (isPlaying) {
+                                    isPlaying = false;
+                                    updatePlayOverlay();
+                                }
+                            });
+
+                            video.addEventListener('ended', () => {
+                                isPlaying = false;
+                                updatePlayOverlay();
+                            });
 
                             // Autoplay on hover (muted)
                             wrapper.addEventListener('mouseenter', () => {
                                 if (!isPlaying) {
+                                    wrapper.classList.add('is-previewing');
                                     video.muted = true;
-                                    video.play().catch(() => {});
+                                    video.play().catch(() => {
+                                        wrapper.classList.remove('is-previewing');
+                                    });
                                 }
                             });
                             wrapper.addEventListener('mouseleave', () => {
                                 if (!isPlaying) {
+                                    wrapper.classList.remove('is-previewing');
                                     video.pause();
                                     video.currentTime = 0;
                                 }
