@@ -89,6 +89,40 @@
         currentMediaGroup.style.display = 'block';
     }
 
+    function initPortfolioVideoThumbPreviews() {
+        document.querySelectorAll('#portfolioBody video.portfolio-thumb-video').forEach(function (videoEl) {
+            if (videoEl.dataset.previewReady === '1') return;
+            videoEl.dataset.previewReady = '1';
+
+            const fallbackId = videoEl.getAttribute('data-preview-fallback-id');
+            const fallbackEl = fallbackId ? document.getElementById(fallbackId) : null;
+
+            function showFallback() {
+                videoEl.style.display = 'none';
+                if (fallbackEl) fallbackEl.style.display = 'inline-flex';
+            }
+
+            function seekPreviewFrame() {
+                try {
+                    const duration = videoEl.duration;
+                    if (!Number.isFinite(duration) || duration <= 0) return;
+                    const previewTime = Math.min(0.1, duration / 4);
+                    if (previewTime > 0) videoEl.currentTime = previewTime;
+                } catch (_) {
+                    // Ignore seek errors and let browser keep default frame.
+                }
+            }
+
+            videoEl.addEventListener('error', showFallback, { once: true });
+            videoEl.addEventListener('loadedmetadata', seekPreviewFrame, { once: true });
+            videoEl.addEventListener('seeked', function () {
+                try { videoEl.pause(); } catch (_) { /* no-op */ }
+            }, { once: true });
+
+            if (videoEl.readyState >= 1) seekPreviewFrame();
+        });
+    }
+
     window.openPortfolioModal = function (id) {
         document.getElementById('portfolioModalTitle').textContent = id ? 'Edit Portfolio Item' : 'Add Portfolio Item';
         portfolioForm.reset();
@@ -184,6 +218,8 @@
             });
         });
     });
+
+    initPortfolioVideoThumbPreviews();
 
     /* ================================================================
        CATEGORY MANAGEMENT

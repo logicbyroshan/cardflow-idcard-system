@@ -73,6 +73,11 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
     }
 
+    .portfolio-thumb-video {
+        display: inline-block;
+        background: #0f172a;
+    }
+
     .portfolio-preview-empty {
         width: 64px;
         height: 50px;
@@ -415,7 +420,18 @@
                                 {% if p.image %}
                                 <img src="{{ p.image.url }}" class="wa-thumb portfolio-thumb wa-thumb-clickable" alt="{{ p.title|default:'Item' }}" onclick="previewImage(this.src, this.alt)">
                                 {% elif p.item_type == 'video' or p.item_type == 'reel' %}
-                                <span class="portfolio-preview-empty"><i class="fa-solid fa-video"></i></span>
+                                    {% if p.video_file or p.video_url %}
+                                    <video class="portfolio-thumb portfolio-thumb-video"
+                                           muted
+                                           playsinline
+                                           preload="metadata"
+                                           data-preview-fallback-id="portfolio-preview-fallback-{{ p.id }}"
+                                           {% if p.video_file %}src="{{ p.video_file.url }}"{% else %}src="{{ p.video_url }}"{% endif %}
+                                           aria-label="Video preview"></video>
+                                    <span id="portfolio-preview-fallback-{{ p.id }}" class="portfolio-preview-empty" style="display:none;"><i class="fa-solid fa-video"></i></span>
+                                    {% else %}
+                                    <span class="portfolio-preview-empty"><i class="fa-solid fa-video"></i></span>
+                                    {% endif %}
                                 {% else %}
                                 <span class="portfolio-preview-empty"><i class="fa-solid fa-image"></i></span>
                                 {% endif %}
@@ -819,7 +835,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/website-admin/portfolio.js' %}?v=137"></script>
+<script src="{% static 'js/website-admin/portfolio.js' %}?v=138"></script>
 <script>
 function switchPortfolioPane(targetId) {
     var panes = document.querySelectorAll('.portfolio-pane');
