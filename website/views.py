@@ -36,7 +36,10 @@ from .models import (
 HOME_FEATURES_LIMIT = 6
 HOME_RECENT_PORTFOLIO_LIMIT = 8
 HOME_TESTIMONIALS_LIMIT = 5
-CATEGORY_IMAGES_LIMIT = 10
+CATEGORY_IMAGES_LIMIT = 6
+PORTFOLIO_BATCH_SIZE = 12
+CATEGORY_MODAL_INITIAL_LIMIT = 15
+CATEGORY_MODAL_MAX_LIMIT = 30
 REELS_INITIAL_LIMIT = 10
 BUSINESS_CACHE_TTL = 300  # 5 minutes
 
@@ -122,6 +125,35 @@ def _interleave_random_by_category(items):
 
     mixed.extend(uncategorized)
     return mixed
+
+
+def _serialize_portfolio_modal_item(item):
+    """Serialize a portfolio item for the category gallery modal/API payloads."""
+    is_video_item = item.item_type in ('video', 'reel')
+    thumbnail_url = item.video_thumbnail_url if is_video_item else (item.image.url if item.image else '')
+    stream_url = item.video_stream_url if is_video_item else ''
+    fallback_video_url = item.video_fallback_url if is_video_item else ''
+    playback_video_url = stream_url or fallback_video_url
+
+    entry = {
+        'type': item.item_type or 'image',
+        'orientation': item.orientation or 'square',
+        'title': item.title or '',
+    }
+
+    if is_video_item:
+        if thumbnail_url:
+            entry['image'] = thumbnail_url
+        if playback_video_url:
+            entry['video'] = playback_video_url
+        if fallback_video_url:
+            entry['video_fallback'] = fallback_video_url
+        if stream_url:
+            entry['video_stream'] = stream_url
+    elif item.image:
+        entry['image'] = item.image.url
+
+    return entry
 
 
 # ==========================================
@@ -219,59 +251,61 @@ def our_work(request):
     ).order_by('has_order', 'order', '-created_at')
     items = _interleave_random_by_category(list(items_qs))
     
-    # Build bento media + gallery modal data in one pass.
+    # Build bento media + gallery modal data.
     # For bento cards, prefer images but fall back to videos so video-only
     # categories still show rotating media.
     _cat_media_map = defaultdict(list)
-    _cat_items_map = defaultdict(list)
-    for item in items:
-        cat_id = str(item.category_id) if item.category_id else None
-        if not cat_id:
+    _cat_items_initial_map = defaultdict(list)
+    _cat_items_total_map = defaultdict(int)
+    modal_media_filter = (
+        (Q(item_type='image') & Q(image__isnull=False) & ~Q(image=''))
+        |
+        (
+            Q(item_type__in=('video', 'reel'))
+            & ((Q(video_file__isnull=False) & ~Q(video_file='')) | ~Q(video_url=''))
+        )
+    )
+    modal_items_qs = PortfolioItem.objects.filter(
+        is_active=True,
+        category__isnull=False,
+    ).filter(
+        modal_media_filter,
+    ).select_related('category').annotate(
+        has_order=Case(
+            When(order__gt=0, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField()
+        )
+    ).order_by('category_id', 'has_order', 'order', '-created_at')
+
+    for item in modal_items_qs:
+        cat_id = str(item.category_id)
+        entry = _serialize_portfolio_modal_item(item)
+        has_modal_media = bool(entry.get('image') or entry.get('video'))
+        if not has_modal_media:
             continue
 
-        is_video_item = item.item_type in ('video', 'reel')
-        thumbnail_url = item.video_thumbnail_url if is_video_item else (item.image.url if item.image else '')
-        stream_url = item.video_stream_url if is_video_item else ''
-        fallback_video_url = item.video_fallback_url if is_video_item else ''
-        playback_video_url = stream_url or fallback_video_url
+        _cat_items_total_map[cat_id] += 1
+        if len(_cat_items_initial_map[cat_id]) < CATEGORY_MODAL_INITIAL_LIMIT:
+            _cat_items_initial_map[cat_id].append(entry)
 
         if len(_cat_media_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
-            if thumbnail_url:
+            if entry.get('image'):
                 _cat_media_map[cat_id].append({
                     'type': 'image',
-                    'src': thumbnail_url,
+                    'src': entry['image'],
                 })
-            elif playback_video_url:
+            elif entry.get('video'):
                 _cat_media_map[cat_id].append({
                     'type': 'video',
-                    'src': playback_video_url,
-                    'fallback': fallback_video_url,
-                    'poster': thumbnail_url,
+                    'src': entry['video'],
+                    'fallback': entry.get('video_fallback') or entry['video'],
+                    'poster': entry.get('image', ''),
                 })
 
-        entry = {
-            'type': item.item_type or 'image',
-            'orientation': item.orientation or 'square',
-            'title': item.title or '',
-        }
-
-        if is_video_item:
-            if thumbnail_url:
-                entry['image'] = thumbnail_url
-            if playback_video_url:
-                entry['video'] = playback_video_url
-            if fallback_video_url:
-                entry['video_fallback'] = fallback_video_url
-            if stream_url:
-                entry['video_stream'] = stream_url
-        else:
-            if item.image:
-                entry['image'] = item.image.url
-
-        _cat_items_map[cat_id].append(entry)
-
     category_images = {str(cat.id): _cat_media_map.get(str(cat.id), []) for cat in categories}
-    category_items = dict(_cat_items_map)
+    category_items = {str(cat.id): _cat_items_initial_map.get(str(cat.id), []) for cat in categories}
+    category_item_totals = {str(cat.id): _cat_items_total_map.get(str(cat.id), 0) for cat in categories}
 
     # Separate reel-type items for the reels section
     portfolio_reels = [item for item in items if item.item_type == 'reel']
@@ -296,16 +330,76 @@ def our_work(request):
 
     context.update({
         'portfolio_items': items,
+        'portfolio_batch_size': PORTFOLIO_BATCH_SIZE,
         'categories': categories,
         'bento_categories': bento_categories,
         'extra_categories': extra_categories,
         'category_images': category_images,
         'category_items': category_items,
+        'category_item_totals': category_item_totals,
+        'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
         'portfolio_reels': portfolio_reels,
         'reels': reels,
         'total_reels': total_reels,
     })
     return render(request, 'website/our-works.html', context)
+
+
+def load_more_category_items(request):
+    """API endpoint to incrementally load category gallery items."""
+    try:
+        category_id = int(request.GET.get('category_id', 0))
+        offset = max(0, int(request.GET.get('offset', 0)))
+        limit = min(
+            max(1, int(request.GET.get('limit', CATEGORY_MODAL_INITIAL_LIMIT))),
+            CATEGORY_MODAL_MAX_LIMIT,
+        )
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid parameters'}, status=400)
+
+    if category_id <= 0:
+        return JsonResponse({'error': 'category_id is required'}, status=400)
+
+    if not PortfolioCategory.objects.filter(id=category_id, is_active=True).exists():
+        return JsonResponse({'error': 'Category not found'}, status=404)
+
+    modal_media_filter = (
+        (Q(item_type='image') & Q(image__isnull=False) & ~Q(image=''))
+        |
+        (
+            Q(item_type__in=('video', 'reel'))
+            & ((Q(video_file__isnull=False) & ~Q(video_file='')) | ~Q(video_url=''))
+        )
+    )
+
+    items_qs = PortfolioItem.objects.filter(
+        is_active=True,
+        category_id=category_id,
+    ).filter(
+        modal_media_filter,
+    ).annotate(
+        has_order=Case(
+            When(order__gt=0, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    ).order_by('has_order', 'order', '-created_at')
+
+    total = items_qs.count()
+    page = items_qs[offset:offset + limit]
+
+    serialized_items = []
+    for item in page:
+        entry = _serialize_portfolio_modal_item(item)
+        if entry.get('image') or entry.get('video'):
+            serialized_items.append(entry)
+
+    return JsonResponse({
+        'items': serialized_items,
+        'total': total,
+        'has_more': (offset + limit) < total,
+        'next_offset': min(total, offset + limit),
+    })
 
 
 def load_more_reels(request):

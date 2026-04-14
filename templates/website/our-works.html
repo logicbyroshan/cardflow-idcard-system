@@ -4,8 +4,8 @@
 {% block title %}Our Products{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=153">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=153">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=154">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=154">
 {% endblock %}
 
 {% block content %}
@@ -71,6 +71,14 @@
     <!-- Category Images Data for JS -->
     {{ category_images|json_script:"categoryImagesData" }}
     {{ category_items|json_script:"categoryItemsData" }}
+    {{ category_item_totals|json_script:"categoryItemTotalsData" }}
+    <script id="portfolioPageConfig" type="application/json">
+        {
+            "portfolioBatchSize": {{ portfolio_batch_size|default:12 }},
+            "categoryModalBatchSize": {{ category_modal_batch_size|default:15 }},
+            "categoryItemsApi": "{% url 'website:load_more_category_items' %}"
+        }
+    </script>
 
     <!-- Portfolio Gallery Section -->
     <section class="portfolio-section" id="portfolio">
@@ -104,14 +112,15 @@
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
                             {% if item.video_thumbnail_url %}
-                                <img src="{{ item.video_thumbnail_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
+                                <img data-src="{{ item.video_thumbnail_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
                             {% else %}
-                                <div class="portfolio-video-placeholder"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
+                                <video class="portfolio-preview-fallback" muted playsinline preload="none" data-preview-primary="{{ item.video_source_url|default:item.video_fallback_url }}" data-preview-fallback="{{ item.video_fallback_url }}" aria-hidden="true"></video>
+                                <div class="portfolio-video-placeholder is-loading"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
                             {% endif %}
                             <div class="portfolio-play-icon" aria-hidden="true"><i class="fa-solid fa-play-circle"></i></div>
                         {% else %}
                             {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
+                                <img data-src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
                             {% endif %}
                         {% endif %}
                     </div>
@@ -158,6 +167,9 @@
                     <div class="gallery-skeleton-card skeleton-wide"></div>
                 </div>
                 <div class="product-gallery-grid" id="productGalleryGrid"></div>
+                <div class="gallery-load-more-wrap" id="productGalleryLoadMoreWrap" hidden>
+                    <button type="button" class="gallery-load-more-btn" id="productGalleryLoadMoreBtn">Load more samples</button>
+                </div>
             </div>
         </div>
     </div>
@@ -191,5 +203,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=153"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=154"></script>
 {% endblock %}

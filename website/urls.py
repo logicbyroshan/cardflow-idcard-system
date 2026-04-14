@@ -30,4 +30,5 @@ urlpatterns = [
     
     # --- API Endpoints ---
     path('api/reels/', views.load_more_reels, name='load_more_reels'),
+    path('api/category-items/', views.load_more_category_items, name='load_more_category_items'),
 ]
