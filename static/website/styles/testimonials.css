@@ -239,10 +239,10 @@
 
 .card-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 15px;
     margin-bottom: 20px;
-    padding-right: 70px;
+    padding-right: 92px;
 }
 
 .reviewer-avatar {
@@ -294,6 +294,7 @@
 
 .reviewer-info {
     flex: 1;
+    min-width: 0;
 }
 
 .reviewer-info h4 {
@@ -301,17 +302,26 @@
     font-weight: 700;
     color: #1a365d;
     margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .reviewer-info span {
     font-size: 0.8rem;
     color: #64748b;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .card-rating {
     display: flex;
     align-items: center;
     gap: 5px;
+    margin-left: auto;
+    flex-shrink: 0;
     background: linear-gradient(135deg, #0a92dd, #667eea);
     padding: 6px 12px;
     border-radius: 20px;
@@ -365,7 +375,19 @@
     font-size: 0.85rem;
     color: #64748b;
     cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
     transition: color 0.3s ease;
+}
+
+.helpful-btn .helpful-count {
+    font-weight: 700;
+}
+
+.helpful-btn.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 .helpful-btn:hover {

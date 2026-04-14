@@ -82,10 +82,10 @@ a:active {
 
 .top-bar-item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
     color: var(--text-color);
-    padding-right: 92px;
+    font-size: 0.82rem;
     text-decoration: none;
     transition: all 0.3s ease;
     border: none;
@@ -1368,21 +1368,8 @@ a:active {
     gap: 12px;
     flex-wrap: wrap;
 }
-
-    border: none;
-    background: transparent;
-    padding: 0;
 .download-app-btn {
     display: inline-flex;
-
-.helpful-btn .helpful-count {
-    font-weight: 700;
-}
-
-.helpful-btn.is-loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
     align-items: center;
     gap: 10px;
     min-height: var(--btn-web-lg-height);
