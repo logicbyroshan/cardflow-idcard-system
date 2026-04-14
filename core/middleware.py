@@ -1147,6 +1147,7 @@ class SecurityHeadersMiddleware:
         parts = ["'self'"]
         if self._allow_local_engine:
             parts.append('http://127.0.0.1:4765')
+            parts.append('http://localhost:4765')
         return ' '.join(parts)
 
     def _build_panel_csp(self, frame_ancestors="'none'"):
