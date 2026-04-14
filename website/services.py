@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 # ── Watermark helpers (imported lazily to avoid circular imports) ─────────
 from .watermark import (  # noqa: E402
     apply_text_watermark, apply_logo_watermark,
-    compress_video_file,
 )
+from .video_processing import normalize_portfolio_video_upload, purge_portfolio_video_derivatives  # noqa: E402
 
 # ── Upload validation constants ──────────────────────────────────────────
 # S4: SVG removed — SVG files can contain inline <script> tags that execute in
@@ -487,6 +487,7 @@ class PortfolioItemService:
         """Delete a PortfolioItem by pk."""
         with transaction.atomic():
             item = get_object_or_404(PortfolioItem, pk=pk)
+            old_video_name = item.video_file.name if item.video_file else ''
             # Clean up image and video files from disk
             for field in ('image', 'video_file'):
                 file_field = getattr(item, field, None)
@@ -495,6 +496,8 @@ class PortfolioItemService:
                         file_field.delete(save=False)
                     except Exception:
                         logger.warning("Failed to delete %s file for PortfolioItem %d", field, pk)
+            if old_video_name:
+                purge_portfolio_video_derivatives(old_video_name)
             item.delete()
 
     @staticmethod
@@ -754,7 +757,7 @@ class ReelService:
         if thumbnail:
             thumbnail = apply_logo_watermark(thumbnail)
         if video_file:
-            video_file = compress_video_file(video_file)
+            video_file = normalize_portfolio_video_upload(video_file)
 
         with transaction.atomic():
             reel = Reel(
@@ -781,7 +784,7 @@ class ReelService:
         if thumbnail:
             thumbnail = apply_logo_watermark(thumbnail)
         if video_file:
-            video_file = compress_video_file(video_file)
+            video_file = normalize_portfolio_video_upload(video_file)
 
         with transaction.atomic():
             reel = get_object_or_404(Reel, pk=pk)

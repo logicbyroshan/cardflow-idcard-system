@@ -172,44 +172,58 @@ def our_work(request):
         if not cat_id:
             continue
 
+        is_video_item = item.item_type in ('video', 'reel')
+        thumbnail_url = item.video_thumbnail_url if is_video_item else (item.image.url if item.image else '')
+        stream_url = item.video_stream_url if is_video_item else ''
+        fallback_video_url = item.video_fallback_url if is_video_item else ''
+        playback_video_url = stream_url or fallback_video_url
+
         if len(_cat_media_map[cat_id]) < CATEGORY_IMAGES_LIMIT:
-            if item.image:
+            if thumbnail_url:
                 _cat_media_map[cat_id].append({
                     'type': 'image',
-                    'src': item.image.url,
+                    'src': thumbnail_url,
                 })
-            else:
-                _video_src = item.video_file.url if item.video_file else item.video_url
-                if _video_src:
-                    _cat_media_map[cat_id].append({
-                        'type': 'video',
-                        'src': _video_src,
-                    })
+            elif playback_video_url:
+                _cat_media_map[cat_id].append({
+                    'type': 'video',
+                    'src': playback_video_url,
+                    'fallback': fallback_video_url,
+                    'poster': thumbnail_url,
+                })
 
         entry = {
             'type': item.item_type or 'image',
             'orientation': item.orientation or 'square',
             'title': item.title or '',
         }
-        if item.image:
-            entry['image'] = item.image.url
-        if item.video_file:
-            entry['video'] = item.video_file.url
-        elif item.video_url:
-            entry['video'] = item.video_url
+
+        if is_video_item:
+            if thumbnail_url:
+                entry['image'] = thumbnail_url
+            if playback_video_url:
+                entry['video'] = playback_video_url
+            if fallback_video_url:
+                entry['video_fallback'] = fallback_video_url
+            if stream_url:
+                entry['video_stream'] = stream_url
+        else:
+            if item.image:
+                entry['image'] = item.image.url
+
         _cat_items_map[cat_id].append(entry)
 
     category_images = {str(cat.id): _cat_media_map.get(str(cat.id), []) for cat in categories}
     category_items = dict(_cat_items_map)
-    
+
     # Separate reel-type items for the reels section
     portfolio_reels = items.filter(item_type='reel')
-    
+
     # Get reels count + initial page in a single queryset evaluation
     reels_qs = Reel.objects.filter(is_active=True).order_by('order')
     total_reels = reels_qs.count()
     reels = reels_qs[:REELS_INITIAL_LIMIT]
-    
+
     bento_order_case = Case(
         *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(BENTO_PREFERRED_ORDER)],
         default=Value(len(BENTO_PREFERRED_ORDER)),

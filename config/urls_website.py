@@ -24,7 +24,7 @@ def _public_media_serve(request, path, document_root=None):
     from django.http import HttpResponseNotFound
 
     # Only allow public media directories on the website domain
-    PUBLIC_PREFIXES = ('adarshimg/', 'images/')
+    PUBLIC_PREFIXES = ('adarshimg/', 'images/', 'videos/')
     if not any(path.startswith(p) for p in PUBLIC_PREFIXES):
         return HttpResponseNotFound('Not found')
     return serve(request, path, document_root=document_root)

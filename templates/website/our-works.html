@@ -4,8 +4,8 @@
 {% block title %}Our Products{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=152">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=152">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=153">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=153">
 {% endblock %}
 
 {% block content %}
@@ -93,14 +93,18 @@
                 <div class="portfolio-item {{ item.orientation|default:'square' }} {% if item.item_type == 'video' or item.item_type == 'reel' %}video-type{% endif %}" data-category="{{ item.category_id|default:'' }}"
                      role="button" tabindex="0" aria-label="{{ item.title }}"
                      {% if item.item_type == 'video' or item.item_type == 'reel' %}
-                     data-video-url="{{ item.video_file.url|default:item.video_url }}"
+                     data-video-url="{{ item.video_source_url|default:item.video_fallback_url }}"
+                     data-video-fallback-url="{{ item.video_fallback_url }}"
+                     {% if item.video_thumbnail_url %}data-video-thumb="{{ item.video_thumbnail_url }}"{% endif %}
                      {% endif %}
-                     {% if item.image %}data-src="{{ item.image.url }}"{% endif %}
+                     {% if item.item_type == 'video' or item.item_type == 'reel' %}
+                     {% if item.video_thumbnail_url %}data-src="{{ item.video_thumbnail_url }}"{% endif %}
+                     {% elif item.image %}data-src="{{ item.image.url }}"{% endif %}
                      data-title="{{ item.title }}">
                     <div class="portfolio-image">
                         {% if item.item_type == 'video' or item.item_type == 'reel' %}
-                            {% if item.image %}
-                                <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
+                            {% if item.video_thumbnail_url %}
+                                <img src="{{ item.video_thumbnail_url }}" alt="{{ item.title }}" loading="lazy" decoding="async" fetchpriority="low">
                             {% else %}
                                 <div class="portfolio-video-placeholder"><i class="fa-solid fa-video" aria-hidden="true"></i></div>
                             {% endif %}
@@ -187,5 +191,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=152"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=153"></script>
 {% endblock %}

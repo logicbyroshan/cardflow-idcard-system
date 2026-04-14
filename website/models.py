@@ -368,10 +368,37 @@ class PortfolioItem(models.Model):
             return True
         return (self.image.name or '') != (previous.image.name or '')
 
+    def _needs_portfolio_video_processing(self):
+        """Return True when uploaded video should run through FFmpeg pipeline."""
+        if not self.video_file:
+            return False
+
+        video_file = getattr(self.video_file, 'file', None)
+        if getattr(video_file, '_portfolio_video_processed', False):
+            return False
+
+        if self._state.adding or not self.pk:
+            return True
+
+        previous = type(self).objects.filter(pk=self.pk).only('video_file').first()
+        if not previous or not previous.video_file:
+            return True
+        return (self.video_file.name or '') != (previous.video_file.name or '')
+
     def save(self, *args, **kwargs):
+        previous_video_name = ''
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).only('video_file').first()
+            if previous and previous.video_file:
+                previous_video_name = previous.video_file.name or ''
+
         if self._needs_portfolio_image_processing():
             from .watermark import process_portfolio_image
             self.image = process_portfolio_image(self.image)
+
+        if self._needs_portfolio_video_processing():
+            from .video_processing import normalize_portfolio_video_upload
+            self.video_file = normalize_portfolio_video_upload(self.video_file)
 
         if not self.slug:
             from django.utils.text import slugify
@@ -384,11 +411,63 @@ class PortfolioItem(models.Model):
             self.slug = slug
         super().save(*args, **kwargs)
 
+        current_video_name = self.video_file.name if self.video_file else ''
+        video_changed = (previous_video_name or '') != (current_video_name or '')
+
+        if video_changed and previous_video_name:
+            from .video_processing import purge_portfolio_video_derivatives
+            purge_portfolio_video_derivatives(previous_video_name)
+
+        if current_video_name and video_changed:
+            from .video_processing import ensure_portfolio_video_derivatives
+            ensure_portfolio_video_derivatives(current_video_name)
+
+    def delete(self, *args, **kwargs):
+        old_video_name = self.video_file.name if self.video_file else ''
+        super().delete(*args, **kwargs)
+        if old_video_name:
+            from .video_processing import purge_portfolio_video_derivatives
+            purge_portfolio_video_derivatives(old_video_name)
+
+    @property
+    def video_fallback_url(self):
+        """Direct MP4/file URL fallback (or external URL if no uploaded file)."""
+        if self.video_file:
+            return self.video_file.url
+        return self.video_url or ''
+
+    @property
+    def video_stream_url(self):
+        """HLS playlist URL when generated, otherwise empty string."""
+        if not self.video_file:
+            return ''
+        from .video_processing import get_portfolio_video_stream_url
+        return get_portfolio_video_stream_url(self.video_file.name)
+
+    @property
+    def video_thumbnail_url(self):
+        """Use explicit image thumbnail if present, else generated video thumbnail."""
+        if self.image:
+            return self.image.url
+        if not self.video_file:
+            return ''
+        from .video_processing import get_portfolio_video_thumbnail_url
+        return get_portfolio_video_thumbnail_url(self.video_file.name)
+
+    @property
+    def video_source_url(self):
+        """Best playback source for website: HLS stream when available, else fallback URL."""
+        if self.video_file:
+            return self.video_stream_url or self.video_file.url
+        return self.video_url or ''
+
     @property
     def media_url(self):
         """Return the best available media URL."""
-        if self.video_file:
-            return self.video_file.url
+        if self.item_type in ('video', 'reel'):
+            src = self.video_source_url or self.video_fallback_url
+            if src:
+                return src
         if self.video_url:
             return self.video_url
         if self.image:

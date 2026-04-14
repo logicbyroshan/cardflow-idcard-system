@@ -572,6 +572,12 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 # Client tutorial page video URL (shown on /panel/tutorial/)
 CLIENT_TUTORIAL_VIDEO_URL = os.getenv('CLIENT_TUTORIAL_VIDEO_URL', 'https://www.youtube.com/')
 
+# Website video optimization defaults (FFmpeg pipeline)
+WEBSITE_VIDEO_MAX_WIDTH = max(240, int(os.getenv('WEBSITE_VIDEO_MAX_WIDTH', '1080')))
+WEBSITE_VIDEO_MAX_HEIGHT = max(240, int(os.getenv('WEBSITE_VIDEO_MAX_HEIGHT', '1920')))
+WEBSITE_VIDEO_CRF = min(28, max(23, int(os.getenv('WEBSITE_VIDEO_CRF', '24'))))
+WEBSITE_FFMPEG_BINARY = os.getenv('WEBSITE_FFMPEG_BINARY', '').strip()
+
 
 # =============================================================================
 # APP VERSION

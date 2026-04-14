@@ -30,6 +30,27 @@ document.addEventListener('DOMContentLoaded', function() {
         return mins + ':' + String(secs).padStart(2, '0');
     }
 
+    function isHlsSource(url) {
+        return Boolean(url && /\.m3u8(?:\?|$)/i.test(url));
+    }
+
+    function canPlayNativeHls(videoEl) {
+        const probe = videoEl || document.createElement('video');
+        if (!probe || typeof probe.canPlayType !== 'function') return false;
+        const mimeResult = probe.canPlayType('application/vnd.apple.mpegurl');
+        const extResult = probe.canPlayType('application/x-mpegURL');
+        return Boolean(mimeResult || extResult);
+    }
+
+    function pickVideoSource(videoEl, primaryUrl, fallbackUrl) {
+        const primary = primaryUrl || '';
+        const fallback = fallbackUrl || '';
+        if (!primary) return fallback;
+        if (!isHlsSource(primary)) return primary;
+        if (canPlayNativeHls(videoEl)) return primary;
+        return fallback || primary;
+    }
+
     function pauseManagedVideos(exceptVideo) {
         const managed = document.querySelectorAll('video[data-managed-video="1"]');
         managed.forEach((videoEl) => {
@@ -302,6 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 title: catName + ' Sample ' + (idx + 1),
                                 image: _type === 'image' ? media.src : (media.poster || ''),
                                 video: (_type === 'video' || _type === 'reel') ? media.src : '',
+                                video_fallback: (_type === 'video' || _type === 'reel') ? (media.fallback || media.src) : '',
                             };
                         }
                         return {
@@ -331,7 +353,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const entry = isVideoItem
                         ? {
                             type: 'video',
-                            src: item.video,
+                            src: item.video_stream || item.video,
+                            fallbackSrc: item.video_fallback || item.video,
                             poster: item.image || '',
                             title: item.title || catName,
                         }
@@ -368,11 +391,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     if (isVideoItem) {
                         const video = document.createElement('video');
-                        video.src = item.video;
+                        const primaryVideoSrc = item.video_stream || item.video;
+                        const fallbackVideoSrc = item.video_fallback || item.video;
+                        const selectedVideoSrc = pickVideoSource(video, primaryVideoSrc, fallbackVideoSrc);
+                        video.src = selectedVideoSrc;
                         video.muted = true;
                         video.loop = false;
                         video.playsInline = true;
-                        video.preload = 'metadata';
+                        video.preload = 'none';
                         video.controls = false;
                         video.dataset.managedVideo = '1';
                         if (item.image) video.poster = item.image;
@@ -447,23 +473,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
 
-                        wrapper.addEventListener('mouseenter', () => {
-                            if (isPlaying) return;
-                            pauseManagedVideos(video);
-                            wrapper.classList.add('is-previewing');
-                            video.muted = true;
-                            video.play().catch(() => {
-                                wrapper.classList.remove('is-previewing');
-                            });
-                        });
-
-                        wrapper.addEventListener('mouseleave', () => {
-                            if (isPlaying) return;
-                            wrapper.classList.remove('is-previewing');
-                            video.pause();
-                            try { video.currentTime = 0; } catch (_) {}
-                        });
-
                         wrapper.addEventListener('dblclick', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -480,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         wrapper.appendChild(video);
                         wrapper.appendChild(playOverlay);
                         wrapper.appendChild(durationBadge);
-                        readyPromises.push(waitForSingleMediaElement(video, wrapper, 1500));
+                        markGalleryItemReady(wrapper);
                     } else if (item.image) {
                         const img = document.createElement('img');
                         img.src = item.image;
@@ -716,6 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return {
                 type: item.type === 'video' ? 'video' : 'image',
                 src: item.src,
+                fallbackSrc: item.fallbackSrc || item.fallback || '',
                 title: item.title || '',
                 poster: item.poster || '',
             };
@@ -740,8 +750,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     lightboxVideo.removeAttribute('poster');
                 }
-                if (lightboxVideo.getAttribute('src') !== item.src) {
-                    lightboxVideo.src = item.src;
+                const playableSource = pickVideoSource(lightboxVideo, item.src, item.fallbackSrc || '');
+                if (lightboxVideo.getAttribute('src') !== playableSource) {
+                    lightboxVideo.src = playableSource;
                     lightboxVideo.load();
                 }
                 _setLightboxVideoToggle(false);
@@ -872,7 +883,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return {
                     type: 'video',
                     src: el.dataset.videoUrl,
-                    poster: el.dataset.src || '',
+                    fallbackSrc: el.dataset.videoFallbackUrl || el.dataset.videoUrl,
+                    poster: el.dataset.videoThumb || el.dataset.src || '',
                     title: el.dataset.title || '',
                 };
             }
@@ -895,6 +907,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function ensurePortfolioDurationBadge(item) {
         const videoUrl = item.dataset.videoUrl;
+        const fallbackVideoUrl = item.dataset.videoFallbackUrl || videoUrl;
         if (!videoUrl) return;
 
         const mediaWrap = item.querySelector('.portfolio-image');
@@ -910,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const probe = document.createElement('video');
         probe.preload = 'metadata';
-        probe.src = videoUrl;
+        probe.src = pickVideoSource(probe, videoUrl, fallbackVideoUrl);
 
         let done = false;
         function applyDuration() {
@@ -930,14 +943,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (item._inlineVideo) return item._inlineVideo;
 
         const videoUrl = item.dataset.videoUrl;
+        const fallbackVideoUrl = item.dataset.videoFallbackUrl || videoUrl;
         const mediaWrap = item.querySelector('.portfolio-image');
         if (!videoUrl || !mediaWrap) return null;
 
         const inlineVideo = document.createElement('video');
         inlineVideo.className = 'inline-portfolio-video';
-        inlineVideo.src = videoUrl;
+        inlineVideo.src = pickVideoSource(inlineVideo, videoUrl, fallbackVideoUrl);
         inlineVideo.controls = false;
-        inlineVideo.preload = 'metadata';
+        inlineVideo.preload = 'none';
         inlineVideo.playsInline = true;
         inlineVideo.dataset.managedVideo = '1';
         inlineVideo.setAttribute('playsinline', '');
