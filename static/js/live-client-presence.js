@@ -207,12 +207,14 @@
                     eventSource.close();
                     eventSource = null;
                 }
-                startFallbackPolling();
                 window.setTimeout(connectSSE, 4000);
             };
         }
 
         refreshLiveCount();
+        // Keep polling as a backstop for environments where SSE stays connected
+        // but does not receive updates reliably (e.g., multi-worker cache split).
+        startFallbackPolling();
         connectSSE();
 
         document.addEventListener('visibilitychange', function () {
@@ -226,6 +228,7 @@
             }
 
             refreshLiveCount();
+            startFallbackPolling();
             if (!eventSource) {
                 connectSSE();
             }
