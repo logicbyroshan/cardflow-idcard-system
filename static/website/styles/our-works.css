@@ -319,6 +319,7 @@ body.modal-open {
     height: auto;
     display: block;
     cursor: pointer;
+    touch-action: pan-y;
 }
 
 /* Reel items - taller portrait-style like shorts/reels */

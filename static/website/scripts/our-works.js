@@ -315,6 +315,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                 }
                             });
 
+                            // Keep modal grid scroll smooth even when pointer is over video.
+                            const galleryScrollContainer = document.querySelector('.product-gallery-body');
+                            if (galleryScrollContainer) {
+                                video.addEventListener('wheel', (e) => {
+                                    galleryScrollContainer.scrollTop += e.deltaY;
+                                    e.preventDefault();
+                                }, { passive: false });
+                            }
+
                             wrapper.appendChild(video);
                             wrapper.appendChild(playOverlay);
                         } else if (item.image) {
