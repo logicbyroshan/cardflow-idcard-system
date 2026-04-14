@@ -474,12 +474,12 @@ body.mobile-menu-open {
     }
 
     .hero .hero-content h1 {
-        min-height: 0;
+        min-height: calc(1.15em * 2);
     }
 
     .typing-wrapper {
-        display: inline;
-        min-height: 0;
+        display: inline-block;
+        min-height: calc(1.15em * 2);
     }
 
     .contact-section {

@@ -2094,11 +2094,21 @@ body {
 
 /* ===== Typing Effect ===== */
 #typingLine {
-    display: inline;
+    display: inline-block;
+    min-height: calc(1.15em * 2);
 }
 
 .typing-wrapper {
-    display: inline;
+    display: inline-block;
+    min-height: calc(1.15em * 2);
+}
+
+#typingLine br {
+    display: block !important;
+}
+
+.typing-line-two {
+    display: block;
 }
 
 .typing-highlight {

@@ -91,56 +91,71 @@ function initTypingEffect() {
 
     let lineIndex = 0;
     let charIndex = 0;
-    let isDeleting = false;
+    const TYPE_SPEED = 68;
+    const HOLD_SPEED = 1800;
 
     function esc(str) {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    function getFullText(line) {
-        return line.before + line.product + line.after;
+    function getFirstLineText(line) {
+        return line.before + line.product;
     }
 
-    function renderLine(line, chars) {
-        const bLen = line.before.length;
-        const pLen = line.product.length;
-        const full = getFullText(line);
-        const visible = full.substring(0, chars);
+    function getFullText(line) {
+        return getFirstLineText(line) + line.after;
+    }
 
-        if (chars <= bLen) {
-            return esc(visible);
-        } else if (chars <= bLen + pLen) {
-            return esc(line.before) + '<span class="typing-highlight">' + esc(visible.substring(bLen)) + '</span>';
-        } else {
-            return esc(line.before) + '<span class="typing-highlight">' + esc(line.product) + '</span>' + esc(visible.substring(bLen + pLen));
+    function renderFirstLine(line, charsInFirstLine) {
+        const beforeLen = line.before.length;
+        const firstLine = getFirstLineText(line);
+
+        if (charsInFirstLine <= beforeLen) {
+            return esc(firstLine.substring(0, charsInFirstLine));
         }
+
+        return (
+            esc(line.before) +
+            '<span class="typing-highlight">' +
+            esc(firstLine.substring(beforeLen, charsInFirstLine)) +
+            '</span>'
+        );
+    }
+
+    function renderLine(line, charsTyped) {
+        const firstLine = getFirstLineText(line);
+        const firstLineLen = firstLine.length;
+
+        if (charsTyped <= firstLineLen) {
+            return renderFirstLine(line, charsTyped);
+        }
+
+        const secondLineChars = charsTyped - firstLineLen;
+        const secondLineHtml = esc(line.after.substring(0, secondLineChars));
+
+        return (
+            renderFirstLine(line, firstLineLen) +
+            '<br><span class="typing-line-two">' + secondLineHtml + '</span>'
+        );
     }
 
     function type() {
         const currentLine = lines[lineIndex];
         const fullText = getFullText(currentLine);
-        let speed;
+        let speed = TYPE_SPEED;
 
-        if (isDeleting) {
-            charIndex--;
-            speed = 30;
-        } else {
+        if (charIndex < fullText.length) {
             charIndex++;
-            speed = 70;
+        } else {
+            // Keep the fully typed sentence visible, then start the next one.
+            lineIndex = (lineIndex + 1) % lines.length;
+            charIndex = 0;
+            speed = HOLD_SPEED;
         }
 
         typingEl.innerHTML = renderLine(currentLine, charIndex);
         // Apply gradient class based on current line index
         typingEl.className = 'typing-gradient-' + lineIndex;
-
-        if (!isDeleting && charIndex === fullText.length) {
-            speed = 2200;
-            isDeleting = true;
-        } else if (isDeleting && charIndex === 0) {
-            isDeleting = false;
-            lineIndex = (lineIndex + 1) % lines.length;
-            speed = 400;
-        }
 
         setTimeout(type, speed);
     }
