@@ -83,18 +83,16 @@
         <div class="container">
             <div class="top-bar-content">
                 {% if business.phone %}
-                    <button type="button" class="top-bar-item copy-btn" data-copy="{{ business.phone }}" aria-label="Copy phone number {{ business.phone }}">
+                    <a href="tel:{{ business.phone|cut:' '|cut:'-'|cut:'('|cut:')' }}" class="top-bar-item" aria-label="Call {{ business.phone }}">
                         <i class="fa-solid fa-phone" aria-hidden="true"></i>
                         <span>{{ business.phone }}</span>
-                        <i class="fa-solid fa-copy copy-icon" aria-hidden="true"></i>
-                    </button>
+                    </a>
                 {% endif %}
                 {% if business.email %}
-                    <button type="button" class="top-bar-item copy-btn" data-copy="{{ business.email }}" aria-label="Copy email {{ business.email }}">
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ business.email|urlencode }}" class="top-bar-item" aria-label="Send email to {{ business.email }}" target="_blank" rel="noopener noreferrer">
                         <i class="fa-solid fa-envelope" aria-hidden="true"></i>
                         <span>{{ business.email }}</span>
-                        <i class="fa-solid fa-copy copy-icon" aria-hidden="true"></i>
-                    </button>
+                    </a>
                 {% endif %}
             </div>
         </div>
@@ -161,10 +159,10 @@
                         <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram" {% if not business.instagram_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-instagram" aria-hidden="true"></i>
                         </a>
-                        <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Twitter" {% if not business.twitter_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fa-brands fa-twitter" aria-hidden="true"></i>
+                        <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="YouTube" {% if not business.twitter_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fa-brands fa-youtube" aria-hidden="true"></i>
                         </a>
-                        <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.whatsapp_number %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                        <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number|cut:'+'|cut:' '|cut:'-'|cut:'('|cut:')' }}?text={{ 'Hello, I want to know more about your products.'|urlencode }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.whatsapp_number %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                         </a>
                     </div>
