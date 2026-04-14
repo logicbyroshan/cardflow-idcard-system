@@ -2114,15 +2114,25 @@ a:active {
 #typingLine {
     display: inline-block;
     min-height: calc(1.15em * 2);
+    line-height: 1.15;
+    text-align: left;
 }
 
 .typing-wrapper {
     display: inline-block;
     min-height: calc(1.15em * 2);
+    max-width: 100%;
+    text-align: left;
 }
 
 #typingLine br {
     display: block !important;
+}
+
+.typing-line-one,
+.typing-line-two {
+    display: block;
+    white-space: nowrap;
 }
 
 .typing-line-two {
@@ -2154,6 +2164,10 @@ a:active {
     font-weight: 300;
     animation: blink 0.8s step-end infinite;
     margin-left: 2px;
+}
+
+.typing-cursor-inline {
+    margin-left: 1px;
 }
 
 @keyframes blink {

@@ -111,15 +111,21 @@ function initTypingEffect() {
         const firstLine = getFirstLineText(line);
 
         if (charsInFirstLine <= beforeLen) {
-            return esc(firstLine.substring(0, charsInFirstLine));
+            return '<span class="typing-line-one">' + esc(firstLine.substring(0, charsInFirstLine)) + '</span>';
         }
 
         return (
+            '<span class="typing-line-one">' +
             esc(line.before) +
             '<span class="typing-highlight">' +
             esc(firstLine.substring(beforeLen, charsInFirstLine)) +
+            '</span>' +
             '</span>'
         );
+    }
+
+    function renderCursor() {
+        return '<span class="typing-cursor typing-cursor-inline" aria-hidden="true">|</span>';
     }
 
     function renderLine(line, charsTyped) {
@@ -127,7 +133,7 @@ function initTypingEffect() {
         const firstLineLen = firstLine.length;
 
         if (charsTyped <= firstLineLen) {
-            return renderFirstLine(line, charsTyped);
+            return renderFirstLine(line, charsTyped) + renderCursor();
         }
 
         const secondLineChars = charsTyped - firstLineLen;
@@ -135,27 +141,31 @@ function initTypingEffect() {
 
         return (
             renderFirstLine(line, firstLineLen) +
-            '<br><span class="typing-line-two">' + secondLineHtml + '</span>'
+            '<br><span class="typing-line-two">' + secondLineHtml + renderCursor() + '</span>'
         );
     }
 
     function type() {
-        const currentLine = lines[lineIndex];
+        const currentIndex = lineIndex;
+        const currentLine = lines[currentIndex];
         const fullText = getFullText(currentLine);
         let speed = TYPE_SPEED;
+        let charsToRender;
 
         if (charIndex < fullText.length) {
-            charIndex++;
+            charIndex += 1;
+            charsToRender = charIndex;
         } else {
-            // Keep the fully typed sentence visible, then start the next one.
+            // Keep the fully typed sentence visible before switching to the next.
+            charsToRender = fullText.length;
+            speed = HOLD_SPEED;
             lineIndex = (lineIndex + 1) % lines.length;
             charIndex = 0;
-            speed = HOLD_SPEED;
         }
 
-        typingEl.innerHTML = renderLine(currentLine, charIndex);
+        typingEl.innerHTML = renderLine(currentLine, charsToRender);
         // Apply gradient class based on current line index
-        typingEl.className = 'typing-gradient-' + lineIndex;
+        typingEl.className = 'typing-gradient-' + currentIndex;
 
         setTimeout(type, speed);
     }
