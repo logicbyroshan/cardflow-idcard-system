@@ -173,7 +173,7 @@
                     <i class="fa-solid {{ activity.icon_class }}"></i>
                   </div>
                   <div class="activity-content">
-                    <div class="activity-text">{{ activity.description }}</div>
+                    <div class="activity-text">{{ activity.display_text|default:activity.description }}</div>
                     <div class="activity-time">{{ activity.time_ago }} ago</div>
                   </div>
                 </div>

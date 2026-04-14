@@ -328,7 +328,7 @@ async function loadDashboardData() {
                 <i class="fa-solid ${escapeAttr(a.icon_class)}"></i>
               </div>
               <div class="activity-content">
-                <div class="activity-text">${escHtml(a.description)}</div>
+                <div class="activity-text">${escHtml(a.display_text || a.description || 'Activity update')}</div>
                 <div class="activity-time">${escHtml(a.time_ago)} ago</div>
               </div>
             </div>`).join('');
