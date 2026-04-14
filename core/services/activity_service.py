@@ -26,8 +26,43 @@ class ActivityService:
     SINGLE_CARD_STATUS_LOG_THROTTLE_SECONDS = 60
     # Keep similar card actions grouped for up to 15 minutes in Recent Activity.
     RECENT_ACTIVITY_CARD_COMBINE_WINDOW_SECONDS = 900
+    # Group repeated non-auth activity rows when they occur in a short working burst.
+    RECENT_ACTIVITY_SIMILAR_COMBINE_WINDOW_SECONDS = 3600
     RECENT_ACTIVITY_FETCH_MULTIPLIER = 10
     RECENT_ACTIVITY_FETCH_CAP = 300
+    RECENT_ACTIVITY_SIMILAR_ACTIONS = {
+        'client_update',
+        'client_status',
+        'notification_create',
+        'notification_delete',
+        'email_send',
+        'email_resend',
+        'backup_initiate',
+        'backup_start',
+        'backup_delete',
+        'group_create',
+        'group_update',
+        'group_delete',
+        'table_create',
+        'table_update',
+        'table_delete',
+        'reprint_request',
+        'staff_update',
+        'staff_assignment',
+        'staff_status',
+        'card_update',
+        'card_status',
+        'card_bulk_status',
+        'image_upload',
+        'image_reupload',
+        'table_update',
+        'group_update',
+        'reprint_status',
+        'settings_update',
+        'website_update',
+        'bulk_upgrade',
+        'bulk_delete',
+    }
     CARD_ACTIVITY_DESCRIPTION_RE = re.compile(
         r'^(?P<count>\d+)\s+cards?\s+(?P<status>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
         re.IGNORECASE,
@@ -36,6 +71,7 @@ class ActivityService:
         r'^(?:(?P<count>\d+)\s+)?cards?\s+moved\s+from\s+(?P<from>[^\n]+?)\s+to\s+(?P<to>[^\n]+?)(?:\s+for\s+(?P<client>.+))?$',
         re.IGNORECASE,
     )
+    STATUS_TO_RE = re.compile(r'\bstatus(?:\s+changed)?\s+to\s+([a-z0-9_\- ]+)\b', re.IGNORECASE)
     EXPORT_LABELS = {
         'export_zip': 'IMAGES',
         'export_pdf': 'PDF',
@@ -609,7 +645,8 @@ class ActivityService:
                 'created_at_dt': entry.created_at,
             })
 
-        merged_results = cls._merge_recent_card_activities(raw_results) if merge_card_activity else raw_results
+        card_merged_results = cls._merge_recent_card_activities(raw_results) if merge_card_activity else raw_results
+        merged_results = cls._merge_recent_similar_activities(card_merged_results)
 
         results = []
         for item in merged_results[:limit]:
@@ -640,9 +677,28 @@ class ActivityService:
         action = str(item.get('action') or '').strip().lower()
         actor = str(item.get('actor') or '').strip()
         actor_role = str(item.get('actor_role') or '').strip().lower()
-        target_name = str(item.get('target_name') or '').strip()
         client_context = str(item.get('client_context') or '').strip()
         actor_descriptor = cls._format_actor_descriptor(actor, actor_role, client_context)
+        target_model = str(item.get('target_model') or '').strip().lower()
+        target_id = item.get('target_id')
+        target_name = cls._resolve_display_target_name(
+            target_model=target_model,
+            target_name=item.get('target_name'),
+            target_id=target_id,
+            client_context=client_context,
+        )
+        merge_count = max(int(item.get('_merged_event_count') or 1), 1)
+        merge_span_seconds = max(int(item.get('_merged_span_seconds') or 0), 0)
+
+        def _with_merge_suffix(base_text):
+            if merge_count <= 1:
+                return base_text
+            duration = cls._format_merge_duration(merge_span_seconds)
+            suffix = f' ({merge_count} actions'
+            if duration:
+                suffix += f' in {duration}'
+            suffix += ')'
+            return f'{base_text}{suffix}'
 
         if action.startswith('staff_') and target_name and target_name.lower() not in text.lower():
             text = f'{text} (Staff: {target_name})'
@@ -651,10 +707,145 @@ class ActivityService:
             text = f'{text} (Client: {target_name})'
 
         if action in ('login', 'logout'):
+            surface = cls._extract_login_surface_from_description(text)
             if actor_descriptor != 'System':
                 verb = 'logged in' if action == 'login' else 'logged out'
-                return f'{actor_descriptor} {verb}'
-            return text
+                base = f'{actor_descriptor} {verb}'
+                if surface:
+                    base += f' via {surface}'
+                return _with_merge_suffix(base)
+            return _with_merge_suffix(text)
+
+        if action in ('password_reset', 'staff_password_reset'):
+            target = target_name or (f'User #{target_id}' if target_id else 'user account')
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} reset password for {target}')
+            return _with_merge_suffix(f'Password reset completed for {target}')
+
+        if action in ('impersonate_start', 'impersonate_stop'):
+            verb = 'started impersonation for' if action == 'impersonate_start' else 'stopped impersonation for'
+            target = target_name or (f'User #{target_id}' if target_id else 'a user')
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {verb} {target}')
+            return _with_merge_suffix(text)
+
+        status_label = cls._extract_status_from_description(text)
+        if action == 'client_status':
+            target = target_name or client_context or (f'Client #{target_id}' if target_id else 'client')
+            status_phrase = cls._humanize_status_change('client', status_label)
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {status_phrase} {target}')
+            return _with_merge_suffix(f'{status_phrase.capitalize()} {target}')
+
+        if action == 'staff_status':
+            target = target_name or (f'Staff #{target_id}' if target_id else 'staff member')
+            status_phrase = cls._humanize_status_change('staff', status_label)
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {status_phrase} {target}')
+            return _with_merge_suffix(f'{status_phrase.capitalize()} {target}')
+
+        if action in {'client_update', 'client_create', 'client_delete'}:
+            verb_map = {
+                'client_update': 'updated client profile',
+                'client_create': 'created client account',
+                'client_delete': 'removed client account',
+            }
+            target = target_name or client_context or (f'Client #{target_id}' if target_id else 'client')
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {verb_map.get(action)} for {target}')
+            return _with_merge_suffix(f'{verb_map.get(action).capitalize()} for {target}')
+
+        if action in {'staff_update', 'staff_create', 'staff_delete', 'staff_assignment'}:
+            verb_map = {
+                'staff_update': 'updated staff profile',
+                'staff_create': 'created staff account',
+                'staff_delete': 'removed staff account',
+                'staff_assignment': 'updated staff assignment scope',
+            }
+            target = target_name or (f'Staff #{target_id}' if target_id else 'staff member')
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {verb_map.get(action)} for {target}')
+            return _with_merge_suffix(f'{verb_map.get(action).capitalize()} for {target}')
+
+        if action in {'group_create', 'group_update', 'group_delete', 'table_create', 'table_update', 'table_delete'}:
+            label_map = {
+                'group_create': 'created group',
+                'group_update': 'updated group',
+                'group_delete': 'deleted group',
+                'table_create': 'created table',
+                'table_update': 'updated table',
+                'table_delete': 'deleted table',
+            }
+            target = target_name or (f'{target_model.title()} #{target_id}' if target_id else target_model)
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {label_map.get(action, "updated")} {target}'.strip())
+            return _with_merge_suffix(text)
+
+        if action in {'settings_update', 'website_update'}:
+            detail = cls._extract_detail_after_colon(text)
+            phrase = 'updated system settings' if action == 'settings_update' else 'updated website content'
+            if actor_descriptor != 'System':
+                base = f'{actor_descriptor} {phrase}'
+                if detail:
+                    base += f' ({detail})'
+                return _with_merge_suffix(base)
+            return _with_merge_suffix(text)
+
+        if action in {'notification_create', 'notification_delete'}:
+            verb = 'created notification' if action == 'notification_create' else 'deleted notification'
+            target = target_name or 'broadcast message'
+            if actor_descriptor != 'System':
+                return _with_merge_suffix(f'{actor_descriptor} {verb}: {target}')
+            return _with_merge_suffix(text)
+
+        if action in {'email_send', 'email_resend'}:
+            verb = 'sent email' if action == 'email_send' else 'resent email'
+            target = target_name or cls._extract_detail_after_colon(text)
+            if actor_descriptor != 'System':
+                if target:
+                    return _with_merge_suffix(f'{actor_descriptor} {verb}: {target}')
+                return _with_merge_suffix(f'{actor_descriptor} {verb}')
+            return _with_merge_suffix(text)
+
+        if action in {'backup_initiate', 'backup_start', 'backup_delete'}:
+            verb_map = {
+                'backup_initiate': 'initiated backup',
+                'backup_start': 'started backup pipeline',
+                'backup_delete': 'deleted backup archive',
+            }
+            target = target_name or cls._extract_detail_after_colon(text)
+            if actor_descriptor != 'System':
+                base = f'{actor_descriptor} {verb_map.get(action)}'
+                if target:
+                    base += f' ({target})'
+                return _with_merge_suffix(base)
+            return _with_merge_suffix(text)
+
+        if action in {'reprint_request', 'reprint_status'}:
+            verb = 'submitted reprint request' if action == 'reprint_request' else 'updated reprint status'
+            target = target_name or client_context or (f'Reprint #{target_id}' if target_id else '')
+            if actor_descriptor != 'System':
+                base = f'{actor_descriptor} {verb}'
+                if target:
+                    base += f' for {target}'
+                return _with_merge_suffix(base)
+            return _with_merge_suffix(text)
+
+        if action in {'image_upload', 'image_reupload'}:
+            verb = 'uploaded images' if action == 'image_upload' else 're-uploaded images'
+            target = target_name or client_context
+            if actor_descriptor != 'System':
+                if target:
+                    return _with_merge_suffix(f'{actor_descriptor} {verb} for {target}')
+                return _with_merge_suffix(f'{actor_descriptor} {verb}')
+            return _with_merge_suffix(text)
+
+        if action in {'card_update', 'card_status', 'card_bulk_status', 'card_create', 'bulk_upgrade', 'bulk_delete'}:
+            if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
+                text = f'{actor_descriptor}: {text}'
+            if client_context and client_context.lower() not in text.lower() and actor_role not in ('client', 'client_staff'):
+                text = f'{text} | Client: {client_context}'
+            return _with_merge_suffix(text)
 
         if actor_descriptor != 'System' and actor_descriptor.lower() not in text.lower():
             text = f'{actor_descriptor}: {text}'
@@ -662,7 +853,7 @@ class ActivityService:
         if client_context and client_context.lower() not in text.lower() and actor_role not in ('client', 'client_staff'):
             text = f'{text} | Client: {client_context}'
 
-        return text
+        return _with_merge_suffix(text)
 
     @classmethod
     def _format_actor_descriptor(cls, actor, actor_role, client_context=''):
@@ -682,8 +873,8 @@ class ActivityService:
             return f'Client "{actor_name}"'
         if role == 'client_staff':
             if client_name:
-                return f'Assistent "{actor_name}" for "{client_name}"'
-            return f'Assistent "{actor_name}"'
+                return f'Assistant "{actor_name}" for "{client_name}"'
+            return f'Assistant "{actor_name}"'
         if role == 'pro_user':
             return f'Pro User "{actor_name}"'
 
@@ -706,9 +897,25 @@ class ActivityService:
         """Best-effort client label for activity chips (staff/client/login actions)."""
         target_model = str(getattr(entry, 'target_model', '') or '').strip().lower()
         target_name = str(getattr(entry, 'target_name', '') or '').strip()
+        target_id = getattr(entry, 'target_id', None)
 
         if target_model == 'client' and target_name:
             return target_name
+
+        if target_model == 'client' and target_id:
+            try:
+                from client.models import Client
+
+                client_name = (
+                    Client.objects
+                    .filter(id=target_id)
+                    .values_list('name', flat=True)
+                    .first()
+                )
+                if client_name:
+                    return str(client_name).strip()
+            except Exception:
+                pass
 
         user = getattr(entry, 'user', None)
         if user:
@@ -745,6 +952,114 @@ class ActivityService:
             return ''
 
         return ''
+
+    @classmethod
+    def _resolve_display_target_name(cls, *, target_model, target_name, target_id, client_context=''):
+        """Resolve the best human target label for activity text."""
+        raw_target_name = str(target_name or '').strip()
+        if raw_target_name:
+            return raw_target_name
+
+        if target_model == 'client':
+            if client_context:
+                return str(client_context).strip()
+            if target_id:
+                try:
+                    from client.models import Client
+
+                    client_name = (
+                        Client.objects
+                        .filter(id=target_id)
+                        .values_list('name', flat=True)
+                        .first()
+                    )
+                    if client_name:
+                        return str(client_name).strip()
+                except Exception:
+                    pass
+            return ''
+
+        if target_model == 'staff' and target_id:
+            try:
+                from staff.models import Staff
+
+                staff_obj = (
+                    Staff.objects
+                    .select_related('user')
+                    .filter(id=target_id)
+                    .first()
+                )
+                if staff_obj and staff_obj.user:
+                    return (staff_obj.user.get_full_name() or staff_obj.user.username or '').strip()
+            except Exception:
+                pass
+            return ''
+
+        if target_model == 'idcard' and target_id:
+            return f'ID Card #{target_id}'
+
+        return ''
+
+    @classmethod
+    def _extract_status_from_description(cls, description):
+        """Extract terminal status text from legacy status-change descriptions."""
+        text = str(description or '').strip()
+        if not text:
+            return ''
+        match = cls.STATUS_TO_RE.search(text)
+        if not match:
+            return ''
+        return ' '.join(str(match.group(1) or '').strip().split())
+
+    @staticmethod
+    def _extract_detail_after_colon(description):
+        text = str(description or '').strip()
+        if ':' not in text:
+            return ''
+        detail = text.split(':', 1)[1].strip()
+        return detail
+
+    @staticmethod
+    def _extract_login_surface_from_description(description):
+        text = str(description or '').strip().lower()
+        if 'mobile app' in text:
+            return 'mobile app'
+        if 'desktop web' in text:
+            return 'desktop web'
+        if 'desktop' in text:
+            return 'desktop'
+        if 'mobile' in text:
+            return 'mobile'
+        return ''
+
+    @staticmethod
+    def _humanize_status_change(subject, status_label):
+        status = str(status_label or '').strip().lower()
+        subject_text = str(subject or '').strip().lower() or 'item'
+        if status == 'active':
+            return f'activated {subject_text}'
+        if status in {'inactive', 'disabled'}:
+            return f'deactivated {subject_text}'
+        if status in {'blocked', 'suspended'}:
+            return f'blocked {subject_text}'
+        if status:
+            return f'changed {subject_text} status to {status}'
+        return f'changed {subject_text} status for'
+
+    @staticmethod
+    def _format_merge_duration(seconds):
+        """Compact merge-window formatter (e.g. 45m, 1h 10m)."""
+        total_seconds = max(int(seconds or 0), 0)
+        if total_seconds < 60:
+            return ''
+        total_minutes = total_seconds // 60
+        if total_minutes < 60:
+            return f'{total_minutes}m'
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        if minutes:
+            return f'{hours}h {minutes}m'
+        return f'{hours}h'
 
     @classmethod
     def _parse_card_activity_description(cls, description):
@@ -842,6 +1157,102 @@ class ActivityService:
         for row in merged:
             row.pop('_merge_key', None)
             row.pop('_merge_count', None)
+
+        return merged
+
+    @classmethod
+    def _build_similar_merge_key(cls, item):
+        """Return a merge key for adjacent similar activity rows."""
+        action = str(item.get('action') or '').strip().lower()
+        if action not in cls.RECENT_ACTIVITY_SIMILAR_ACTIONS:
+            return None, 1
+
+        user_id = item.get('user_id') or 0
+        target_model = str(item.get('target_model') or '').strip().lower()
+        target_id = item.get('target_id') or 0
+        target_name = str(item.get('target_name') or '').strip().lower()
+        client_context = str(item.get('client_context') or '').strip().lower()
+        description = ' '.join(str(item.get('description') or '').strip().lower().split())
+
+        card_unit_count = 1
+        detail_discriminator = ''
+
+        if action in {'card_status', 'card_bulk_status'}:
+            parsed = cls._parse_card_activity_description(description)
+            if parsed:
+                card_unit_count = max(int(parsed[0] or 1), 1)
+                detail_discriminator = f'{parsed[1]}|{parsed[2].strip().lower()}'
+            else:
+                detail_discriminator = description[:160]
+        elif action in {'client_status', 'staff_status', 'reprint_status'}:
+            detail_discriminator = cls._extract_status_from_description(description) or description[:160]
+        elif not target_id:
+            detail_discriminator = description[:160]
+
+        key = (
+            user_id,
+            action,
+            target_model,
+            int(target_id) if target_id else 0,
+            target_name if not target_id else '',
+            client_context,
+            detail_discriminator,
+        )
+        return key, card_unit_count
+
+    @classmethod
+    def _merge_recent_similar_activities(cls, items):
+        """Collapse adjacent repeated actions from the same actor within a one-hour work burst."""
+        if not items:
+            return []
+
+        merged = []
+
+        for item in items:
+            merge_key, card_units = cls._build_similar_merge_key(item)
+            item['_merged_event_count'] = 1
+            item['_merged_span_seconds'] = 0
+            item['_merged_card_units'] = max(int(card_units or 1), 1)
+            item['_similar_merge_key'] = merge_key
+            item['_oldest_created_at_dt'] = item.get('created_at_dt')
+
+            if merge_key and merged:
+                last = merged[-1]
+                last_key = last.get('_similar_merge_key')
+                last_dt = last.get('created_at_dt')
+                item_dt = item.get('created_at_dt')
+
+                can_merge = (
+                    last_key == merge_key
+                    and last_dt is not None
+                    and item_dt is not None
+                    and (last_dt - item_dt).total_seconds() <= cls.RECENT_ACTIVITY_SIMILAR_COMBINE_WINDOW_SECONDS
+                )
+
+                if can_merge:
+                    last['_merged_event_count'] = int(last.get('_merged_event_count') or 1) + 1
+                    last['_oldest_created_at_dt'] = item_dt
+                    last['_merged_span_seconds'] = max(int((last_dt - item_dt).total_seconds()), 0)
+
+                    if str(last.get('action') or '').strip().lower() in {'card_status', 'card_bulk_status'}:
+                        total_cards = int(last.get('_merged_card_units') or 1) + int(item.get('_merged_card_units') or 1)
+                        last['_merged_card_units'] = total_cards
+                        parsed = cls._parse_card_activity_description(last.get('description', ''))
+                        if parsed:
+                            status = parsed[1]
+                            client = parsed[2]
+                            suffix = f' for {client}' if client else ''
+                            noun = 'card' if total_cards == 1 else 'cards'
+                            last['description'] = f'{total_cards} {noun} {status}{suffix}'
+                            last['action'] = 'card_bulk_status' if total_cards > 1 else 'card_status'
+                    continue
+
+            merged.append(item)
+
+        for row in merged:
+            row.pop('_similar_merge_key', None)
+            row.pop('_oldest_created_at_dt', None)
+            row.pop('_merged_card_units', None)
 
         return merged
     

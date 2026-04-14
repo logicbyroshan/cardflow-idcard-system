@@ -2366,6 +2366,69 @@ class ActivityFeedIsolationTests(TestCase):
         self.assertNotIn('Admin created client staff account', descriptions)
         self.assertNotIn('System user-management sync', descriptions)
 
+    def test_recent_activity_combines_repeated_actions_within_one_hour(self):
+        from core.models import ActivityLog
+        from core.services.activity_service import ActivityService
+
+        now = timezone.now()
+        first = ActivityLog.objects.create(
+            user=self.admin,
+            action='staff_update',
+            description='Field "SEC" updated',
+            target_model='Staff',
+            target_id=4321,
+            target_name='acw.Operator1',
+        )
+        second = ActivityLog.objects.create(
+            user=self.admin,
+            action='staff_update',
+            description='Field "SEC" updated',
+            target_model='Staff',
+            target_id=4321,
+            target_name='acw.Operator1',
+        )
+        third = ActivityLog.objects.create(
+            user=self.admin,
+            action='staff_update',
+            description='Field "SEC" updated',
+            target_model='Staff',
+            target_id=4321,
+            target_name='acw.Operator1',
+        )
+
+        ActivityLog.objects.filter(pk=first.pk).update(created_at=now + timedelta(minutes=3))
+        ActivityLog.objects.filter(pk=second.pk).update(created_at=now + timedelta(minutes=2))
+        ActivityLog.objects.filter(pk=third.pk).update(created_at=now + timedelta(minutes=1))
+
+        rows = ActivityService.get_recent(limit=40, hours=None, user=self.admin, merge_card_activity=False)
+        matching_rows = [row for row in rows if row.get('target_id') == 4321]
+        merged_row = matching_rows[0] if matching_rows else None
+
+        self.assertIsNotNone(merged_row)
+        self.assertEqual(len(matching_rows), 1)
+        self.assertIn('3 actions', str(merged_row.get('display_text', '')))
+
+    def test_client_status_display_text_uses_client_name_when_target_name_missing(self):
+        from core.models import ActivityLog
+        from core.services.activity_service import ActivityService
+
+        log_entry = ActivityLog.objects.create(
+            user=self.admin,
+            action='client_status',
+            description='Client "" status changed to active',
+            target_model='Client',
+            target_id=self.client_obj.id,
+            target_name='',
+        )
+
+        rows = ActivityService.get_recent(limit=30, hours=None, user=self.admin, merge_card_activity=False)
+        rendered = next((row for row in rows if row.get('id') == log_entry.id), None)
+
+        self.assertIsNotNone(rendered)
+        display_text = str(rendered.get('display_text') or '')
+        self.assertIn(self.client_obj.name, display_text)
+        self.assertIn('activated client', display_text.lower())
+
 
 class ReuploadDirectTaskFlowTests(TestCase):
     def setUp(self):

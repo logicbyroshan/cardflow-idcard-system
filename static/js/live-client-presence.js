@@ -7,7 +7,12 @@
     function panelUrl(path) {
         if (!path) return path;
         if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
-        var base = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+        var pathname = String(window.location.pathname || '');
+        var needsPanelPrefix = pathname.indexOf('/panel/') === 0
+            || pathname === '/panel'
+            || pathname.indexOf('/app/') === 0
+            || pathname === '/app';
+        var base = needsPanelPrefix ? '/panel' : '';
         var normalized = path.charAt(0) === '/' ? path : '/' + path;
         return base + normalized;
     }
