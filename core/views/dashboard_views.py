@@ -90,15 +90,8 @@ def _safe_public_email(value):
     return email
 
 
-def _get_live_active_client_ids_for_dashboard(user):
-    """
-    Return client IDs with recent authenticated activity.
-    Includes direct client users and client_staff users mapped to their clients.
-
-    A session is considered "live" only when it has a recent `_last_activity`
-    stamp (written by SessionIdleTimeoutMiddleware), so stale open sessions are
-    excluded shortly after a browser/app is closed.
-    """
+def _get_live_active_user_ids_for_dashboard():
+    """Return user IDs with recent authenticated dashboard activity."""
     now = timezone.now()
     live_window_seconds = max(int(getattr(django_settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 180) or 0), 30)
     live_cutoff_epoch = now.timestamp() - live_window_seconds
@@ -128,8 +121,22 @@ def _get_live_active_client_ids_for_dashboard(user):
         except (TypeError, ValueError):
             continue
 
+    return active_user_ids
+
+
+def _get_live_active_client_sets_for_dashboard(user):
+    """
+    Return live client ID sets used by dashboard filters.
+
+    - active_client_ids: clients with direct-client or assistent live activity
+    - active_assistant_client_ids: clients with live assistent activity only
+    """
+    active_user_ids = _get_live_active_user_ids_for_dashboard()
     if not active_user_ids:
-        return set()
+        return {
+            'active_client_ids': set(),
+            'active_assistant_client_ids': set(),
+        }
 
     direct_client_ids = set(
         Client.objects.filter(
@@ -149,12 +156,22 @@ def _get_live_active_client_ids_for_dashboard(user):
         ).values_list('client_id', flat=True)
     )
 
-    active_client_ids = direct_client_ids | staff_client_ids
+    active_assistant_client_ids = set(staff_client_ids)
+    active_client_ids = direct_client_ids | active_assistant_client_ids
     if PermissionService.is_admin_staff(user):
         allowed_ids = set(PermissionService.get_accessible_client_ids(user))
         active_client_ids &= allowed_ids
+        active_assistant_client_ids &= allowed_ids
 
-    return active_client_ids
+    return {
+        'active_client_ids': active_client_ids,
+        'active_assistant_client_ids': active_assistant_client_ids,
+    }
+
+
+def _get_live_active_client_ids_for_dashboard(user):
+    """Backward-compatible helper returning live client IDs only."""
+    return _get_live_active_client_sets_for_dashboard(user).get('active_client_ids', set())
 
 
 def _get_dashboard_recent_activities(*, user, limit, hours=None):
@@ -580,12 +597,16 @@ def api_recent_client_updates(request):
         cached = cache.get(cache_key)
         if cached is not None:
             cached_clients = cached.get('clients', []) if isinstance(cached, dict) else cached
-            live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+            live_sets = _get_live_active_client_sets_for_dashboard(user)
+            live_active_client_ids = live_sets.get('active_client_ids', set())
+            live_assistant_client_ids = live_sets.get('active_assistant_client_ids', set())
             return JsonResponse({
                 'success': True,
                 'clients': cached_clients,
                 'active_clients_now': len(live_active_client_ids),
                 'active_client_ids': sorted(live_active_client_ids),
+                'active_assistant_clients_now': len(live_assistant_client_ids),
+                'active_assistant_client_ids': sorted(live_assistant_client_ids),
             })
 
         # Get recent clients - scoped by PermissionService
@@ -674,12 +695,16 @@ def api_recent_client_updates(request):
                 'pool': cc.get('pool', 0),
             })
 
-        live_active_client_ids = _get_live_active_client_ids_for_dashboard(user)
+        live_sets = _get_live_active_client_sets_for_dashboard(user)
+        live_active_client_ids = live_sets.get('active_client_ids', set())
+        live_assistant_client_ids = live_sets.get('active_assistant_client_ids', set())
         active_clients_now = len(live_active_client_ids)
         payload = {
             'clients': results,
             'active_clients_now': active_clients_now,
             'active_client_ids': sorted(live_active_client_ids),
+            'active_assistant_clients_now': len(live_assistant_client_ids),
+            'active_assistant_client_ids': sorted(live_assistant_client_ids),
         }
 
         cache.set(cache_key, {'clients': results}, 20)

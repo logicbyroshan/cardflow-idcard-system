@@ -258,10 +258,10 @@
             return clientQuickListPromise;
         }
 
-        const activeUrl = panelUrl('/api/clients/active/');
+        const allClientsUrl = panelUrl('/api/clients/for-staff-assignment/');
         const fallbackUrl = panelUrl('/api/client-staff/clients/');
 
-        clientQuickListPromise = ApiClient.get(activeUrl)
+        clientQuickListPromise = ApiClient.get(allClientsUrl)
             .then(function (data) {
                 if (!data || !data.success) throw new Error('Failed to load clients');
                 clientQuickListCache = normalizeClientList(data);
