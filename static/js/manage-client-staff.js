@@ -956,12 +956,15 @@ document.addEventListener('DOMContentLoaded', function () {
         updateCurrentChipActionLabel();
     }
 
-    // ==================== VANILLA JS DELETE MODAL (client-only) ====================
+    // ==================== DELETE MODAL (Alpine-first, bridge fallback) ====================
     var deleteModal       = document.getElementById('delete-modal');
-    var closeDeleteModalB = document.getElementById('closeDeleteModal');
     var cancelDeleteBtn   = document.getElementById('cancelDeleteBtn');
 
     function closeDeleteModalFn() {
+        if (window.alpineCloseModal) {
+            window.alpineCloseModal();
+            return;
+        }
         if (!deleteModal) return;
         if (window.AdarshModalBridge && typeof window.AdarshModalBridge.close === 'function') {
             window.AdarshModalBridge.close('delete-modal', { overlayClass: 'show' });
@@ -971,7 +974,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    if (closeDeleteModalB) closeDeleteModalB.addEventListener('click', closeDeleteModalFn);
     if (cancelDeleteBtn)   cancelDeleteBtn.addEventListener('click', closeDeleteModalFn);
 
     // Keep assignment id source aligned with active group metadata for drawer filters.
@@ -1215,10 +1217,16 @@ document.addEventListener('DOMContentLoaded', function () {
         onEnableFormInputs: null,
         onStatusToggle:     null,
 
-        // Delete modal (vanilla JS)
+        // Delete modal
         openDeleteModal: function (name) {
             var el = document.getElementById('deleteStaffName');
             if (el) el.textContent = name;
+
+            if (window.alpineOpenModal) {
+                window.alpineOpenModal('delete');
+                return;
+            }
+
             if (!deleteModal) return;
             if (window.AdarshModalBridge && typeof window.AdarshModalBridge.open === 'function') {
                 window.AdarshModalBridge.open('delete-modal', { overlayClass: 'show', focusSelector: '#confirmDeleteBtn' });

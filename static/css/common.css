@@ -1829,7 +1829,8 @@ body.bulk-operation-active #blockingOverlay * {
 }
 
 .confirm-flow-verify,
-.verification-input-wrapper {
+.verification-input-wrapper,
+.verify-section {
   --confirm-code-digit-count: 10;
   --confirm-code-size: 38px;
   --confirm-code-gap: 6px;
@@ -1934,8 +1935,8 @@ body.bulk-operation-active #blockingOverlay * {
 
 .confirm-code-boxes {
   display: grid;
-  grid-template-columns: repeat(10, var(--confirm-code-size));
-  gap: var(--confirm-code-gap);
+  grid-template-columns: repeat(10, var(--confirm-code-size, 38px));
+  gap: var(--confirm-code-gap, 6px);
   justify-content: center;
   width: 100%;
   max-width: 100%;
@@ -1943,8 +1944,8 @@ body.bulk-operation-active #blockingOverlay * {
 }
 
 .confirm-code-box {
-  width: var(--confirm-code-size);
-  height: var(--confirm-code-size);
+  width: var(--confirm-code-size, 38px);
+  height: var(--confirm-code-size, 38px);
   border: 2px solid var(--color-gray-300);
   border-radius: 9px;
   background: var(--color-white);
@@ -1986,19 +1987,23 @@ body.bulk-operation-active #blockingOverlay * {
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.01;
+  opacity: 0;
   border: 0;
   padding: 0;
   margin: 0;
   background: transparent;
   color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-size: 1px;
+  line-height: 1;
   caret-color: transparent;
   outline: none;
 }
 
 @media (max-width: 640px) {
   .confirm-flow-verify,
-  .verification-input-wrapper {
+  .verification-input-wrapper,
+  .verify-section {
     --confirm-code-size: 30px;
     --confirm-code-gap: 4px;
   }
@@ -2015,7 +2020,8 @@ body.bulk-operation-active #blockingOverlay * {
 
 @media (max-width: 420px) {
   .confirm-flow-verify,
-  .verification-input-wrapper {
+  .verification-input-wrapper,
+  .verify-section {
     --confirm-code-size: 26px;
     --confirm-code-gap: 3px;
   }
