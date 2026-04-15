@@ -4,12 +4,13 @@ from urllib.parse import urlsplit, parse_qsl, urlencode
 
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.conf import settings as _s
 from django.db.models import Avg, Case, When, Value, IntegerField, Q, F
+from django.urls import resolve, Resolver404
 import logging
 
 from accounts.rate_limit import rate_limit
@@ -25,15 +26,12 @@ from .models import (
     PortfolioCategory,
     PortfolioItem, 
     Testimonial, 
-    ContactSubmission,
-    FAQ,
     Reel
 )
 
 # ==========================================
 # DISPLAY LIMITS
 # ==========================================
-HOME_FEATURES_LIMIT = 6
 HOME_RECENT_PORTFOLIO_LIMIT = 8
 HOME_TESTIMONIALS_LIMIT = 5
 CATEGORY_IMAGES_LIMIT = 6
@@ -42,6 +40,8 @@ CATEGORY_MODAL_INITIAL_LIMIT = 15
 CATEGORY_MODAL_MAX_LIMIT = 30
 REELS_INITIAL_LIMIT = 10
 BUSINESS_CACHE_TTL = 300  # 5 minutes
+WHY_CHOOSE_US_CACHE_KEY = 'website:why_choose_us:sections'
+WHY_CHOOSE_US_CACHE_TTL = 300
 
 # Public bento overrides.
 # Removed from bento: school-stationery, office-stationery
@@ -127,6 +127,79 @@ def _interleave_random_by_category(items):
     return mixed
 
 
+def _pop_best_category_item(grouped, excluded_categories, rng):
+    """Pop one item, preferring categories not recently used and with more remaining items."""
+    available_keys = [key for key, bucket in grouped.items() if bucket]
+    if not available_keys:
+        return None, None
+
+    preferred_keys = [key for key in available_keys if key not in excluded_categories]
+    candidate_keys = preferred_keys or available_keys
+    max_bucket_size = max(len(grouped[key]) for key in candidate_keys)
+    best_keys = [key for key in candidate_keys if len(grouped[key]) == max_bucket_size]
+    picked_key = rng.choice(best_keys)
+    return picked_key, grouped[picked_key].pop()
+
+
+def _build_home_product_rows_by_category(items):
+    """Build two marquee rows with category variety both within and across rows."""
+    entries = list(items or [])
+    if not entries:
+        return [], []
+
+    if len(entries) == 1:
+        return entries, list(reversed(entries))
+
+    grouped = defaultdict(list)
+    for entry in entries:
+        grouped[getattr(entry, 'category_id', None)].append(entry)
+
+    rng = random.SystemRandom()
+    for bucket in grouped.values():
+        rng.shuffle(bucket)
+
+    target_row1 = (len(entries) + 1) // 2
+    target_row2 = len(entries) // 2
+    row1, row2 = [], []
+    last_row1_category = None
+    last_row2_category = None
+
+    while len(row1) < target_row1 or len(row2) < target_row2:
+        progressed = False
+
+        if len(row1) < target_row1:
+            category_key, item = _pop_best_category_item(
+                grouped,
+                excluded_categories={last_row1_category},
+                rng=rng,
+            )
+            if item is not None:
+                row1.append(item)
+                last_row1_category = category_key
+                progressed = True
+
+        if len(row2) < target_row2:
+            exclusions = {last_row2_category}
+            if len(row1) > len(row2):
+                exclusions.add(getattr(row1[len(row2)], 'category_id', None))
+            category_key, item = _pop_best_category_item(
+                grouped,
+                excluded_categories=exclusions,
+                rng=rng,
+            )
+            if item is not None:
+                row2.append(item)
+                last_row2_category = category_key
+                progressed = True
+
+        if not progressed:
+            break
+
+    if not row2:
+        row2 = list(reversed(row1))
+    return row1, row2
+
+
 def _serialize_portfolio_modal_item(item):
     """Serialize a portfolio item for the category gallery modal/API payloads."""
     is_video_item = item.item_type in ('video', 'reel')
@@ -156,6 +229,59 @@ def _serialize_portfolio_modal_item(item):
     return entry
 
 
+def _sanitize_email_header_value(value, *, max_length=255):
+    """Strip CRLF and collapse whitespace for email-header-safe values."""
+    cleaned = str(value or '').replace('\r', ' ').replace('\n', ' ').strip()
+    collapsed = ' '.join(cleaned.split())
+    return collapsed[:max_length]
+
+
+def _normalize_panel_next_target(raw_next, fallback_target):
+    """Normalize and validate next target against panel URLConf routes."""
+    fallback_parsed = urlsplit(str(fallback_target or '/auth/login/'))
+    fallback_path = fallback_parsed.path if fallback_parsed.path.startswith('/') else '/auth/login/'
+    if fallback_path == '/':
+        fallback_path = '/auth/login/'
+    fallback_params = dict(parse_qsl(fallback_parsed.query, keep_blank_values=True))
+
+    parsed = urlsplit(str(raw_next or ''))
+    next_path = parsed.path or fallback_path
+
+    if next_path == '/panel':
+        next_path = '/'
+    elif next_path.startswith('/panel/'):
+        next_path = next_path[len('/panel'):]
+
+    next_path = next_path.replace('\\', '/').strip()
+    while '//' in next_path:
+        next_path = next_path.replace('//', '/')
+
+    if not next_path.startswith('/'):
+        return fallback_path, fallback_params
+
+    normalized_parts = []
+    for part in next_path.split('/'):
+        if not part or part == '.':
+            continue
+        if part == '..':
+            return fallback_path, fallback_params
+        normalized_parts.append(part)
+
+    normalized_path = '/' + '/'.join(normalized_parts)
+    if (parsed.path or '').endswith('/') and normalized_path != '/':
+        normalized_path = f'{normalized_path}/'
+    if normalized_path == '/':
+        normalized_path = fallback_path
+
+    try:
+        resolve(normalized_path, urlconf='config.urls_panel')
+    except Resolver404:
+        return fallback_path, fallback_params
+
+    params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    return normalized_path, params
+
+
 # ==========================================
 # PAGE VIEWS
 # ==========================================
@@ -176,11 +302,11 @@ def home(request):
     if home_sections is None:
         image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
         home_sections = {
-            'features': list(Feature.objects.filter(is_active=True).order_by('order')[:HOME_FEATURES_LIMIT]),
             'trusted_clients': list(
                 PanelClient.objects.filter(website_is_visible=True)
                 .exclude(website_logo__isnull=True)
                 .exclude(website_logo='')
+                .only('id', 'name', 'website_logo', 'website_display_order')
                 .order_by('website_display_order', 'name', 'id')
             ),
             'featured_portfolio': list(
@@ -216,11 +342,9 @@ def home(request):
 
     all_products = _interleave_random_by_category(deduped_products)
     if all_products:
-        context['row1_portfolio'] = all_products[::2]     # even-indexed items
-        context['row2_portfolio'] = all_products[1::2]    # odd-indexed items
-        # If only 1 item, duplicate to row2
-        if not context['row2_portfolio']:
-            context['row2_portfolio'] = list(reversed(all_products))
+        row1_portfolio, row2_portfolio = _build_home_product_rows_by_category(all_products)
+        context['row1_portfolio'] = row1_portfolio
+        context['row2_portfolio'] = row2_portfolio
     else:
         context['row1_portfolio'] = []
         context['row2_portfolio'] = []
@@ -307,14 +431,6 @@ def our_work(request):
     category_items = {str(cat.id): _cat_items_initial_map.get(str(cat.id), []) for cat in categories}
     category_item_totals = {str(cat.id): _cat_items_total_map.get(str(cat.id), 0) for cat in categories}
 
-    # Separate reel-type items for the reels section
-    portfolio_reels = [item for item in items if item.item_type == 'reel']
-
-    # Get reels count + initial page in a single queryset evaluation
-    reels_qs = Reel.objects.filter(is_active=True).order_by('order')
-    total_reels = reels_qs.count()
-    reels = reels_qs[:REELS_INITIAL_LIMIT]
-
     bento_order_case = Case(
         *[When(slug=slug, then=Value(idx)) for idx, slug in enumerate(BENTO_PREFERRED_ORDER)],
         default=Value(len(BENTO_PREFERRED_ORDER)),
@@ -338,13 +454,12 @@ def our_work(request):
         'category_items': category_items,
         'category_item_totals': category_item_totals,
         'category_modal_batch_size': CATEGORY_MODAL_INITIAL_LIMIT,
-        'portfolio_reels': portfolio_reels,
-        'reels': reels,
-        'total_reels': total_reels,
     })
     return render(request, 'website/our-works.html', context)
 
 
+@require_GET
+@rate_limit(max_requests=40, window_seconds=60, key_prefix='public_category_items')
 def load_more_category_items(request):
     """API endpoint to incrementally load category gallery items."""
     try:
@@ -402,16 +517,19 @@ def load_more_category_items(request):
     })
 
 
+@require_GET
+@rate_limit(max_requests=40, window_seconds=60, key_prefix='public_reels')
 def load_more_reels(request):
     """API endpoint to load more reels for infinite scroll"""
     try:
         offset = max(0, int(request.GET.get('offset', 0)))
-        limit = min(max(1, int(request.GET.get('limit', 10))), 50)
+        limit = min(max(1, int(request.GET.get('limit', REELS_INITIAL_LIMIT))), 50)
     except (ValueError, TypeError):
         return JsonResponse({'error': 'Invalid parameters'}, status=400)
-    
-    reels = Reel.objects.filter(is_active=True).order_by('order')[offset:offset + limit]
-    total_reels = Reel.objects.filter(is_active=True).count()
+
+    reels_qs = Reel.objects.filter(is_active=True).order_by('order')
+    total_reels = reels_qs.count()
+    reels = reels_qs[offset:offset + limit]
     
     reels_data = []
     for reel in reels:
@@ -436,10 +554,17 @@ def load_more_reels(request):
 def why_choose_us(request):
     """About/Features Page"""
     context = get_common_context()
-    context.update({
-        'features': Feature.objects.filter(is_active=True).order_by('order'),
-        'faqs': FAQ.objects.filter(is_active=True).order_by('order'),
-    })
+    why_sections = cache.get(WHY_CHOOSE_US_CACHE_KEY)
+    if why_sections is None:
+        why_sections = {
+            'features': list(
+                Feature.objects.filter(is_active=True)
+                .only('id', 'title', 'description', 'icon', 'is_featured', 'highlight', 'order')
+                .order_by('order')
+            ),
+        }
+        cache.set(WHY_CHOOSE_US_CACHE_KEY, why_sections, WHY_CHOOSE_US_CACHE_TTL)
+    context.update(why_sections)
     return render(request, 'website/why-choose-us.html', context)
 
 
@@ -487,18 +612,9 @@ def panel_entry(request):
     is_mobile_ua = any(k in ua for k in ['Android', 'iPhone', 'iPad', 'iPod', 'webOS', 'BlackBerry', 'IEMobile', 'Opera Mini'])
 
     default_next = '/app/login/?install=1' if is_mobile_ua else '/auth/login/'
-    raw_next = request.GET.get('next', default_next)
-    parsed = urlsplit(raw_next)
+    raw_next = request.GET.get('next', '')
+    next_path, params = _normalize_panel_next_target(raw_next, default_next)
 
-    next_path = parsed.path or '/auth/login/'
-    if next_path.startswith('/panel/'):
-        next_path = next_path[len('/panel'):]
-    if not next_path.startswith('/'):
-        next_path = '/auth/login/'
-    if next_path == '/':
-        next_path = '/auth/login/'
-
-    params = dict(parse_qsl(parsed.query, keep_blank_values=True))
     signer = TimestampSigner(salt='panel-entry-gate')
     params['panel_entry_token'] = signer.sign('website-panel-entry')
     query = urlencode(params)
@@ -616,7 +732,7 @@ def submit_contact(request):
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
-        subject = request.POST.get('subject', '').strip()
+        subject = _sanitize_email_header_value(request.POST.get('subject', ''), max_length=255)
         message = request.POST.get('message', '').strip()
 
         if not all([name, email, subject, message]):

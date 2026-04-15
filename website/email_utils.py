@@ -7,13 +7,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_subject(value):
+    """Strip CRLF and collapse whitespace for safe email headers."""
+    cleaned = str(value or '').replace('\r', ' ').replace('\n', ' ').strip()
+    return ' '.join(cleaned.split())[:255]
+
+
 def send_contact_email(submission):
     """
     Send contact form submission email.
     Returns True if successful, False otherwise.
     """
     try:
-        subject = f"[Contact Form] {submission.subject}"
+        sanitized_subject = _sanitize_subject(getattr(submission, 'subject', '')) or 'No Subject'
+        subject = f"[Contact Form] {sanitized_subject}"
         html_content, plain_content = get_contact_submission_email_template(submission)
         
         # Check email backend is configured

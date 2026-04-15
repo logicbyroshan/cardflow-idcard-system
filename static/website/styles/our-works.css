@@ -611,8 +611,13 @@ body.modal-open {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.82) 100%);
+    background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.58) 100%);
     z-index: 1;
+}
+
+.category-card:focus-visible {
+    outline: 3px solid rgba(10, 146, 221, 0.55);
+    outline-offset: 3px;
 }
 
 .category-content {
@@ -684,42 +689,47 @@ body.modal-open {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(102, 126, 234, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: linear-gradient(180deg, rgba(102, 126, 234, 0.07) 0%, rgba(102, 126, 234, 0.22) 100%);
     opacity: 0;
     z-index: 3;
     transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
-.category-card:hover .category-overlay {
+.category-card:hover .category-overlay,
+.category-card:focus-visible .category-overlay {
     opacity: 1;
 }
 
 .category-overlay .explore-btn {
-    display: flex;
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);
+    gap: 6px;
+    padding: 8px 12px;
     background: var(--white);
     color: #0a92dd;
     border: none;
-    border-radius: 12px;
-    font-size: 1rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
     font-weight: 600;
-    cursor: pointer;
-    transform: translateY(20px);
+    letter-spacing: 0.01em;
+    transform: translateY(-8px);
     transition: all 0.3s ease;
+    box-shadow: 0 8px 20px rgba(10, 146, 221, 0.25);
+    pointer-events: none;
 }
 
-.category-card:hover .category-overlay .explore-btn {
+.category-card:hover .category-overlay .explore-btn,
+.category-card:focus-visible .category-overlay .explore-btn {
     transform: translateY(0);
 }
 
 .category-overlay .explore-btn:hover {
-    background: #f8f9fa;
-    transform: scale(1.05);
+    background: var(--white);
+    transform: translateY(0);
 }
 
 /* More Categories */
@@ -1549,6 +1559,15 @@ body.modal-open {
 
 /* Strict website button consistency overrides */
 .category-overlay .explore-btn,
+.load-more-btn {
+    min-height: 0;
+}
+
+.category-overlay .explore-btn {
+    padding: 8px 12px;
+    border-radius: 999px;
+}
+
 .load-more-btn {
     min-height: var(--btn-web-lg-height, 46px);
     padding: var(--btn-web-lg-pad-y, 12px) var(--btn-web-lg-pad-x, 28px);

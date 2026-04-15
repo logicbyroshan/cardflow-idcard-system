@@ -4,8 +4,8 @@
 {% block title %}Our Products{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=154">
-    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=154">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works.css' %}?v=155">
+    <link rel="stylesheet" href="{% static 'website/styles/our-works-responsive.css' %}?v=155">
 {% endblock %}
 
 {% block content %}
@@ -32,7 +32,7 @@
             </div>
             <div class="categories-grid {% if bento_categories|length > 7 %}categories-grid-nine{% else %}categories-grid-seven{% endif %}">
                 {% for cat in bento_categories %}
-                <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}">
+                <div class="category-card slot-{{ forloop.counter }} {% if cat.bento_size == 'large' %}large{% elif cat.bento_size == 'wide' %}wide{% endif %}" data-category="{{ cat.id }}" data-slug="{{ cat.slug }}" role="button" tabindex="0" aria-label="View samples for {{ cat.name }}">
                     <div class="category-bg">
                         <div class="bg-placeholder"></div>
                         <div class="category-slider" data-cat-id="{{ cat.id }}">
@@ -46,7 +46,7 @@
                         <h3>{{ cat.name }}</h3>
                     </div>
                     <div class="category-overlay">
-                        <button class="explore-btn" data-filter="{{ cat.id }}">
+                        <button type="button" class="explore-btn" data-filter="{{ cat.id }}" tabindex="-1" aria-hidden="true">
                             View Samples <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -203,5 +203,5 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{% static 'website/scripts/our-works.js' %}?v=154"></script>
+    <script src="{% static 'website/scripts/our-works.js' %}?v=155"></script>
 {% endblock %}

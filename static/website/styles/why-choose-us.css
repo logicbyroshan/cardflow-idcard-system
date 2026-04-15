@@ -162,6 +162,46 @@
     border-color: #0a92dd;
 }
 
+.promise-card.featured {
+    background: linear-gradient(135deg, #100F57 0%, #1a1980 100%);
+    border-color: transparent;
+    box-shadow: 0 20px 46px rgba(16, 15, 87, 0.22);
+}
+
+.promise-card.featured::before {
+    transform: scaleX(1);
+    background: linear-gradient(90deg, #f8d34f, #f39c12);
+}
+
+.promise-card.featured .promise-icon {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.12));
+}
+
+.promise-card.featured .promise-icon i {
+    background: none;
+    -webkit-text-fill-color: #ffffff;
+    color: #ffffff;
+}
+
+.promise-card.featured h3 {
+    color: #ffffff;
+}
+
+.promise-card.featured p {
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.promise-card.featured .promise-guarantee {
+    background: rgba(248, 211, 79, 0.2);
+    color: #ffe79d;
+    border: 1px solid rgba(248, 211, 79, 0.4);
+}
+
+.promise-card.featured:hover {
+    border-color: transparent;
+    box-shadow: 0 26px 56px rgba(16, 15, 87, 0.3);
+}
+
 .promise-icon {
     width: 80px;
     height: 80px;
@@ -453,6 +493,23 @@
     font-size: 1.15rem;
     font-weight: 700;
     margin-bottom: 12px;
+}
+
+.trust-card h3 .title-accent {
+    color: #0a92dd;
+    position: relative;
+    display: inline-block;
+}
+
+.trust-card h3 .title-accent::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(10, 146, 221, 0.5), rgba(16, 15, 87, 0.3));
 }
 
 .trust-card p {

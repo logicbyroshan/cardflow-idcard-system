@@ -761,6 +761,14 @@ h2 {
         margin-bottom: 2rem;
     }
 
+    .why-choose-us .why-section-intro {
+        margin-top: -0.9rem;
+        margin-bottom: 1.7rem;
+        padding: 0 0.35rem;
+        font-size: 0.93rem;
+        line-height: 1.62;
+    }
+
     .features-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 1.2rem;
@@ -794,6 +802,41 @@ h2 {
 
     .bento-card p {
         font-size: 0.85rem;
+    }
+
+    .why-choose-us .bento-card .why-card-eyebrow {
+        font-size: 0.67rem;
+    }
+
+    .why-choose-us .bento-card .why-card-title {
+        font-size: 1.04rem;
+    }
+
+    .why-choose-us .bento-card .why-card-copy {
+        font-size: 0.84rem;
+        line-height: 1.56;
+    }
+
+    .why-choose-us .bento-card .why-card-points {
+        gap: 0.4rem;
+    }
+
+    .why-choose-us .bento-card .why-card-points li {
+        font-size: 0.8rem;
+        padding-left: 1.02rem;
+    }
+
+    .why-choose-us .bento-card .why-chip {
+        font-size: 0.68rem;
+        padding: 0.26rem 0.54rem;
+    }
+
+    .why-choose-us .bento-card .why-process {
+        grid-template-columns: 1fr;
+    }
+
+    .why-choose-us .bento-card .why-process-step {
+        font-size: 0.73rem;
     }
 
     .feature-card {
@@ -1381,6 +1424,15 @@ h2 {
         margin-bottom: 1.5rem;
     }
 
+    .why-choose-us .why-section-intro {
+        margin-top: -0.5rem;
+        margin-bottom: 1.3rem;
+        text-align: left;
+        font-size: 0.88rem;
+        line-height: 1.58;
+        max-width: none;
+    }
+
     .features-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
@@ -1427,6 +1479,68 @@ h2 {
 
     .bento-card p {
         font-size: 0.85rem;
+    }
+
+    .why-choose-us .bento-card .why-card-eyebrow {
+        margin-bottom: 0.48rem;
+        font-size: 0.62rem;
+        letter-spacing: 0.05em;
+    }
+
+    .why-choose-us .bento-card .why-card-title {
+        font-size: 0.96rem;
+        line-height: 1.3;
+    }
+
+    .why-choose-us .bento-card .why-card-copy {
+        margin-top: 0.46rem;
+        font-size: 0.82rem;
+        line-height: 1.5;
+    }
+
+    .why-choose-us .bento-card .why-card-points {
+        margin-top: 0.72rem;
+        gap: 0.34rem;
+    }
+
+    .why-choose-us .bento-card .why-card-points li {
+        font-size: 0.76rem;
+        line-height: 1.4;
+        padding-left: 0.94rem;
+    }
+
+    .why-choose-us .bento-card .why-card-points li::before {
+        top: 0.4rem;
+        width: 0.42rem;
+        height: 0.42rem;
+    }
+
+    .why-choose-us .bento-card .why-chip-row {
+        margin-top: 0.7rem;
+        gap: 0.36rem;
+    }
+
+    .why-choose-us .bento-card .why-chip {
+        font-size: 0.64rem;
+        padding: 0.22rem 0.5rem;
+    }
+
+    .why-choose-us .bento-card .why-process {
+        margin-top: 0.74rem;
+        grid-template-columns: 1fr;
+        gap: 0.36rem;
+    }
+
+    .why-choose-us .bento-card .why-process-step {
+        padding: 0.38rem 0.46rem;
+        font-size: 0.7rem;
+        border-radius: 10px;
+    }
+
+    .why-choose-us .bento-card .why-process-step .step-index {
+        width: 17px;
+        height: 17px;
+        font-size: 0.64rem;
     }
 
     .feature-card {

@@ -331,7 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
     applyPortfolioFilter(currentFilter);
 
     // --- 2. Category Explore (Opens Modal with filtered items - images + videos) ---
-    const exploreButtons = document.querySelectorAll('.explore-btn');
+    const categoryCards = document.querySelectorAll('.category-card');
+    const extraCategoryButtons = document.querySelectorAll('.extra-category-tag');
     const productModal = document.getElementById('productGalleryModal');
     
     // Get category images data for bento backgrounds
@@ -680,49 +681,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }, { passive: true });
     }
 
-    exploreButtons.forEach(btn => {
+    function openCategoryGallery(categoryId, catName, catSlug) {
+        const normalizedCategoryId = String(categoryId || '');
+        if (!normalizedCategoryId) return;
+
+        savedScrollPosition = window.scrollY || window.pageYOffset;
+        document.getElementById('productGalleryTitle').textContent = catName || 'Items';
+        currentGalleryCategorySlug = catSlug || '';
+        currentGalleryCategoryId = normalizedCategoryId;
+        currentGalleryCategoryName = catName || 'Items';
+        productModal.classList.add('active');
+        document.body.classList.add('modal-open');
+
+        galleryGrid.innerHTML = '';
+        setGallerySkeletonVisible(true);
+        setGalleryLoadMoreVisible(false);
+
+        window.setTimeout(() => {
+            let catItems = categoryItemsData[normalizedCategoryId] || [];
+            if (!catItems.length) {
+                catItems = buildFallbackCategoryItems(normalizedCategoryId, catName || 'Items');
+            }
+            currentGalleryItems = catItems.slice();
+            currentGalleryOffset = currentGalleryItems.length;
+
+            const knownTotal = Number(categoryItemTotalsData[normalizedCategoryId]);
+            const totalForCategory = Number.isFinite(knownTotal) ? knownTotal : currentGalleryOffset;
+            currentGalleryHasMore = currentGalleryOffset < totalForCategory;
+
+            renderCategoryGallery(currentGalleryItems, catName || 'Items');
+            updateGalleryLoadMoreUi();
+        }, 160);
+    }
+
+    categoryCards.forEach((card) => {
+        const openFromCard = () => {
+            const categoryId = card.dataset.category;
+            const catName = card.querySelector('h3')?.textContent?.trim() || 'Items';
+            const catSlug = card.dataset.slug || '';
+            openCategoryGallery(categoryId, catName, catSlug);
+        };
+
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.category-overlay .explore-btn')) {
+                e.preventDefault();
+            }
+            openFromCard();
+        });
+
+        card.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            openFromCard();
+        });
+    });
+
+    extraCategoryButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            
-            const categoryId = btn.dataset.filter;
-            const card = btn.closest('.category-card');
-            const extraTag = btn.closest('.extra-category-tag');
-            let catName = 'Items';
-            let catSlug = '';
-            if (card) {
-                catName = card.querySelector('h3').textContent;
-                catSlug = card.dataset.slug || '';
-            } else if (extraTag) {
-                catName = extraTag.querySelector('span')?.textContent || 'Items';
-                catSlug = extraTag.dataset.slug || '';
-            }
-            document.getElementById('productGalleryTitle').textContent = catName;
-            currentGalleryCategorySlug = catSlug;
-            currentGalleryCategoryId = String(categoryId || '');
-            currentGalleryCategoryName = catName;
-            productModal.classList.add('active');
-            document.body.classList.add('modal-open');
-
-            galleryGrid.innerHTML = '';
-            setGallerySkeletonVisible(true);
-            setGalleryLoadMoreVisible(false);
-
-            window.setTimeout(() => {
-                let catItems = categoryItemsData[categoryId] || [];
-                if (!catItems.length) {
-                    catItems = buildFallbackCategoryItems(categoryId, catName);
-                }
-                currentGalleryItems = catItems.slice();
-                currentGalleryOffset = currentGalleryItems.length;
-
-                const knownTotal = Number(categoryItemTotalsData[String(categoryId)]);
-                const totalForCategory = Number.isFinite(knownTotal) ? knownTotal : currentGalleryOffset;
-                currentGalleryHasMore = currentGalleryOffset < totalForCategory;
-
-                renderCategoryGallery(currentGalleryItems, catName);
-                updateGalleryLoadMoreUi();
-            }, 160);
+            const categoryId = btn.dataset.filter || btn.dataset.category;
+            const catName = btn.querySelector('span')?.textContent?.trim() || 'Items';
+            const catSlug = btn.dataset.slug || '';
+            openCategoryGallery(categoryId, catName, catSlug);
         });
     });
 
@@ -767,7 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const exactCard = document.querySelector('.category-card[data-slug="' + slug + '"]');
         const exactExtra = document.querySelector('.extra-category-tag[data-slug="' + slug + '"]');
-        if (exactCard) return exactCard.querySelector('.explore-btn');
+        if (exactCard) return exactCard;
         if (exactExtra) return exactExtra;
 
         const allCategories = document.querySelectorAll('.category-card, .extra-category-tag');
@@ -799,7 +819,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (!bestNode) return null;
-        return bestNode.classList.contains('category-card') ? bestNode.querySelector('.explore-btn') : bestNode;
+        return bestNode;
     }
 
     function resolveCategoryTargetByExpertise(expertiseKey) {
@@ -848,7 +868,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (!bestNode) return null;
-        return bestNode.classList.contains('category-card') ? bestNode.querySelector('.explore-btn') : bestNode;
+        return bestNode;
     }
 
     function openTargetWithDelay(target) {
@@ -1303,13 +1323,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.style.overflow = '';
         }
     }
-
-    // Save scroll when opening gallery
-    exploreButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            savedScrollPosition = window.scrollY || window.pageYOffset;
-        }, true); // capture phase, before the main handler
-    });
 
     // Close buttons
     document.getElementById('productGalleryClose').addEventListener('click', closeGalleryModal);

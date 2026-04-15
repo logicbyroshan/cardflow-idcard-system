@@ -153,14 +153,14 @@
                     </div>
                     <p>Your trusted partner for professional ID card solutions with 20+ years of excellence.</p>
                     <div class="social-links">
-                        <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
-                            <i class="fa-brands fa-facebook-f" aria-hidden="true"></i>
-                        </a>
                         <a href="{{ business.instagram_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram" {% if not business.instagram_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-instagram" aria-hidden="true"></i>
                         </a>
                         <a href="{{ business.twitter_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="YouTube" {% if not business.twitter_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-youtube" aria-hidden="true"></i>
+                        </a>
+                        <a href="{{ business.facebook_url|default:'#' }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" {% if not business.facebook_url %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fa-brands fa-facebook-f" aria-hidden="true"></i>
                         </a>
                         <a href="{% if business.whatsapp_number %}https://wa.me/{{ business.whatsapp_number|cut:'+'|cut:' '|cut:'-'|cut:'('|cut:')' }}?text={{ 'Hello, I want to know more about your products.'|urlencode }}{% else %}#{% endif %}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" {% if not business.whatsapp_number %}aria-disabled="true" tabindex="-1" style="pointer-events: none; opacity: 0.5;"{% endif %}>
                             <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>

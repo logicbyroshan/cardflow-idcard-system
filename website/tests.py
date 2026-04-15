@@ -1,4 +1,5 @@
 from io import BytesIO
+from urllib.parse import parse_qs, urlsplit
 from unittest import mock
 
 from django.core.cache import cache
@@ -10,7 +11,7 @@ from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
 
-from website.models import PortfolioCategory, PortfolioItem, Testimonial
+from website.models import ContactSubmission, PortfolioCategory, PortfolioItem, Testimonial
 from website.services import PortfolioItemService, TestimonialService
 
 
@@ -117,6 +118,50 @@ class PortfolioUploadProcessingTests(TestCase):
 		self.assertIn(image_item, row_items)
 		self.assertNotIn(reel_item, row_items)
 		self.assertTrue(all(p.item_type == 'image' for p in row_items))
+
+	def test_home_products_rows_mix_categories_without_adjacent_repeats(self):
+		cat_a = PortfolioCategory.objects.create(name='Category A')
+		cat_b = PortfolioCategory.objects.create(name='Category B')
+		cat_c = PortfolioCategory.objects.create(name='Category C')
+
+		for idx in range(2):
+			PortfolioItemService.create(
+				category_id=cat_a.id,
+				item_type='image',
+				image=self._uploaded_image(f'cat-a-{idx}.jpg'),
+				is_active=True,
+				is_featured=True,
+			)
+			PortfolioItemService.create(
+				category_id=cat_b.id,
+				item_type='image',
+				image=self._uploaded_image(f'cat-b-{idx}.jpg'),
+				is_active=True,
+				is_featured=True,
+			)
+			PortfolioItemService.create(
+				category_id=cat_c.id,
+				item_type='image',
+				image=self._uploaded_image(f'cat-c-{idx}.jpg'),
+				is_active=True,
+				is_featured=True,
+			)
+
+		cache.delete('home_sections')
+		response = self.client.get('/')
+		self.assertEqual(response.status_code, 200)
+
+		row1 = list(response.context['row1_portfolio'])
+		row2 = list(response.context['row2_portfolio'])
+		self.assertTrue(row1)
+		self.assertTrue(row2)
+
+		for row in (row1, row2):
+			for i in range(1, len(row)):
+				self.assertNotEqual(row[i - 1].category_id, row[i].category_id)
+
+		for i in range(min(len(row1), len(row2))):
+			self.assertNotEqual(row1[i].category_id, row2[i].category_id)
 
 
 class TestimonialSubmissionTests(TestCase):
@@ -301,3 +346,50 @@ class ProUserFeedbackPageTests(TestCase):
 		self.assertEqual(response.context['active_page'], 'pro_user_feedback')
 		self.assertEqual(response.context['feedback_total'], 0)
 		self.assertEqual(response.context['feedback_items'], [])
+
+
+class WebsitePublicHardeningTests(TestCase):
+	def setUp(self):
+		cache.clear()
+
+	def test_panel_entry_falls_back_to_safe_login_path_for_invalid_next(self):
+		response = self.client.get(reverse('website:panel_entry'), {'next': '/panel/../../etc/passwd'})
+
+		self.assertEqual(response.status_code, 302)
+		location = response['Location']
+		parsed = urlsplit(location)
+		query = parse_qs(parsed.query)
+
+		self.assertIn(parsed.path, ['/panel/auth/login/', '/auth/login/'])
+		self.assertIn('panel_entry_token', query)
+
+	def test_panel_entry_preserves_valid_panel_path_and_query(self):
+		response = self.client.get(reverse('website:panel_entry'), {'next': '/panel/app/login/?install=1&src=website'})
+
+		self.assertEqual(response.status_code, 302)
+		location = response['Location']
+		parsed = urlsplit(location)
+		query = parse_qs(parsed.query)
+
+		self.assertIn(parsed.path, ['/panel/app/login/', '/app/login/'])
+		self.assertEqual(query.get('install'), ['1'])
+		self.assertEqual(query.get('src'), ['website'])
+		self.assertIn('panel_entry_token', query)
+
+	def test_submit_contact_sanitizes_subject_before_save(self):
+		response = self.client.post(
+			reverse('website:submit_contact'),
+			{
+				'name': 'Contact User',
+				'email': 'contact-user@example.com',
+				'phone': '9999999999',
+				'subject': 'Need help\r\nBcc: hidden@example.com',
+				'message': 'Please call me back.',
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		submission = ContactSubmission.objects.get(email='contact-user@example.com')
+		self.assertEqual(submission.subject, 'Need help Bcc: hidden@example.com')
+		self.assertNotIn('\r', submission.subject)
+		self.assertNotIn('\n', submission.subject)

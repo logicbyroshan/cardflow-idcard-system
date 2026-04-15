@@ -1,41 +1,77 @@
 {% load static %}
 <!-- Why Choose Us Section (Bento Box Layout) -->
-<section class="why-choose-us" id="why">
+<section class="why-choose-us" id="why" aria-labelledby="why-title">
     <div class="container">
-        <h2 class="section-title">Why Choose Us</h2>
+        <h2 class="section-title" id="why-title">Why Choose Us</h2>
+        <p class="why-section-intro">
+            From first design proof to final dispatch, our workflow is built to save admin time,
+            improve card quality, and keep every order transparent.
+        </p>
         <div class="bento-grid">
-            <div class="bento-card bento-card-1">
+            <article class="bento-card bento-card-1">
                 <div class="bento-text-content">
-                    <h3>Creative Custom Designs</h3>
-                    <p>Unique, professionally designed layouts tailored to your school or organization's branding and identity.</p>
+                    <span class="why-card-eyebrow">Design First</span>
+                    <h3 class="why-card-title">Identity-ready layouts for your institution</h3>
+                    <p class="why-card-copy">
+                        Every card is customized to match your school, college, or organization branding so the final output looks consistent and professional.
+                    </p>
+                    <ul class="why-card-points" aria-label="Design benefits">
+                        <li>Brand-aligned color and logo placement</li>
+                        <li>Photo and text balance reviewed before print</li>
+                        <li>Approval-friendly preview format for quick sign-off</li>
+                    </ul>
                 </div>
                 <div class="bento-illustration">
-                    <img src="{% static 'assets/custom desing.png' %}" alt="Creative Custom Designs" loading="lazy">
+                    <img src="{% static 'assets/custom desing.png' %}" alt="Institution-ready custom card design" loading="lazy">
                 </div>
-            </div>
-            <div class="bento-card bento-card-2">
+            </article>
+            <article class="bento-card bento-card-2">
                 <div class="bento-illustration">
-                    <img src="{% static 'assets/id card.svg' %}" alt="Premium Quality Cards" loading="lazy">
+                    <img src="{% static 'assets/id card.svg' %}" alt="Premium quality PVC cards" loading="lazy">
                 </div>
-                <h3>Premium Quality Cards</h3>
-                <p>High-resolution PVC ID cards with vibrant colors, sharp text, and durable lamination that lasts for years.</p>
-            </div>
-            <div class="bento-card bento-card-3">
+                <span class="why-card-eyebrow">Print Quality</span>
+                <h3 class="why-card-title">Sharp cards that stay readable daily</h3>
+                <p class="why-card-copy">
+                    We deliver clean text, accurate colors, and durable finishing so cards remain clear through everyday use.
+                </p>
+                <div class="why-chip-row" aria-label="Quality highlights">
+                    <span class="why-chip">PVC + Lamination</span>
+                    <span class="why-chip">Smudge Resistant</span>
+                    <span class="why-chip">Crisp QR Output</span>
+                </div>
+            </article>
+            <article class="bento-card bento-card-3">
                 <div class="bento-illustration">
-                    <img src="{% static 'assets/secure card.png' %}" alt="Secure & Tamper-Proof" loading="lazy">
+                    <img src="{% static 'assets/secure card.png' %}" alt="Secure and tamper-resistant cards" loading="lazy">
                 </div>
-                <h3>Secure & Tamper-Proof</h3>
-                <p>Advanced security features including holograms, QR codes, barcodes, and RFID integration to prevent forgery.</p>
-            </div>
-            <div class="bento-card bento-card-4">
+                <span class="why-card-eyebrow">Security Layer</span>
+                <h3 class="why-card-title">Security options built into every batch</h3>
+                <p class="why-card-copy">
+                    Add the right security level for your use case, from entry verification to anti-duplicate safeguards.
+                </p>
+                <div class="why-chip-row" aria-label="Security highlights">
+                    <span class="why-chip">Unique ID/Code</span>
+                    <span class="why-chip">QR or Barcode</span>
+                    <span class="why-chip">RFID Ready</span>
+                </div>
+            </article>
+            <article class="bento-card bento-card-4">
                 <div class="bento-text-content">
-                    <h3>Bulk Order Management</h3>
-                    <p>Streamlined process for large orders  -  from data collection to printing. Track every card through our smart dashboard.</p>
+                    <span class="why-card-eyebrow">Smooth Execution</span>
+                    <h3 class="why-card-title">Bulk order handling with predictable turnaround</h3>
+                    <p class="why-card-copy">
+                        Large student or staff batches are processed through a structured flow that keeps approval, printing, and dispatch organized.
+                    </p>
+                    <div class="why-process" aria-label="Order process steps">
+                        <div class="why-process-step"><span class="step-index">1</span><span>Collect Data</span></div>
+                        <div class="why-process-step"><span class="step-index">2</span><span>Approve Proof</span></div>
+                        <div class="why-process-step"><span class="step-index">3</span><span>Print and Deliver</span></div>
+                    </div>
                 </div>
                 <div class="bento-illustration">
-                    <img src="{% static 'assets/bulk order.png' %}" alt="Bulk Order Management" loading="lazy">
+                    <img src="{% static 'assets/bulk order.png' %}" alt="Bulk order workflow and delivery" loading="lazy">
                 </div>
-            </div>
+            </article>
         </div>
     </div>
 </section>

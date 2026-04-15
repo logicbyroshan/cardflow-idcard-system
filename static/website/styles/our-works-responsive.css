@@ -484,9 +484,15 @@
         padding: 4px 10px;
     }
 
-    .explore-btn {
+    .extra-category-tag.explore-btn {
         padding: 12px 24px;
         font-size: 0.9rem;
+    }
+
+    .category-overlay .explore-btn {
+        padding: 7px 10px;
+        font-size: 0.68rem;
+        min-height: 0;
     }
 
     .more-categories {
@@ -729,10 +735,17 @@
 
 /* Strict website button consistency overrides */
 @media (max-width: 767px) {
-    .explore-btn,
+    .extra-category-tag.explore-btn,
     .load-more-btn {
         min-height: var(--btn-web-height, 38px);
         padding: var(--btn-web-pad-y, 8px) var(--btn-web-pad-x, 18px);
         border-radius: var(--btn-web-radius, 10px);
+    }
+
+    .category-overlay .explore-btn {
+        min-height: 0;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 0.66rem;
     }
 }
