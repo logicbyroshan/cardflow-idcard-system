@@ -56,6 +56,7 @@ from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
 from mediafiles.services import ImageService
 from mediafiles.services.image_thumbnail import ThumbnailService
+from mediafiles.models import CardMedia
 from .models import MobileDevice
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,86 @@ def _mobile_shell_safe_bool(raw_value, default=False):
     if isinstance(raw_value, bool):
         return raw_value
     return _truthy(raw_value)
+
+
+def _normalize_field_name(name):
+    return str(name or '').strip().upper()
+
+
+def _get_field_value_case_insensitive(field_data, field_name):
+    if not isinstance(field_data, dict):
+        return ''
+    canonical = _normalize_field_name(field_name)
+    for key, value in field_data.items():
+        if _normalize_field_name(key) == canonical:
+            return value
+    return ''
+
+
+def _has_meaningful_field_value(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return bool(text)
+
+
+def _build_field_rename_pairs(old_fields, new_fields):
+    pairs = []
+    old_seq = old_fields if isinstance(old_fields, list) else []
+    new_seq = new_fields if isinstance(new_fields, list) else []
+
+    for index in range(min(len(old_seq), len(new_seq))):
+        old_name = _normalize_field_name((old_seq[index] or {}).get('name', ''))
+        new_name = _normalize_field_name((new_seq[index] or {}).get('name', ''))
+        if old_name and new_name and old_name != new_name:
+            pairs.append((old_name, new_name))
+    return pairs
+
+
+def _migrate_table_field_data_for_renames(table_id, rename_pairs, *, batch_size=500):
+    if not rename_pairs:
+        return 0
+
+    updated = 0
+    pending = []
+
+    qs = IDCard.objects.filter(table_id=table_id).only('id', 'field_data')
+    for card in qs.iterator(chunk_size=batch_size):
+        field_data = card.field_data if isinstance(card.field_data, dict) else {}
+        changed = False
+
+        for old_name, new_name in rename_pairs:
+            old_val = _get_field_value_case_insensitive(field_data, old_name)
+            new_val = _get_field_value_case_insensitive(field_data, new_name)
+            if _has_meaningful_field_value(old_val) and not _has_meaningful_field_value(new_val):
+                field_data[new_name] = old_val
+                changed = True
+
+        if changed:
+            card.field_data = field_data
+            pending.append(card)
+            updated += 1
+            if len(pending) >= batch_size:
+                IDCard.objects.bulk_update(pending, ['field_data'], batch_size=batch_size)
+                pending.clear()
+
+    if pending:
+        IDCard.objects.bulk_update(pending, ['field_data'], batch_size=batch_size)
+
+    return updated
+
+
+def _migrate_cardmedia_field_names_for_renames(table_id, rename_pairs):
+    if not rename_pairs:
+        return 0
+
+    updated_rows = 0
+    for old_name, new_name in rename_pairs:
+        updated_rows += CardMedia.objects.filter(
+            card__table_id=table_id,
+            field_name__iexact=old_name,
+        ).exclude(field_name=new_name).update(field_name=new_name)
+    return updated_rows
 
 
 def _mobile_shell_resolve_url(url_value, *, request=None, fallback=''):
@@ -3248,9 +3329,21 @@ def api_table_update_fields(request, table_id):
                 'mandatory': bool(f.get('mandatory', False)),
             })
 
-        table.fields = validated
-        table.save(update_fields=['fields'])
-        return JsonResponse({'success': True, 'message': 'Column order saved successfully'})
+        old_fields = table.fields if isinstance(table.fields, list) else []
+        rename_pairs = _build_field_rename_pairs(old_fields, validated)
+
+        with transaction.atomic():
+            table.fields = validated
+            table.save(update_fields=['fields'])
+            cards_updated = _migrate_table_field_data_for_renames(table.id, rename_pairs)
+            media_updated = _migrate_cardmedia_field_names_for_renames(table.id, rename_pairs)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Column order saved successfully',
+            'migrated_card_rows': cards_updated,
+            'migrated_media_rows': media_updated,
+        })
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
     except Exception:

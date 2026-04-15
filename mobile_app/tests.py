@@ -808,6 +808,66 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 400)
 		self.assertFalse(response.json()['success'])
 
+	def test_table_update_fields_renaming_preserves_existing_values(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'FATHER PHOTO', 'type': 'rel_photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+		self.card.field_data = {
+			'NAME': 'Student One',
+			'FATHER PHOTO': 'adarshimg/CODE/father.jpg',
+			'MOTHER PHOTO': 'adarshimg/CODE/mother.jpg',
+		}
+		self.card.save(update_fields=['field_data'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/update-fields/',
+			data=json.dumps({
+				'fields': [
+					{'name': 'NAME', 'type': 'text'},
+					{'name': 'REL NO 1 PHOTO', 'type': 'rel_photo'},
+					{'name': 'REL NO 2 PHOTO', 'type': 'rel_photo'},
+				],
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.card.refresh_from_db()
+		self.assertEqual(self.card.field_data.get('REL NO 1 PHOTO'), 'adarshimg/CODE/father.jpg')
+		self.assertEqual(self.card.field_data.get('REL NO 2 PHOTO'), 'adarshimg/CODE/mother.jpg')
+
+	def test_table_update_fields_type_change_and_rename_preserves_existing_value(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'FATHER PHOTO', 'type': 'rel_photo', 'order': 1},
+		]
+		self.table.save(update_fields=['fields'])
+		self.card.field_data = {
+			'NAME': 'Student One',
+			'FATHER PHOTO': 'adarshimg/CODE/father.jpg',
+		}
+		self.card.save(update_fields=['field_data'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/update-fields/',
+			data=json.dumps({
+				'fields': [
+					{'name': 'NAME', 'type': 'text'},
+					{'name': 'GUARDIAN IMAGE', 'type': 'text'},
+				],
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.card.refresh_from_db()
+		self.assertEqual(self.card.field_data.get('GUARDIAN IMAGE'), 'adarshimg/CODE/father.jpg')
+
 	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
 	def test_upload_photo_rejects_invalid_card_id(self, _mock_validate):
 		self._login_mobile_super_admin()
