@@ -652,6 +652,27 @@ class PanelBackupApiTests(PanelBaseTestCase):
                 self.assertNotIn('\n', content_disposition)
                 response.close()
 
+    @mock.patch('panel.services.backup_service._build_client_in_zip', return_value=False)
+    def test_backup_service_does_not_deactivate_clients_during_processing(self, _mock_build):
+        from panel.services import backup_service
+
+        task = BackupTask.objects.create(
+            created_by=self.super_admin,
+            confirmation_code='1234567890',
+            status='pending',
+            client_ids=[self.client_profile.id],
+            client_names={str(self.client_profile.id): self.client_profile.name},
+        )
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                backup_service._process_backup(task.id)
+
+        self.client_profile.refresh_from_db()
+        task.refresh_from_db()
+        self.assertEqual(self.client_profile.status, 'active')
+        self.assertEqual(task.status, 'completed')
+
 
 class PanelMonitoringApiTests(PanelBaseTestCase):
     def test_client_errors_requires_authentication(self):

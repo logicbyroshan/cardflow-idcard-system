@@ -78,9 +78,7 @@ def _process_backup(task_id: int):
     """Main background thread — iterates clients and builds ONE combined ZIP.
 
     Creates a single ``Adarsh Backup {YYYY-MM-DD}.zip`` with one folder per
-    school/client.  Clients are set to *inactive* for the duration so that
-    no new cards are added while the ZIP is being built; they are restored
-    to *active* in a finally block regardless of outcome.
+    school/client.
     """
     from core.models import BackupTask
     from client.models import Client
@@ -97,18 +95,6 @@ def _process_backup(task_id: int):
 
     out_dir = _ensure_backup_dir(task_id)
     client_ids: List[int] = task.client_ids or []
-
-    # ── Temporarily deactivate selected clients ──────────────────────────
-    previously_active_ids: List[int] = list(
-        Client.objects.filter(pk__in=client_ids, status='active')
-        .values_list('pk', flat=True)
-    )
-    if previously_active_ids:
-        Client.objects.filter(pk__in=previously_active_ids).update(status='inactive')
-        logger.info(
-            "Backup #%d: set %d client(s) inactive for backup duration: %s",
-            task_id, len(previously_active_ids), previously_active_ids,
-        )
 
     try:
         clients = (
@@ -173,13 +159,7 @@ def _process_backup(task_id: int):
         except Exception as persist_err:
             logger.warning("Backup #%d failed and status persistence also failed: %s", task_id, persist_err)
 
-    finally:
-        if previously_active_ids:
-            Client.objects.filter(pk__in=previously_active_ids).update(status='active')
-            logger.info(
-                "Backup #%d: restored %d client(s) to active status.",
-                task_id, len(previously_active_ids),
-            )
+
 
 
 def _build_client_in_zip(zf: zipfile.ZipFile, client) -> bool:

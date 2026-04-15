@@ -18,7 +18,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.cache import cache
 from django.db.models import Q
-from django.db import transaction
+from django.db import transaction, DatabaseError
 from django.shortcuts import get_object_or_404
 from client.models import Client as PanelClient
 
@@ -403,7 +403,13 @@ class TestimonialService:
 
         if not has_query:
             return False
-        return Testimonial.objects.filter(query).exists()
+        try:
+            return Testimonial.objects.filter(query).exists()
+        except DatabaseError:
+            # Tolerate partially migrated databases by falling back to email-only checks.
+            if normalized_email:
+                return Testimonial.objects.filter(reviewer_email__iexact=normalized_email).exists()
+            return False
 
     @staticmethod
     def update(pk, *, reviewer_name=None, reviewer_email=None, reviewer_title=None,
