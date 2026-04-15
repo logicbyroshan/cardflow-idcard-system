@@ -258,17 +258,25 @@
             return clientQuickListPromise;
         }
 
+        const allClientsUrl = panelUrl('/api/client/messages/targets/?limit=1000');
+        const assignmentClientsUrl = panelUrl('/api/client-staff/clients/');
         const activeUrl = panelUrl('/api/clients/active/');
-        const fallbackUrl = panelUrl('/api/client-staff/clients/');
 
-        clientQuickListPromise = ApiClient.get(activeUrl)
+        clientQuickListPromise = ApiClient.get(allClientsUrl)
             .then(function (data) {
                 if (!data || !data.success) throw new Error('Failed to load clients');
                 clientQuickListCache = normalizeClientList(data);
                 return clientQuickListCache;
             })
             .catch(function () {
-                return ApiClient.get(fallbackUrl).then(function (data) {
+                return ApiClient.get(assignmentClientsUrl).then(function (data) {
+                    if (!data || !data.success) throw new Error('Failed to load clients');
+                    clientQuickListCache = normalizeClientList(data);
+                    return clientQuickListCache;
+                });
+            })
+            .catch(function () {
+                return ApiClient.get(activeUrl).then(function (data) {
                     if (!data || !data.success) throw new Error('Failed to load clients');
                     clientQuickListCache = normalizeClientList(data);
                     return clientQuickListCache;
