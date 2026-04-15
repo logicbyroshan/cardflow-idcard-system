@@ -446,6 +446,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var BATCH_SIZE = 16;
   var visibleCount = INITIAL_BATCH;
   var filteredItems = allItems.slice();
+  var pagingObserver = null;
 
   function normalize(value) {
     return (value || '').toString().trim().toLowerCase();
@@ -601,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   if (sentinel && 'IntersectionObserver' in window) {
-    var pagingObserver = new IntersectionObserver(function (entries) {
+    pagingObserver = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) {
           return;
@@ -617,6 +618,19 @@ document.addEventListener('DOMContentLoaded', function () {
       rootMargin: '460px 0px'
     });
     pagingObserver.observe(sentinel);
+  } else if (gridWrap && sentinel) {
+    // Fallback for browsers/webviews where IntersectionObserver is missing.
+    gridWrap.addEventListener('scroll', function () {
+      if (visibleCount >= filteredItems.length) {
+        return;
+      }
+      var nearBottom = gridWrap.scrollTop + gridWrap.clientHeight >= (gridWrap.scrollHeight - 320);
+      if (!nearBottom) {
+        return;
+      }
+      visibleCount = Math.min(filteredItems.length, visibleCount + BATCH_SIZE);
+      applyVisibility();
+    }, { passive: true });
   }
 
   updateSearchUi();

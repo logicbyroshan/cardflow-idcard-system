@@ -123,11 +123,7 @@
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
       </a>
-      {% if is_pro_user %}
-      <a href="{% url 'pro_user_feedback' %}" class="{% if active_page == 'pro_user_feedback' %}active{% endif %}">
-        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
-      </a>
-      {% elif can_submit_public_review %}
+      {% if (is_client or is_client_staff) and can_submit_public_review %}
       <a href="{% url 'website:testimonials' %}?review=open" class="{% if active_page == 'feedback' %}active{% endif %}">
         <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
       </a>
