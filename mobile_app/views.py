@@ -91,12 +91,67 @@ def _normalize_field_name(name):
     return str(name or '').strip().upper()
 
 
+def _field_token(name):
+    return re.sub(r'[^A-Z0-9]+', '', _normalize_field_name(name))
+
+
+def _rel_photo_slot_for_name(name):
+    normalized = _normalize_field_name(name)
+    token = _field_token(name)
+    if token in {'FATHERPHOTO', 'FPHOTO'}:
+        return 1
+    if token in {'MOTHERPHOTO', 'MPHOTO'}:
+        return 2
+
+    match = re.search(r'REL(?:ATION)?(?:NO)?([0-9]+)', token)
+    if match:
+        try:
+            slot = int(match.group(1))
+            if slot > 0:
+                return slot
+        except (TypeError, ValueError):
+            pass
+
+    match = re.search(r'REL[ _-]*NO?[ _-]*([0-9]+)', normalized)
+    if match:
+        try:
+            slot = int(match.group(1))
+            if slot > 0:
+                return slot
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _rel_photo_aliases_for_slot(slot):
+    if not slot or slot <= 0:
+        return []
+    aliases = [
+        f'REL_{slot}PHOTO',
+        f'REL{slot}PHOTO',
+        f'REL {slot} PHOTO',
+        f'REL NO {slot} PHOTO',
+        f'REL{slot}',
+        f'REL {slot}',
+        f'REL_{slot}',
+    ]
+    if slot == 1:
+        aliases.extend(['FATHER PHOTO', 'FATHER_PHOTO', 'F PHOTO'])
+    elif slot == 2:
+        aliases.extend(['MOTHER PHOTO', 'MOTHER_PHOTO', 'M PHOTO'])
+    return aliases
+
+
 def _get_field_value_case_insensitive(field_data, field_name):
     if not isinstance(field_data, dict):
         return ''
     canonical = _normalize_field_name(field_name)
+    canonical_token = _field_token(field_name)
     for key, value in field_data.items():
-        if _normalize_field_name(key) == canonical:
+        key_norm = _normalize_field_name(key)
+        if key_norm == canonical:
+            return value
+        if canonical_token and _field_token(key_norm) == canonical_token:
             return value
     return ''
 
@@ -114,10 +169,21 @@ def _build_field_rename_pairs(old_fields, new_fields):
     new_seq = new_fields if isinstance(new_fields, list) else []
 
     for index in range(min(len(old_seq), len(new_seq))):
-        old_name = _normalize_field_name((old_seq[index] or {}).get('name', ''))
-        new_name = _normalize_field_name((new_seq[index] or {}).get('name', ''))
-        if old_name and new_name and old_name != new_name:
-            pairs.append((old_name, new_name))
+        old_field = old_seq[index] or {}
+        new_field = new_seq[index] or {}
+        old_name = _normalize_field_name(old_field.get('name', ''))
+        new_name = _normalize_field_name(new_field.get('name', ''))
+        old_type = _normalize_field_name(old_field.get('type', 'text'))
+        new_type = _normalize_field_name(new_field.get('type', 'text'))
+        if old_name and new_name and (old_name != new_name or old_type != new_type):
+            pairs.append({
+                'old_name': old_name,
+                'new_name': new_name,
+                'old_type': old_type,
+                'new_type': new_type,
+                'old_rel_slot': _rel_photo_slot_for_name(old_name) if old_type in {'REL_PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'} else None,
+                'new_rel_slot': _rel_photo_slot_for_name(new_name) if new_type in {'REL_PHOTO', 'FATHER_PHOTO', 'MOTHER_PHOTO'} else None,
+            })
     return pairs
 
 
@@ -133,9 +199,20 @@ def _migrate_table_field_data_for_renames(table_id, rename_pairs, *, batch_size=
         field_data = card.field_data if isinstance(card.field_data, dict) else {}
         changed = False
 
-        for old_name, new_name in rename_pairs:
+        for pair in rename_pairs:
+            old_name = pair['old_name']
+            new_name = pair['new_name']
+            old_slot = pair.get('old_rel_slot')
+
             old_val = _get_field_value_case_insensitive(field_data, old_name)
+            if not _has_meaningful_field_value(old_val) and old_slot:
+                for alias in _rel_photo_aliases_for_slot(old_slot):
+                    old_val = _get_field_value_case_insensitive(field_data, alias)
+                    if _has_meaningful_field_value(old_val):
+                        break
+
             new_val = _get_field_value_case_insensitive(field_data, new_name)
+
             if _has_meaningful_field_value(old_val) and not _has_meaningful_field_value(new_val):
                 field_data[new_name] = old_val
                 changed = True
@@ -159,11 +236,21 @@ def _migrate_cardmedia_field_names_for_renames(table_id, rename_pairs):
         return 0
 
     updated_rows = 0
-    for old_name, new_name in rename_pairs:
+    for pair in rename_pairs:
+        old_name = pair['old_name']
+        new_name = pair['new_name']
+        old_slot = pair.get('old_rel_slot')
         updated_rows += CardMedia.objects.filter(
             card__table_id=table_id,
             field_name__iexact=old_name,
         ).exclude(field_name=new_name).update(field_name=new_name)
+
+        if old_slot:
+            for alias in _rel_photo_aliases_for_slot(old_slot):
+                updated_rows += CardMedia.objects.filter(
+                    card__table_id=table_id,
+                    field_name__iexact=alias,
+                ).exclude(field_name=new_name).update(field_name=new_name)
     return updated_rows
 
 

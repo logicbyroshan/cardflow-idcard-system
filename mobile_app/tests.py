@@ -868,6 +868,34 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.card.refresh_from_db()
 		self.assertEqual(self.card.field_data.get('GUARDIAN IMAGE'), 'adarshimg/CODE/father.jpg')
 
+	def test_table_update_fields_rename_preserves_value_from_rel_alias_key(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'REL NO 1 PHOTO', 'type': 'rel_photo', 'order': 1},
+		]
+		self.table.save(update_fields=['fields'])
+		self.card.field_data = {
+			'NAME': 'Student One',
+			'REL_1PHOTO': 'adarshimg/CODE/father-from-alias.jpg',
+		}
+		self.card.save(update_fields=['field_data'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/update-fields/',
+			data=json.dumps({
+				'fields': [
+					{'name': 'NAME', 'type': 'text'},
+					{'name': 'REL1', 'type': 'rel_photo'},
+				],
+			}),
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.card.refresh_from_db()
+		self.assertEqual(self.card.field_data.get('REL1'), 'adarshimg/CODE/father-from-alias.jpg')
+
 	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
 	def test_upload_photo_rejects_invalid_card_id(self, _mock_validate):
 		self._login_mobile_super_admin()

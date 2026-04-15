@@ -48,12 +48,22 @@ def _legacy_candidates_for_index(index):
     if index == 0:
         return [
             'FATHER PHOTO', 'F PHOTO', 'FATHER_PHOTO', 'REL_1PHOTO', 'REL 1 PHOTO', 'REL1PHOTO',
+            'REL NO 1 PHOTO', 'REL1', 'REL 1', 'REL_1',
         ]
     if index == 1:
         return [
             'MOTHER PHOTO', 'M PHOTO', 'MOTHER_PHOTO', 'REL_2PHOTO', 'REL 2 PHOTO', 'REL2PHOTO',
+            'REL NO 2 PHOTO', 'REL2', 'REL 2', 'REL_2',
         ]
-    return [f'REL_{index + 1}PHOTO', f'REL {index + 1} PHOTO', f'REL{index + 1}PHOTO']
+    return [
+        f'REL_{index + 1}PHOTO',
+        f'REL {index + 1} PHOTO',
+        f'REL{index + 1}PHOTO',
+        f'REL NO {index + 1} PHOTO',
+        f'REL{index + 1}',
+        f'REL {index + 1}',
+        f'REL_{index + 1}',
+    ]
 
 
 class Command(BaseCommand):
