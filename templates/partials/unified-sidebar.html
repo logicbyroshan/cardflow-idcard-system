@@ -4,17 +4,16 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      {% if current_client_logo_url and is_client or current_client_logo_url and is_client_staff %}
+      {% if current_client_logo_url %}
       <div class="profile square" style="overflow:hidden;background:var(--color-white);">
         <img src="{{ current_client_logo_url }}" alt="{{ current_client.name|default:'Client Logo' }}" width="26" height="26" style="width:100%;height:100%;object-fit:contain;">
       </div>
-      <h3 class="sidebar-brand-title">{{ current_client.name|default:"Adarsh ID Cards" }}</h3>
       {% else %}
       <div class="profile square">
         <img src="{% static 'assets/logo.png' %}" alt="logo" width="26" height="26">
       </div>
-      <h3 class="sidebar-brand-title">Adarsh ID Cards</h3>
       {% endif %}
+      <h3 class="sidebar-brand-title">{{ current_client.name|default:"Adarsh ID Cards" }}</h3>
     </div>
   </div>
   <nav aria-label="Main navigation">
@@ -50,7 +49,7 @@
       <i class="fa-solid fa-user-tie"></i><span>Manage Operator</span>
     </a>
     {% endif %}
-    <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
+    <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' or active_page == 'idcard_group' or active_page == 'group_settings' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
     {% endif %}
@@ -124,6 +123,20 @@
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
       </a>
+      {% if is_pro_user %}
+      <a href="{% url 'pro_user_feedback' %}" class="{% if active_page == 'pro_user_feedback' %}active{% endif %}">
+        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
+      </a>
+      {% elif can_submit_public_review %}
+      <a href="{% url 'website:testimonials' %}?review=open" class="{% if active_page == 'feedback' %}active{% endif %}">
+        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
+      </a>
+      {% endif %}
+      {% if is_client or is_client_staff %}
+      <a href="{% url 'product_gallery' %}" class="{% if active_page == 'product_gallery' %}active{% endif %}">
+        <i class="fa-solid fa-images"></i><span>Product Gallery</span>
+      </a>
+      {% endif %}
       <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
         <i class="fa-solid fa-gear"></i><span>Settings</span>
       </a>

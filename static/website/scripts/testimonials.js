@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const reviewShareBtn = document.getElementById('reviewModalShare');
     const stars = document.querySelectorAll('.star-rating i');
     const ratingInput = document.getElementById('selectedRating');
+    const reviewCanSubmit = reviewModal ? reviewModal.dataset.canSubmit !== 'false' : true;
     const REVIEW_MODAL_QUERY_KEY = 'review';
     const REVIEW_MODAL_QUERY_OPEN_VALUE = 'open';
 
@@ -159,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openReviewModal(syncUrl = true) {
-        if (!reviewModal) return;
+        if (!reviewModal || !reviewCanSubmit) return;
         reviewModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         if (syncUrl) syncReviewModalUrl(true);
@@ -187,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('heroWriteReviewBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
+        if (!reviewCanSubmit) return;
         openReviewModal(true);
     });
 

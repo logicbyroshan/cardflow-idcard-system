@@ -122,7 +122,9 @@ h6 {
 }
 
 .typing-wrapper {
-    display: inline-block;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
     min-height: calc(1.15em * 2);
 }
 

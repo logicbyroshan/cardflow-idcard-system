@@ -125,7 +125,7 @@ function initTypingEffect() {
     }
 
     function renderCursor() {
-        return '<span class="typing-cursor typing-cursor-inline" aria-hidden="true">|</span>';
+        return '<span class="typing-cursor typing-cursor-inline" aria-hidden="true"></span>';
     }
 
     function renderLine(line, charsTyped) {
@@ -141,7 +141,7 @@ function initTypingEffect() {
 
         return (
             renderFirstLine(line, firstLineLen) +
-            '<br><span class="typing-line-two">' + secondLineHtml + renderCursor() + '</span>'
+            '<span class="typing-line-two">' + secondLineHtml + renderCursor() + '</span>'
         );
     }
 

@@ -316,6 +316,24 @@ def pro_user_log_deletion_guard_page(request):
 
 
 @login_required
+def pro_user_feedback_page(request):
+    """Dedicated page for Pro User feedback inbox and submission entry point."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+
+    from website.models import Testimonial
+
+    feedback_qs = Testimonial.objects.all().order_by('-created_at', '-id')
+    context = {
+        'active_page': 'pro_user_feedback',
+        'user_role': get_user_role(request.user),
+        'feedback_items': list(feedback_qs[:200]),
+        'feedback_total': feedback_qs.count(),
+    }
+    return render(request, 'pro_user/feedback.html', context)
+
+
+@login_required
 def pro_user_activity_logs_detail_page(request, user_id):
     """Dedicated detail page for a selected user's deep history (Pro User only)."""
     if request.user.role != 'pro_user':

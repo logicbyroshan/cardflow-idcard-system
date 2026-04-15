@@ -45,11 +45,16 @@
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-actions">
-      <a href="{% url 'product_gallery' %}" class="{% if active_page == 'product_gallery' %}active{% endif %}">
-        <i class="fa-solid fa-images"></i><span>Product Gallery</span>
-      </a>
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
+      </a>
+      {% if can_submit_public_review %}
+      <a href="{% url 'website:testimonials' %}?review=open" class="{% if active_page == 'feedback' %}active{% endif %}">
+        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
+      </a>
+      {% endif %}
+      <a href="{% url 'product_gallery' %}" class="{% if active_page == 'product_gallery' %}active{% endif %}">
+        <i class="fa-solid fa-images"></i><span>Product Gallery</span>
       </a>
       <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
         <i class="fa-solid fa-gear"></i><span>Settings</span>

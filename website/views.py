@@ -448,6 +448,8 @@ def testimonials_page(request):
     context = get_common_context()
     
     all_active = Testimonial.objects.filter(is_active=True).order_by('-review_date')
+    client_ip = _get_client_ip(request)
+    user_email = getattr(request.user, 'email', '') if getattr(request.user, 'is_authenticated', False) else ''
     
     # Calculate stats
     avg_rating = all_active.aggregate(avg=Avg('rating'))['avg'] or 5.0
@@ -456,6 +458,10 @@ def testimonials_page(request):
         'text_testimonials': all_active,
         'avg_rating': round(avg_rating, 1),
         'total_reviews': all_active.count(),
+        'can_submit_public_review': not TestimonialService.has_public_review(
+            reviewer_email=user_email,
+            reviewer_ip=client_ip,
+        ),
     })
     return render(request, 'website/testimonials.html', context)
 
@@ -501,6 +507,15 @@ def panel_entry(request):
     return redirect(destination)
 
 
+def _get_client_ip(request):
+    forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if forwarded_for:
+        candidate = forwarded_for.split(',')[0].strip()
+        if candidate:
+            return candidate
+    return (request.META.get('REMOTE_ADDR') or '').strip()
+
+
 # ==========================================
 # AJAX FORM SUBMISSIONS
 # ==========================================
@@ -535,8 +550,11 @@ def submit_testimonial(request):
             reviewer_school=school,
             text=text,
             rating=rating_val,
+            reviewer_ip=_get_client_ip(request),
         )
         return JsonResponse({'success': True, 'message': 'Review submitted! It will appear once approved.'})
+    except ValidationError as e:
+        return JsonResponse({'success': False, 'message': e.message}, status=400)
     except Exception as e:
         logger.error("Testimonial submission failed: %s", e)
         return JsonResponse({'success': False, 'message': 'Server error. Please try again later.'}, status=500)

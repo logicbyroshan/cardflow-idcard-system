@@ -2,11 +2,17 @@ from io import BytesIO
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 from PIL import Image
 
-from website.models import PortfolioCategory, PortfolioItem
-from website.services import PortfolioItemService
+from website.models import PortfolioCategory, PortfolioItem, Testimonial
+from website.services import PortfolioItemService, TestimonialService
+
+
+User = get_user_model()
 
 
 class PortfolioUploadProcessingTests(TestCase):
@@ -109,3 +115,106 @@ class PortfolioUploadProcessingTests(TestCase):
 		self.assertIn(image_item, row_items)
 		self.assertNotIn(reel_item, row_items)
 		self.assertTrue(all(p.item_type == 'image' for p in row_items))
+
+
+class TestimonialSubmissionTests(TestCase):
+	def setUp(self):
+		cache.clear()
+
+	def test_public_submission_blocks_duplicate_email_or_ip(self):
+		TestimonialService.create_public(
+			reviewer_name='Parent One',
+			reviewer_email='parent@example.com',
+			reviewer_school='Example School',
+			text='Great service.',
+			rating=5,
+			reviewer_ip='8.8.8.8',
+		)
+
+		with self.assertRaises(ValidationError) as email_error:
+			TestimonialService.create_public(
+				reviewer_name='Parent Two',
+				reviewer_email='parent@example.com',
+				reviewer_school='Example School',
+				text='Second review.',
+				rating=4,
+				reviewer_ip='1.1.1.1',
+			)
+		self.assertIn('A review has already been submitted from this email address or device.', str(email_error.exception))
+
+		with self.assertRaises(ValidationError) as ip_error:
+			TestimonialService.create_public(
+				reviewer_name='Parent Three',
+				reviewer_email='other@example.com',
+				reviewer_school='Example School',
+				text='Third review.',
+				rating=4,
+				reviewer_ip='8.8.8.8',
+			)
+		self.assertIn('A review has already been submitted from this email address or device.', str(ip_error.exception))
+
+	def test_public_testimonials_page_hides_review_cta_for_existing_email(self):
+		user = User.objects.create_user(
+			username='viewer@example.com',
+			email='viewer@example.com',
+			password='testpass123',
+			role='client',
+		)
+		Testimonial.objects.create(
+			reviewer_name='Viewer',
+			reviewer_email='viewer@example.com',
+			reviewer_school='Demo School',
+			text='Nice work.',
+			rating=5,
+			is_active=False,
+		)
+
+		self.client.force_login(user)
+		response = self.client.get(reverse('website:testimonials'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertFalse(response.context['can_submit_public_review'])
+
+	def test_public_testimonial_submit_rejects_duplicate_ip(self):
+		TestimonialService.create_public(
+			reviewer_name='Parent One',
+			reviewer_email='parent2@example.com',
+			reviewer_school='Example School',
+			text='Great service.',
+			rating=5,
+			reviewer_ip='9.9.9.9',
+		)
+
+		response = self.client.post(
+			reverse('website:submit_testimonial'),
+			{
+				'name': 'Another Parent',
+				'email': 'new@example.com',
+				'school': 'Example School',
+				'text': 'Another review.',
+				'rating': '5',
+			},
+			HTTP_X_FORWARDED_FOR='9.9.9.9',
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertJSONEqual(response.content, {
+			'success': False,
+			'message': 'A review has already been submitted from this email address or device.',
+		})
+
+
+class ProUserFeedbackPageTests(TestCase):
+	def test_pro_user_feedback_page_renders(self):
+		user = User.objects.create_user(
+			username='pro@example.com',
+			email='pro@example.com',
+			password='testpass123',
+			role='pro_user',
+		)
+		self.client.force_login(user)
+
+		response = self.client.get(reverse('pro_user_feedback'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context['active_page'], 'pro_user_feedback')

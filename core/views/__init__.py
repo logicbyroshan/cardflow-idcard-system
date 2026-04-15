@@ -9,6 +9,7 @@ from .base import (
     pro_user_log_deletion_guard_page,
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
+    pro_user_feedback_page,
     dashboard,
     api_presence_track,
     api_live_client_presence,

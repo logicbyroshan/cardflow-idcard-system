@@ -20,7 +20,11 @@
                 <h1>What Our <span class="gradient-text">Clients Say</span></h1>
                 <p class="hero-subtitle">Real stories from schools across the nation. Discover why {{ total_reviews|default:'500' }}+ institutions trust {{ site_name }}.</p>
                 <div class="hero-buttons" style="margin-top: 1.5rem;">
+                    {% if can_submit_public_review %}
                     <a href="#writeReview" class="btn btn-primary" id="heroWriteReviewBtn"><i class="fa-solid fa-pen-fancy"></i> Write a Review</a>
+                    {% else %}
+                    <div class="btn btn-primary" aria-disabled="true" style="pointer-events:none;opacity:0.72;"><i class="fa-solid fa-circle-check"></i> Feedback Submitted</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -197,7 +201,7 @@
     </section>
 
     <!-- Review Modal -->
-    <div class="review-modal" id="reviewModal">
+    <div class="review-modal" id="reviewModal" data-can-submit="{{ can_submit_public_review|yesno:'true,false' }}">
         <div class="review-modal-content">
             <div class="review-modal-toolbar">
                 <button type="button" class="review-modal-share" id="reviewModalShare" title="Share review form link" aria-label="Share review form link">

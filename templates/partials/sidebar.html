@@ -34,7 +34,7 @@
       <div class="nav-section-line"></div>
     </div>
     {% if is_super_admin or perm_idcard_client_list %}
-    <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
+    <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' or active_page == 'idcard_group' or active_page == 'group_settings' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>
     {% endif %}
@@ -126,6 +126,11 @@
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-actions">
+      {% if is_pro_user %}
+      <a href="{% url 'pro_user_feedback' %}" class="{% if active_page == 'pro_user_feedback' %}active{% endif %}">
+        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
+      </a>
+      {% endif %}
       {% if is_client or is_client_staff %}
       <a href="{% url 'product_gallery' %}" class="{% if active_page == 'product_gallery' %}active{% endif %}">
         <i class="fa-solid fa-images"></i><span>Product Gallery</span>

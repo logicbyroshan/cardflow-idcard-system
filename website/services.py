@@ -17,6 +17,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.cache import cache
+from django.db.models import Q
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from client.models import Client as PanelClient
@@ -356,7 +357,7 @@ class TestimonialService:
         return review
 
     @staticmethod
-    def create_public(*, reviewer_name, reviewer_school, text, rating=5, reviewer_email=''):
+    def create_public(*, reviewer_name, reviewer_school, text, rating=5, reviewer_email='', reviewer_ip=''):
         """
         Public testimonial submission (requires admin approval).
         Always created with is_active=False.
@@ -364,9 +365,17 @@ class TestimonialService:
         rating_val = max(1, min(5, int(rating)))
         avatar_file = _build_reviewer_avatar_file(reviewer_email)
         with transaction.atomic():
+            normalized_email = (reviewer_email or '').strip()
+            normalized_ip = (reviewer_ip or '').strip()
+            if TestimonialService.has_public_review(reviewer_email=normalized_email, reviewer_ip=normalized_ip):
+                raise ValidationError('A review has already been submitted from this email address or device.')
+
+            normalized_ip = normalized_ip or None
+
             review = Testimonial.objects.create(
                 reviewer_name=reviewer_name,
-                reviewer_email=(reviewer_email or '').strip(),
+                reviewer_email=normalized_email,
+                reviewer_ip=normalized_ip,
                 reviewer_school=reviewer_school,
                 text=text,
                 rating=rating_val,
@@ -376,6 +385,25 @@ class TestimonialService:
                 review.reviewer_avatar = avatar_file
                 review.save(update_fields=['reviewer_avatar'])
         return review
+
+    @staticmethod
+    def has_public_review(reviewer_email='', reviewer_ip=''):
+        """Return True when a public review already exists for the identity."""
+        normalized_email = (reviewer_email or '').strip()
+        normalized_ip = (reviewer_ip or '').strip()
+
+        query = Q()
+        has_query = False
+        if normalized_email:
+            query |= Q(reviewer_email__iexact=normalized_email)
+            has_query = True
+        if normalized_ip:
+            query |= Q(reviewer_ip=normalized_ip)
+            has_query = True
+
+        if not has_query:
+            return False
+        return Testimonial.objects.filter(query).exists()
 
     @staticmethod
     def update(pk, *, reviewer_name=None, reviewer_email=None, reviewer_title=None,

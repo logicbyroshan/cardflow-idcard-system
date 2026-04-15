@@ -11,6 +11,7 @@ Also injects subdomain URLs (PANEL_URL, WEBSITE_URL) for cross-domain links.
 """
 from django.conf import settings
 from core.services.permission_service import PermissionService
+from website.services import TestimonialService
 
 
 def _resolve_mobile_android_download_url(request):
@@ -124,6 +125,13 @@ def permissions(request):
         current_client.website_logo.url
         if current_client and getattr(current_client, 'website_logo', None)
         else ''
+    )
+
+    client_ip = (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')).strip()
+    public_review_email = getattr(request.user, 'email', '') if request.user.is_authenticated else ''
+    context['can_submit_public_review'] = not TestimonialService.has_public_review(
+        reviewer_email=public_review_email,
+        reviewer_ip=client_ip,
     )
     
     # Cache on request for this request lifecycle
