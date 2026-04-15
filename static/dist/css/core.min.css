@@ -1864,9 +1864,20 @@ body.bulk-operation-active #blockingOverlay * {
   margin: 0 0 10px;
 }
 
+.confirm-flow-verify,
+.verification-input-wrapper {
+  --confirm-code-digit-count: 10;
+  --confirm-code-size: 38px;
+  --confirm-code-gap: 6px;
+  --confirm-code-track-width: calc(
+    (var(--confirm-code-digit-count) * var(--confirm-code-size)) +
+    ((var(--confirm-code-digit-count) - 1) * var(--confirm-code-gap))
+  );
+}
+
 .verify-code {
   width: 100%;
-  max-width: 420px;
+  max-width: min(100%, var(--confirm-code-track-width, 434px));
   margin: 0 auto 12px;
   font-size: var(--ui-font-size-3xl-plus, 21px);
   font-weight: 800;
@@ -1887,7 +1898,7 @@ body.bulk-operation-active #blockingOverlay * {
 .center-modal-code,
 .confirm-code-display {
   width: 100%;
-  max-width: 420px;
+  max-width: min(100%, var(--confirm-code-track-width, 434px));
   margin: 0 auto 12px;
   padding: 11px 14px;
   font-size: var(--ui-font-size-3xl-plus, 21px);
@@ -1946,7 +1957,7 @@ body.bulk-operation-active #blockingOverlay * {
 
 .confirm-code-input-wrap {
   position: relative;
-  width: min(100%, 460px);
+  width: min(100%, var(--confirm-code-track-width, 434px));
   margin-bottom: 12px;
   margin-left: auto;
   margin-right: auto;
@@ -1958,12 +1969,11 @@ body.bulk-operation-active #blockingOverlay * {
 }
 
 .confirm-code-boxes {
-  --confirm-code-size: 38px;
   display: grid;
   grid-template-columns: repeat(10, var(--confirm-code-size));
-  gap: 6px;
+  gap: var(--confirm-code-gap);
   justify-content: center;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   margin: 0 auto;
 }
@@ -2023,9 +2033,14 @@ body.bulk-operation-active #blockingOverlay * {
 }
 
 @media (max-width: 640px) {
-  .confirm-code-boxes {
+  .confirm-flow-verify,
+  .verification-input-wrapper {
     --confirm-code-size: 30px;
-    gap: 4px;
+    --confirm-code-gap: 4px;
+  }
+
+  .confirm-code-boxes {
+    gap: var(--confirm-code-gap);
   }
 
   .confirm-code-box {
@@ -2035,9 +2050,14 @@ body.bulk-operation-active #blockingOverlay * {
 }
 
 @media (max-width: 420px) {
-  .confirm-code-boxes {
+  .confirm-flow-verify,
+  .verification-input-wrapper {
     --confirm-code-size: 26px;
-    gap: 3px;
+    --confirm-code-gap: 3px;
+  }
+
+  .confirm-code-boxes {
+    gap: var(--confirm-code-gap);
   }
 
   .confirm-code-box {

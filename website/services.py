@@ -336,9 +336,11 @@ class TestimonialService:
 
     @staticmethod
     def create(*, reviewer_name='', reviewer_email='', reviewer_title='', reviewer_school='',
-               text='', tag='', rating=5, is_active=False, reviewer_avatar=None):
+               text='', tag='', rating=5, is_active=False, reviewer_avatar=None,
+               attachment_image=None):
         """Create a Testimonial. Returns the created instance."""
         _validate_image_upload(reviewer_avatar, 'reviewer avatar')
+        _validate_image_upload(attachment_image, 'feedback attachment')
         rating_val = max(1, min(5, int(rating)))  # Clamp rating to 1–5
         with transaction.atomic():
             review = Testimonial(
@@ -353,15 +355,19 @@ class TestimonialService:
             )
             if reviewer_avatar:
                 review.reviewer_avatar = reviewer_avatar
+            if attachment_image:
+                review.attachment_image = attachment_image
             review.save()
         return review
 
     @staticmethod
-    def create_public(*, reviewer_name, reviewer_school, text, rating=5, reviewer_email='', reviewer_ip=''):
+    def create_public(*, reviewer_name, reviewer_school, text, rating=5, reviewer_email='', reviewer_ip='',
+                      attachment_image=None):
         """
         Public testimonial submission (requires admin approval).
         Always created with is_active=False.
         """
+        _validate_image_upload(attachment_image, 'feedback attachment')
         rating_val = max(1, min(5, int(rating)))
         avatar_file = _build_reviewer_avatar_file(reviewer_email)
         with transaction.atomic():
@@ -381,9 +387,15 @@ class TestimonialService:
                 rating=rating_val,
                 is_active=False,
             )
+            update_fields = []
             if avatar_file:
                 review.reviewer_avatar = avatar_file
-                review.save(update_fields=['reviewer_avatar'])
+                update_fields.append('reviewer_avatar')
+            if attachment_image:
+                review.attachment_image = attachment_image
+                update_fields.append('attachment_image')
+            if update_fields:
+                review.save(update_fields=update_fields)
         return review
 
     @staticmethod
@@ -414,9 +426,11 @@ class TestimonialService:
     @staticmethod
     def update(pk, *, reviewer_name=None, reviewer_email=None, reviewer_title=None,
                reviewer_school=None, text=None, tag=None,
-               rating=None, is_active=None, reviewer_avatar=None):
+               rating=None, is_active=None, reviewer_avatar=None,
+               attachment_image=None):
         """Update a Testimonial. Only non-None fields are changed."""
         _validate_image_upload(reviewer_avatar, 'reviewer avatar')
+        _validate_image_upload(attachment_image, 'feedback attachment')
         with transaction.atomic():
             review = get_object_or_404(Testimonial, pk=pk)
             for field, value in [
@@ -436,6 +450,8 @@ class TestimonialService:
                 review.is_active = _parse_bool(is_active)
             if reviewer_avatar:
                 review.reviewer_avatar = reviewer_avatar
+            if attachment_image:
+                review.attachment_image = attachment_image
             review.save()
         return review
 
@@ -450,6 +466,11 @@ class TestimonialService:
                     review.reviewer_avatar.delete(save=False)
                 except Exception:
                     logger.warning("Failed to delete avatar file for Testimonial %d", pk)
+            if review.attachment_image:
+                try:
+                    review.attachment_image.delete(save=False)
+                except Exception:
+                    logger.warning("Failed to delete attachment file for Testimonial %d", pk)
             review.delete()
 
     @staticmethod

@@ -20,11 +20,13 @@
                 <h1>What Our <span class="gradient-text">Clients Say</span></h1>
                 <p class="hero-subtitle">Real stories from schools across the nation. Discover why {{ total_reviews|default:'500' }}+ institutions trust {{ site_name }}.</p>
                 <div class="hero-buttons" style="margin-top: 1.5rem;">
-                    {% if can_submit_public_review %}
-                    <a href="#writeReview" class="btn btn-primary" id="heroWriteReviewBtn"><i class="fa-solid fa-pen-fancy"></i> Write a Review</a>
-                    {% else %}
-                    <div class="btn btn-primary" aria-disabled="true" style="pointer-events:none;opacity:0.72;"><i class="fa-solid fa-circle-check"></i> Feedback Submitted</div>
-                    {% endif %}
+                    <a href="#writeReview" class="btn btn-primary" id="heroWriteReviewBtn">
+                        {% if can_submit_public_review %}
+                        <i class="fa-solid fa-pen-fancy"></i> Write a Review
+                        {% else %}
+                        <i class="fa-solid fa-clock-rotate-left"></i> View Previous Feedback
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>
@@ -211,6 +213,7 @@
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
+            {% if can_submit_public_review %}
             <h3>Submit Your Feedback</h3>
             <form id="reviewForm" data-submit-url="{% url 'website:submit_testimonial' %}">
                 {% csrf_token %}
@@ -237,8 +240,68 @@
                 <div class="form-group">
                     <textarea name="text" placeholder="Tell us about our quality and service..." rows="4" required></textarea>
                 </div>
+                <div class="form-group">
+                    <label for="reviewAttachmentInput">Attach Screenshot (Optional)</label>
+                    <input type="file" id="reviewAttachmentInput" name="attachment_image" accept="image/*" style="display:none;">
+                    <div class="review-attachment-wrap">
+                        <button type="button" class="review-attachment-select" id="reviewAttachmentSelectBtn">
+                            <i class="fa-solid fa-image"></i> Select Screenshot
+                        </button>
+                        <div class="review-attachment-paste" id="reviewAttachmentPasteArea" tabindex="0">
+                            <i class="fa-regular fa-clipboard"></i>
+                            <span>Press Ctrl+V to paste screenshot</span>
+                        </div>
+                        <div class="review-attachment-name" id="reviewAttachmentName">No screenshot attached</div>
+                        <div class="review-attachment-preview" id="reviewAttachmentPreview" hidden>
+                            <img id="reviewAttachmentPreviewImg" src="" alt="Screenshot preview">
+                            <button type="button" class="review-attachment-clear" id="reviewAttachmentClearBtn" aria-label="Remove screenshot">
+                                <i class="fa-solid fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <button type="submit" class="submit-review-btn">Submit for Approval</button>
             </form>
+            {% else %}
+            <h3>Feedback Already Submitted</h3>
+            <div class="review-submit-lock">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>You have already submitted feedback. You can view your previous feedback below.</span>
+            </div>
+            {% endif %}
+
+            {% if request.user.is_authenticated %}
+            <div class="review-history">
+                <h4>Your Previous Feedback</h4>
+                {% if my_feedback_items %}
+                <div class="review-history-list">
+                    {% for item in my_feedback_items %}
+                    <article class="review-history-item">
+                        <div class="review-history-head">
+                            <span class="review-history-rating"><i class="fa-solid fa-star"></i> {{ item.rating }}/5</span>
+                            <span class="review-history-meta">
+                                {{ item.created_at|date:'d M Y' }}
+                                {% if item.is_active %}
+                                <strong class="review-status review-status-live">Approved</strong>
+                                {% else %}
+                                <strong class="review-status review-status-pending">Pending</strong>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <p>{{ item.text|default:'No message provided.' }}</p>
+                        {% if item.attachment_image %}
+                        <a class="review-history-image" href="{{ item.attachment_image.url }}" target="_blank" rel="noopener noreferrer" aria-label="Open attached screenshot">
+                            <img src="{{ item.attachment_image.url }}" alt="Attached screenshot" loading="lazy" decoding="async">
+                        </a>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="review-history-empty">No previous feedback found for your account.</div>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 

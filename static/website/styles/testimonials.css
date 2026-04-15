@@ -201,8 +201,8 @@
 .testimonial-card {
     background: #fff;
     border-radius: 20px;
-    padding: 30px;
-    padding-bottom: 25px;
+    padding: 26px;
+    padding-bottom: 22px;
     position: relative;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
     transition: all 0.4s ease;
@@ -242,7 +242,7 @@
     align-items: flex-start;
     gap: 15px;
     margin-bottom: 20px;
-    padding-right: 92px;
+    padding-right: 0;
 }
 
 .reviewer-avatar {
@@ -403,12 +403,12 @@
 }
 
 .card-tag {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+    position: static;
+    align-self: flex-start;
     background: rgba(10, 146, 221, 0.1);
     color: #0a92dd;
     padding: 5px 12px;
+    margin-top: 12px;
     border-radius: 15px;
     font-size: 0.75rem;
     font-weight: 600;
@@ -852,6 +852,183 @@
 .submit-review-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(10, 146, 221, 0.3);
+}
+
+.review-submit-lock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.92rem;
+    margin-bottom: 16px;
+}
+
+.review-submit-lock i {
+    color: #0f766e;
+    font-size: 1rem;
+}
+
+.review-attachment-wrap {
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fafc;
+}
+
+.review-attachment-select {
+    border: none;
+    background: #0a92dd;
+    color: #fff;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.review-attachment-paste {
+    margin-top: 10px;
+    border: 1px dashed #94a3b8;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: #475569;
+    font-size: 0.84rem;
+    background: #fff;
+}
+
+.review-attachment-paste:focus {
+    outline: none;
+    border-color: #0a92dd;
+    box-shadow: 0 0 0 3px rgba(10, 146, 221, 0.16);
+}
+
+.review-attachment-name {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.review-attachment-preview {
+    margin-top: 10px;
+}
+
+.review-attachment-preview img {
+    width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.review-attachment-clear {
+    margin-top: 8px;
+    border: none;
+    border-radius: 10px;
+    background: #e2e8f0;
+    color: #334155;
+    padding: 7px 11px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.review-history {
+    margin-top: 18px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 16px;
+}
+
+.review-history h4 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+    color: #1e293b;
+}
+
+.review-history-list {
+    display: grid;
+    gap: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.review-history-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 10px;
+}
+
+.review-history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+}
+
+.review-history-rating {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+.review-history-meta {
+    color: #64748b;
+}
+
+.review-status {
+    margin-left: 6px;
+    font-size: 0.72rem;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.review-status-live {
+    color: #065f46;
+    background: #d1fae5;
+}
+
+.review-status-pending {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.review-history-item p {
+    margin: 0;
+    color: #334155;
+    font-size: 0.87rem;
+    line-height: 1.45;
+}
+
+.review-history-image {
+    display: block;
+    margin-top: 8px;
+}
+
+.review-history-image img {
+    width: 100%;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+}
+
+.review-history-empty {
+    font-size: 0.86rem;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
 }
 
 /* SVG Gradient Definition */

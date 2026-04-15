@@ -487,6 +487,7 @@ class Testimonial(models.Model):
     reviewer_title = models.CharField(max_length=255, blank=True, help_text='e.g., Principal, Admin Head')
     reviewer_school = models.CharField(max_length=255, blank=True)
     reviewer_avatar = models.ImageField(upload_to='images/Avatars/', blank=True, null=True)
+    attachment_image = models.ImageField(upload_to='images/TestimonialAttachments/', blank=True, null=True)
     
     rating = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)],

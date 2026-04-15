@@ -449,7 +449,13 @@ def testimonials_page(request):
     
     all_active = Testimonial.objects.filter(is_active=True).order_by('-review_date')
     client_ip = _get_client_ip(request)
-    user_email = getattr(request.user, 'email', '') if getattr(request.user, 'is_authenticated', False) else ''
+    user_email = (getattr(request.user, 'email', '') or '').strip() if getattr(request.user, 'is_authenticated', False) else ''
+    review_lookup_ip = '' if user_email else client_ip
+    my_feedback_items = []
+    if user_email:
+        my_feedback_items = list(
+            Testimonial.objects.filter(reviewer_email__iexact=user_email).order_by('-created_at', '-id')[:10]
+        )
     
     # Calculate stats
     avg_rating = all_active.aggregate(avg=Avg('rating'))['avg'] or 5.0
@@ -460,8 +466,9 @@ def testimonials_page(request):
         'total_reviews': all_active.count(),
         'can_submit_public_review': not TestimonialService.has_public_review(
             reviewer_email=user_email,
-            reviewer_ip=client_ip,
+            reviewer_ip=review_lookup_ip,
         ),
+        'my_feedback_items': my_feedback_items,
     })
     return render(request, 'website/testimonials.html', context)
 
@@ -530,6 +537,25 @@ def submit_testimonial(request):
         school = request.POST.get('school', '').strip()
         text = request.POST.get('text', '').strip()
         rating = request.POST.get('rating', '5')
+        attachment_image = request.FILES.get('attachment_image')
+
+        reviewer_ip = _get_client_ip(request)
+
+        if getattr(request.user, 'is_authenticated', False):
+            account_email = (getattr(request.user, 'email', '') or '').strip()
+            if account_email:
+                email = account_email
+
+            if not name:
+                name = (request.user.get_full_name() or request.user.username or email).strip()
+
+            if not school:
+                client_profile = getattr(request.user, 'client_profile', None)
+                staff_profile = getattr(request.user, 'staff_profile', None)
+                if client_profile and getattr(client_profile, 'name', ''):
+                    school = str(client_profile.name).strip()
+                elif staff_profile and getattr(staff_profile, 'client', None) and getattr(staff_profile.client, 'name', ''):
+                    school = str(staff_profile.client.name).strip()
 
         if not all([name, email, school, text]):
             return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
@@ -550,7 +576,9 @@ def submit_testimonial(request):
             reviewer_school=school,
             text=text,
             rating=rating_val,
-            reviewer_ip=_get_client_ip(request),
+            # Authenticated users are de-duplicated by email to avoid shared-IP false positives.
+            reviewer_ip='' if (getattr(request.user, 'is_authenticated', False) and email) else reviewer_ip,
+            attachment_image=attachment_image,
         )
         return JsonResponse({'success': True, 'message': 'Review submitted! It will appear once approved.'})
     except ValidationError as e:

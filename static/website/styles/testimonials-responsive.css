@@ -105,7 +105,7 @@
     }
     
     .testimonial-card {
-        padding: 25px;
+        padding: 23px;
     }
     
     .category-grid {
@@ -245,13 +245,13 @@
     }
     
     .testimonial-card {
-        padding: 22px;
+        padding: 20px;
     }
     
     .card-header {
         gap: 12px;
         align-items: flex-start;
-        padding-right: 84px;
+        padding-right: 0;
     }
 
     .reviewer-info {
@@ -292,11 +292,11 @@
     }
     
     .card-tag {
-        position: absolute;
-        top: 15px;
-        right: 15px;
+        position: static;
+        align-self: flex-start;
         font-size: 0.7rem;
         padding: 4px 10px;
+        margin-top: 10px;
         height: auto;
         line-height: 1.2;
         white-space: nowrap;
@@ -535,7 +535,7 @@
     }
     
     .testimonial-card {
-        padding: 20px;
+        padding: 18px;
     }
     
     .reviewer-avatar {
@@ -657,7 +657,7 @@
     }
     
     .testimonial-card {
-        padding: 18px;
+        padding: 17px;
     }
     
     .card-content p {
@@ -1056,6 +1056,28 @@
     .submit-review-btn {
         padding: 14px;
         font-size: 0.95rem;
+    }
+
+    .review-attachment-wrap {
+        padding: 10px;
+    }
+
+    .review-attachment-paste {
+        font-size: 0.8rem;
+    }
+
+    .review-history-list {
+        max-height: 220px;
+    }
+
+    .review-history-item {
+        padding: 9px;
+    }
+
+    .review-history-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
     }
 }
 

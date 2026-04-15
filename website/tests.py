@@ -123,6 +123,12 @@ class TestimonialSubmissionTests(TestCase):
 	def setUp(self):
 		cache.clear()
 
+	def _uploaded_image(self, name='feedback.png'):
+		buffer = BytesIO()
+		Image.new('RGB', (800, 500), color=(55, 120, 220)).save(buffer, format='PNG')
+		buffer.seek(0)
+		return SimpleUploadedFile(name, buffer.read(), content_type='image/png')
+
 	def test_public_submission_blocks_duplicate_email_or_ip(self):
 		TestimonialService.create_public(
 			reviewer_name='Parent One',
@@ -205,6 +211,48 @@ class TestimonialSubmissionTests(TestCase):
 			'message': 'A review has already been submitted from this email address or device.',
 		})
 
+	def test_public_testimonials_page_authenticated_user_not_blocked_by_shared_ip(self):
+		user = User.objects.create_user(
+			username='client-unique@example.com',
+			email='client-unique@example.com',
+			password='testpass123',
+			role='client',
+		)
+
+		Testimonial.objects.create(
+			reviewer_name='Other User',
+			reviewer_email='other-user@example.com',
+			reviewer_ip='5.5.5.5',
+			reviewer_school='Example School',
+			text='Existing review from shared device/network.',
+			rating=5,
+			is_active=False,
+		)
+
+		self.client.force_login(user)
+		response = self.client.get(reverse('website:testimonials'), REMOTE_ADDR='5.5.5.5')
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.context['can_submit_public_review'])
+
+	def test_public_testimonial_submit_accepts_attachment_image(self):
+		response = self.client.post(
+			reverse('website:submit_testimonial'),
+			{
+				'name': 'Attachment User',
+				'email': 'attachment-user@example.com',
+				'school': 'Attachment School',
+				'text': 'Sharing screenshot proof.',
+				'rating': '4',
+				'attachment_image': self._uploaded_image(),
+			},
+			HTTP_X_FORWARDED_FOR='4.4.4.4',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		created = Testimonial.objects.get(reviewer_email='attachment-user@example.com')
+		self.assertTrue(bool(created.attachment_image))
+
 
 class ProUserFeedbackPageTests(TestCase):
 	def test_pro_user_feedback_page_renders(self):
@@ -236,3 +284,20 @@ class ProUserFeedbackPageTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.context['active_page'], 'pro_user_feedback')
 		self.assertTrue(response.context['can_submit_public_review'])
+
+	@mock.patch('website.models.Testimonial.objects.all', side_effect=DatabaseError('no such column: website_testimonial.reviewer_ip'))
+	def test_pro_user_feedback_page_handles_feedback_query_db_errors(self, _mock_feedback_all):
+		user = User.objects.create_user(
+			username='pro-feedback-fallback@example.com',
+			email='pro-feedback-fallback@example.com',
+			password='testpass123',
+			role='pro_user',
+		)
+		self.client.force_login(user)
+
+		response = self.client.get(reverse('pro_user_feedback'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context['active_page'], 'pro_user_feedback')
+		self.assertEqual(response.context['feedback_total'], 0)
+		self.assertEqual(response.context['feedback_items'], [])

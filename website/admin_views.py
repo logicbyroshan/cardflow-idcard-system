@@ -676,6 +676,7 @@ def api_review_list(request):
         'reviewer_title': r.reviewer_title,
         'reviewer_school': r.reviewer_school,
         'reviewer_avatar': r.reviewer_avatar.url if r.reviewer_avatar else None,
+        'attachment_image': r.attachment_image.url if r.attachment_image else None,
         'rating': r.rating,
         'text': r.text,
         'tag': r.tag,
@@ -700,6 +701,7 @@ def api_review_create(request):
             rating=int(request.POST.get('rating', 5)),
             is_active=_parse_bool(request.POST.get('is_active', 'false')),
             reviewer_avatar=request.FILES.get('reviewer_avatar'),
+            attachment_image=request.FILES.get('attachment_image'),
         )
     except ValidationError as e:
         return JsonResponse({'success': False, 'message': e.message}, status=400)
@@ -723,6 +725,7 @@ def api_review_get(request, pk):
             'reviewer_title': r.reviewer_title,
             'reviewer_school': r.reviewer_school,
             'reviewer_avatar': r.reviewer_avatar.url if r.reviewer_avatar else None,
+            'attachment_image': r.attachment_image.url if r.attachment_image else None,
             'rating': r.rating,
             'text': r.text,
             'tag': r.tag,
@@ -747,6 +750,7 @@ def api_review_update(request, pk):
             rating=request.POST.get('rating'),
             is_active=request.POST.get('is_active'),
             reviewer_avatar=request.FILES.get('reviewer_avatar'),
+            attachment_image=request.FILES.get('attachment_image'),
         )
     except ValidationError as e:
         return JsonResponse({'success': False, 'message': e.message}, status=400)

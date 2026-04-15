@@ -133,11 +133,12 @@ def permissions(request):
     )
 
     client_ip = (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')).strip()
-    public_review_email = getattr(request.user, 'email', '') if request.user.is_authenticated else ''
+    public_review_email = (getattr(request.user, 'email', '') or '').strip() if request.user.is_authenticated else ''
+    review_lookup_ip = '' if public_review_email else client_ip
     try:
         context['can_submit_public_review'] = not TestimonialService.has_public_review(
             reviewer_email=public_review_email,
-            reviewer_ip=client_ip,
+            reviewer_ip=review_lookup_ip,
         )
     except Exception as exc:
         logger.warning('Failed computing can_submit_public_review: %s', exc)

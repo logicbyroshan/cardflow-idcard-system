@@ -12,6 +12,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.db import DatabaseError
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
@@ -323,12 +324,20 @@ def pro_user_feedback_page(request):
 
     from website.models import Testimonial
 
-    feedback_qs = Testimonial.objects.all().order_by('-created_at', '-id')
+    feedback_items = []
+    feedback_total = 0
+    try:
+        feedback_qs = Testimonial.objects.all().order_by('-created_at', '-id')
+        feedback_items = list(feedback_qs[:200])
+        feedback_total = feedback_qs.count()
+    except DatabaseError as exc:
+        logger.warning('Failed loading Pro User feedback inbox: %s', exc)
+
     context = {
         'active_page': 'pro_user_feedback',
         'user_role': get_user_role(request.user),
-        'feedback_items': list(feedback_qs[:200]),
-        'feedback_total': feedback_qs.count(),
+        'feedback_items': feedback_items,
+        'feedback_total': feedback_total,
     }
     return render(request, 'pro_user/feedback.html', context)
 

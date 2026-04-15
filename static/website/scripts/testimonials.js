@@ -132,8 +132,71 @@ document.addEventListener('DOMContentLoaded', function() {
     const stars = document.querySelectorAll('.star-rating i');
     const ratingInput = document.getElementById('selectedRating');
     const reviewCanSubmit = reviewModal ? reviewModal.dataset.canSubmit !== 'false' : true;
+    const reviewAttachmentInput = document.getElementById('reviewAttachmentInput');
+    const reviewAttachmentSelectBtn = document.getElementById('reviewAttachmentSelectBtn');
+    const reviewAttachmentPasteArea = document.getElementById('reviewAttachmentPasteArea');
+    const reviewAttachmentName = document.getElementById('reviewAttachmentName');
+    const reviewAttachmentPreview = document.getElementById('reviewAttachmentPreview');
+    const reviewAttachmentPreviewImg = document.getElementById('reviewAttachmentPreviewImg');
+    const reviewAttachmentClearBtn = document.getElementById('reviewAttachmentClearBtn');
     const REVIEW_MODAL_QUERY_KEY = 'review';
     const REVIEW_MODAL_QUERY_OPEN_VALUE = 'open';
+    const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+    let pendingAttachmentFile = null;
+    let pendingAttachmentPreviewUrl = '';
+
+    function resetAttachmentPreview() {
+        pendingAttachmentFile = null;
+        if (pendingAttachmentPreviewUrl) {
+            URL.revokeObjectURL(pendingAttachmentPreviewUrl);
+            pendingAttachmentPreviewUrl = '';
+        }
+        if (reviewAttachmentInput) reviewAttachmentInput.value = '';
+        if (reviewAttachmentName) reviewAttachmentName.textContent = 'No screenshot attached';
+        if (reviewAttachmentPreview) reviewAttachmentPreview.hidden = true;
+        if (reviewAttachmentPreviewImg) reviewAttachmentPreviewImg.removeAttribute('src');
+    }
+
+    function setAttachmentFile(file) {
+        if (!file) return;
+        if (!file.type || !file.type.startsWith('image/')) {
+            showToast('Only image files are allowed for screenshot.', 'error');
+            return;
+        }
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+            showToast('Screenshot must be 10MB or smaller.', 'error');
+            return;
+        }
+
+        pendingAttachmentFile = file;
+        if (pendingAttachmentPreviewUrl) {
+            URL.revokeObjectURL(pendingAttachmentPreviewUrl);
+        }
+        pendingAttachmentPreviewUrl = URL.createObjectURL(file);
+
+        if (reviewAttachmentName) {
+            const kb = Math.max(1, Math.round(file.size / 1024));
+            reviewAttachmentName.textContent = `${file.name || 'pasted-image.png'} (${kb} KB)`;
+        }
+        if (reviewAttachmentPreviewImg) {
+            reviewAttachmentPreviewImg.src = pendingAttachmentPreviewUrl;
+        }
+        if (reviewAttachmentPreview) {
+            reviewAttachmentPreview.hidden = false;
+        }
+    }
+
+    function extractImageFromClipboard(event) {
+        const clipboard = event.clipboardData;
+        if (!clipboard || !clipboard.items) return null;
+        for (let i = 0; i < clipboard.items.length; i += 1) {
+            const item = clipboard.items[i];
+            if (item && item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+                return item.getAsFile();
+            }
+        }
+        return null;
+    }
 
     function buildReviewModalUrl() {
         const url = new URL(window.location.href);
@@ -160,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openReviewModal(syncUrl = true) {
-        if (!reviewModal || !reviewCanSubmit) return;
+        if (!reviewModal) return;
         reviewModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         if (syncUrl) syncReviewModalUrl(true);
@@ -188,8 +251,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('heroWriteReviewBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        if (!reviewCanSubmit) return;
         openReviewModal(true);
+    });
+
+    reviewAttachmentSelectBtn?.addEventListener('click', () => {
+        reviewAttachmentInput?.click();
+    });
+
+    reviewAttachmentInput?.addEventListener('change', () => {
+        const selected = reviewAttachmentInput.files && reviewAttachmentInput.files[0];
+        if (selected) {
+            setAttachmentFile(selected);
+        } else {
+            resetAttachmentPreview();
+        }
+    });
+
+    reviewAttachmentPasteArea?.addEventListener('paste', (event) => {
+        const imageFile = extractImageFromClipboard(event);
+        if (!imageFile) return;
+        event.preventDefault();
+        setAttachmentFile(imageFile);
+    });
+
+    document.addEventListener('paste', (event) => {
+        if (!reviewModal || !reviewModal.classList.contains('active') || !reviewCanSubmit) return;
+        const imageFile = extractImageFromClipboard(event);
+        if (!imageFile) return;
+        event.preventDefault();
+        setAttachmentFile(imageFile);
+    });
+
+    reviewAttachmentClearBtn?.addEventListener('click', () => {
+        resetAttachmentPreview();
     });
 
     document.getElementById('reviewModalClose')?.addEventListener('click', () => {
@@ -286,6 +380,10 @@ document.addEventListener('DOMContentLoaded', function() {
     reviewForm?.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
+        if (pendingAttachmentFile) {
+            const filename = pendingAttachmentFile.name || 'screenshot.png';
+            formData.set('attachment_image', pendingAttachmentFile, filename);
+        }
         const submitBtn = this.querySelector('button[type="submit"]');
         const submitUrl = this.dataset.submitUrl;
         
@@ -305,6 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     closeReviewModal(true);
                     reviewForm.reset();
+                    resetAttachmentPreview();
                     // Reset stars to 5 selected
                     ratingInput.value = 5;
                     stars.forEach(s => {
