@@ -142,7 +142,7 @@ def validate_template_json(template_json):
             },
       "elements": [
         {
-                    "type": "text" | "image" | "background",
+                    "type": "text" | "image" | "background" | "rectangle",
           "field": "name",
           "label": "Name",
           "x": 20,
@@ -184,8 +184,8 @@ def validate_template_json(template_json):
             return f'template_json.elements[{idx}] must be an object'
 
         elem_type = str(elem.get('type') or '').strip().lower()
-        if elem_type not in ('text', 'image', 'background'):
-            return f'template_json.elements[{idx}].type must be text, image, or background'
+        if elem_type not in ('text', 'image', 'background', 'rectangle'):
+            return f'template_json.elements[{idx}].type must be text, image, background, or rectangle'
 
         field_name = str(elem.get('field') or '').strip()
         if elem_type in ('text', 'image') and not field_name:

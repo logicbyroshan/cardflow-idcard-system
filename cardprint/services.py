@@ -11,6 +11,7 @@ import io
 import logging
 import os
 import re
+import hashlib
 import base64
 import tempfile
 import zipfile
@@ -682,12 +683,254 @@ class GenerateCardService:
         return slots
 
     @classmethod
+    def _normalize_font_weight_value(cls, weight_raw):
+        weight = str(weight_raw or '').strip().lower()
+        if weight == 'normal':
+            return 400
+        if weight == 'bold':
+            return 700
+        try:
+            num = int(round(float(weight)))
+        except (TypeError, ValueError):
+            num = 400
+        num = int(round(num / 100.0) * 100)
+        return max(100, min(900, num))
+
+    @classmethod
+    def _normalize_font_style_value(cls, style_raw):
+        style = str(style_raw or '').strip().lower()
+        return 'italic' if style in ('italic', 'oblique') else 'normal'
+
+    @classmethod
+    def _builtin_font_name(cls, base_family, weight_raw, style_raw='normal'):
+        base = str(base_family or 'helvetica').strip().lower()
+        weight = cls._normalize_font_weight_value(weight_raw)
+        style = cls._normalize_font_style_value(style_raw)
+        is_bold = weight >= 600
+        is_italic = style == 'italic'
+
+        if base == 'times':
+            if is_bold and is_italic:
+                return 'Times-BoldItalic'
+            if is_bold:
+                return 'Times-Bold'
+            if is_italic:
+                return 'Times-Italic'
+            return 'Times-Roman'
+
+        if base == 'courier':
+            if is_bold and is_italic:
+                return 'Courier-BoldOblique'
+            if is_bold:
+                return 'Courier-Bold'
+            if is_italic:
+                return 'Courier-Oblique'
+            return 'Courier'
+
+        if is_bold and is_italic:
+            return 'Helvetica-BoldOblique'
+        if is_bold:
+            return 'Helvetica-Bold'
+        if is_italic:
+            return 'Helvetica-Oblique'
+        return 'Helvetica'
+
+    @classmethod
+    def _font_family_key(cls, family_raw):
+        family = str(family_raw or '').strip().lower()
+        primary = family.split(',')[0].replace('"', '').replace("'", '').strip()
+        if any(token in primary for token in ('times', 'serif', 'cambria', 'georgia')):
+            return 'times'
+        if any(token in primary for token in ('courier', 'mono', 'consolas')):
+            return 'courier'
+        if any(token in primary for token in ('arial black', 'arial')):
+            return 'arial'
+        if 'calibri' in primary:
+            return 'calibri'
+        if 'futura' in primary:
+            return 'futura'
+        if 'poppins' in primary:
+            return 'poppins'
+        if any(token in primary for token in ('helvetica neue', 'helvetica')):
+            return 'helvetica'
+        if any(token in primary for token in ('verdana', 'tahoma')):
+            return 'helvetica'
+        return 'helvetica'
+
+    @classmethod
+    def _font_search_dirs(cls):
+        from django.conf import settings
+
+        base_dir = str(getattr(settings, 'BASE_DIR', '') or '')
+        paths = []
+        if base_dir:
+            paths.append(os.path.join(base_dir, 'static', 'fonts'))
+            paths.append(os.path.join(base_dir, 'staticfiles', 'fonts'))
+
+        windir = os.environ.get('WINDIR')
+        if windir:
+            paths.append(os.path.join(windir, 'Fonts'))
+
+        out = []
+        seen = set()
+        for item in paths:
+            norm = os.path.normcase(os.path.normpath(item))
+            if norm in seen:
+                continue
+            seen.add(norm)
+            out.append(item)
+        return out
+
+    @classmethod
+    def _font_candidate_files(cls, family_key, weight_raw, style_raw='normal'):
+        weight = cls._normalize_font_weight_value(weight_raw)
+        italic = cls._normalize_font_style_value(style_raw) == 'italic'
+        bold = weight >= 600
+
+        if family_key == 'arial':
+            if bold and italic:
+                return ['arialbi.ttf', 'ARIALBI.TTF']
+            if bold:
+                return ['arialbd.ttf', 'ARIALBD.TTF']
+            if italic:
+                return ['ariali.ttf', 'ARIALI.TTF']
+            return ['arial.ttf', 'ARIAL.TTF']
+
+        if family_key == 'calibri':
+            if bold and italic:
+                return ['calibriz.ttf', 'CALIBRIZ.TTF']
+            if bold:
+                return ['calibrib.ttf', 'CALIBRIB.TTF']
+            if italic:
+                return ['calibrii.ttf', 'CALIBRII.TTF']
+            return ['calibri.ttf', 'CALIBRI.TTF']
+
+        if family_key == 'poppins':
+            names = {
+                100: 'Thin',
+                200: 'ExtraLight',
+                300: 'Light',
+                400: 'Regular',
+                500: 'Medium',
+                600: 'SemiBold',
+                700: 'Bold',
+                800: 'ExtraBold',
+                900: 'Black',
+            }
+            style_suffix = 'Italic' if italic else ''
+            return [
+                f'Poppins-{names.get(weight, "Regular")}{style_suffix}.ttf',
+                f'poppins/Poppins-{names.get(weight, "Regular")}{style_suffix}.ttf',
+            ]
+
+        if family_key == 'futura':
+            if bold:
+                return [
+                    'Futura-Bold.ttf', 'futurab.ttf', 'FUTURAB.TTF', 'FUTURA_B.TTF',
+                    'Futura Bold font.ttf', 'Futura Md BT Bold.ttf', 'unicode.futurabb.ttf',
+                ]
+            if italic:
+                return [
+                    'Futura-Oblique.ttf', 'futurai.ttf', 'FUTURAI.TTF',
+                    'Futura Book Italic font.ttf', 'Futura Medium Italic font.ttf',
+                    'Futura Md BT Medium Italic.ttf', 'Futura Bk BT Book Italic.ttf',
+                ]
+            return [
+                'Futura.ttf', 'futura.ttf', 'FUTURA.TTF', 'FTLTLT.TTF',
+                'Futura Book font.ttf', 'Futura Medium font.ttf', 'Futura Md BT Medium.ttf',
+                'Futura Bk BT Book.ttf', 'futura medium bt.ttf',
+            ]
+
+        if family_key == 'helvetica':
+            direct = []
+            if bold and italic:
+                direct = [
+                    'Helvetica Condensed Bold Italic.ttf',
+                    'Helvetica Condensed Bold Oblique.otf',
+                ]
+            elif bold:
+                direct = [
+                    'Helvetica-Bold-Font.ttf',
+                    'Helvetica Condensed Bold.otf',
+                ]
+            elif italic:
+                direct = ['Helvetica Condensed Bold Oblique.otf']
+            else:
+                direct = [
+                    'Helvetica-Normal Regular.ttf',
+                    'Helvetica Condensed Regular.ttf',
+                ]
+            return direct + cls._font_candidate_files('arial', weight, 'italic' if italic else 'normal')
+
+        return []
+
+    @classmethod
+    def _find_font_path(cls, candidate_files):
+        if not candidate_files:
+            return None
+        dirs = cls._font_search_dirs()
+        for folder in dirs:
+            for candidate in candidate_files:
+                path = os.path.join(folder, candidate)
+                if os.path.isfile(path):
+                    return path
+        return None
+
+    @classmethod
+    def _register_ttf_font(cls, font_path):
+        if not font_path:
+            return None
+        try:
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+        except Exception:
+            return None
+
+        cache = getattr(cls, '_registered_ttf_fonts', None)
+        if not isinstance(cache, dict):
+            cache = {}
+            setattr(cls, '_registered_ttf_fonts', cache)
+
+        key = os.path.normcase(os.path.abspath(font_path))
+        existing = cache.get(key)
+        if existing:
+            return existing
+
+        alias = 'GCF_' + hashlib.md5(key.encode('utf-8', errors='ignore')).hexdigest()[:16]
+        try:
+            if alias not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(TTFont(alias, font_path))
+            cache[key] = alias
+            return alias
+        except Exception as exc:
+            logger.warning('GenerateCardService: font register failed for %s: %s', font_path, exc)
+            return None
+
+    @classmethod
+    def _resolve_pdf_font_name(cls, family_raw, weight_raw, style_raw='normal'):
+        family_key = cls._font_family_key(family_raw)
+        weight = cls._normalize_font_weight_value(weight_raw)
+        style = cls._normalize_font_style_value(style_raw)
+
+        if family_key in ('times', 'courier'):
+            return cls._builtin_font_name(family_key, weight, style)
+
+        candidates = cls._font_candidate_files(family_key, weight, style)
+        font_path = cls._find_font_path(candidates)
+        font_alias = cls._register_ttf_font(font_path)
+        if font_alias:
+            return font_alias
+
+        return cls._builtin_font_name('helvetica', weight, style)
+
+    @classmethod
     def _pdf_style_from_template(cls, template):
         cfg = template.field_config if isinstance(template.field_config, dict) else {}
         raw = cfg.get('docx_text_style') if isinstance(cfg.get('docx_text_style'), dict) else {}
 
         family_raw = str(raw.get('font_family') or template.font_family or 'Arial').strip().lower()
         weight = str(raw.get('font_weight') or 'normal').strip().lower()
+        font_style = str(raw.get('font_style') or 'normal').strip().lower()
         try:
             size = float(raw.get('font_size_pt') or template.font_size or 11)
         except (TypeError, ValueError):
@@ -704,12 +947,7 @@ class GenerateCardService:
         if align not in ('left', 'center', 'right'):
             align = 'left'
 
-        if 'times' in family_raw:
-            font_name = 'Times-Bold' if weight in ('bold', 'semibold') else 'Times-Roman'
-        elif 'courier' in family_raw:
-            font_name = 'Courier-Bold' if weight in ('bold', 'semibold') else 'Courier'
-        else:
-            font_name = 'Helvetica-Bold' if weight in ('bold', 'semibold') else 'Helvetica'
+        font_name = cls._resolve_pdf_font_name(family_raw, weight, font_style)
 
         color_hex = cls._normalize_hex_color(raw.get('font_color_hex'), default='111111')
         r = int(color_hex[0:2], 16) / 255.0
@@ -721,6 +959,7 @@ class GenerateCardService:
             'font_size': size,
             'line_height': line_height,
             'align': align,
+            'font_style': cls._normalize_font_style_value(font_style),
             'color_rgb': (r, g, b),
         }
 
@@ -836,6 +1075,25 @@ class GenerateCardService:
                 cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
                 continue
 
+            if etype == 'rectangle':
+                color_hex = cls._normalize_hex_color(item.get('color'), default='2563EB')
+                try:
+                    stroke_w = float(item.get('strokeWidth') or 1.2)
+                except (TypeError, ValueError):
+                    stroke_w = 1.2
+                stroke_w = max(0.2, min(8.0, stroke_w))
+
+                c.saveState()
+                c.setStrokeColorRGB(
+                    int(color_hex[0:2], 16) / 255.0,
+                    int(color_hex[2:4], 16) / 255.0,
+                    int(color_hex[4:6], 16) / 255.0,
+                )
+                c.setLineWidth(stroke_w)
+                c.rect(rl_x, rl_y, rl_w, rl_h, stroke=1, fill=0)
+                c.restoreState()
+                continue
+
             mapped_type = field_type_map.get(field_name, 'text')
             if etype == 'image' or cls._is_image_field(mapped_type, field_name):
                 cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
@@ -847,10 +1105,24 @@ class GenerateCardService:
             except (TypeError, ValueError):
                 elem_style['font_size'] = float(elem_style.get('font_size') or 11.0)
 
-            align = str(item.get('align') or elem_style.get('align') or 'left').strip().lower()
+            try:
+                elem_style['line_height'] = max(0.8, min(3.0, float(item.get('lineHeight') or item.get('line_height') or elem_style.get('line_height') or 1.15)))
+            except (TypeError, ValueError):
+                elem_style['line_height'] = float(elem_style.get('line_height') or 1.15)
+
+            align = str(item.get('textAlign') or item.get('text_align') or item.get('align') or elem_style.get('align') or 'left').strip().lower()
             if align not in ('left', 'center', 'right'):
                 align = 'left'
             elem_style['align'] = align
+
+            family_raw = item.get('fontFamily') or item.get('font_family') or item.get('font') or ''
+            weight_raw = item.get('fontWeight') or item.get('font_weight') or ''
+            style_raw = item.get('fontStyle') or item.get('font_style') or elem_style.get('font_style') or 'normal'
+            if not weight_raw:
+                default_font_name = str(elem_style.get('font_name') or '')
+                weight_raw = 'bold' if default_font_name.lower().endswith('-bold') else 'normal'
+            elem_style['font_style'] = cls._normalize_font_style_value(style_raw)
+            elem_style['font_name'] = cls._resolve_pdf_font_name(family_raw, weight_raw, style_raw)
 
             color_hex = cls._normalize_hex_color(item.get('color'), default='111111')
             elem_style['color_rgb'] = (
@@ -1125,7 +1397,16 @@ class GenerateCardService:
             path.rect(x, y, w, h)
             c.clipPath(path, stroke=0, fill=0)
 
-            c.setFont(font_name, font_size)
+            try:
+                c.setFont(font_name, font_size)
+            except Exception:
+                fallback_name = cls._builtin_font_name(
+                    'helvetica',
+                    700 if 'bold' in str(font_name).lower() else 400,
+                    'italic' if any(token in str(font_name).lower() for token in ('italic', 'oblique')) else 'normal',
+                )
+                font_name = fallback_name
+                c.setFont(font_name, font_size)
             c.setFillColorRGB(color_rgb[0], color_rgb[1], color_rgb[2])
 
             line_height = font_size * line_height_mult

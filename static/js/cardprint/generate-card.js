@@ -35,16 +35,28 @@
     templateDraft: null,
     templateDraftName: '',
     draftSelectedElementId: '',
+    draftSelectedElementIds: new Set(),
+    draftInlineEditingElementId: '',
+    draftPendingTextEdit: null,
     draftSelectedGuideId: '',
     draftActiveSide: 'front',
     draftTool: 'select',
     draftDragging: null,
+    draftResizeDragging: null,
     draftGuideDragging: null,
     draftTextDrag: null,
-    draftSuppressTextClick: false,
+    draftRectDrag: null,
     draftZoom: 1,
-    draftUnit: 'px',
+    draftZoomOriginX: 50,
+    draftZoomOriginY: 50,
+    draftUnit: 'mm',
+    draftSnapMm: 0.1,
     draftDirty: false,
+    pendingZoomAnchor: null,
+    draftLastPointerClientX: null,
+    draftLastPointerClientY: null,
+    spacePanMode: false,
+    spacePanState: null,
     cards: [],
     selectedRequestIds: new Set(),
     lastPdfBlob: null,
@@ -53,6 +65,285 @@
   var pdfJsLoadPromise = null;
   var draftElementSeed = 1;
   var draftGuideSeed = 1;
+  var PT_TO_PX = 96 / 72;
+  var draftTextMeasureNode = null;
+
+  function ptToPx(value) {
+    var v = Number(value || 0);
+    if (!Number.isFinite(v)) {
+      return 0;
+    }
+    return v * PT_TO_PX;
+  }
+
+  function pxToPt(value) {
+    var v = Number(value || 0);
+    if (!Number.isFinite(v)) {
+      return 0;
+    }
+    return v / PT_TO_PX;
+  }
+
+  function formatPtValue(value) {
+    var num = Math.round(Number(value || 0) * 100) / 100;
+    if (!Number.isFinite(num)) {
+      return '0';
+    }
+    return String(num % 1 === 0 ? Math.round(num) : num);
+  }
+
+  function buildPoppinsFaces() {
+    var defs = [
+      { id: 'thin', label: 'Thin', weight: '100' },
+      { id: 'extra-light', label: 'Extra Light', weight: '200' },
+      { id: 'light', label: 'Light', weight: '300' },
+      { id: 'regular', label: 'Regular', weight: '400' },
+      { id: 'medium', label: 'Medium', weight: '500' },
+      { id: 'semi-bold', label: 'Semi Bold', weight: '600' },
+      { id: 'bold', label: 'Bold', weight: '700' },
+      { id: 'extra-bold', label: 'Extra Bold', weight: '800' },
+      { id: 'black', label: 'Black', weight: '900' },
+    ];
+    var out = [];
+    defs.forEach(function (item) {
+      out.push({
+        id: item.id,
+        label: item.label,
+        family: 'Poppins',
+        weight: item.weight,
+        style: 'normal',
+      });
+      out.push({
+        id: item.id + '-italic',
+        label: item.label + ' Italic',
+        family: 'Poppins',
+        weight: item.weight,
+        style: 'italic',
+      });
+    });
+    return out;
+  }
+
+  var FONT_CATALOG = [
+    {
+      id: 'arial',
+      label: 'Arial',
+      aliases: ['arial', 'arial black', 'arial mt'],
+      faces: [
+        { id: 'regular', label: 'Regular', family: 'Arial', weight: '400', style: 'normal' },
+        { id: 'italic', label: 'Italic', family: 'Arial', weight: '400', style: 'italic' },
+        { id: 'bold', label: 'Bold', family: 'Arial', weight: '700', style: 'normal' },
+        { id: 'bold-italic', label: 'Bold Italic', family: 'Arial', weight: '700', style: 'italic' },
+        { id: 'black', label: 'Black', family: 'Arial Black', weight: '800', style: 'normal' },
+      ],
+    },
+    {
+      id: 'calibri',
+      label: 'Calibri',
+      aliases: ['calibri'],
+      faces: [
+        { id: 'light', label: 'Light', family: 'Calibri', weight: '300', style: 'normal' },
+        { id: 'regular', label: 'Regular', family: 'Calibri', weight: '400', style: 'normal' },
+        { id: 'italic', label: 'Italic', family: 'Calibri', weight: '400', style: 'italic' },
+        { id: 'bold', label: 'Bold', family: 'Calibri', weight: '700', style: 'normal' },
+        { id: 'bold-italic', label: 'Bold Italic', family: 'Calibri', weight: '700', style: 'italic' },
+      ],
+    },
+    {
+      id: 'futura',
+      label: 'Futura',
+      aliases: ['futura'],
+      faces: [
+        { id: 'book', label: 'Book', family: 'Futura', weight: '400', style: 'normal' },
+        { id: 'book-italic', label: 'Book Italic', family: 'Futura', weight: '400', style: 'italic' },
+        { id: 'medium', label: 'Medium', family: 'Futura', weight: '500', style: 'normal' },
+        { id: 'medium-italic', label: 'Medium Italic', family: 'Futura', weight: '500', style: 'italic' },
+        { id: 'bold', label: 'Bold', family: 'Futura', weight: '700', style: 'normal' },
+      ],
+    },
+    {
+      id: 'poppins',
+      label: 'Poppins',
+      aliases: ['poppins'],
+      faces: buildPoppinsFaces(),
+    },
+    {
+      id: 'helvetica',
+      label: 'Helvetica',
+      aliases: ['helvetica', 'helvetica neue'],
+      faces: [
+        { id: 'regular', label: 'Regular', family: 'Helvetica', weight: '400', style: 'normal' },
+        { id: 'italic', label: 'Italic', family: 'Helvetica', weight: '400', style: 'italic' },
+        { id: 'medium', label: 'Medium', family: 'Helvetica', weight: '500', style: 'normal' },
+        { id: 'bold', label: 'Bold', family: 'Helvetica', weight: '700', style: 'normal' },
+        { id: 'bold-italic', label: 'Bold Italic', family: 'Helvetica', weight: '700', style: 'italic' },
+      ],
+    },
+  ];
+
+  function normalizeFontWeightValue(rawWeight) {
+    var weightRaw = String(rawWeight || '').trim().toLowerCase();
+    if (weightRaw === 'normal') {
+      return '400';
+    }
+    if (weightRaw === 'bold') {
+      return '700';
+    }
+    var numeric = Number(weightRaw);
+    if (!Number.isFinite(numeric)) {
+      return '400';
+    }
+    numeric = Math.round(numeric / 100) * 100;
+    numeric = Math.max(100, Math.min(900, numeric));
+    return String(numeric);
+  }
+
+  function normalizeFontStyleValue(rawStyle) {
+    var style = String(rawStyle || '').trim().toLowerCase();
+    return (style === 'italic' || style === 'oblique') ? 'italic' : 'normal';
+  }
+
+  function findFontFamilyById(id) {
+    var wanted = String(id || '').trim().toLowerCase();
+    if (!wanted) {
+      return null;
+    }
+    return FONT_CATALOG.find(function (family) {
+      return String(family.id || '').toLowerCase() === wanted;
+    }) || null;
+  }
+
+  function findFontFamilyByName(fontFamilyValue) {
+    var raw = String(fontFamilyValue || '').trim().toLowerCase();
+    if (!raw) {
+      return FONT_CATALOG[0] || null;
+    }
+    var primary = raw.split(',')[0].replace(/["']/g, '').trim();
+    return FONT_CATALOG.find(function (family) {
+      var aliases = Array.isArray(family.aliases) ? family.aliases : [];
+      return aliases.some(function (alias) {
+        var wanted = String(alias || '').trim().toLowerCase();
+        return wanted && (primary === wanted || primary.indexOf(wanted) >= 0);
+      });
+    }) || FONT_CATALOG[0] || null;
+  }
+
+  function findFontFaceById(family, faceId) {
+    if (!family || !Array.isArray(family.faces)) {
+      return null;
+    }
+    var wanted = String(faceId || '').trim().toLowerCase();
+    if (!wanted) {
+      return null;
+    }
+    return family.faces.find(function (face) {
+      return String(face.id || '').toLowerCase() === wanted;
+    }) || null;
+  }
+
+  function resolveFontSelection(item) {
+    var source = item && typeof item === 'object' ? item : {};
+    var family = findFontFamilyById(source.fontGroup) || findFontFamilyByName(source.fontFamily);
+    if (!family) {
+      return {
+        family: null,
+        face: null,
+      };
+    }
+
+    var byId = findFontFaceById(family, source.fontFace);
+    if (byId) {
+      return { family: family, face: byId };
+    }
+
+    var weight = normalizeFontWeightValue(source.fontWeight || '400');
+    var style = normalizeFontStyleValue(source.fontStyle || 'normal');
+    var familyName = String(source.fontFamily || '').trim().toLowerCase();
+
+    var best = family.faces.find(function (face) {
+      return String(face.family || '').trim().toLowerCase() === familyName
+        && normalizeFontWeightValue(face.weight) === weight
+        && normalizeFontStyleValue(face.style) === style;
+    }) || family.faces.find(function (face) {
+      return normalizeFontWeightValue(face.weight) === weight
+        && normalizeFontStyleValue(face.style) === style;
+    }) || family.faces.find(function (face) {
+      return normalizeFontWeightValue(face.weight) === '400'
+        && normalizeFontStyleValue(face.style) === 'normal';
+    }) || family.faces[0];
+
+    return {
+      family: family,
+      face: best,
+    };
+  }
+
+  function renderFontFamilyOptions(selectedFamilyId) {
+    var wanted = String(selectedFamilyId || '').trim().toLowerCase();
+    return FONT_CATALOG.map(function (family) {
+      var id = String(family.id || '');
+      return '<option value="' + escapeAttr(id) + '"' + (wanted === id ? ' selected' : '') + '>'
+        + escapeHtml(String(family.label || id))
+        + '</option>';
+    }).join('');
+  }
+
+  function renderFontFaceOptions(family, selectedFaceId) {
+    if (!family || !Array.isArray(family.faces)) {
+      return '';
+    }
+    var wanted = String(selectedFaceId || '').trim().toLowerCase();
+    return family.faces.map(function (face) {
+      var id = String(face.id || '');
+      var weight = normalizeFontWeightValue(face.weight);
+      var suffix = normalizeFontStyleValue(face.style) === 'italic' ? ' italic' : '';
+      return '<option value="' + escapeAttr(id) + '"' + (wanted === id ? ' selected' : '') + '>'
+        + escapeHtml(String(face.label || id) + ' (' + weight + suffix + ')')
+        + '</option>';
+    }).join('');
+  }
+
+  function poppinsFontFaceCss() {
+    var names = [
+      { file: 'Poppins-Thin.ttf', weight: '100', style: 'normal' },
+      { file: 'Poppins-ThinItalic.ttf', weight: '100', style: 'italic' },
+      { file: 'Poppins-ExtraLight.ttf', weight: '200', style: 'normal' },
+      { file: 'Poppins-ExtraLightItalic.ttf', weight: '200', style: 'italic' },
+      { file: 'Poppins-Light.ttf', weight: '300', style: 'normal' },
+      { file: 'Poppins-LightItalic.ttf', weight: '300', style: 'italic' },
+      { file: 'Poppins-Regular.ttf', weight: '400', style: 'normal' },
+      { file: 'Poppins-Italic.ttf', weight: '400', style: 'italic' },
+      { file: 'Poppins-Medium.ttf', weight: '500', style: 'normal' },
+      { file: 'Poppins-MediumItalic.ttf', weight: '500', style: 'italic' },
+      { file: 'Poppins-SemiBold.ttf', weight: '600', style: 'normal' },
+      { file: 'Poppins-SemiBoldItalic.ttf', weight: '600', style: 'italic' },
+      { file: 'Poppins-Bold.ttf', weight: '700', style: 'normal' },
+      { file: 'Poppins-BoldItalic.ttf', weight: '700', style: 'italic' },
+      { file: 'Poppins-ExtraBold.ttf', weight: '800', style: 'normal' },
+      { file: 'Poppins-ExtraBoldItalic.ttf', weight: '800', style: 'italic' },
+      { file: 'Poppins-Black.ttf', weight: '900', style: 'normal' },
+      { file: 'Poppins-BlackItalic.ttf', weight: '900', style: 'italic' },
+    ];
+    return names.map(function (item) {
+      return '@font-face{font-family:"Poppins";font-style:' + item.style + ';font-weight:' + item.weight + ';font-display:swap;src:url("/static/fonts/poppins/' + item.file + '") format("truetype");}';
+    }).join('');
+  }
+
+  function coreLocalFontFaceCss() {
+    var rules = [
+      { family: 'Arial', style: 'normal', weight: '400', file: 'arial.ttf' },
+      { family: 'Arial', style: 'italic', weight: '400', file: 'ariali.ttf' },
+      { family: 'Arial', style: 'normal', weight: '700', file: 'arialbd.ttf' },
+      { family: 'Arial', style: 'italic', weight: '700', file: 'arialbi.ttf' },
+      { family: 'Calibri', style: 'normal', weight: '400', file: 'calibri.ttf' },
+      { family: 'Calibri', style: 'italic', weight: '400', file: 'calibrii.ttf' },
+      { family: 'Calibri', style: 'normal', weight: '700', file: 'calibrib.ttf' },
+      { family: 'Calibri', style: 'italic', weight: '700', file: 'calibriz.ttf' },
+    ];
+    return rules.map(function (item) {
+      return '@font-face{font-family:"' + item.family + '";font-style:' + item.style + ';font-weight:' + item.weight + ';font-display:swap;src:url("/static/fonts/' + item.file + '") format("truetype");}';
+    }).join('');
+  }
 
   function ensureStyles() {
     if (document.getElementById('gcThreeStepStyles')) {
@@ -62,6 +353,8 @@
     var style = document.createElement('style');
     style.id = 'gcThreeStepStyles';
     style.textContent = ''
+      + coreLocalFontFaceCss()
+      + poppinsFontFaceCss()
       + '.gc-flow-box{max-width:none;width:90vw;height:90vh;}'
       + '.gc-flow-header{justify-content:space-between;}'
       + '.gc-flow-header-left{display:flex;align-items:center;gap:10px;min-width:0;}'
@@ -98,6 +391,7 @@
       + '.gc-preview-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;padding:10px;text-align:center;}'
       + '.gc-template-overlay{position:absolute;inset:0;pointer-events:none;}'
       + '.gc-template-el{position:absolute;border:1px dashed rgba(37,99,235,0.8);background:rgba(37,99,235,0.12);color:#1d4ed8;font-size:10px;font-weight:700;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.gc-template-el.gc-template-el-rect{border-style:solid;background:transparent;color:transparent;padding:0;}'
       + '.gc-template-empty{font-size:12px;color:#64748b;border:1px dashed #cbd5e1;border-radius:8px;background:#f8fafc;padding:10px;}'
       + '.gc-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}'
       + '.gc-row label{font-size:12px;font-weight:700;color:#334155;}'
@@ -189,36 +483,63 @@
       + '.gc-step2-size-controls{display:flex;align-items:center;gap:4px;}'
       + '.gc-step2-size-label{font-size:10px;font-weight:700;color:#334155;}'
       + '.gc-step2-size-input{height:28px;width:64px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 6px;font-size:11px;color:#0f172a;}'
-      + '.gc-step2-side-switch{display:flex;align-items:center;gap:6px;}'
+      + '.gc-step2-snap-control{display:flex;align-items:center;gap:4px;}'
+      + '.gc-step2-snap-label{font-size:10px;font-weight:700;color:#334155;white-space:nowrap;}'
+      + '.gc-step2-snap-input{height:28px;width:70px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 6px;font-size:11px;color:#0f172a;}'
+      + '.gc-step2-side-switch{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}'
       + '.gc-step2-side-switch .gc-choice-btn{height:28px;padding:0 10px;border-radius:4px;font-size:11px;}'
       + '.gc-step2-canvas-stage{position:relative;flex:1;min-height:360px;background:#d6dde7;overflow:hidden;}'
-      + '.gc-step2-stage-content{position:absolute;top:20px;left:20px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:18px;}'
+      + '.gc-step2-stage-content{position:absolute;top:10px;left:10px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:18px;}'
+      + '.gc-step2-stage-content.is-space-pan{cursor:grab;}'
+      + '.gc-step2-stage-content.is-space-pan.is-panning{cursor:grabbing;}'
+      + '.gc-step2-stage-content.is-space-pan .gc-step2-canvas,.gc-step2-stage-content.is-space-pan .gc-draft-el,.gc-step2-stage-content.is-space-pan .gc-draft-guide{cursor:grab !important;}'
       + '.gc-step2-canvas-wrap{position:relative;display:block;flex:0 0 auto;transform-origin:top left;}'
-      + '.gc-step2-ruler-corner{position:absolute;top:0;left:0;width:20px;height:20px;border:1px solid #aeb7c4;background:#d6dde7;z-index:3;}'
-      + '.gc-step2-ruler-top{position:absolute;top:0;left:20px;right:0;height:20px;border:1px solid #aeb7c4;background-color:#d6dde7;background-image:repeating-linear-gradient(to right,rgba(100,116,139,.26) 0,rgba(100,116,139,.26) 1px,transparent 1px,transparent 8px),repeating-linear-gradient(to right,rgba(30,41,59,.36) 0,rgba(30,41,59,.36) 1px,transparent 1px,transparent 40px);cursor:ns-resize;z-index:2;}'
-      + '.gc-step2-ruler-left{position:absolute;top:20px;left:0;bottom:0;width:20px;border:1px solid #aeb7c4;background-color:#d6dde7;background-image:repeating-linear-gradient(to bottom,rgba(100,116,139,.26) 0,rgba(100,116,139,.26) 1px,transparent 1px,transparent 8px),repeating-linear-gradient(to bottom,rgba(30,41,59,.36) 0,rgba(30,41,59,.36) 1px,transparent 1px,transparent 40px);cursor:ew-resize;z-index:2;}'
+      + '.gc-step2-ruler-corner{position:absolute;top:0;left:0;width:10px;height:10px;border:1px solid #aeb7c4;background:#d3dae5;z-index:3;}'
+      + '.gc-step2-ruler-top{position:absolute;top:0;left:10px;right:0;height:10px;border:1px solid #aeb7c4;background-color:#d3dae5;background-image:repeating-linear-gradient(to right,rgba(100,116,139,.2) 0,rgba(100,116,139,.2) 1px,transparent 1px,transparent 6px),repeating-linear-gradient(to right,rgba(30,41,59,.35) 0,rgba(30,41,59,.35) 1px,transparent 1px,transparent 30px);cursor:ns-resize;z-index:2;}'
+      + '.gc-step2-ruler-left{position:absolute;top:10px;left:0;bottom:0;width:10px;border:1px solid #aeb7c4;background-color:#d3dae5;background-image:repeating-linear-gradient(to bottom,rgba(100,116,139,.2) 0,rgba(100,116,139,.2) 1px,transparent 1px,transparent 6px),repeating-linear-gradient(to bottom,rgba(30,41,59,.35) 0,rgba(30,41,59,.35) 1px,transparent 1px,transparent 30px);cursor:ew-resize;z-index:2;}'
       + '.gc-step2-guide-layer{position:absolute;inset:0;pointer-events:none;z-index:2;}'
       + '.gc-step2-guide-layer .gc-draft-guide{pointer-events:auto;}'
       + '.gc-step2-canvas{position:relative;width:100%;height:100%;background:#ffffff;border:1px solid #b8c1cc;border-radius:2px;box-shadow:8px 8px 0 rgba(15,23,42,0.12);}'
       + '.gc-step2-canvas.is-text-mode{cursor:text;}'
       + '.gc-step2-canvas.is-photo-mode{cursor:crosshair;}'
+      + '.gc-step2-canvas.is-rect-mode{cursor:crosshair;}'
       + '.gc-step2-canvas-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;font-weight:600;pointer-events:none;padding:10px;text-align:center;}'
-      + '.gc-draft-el{position:absolute;display:flex;align-items:center;justify-content:center;padding:2px 4px;border:1px dashed #2563eb;background:rgba(37,99,235,0.13);color:#1d4ed8;font-size:10px;font-weight:700;text-align:center;line-height:1.2;border-radius:2px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;}'
-      + '.gc-draft-el.gc-draft-el-text{background:transparent;border:1px dashed transparent;color:#0f172a;}'
-      + '.gc-draft-el.gc-draft-el-text:hover{border-color:rgba(37,99,235,0.45);background:rgba(59,130,246,0.08);}'
-      + '.gc-draft-el.gc-draft-el-artistic{white-space:nowrap;align-items:center;}'
-      + '.gc-draft-el.gc-draft-el-paragraph{white-space:normal;align-items:flex-start;padding-top:4px;}'
+      + '.gc-draft-el{position:absolute;display:flex;align-items:center;justify-content:center;padding:2px 4px;border:1px dashed #2563eb;background:rgba(37,99,235,0.13);color:#1d4ed8;font-size:10px;font-weight:700;text-align:center;line-height:1.2;border-radius:2px;cursor:pointer;overflow:visible;}'
+      + '.gc-draft-el.gc-draft-el-text{background:transparent;border:1px dashed transparent;color:#0f172a;padding:0;}'
+      + '.gc-draft-el.gc-draft-el-text:hover{border-color:transparent;background:transparent;}'
+      + '.gc-draft-el.gc-draft-el-artistic{white-space:nowrap;align-items:center;overflow:visible;}'
+      + '.gc-draft-el.gc-draft-el-paragraph{white-space:normal;align-items:flex-start;padding-top:2px;overflow:hidden;}'
       + '.gc-draft-el.gc-draft-el-photo{border-style:solid;border-color:#0ea5e9;background:rgba(14,165,233,0.14);color:#0369a1;}'
-      + '.gc-draft-el.is-selected{border:1px solid #1d4ed8;background:rgba(59,130,246,0.22);box-shadow:0 0 0 1px rgba(37,99,235,0.25) inset;}'
-      + '.gc-draft-el.gc-draft-el-text.is-selected{background:transparent;}'
-      + '.gc-draft-guide{position:absolute;border:0;background:transparent;z-index:2;cursor:pointer;}'
-      + '.gc-draft-guide.is-vertical{width:14px;transform:translateX(-7px);}'
-      + '.gc-draft-guide.is-horizontal{height:14px;transform:translateY(-7px);}'
-      + '.gc-draft-guide::before{content:"";position:absolute;background:#0ea5e9;opacity:.75;}'
-      + '.gc-draft-guide.is-vertical::before{left:6px;top:0;width:2px;height:100%;}'
-      + '.gc-draft-guide.is-horizontal::before{left:0;top:6px;width:100%;height:2px;}'
-      + '.gc-draft-guide.is-selected::before{background:#0284c7;opacity:1;box-shadow:0 0 0 1px rgba(2,132,199,0.35);}'
+      + '.gc-draft-el.gc-draft-el-rect{border-style:solid;background:rgba(37,99,235,0.10);color:transparent;padding:0;}'
+      + '.gc-draft-el.is-selected{border:1px solid #111827;background:transparent;box-shadow:none;overflow:visible;}'
+      + '.gc-draft-el.gc-draft-el-text.is-selected{background:transparent;border-color:transparent;}'
+      + '.gc-draft-el.gc-draft-el-text.gc-draft-el-artistic.is-selected::after{display:none;}'
+      + '.gc-draft-el.gc-draft-el-text.is-editing::after{display:none;}'
+      + '.gc-draft-el.gc-draft-el-text.is-editing{border-color:transparent;background:transparent;box-shadow:none;}'
+      + '.gc-draft-selection-handle{position:absolute;width:var(--gc-handle-size,5px);height:var(--gc-handle-size,5px);border:1px solid #111827;background:#ffffff;border-radius:1px;box-sizing:border-box;pointer-events:auto;z-index:3;}'
+      + '.gc-draft-selection-handle.is-nw{left:calc(-1 * var(--gc-handle-offset-x,12px));top:calc(-1 * var(--gc-handle-offset-y,15px));}'
+      + '.gc-draft-selection-handle.is-n{left:50%;top:calc(-1 * var(--gc-handle-offset-y,15px));transform:translateX(-50%);}'
+      + '.gc-draft-selection-handle.is-ne{right:calc(-1 * var(--gc-handle-offset-x,12px));top:calc(-1 * var(--gc-handle-offset-y,15px));}'
+      + '.gc-draft-selection-handle.is-e{right:calc(-1 * var(--gc-handle-offset-x,12px));top:50%;transform:translateY(-50%);}'
+      + '.gc-draft-selection-handle.is-sw{left:calc(-1 * var(--gc-handle-offset-x,12px));bottom:calc(-1 * var(--gc-handle-offset-y,15px));}'
+      + '.gc-draft-selection-handle.is-s{left:50%;bottom:calc(-1 * var(--gc-handle-offset-y,15px));transform:translateX(-50%);}'
+      + '.gc-draft-selection-handle.is-se{right:calc(-1 * var(--gc-handle-offset-x,12px));bottom:calc(-1 * var(--gc-handle-offset-y,15px));}'
+      + '.gc-draft-selection-handle.is-w{left:calc(-1 * var(--gc-handle-offset-x,12px));top:50%;transform:translateY(-50%);}'
+      + '.gc-draft-selection-handle.is-n,.gc-draft-selection-handle.is-s{cursor:ns-resize;}'
+      + '.gc-draft-selection-handle.is-e,.gc-draft-selection-handle.is-w{cursor:ew-resize;}'
+      + '.gc-draft-selection-handle.is-nw,.gc-draft-selection-handle.is-se{cursor:nwse-resize;}'
+      + '.gc-draft-selection-handle.is-ne,.gc-draft-selection-handle.is-sw{cursor:nesw-resize;}'
+      + '.gc-draft-inline-editor{display:block;width:100%;height:100%;outline:none;border:0;background:transparent;overflow:visible;cursor:text;user-select:text;white-space:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;text-align:inherit;}'
+      + '.gc-draft-inline-editor:focus{outline:none;}'
+      + '.gc-draft-guide{position:absolute;border:0;background:transparent;z-index:2;}'
+      + '.gc-draft-guide.is-vertical{width:14px;transform:translateX(-7px);cursor:ew-resize;}'
+      + '.gc-draft-guide.is-horizontal{height:14px;transform:translateY(-7px);cursor:ns-resize;}'
+      + '.gc-draft-guide::before{content:"";position:absolute;background:#64748b;opacity:.45;}'
+      + '.gc-draft-guide.is-vertical::before{left:6.5px;top:0;width:1px;height:100%;}'
+      + '.gc-draft-guide.is-horizontal::before{left:0;top:6.5px;width:100%;height:1px;}'
+      + '.gc-draft-guide.is-selected::before{background:#0284c7;opacity:.85;box-shadow:0 0 0 1px rgba(2,132,199,0.28);}'
       + '.gc-draft-insert-guide{position:absolute;border:1px dashed #0f766e;background:rgba(45,212,191,0.18);pointer-events:none;z-index:2;}'
+      + '.gc-draft-insert-guide.is-rect{border-color:#2563eb;background:rgba(37,99,235,0.13);}'
       + '.gc-step2-props{border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;}'
       + '.gc-prop-section-title{font-size:10px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:.05em;margin:2px 0;}'
       + '.gc-prop-group{display:flex;flex-direction:column;gap:4px;}'
@@ -256,6 +577,30 @@
 
   function escapeAttr(value) {
     return escapeHtml(value).replace(/"/g, '&quot;');
+  }
+
+  function hexToRgbaString(value, alpha, fallbackHex) {
+    var fallback = String(fallbackHex || '#2563eb').trim();
+    var raw = String(value || '').trim();
+    var src = raw || fallback;
+    var hex = src.charAt(0) === '#' ? src.slice(1) : src;
+    if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+      hex = hex.charAt(0) + hex.charAt(0)
+        + hex.charAt(1) + hex.charAt(1)
+        + hex.charAt(2) + hex.charAt(2);
+    }
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+      hex = '2563eb';
+    }
+    var a = Number(alpha);
+    if (!Number.isFinite(a)) {
+      a = 0.14;
+    }
+    a = Math.max(0, Math.min(1, a));
+    var r = parseInt(hex.slice(0, 2), 16);
+    var g = parseInt(hex.slice(2, 4), 16);
+    var b = parseInt(hex.slice(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
 
   function parseFilename(disposition, fallback) {
@@ -590,15 +935,24 @@
     state.templateDraft = null;
     state.templateDraftName = '';
     state.draftSelectedElementId = '';
+    state.draftSelectedElementIds = new Set();
+    state.draftInlineEditingElementId = '';
+    state.draftPendingTextEdit = null;
     state.draftSelectedGuideId = '';
     state.draftActiveSide = 'front';
     state.draftTool = 'select';
     state.draftDragging = null;
+    state.draftResizeDragging = null;
     state.draftGuideDragging = null;
     state.draftTextDrag = null;
-    state.draftSuppressTextClick = false;
+    state.draftRectDrag = null;
     state.draftZoom = 1;
-    state.draftUnit = 'px';
+    state.draftZoomOriginX = 50;
+    state.draftZoomOriginY = 50;
+    state.draftLastPointerClientX = null;
+    state.draftLastPointerClientY = null;
+    state.draftUnit = 'mm';
+    state.draftSnapMm = 0.1;
     state.draftDirty = false;
   }
 
@@ -652,20 +1006,98 @@
     return { width: width, height: height };
   }
 
+  function draftCanvasDisplayInfo(metrics) {
+    var m = metrics || draftCanvasMetrics();
+    var real = draftRealDimensionsMm();
+
+    var widthPx = Number(real.widthMm || 0) * (96 / 25.4);
+    var heightPx = Number(real.heightMm || 0) * (96 / 25.4);
+    if (!Number.isFinite(widthPx) || widthPx <= 0) {
+      widthPx = Number(m.width || 1);
+    }
+    if (!Number.isFinite(heightPx) || heightPx <= 0) {
+      heightPx = Number(m.height || 1);
+    }
+
+    widthPx = Math.max(1, Math.min(6000, widthPx));
+    heightPx = Math.max(1, Math.min(6000, heightPx));
+
+    var scaleX = widthPx / Math.max(1, Number(m.width || 1));
+    var scaleY = heightPx / Math.max(1, Number(m.height || 1));
+
+    if (!Number.isFinite(scaleX) || scaleX <= 0) {
+      scaleX = 1;
+    }
+    if (!Number.isFinite(scaleY) || scaleY <= 0) {
+      scaleY = 1;
+    }
+
+    return {
+      widthPx: widthPx,
+      heightPx: heightPx,
+      scaleX: scaleX,
+      scaleY: scaleY,
+    };
+  }
+
+  function defaultRealDimensionsMmForOrientation(orientation) {
+    var safe = normalizeOrientation(orientation);
+    if (safe === 'portrait') {
+      return { widthMm: 57, heightMm: 87 };
+    }
+    return { widthMm: 87, heightMm: 57 };
+  }
+
+  function draftReferenceOrientation(metrics) {
+    var m = metrics || draftCanvasMetrics();
+    var width = Number(m.width || 0);
+    var height = Number(m.height || 0);
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      if (height > (width * 1.02)) {
+        return 'portrait';
+      }
+      if (width > (height * 1.02)) {
+        return 'landscape';
+      }
+    }
+    return normalizeOrientation(state.orientation || 'landscape');
+  }
+
+  function normalizeRealDimensionsMm(widthMm, heightMm, orientation) {
+    var safeOrientation = normalizeOrientation(orientation || state.orientation || 'landscape');
+    var defaults = defaultRealDimensionsMmForOrientation(safeOrientation);
+
+    var w = Number(widthMm);
+    var h = Number(heightMm);
+    if (!Number.isFinite(w) || w <= 0) {
+      w = defaults.widthMm;
+    }
+    if (!Number.isFinite(h) || h <= 0) {
+      h = defaults.heightMm;
+    }
+
+    if (safeOrientation === 'portrait' && w > h) {
+      var portraitSwap = w;
+      w = h;
+      h = portraitSwap;
+    }
+    if (safeOrientation === 'landscape' && h > w) {
+      var landscapeSwap = h;
+      h = w;
+      w = landscapeSwap;
+    }
+
+    return { widthMm: w, heightMm: h };
+  }
+
   function draftRealDimensionsMm() {
     var tpl = currentTemplateJson();
     var canvas = tpl && tpl.canvas && typeof tpl.canvas === 'object' ? tpl.canvas : {};
-    var widthMm = Number(canvas.realWidthMM || (state.orientation === 'portrait' ? 54 : 85.6));
-    var heightMm = Number(canvas.realHeightMM || (state.orientation === 'portrait' ? 85.6 : 54));
-
-    if (!Number.isFinite(widthMm) || widthMm <= 0) {
-      widthMm = state.orientation === 'portrait' ? 54 : 85.6;
-    }
-    if (!Number.isFinite(heightMm) || heightMm <= 0) {
-      heightMm = state.orientation === 'portrait' ? 85.6 : 54;
-    }
-
-    return { widthMm: widthMm, heightMm: heightMm };
+    var metrics = draftCanvasMetrics();
+    var orientation = draftReferenceOrientation(metrics);
+    var widthMm = Number(canvas.realWidthMM);
+    var heightMm = Number(canvas.realHeightMM);
+    return normalizeRealDimensionsMm(widthMm, heightMm, orientation);
   }
 
   function nextDraftGuideId() {
@@ -687,8 +1119,8 @@
     }
 
     var span = axis === 'x' ? metrics.width : metrics.height;
-    var min = -span;
-    var max = span * 2;
+    var min = 0;
+    var max = span;
     pos = Math.max(min, Math.min(max, pos));
 
     return {
@@ -790,9 +1222,9 @@
   }
 
   function currentDraftUnit() {
-    var unit = String(state.draftUnit || 'px').toLowerCase();
-    if (unit !== 'px' && unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
-      unit = 'px';
+    var unit = String(state.draftUnit || 'mm').toLowerCase();
+    if (unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
+      unit = 'mm';
     }
     return unit;
   }
@@ -812,10 +1244,6 @@
     }
 
     var unit = currentDraftUnit();
-    if (unit === 'px') {
-      return v;
-    }
-
     var metrics = draftCanvasMetrics();
     var real = draftRealDimensionsMm();
     var mmPerPx = axis === 'y'
@@ -836,10 +1264,6 @@
     }
 
     var unit = currentDraftUnit();
-    if (unit === 'px') {
-      return v;
-    }
-
     var metrics = draftCanvasMetrics();
     var real = draftRealDimensionsMm();
     var pxPerMm = axis === 'y'
@@ -855,12 +1279,325 @@
     return v * pxPerMm;
   }
 
+  function unitValueToMm(value) {
+    var v = Number(value || 0);
+    if (!Number.isFinite(v)) {
+      return 0;
+    }
+
+    var unit = currentDraftUnit();
+    if (unit === 'cm') {
+      return v * 10;
+    }
+    if (unit === 'in') {
+      return v * 25.4;
+    }
+    if (unit === 'mm') {
+      return v;
+    }
+    return v;
+  }
+
   function formatDraftMeasure(value, axis) {
     var converted = canvasValueToUnit(value, axis);
-    if (currentDraftUnit() === 'px') {
-      return String(Math.round(converted));
-    }
     return String(Math.round(converted * 100) / 100);
+  }
+
+  function formatMmLabelValue(value) {
+    var num = Math.round(Number(value || 0) * 100) / 100;
+    if (!Number.isFinite(num)) {
+      return '0';
+    }
+    return String(num % 1 === 0 ? Math.round(num) : num);
+  }
+
+  function normalizeDraftSnapMm(value) {
+    var v = Number(value);
+    if (!Number.isFinite(v)) {
+      v = 0;
+    }
+    v = Math.max(0, Math.min(10, v));
+    return Math.round(v * 1000) / 1000;
+  }
+
+  function currentDraftSnapMm() {
+    return normalizeDraftSnapMm(state.draftSnapMm);
+  }
+
+  function formatDraftSnapMm(value) {
+    var num = normalizeDraftSnapMm(value);
+    if (num === 0) {
+      return '0';
+    }
+    return String(Math.round(num * 1000) / 1000);
+  }
+
+  function draftSnapStepCanvas(axis) {
+    var snapMm = currentDraftSnapMm();
+    if (snapMm <= 0) {
+      return 0;
+    }
+
+    var metrics = draftCanvasMetrics();
+    var real = draftRealDimensionsMm();
+    var spanPx = axis === 'y' ? Number(metrics.height || 0) : Number(metrics.width || 0);
+    var spanMm = axis === 'y' ? Number(real.heightMm || 0) : Number(real.widthMm || 0);
+    if (!Number.isFinite(spanPx) || !Number.isFinite(spanMm) || spanPx <= 0 || spanMm <= 0) {
+      return 0;
+    }
+
+    var step = (snapMm / spanMm) * spanPx;
+    if (!Number.isFinite(step) || step <= 0) {
+      return 0;
+    }
+    return step;
+  }
+
+  function snapCanvasValueToGrid(value, axis) {
+    var v = Number(value || 0);
+    if (!Number.isFinite(v)) {
+      v = 0;
+    }
+    var step = draftSnapStepCanvas(axis);
+    if (step <= 0) {
+      return v;
+    }
+    return Math.round(v / step) * step;
+  }
+
+  var draftTextMeasureCanvas = null;
+
+  function draftTextMeasureElement() {
+    if (typeof document !== 'undefined' && draftTextMeasureNode && draftTextMeasureNode.ownerDocument === document) {
+      return draftTextMeasureNode;
+    }
+    if (typeof document === 'undefined' || !document.body || typeof document.createElement !== 'function') {
+      return null;
+    }
+
+    var node = document.createElement('span');
+    node.setAttribute('aria-hidden', 'true');
+    node.style.position = 'fixed';
+    node.style.left = '-100000px';
+    node.style.top = '-100000px';
+    node.style.visibility = 'hidden';
+    node.style.pointerEvents = 'none';
+    node.style.whiteSpace = 'nowrap';
+    node.style.display = 'inline-block';
+    node.style.padding = '0';
+    node.style.margin = '0';
+    node.style.border = '0';
+    node.style.lineHeight = '1';
+    document.body.appendChild(node);
+    draftTextMeasureNode = node;
+    return draftTextMeasureNode;
+  }
+
+  function draftTextMeasureContext() {
+    if (draftTextMeasureCanvas && typeof draftTextMeasureCanvas.getContext === 'function') {
+      var existingCtx = draftTextMeasureCanvas.getContext('2d');
+      if (existingCtx) {
+        return existingCtx;
+      }
+    }
+
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      return null;
+    }
+
+    draftTextMeasureCanvas = document.createElement('canvas');
+    if (!draftTextMeasureCanvas || typeof draftTextMeasureCanvas.getContext !== 'function') {
+      return null;
+    }
+
+    return draftTextMeasureCanvas.getContext('2d');
+  }
+
+  function estimateDraftTextWidthPx(text, fontSize, fontFamily, fontWeight, fontStyle, letterSpacing) {
+    var label = String(text == null ? '' : text);
+
+    var lines = label.replace(/\r\n?/g, '\n').split('\n');
+    if (!lines.length) {
+      lines = [''];
+    }
+
+    var size = Number(fontSize || 12);
+    if (!Number.isFinite(size) || size <= 0) {
+      size = 12;
+    }
+    var sizePx = ptToPx(size);
+    if (!Number.isFinite(sizePx) || sizePx <= 0) {
+      sizePx = ptToPx(12);
+    }
+
+    var family = String(fontFamily || 'Arial');
+    var weight = String(fontWeight || '400');
+    var style = String(fontStyle || 'normal');
+    var spacing = Number(letterSpacing || 0);
+    if (!Number.isFinite(spacing)) {
+      spacing = 0;
+    }
+    var widest = 0;
+
+    var measureNode = draftTextMeasureElement();
+    if (measureNode) {
+      measureNode.style.fontFamily = family;
+      measureNode.style.fontWeight = weight;
+      measureNode.style.fontStyle = style;
+      measureNode.style.fontSize = String(size) + 'pt';
+      measureNode.style.letterSpacing = String(spacing) + 'px';
+      measureNode.style.whiteSpace = 'nowrap';
+      measureNode.style.lineHeight = '1';
+      lines.forEach(function (line) {
+        measureNode.textContent = String(line || '');
+        var widthDom = Number(measureNode.getBoundingClientRect && measureNode.getBoundingClientRect().width || 0);
+        if (Number.isFinite(widthDom) && widthDom > widest) {
+          widest = widthDom;
+        }
+      });
+    }
+
+    var ctx = draftTextMeasureContext();
+
+    if (widest <= 0 && ctx) {
+      ctx.font = style + ' ' + weight + ' ' + sizePx + 'px ' + family;
+      lines.forEach(function (line) {
+        var metrics = ctx.measureText(String(line || ''));
+        var width = Number(metrics && metrics.width || 0);
+        var boxLeft = Number(metrics && metrics.actualBoundingBoxLeft || 0);
+        var boxRight = Number(metrics && metrics.actualBoundingBoxRight || 0);
+        var boxWidth = boxLeft + boxRight;
+        if (Number.isFinite(boxWidth) && boxWidth > width) {
+          width = boxWidth;
+        }
+        if (Number.isFinite(width) && spacing !== 0) {
+          var length = String(line || '').length;
+          width += spacing * Math.max(0, length - 1);
+        }
+        if (Number.isFinite(width) && width > widest) {
+          widest = width;
+        }
+      });
+    }
+
+    if (widest <= 0) {
+      var fallbackLongest = 0;
+      lines.forEach(function (line) {
+        var len = String(line || '').length;
+        if (len > fallbackLongest) {
+          fallbackLongest = len;
+        }
+      });
+      widest = fallbackLongest * sizePx * 0.62;
+    }
+
+    return widest;
+  }
+
+  var DRAFT_ARTISTIC_MAX_WIDTH_MULTIPLIER = 8;
+  var DRAFT_ARTISTIC_MAX_HEIGHT_MULTIPLIER = 4;
+  var DRAFT_ARTISTIC_MIN_VISIBLE_PX = 8;
+
+  function draftArtisticLimits(metrics) {
+    var widthBase = Math.max(1, Number(metrics && metrics.width || 0));
+    var heightBase = Math.max(1, Number(metrics && metrics.height || 0));
+    return {
+      maxWidth: widthBase * DRAFT_ARTISTIC_MAX_WIDTH_MULTIPLIER,
+      maxHeight: heightBase * DRAFT_ARTISTIC_MAX_HEIGHT_MULTIPLIER,
+    };
+  }
+
+  function fitDraftArtisticTextBounds(draft) {
+    if (!draft || String(draft.type || '').toLowerCase() !== 'text') {
+      return;
+    }
+
+    var mode = String(draft.textMode || 'artistic').toLowerCase();
+    if (mode !== 'artistic') {
+      return;
+    }
+
+    var metrics = draftCanvasMetrics();
+    var displayInfo = draftCanvasDisplayInfo(metrics);
+    var displayScaleX = Number(displayInfo.scaleX || 1);
+    var displayScaleY = Number(displayInfo.scaleY || 1);
+    if (!Number.isFinite(displayScaleX) || displayScaleX <= 0) {
+      displayScaleX = 1;
+    }
+    if (!Number.isFinite(displayScaleY) || displayScaleY <= 0) {
+      displayScaleY = 1;
+    }
+    var fontSize = Number(draft.fontSize || 12);
+    if (!Number.isFinite(fontSize) || fontSize <= 0) {
+      fontSize = 12;
+    }
+    var fontSizePx = ptToPx(fontSize);
+    if (!Number.isFinite(fontSizePx) || fontSizePx <= 0) {
+      fontSizePx = ptToPx(12);
+    }
+    var letterSpacing = Number(draft.letterSpacing || 0);
+    if (!Number.isFinite(letterSpacing)) {
+      letterSpacing = 0;
+    }
+
+    var label = String(draft.label == null ? '' : draft.label);
+    var normalized = label.replace(/\r\n?/g, '\n').split('\n')[0] || '';
+    var width = estimateDraftTextWidthPx(
+      normalized,
+      fontSize,
+      draft.fontFamily,
+      draft.fontWeight,
+      draft.fontStyle,
+      letterSpacing
+    );
+    if (!Number.isFinite(width) || width < 0) {
+      width = 0;
+    }
+
+    var height = 0;
+    var ctx = draftTextMeasureContext();
+    if (ctx) {
+      ctx.font = String(draft.fontStyle || 'normal')
+        + ' ' + String(draft.fontWeight || '400')
+        + ' ' + fontSizePx + 'px '
+        + String(draft.fontFamily || 'Arial');
+      var glyphMetrics = ctx.measureText(normalized || ' ');
+      var ascent = Number(glyphMetrics && glyphMetrics.actualBoundingBoxAscent || 0);
+      var descent = Number(glyphMetrics && glyphMetrics.actualBoundingBoxDescent || 0);
+      var glyphHeight = ascent + descent;
+      if (Number.isFinite(glyphHeight) && glyphHeight > 0) {
+        height = glyphHeight;
+      }
+    }
+
+    var measureNode = draftTextMeasureElement();
+    if ((!Number.isFinite(height) || height <= 0) && measureNode) {
+      measureNode.style.fontFamily = String(draft.fontFamily || 'Arial');
+      measureNode.style.fontWeight = String(draft.fontWeight || '400');
+      measureNode.style.fontStyle = String(draft.fontStyle || 'normal');
+      measureNode.style.fontSize = String(fontSize) + 'pt';
+      measureNode.style.letterSpacing = String(letterSpacing) + 'px';
+      measureNode.style.lineHeight = '1';
+      measureNode.style.whiteSpace = 'nowrap';
+      measureNode.textContent = normalized || ' ';
+      var heightDom = Number(measureNode.getBoundingClientRect && measureNode.getBoundingClientRect().height || 0);
+      if (Number.isFinite(heightDom) && heightDom > 0) {
+        height = heightDom;
+      }
+    }
+    if (!Number.isFinite(height) || height <= 0) {
+      height = Math.ceil(fontSizePx + 1);
+    }
+
+    // Text metrics are in rendered CSS pixels; convert back to internal canvas units.
+    width = width / displayScaleX;
+    height = height / displayScaleY;
+
+    var limits = draftArtisticLimits(metrics);
+    var resolvedWidth = Number(width.toFixed(2));
+    var resolvedHeight = Number(height.toFixed(2));
+    draft.width = Math.max(normalized.length ? 8 : 6, Math.min(limits.maxWidth, resolvedWidth));
+    draft.height = Math.max(10, Math.min(limits.maxHeight, resolvedHeight));
   }
 
   function nextDraftElementId() {
@@ -871,6 +1608,15 @@
   function normalizeDraftElement(raw, idx) {
     var metrics = draftCanvasMetrics();
     var item = raw && typeof raw === 'object' ? raw : {};
+    var type = String(item.type || 'text').toLowerCase();
+    if (type !== 'text' && type !== 'image' && type !== 'rectangle') {
+      type = 'text';
+    }
+    var rawTextMode = String(item.textMode || 'artistic').toLowerCase();
+    if (rawTextMode !== 'artistic' && rawTextMode !== 'paragraph') {
+      rawTextMode = 'artistic';
+    }
+    var isArtisticText = type === 'text' && rawTextMode === 'artistic';
     var width = Number(item.width || 90);
     var height = Number(item.height || 24);
     var x = Number(item.x || 16);
@@ -881,26 +1627,37 @@
     if (!Number.isFinite(x)) x = 16;
     if (!Number.isFinite(y)) y = 16;
 
-    width = Math.max(12, Math.min(metrics.width, width));
-    height = Math.max(12, Math.min(metrics.height, height));
-    x = Math.max(0, Math.min(metrics.width - width, x));
-    y = Math.max(0, Math.min(metrics.height - height, y));
+    var minWidth = type === 'text' ? 6 : 12;
+    var minHeight = type === 'text' ? 10 : 12;
+    if (isArtisticText) {
+      var artisticLimits = draftArtisticLimits(metrics);
+      width = Math.max(minWidth, Math.min(artisticLimits.maxWidth, width));
+      height = Math.max(minHeight, Math.min(artisticLimits.maxHeight, height));
+
+      var minVisiblePx = DRAFT_ARTISTIC_MIN_VISIBLE_PX;
+      var minX = minVisiblePx - width;
+      var maxX = metrics.width - minVisiblePx;
+      var minY = minVisiblePx - height;
+      var maxY = metrics.height - minVisiblePx;
+      x = Math.max(minX, Math.min(maxX, x));
+      y = Math.max(minY, Math.min(maxY, y));
+    } else {
+      width = Math.max(minWidth, Math.min(metrics.width, width));
+      height = Math.max(minHeight, Math.min(metrics.height, height));
+      x = Math.max(0, Math.min(metrics.width - width, x));
+      y = Math.max(0, Math.min(metrics.height - height, y));
+    }
 
     var side = String(item.side || 'front').toLowerCase();
     if (side !== 'front' && side !== 'back' && side !== 'both') {
       side = 'front';
     }
 
-    var type = String(item.type || 'text').toLowerCase();
-    if (type !== 'text' && type !== 'image') {
-      type = 'text';
-    }
-
-    var fontSize = Number(item.fontSize || 11);
+    var fontSize = Number(item.fontSize || 12);
     if (!Number.isFinite(fontSize) || fontSize <= 0) {
-      fontSize = 11;
+      fontSize = 12;
     }
-    fontSize = Math.max(6, Math.min(72, fontSize));
+    fontSize = Math.max(4, Math.min(240, fontSize));
 
     var lineHeight = Number(item.lineHeight || 1.2);
     if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
@@ -914,28 +1671,56 @@
     }
     letterSpacing = Math.max(-10, Math.min(20, letterSpacing));
 
-    var fontFamily = String(item.fontFamily || 'Arial').slice(0, 80);
-    var fontWeight = String(item.fontWeight || '600');
-    if (['300', '400', '500', '600', '700', '800', 'normal', 'bold'].indexOf(fontWeight) === -1) {
-      fontWeight = '600';
-    }
+    var fontSelection = resolveFontSelection(item);
+    var fontFamily = String(
+      (fontSelection.face && fontSelection.face.family)
+      || item.fontFamily
+      || 'Arial'
+    ).slice(0, 80);
+    var fontWeight = normalizeFontWeightValue(
+      (fontSelection.face && fontSelection.face.weight)
+      || item.fontWeight
+      || '400'
+    );
+    var fontStyle = normalizeFontStyleValue(
+      (fontSelection.face && fontSelection.face.style)
+      || item.fontStyle
+      || 'normal'
+    );
+    var fontGroup = String(
+      (fontSelection.family && fontSelection.family.id)
+      || item.fontGroup
+      || 'arial'
+    );
+    var fontFace = String(
+      (fontSelection.face && fontSelection.face.id)
+      || item.fontFace
+      || 'regular'
+    );
 
-    var textAlign = String(item.textAlign || 'center').toLowerCase();
+    var textAlign = String(item.textAlign || item.align || 'center').toLowerCase();
     if (textAlign !== 'left' && textAlign !== 'center' && textAlign !== 'right') {
       textAlign = 'center';
     }
 
     var color = String(item.color || '#1e293b').slice(0, 20);
-    var textMode = String(item.textMode || 'artistic').toLowerCase();
+    var textMode = rawTextMode;
     if (textMode !== 'artistic' && textMode !== 'paragraph') {
       textMode = 'artistic';
     }
+    if (type === 'text' && textMode === 'artistic') {
+      lineHeight = 1;
+    }
+    var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label');
+    var fallbackLabel = type === 'image'
+      ? 'Image'
+      : (type === 'rectangle' ? 'Rectangle' : 'Text');
 
-    return {
+    var normalizedItem = {
       __id: item.__id || nextDraftElementId(),
       type: type,
       field: String(item.field || ''),
-      label: String(item.label || (type === 'image' ? 'Image' : 'Text')),
+      label: hasStoredLabel ? String(item.label) : fallbackLabel,
       side: side,
       x: x,
       y: y,
@@ -943,14 +1728,27 @@
       height: height,
       fontSize: fontSize,
       fontFamily: fontFamily,
+      fontGroup: fontGroup,
+      fontFace: fontFace,
       lineHeight: lineHeight,
       fontWeight: fontWeight,
+      fontStyle: fontStyle,
       textAlign: textAlign,
+      align: textAlign,
       letterSpacing: letterSpacing,
       color: color,
       textMode: type === 'text' ? textMode : '',
       imageKind: type === 'image' ? String(item.imageKind || '') : '',
     };
+
+    if (normalizedItem.type === 'text' && normalizedItem.textMode === 'artistic') {
+      normalizedItem.artisticAutoFit = item.artisticAutoFit !== false;
+      if (normalizedItem.artisticAutoFit) {
+        fitDraftArtisticTextBounds(normalizedItem);
+      }
+    }
+
+    return normalizedItem;
   }
 
   function ensureStep2DraftInitialized() {
@@ -985,6 +1783,7 @@
       ? String(state.selectedTemplate.name || 'Template')
       : 'New Template';
     state.draftSelectedElementId = clean.elements.length ? clean.elements[0].__id : '';
+    state.draftSelectedElementIds = state.draftSelectedElementId ? new Set([state.draftSelectedElementId]) : new Set();
     state.draftSelectedGuideId = '';
     state.draftActiveSide = 'front';
     state.draftDirty = false;
@@ -995,7 +1794,7 @@
         name: state.templateDraftName,
         template_json: templateJsonForApi(clean),
         version: 1,
-        font_size: 11,
+        font_size: 12,
         font_family: 'Arial',
       };
     }
@@ -1003,12 +1802,503 @@
 
   function selectedDraftElement() {
     ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+    var elements = state.templateDraft && Array.isArray(state.templateDraft.elements)
+      ? state.templateDraft.elements
+      : [];
+
+    if (!state.draftSelectedElementId && state.draftSelectedElementIds && state.draftSelectedElementIds.size) {
+      state.draftSelectedElementIds.forEach(function (id) {
+        if (!state.draftSelectedElementId) {
+          state.draftSelectedElementId = String(id || '');
+        }
+      });
+    }
+
+    return elements.find(function (item) {
+      return item && item.__id === state.draftSelectedElementId;
+    }) || null;
+  }
+
+  function selectedDraftElementSet() {
+    if (!(state.draftSelectedElementIds instanceof Set)) {
+      state.draftSelectedElementIds = new Set();
+    }
+    if (state.draftSelectedElementId) {
+      state.draftSelectedElementIds.add(state.draftSelectedElementId);
+    }
+    return state.draftSelectedElementIds;
+  }
+
+  function normalizeDraftElementSelection() {
+    ensureStep2DraftInitialized();
+    var elements = state.templateDraft && Array.isArray(state.templateDraft.elements)
+      ? state.templateDraft.elements
+      : [];
+    var validIds = new Set(elements.map(function (item) {
+      return String(item && item.__id || '');
+    }).filter(function (id) {
+      return !!id;
+    }));
+
+    var selectedIds = selectedDraftElementSet();
+    var nextSelected = new Set();
+    selectedIds.forEach(function (id) {
+      var sid = String(id || '');
+      if (sid && validIds.has(sid)) {
+        nextSelected.add(sid);
+      }
+    });
+
+    if (state.draftSelectedElementId) {
+      var current = String(state.draftSelectedElementId || '');
+      if (current && validIds.has(current)) {
+        nextSelected.add(current);
+      }
+    }
+
+    if (!state.draftSelectedElementId || !nextSelected.has(state.draftSelectedElementId)) {
+      var nextPrimary = '';
+      nextSelected.forEach(function (id) {
+        if (!nextPrimary) {
+          nextPrimary = id;
+        }
+      });
+      state.draftSelectedElementId = nextPrimary;
+    }
+
+    state.draftSelectedElementIds = nextSelected;
+  }
+
+  function selectedDraftElements() {
+    ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+    var elements = state.templateDraft && Array.isArray(state.templateDraft.elements)
+      ? state.templateDraft.elements
+      : [];
+    var selected = selectedDraftElementSet();
+    return elements.filter(function (item) {
+      return item && selected.has(item.__id);
+    });
+  }
+
+  function isDraftElementSelected(id) {
+    var wanted = String(id || '');
+    if (!wanted) {
+      return false;
+    }
+    var selected = selectedDraftElementSet();
+    return selected.has(wanted);
+  }
+
+  function findDraftElementById(id) {
+    var wanted = String(id || '');
+    if (!wanted) {
+      return null;
+    }
+    ensureStep2DraftInitialized();
     var elements = state.templateDraft && Array.isArray(state.templateDraft.elements)
       ? state.templateDraft.elements
       : [];
     return elements.find(function (item) {
-      return item && item.__id === state.draftSelectedElementId;
+      return item && String(item.__id || '') === wanted;
     }) || null;
+  }
+
+  function isDraftTextElement(item) {
+    return !!(item && String(item.type || '').toLowerCase() === 'text');
+  }
+
+  function clearDraftInlineTextEditing() {
+    state.draftInlineEditingElementId = '';
+    state.draftPendingTextEdit = null;
+  }
+
+  function setDraftInlineTextEditing(id) {
+    var wanted = String(id || '');
+    var item = findDraftElementById(wanted);
+    if (!wanted || !isDraftTextElement(item)) {
+      state.draftInlineEditingElementId = '';
+      return false;
+    }
+
+    state.draftSelectedElementId = wanted;
+    state.draftSelectedElementIds = new Set([wanted]);
+    state.draftSelectedGuideId = '';
+
+    var currentLabel = String(item.label || '').trim();
+    if (/^(artistic\s+text|paragraph|text)\s*\d*$/i.test(currentLabel)) {
+      updateDraftTextLabelById(wanted, '');
+    }
+
+    if (String(item.textMode || '').toLowerCase() === 'artistic') {
+      var ls = Number(item.letterSpacing || 0);
+      if (Number.isFinite(ls) && (ls > 3 || ls < -3)) {
+        mutateDraftElementById(wanted, function (draft) {
+          draft.letterSpacing = 0;
+        });
+      }
+    }
+
+    state.draftInlineEditingElementId = wanted;
+    state.draftTool = 'select';
+    state.draftPendingTextEdit = null;
+    return true;
+  }
+
+  function updateDraftTextLabelById(id, nextLabel) {
+    var wanted = String(id || '');
+    if (!wanted) {
+      return false;
+    }
+
+    ensureStep2DraftInitialized();
+    var changed = false;
+    state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+      if (!item || String(item.__id || '') !== wanted) {
+        return item;
+      }
+
+      var next = String(nextLabel || '');
+      var isArtisticText = String(item.textMode || '').toLowerCase() === 'artistic';
+      if (isArtisticText) {
+        next = next.replace(/[ \t\u00A0]+$/g, '');
+      }
+      var draft = Object.assign({}, item, { label: next });
+      if (isArtisticText && item.artisticAutoFit !== false) {
+        fitDraftArtisticTextBounds(draft);
+      }
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = item.__id;
+      changed = true;
+      return normalized;
+    });
+
+    if (changed) {
+      markDraftDirty();
+    }
+
+    return changed;
+  }
+
+  function mutateDraftElementById(id, mutator) {
+    var wanted = String(id || '');
+    if (!wanted || typeof mutator !== 'function') {
+      return false;
+    }
+
+    ensureStep2DraftInitialized();
+    var changed = false;
+    state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+      if (!item || String(item.__id || '') !== wanted) {
+        return item;
+      }
+
+      var draft = Object.assign({}, item);
+      mutator(draft, item);
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = item.__id;
+      changed = true;
+      return normalized;
+    });
+
+    if (changed) {
+      markDraftDirty();
+      normalizeDraftElementSelection();
+    }
+
+    return changed;
+  }
+
+  function normalizeDraftResizeHandle(value) {
+    var handle = String(value || '').toLowerCase();
+    if (handle !== 'n' && handle !== 'ne' && handle !== 'e' && handle !== 'se'
+      && handle !== 's' && handle !== 'sw' && handle !== 'w' && handle !== 'nw') {
+      handle = 'se';
+    }
+    return handle;
+  }
+
+  function applyDraftResizeDrag(resizeDrag, event) {
+    if (!resizeDrag || !event) {
+      return false;
+    }
+
+    var handle = normalizeDraftResizeHandle(resizeDrag.handle);
+    var hasNorth = handle.indexOf('n') !== -1;
+    var hasSouth = handle.indexOf('s') !== -1;
+    var hasWest = handle.indexOf('w') !== -1;
+    var hasEast = handle.indexOf('e') !== -1;
+    var hasHorizontal = hasWest || hasEast;
+    var hasVertical = hasNorth || hasSouth;
+    var isCorner = hasHorizontal && hasVertical;
+
+    var startWidth = Number(resizeDrag.startWidth || 0);
+    var startHeight = Number(resizeDrag.startHeight || 0);
+    if (!Number.isFinite(startWidth) || startWidth <= 0 || !Number.isFinite(startHeight) || startHeight <= 0) {
+      return false;
+    }
+
+    var scaleX = Number(resizeDrag.metrics && resizeDrag.metrics.width || 0) / Math.max(1, Number(resizeDrag.canvasRect && resizeDrag.canvasRect.width || 0));
+    var scaleY = Number(resizeDrag.metrics && resizeDrag.metrics.height || 0) / Math.max(1, Number(resizeDrag.canvasRect && resizeDrag.canvasRect.height || 0));
+    if (!Number.isFinite(scaleX) || scaleX <= 0) {
+      scaleX = 1;
+    }
+    if (!Number.isFinite(scaleY) || scaleY <= 0) {
+      scaleY = 1;
+    }
+
+    var deltaX = (Number(event.clientX || 0) - Number(resizeDrag.startMouseX || 0)) * scaleX;
+    var deltaY = (Number(event.clientY || 0) - Number(resizeDrag.startMouseY || 0)) * scaleY;
+
+    var left = Number(resizeDrag.startX || 0);
+    var top = Number(resizeDrag.startY || 0);
+    var right = left + startWidth;
+    var bottom = top + startHeight;
+
+    if (hasWest) {
+      left += deltaX;
+    }
+    if (hasEast) {
+      right += deltaX;
+    }
+    if (hasNorth) {
+      top += deltaY;
+    }
+    if (hasSouth) {
+      bottom += deltaY;
+    }
+
+    var isArtisticText = String(resizeDrag.type || '').toLowerCase() === 'text'
+      && String(resizeDrag.textMode || '').toLowerCase() === 'artistic';
+    var minWidth = isArtisticText ? 6 : (String(resizeDrag.type || '').toLowerCase() === 'text' ? 8 : 12);
+    var minHeight = isArtisticText ? 10 : 12;
+
+    if ((right - left) < minWidth) {
+      if (hasWest && !hasEast) {
+        left = right - minWidth;
+      } else {
+        right = left + minWidth;
+      }
+    }
+
+    if ((bottom - top) < minHeight) {
+      if (hasNorth && !hasSouth) {
+        top = bottom - minHeight;
+      } else {
+        bottom = top + minHeight;
+      }
+    }
+
+    if (isArtisticText) {
+      if (!isCorner) {
+        return mutateDraftElementById(resizeDrag.id, function (draft) {
+          draft.artisticAutoFit = false;
+          draft.x = left;
+          draft.y = top;
+          draft.width = Math.max(minWidth, right - left);
+          draft.height = Math.max(minHeight, bottom - top);
+        });
+      }
+
+      return mutateDraftElementById(resizeDrag.id, function (draft) {
+        var startFontSize = Number(resizeDrag.startFontSize || draft.fontSize || 12);
+        if (!Number.isFinite(startFontSize) || startFontSize <= 0) {
+          startFontSize = 12;
+        }
+        var scaleFromWidth = (right - left) / Math.max(1, startWidth);
+        var scaleFromHeight = (bottom - top) / Math.max(1, startHeight);
+        var scale = 1;
+        if (isCorner) {
+          scale = Math.max(scaleFromWidth, scaleFromHeight);
+        } else if (hasHorizontal && !hasVertical) {
+          scale = scaleFromWidth;
+        } else if (hasVertical && !hasHorizontal) {
+          scale = scaleFromHeight;
+        }
+        if (!Number.isFinite(scale) || scale <= 0) {
+          scale = 1;
+        }
+
+        var nextFontSize = Math.max(4, Math.min(240, startFontSize * scale));
+        var nextLetterSpacing = Number(resizeDrag.startLetterSpacing || draft.letterSpacing || 0);
+        if (!Number.isFinite(nextLetterSpacing)) {
+          nextLetterSpacing = 0;
+        }
+        nextLetterSpacing = Math.max(-3, Math.min(3, nextLetterSpacing));
+        draft.artisticAutoFit = true;
+        draft.fontSize = nextFontSize;
+        draft.letterSpacing = nextLetterSpacing;
+        fitDraftArtisticTextBounds(draft);
+
+        var fittedWidth = Number(draft.width || startWidth);
+        var fittedHeight = Number(draft.height || startHeight);
+        var anchorRight = Number(resizeDrag.startX || 0) + startWidth;
+        var anchorBottom = Number(resizeDrag.startY || 0) + startHeight;
+
+        if (hasWest && !hasEast) {
+          draft.x = anchorRight - fittedWidth;
+        } else {
+          draft.x = Number(resizeDrag.startX || 0);
+        }
+
+        if (hasNorth && !hasSouth) {
+          draft.y = anchorBottom - fittedHeight;
+        } else {
+          draft.y = Number(resizeDrag.startY || 0);
+        }
+      });
+    }
+
+    return mutateDraftElementById(resizeDrag.id, function (draft) {
+      draft.x = left;
+      draft.y = top;
+      draft.width = Math.max(minWidth, right - left);
+      draft.height = Math.max(minHeight, bottom - top);
+    });
+  }
+
+  function focusDraftInlineEditorIfNeeded() {
+    var wanted = String(state.draftInlineEditingElementId || '');
+    if (!wanted || !flowRoot) {
+      return;
+    }
+
+    window.requestAnimationFrame(function () {
+      var editor = flowRoot.querySelector('.gc-draft-inline-editor[data-inline-editor-id="' + wanted + '"]');
+      if (!editor) {
+        return;
+      }
+      try {
+        editor.focus();
+        var range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        var sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      } catch (_err) {
+        // Ignore focus/caret placement failures.
+      }
+    });
+  }
+
+  function applyToSelectedDraftElements(mutator) {
+    ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+    var selected = selectedDraftElementSet();
+    if (!selected.size || typeof mutator !== 'function') {
+      return false;
+    }
+
+    var changed = false;
+    state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+      if (!item || !selected.has(item.__id)) {
+        return item;
+      }
+
+      var draft = Object.assign({}, item);
+      mutator(draft, item);
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = item.__id;
+      changed = true;
+      return normalized;
+    });
+
+    if (changed) {
+      markDraftDirty();
+      normalizeDraftElementSelection();
+    }
+
+    return changed;
+  }
+
+  function alignSelectedDraftElements(mode) {
+    var selected = selectedDraftElements();
+    if (!selected.length) {
+      return false;
+    }
+
+    var multiOnly = mode !== 'canvas-center';
+    if (multiOnly && selected.length < 2) {
+      return false;
+    }
+
+    var metrics = draftCanvasMetrics();
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxRight = -Infinity;
+    var maxBottom = -Infinity;
+
+    selected.forEach(function (item) {
+      var x = Number(item.x || 0);
+      var y = Number(item.y || 0);
+      var w = Number(item.width || 0);
+      var h = Number(item.height || 0);
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxRight = Math.max(maxRight, x + w);
+      maxBottom = Math.max(maxBottom, y + h);
+    });
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxRight) || !Number.isFinite(maxBottom)) {
+      return false;
+    }
+
+    if (mode === 'canvas-center') {
+      var targetCanvasCx = Number(metrics.width || 0) / 2;
+      var targetCanvasCy = Number(metrics.height || 0) / 2;
+      var currentCx = (minX + maxRight) / 2;
+      var currentCy = (minY + maxBottom) / 2;
+      var dx = targetCanvasCx - currentCx;
+      var dy = targetCanvasCy - currentCy;
+      return applyToSelectedDraftElements(function (draft) {
+        draft.x = Number(draft.x || 0) + dx;
+        draft.y = Number(draft.y || 0) + dy;
+      });
+    }
+
+    if (mode === 'align-left') {
+      return applyToSelectedDraftElements(function (draft) {
+        draft.x = minX;
+      });
+    }
+
+    if (mode === 'align-right') {
+      return applyToSelectedDraftElements(function (draft) {
+        draft.x = maxRight - Number(draft.width || 0);
+      });
+    }
+
+    if (mode === 'align-top') {
+      return applyToSelectedDraftElements(function (draft) {
+        draft.y = minY;
+      });
+    }
+
+    if (mode === 'align-bottom') {
+      return applyToSelectedDraftElements(function (draft) {
+        draft.y = maxBottom - Number(draft.height || 0);
+      });
+    }
+
+    if (mode === 'align-h-center') {
+      var targetCenterX = (minX + maxRight) / 2;
+      return applyToSelectedDraftElements(function (draft) {
+        draft.x = targetCenterX - (Number(draft.width || 0) / 2);
+      });
+    }
+
+    if (mode === 'align-v-center') {
+      var targetCenterY = (minY + maxBottom) / 2;
+      return applyToSelectedDraftElements(function (draft) {
+        draft.y = targetCenterY - (Number(draft.height || 0) / 2);
+      });
+    }
+
+    return false;
   }
 
   function draftElementVisibleOnSide(item, side) {
@@ -1039,17 +2329,24 @@
   function addDraftElement(type, options) {
     options = options || {};
     ensureStep2DraftInitialized();
-    var baseType = type === 'image' ? 'image' : 'text';
+    var baseType = type === 'image'
+      ? 'image'
+      : (type === 'rectangle' ? 'rectangle' : 'text');
     var nextIndex = state.templateDraft.elements.length;
 
-    var defaultWidth = baseType === 'image' ? 86 : 96;
-    var defaultHeight = baseType === 'image' ? 68 : 24;
+    var defaultWidth = baseType === 'image' ? 86 : (baseType === 'rectangle' ? 96 : 96);
+    var defaultHeight = baseType === 'image' ? 68 : (baseType === 'rectangle' ? 58 : 24);
     var defaultX = 16 + ((nextIndex * 10) % 60);
     var defaultY = 16 + ((nextIndex * 10) % 60);
+    var hasLabelOption = Object.prototype.hasOwnProperty.call(options, 'label');
 
-    var item = normalizeDraftElement({
+    var itemDraft = {
       type: baseType,
-      label: String(options.label || (baseType === 'image' ? 'Image ' + String(nextIndex + 1) : 'Text ' + String(nextIndex + 1))),
+      label: hasLabelOption ? String(options.label) : (
+        baseType === 'image'
+          ? 'Image ' + String(nextIndex + 1)
+          : (baseType === 'rectangle' ? 'Rectangle ' + String(nextIndex + 1) : 'Text ' + String(nextIndex + 1))
+      ),
       field: String(options.field || ''),
       side: String(options.side || state.draftActiveSide || 'front'),
       width: Number(options.width || defaultWidth),
@@ -1057,17 +2354,28 @@
       x: Number(options.x || defaultX),
       y: Number(options.y || defaultY),
       fontFamily: String(options.fontFamily || 'Arial'),
-      fontWeight: String(options.fontWeight || '600'),
-      textAlign: String(options.textAlign || 'center'),
+      fontGroup: String(options.fontGroup || 'arial'),
+      fontFace: String(options.fontFace || 'regular'),
+      fontWeight: String(options.fontWeight || '400'),
+      fontStyle: String(options.fontStyle || 'normal'),
+      textAlign: String(options.textAlign || 'left'),
       lineHeight: Number(options.lineHeight || 1.2),
       letterSpacing: Number(options.letterSpacing || 0),
       color: String(options.color || '#1e293b'),
       textMode: String(options.textMode || (baseType === 'text' ? 'artistic' : '')),
       imageKind: String(options.imageKind || ''),
-    }, nextIndex);
+    };
+
+    if (baseType === 'text' && String(itemDraft.textMode || '').toLowerCase() === 'artistic' && options.autoFitArtistic === true) {
+      fitDraftArtisticTextBounds(itemDraft);
+    }
+
+    var item = normalizeDraftElement(itemDraft, nextIndex);
     state.templateDraft.elements.push(item);
     state.draftSelectedElementId = item.__id;
+    state.draftSelectedElementIds = new Set([item.__id]);
     markDraftDirty();
+    return item;
   }
 
   function addPhotoPlaceholderElement(options) {
@@ -1105,7 +2413,7 @@
     });
   }
 
-  function updateDraftCanvasSize(widthInput, heightInput) {
+  function updateDraftCanvasSize(widthInput, heightInput, realSizeMm) {
     ensureStep2DraftInitialized();
     var metrics = draftCanvasMetrics();
 
@@ -1128,6 +2436,16 @@
 
     state.templateDraft.canvas.width = nextWidth;
     state.templateDraft.canvas.height = nextHeight;
+    if (realSizeMm && typeof realSizeMm === 'object') {
+      var rw = Number(realSizeMm.widthMm);
+      var rh = Number(realSizeMm.heightMm);
+      if (Number.isFinite(rw) && rw > 0) {
+        state.templateDraft.canvas.realWidthMM = rw;
+      }
+      if (Number.isFinite(rh) && rh > 0) {
+        state.templateDraft.canvas.realHeightMM = rh;
+      }
+    }
     if (!Array.isArray(state.templateDraft.canvas.guides)) {
       state.templateDraft.canvas.guides = [];
     }
@@ -1149,7 +2467,44 @@
       }
     }
 
+    state.orientation = draftReferenceOrientation({
+      width: nextWidth,
+      height: nextHeight,
+    });
+
     markDraftDirty();
+  }
+
+  function switchDraftCanvasOrientation(nextOrientation) {
+    ensureStep2DraftInitialized();
+
+    var wanted = normalizeOrientation(nextOrientation);
+    var metrics = draftCanvasMetrics();
+    var currentOrientation = draftReferenceOrientation(metrics);
+    var shouldSwap = (wanted === 'portrait' && currentOrientation !== 'portrait')
+      || (wanted === 'landscape' && currentOrientation !== 'landscape');
+
+    var nextWidth = Number(metrics.width || 0);
+    var nextHeight = Number(metrics.height || 0);
+    if (shouldSwap) {
+      var swap = nextWidth;
+      nextWidth = nextHeight;
+      nextHeight = swap;
+    }
+
+    var real = draftRealDimensionsMm();
+    var nextReal = {
+      widthMm: Number(real.widthMm || 0),
+      heightMm: Number(real.heightMm || 0),
+    };
+    if (shouldSwap) {
+      var swapMm = nextReal.widthMm;
+      nextReal.widthMm = nextReal.heightMm;
+      nextReal.heightMm = swapMm;
+    }
+
+    updateDraftCanvasSize(nextWidth, nextHeight, nextReal);
+    state.orientation = wanted;
   }
 
   function canvasEventToDraftPoint(canvasEl, event, options) {
@@ -1182,27 +2537,178 @@
     };
   }
 
+  function getActiveDraftCanvasEl() {
+    if (!flowRoot) {
+      return null;
+    }
+    return flowRoot.querySelector('.gc-step2-canvas');
+  }
+
+  function getActiveStageContentEl() {
+    if (!flowRoot) {
+      return null;
+    }
+    return flowRoot.querySelector('.gc-step2-stage-content');
+  }
+
+  function resolveDraftCanvasEl(canvasEl) {
+    if (canvasEl && document.body.contains(canvasEl)) {
+      return canvasEl;
+    }
+    return getActiveDraftCanvasEl();
+  }
+
+  function resolveStageContentEl(stageEl) {
+    if (stageEl && document.body.contains(stageEl)) {
+      return stageEl;
+    }
+    return getActiveStageContentEl();
+  }
+
+  function setSpacePanUiState() {
+    var stageEl = getActiveStageContentEl();
+    if (!stageEl) {
+      return;
+    }
+    stageEl.classList.toggle('is-space-pan', !!state.spacePanMode);
+    stageEl.classList.toggle('is-panning', !!state.spacePanState);
+  }
+
+  function captureZoomAnchorFromClient(clientX, clientY) {
+    if (state.step !== 2) {
+      return false;
+    }
+
+    var stageEl = getActiveStageContentEl();
+    var canvasEl = getActiveDraftCanvasEl();
+    if (!stageEl || !canvasEl) {
+      return false;
+    }
+
+    var stageRect = stageEl.getBoundingClientRect();
+    if (!stageRect.width || !stageRect.height) {
+      return false;
+    }
+
+    var cx = Number(clientX || 0);
+    var cy = Number(clientY || 0);
+    var ratioX = (cx - stageRect.left) / Math.max(1, stageRect.width);
+    var ratioY = (cy - stageRect.top) / Math.max(1, stageRect.height);
+    ratioX = Math.max(0, Math.min(1, ratioX));
+    ratioY = Math.max(0, Math.min(1, ratioY));
+
+    var draftPoint = canvasEventToDraftPoint(canvasEl, { clientX: cx, clientY: cy }, { allowOutside: true });
+    var metrics = draftPoint && draftPoint.metrics ? draftPoint.metrics : draftCanvasMetrics();
+    var canvasRatioX = Number(draftPoint && draftPoint.x || 0) / Math.max(1, Number(metrics.width || 1));
+    var canvasRatioY = Number(draftPoint && draftPoint.y || 0) / Math.max(1, Number(metrics.height || 1));
+    canvasRatioX = Math.max(0, Math.min(1, canvasRatioX));
+    canvasRatioY = Math.max(0, Math.min(1, canvasRatioY));
+    state.draftZoomOriginX = canvasRatioX * 100;
+    state.draftZoomOriginY = canvasRatioY * 100;
+
+    state.pendingZoomAnchor = {
+      canvasX: Number(draftPoint.x || 0),
+      canvasY: Number(draftPoint.y || 0),
+      stageRatioX: ratioX,
+      stageRatioY: ratioY,
+    };
+    return true;
+  }
+
+  function captureViewportCenterZoomAnchor() {
+    var stageEl = getActiveStageContentEl();
+    if (!stageEl) {
+      return false;
+    }
+    var rect = stageEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      return false;
+    }
+    return captureZoomAnchorFromClient(rect.left + (rect.width / 2), rect.top + (rect.height / 2));
+  }
+
+  function applyPendingZoomAnchor() {
+    var anchor = state.pendingZoomAnchor;
+    if (!anchor || state.step !== 2) {
+      state.pendingZoomAnchor = null;
+      return;
+    }
+    state.pendingZoomAnchor = null;
+
+    window.requestAnimationFrame(function () {
+      var stageEl = getActiveStageContentEl();
+      var canvasEl = getActiveDraftCanvasEl();
+      if (!stageEl || !canvasEl) {
+        return;
+      }
+
+      var stageRect = stageEl.getBoundingClientRect();
+      var canvasRect = canvasEl.getBoundingClientRect();
+      if (!stageRect.width || !stageRect.height || !canvasRect.width || !canvasRect.height) {
+        return;
+      }
+
+      var metrics = draftCanvasMetrics();
+      var ratioX = Number(anchor.canvasX || 0) / Math.max(1, metrics.width);
+      var ratioY = Number(anchor.canvasY || 0) / Math.max(1, metrics.height);
+      var pointClientX = canvasRect.left + (ratioX * canvasRect.width);
+      var pointClientY = canvasRect.top + (ratioY * canvasRect.height);
+
+      var desiredRatioX = Math.max(0, Math.min(1, Number(anchor.stageRatioX || 0.5)));
+      var desiredRatioY = Math.max(0, Math.min(1, Number(anchor.stageRatioY || 0.5)));
+      var desiredClientX = stageRect.left + (desiredRatioX * stageRect.width);
+      var desiredClientY = stageRect.top + (desiredRatioY * stageRect.height);
+
+      stageEl.scrollLeft += (pointClientX - desiredClientX);
+      stageEl.scrollTop += (pointClientY - desiredClientY);
+    });
+  }
+
+  function setDraftZoomWithAnchor(nextZoom, anchorEvent) {
+    if (state.step === 2) {
+      var anchored = false;
+      if (anchorEvent && Number.isFinite(Number(anchorEvent.clientX)) && Number.isFinite(Number(anchorEvent.clientY))) {
+        anchored = captureZoomAnchorFromClient(Number(anchorEvent.clientX), Number(anchorEvent.clientY));
+      }
+      if (!anchored
+        && Number.isFinite(Number(state.draftLastPointerClientX))
+        && Number.isFinite(Number(state.draftLastPointerClientY))) {
+        anchored = captureZoomAnchorFromClient(
+          Number(state.draftLastPointerClientX),
+          Number(state.draftLastPointerClientY)
+        );
+      }
+      if (!anchored) {
+        captureViewportCenterZoomAnchor();
+      }
+    }
+    setDraftZoom(nextZoom);
+  }
+
   function removeDraftElement() {
     ensureStep2DraftInitialized();
-    if (!state.draftSelectedElementId) {
+    normalizeDraftElementSelection();
+    var selected = selectedDraftElementSet();
+    if (!selected.size) {
       return;
     }
 
     state.templateDraft.elements = state.templateDraft.elements.filter(function (item) {
-      return item.__id !== state.draftSelectedElementId;
+      return !selected.has(String(item && item.__id || ''));
     });
-    state.draftSelectedElementId = state.templateDraft.elements.length
-      ? state.templateDraft.elements[0].__id
-      : '';
+
+    if (state.templateDraft.elements.length) {
+      state.draftSelectedElementId = state.templateDraft.elements[0].__id;
+      state.draftSelectedElementIds = new Set([state.draftSelectedElementId]);
+    } else {
+      state.draftSelectedElementId = '';
+      state.draftSelectedElementIds = new Set();
+    }
+
     markDraftDirty();
   }
 
   function nudgeSelectedDraftElement(dx, dy) {
-    var selected = selectedDraftElement();
-    if (!selected) {
-      return false;
-    }
-
     var moveX = Number(dx || 0);
     var moveY = Number(dy || 0);
     if (!Number.isFinite(moveX)) {
@@ -1212,11 +2718,19 @@
       moveY = 0;
     }
 
-    updateSelectedDraftElement({
-      x: Number(selected.x || 0) + moveX,
-      y: Number(selected.y || 0) + moveY,
+    var snapX = draftSnapStepCanvas('x');
+    var snapY = draftSnapStepCanvas('y');
+    if (snapX > 0 && moveX !== 0) {
+      moveX = (moveX < 0 ? -1 : 1) * Math.max(1, Math.round(Math.abs(moveX))) * snapX;
+    }
+    if (snapY > 0 && moveY !== 0) {
+      moveY = (moveY < 0 ? -1 : 1) * Math.max(1, Math.round(Math.abs(moveY))) * snapY;
+    }
+
+    return applyToSelectedDraftElements(function (draft) {
+      draft.x = Number(draft.x || 0) + moveX;
+      draft.y = Number(draft.y || 0) + moveY;
     });
-    return true;
   }
 
   function duplicateSelectedDraftElement() {
@@ -1225,7 +2739,10 @@
       return false;
     }
 
-    var nextLabel = String(selected.label || (selected.type === 'image' ? 'Image' : 'Text')) + ' Copy';
+    var nextLabel = String(
+      selected.label
+      || (selected.type === 'image' ? 'Image' : (selected.type === 'rectangle' ? 'Rectangle' : 'Text'))
+    ) + ' Copy';
     addDraftElement(selected.type, {
       label: nextLabel,
       field: selected.field,
@@ -1235,7 +2752,10 @@
       x: Number(selected.x || 0) + 8,
       y: Number(selected.y || 0) + 8,
       fontFamily: selected.fontFamily,
+      fontGroup: selected.fontGroup,
+      fontFace: selected.fontFace,
       fontWeight: selected.fontWeight,
+      fontStyle: selected.fontStyle,
       textAlign: selected.textAlign,
       lineHeight: selected.lineHeight,
       letterSpacing: selected.letterSpacing,
@@ -1292,9 +2812,41 @@
       return;
     }
 
-    Object.keys(patch || {}).forEach(function (key) {
-      current[key] = patch[key];
+    var patchData = patch && typeof patch === 'object' ? patch : {};
+
+    if (Object.prototype.hasOwnProperty.call(patchData, 'label')
+      && String(current.type || '').toLowerCase() === 'text'
+      && String(current.textMode || '').toLowerCase() === 'artistic') {
+      patchData.label = String(patchData.label || '').replace(/[ \t\u00A0]+$/g, '');
+    }
+
+    Object.keys(patchData).forEach(function (key) {
+      current[key] = patchData[key];
     });
+
+    var isArtisticText = String(current.type || '').toLowerCase() === 'text'
+      && String(current.textMode || 'artistic').toLowerCase() === 'artistic';
+    if (isArtisticText) {
+      var artisticAutoFit = current.artisticAutoFit !== false;
+      var hasManualSize = Object.prototype.hasOwnProperty.call(patchData, 'width')
+        || Object.prototype.hasOwnProperty.call(patchData, 'height');
+      var affectsArtisticBounds = Object.prototype.hasOwnProperty.call(patchData, 'label')
+        || Object.prototype.hasOwnProperty.call(patchData, 'fontSize')
+        || Object.prototype.hasOwnProperty.call(patchData, 'fontFamily')
+        || Object.prototype.hasOwnProperty.call(patchData, 'fontWeight')
+        || Object.prototype.hasOwnProperty.call(patchData, 'fontStyle')
+        || Object.prototype.hasOwnProperty.call(patchData, 'lineHeight')
+        || Object.prototype.hasOwnProperty.call(patchData, 'letterSpacing')
+        || Object.prototype.hasOwnProperty.call(patchData, 'fontFace')
+        || Object.prototype.hasOwnProperty.call(patchData, 'fontGroup');
+      if (hasManualSize && !Object.prototype.hasOwnProperty.call(patchData, 'artisticAutoFit')) {
+        current.artisticAutoFit = false;
+        artisticAutoFit = false;
+      }
+      if (!hasManualSize && affectsArtisticBounds && artisticAutoFit) {
+        fitDraftArtisticTextBounds(current);
+      }
+    }
 
     var normalized = normalizeDraftElement(current, 0);
     Object.keys(normalized).forEach(function (key) {
@@ -1307,35 +2859,82 @@
 
   function renderDraftElementsHtml() {
     ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
     var metrics = draftCanvasMetrics();
+    var selectedIds = selectedDraftElementSet();
     var side = state.draftActiveSide === 'back' ? 'back' : 'front';
     var rows = state.templateDraft.elements
       .filter(function (item) {
         return draftElementVisibleOnSide(item, side);
       })
       .map(function (item, idx) {
-        var left = Math.max(0, Math.min(100, (Number(item.x || 0) / metrics.width) * 100));
-        var top = Math.max(0, Math.min(100, (Number(item.y || 0) / metrics.height) * 100));
-        var width = Math.max(2, Math.min(100, (Number(item.width || 1) / metrics.width) * 100));
-        var height = Math.max(2, Math.min(100, (Number(item.height || 1) / metrics.height) * 100));
-        var label = String(item.label || item.field || ('Field ' + String(idx + 1)));
-        var cls = 'gc-draft-el gc-draft-el-' + (item.type === 'image' ? 'photo' : 'text')
+        var isArtisticGeometry = String(item.type || '').toLowerCase() === 'text'
+          && String(item.textMode || 'artistic').toLowerCase() === 'artistic';
+        var leftRaw = (Number(item.x || 0) / Math.max(1, metrics.width)) * 100;
+        var topRaw = (Number(item.y || 0) / Math.max(1, metrics.height)) * 100;
+        var widthRaw = (Number(item.width || 1) / Math.max(1, metrics.width)) * 100;
+        var heightRaw = (Number(item.height || 1) / Math.max(1, metrics.height)) * 100;
+        var left = isArtisticGeometry ? leftRaw : Math.max(0, Math.min(100, leftRaw));
+        var top = isArtisticGeometry ? topRaw : Math.max(0, Math.min(100, topRaw));
+        var width = isArtisticGeometry ? Math.max(0.8, widthRaw) : Math.max(2, Math.min(100, widthRaw));
+        var height = isArtisticGeometry ? Math.max(0.8, heightRaw) : Math.max(2, Math.min(100, heightRaw));
+        var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label');
+        var label = hasStoredLabel
+          ? String(item.label)
+          : String(item.field || ('Field ' + String(idx + 1)));
+        if (!label && item.type !== 'text') {
+          label = String(item.field || ('Field ' + String(idx + 1)));
+        }
+        var isSelected = isDraftElementSelected(item.__id);
+        var cls = 'gc-draft-el gc-draft-el-' + (
+          item.type === 'image'
+            ? 'photo'
+            : (item.type === 'rectangle' ? 'rect' : 'text')
+        )
           + (item.type === 'text' ? (' gc-draft-el-' + (item.textMode === 'paragraph' ? 'paragraph' : 'artistic')) : '')
-          + (item.__id === state.draftSelectedElementId ? ' is-selected' : '');
+          + (item.type === 'text' && state.draftInlineEditingElementId === item.__id ? ' is-editing' : '')
+          + (isSelected ? ' is-selected' : '');
         var style = 'left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;';
 
         if (item.type === 'text') {
+          var fontSizePt = Number(item.fontSize || 12);
+          if (!Number.isFinite(fontSizePt) || fontSizePt <= 0) {
+            fontSizePt = 12;
+          }
+          var fontSizePx = ptToPx(fontSizePt);
+          var handleSizePx = Math.round(Math.max(5, Math.min(16, fontSizePx * 0.12)));
+          var handleOffsetPx = Math.max(12, handleSizePx + 6);
+          var handleOffsetYPx = handleOffsetPx + 3;
           var align = item.textAlign === 'left'
             ? 'flex-start'
             : (item.textAlign === 'right' ? 'flex-end' : 'center');
-          style += 'font-size:' + Number(item.fontSize || 11) + 'px;'
+          var textAlign = item.textAlign === 'left'
+            ? 'left'
+            : (item.textAlign === 'right' ? 'right' : 'center');
+          var resolvedLineHeight = item.textMode === 'paragraph'
+            ? Number(item.lineHeight || 1.2)
+            : 1;
+          style += '--gc-handle-size:' + handleSizePx + 'px;'
+            + '--gc-handle-offset-x:' + handleOffsetPx + 'px;'
+            + '--gc-handle-offset-y:' + handleOffsetYPx + 'px;'
+            + 'font-size:' + formatPtValue(fontSizePt) + 'pt;'
             + 'font-family:' + escapeAttr(item.fontFamily || 'Arial') + ';'
-            + 'line-height:' + Number(item.lineHeight || 1.2) + ';'
-            + 'font-weight:' + escapeAttr(item.fontWeight || '600') + ';'
+            + 'line-height:' + resolvedLineHeight + ';'
+            + 'font-weight:' + escapeAttr(item.fontWeight || '400') + ';'
+            + 'font-style:' + escapeAttr(item.fontStyle || 'normal') + ';'
             + 'letter-spacing:' + Number(item.letterSpacing || 0) + 'px;'
             + 'color:' + escapeAttr(item.color || '#1e293b') + ';'
+            + 'text-align:' + textAlign + ';'
             + 'justify-content:' + align + ';'
             + (item.textMode === 'paragraph' ? 'white-space:normal;' : 'white-space:nowrap;');
+        }
+
+        if (item.type === 'rectangle') {
+          var rectColor = String(item.color || '#2563eb');
+          style += 'border-color:' + escapeAttr(rectColor) + ';'
+            + 'background:' + hexToRgbaString(rectColor, 0.14, '#2563eb') + ';'
+            + 'color:transparent;';
+          label = '';
         }
 
         var imageKind = String(item.imageKind || '');
@@ -1343,37 +2942,93 @@
           label = 'Photo 19 x 25';
         }
 
-        return '<button type="button" class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '"'
+        var isInlineEditing = item.type === 'text'
+          && state.draftInlineEditingElementId === item.__id
+          && selectedIds.size <= 1;
+        var contentHtml = isInlineEditing
+          ? '<div class="gc-draft-inline-editor" data-inline-text-editor="1" data-inline-editor-id="' + escapeAttr(item.__id) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '" contenteditable="true" spellcheck="false">' + escapeHtml(label) + '</div>'
+          : escapeHtml(label);
+        var handlesHtml = (isSelected && !isInlineEditing)
+          ? '<span class="gc-draft-selection-handle is-nw" data-handle="nw"></span>'
+            + '<span class="gc-draft-selection-handle is-n" data-handle="n"></span>'
+            + '<span class="gc-draft-selection-handle is-ne" data-handle="ne"></span>'
+            + '<span class="gc-draft-selection-handle is-e" data-handle="e"></span>'
+            + '<span class="gc-draft-selection-handle is-sw" data-handle="sw"></span>'
+            + '<span class="gc-draft-selection-handle is-s" data-handle="s"></span>'
+            + '<span class="gc-draft-selection-handle is-se" data-handle="se"></span>'
+            + '<span class="gc-draft-selection-handle is-w" data-handle="w"></span>'
+          : '';
+
+        return '<div class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '" data-el-type="' + escapeAttr(String(item.type || 'text')) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '"'
           + ' style="' + style + '">'
-          + escapeHtml(label)
-          + '</button>';
+          + contentHtml
+          + handlesHtml
+          + '</div>';
       });
 
     if (!rows.length) {
-      return '<div class="gc-step2-canvas-empty">Use left tools to insert text or 19 x 25 mm photo placeholder</div>';
+      return '<div class="gc-step2-canvas-empty">Use left tools to insert text, rectangle, or 19 x 25 mm photo placeholder</div>';
     }
 
     return rows.join('');
   }
 
+  function draftDragBox(startX, startY, currentX, currentY, lockSquare) {
+    var sx = Number(startX || 0);
+    var sy = Number(startY || 0);
+    var ex = Number(currentX || sx);
+    var ey = Number(currentY || sy);
+    if (!Number.isFinite(sx)) sx = 0;
+    if (!Number.isFinite(sy)) sy = 0;
+    if (!Number.isFinite(ex)) ex = sx;
+    if (!Number.isFinite(ey)) ey = sy;
+
+    if (lockSquare) {
+      var dx = ex - sx;
+      var dy = ey - sy;
+      var size = Math.max(Math.abs(dx), Math.abs(dy));
+      ex = sx + (dx < 0 ? -size : size);
+      ey = sy + (dy < 0 ? -size : size);
+    }
+
+    return {
+      x: Math.min(sx, ex),
+      y: Math.min(sy, ey),
+      width: Math.abs(ex - sx),
+      height: Math.abs(ey - sy),
+    };
+  }
+
   function renderDraftInsertGuideHtml() {
-    var drag = state.draftTextDrag;
+    var drag = state.draftRectDrag || state.draftTextDrag;
     if (!drag) {
       return '';
     }
 
+    if (drag.kind === 'text') {
+      var textDx = Math.abs(Number(drag.currentX || drag.startX || 0) - Number(drag.startX || 0));
+      var textDy = Math.abs(Number(drag.currentY || drag.startY || 0) - Number(drag.startY || 0));
+      if (textDx < 6 && textDy < 6) {
+        return '';
+      }
+    }
+
     var metrics = draftCanvasMetrics();
-    var x1 = Number(drag.startX || 0);
-    var y1 = Number(drag.startY || 0);
-    var x2 = Number(drag.currentX || x1);
-    var y2 = Number(drag.currentY || y1);
+    var box = draftDragBox(
+      Number(drag.startX || 0),
+      Number(drag.startY || 0),
+      Number(drag.currentX || drag.startX || 0),
+      Number(drag.currentY || drag.startY || 0),
+      !!(drag.kind === 'rectangle' && drag.lockSquare)
+    );
 
-    var left = Math.max(0, Math.min(100, (Math.min(x1, x2) / metrics.width) * 100));
-    var top = Math.max(0, Math.min(100, (Math.min(y1, y2) / metrics.height) * 100));
-    var width = Math.max(0.8, Math.min(100, (Math.abs(x2 - x1) / metrics.width) * 100));
-    var height = Math.max(0.8, Math.min(100, (Math.abs(y2 - y1) / metrics.height) * 100));
+    var left = Math.max(0, Math.min(100, (box.x / metrics.width) * 100));
+    var top = Math.max(0, Math.min(100, (box.y / metrics.height) * 100));
+    var width = Math.max(0.8, Math.min(100, (box.width / metrics.width) * 100));
+    var height = Math.max(0.8, Math.min(100, (box.height / metrics.height) * 100));
+    var cls = 'gc-draft-insert-guide' + (drag.kind === 'rectangle' ? ' is-rect' : '');
 
-    return '<div class="gc-draft-insert-guide" style="left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;"></div>';
+    return '<div class="' + cls + '" style="left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;"></div>';
   }
 
   function renderDraftPropsHtml() {
@@ -1383,6 +3038,12 @@
     }
 
     var isText = item.type === 'text';
+    var isRectangle = item.type === 'rectangle';
+    var fontSelection = resolveFontSelection(item);
+    var selectedFamily = fontSelection.family || FONT_CATALOG[0] || null;
+    var selectedFace = fontSelection.face || (selectedFamily && selectedFamily.faces ? selectedFamily.faces[0] : null);
+    var fontFamilyOptions = renderFontFamilyOptions(selectedFamily ? selectedFamily.id : '');
+    var fontFaceOptions = renderFontFaceOptions(selectedFamily, selectedFace ? selectedFace.id : '');
     var lineHeightValue = Number(item.lineHeight || 1.2);
     if (!Number.isFinite(lineHeightValue) || lineHeightValue <= 0) {
       lineHeightValue = 1.2;
@@ -1415,6 +3076,7 @@
       + '<select id="gcDraftTypeInput" class="gc-prop-select">'
       + '<option value="text"' + (item.type === 'text' ? ' selected' : '') + '>Text</option>'
       + '<option value="image"' + (item.type === 'image' ? ' selected' : '') + '>Image</option>'
+      + '<option value="rectangle"' + (item.type === 'rectangle' ? ' selected' : '') + '>Rectangle</option>'
       + '</select>'
       + '</div>'
       + '<div class="gc-prop-group">'
@@ -1432,30 +3094,25 @@
       + '<div class="gc-prop-group"><label for="gcDraftWInput">Width (' + unit + ')</label><input id="gcDraftWInput" class="gc-prop-input" type="number" step="any" value="' + escapeAttr(wValue) + '"></div>'
       + '<div class="gc-prop-group"><label for="gcDraftHInput">Height (' + unit + ')</label><input id="gcDraftHInput" class="gc-prop-input" type="number" step="any" value="' + escapeAttr(hValue) + '"></div>'
       + '</div>'
-      + '<div class="gc-prop-group">'
-      + '<label for="gcDraftFontInput">Font Size</label>'
-      + '<input id="gcDraftFontInput" class="gc-prop-input" type="number" min="6" max="72" step="1" value="' + escapeAttr(Math.round(Number(item.fontSize || 11))) + '">'
-      + '</div>'
+      + (isText
+        ? '<div class="gc-prop-group">'
+          + '<label for="gcDraftFontInput">Font Size (pt)</label>'
+          + '<input id="gcDraftFontInput" class="gc-prop-input" type="number" min="4" max="240" step="0.1" value="' + escapeAttr(formatPtValue(Number(item.fontSize || 12))) + '">'
+          + '</div>'
+        : '')
       + (isText
         ? '<div class="gc-prop-section-title">Text Options</div>'
           + '<div class="gc-prop-grid">'
           + '<div class="gc-prop-group">'
           + '<label for="gcDraftFontFamilyInput">Font Family</label>'
           + '<select id="gcDraftFontFamilyInput" class="gc-prop-select">'
-          + '<option value="Arial"' + (String(item.fontFamily || '') === 'Arial' ? ' selected' : '') + '>Arial</option>'
-          + '<option value="Calibri"' + (String(item.fontFamily || '') === 'Calibri' ? ' selected' : '') + '>Calibri</option>'
-          + '<option value="Times New Roman"' + (String(item.fontFamily || '') === 'Times New Roman' ? ' selected' : '') + '>Times New Roman</option>'
-          + '<option value="Verdana"' + (String(item.fontFamily || '') === 'Verdana' ? ' selected' : '') + '>Verdana</option>'
-          + '<option value="Tahoma"' + (String(item.fontFamily || '') === 'Tahoma' ? ' selected' : '') + '>Tahoma</option>'
+          + fontFamilyOptions
           + '</select>'
           + '</div>'
           + '<div class="gc-prop-group">'
-          + '<label for="gcDraftWeightInput">Weight</label>'
-          + '<select id="gcDraftWeightInput" class="gc-prop-select">'
-          + '<option value="400"' + (String(item.fontWeight || '') === '400' ? ' selected' : '') + '>Regular</option>'
-          + '<option value="500"' + (String(item.fontWeight || '') === '500' ? ' selected' : '') + '>Medium</option>'
-          + '<option value="600"' + (String(item.fontWeight || '') === '600' ? ' selected' : '') + '>Semibold</option>'
-          + '<option value="700"' + (String(item.fontWeight || '') === '700' ? ' selected' : '') + '>Bold</option>'
+          + '<label for="gcDraftFontFaceInput">Font Face</label>'
+          + '<select id="gcDraftFontFaceInput" class="gc-prop-select">'
+          + fontFaceOptions
           + '</select>'
           + '</div>'
           + '<div class="gc-prop-group">'
@@ -1479,7 +3136,13 @@
           + '<input id="gcDraftColorInput" class="gc-prop-input" type="color" value="' + escapeAttr(String(item.color || '#1e293b')) + '">'
           + '</div>'
           + '</div>'
-        : '<div class="gc-prop-note">Image placeholder selected. Use size and position controls above.</div>')
+        : (isRectangle
+            ? '<div class="gc-prop-group">'
+              + '<label for="gcDraftColorInput">Border Color</label>'
+              + '<input id="gcDraftColorInput" class="gc-prop-input" type="color" value="' + escapeAttr(String(item.color || '#2563eb')) + '">'
+              + '</div>'
+              + '<div class="gc-prop-note">Rectangle selected. Hold Shift while drawing to lock square ratio.</div>'
+            : '<div class="gc-prop-note">Image placeholder selected. Use size and position controls above.</div>'))
       + '<div class="gc-prop-actions">'
       + '<button type="button" class="btn btn-outline" data-action="nudge-draft" data-dx="-1" data-dy="0">Left</button>'
       + '<button type="button" class="btn btn-outline" data-action="nudge-draft" data-dx="1" data-dy="0">Right</button>'
@@ -1538,6 +3201,12 @@
       var width = Math.max(2, Math.min(100, (w / canvasW) * 100));
       var height = Math.max(2, Math.min(100, (h / canvasH) * 100));
       var label = String(item.label || item.field || ('Field ' + (idx + 1)));
+      var type = String(item.type || 'text').toLowerCase();
+
+      if (type === 'rectangle') {
+        var rectColor = String(item.color || '#2563eb');
+        return '<div class="gc-template-el gc-template-el-rect" style="left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;border-color:' + escapeAttr(rectColor) + ';"></div>';
+      }
 
       return '<div class="gc-template-el" style="left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;">'
         + escapeHtml(label) + '</div>';
@@ -1565,10 +3234,6 @@
       return !!(state.backFile || state.backPreviewUrl);
     }
     return !!(state.frontFile || state.frontPreviewUrl);
-  }
-
-  function step2Valid() {
-    return true;
   }
 
   function selectedCardCount() {
@@ -1628,7 +3293,8 @@
     var backName = state.backFile
       ? state.backFile.name
       : (state.backPreviewUrl ? 'Using saved design PDF' : 'No file selected');
-    var sizeLabel = state.orientation === 'portrait' ? '57mm x 87mm' : '87mm x 57mm';
+    var realSize = draftRealDimensionsMm();
+    var sizeLabel = formatMmLabelValue(realSize.widthMm) + 'mm x ' + formatMmLabelValue(realSize.heightMm) + 'mm';
 
     var topbarHtml = ''
       + '<div class="gc-step1-topbar">'
@@ -1743,15 +3409,20 @@
     if (!Number.isFinite(zoom) || zoom <= 0) {
       zoom = 1;
     }
-    var targetDisplayWidth = 760;
-    var displayScale = targetDisplayWidth / Math.max(1, Number(metrics.width || 1));
-    if (!Number.isFinite(displayScale)) {
-      displayScale = 1;
+    var zoomOriginX = Number(state.draftZoomOriginX);
+    var zoomOriginY = Number(state.draftZoomOriginY);
+    if (!Number.isFinite(zoomOriginX)) {
+      zoomOriginX = 50;
     }
-    displayScale = Math.max(1, Math.min(2.4, displayScale));
-    var canvasDisplayWidth = Math.max(240, Math.round(Number(metrics.width || 1) * displayScale));
-    var canvasDisplayHeight = Math.max(160, Math.round(Number(metrics.height || 1) * displayScale));
-    var canvasWrapStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;transform:scale(' + zoom.toFixed(2) + ');';
+    if (!Number.isFinite(zoomOriginY)) {
+      zoomOriginY = 50;
+    }
+    zoomOriginX = Math.max(0, Math.min(100, zoomOriginX));
+    zoomOriginY = Math.max(0, Math.min(100, zoomOriginY));
+    var displayInfo = draftCanvasDisplayInfo(metrics);
+    var canvasDisplayWidth = Math.max(1, Math.round(Number(displayInfo.widthPx || 1)));
+    var canvasDisplayHeight = Math.max(1, Math.round(Number(displayInfo.heightPx || 1)));
+    var canvasWrapStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;transform-origin:' + zoomOriginX.toFixed(2) + '% ' + zoomOriginY.toFixed(2) + '%;transform:scale(' + zoom.toFixed(2) + ');';
     var canvasStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;';
     var guidesOuterHtml = renderDraftGuidesHtml({
       outside: false,
@@ -1767,13 +3438,18 @@
     var unitLabel = unit.toUpperCase();
     var canvasWValue = formatDraftMeasure(metrics.width, 'x');
     var canvasHValue = formatDraftMeasure(metrics.height, 'y');
+    var canvasOrientation = draftReferenceOrientation(metrics);
+    var isCanvasPortrait = canvasOrientation === 'portrait';
+    var snapMmLabel = formatDraftSnapMm(state.draftSnapMm);
     var activeFront = state.draftActiveSide !== 'back';
     var selectActive = state.draftTool === 'select';
     var textActive = state.draftTool === 'text';
     var photoActive = state.draftTool === 'photo';
+    var rectActive = state.draftTool === 'rectangle';
     var canvasClass = 'gc-step2-canvas'
       + (textActive ? ' is-text-mode' : '')
-      + (photoActive ? ' is-photo-mode' : '');
+      + (photoActive ? ' is-photo-mode' : '')
+      + (rectActive ? ' is-rect-mode' : '');
 
     return '<div class="gc-step-panel gc-step-panel-step2">'
       + '<div class="gc-step2-workspace">'
@@ -1788,6 +3464,9 @@
       + '<button type="button" class="gc-step2-tool-btn' + (photoActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="photo">'
       + '<i class="fa-solid fa-image"></i><span>Photo 19x25</span>'
       + '</button>'
+      + '<button type="button" class="gc-step2-tool-btn' + (rectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="rectangle">'
+      + '<i class="fa-solid fa-vector-square"></i><span>Rectangle</span>'
+      + '</button>'
       + '</div>'
       + '<div class="gc-step2-canvas-shell">'
       + '<div class="gc-step2-canvas-head">'
@@ -1797,16 +3476,18 @@
       + '</div>'
       + '<div class="gc-step2-center-controls">'
       + '<button type="button" class="btn btn-outline" data-action="zoom-out">-</button>'
-      + '<input id="gcDraftZoomRange" class="gc-step2-zoom-range" type="range" min="25" max="400" step="5" value="' + escapeAttr(zoomLabel) + '">'
       + '<button type="button" class="btn btn-outline" data-action="zoom-in">+</button>'
       + '<button type="button" class="btn btn-outline" data-action="zoom-fit">Fit</button>'
       + '<span class="gc-step2-zoom-pill">' + zoomLabel + '%</span>'
       + '<select id="gcDraftUnitSelect" class="gc-step2-unit-select">'
-      + '<option value="px"' + (unit === 'px' ? ' selected' : '') + '>px</option>'
       + '<option value="mm"' + (unit === 'mm' ? ' selected' : '') + '>mm</option>'
       + '<option value="cm"' + (unit === 'cm' ? ' selected' : '') + '>cm</option>'
       + '<option value="in"' + (unit === 'in' ? ' selected' : '') + '>in</option>'
       + '</select>'
+      + '<label class="gc-step2-snap-control" for="gcDraftSnapMmInput">'
+      + '<span class="gc-step2-snap-label">Snap (mm)</span>'
+      + '<input id="gcDraftSnapMmInput" class="gc-step2-snap-input" type="number" min="0" max="10" step="0.1" value="' + escapeAttr(snapMmLabel) + '" title="0 = off">'
+      + '</label>'
       + '<div class="gc-step2-size-controls">'
       + '<span class="gc-step2-size-label">W (' + unitLabel + ')</span>'
       + '<input id="gcDraftCanvasWidthCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasWValue) + '">'
@@ -1816,6 +3497,8 @@
       + '<button type="button" class="btn btn-blue" data-action="save-draft-template">Save Template</button>'
       + '</div>'
       + '<div class="gc-step2-side-switch">'
+      + '<button type="button" class="gc-choice-btn' + (!isCanvasPortrait ? ' is-active' : '') + '" data-action="switch-draft-orientation" data-value="landscape">Landscape</button>'
+      + '<button type="button" class="gc-choice-btn' + (isCanvasPortrait ? ' is-active' : '') + '" data-action="switch-draft-orientation" data-value="portrait">Portrait</button>'
       + '<button type="button" class="gc-choice-btn' + (activeFront ? ' is-active' : '') + '" data-action="switch-draft-side" data-side="front">Front</button>'
       + (state.isTwoSided
         ? '<button type="button" class="gc-choice-btn' + (!activeFront ? ' is-active' : '') + '" data-action="switch-draft-side" data-side="back">Back</button>'
@@ -1829,7 +3512,7 @@
       + '<div class="gc-step2-stage-content">'
       + '<div class="gc-step2-canvas-wrap" style="' + canvasWrapStyle + '">'
       + '<div class="gc-step2-guide-layer">' + guidesOuterHtml + '</div>'
-      + '<div class="' + canvasClass + '" data-action="draft-canvas-tap" style="' + canvasStyle + '">'
+      + '<div class="' + canvasClass + '" style="' + canvasStyle + '">'
       + renderDraftElementsHtml()
       + renderDraftInsertGuideHtml()
       + '</div>'
@@ -1890,6 +3573,12 @@
   }
 
   function render() {
+    if (state.step !== 2) {
+      state.spacePanMode = false;
+      state.spacePanState = null;
+      state.pendingZoomAnchor = null;
+    }
+
     setStepCounter();
 
     var panelHtml = '';
@@ -1907,6 +3596,9 @@
       + (state.loading ? '<div class="gc-loading"><div class="gc-loading-box"><span class="gc-spinner"></span><span>Loading...</span></div></div>' : '')
       + '</div>';
 
+    focusDraftInlineEditorIfNeeded();
+    setSpacePanUiState();
+    applyPendingZoomAnchor();
     renderPdfCanvases();
   }
 
@@ -2099,6 +3791,14 @@
     var detail = await requestJson('GET', templateDetailPath(id));
     state.selectedTemplateId = id;
     state.selectedTemplate = detail.template || null;
+    if (state.selectedTemplate && typeof state.selectedTemplate === 'object') {
+      if (state.selectedTemplate.card_orientation) {
+        state.orientation = normalizeOrientation(state.selectedTemplate.card_orientation);
+      }
+      if (typeof state.selectedTemplate.is_two_sided !== 'undefined') {
+        state.isTwoSided = !!state.selectedTemplate.is_two_sided;
+      }
+    }
     resetStep2DraftState();
     state.templateDraftName = state.selectedTemplate ? String(state.selectedTemplate.name || '') : '';
   }
@@ -2205,7 +3905,7 @@
       is_two_sided: !!state.isTwoSided,
       card_orientation: normalizeOrientation(state.orientation),
       template_json: state.templateDraft ? templateJsonForApi(state.templateDraft) : ((baseTemplate && baseTemplate.template_json) ? baseTemplate.template_json : defaultTemplateJson()),
-      font_size: Number((baseTemplate && baseTemplate.font_size) || 11),
+      font_size: Number((baseTemplate && baseTemplate.font_size) || 12),
       font_family: String((baseTemplate && baseTemplate.font_family) || 'Arial'),
       is_default: false,
     };
@@ -2252,7 +3952,7 @@
       is_two_sided: !!state.isTwoSided,
       card_orientation: normalizeOrientation(state.orientation),
       template_json: templateJsonForApi(state.templateDraft),
-      font_size: Number((state.selectedTemplate && state.selectedTemplate.font_size) || 11),
+      font_size: Number((state.selectedTemplate && state.selectedTemplate.font_size) || 12),
       font_family: String((state.selectedTemplate && state.selectedTemplate.font_family) || 'Arial'),
       is_default: !!(state.selectedTemplate && state.selectedTemplate.is_default),
     };
@@ -2513,20 +4213,26 @@
       return;
     }
 
+    if (action === 'switch-draft-orientation') {
+      switchDraftCanvasOrientation(target.getAttribute('data-value'));
+      render();
+      return;
+    }
+
     if (action === 'zoom-in') {
-      setDraftZoom((Number(state.draftZoom || 1) + 0.1));
+      setDraftZoomWithAnchor((Number(state.draftZoom || 1) + 0.1), null);
       render();
       return;
     }
 
     if (action === 'zoom-out') {
-      setDraftZoom((Number(state.draftZoom || 1) - 0.1));
+      setDraftZoomWithAnchor((Number(state.draftZoom || 1) - 0.1), null);
       render();
       return;
     }
 
     if (action === 'zoom-fit') {
-      setDraftZoom(1);
+      setDraftZoomWithAnchor(1, null);
       render();
       return;
     }
@@ -2534,11 +4240,15 @@
     if (action === 'set-draft-tool') {
       var tool = String(target.getAttribute('data-tool') || 'select');
       state.draftTextDrag = null;
+      state.draftRectDrag = null;
       state.draftDragging = null;
+      state.draftResizeDragging = null;
       state.draftGuideDragging = null;
-      state.draftSuppressTextClick = false;
+      clearDraftInlineTextEditing();
       if (tool === 'photo') {
         state.draftTool = 'photo';
+      } else if (tool === 'rectangle') {
+        state.draftTool = 'rectangle';
       } else if (tool === 'text') {
         state.draftTool = 'text';
       } else {
@@ -2548,33 +4258,76 @@
       return;
     }
 
-    if (action === 'draft-canvas-tap') {
-      if (state.step !== 2 || state.draftTool !== 'text') {
-        return;
-      }
-      if (state.draftSuppressTextClick) {
-        state.draftSuppressTextClick = false;
-        return;
-      }
-      return;
-    }
-
-    if (action === 'add-draft-text') {
-      addDraftElement('text');
-      render();
-      return;
-    }
-
-    if (action === 'add-draft-image') {
-      state.draftTool = 'photo';
-      render();
-      return;
-    }
-
     if (action === 'select-draft-element') {
+      if (event.target && event.target.closest && event.target.closest('.gc-draft-selection-handle')) {
+        return;
+      }
       var elId = String(target.getAttribute('data-el-id') || '');
-      state.draftSelectedElementId = elId;
+      if (!elId) {
+        return;
+      }
+      if (event.target && event.target.closest && event.target.closest('.gc-draft-inline-editor')
+        && state.draftInlineEditingElementId === elId) {
+        return;
+      }
+
+      ensureStep2DraftInitialized();
+      normalizeDraftElementSelection();
+      var clickedItem = findDraftElementById(elId);
+      var clickedIsText = isDraftTextElement(clickedItem);
+      var isDoubleClick = Number(event.detail || 0) >= 2;
+      if (!event.shiftKey && clickedIsText && isDoubleClick) {
+        state.draftSelectedElementId = elId;
+        state.draftSelectedElementIds = new Set([elId]);
+        state.draftSelectedGuideId = '';
+        if (setDraftInlineTextEditing(elId)) {
+          state.draftPendingTextEdit = null;
+          state.draftDragging = null;
+          state.draftResizeDragging = null;
+          normalizeDraftElementSelection();
+          render();
+          return;
+        }
+      }
+
+      var pendingTextEdit = state.draftPendingTextEdit;
+      var shouldInlineEdit = !!(
+        !event.shiftKey
+        && clickedIsText
+        && pendingTextEdit
+        && pendingTextEdit.id === elId
+        && !pendingTextEdit.moved
+      );
+      var selectedSet = selectedDraftElementSet();
+      if (event.shiftKey) {
+        if (selectedSet.has(elId)) {
+          selectedSet.delete(elId);
+          if (state.draftSelectedElementId === elId) {
+            var nextId = '';
+            selectedSet.forEach(function (sid) {
+              if (!nextId) {
+                nextId = sid;
+              }
+            });
+            state.draftSelectedElementId = nextId;
+          }
+        } else {
+          selectedSet.add(elId);
+          state.draftSelectedElementId = elId;
+        }
+        clearDraftInlineTextEditing();
+      } else {
+        state.draftSelectedElementId = elId;
+        state.draftSelectedElementIds = elId ? new Set([elId]) : new Set();
+        if (shouldInlineEdit) {
+          setDraftInlineTextEditing(elId);
+        } else if (state.draftInlineEditingElementId && state.draftInlineEditingElementId !== elId) {
+          state.draftInlineEditingElementId = '';
+        }
+      }
       state.draftSelectedGuideId = '';
+      state.draftPendingTextEdit = null;
+      normalizeDraftElementSelection();
       render();
       return;
     }
@@ -2583,6 +4336,8 @@
       var guideId = String(target.getAttribute('data-guide-id') || '');
       state.draftSelectedGuideId = guideId;
       state.draftSelectedElementId = '';
+      state.draftSelectedElementIds = new Set();
+      clearDraftInlineTextEditing();
       render();
       return;
     }
@@ -2630,7 +4385,7 @@
 
     var delta = Number(event.deltaY || 0);
     var nextZoom = Number(state.draftZoom || 1) + (delta < 0 ? 0.08 : -0.08);
-    setDraftZoom(nextZoom);
+    setDraftZoomWithAnchor(nextZoom, event);
     event.preventDefault();
     render();
   }, { passive: false });
@@ -2650,7 +4405,7 @@
     if (stage && state.step === 2) {
       var delta = Number(event.deltaY || 0);
       var nextZoom = Number(state.draftZoom || 1) + (delta < 0 ? 0.08 : -0.08);
-      setDraftZoom(nextZoom);
+      setDraftZoomWithAnchor(nextZoom, event);
       render();
     }
 
@@ -2660,6 +4415,28 @@
   flowRoot.addEventListener('mousedown', function (event) {
     if (state.step !== 2) {
       return;
+    }
+
+    if (isTypingTarget(event.target)) {
+      return;
+    }
+
+    if (state.spacePanMode) {
+      var stageForPan = event.target && event.target.closest
+        ? event.target.closest('.gc-step2-stage-content')
+        : null;
+      if (stageForPan) {
+        state.spacePanState = {
+          stageEl: stageForPan,
+          startClientX: Number(event.clientX || 0),
+          startClientY: Number(event.clientY || 0),
+          startScrollLeft: Number(stageForPan.scrollLeft || 0),
+          startScrollTop: Number(stageForPan.scrollTop || 0),
+        };
+        setSpacePanUiState();
+        event.preventDefault();
+        return;
+      }
     }
 
     var guideEl = event.target.closest('.gc-draft-guide');
@@ -2677,12 +4454,14 @@
       if (guide && guideCanvas) {
         state.draftSelectedGuideId = guideId;
         state.draftSelectedElementId = '';
+        state.draftSelectedElementIds = new Set();
         state.draftGuideDragging = {
           id: guideId,
           axis: guide.axis,
           canvasEl: guideCanvas,
           isNew: false,
         };
+        clearDraftInlineTextEditing();
         event.preventDefault();
         render();
         return;
@@ -2694,18 +4473,24 @@
       var shell = rulerEl.closest('.gc-step2-canvas-shell');
       var rulerCanvas = shell ? shell.querySelector('.gc-step2-canvas') : null;
       if (rulerCanvas) {
-        var axis = rulerEl.classList.contains('gc-step2-ruler-top') ? 'x' : 'y';
+        var axisAttr = String(rulerEl.getAttribute('data-axis') || '').toLowerCase();
+        var axis = (axisAttr === 'x' || axisAttr === 'y')
+          ? axisAttr
+          : (rulerEl.classList.contains('gc-step2-ruler-top') ? 'x' : 'y');
         var startPoint = canvasEventToDraftPoint(rulerCanvas, event, { allowOutside: true });
         var startPos = axis === 'x' ? startPoint.x : startPoint.y;
+        startPos = snapCanvasValueToGrid(startPos, axis);
         var newGuideId = addDraftGuide(axis, startPos);
         state.draftSelectedGuideId = newGuideId;
         state.draftSelectedElementId = '';
+        state.draftSelectedElementIds = new Set();
         state.draftGuideDragging = {
           id: newGuideId,
           axis: axis,
           canvasEl: rulerCanvas,
           isNew: true,
         };
+        clearDraftInlineTextEditing();
         event.preventDefault();
         render();
         return;
@@ -2719,14 +4504,37 @@
         return;
       }
       var startPoint = canvasEventToDraftPoint(canvasEl, event);
+      var snappedStartX = snapCanvasValueToGrid(startPoint.x, 'x');
+      var snappedStartY = snapCanvasValueToGrid(startPoint.y, 'y');
       state.draftTextDrag = {
+        kind: 'text',
         canvasEl: canvasEl,
-        startX: startPoint.x,
-        startY: startPoint.y,
-        currentX: startPoint.x,
-        currentY: startPoint.y,
+        startX: snappedStartX,
+        startY: snappedStartY,
+        currentX: snappedStartX,
+        currentY: snappedStartY,
       };
-      state.draftSuppressTextClick = false;
+      event.preventDefault();
+      render();
+      return;
+    }
+
+    if (state.draftTool === 'rectangle') {
+      if (!canvasEl || event.target !== canvasEl) {
+        return;
+      }
+      var rectStart = canvasEventToDraftPoint(canvasEl, event);
+      var snappedRectStartX = snapCanvasValueToGrid(rectStart.x, 'x');
+      var snappedRectStartY = snapCanvasValueToGrid(rectStart.y, 'y');
+      state.draftRectDrag = {
+        kind: 'rectangle',
+        canvasEl: canvasEl,
+        startX: snappedRectStartX,
+        startY: snappedRectStartY,
+        currentX: snappedRectStartX,
+        currentY: snappedRectStartY,
+        lockSquare: !!event.shiftKey,
+      };
       event.preventDefault();
       render();
       return;
@@ -2740,9 +4548,16 @@
     if (!el || !canvasEl) {
       return;
     }
+    var handleEl = event.target.closest('.gc-draft-selection-handle');
 
     var elId = String(el.getAttribute('data-el-id') || '');
     if (!elId) {
+      return;
+    }
+
+    if (event.shiftKey) {
+      state.draftPendingTextEdit = null;
+      event.preventDefault();
       return;
     }
 
@@ -2755,7 +4570,46 @@
     }
 
     state.draftSelectedElementId = elId;
+    state.draftSelectedElementIds = new Set([elId]);
     state.draftSelectedGuideId = '';
+    state.draftInlineEditingElementId = '';
+
+    if (handleEl) {
+      var resizeHandle = normalizeDraftResizeHandle(handleEl.getAttribute('data-handle'));
+      var resizePoint = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
+      state.draftPendingTextEdit = null;
+      state.draftDragging = null;
+      state.draftResizeDragging = {
+        id: elId,
+        handle: resizeHandle,
+        type: String(current.type || ''),
+        textMode: String(current.textMode || ''),
+        startFontSize: Number(current.fontSize || 12),
+        startLetterSpacing: Number(current.letterSpacing || 0),
+        startMouseX: Number(event.clientX || 0),
+        startMouseY: Number(event.clientY || 0),
+        startX: Number(current.x || 0),
+        startY: Number(current.y || 0),
+        startWidth: Number(current.width || 0),
+        startHeight: Number(current.height || 0),
+        canvasRect: resizePoint.rect,
+        metrics: resizePoint.metrics,
+      };
+      event.preventDefault();
+      render();
+      return;
+    }
+
+    if (isDraftTextElement(current)) {
+      state.draftPendingTextEdit = {
+        id: elId,
+        startMouseX: Number(event.clientX || 0),
+        startMouseY: Number(event.clientY || 0),
+        moved: false,
+      };
+    } else {
+      state.draftPendingTextEdit = null;
+    }
     var point = canvasEventToDraftPoint(canvasEl, event);
     state.draftDragging = {
       id: elId,
@@ -2766,13 +4620,21 @@
       canvasRect: point.rect,
       metrics: point.metrics,
     };
+    state.draftResizeDragging = null;
 
     event.preventDefault();
     render();
   });
 
   flowRoot.addEventListener('dblclick', function (event) {
-    var guideEl = event.target.closest('.gc-draft-guide');
+    var dblTarget = event.target && event.target.nodeType === 1
+      ? event.target
+      : (event.target && event.target.parentElement ? event.target.parentElement : null);
+    if (!dblTarget || !dblTarget.closest) {
+      return;
+    }
+
+    var guideEl = dblTarget.closest('.gc-draft-guide');
     if (guideEl) {
       var guideId = String(guideEl.getAttribute('data-guide-id') || '');
       if (guideId) {
@@ -2784,12 +4646,27 @@
       return;
     }
 
+    if (state.step === 2 && state.draftTool === 'select') {
+      var textEl = dblTarget.closest('.gc-draft-el.gc-draft-el-text');
+      if (textEl && !dblTarget.closest('.gc-draft-selection-handle')) {
+        var textId = String(textEl.getAttribute('data-el-id') || '');
+        if (textId && setDraftInlineTextEditing(textId)) {
+          state.draftPendingTextEdit = null;
+          state.draftDragging = null;
+          state.draftResizeDragging = null;
+          event.preventDefault();
+          render();
+          return;
+        }
+      }
+    }
+
     if (state.step !== 2 || state.draftTool !== 'photo') {
       return;
     }
 
-    var canvasEl = event.target.closest('.gc-step2-canvas');
-    if (!canvasEl || event.target !== canvasEl) {
+    var canvasEl = dblTarget.closest('.gc-step2-canvas');
+    if (!canvasEl || dblTarget !== canvasEl) {
       return;
     }
 
@@ -2805,20 +4682,81 @@
   });
 
   window.addEventListener('mousemove', function (event) {
+    if (state.step === 2) {
+      var pointerTarget = event && event.target;
+      var pointerInStage = pointerTarget && pointerTarget.closest
+        ? pointerTarget.closest('.gc-step2-canvas-stage')
+        : null;
+      if (pointerInStage) {
+        state.draftLastPointerClientX = Number(event.clientX || 0);
+        state.draftLastPointerClientY = Number(event.clientY || 0);
+      } else {
+        state.draftLastPointerClientX = null;
+        state.draftLastPointerClientY = null;
+      }
+    }
+
+    var panState = state.spacePanState;
+    if (panState) {
+      var panStage = resolveStageContentEl(panState.stageEl);
+      if (!panStage) {
+        return;
+      }
+      panState.stageEl = panStage;
+      var dx = Number(event.clientX || 0) - panState.startClientX;
+      var dy = Number(event.clientY || 0) - panState.startClientY;
+      panStage.scrollLeft = panState.startScrollLeft - dx;
+      panStage.scrollTop = panState.startScrollTop - dy;
+      return;
+    }
+
+    var resizeDrag = state.draftResizeDragging;
+    if (resizeDrag) {
+      applyDraftResizeDrag(resizeDrag, event);
+      render();
+      return;
+    }
+
     var guideDrag = state.draftGuideDragging;
-    if (guideDrag && guideDrag.canvasEl) {
-      var guidePoint = canvasEventToDraftPoint(guideDrag.canvasEl, event, { allowOutside: true });
+    if (guideDrag) {
+      var guideCanvas = resolveDraftCanvasEl(guideDrag.canvasEl);
+      if (!guideCanvas) {
+        return;
+      }
+      guideDrag.canvasEl = guideCanvas;
+      var guidePoint = canvasEventToDraftPoint(guideCanvas, event, { allowOutside: true });
       var nextPos = guideDrag.axis === 'x' ? guidePoint.x : guidePoint.y;
+      nextPos = snapCanvasValueToGrid(nextPos, guideDrag.axis);
       updateDraftGuidePosition(guideDrag.id, nextPos);
       render();
       return;
     }
 
     var textDrag = state.draftTextDrag;
-    if (textDrag && textDrag.canvasEl) {
-      var livePoint = canvasEventToDraftPoint(textDrag.canvasEl, event);
-      textDrag.currentX = livePoint.x;
-      textDrag.currentY = livePoint.y;
+    if (textDrag) {
+      var textCanvas = resolveDraftCanvasEl(textDrag.canvasEl);
+      if (!textCanvas) {
+        return;
+      }
+      textDrag.canvasEl = textCanvas;
+      var livePoint = canvasEventToDraftPoint(textCanvas, event);
+      textDrag.currentX = snapCanvasValueToGrid(livePoint.x, 'x');
+      textDrag.currentY = snapCanvasValueToGrid(livePoint.y, 'y');
+      render();
+      return;
+    }
+
+    var rectDrag = state.draftRectDrag;
+    if (rectDrag) {
+      var rectCanvas = resolveDraftCanvasEl(rectDrag.canvasEl);
+      if (!rectCanvas) {
+        return;
+      }
+      rectDrag.canvasEl = rectCanvas;
+      var rectPoint = canvasEventToDraftPoint(rectCanvas, event, { allowOutside: true });
+      rectDrag.currentX = snapCanvasValueToGrid(rectPoint.x, 'x');
+      rectDrag.currentY = snapCanvasValueToGrid(rectPoint.y, 'y');
+      rectDrag.lockSquare = !!event.shiftKey;
       render();
       return;
     }
@@ -2832,21 +4770,35 @@
     var scaleY = drag.metrics.height / Math.max(1, drag.canvasRect.height);
     var x = drag.startX + ((Number(event.clientX || 0) - drag.startMouseX) * scaleX);
     var y = drag.startY + ((Number(event.clientY || 0) - drag.startMouseY) * scaleY);
+    x = snapCanvasValueToGrid(x, 'x');
+    y = snapCanvasValueToGrid(y, 'y');
+
+    if (state.draftPendingTextEdit && state.draftPendingTextEdit.id === drag.id) {
+      var moveDx = Number(event.clientX || 0) - Number(state.draftPendingTextEdit.startMouseX || 0);
+      var moveDy = Number(event.clientY || 0) - Number(state.draftPendingTextEdit.startMouseY || 0);
+      if (Math.abs(moveDx) > 2 || Math.abs(moveDy) > 2) {
+        state.draftPendingTextEdit.moved = true;
+      }
+    }
 
     updateSelectedDraftElement({ x: x, y: y });
     render();
   });
 
   window.addEventListener('mouseup', function (event) {
+    if (state.spacePanState) {
+      state.spacePanState = null;
+      setSpacePanUiState();
+      return;
+    }
+
+    if (state.draftResizeDragging) {
+      state.draftResizeDragging = null;
+      render();
+      return;
+    }
+
     if (state.draftGuideDragging) {
-      var dragGuide = state.draftGuideDragging;
-      var rect = dragGuide.canvasEl.getBoundingClientRect();
-      var x = Number(event && event.clientX || 0);
-      var y = Number(event && event.clientY || 0);
-      var outside = x < rect.left - 24 || x > rect.right + 24 || y < rect.top - 24 || y > rect.bottom + 24;
-      if (outside) {
-        removeDraftGuideById(dragGuide.id);
-      }
       state.draftGuideDragging = null;
       render();
       return;
@@ -2856,9 +4808,10 @@
       var td = state.draftTextDrag;
       var dx = Math.abs(Number(td.currentX || td.startX) - Number(td.startX || 0));
       var dy = Math.abs(Number(td.currentY || td.startY) - Number(td.startY || 0));
+      var createdTextItem = null;
 
       if (dx >= 14 || dy >= 14) {
-        addDraftElement('text', {
+        createdTextItem = addDraftElement('text', {
           x: Math.min(Number(td.startX || 0), Number(td.currentX || td.startX || 0)),
           y: Math.min(Number(td.startY || 0), Number(td.currentY || td.startY || 0)),
           width: Math.max(36, dx),
@@ -2866,23 +4819,66 @@
           side: state.draftActiveSide,
           textMode: 'paragraph',
           textAlign: 'left',
-          label: 'Paragraph ' + String((state.templateDraft && state.templateDraft.elements ? state.templateDraft.elements.length : 0) + 1),
+          label: '',
         });
       } else {
-        addDraftElement('text', {
+        createdTextItem = addDraftElement('text', {
           x: Number(td.startX || 0),
           y: Number(td.startY || 0),
-          width: 120,
-          height: 24,
           side: state.draftActiveSide,
           textMode: 'artistic',
           textAlign: 'left',
-          label: 'Artistic Text ' + String((state.templateDraft && state.templateDraft.elements ? state.templateDraft.elements.length : 0) + 1),
+          autoFitArtistic: true,
+          label: '',
         });
       }
 
+      if (createdTextItem && createdTextItem.__id && String(createdTextItem.textMode || '').toLowerCase() === 'artistic') {
+        setDraftInlineTextEditing(createdTextItem.__id);
+      }
+
       state.draftTextDrag = null;
-      state.draftSuppressTextClick = true;
+      render();
+      return;
+    }
+
+    if (state.draftRectDrag) {
+      var rd = state.draftRectDrag;
+      var rectBox = draftDragBox(
+        Number(rd.startX || 0),
+        Number(rd.startY || 0),
+        Number(rd.currentX || rd.startX || 0),
+        Number(rd.currentY || rd.startY || 0),
+        !!(event.shiftKey || rd.lockSquare)
+      );
+      var count = (state.templateDraft && state.templateDraft.elements ? state.templateDraft.elements.length : 0) + 1;
+
+      if (rectBox.width >= 8 || rectBox.height >= 8) {
+        addDraftElement('rectangle', {
+          x: rectBox.x,
+          y: rectBox.y,
+          width: Math.max(12, rectBox.width),
+          height: Math.max(12, rectBox.height),
+          side: state.draftActiveSide,
+          color: '#2563eb',
+          label: 'Rectangle ' + String(count),
+        });
+      } else {
+        var tinySquare = !!(event.shiftKey || rd.lockSquare);
+        var wDefault = tinySquare ? 56 : 84;
+        var hDefault = tinySquare ? 56 : 52;
+        addDraftElement('rectangle', {
+          x: Number(rd.startX || 0) - (wDefault / 2),
+          y: Number(rd.startY || 0) - (hDefault / 2),
+          width: wDefault,
+          height: hDefault,
+          side: state.draftActiveSide,
+          color: '#2563eb',
+          label: 'Rectangle ' + String(count),
+        });
+      }
+
+      state.draftRectDrag = null;
       render();
       return;
     }
@@ -2893,8 +4889,60 @@
     state.draftDragging = null;
   });
 
+  flowRoot.addEventListener('keydown', function (event) {
+    var target = event.target;
+    if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
+      return;
+    }
+
+    var mode = String(target.getAttribute('data-text-mode') || 'artistic').toLowerCase();
+    if (event.key === 'Enter' && mode !== 'paragraph') {
+      event.preventDefault();
+      target.blur();
+    }
+  });
+
+  flowRoot.addEventListener('input', function (event) {
+    var target = event.target;
+    if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
+      return;
+    }
+
+    var elId = String(target.getAttribute('data-inline-editor-id') || '');
+    if (!elId) {
+      return;
+    }
+
+    var nextText = String(typeof target.innerText === 'string' ? target.innerText : (target.textContent || ''));
+    updateDraftTextLabelById(elId, nextText.replace(/\r\n?/g, '\n'));
+  });
+
+  flowRoot.addEventListener('focusout', function (event) {
+    var target = event.target;
+    if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
+      return;
+    }
+
+    if (!state.draftInlineEditingElementId) {
+      return;
+    }
+
+    state.draftInlineEditingElementId = '';
+    render();
+  });
+
   window.addEventListener('keydown', function (event) {
     if (!isStep2EditorActive()) {
+      return;
+    }
+
+    var key = String(event.key || '');
+    if ((key === ' ' || key === 'Spacebar') && !isTypingTarget(event.target)) {
+      if (!state.spacePanMode) {
+        state.spacePanMode = true;
+        setSpacePanUiState();
+      }
+      event.preventDefault();
       return;
     }
 
@@ -2902,7 +4950,6 @@
       return;
     }
 
-    var key = String(event.key || '');
     var lower = key.toLowerCase();
     var ctrlOrMeta = !!(event.ctrlKey || event.metaKey);
     var handled = false;
@@ -2925,10 +4972,27 @@
       } else if (key === 'ArrowDown') {
         handled = nudgeSelectedDraftElement(0, step);
       }
+    } else if (!ctrlOrMeta && !event.altKey && lower === 'p') {
+      handled = alignSelectedDraftElements('canvas-center');
+    } else if (!ctrlOrMeta && !event.altKey && lower === 'e') {
+      handled = alignSelectedDraftElements('align-v-center');
+    } else if (!ctrlOrMeta && !event.altKey && lower === 'c') {
+      handled = alignSelectedDraftElements('align-h-center');
+    } else if (!ctrlOrMeta && !event.altKey && lower === 'l') {
+      handled = alignSelectedDraftElements('align-left');
+    } else if (!ctrlOrMeta && !event.altKey && lower === 'r') {
+      handled = alignSelectedDraftElements('align-right');
+    } else if (!ctrlOrMeta && !event.altKey && lower === 't') {
+      handled = alignSelectedDraftElements('align-top');
+    } else if (!ctrlOrMeta && !event.altKey && lower === 'b') {
+      handled = alignSelectedDraftElements('align-bottom');
     } else if (!ctrlOrMeta && !event.altKey && key === 'Escape') {
       state.draftDragging = null;
+      state.draftResizeDragging = null;
       state.draftGuideDragging = null;
       state.draftTextDrag = null;
+      state.draftRectDrag = null;
+      clearDraftInlineTextEditing();
       state.draftTool = 'select';
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && lower === 'd') {
@@ -2937,13 +5001,13 @@
       triggerSaveDraftTemplate();
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && (key === '+' || key === '=')) {
-      setDraftZoom(Number(state.draftZoom || 1) + 0.1);
+      setDraftZoomWithAnchor(Number(state.draftZoom || 1) + 0.1, null);
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && (key === '-' || key === '_')) {
-      setDraftZoom(Number(state.draftZoom || 1) - 0.1);
+      setDraftZoomWithAnchor(Number(state.draftZoom || 1) - 0.1, null);
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && lower === '0') {
-      setDraftZoom(1);
+      setDraftZoomWithAnchor(1, null);
       handled = true;
     }
 
@@ -2953,6 +5017,24 @@
 
     event.preventDefault();
     render();
+  });
+
+  window.addEventListener('keyup', function (event) {
+    if (!isStep2EditorActive()) {
+      return;
+    }
+
+    var key = String(event.key || '');
+    if (key !== ' ' && key !== 'Spacebar') {
+      return;
+    }
+
+    if (state.spacePanMode || state.spacePanState) {
+      state.spacePanMode = false;
+      state.spacePanState = null;
+      setSpacePanUiState();
+    }
+    event.preventDefault();
   });
 
   flowRoot.addEventListener('change', function (event) {
@@ -3010,32 +5092,44 @@
       return;
     }
 
-    if (target.id === 'gcDraftCanvasWidthCenterInput' || target.id === 'gcDraftCanvasWidthInput') {
-      var widthValue = unitValueToCanvas(Number(target.value || 0), 'x');
-      updateDraftCanvasSize(widthValue, draftCanvasMetrics().height);
+    if (target.id === 'gcDraftCanvasWidthCenterInput') {
+      var widthRaw = Number(target.value || 0);
+      var widthValue = unitValueToCanvas(widthRaw, 'x');
+      var real = draftRealDimensionsMm();
+      var widthMm = unitValueToMm(widthRaw);
+      if (Number.isFinite(widthMm) && widthMm > 0) {
+        real.widthMm = widthMm;
+      }
+      updateDraftCanvasSize(widthValue, draftCanvasMetrics().height, real);
       render();
       return;
     }
 
-    if (target.id === 'gcDraftCanvasHeightCenterInput' || target.id === 'gcDraftCanvasHeightInput') {
-      var heightValue = unitValueToCanvas(Number(target.value || 0), 'y');
-      updateDraftCanvasSize(draftCanvasMetrics().width, heightValue);
-      render();
-      return;
-    }
-
-    if (target.id === 'gcDraftZoomRange') {
-      setDraftZoom(Number(target.value || 100) / 100);
+    if (target.id === 'gcDraftCanvasHeightCenterInput') {
+      var heightRaw = Number(target.value || 0);
+      var heightValue = unitValueToCanvas(heightRaw, 'y');
+      var realSize = draftRealDimensionsMm();
+      var heightMm = unitValueToMm(heightRaw);
+      if (Number.isFinite(heightMm) && heightMm > 0) {
+        realSize.heightMm = heightMm;
+      }
+      updateDraftCanvasSize(draftCanvasMetrics().width, heightValue, realSize);
       render();
       return;
     }
 
     if (target.id === 'gcDraftUnitSelect') {
-      var unit = String(target.value || 'px').toLowerCase();
-      if (unit !== 'px' && unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
-        unit = 'px';
+      var unit = String(target.value || 'mm').toLowerCase();
+      if (unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
+        unit = 'mm';
       }
       state.draftUnit = unit;
+      render();
+      return;
+    }
+
+    if (target.id === 'gcDraftSnapMmInput') {
+      state.draftSnapMm = normalizeDraftSnapMm(target.value);
       render();
       return;
     }
@@ -3089,23 +5183,59 @@
     }
 
     if (target.id === 'gcDraftFontInput') {
-      var fs = Number(target.value || 11);
+      var fs = Number(target.value || 12);
       if (!Number.isFinite(fs)) {
-        fs = 11;
+        fs = 12;
       }
-      updateSelectedDraftElement({ fontSize: Math.max(6, Math.min(72, fs)) });
+      updateSelectedDraftElement({ fontSize: Math.max(4, Math.min(240, fs)) });
       render();
       return;
     }
 
     if (target.id === 'gcDraftFontFamilyInput') {
-      updateSelectedDraftElement({ fontFamily: String(target.value || 'Arial') });
+      var family = findFontFamilyById(target.value) || FONT_CATALOG[0] || null;
+      if (!family) {
+        return;
+      }
+      var selected = selectedDraftElement();
+      var face = resolveFontSelection(selected || {}).face || family.faces[0];
+      if (!face || String(findFontFamilyByName(face.family || '').id || '') !== String(family.id || '')) {
+        face = family.faces[0];
+      }
+      updateSelectedDraftElement({
+        fontGroup: String(family.id || 'arial'),
+        fontFace: String(face.id || 'regular'),
+        fontFamily: String(face.family || 'Arial'),
+        fontWeight: normalizeFontWeightValue(face.weight),
+        fontStyle: normalizeFontStyleValue(face.style),
+      });
+      render();
+      return;
+    }
+
+    if (target.id === 'gcDraftFontFaceInput') {
+      var selectedItem = selectedDraftElement();
+      var familyFromItem = findFontFamilyById(selectedItem && selectedItem.fontGroup)
+        || findFontFamilyByName(selectedItem && selectedItem.fontFamily)
+        || FONT_CATALOG[0]
+        || null;
+      if (!familyFromItem) {
+        return;
+      }
+      var faceById = findFontFaceById(familyFromItem, target.value) || familyFromItem.faces[0];
+      updateSelectedDraftElement({
+        fontGroup: String(familyFromItem.id || 'arial'),
+        fontFace: String(faceById.id || 'regular'),
+        fontFamily: String(faceById.family || 'Arial'),
+        fontWeight: normalizeFontWeightValue(faceById.weight),
+        fontStyle: normalizeFontStyleValue(faceById.style),
+      });
       render();
       return;
     }
 
     if (target.id === 'gcDraftWeightInput') {
-      updateSelectedDraftElement({ fontWeight: String(target.value || '600') });
+      updateSelectedDraftElement({ fontWeight: normalizeFontWeightValue(target.value || '400') });
       render();
       return;
     }

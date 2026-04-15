@@ -464,7 +464,7 @@ def _sanitize_template_json(raw):
         if not isinstance(item, dict):
             continue
         elem_type = str(item.get('type') or 'text').strip().lower()
-        if elem_type not in ('text', 'image', 'background'):
+        if elem_type not in ('text', 'image', 'background', 'rectangle'):
             continue
 
         field_name = str(item.get('field') or '').strip()
@@ -494,7 +494,7 @@ def _sanitize_template_json(raw):
         x = max(0.0, min(canvas_w, _num('x', x_default)))
         y = max(0.0, min(canvas_h, _num('y', y_default)))
         width = max(10.0, min(canvas_w, _num('width', width_default)))
-        height_default = canvas_h if elem_type == 'background' else (50.0 if elem_type == 'image' else 24.0)
+        height_default = canvas_h if elem_type == 'background' else (50.0 if elem_type == 'image' else (40.0 if elem_type == 'rectangle' else 24.0))
         height = max(10.0, min(canvas_h, _num('height', height_default)))
 
         try:
@@ -503,9 +503,46 @@ def _sanitize_template_json(raw):
             font_size = 12.0
         font_size = max(6.0, min(72.0, font_size))
 
-        align = str(item.get('align') or 'left').strip().lower()
+        align = str(item.get('textAlign') or item.get('text_align') or item.get('align') or 'left').strip().lower()
         if align not in ('left', 'center', 'right'):
             align = 'left'
+
+        font_family = str(item.get('fontFamily') or item.get('font_family') or 'Arial').strip()[:80]
+        font_group = str(item.get('fontGroup') or item.get('font_group') or '').strip()[:60]
+        font_face = str(item.get('fontFace') or item.get('font_face') or '').strip()[:60]
+
+        font_weight_raw = str(item.get('fontWeight') or item.get('font_weight') or '400').strip().lower()
+        if font_weight_raw == 'normal':
+            font_weight_raw = '400'
+        elif font_weight_raw == 'bold':
+            font_weight_raw = '700'
+        try:
+            font_weight_num = int(round(float(font_weight_raw)))
+        except (TypeError, ValueError):
+            font_weight_num = 400
+        font_weight_num = max(100, min(900, int(round(font_weight_num / 100.0) * 100)))
+        font_weight = str(font_weight_num)
+
+        font_style = str(item.get('fontStyle') or item.get('font_style') or 'normal').strip().lower()
+        if font_style not in ('normal', 'italic', 'oblique'):
+            font_style = 'normal'
+
+        try:
+            line_height = float(item.get('lineHeight') or item.get('line_height') or 1.2)
+        except (TypeError, ValueError):
+            line_height = 1.2
+        line_height = max(0.6, min(3.0, line_height))
+
+        try:
+            letter_spacing = float(item.get('letterSpacing') or item.get('letter_spacing') or 0.0)
+        except (TypeError, ValueError):
+            letter_spacing = 0.0
+        letter_spacing = max(-10.0, min(20.0, letter_spacing))
+
+        text_mode = str(item.get('textMode') or item.get('text_mode') or 'artistic').strip().lower()
+        if text_mode not in ('artistic', 'paragraph'):
+            text_mode = 'artistic'
+
         color = _normalize_hex_color(item.get('color') or '#111111')
 
         clean_item = {
@@ -519,6 +556,15 @@ def _sanitize_template_json(raw):
             'height': round(height, 2),
             'fontSize': round(font_size, 2),
             'align': align,
+            'textAlign': align,
+            'fontFamily': font_family,
+            'fontGroup': font_group,
+            'fontFace': font_face,
+            'fontWeight': font_weight,
+            'fontStyle': font_style,
+            'lineHeight': round(line_height, 3),
+            'letterSpacing': round(letter_spacing, 3),
+            'textMode': text_mode,
             'color': color,
             'side': side,
             'showLabel': bool(item.get('showLabel', True)),
@@ -529,6 +575,9 @@ def _sanitize_template_json(raw):
             clean_item['field'] = ''
             clean_item['label'] = label or 'Background'
             clean_item['src'] = src_value[:2000000]
+        elif elem_type == 'rectangle':
+            clean_item['field'] = ''
+            clean_item['label'] = label or 'Rectangle'
 
         out_elements.append(clean_item)
 
@@ -2410,7 +2459,6 @@ def api_template_clear_pdf(request, table_id, side):
     else:
         mappings.pop(side, None)
 
-    # TODO: Replace with new JSON-based template editor
     cfg.pop('mapping_confidence', None)
     tmpl.field_config = cfg
     tmpl.field_mappings = mappings
