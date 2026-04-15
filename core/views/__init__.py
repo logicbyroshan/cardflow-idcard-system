@@ -7,6 +7,7 @@ from .base import (
     adarsh_cropper,
     login_as_user_page,
     pro_user_log_deletion_guard_page,
+    pro_user_data_deletion_guard_page,
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     pro_user_feedback_page,
@@ -239,4 +240,12 @@ from .maintenance_api import (
     api_system_maintenance_check,
     api_maintenance_toggle,
     system_maintenance_page,
+)
+
+from .pro_user_data_guard_api import (
+    api_pro_user_data_guard_clients,
+    api_pro_user_data_guard_tables,
+    api_pro_user_data_guard_preview,
+    api_pro_user_data_guard_generate_code,
+    api_pro_user_data_guard_delete,
 )

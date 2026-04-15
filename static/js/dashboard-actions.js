@@ -40,8 +40,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const recentClientUpdatesSortHeaders = Array.from(document.querySelectorAll('th[data-recent-sort-key]'));
     const printOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="print"][data-overview-sort-key]'));
     const reprintOverviewSortHeaders = Array.from(document.querySelectorAll('th[data-overview-sort-scope="reprint"][data-overview-sort-key]'));
-    let recentClientUpdatesLiveOnly = false;
+    let recentClientUpdatesLiveFilterMode = '';
     let recentClientUpdatesLiveClientIds = new Set();
+    let recentClientUpdatesLiveAssistantClientIds = new Set();
     let recentClientUpdatesSortKey = '';
     let printOverviewSortKey = '';
     let reprintOverviewSortKey = '';
@@ -76,8 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setRecentClientUpdatesLiveFilterUI() {
-        if (!recentClientUpdatesActiveBadge) return;
-        recentClientUpdatesActiveBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveOnly);
+        if (recentClientUpdatesActiveBadge) {
+            recentClientUpdatesActiveBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveFilterMode === 'client');
+        }
+        if (recentClientUpdatesAssistantBadge) {
+            recentClientUpdatesAssistantBadge.classList.toggle('is-filter-active', recentClientUpdatesLiveFilterMode === 'assistant');
+        }
     }
 
     function setRecentClientUpdatesSortUI() {
@@ -273,7 +278,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .join(' ');
             const searchable = `${clientName} ${tableNames}`.trim();
             const isSearchMatch = !query || searchable.includes(query);
-            const isLiveMatch = !recentClientUpdatesLiveOnly || row.getAttribute('data-live-active') === '1';
+            const isLiveClientMatch = recentClientUpdatesLiveFilterMode !== 'client' || row.getAttribute('data-live-active') === '1';
+            const isLiveAssistantMatch = recentClientUpdatesLiveFilterMode !== 'assistant' || row.getAttribute('data-live-assistant-active') === '1';
+            const isLiveMatch = isLiveClientMatch && isLiveAssistantMatch;
             const isMatch = isSearchMatch && isLiveMatch;
 
             if (!isMatch) {
@@ -291,15 +298,19 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        if ((!query && !recentClientUpdatesLiveOnly) || visibleClients > 0) return;
+        if ((!query && !recentClientUpdatesLiveFilterMode) || visibleClients > 0) return;
 
         let noResultMessage = 'No clients matched your filters';
-        if (query && recentClientUpdatesLiveOnly) {
+        if (query && recentClientUpdatesLiveFilterMode === 'client') {
             noResultMessage = `No live working clients matched "${query.replace(/"/g, '&quot;')}"`;
+        } else if (query && recentClientUpdatesLiveFilterMode === 'assistant') {
+            noResultMessage = `No clients with live working assistants matched "${query.replace(/"/g, '&quot;')}"`;
         } else if (query) {
             noResultMessage = `No clients matched "${query.replace(/"/g, '&quot;')}"`;
-        } else if (recentClientUpdatesLiveOnly) {
+        } else if (recentClientUpdatesLiveFilterMode === 'client') {
             noResultMessage = 'No live working clients found right now';
+        } else if (recentClientUpdatesLiveFilterMode === 'assistant') {
+            noResultMessage = 'No clients with live working assistants found right now';
         }
 
         tbody.insertAdjacentHTML(
@@ -321,7 +332,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (isAdminRecentUpdatesContext && recentClientUpdatesActiveBadge) {
         recentClientUpdatesActiveBadge.addEventListener('click', function() {
-            recentClientUpdatesLiveOnly = !recentClientUpdatesLiveOnly;
+            recentClientUpdatesLiveFilterMode = recentClientUpdatesLiveFilterMode === 'client' ? '' : 'client';
+            setRecentClientUpdatesLiveFilterUI();
+            applyRecentClientUpdatesSearch();
+        });
+    }
+
+    if (isAdminRecentUpdatesContext && recentClientUpdatesAssistantBadge) {
+        recentClientUpdatesAssistantBadge.addEventListener('click', function() {
+            recentClientUpdatesLiveFilterMode = recentClientUpdatesLiveFilterMode === 'assistant' ? '' : 'assistant';
             setRecentClientUpdatesLiveFilterUI();
             applyRecentClientUpdatesSearch();
         });
@@ -491,7 +510,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         const liveClientIds = Array.isArray(data.active_client_ids)
                             ? data.active_client_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
                             : [];
+                        const liveAssistantClientIds = Array.isArray(data.active_assistant_client_ids)
+                            ? data.active_assistant_client_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+                            : [];
                         recentClientUpdatesLiveClientIds = new Set(liveClientIds);
+                        recentClientUpdatesLiveAssistantClientIds = new Set(liveAssistantClientIds);
                         const liveActiveClients = Number(data.active_clients_now);
                         const liveActiveAssistants = Number(data.active_assistants_now);
                         setRecentClientUpdatesActiveBadge(Number.isFinite(liveActiveClients) ? liveActiveClients : 0);
@@ -504,6 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const singleTable = hasSingleTable ? tables[0] : null;
                             const clientId = Number(client.client_id);
                             const isLiveActive = Number.isFinite(clientId) && recentClientUpdatesLiveClientIds.has(clientId);
+                            const isLiveAssistantActive = Number.isFinite(clientId) && recentClientUpdatesLiveAssistantClientIds.has(clientId);
                             const pendingCount = Number(client.pending);
                             const verifiedCount = Number(client.verified);
                             const approvedCount = Number(client.approved);
@@ -545,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             `).join('') : '';
 
                             return `
-                            <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-live-active="${isLiveActive ? '1' : '0'}" data-sort-pending="${safePending}" data-sort-verified="${safeVerified}" data-sort-approved="${safeApproved}" data-sort-downloaded="${safeDownloaded}" data-sort-pool="${safePool}" ${directUrl ? `data-direct-url="${directUrl}"` : ''} onclick="toggleClientExpandRow(this)">
+                            <tr class="client-row" data-idx="${i}" data-base-order="${i}" data-live-active="${isLiveActive ? '1' : '0'}" data-live-assistant-active="${isLiveAssistantActive ? '1' : '0'}" data-sort-pending="${safePending}" data-sort-verified="${safeVerified}" data-sort-approved="${safeApproved}" data-sort-downloaded="${safeDownloaded}" data-sort-pool="${safePool}" ${directUrl ? `data-direct-url="${directUrl}"` : ''} onclick="toggleClientExpandRow(this)">
                                 <td>
                                     <a href="${clientLinkUrl}" class="client-name-link" onclick="event.stopPropagation()">${statusBadge}<span class="client-name-text">${esc(client.name)}</span></a>
                                 </td>
@@ -575,6 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         applyRecentClientUpdatesSearch();
                     } else {
                         recentClientUpdatesLiveClientIds = new Set();
+                        recentClientUpdatesLiveAssistantClientIds = new Set();
                         setRecentClientUpdatesActiveBadge(0);
                         setRecentClientUpdatesAssistantBadge(0);
                         setDashboardTabCount(dashboardTabCountRecentClients, 0);
@@ -594,6 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading recent client updates:', error);
                 waitForMinDelay(skeletonStart).then(() => {
                     recentClientUpdatesLiveClientIds = new Set();
+                    recentClientUpdatesLiveAssistantClientIds = new Set();
                     setRecentClientUpdatesActiveBadge(0);
                     setRecentClientUpdatesAssistantBadge(0);
                     setDashboardTabCount(dashboardTabCountRecentClients, 0);

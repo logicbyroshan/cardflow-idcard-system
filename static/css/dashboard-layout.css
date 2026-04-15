@@ -315,7 +315,7 @@
     border-color: #93c5fd;
     background: #eff6ff;
     color: #1e3a8a;
-    cursor: default;
+    cursor: pointer;
 }
 
 .recent-updates-assistant-badge::before {

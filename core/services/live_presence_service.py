@@ -200,11 +200,29 @@ class LiveClientPresenceService:
         return qs.values_list('user_id', flat=True).distinct().count()
 
     @classmethod
+    def get_live_assistant_client_ids_for_user(cls, user):
+        now = timezone.now()
+        cls.retire_stale_sessions(now=now)
+
+        qs = cls._active_queryset(now=now).filter(
+            user_role='client_staff',
+            client_id__isnull=False,
+        )
+        if PermissionService.is_admin_staff(user):
+            allowed_ids = set(PermissionService.get_accessible_client_ids(user))
+            qs = qs.filter(client_id__in=allowed_ids)
+
+        live_ids = set(qs.values_list('client_id', flat=True).distinct())
+        return sorted(live_ids)
+
+    @classmethod
     def get_live_payload_for_user(cls, user):
         active_client_ids = cls.get_live_client_ids_for_user(user)
         active_assistants_now = cls.get_live_assistant_count_for_user(user)
+        active_assistant_client_ids = cls.get_live_assistant_client_ids_for_user(user)
         return {
             'active_clients_now': len(active_client_ids),
             'active_client_ids': active_client_ids,
             'active_assistants_now': active_assistants_now,
+            'active_assistant_client_ids': active_assistant_client_ids,
         }

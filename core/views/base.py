@@ -33,6 +33,7 @@ from .dashboard_views import (                       # noqa: F401
     adarsh_cropper,
     login_as_user_page,
     pro_user_log_deletion_guard_page,
+    pro_user_data_deletion_guard_page,
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     pro_user_feedback_page,

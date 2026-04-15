@@ -343,6 +343,19 @@ def pro_user_feedback_page(request):
 
 
 @login_required
+def pro_user_data_deletion_guard_page(request):
+    """Dedicated page for Pro User guarded permanent data deletion controls."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+
+    context = {
+        'active_page': 'pro_user_data_deletion_guard',
+        'user_role': get_user_role(request.user),
+    }
+    return render(request, 'pro_user/data-deletion-guard.html', context)
+
+
+@login_required
 def pro_user_activity_logs_detail_page(request, user_id):
     """Dedicated detail page for a selected user's deep history (Pro User only)."""
     if request.user.role != 'pro_user':

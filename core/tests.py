@@ -2170,6 +2170,7 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(live_payload.get('active_clients_now'), 1)
         self.assertEqual(live_payload.get('active_assistants_now'), 0)
         self.assertIn(self.client_a.id, live_payload.get('active_client_ids', []))
+        self.assertEqual(live_payload.get('active_assistant_client_ids'), [])
 
         stop_resp = client_session.post(
             reverse('api_presence_track'),
@@ -2182,6 +2183,7 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(live_after_stop.get('active_clients_now'), 0)
         self.assertEqual(live_after_stop.get('active_assistants_now'), 0)
         self.assertEqual(live_after_stop.get('active_client_ids'), [])
+        self.assertEqual(live_after_stop.get('active_assistant_client_ids'), [])
 
     def test_live_presence_exposes_assistant_count_separately(self):
         from staff.models import Staff
@@ -2214,6 +2216,39 @@ class SecurityApiRegressionTests(TestCase):
         self.assertTrue(payload.get('success'))
         self.assertEqual(payload.get('active_clients_now'), 1)
         self.assertEqual(payload.get('active_assistants_now'), 1)
+        self.assertEqual(payload.get('active_assistant_client_ids'), [self.client_a.id])
+
+    def test_recent_client_updates_exposes_assistant_client_ids_for_filtering(self):
+        from staff.models import Staff
+
+        assistant_session = self.client_class()
+
+        client_staff_user = User.objects.create_user(
+            username='sec-client-staff-recent@test.com',
+            email='sec-client-staff-recent@test.com',
+            password='pass1234',
+            role='client_staff',
+        )
+        Staff.objects.create(
+            user=client_staff_user,
+            staff_type='client_staff',
+            client=self.client_a,
+        )
+
+        assistant_session.login(username='sec-client-staff-recent@test.com', password='pass1234')
+        start_resp = assistant_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'start', 'tab_id': 'tab_staff_recent'}),
+            content_type='application/json',
+        )
+        self.assertEqual(start_resp.status_code, 200)
+
+        self.client.login(username='sec-api-admin@test.com', password='adminpass1')
+        recent_resp = self.client.get(reverse('api_recent_client_updates'))
+        self.assertEqual(recent_resp.status_code, 200)
+        recent_payload = recent_resp.json()
+        self.assertTrue(recent_payload.get('success'))
+        self.assertIn(self.client_a.id, recent_payload.get('active_assistant_client_ids', []))
 
     def test_live_presence_count_respects_admin_staff_scope(self):
         from staff.models import Staff
@@ -2256,6 +2291,7 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(scoped_payload.get('active_clients_now'), 1)
         self.assertEqual(scoped_payload.get('active_assistants_now'), 0)
         self.assertEqual(scoped_payload.get('active_client_ids'), [self.client_a.id])
+        self.assertEqual(scoped_payload.get('active_assistant_client_ids'), [])
 
 
 class CardHistoryApiTests(TestCase):

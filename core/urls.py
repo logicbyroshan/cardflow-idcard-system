@@ -85,6 +85,7 @@ urlpatterns = [
     # Deep User History (Pro User only)
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
     path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
+    path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),
     path('pro-user/feedback/', views.pro_user_feedback_page, name='pro_user_feedback'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
@@ -270,6 +271,13 @@ urlpatterns = [
     path('api/activity-logs/clear/state/', views.api_activity_log_clear_state, name='api_activity_log_clear_state'),
     path('api/activity-logs/clear/generate-code/', views.api_activity_log_clear_generate_code, name='api_activity_log_clear_generate_code'),
     path('api/activity-logs/clear/', views.api_clear_activity_logs, name='api_clear_activity_logs'),
+
+    # Pro User data deletion guard API
+    path('api/pro-user/data-guard/clients/', views.api_pro_user_data_guard_clients, name='api_pro_user_data_guard_clients'),
+    path('api/pro-user/data-guard/tables/', views.api_pro_user_data_guard_tables, name='api_pro_user_data_guard_tables'),
+    path('api/pro-user/data-guard/preview/', views.api_pro_user_data_guard_preview, name='api_pro_user_data_guard_preview'),
+    path('api/pro-user/data-guard/generate-code/', views.api_pro_user_data_guard_generate_code, name='api_pro_user_data_guard_generate_code'),
+    path('api/pro-user/data-guard/delete/', views.api_pro_user_data_guard_delete, name='api_pro_user_data_guard_delete'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),
