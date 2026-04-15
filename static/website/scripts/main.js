@@ -111,15 +111,13 @@ function initTypingEffect() {
         const firstLine = getFirstLineText(line);
 
         if (charsInFirstLine <= beforeLen) {
-            return '<span class="typing-line-one">' + esc(firstLine.substring(0, charsInFirstLine)) + '</span>';
+            return esc(firstLine.substring(0, charsInFirstLine));
         }
 
         return (
-            '<span class="typing-line-one">' +
             esc(line.before) +
             '<span class="typing-highlight">' +
             esc(firstLine.substring(beforeLen, charsInFirstLine)) +
-            '</span>' +
             '</span>'
         );
     }
@@ -133,14 +131,14 @@ function initTypingEffect() {
         const firstLineLen = firstLine.length;
 
         if (charsTyped <= firstLineLen) {
-            return renderFirstLine(line, charsTyped) + renderCursor();
+            return '<span class="typing-line-one">' + renderFirstLine(line, charsTyped) + renderCursor() + '</span>';
         }
 
         const secondLineChars = charsTyped - firstLineLen;
         const secondLineHtml = esc(line.after.substring(0, secondLineChars));
 
         return (
-            renderFirstLine(line, firstLineLen) +
+            '<span class="typing-line-one">' + renderFirstLine(line, firstLineLen) + '</span>' +
             '<span class="typing-line-two">' + secondLineHtml + renderCursor() + '</span>'
         );
     }

@@ -430,8 +430,8 @@ a:active {
 /* ===== Hero Section ===== */
 .hero {
     background: linear-gradient(135deg, #100F57 0%, #1a1980 50%, #0a92dd 100%);
-    min-height: 60vh;
-    height: 60vh;
+    min-height: clamp(480px, 66vh, 760px);
+    height: auto;
     width: 100%;
     margin-left: 0;
     color: var(--white);
@@ -441,7 +441,7 @@ a:active {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 110px 20px 44px;
+    padding: clamp(90px, 10vh, 120px) 20px clamp(36px, 6vh, 56px);
 }
 
 .hero::before {
@@ -476,20 +476,21 @@ a:active {
     padding: 0 20px;
     max-width: 1200px;
     width: 100%;
-    height: 100%;
     margin: 0 auto;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 0;
+    gap: 0;
 }
 
 /* Hero Content - matching page-hero styles */
 .hero .hero-content {
     text-align: center;
     color: #fff;
+    max-width: min(920px, 100%);
+    margin: 0 auto;
 }
 
 .hero .hero-badge {
@@ -524,7 +525,7 @@ a:active {
     line-height: 1.15;
     color: #fff;
     min-height: 0;
-    max-width: 20ch;
+    max-width: 22ch;
     display: block;
     text-align: center;
     text-wrap: balance;
@@ -554,11 +555,6 @@ a:active {
 
 .hero-card-wrapper {
     display: none !important;
-}
-
-.hero-buttons {
-    display: flex;
-    gap: 1rem;
 }
 
 .btn {
@@ -2112,22 +2108,22 @@ a:active {
 
 /* ===== Typing Effect ===== */
 #typingLine {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
+    display: inline-grid;
+    justify-items: center;
+    align-items: center;
     min-height: calc(1.15em * 2);
     line-height: 1.15;
-    text-align: left;
+    text-align: center;
     vertical-align: top;
 }
 
 .typing-wrapper {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
+    display: inline-grid;
+    justify-items: center;
+    align-items: center;
     min-height: calc(1.15em * 2);
     max-width: 100%;
-    text-align: left;
+    text-align: center;
     vertical-align: top;
 }
 
@@ -2135,10 +2131,11 @@ a:active {
 .typing-line-two {
     display: block;
     white-space: nowrap;
+    text-align: center;
 }
 
 .typing-line-two {
-    display: block;
+    margin-top: 0.04em;
 }
 
 .typing-highlight {
@@ -2165,7 +2162,7 @@ a:active {
     width: 0;
     height: 1em;
     border-left: 2px solid rgba(255, 255, 255, 0.8);
-    margin-left: 0.12em;
+    margin-left: 0.08em;
     color: transparent;
     font-weight: 300;
     animation: blink 0.8s step-end infinite;

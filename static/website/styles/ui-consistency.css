@@ -122,9 +122,9 @@ h6 {
 }
 
 .typing-wrapper {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
+    display: inline-grid;
+    justify-items: center;
+    align-items: center;
     min-height: calc(1.15em * 2);
 }
 
@@ -480,7 +480,9 @@ body.mobile-menu-open {
     }
 
     .typing-wrapper {
-        display: inline-block;
+        display: inline-grid;
+        justify-items: center;
+        align-items: center;
         min-height: calc(1.15em * 2);
     }
 
