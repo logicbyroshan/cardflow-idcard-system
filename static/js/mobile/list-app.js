@@ -17,6 +17,20 @@ function buildEndpoint(base, path) {
     return normalizedBase + '/' + normalizedPath;
 }
 
+function estimateMobileUploadTimeoutMs(imageFiles) {
+    const files = Object.values(imageFiles || {}).filter(Boolean);
+    const totalBytes = files.reduce((sum, fileObj) => {
+        const fileSize = Number(fileObj && fileObj.size);
+        return sum + (Number.isFinite(fileSize) ? fileSize : 0);
+    }, 0);
+    const totalMB = totalBytes / (1024 * 1024);
+
+    // Base timeout is 3 minutes. Add 12s/MB for slow mobile links.
+    // Keep a hard ceiling to avoid indefinite hanging.
+    const timeoutMs = 180000 + Math.ceil(totalMB * 12000);
+    return Math.max(180000, Math.min(timeoutMs, 600000));
+}
+
 function listApp() {
     return {
         searchQuery: '',
@@ -2365,9 +2379,15 @@ function listApp() {
                 }
 
                 try {
-                    var _ac2 = new AbortController();
-                    setTimeout(function() { _ac2.abort(); }, 120000);
-                    const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd, signal: _ac2.signal });
+                    const _ac2 = new AbortController();
+                    const uploadTimeoutMs = estimateMobileUploadTimeoutMs(this.form.imageFiles || {});
+                    const _submitTimeout = setTimeout(() => { _ac2.abort(); }, uploadTimeoutMs);
+                    let res;
+                    try {
+                        res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd, signal: _ac2.signal });
+                    } finally {
+                        clearTimeout(_submitTimeout);
+                    }
                     if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
                         this.showToast('Server error (' + res.status + ')', 'error');
                         return;
@@ -2471,7 +2491,13 @@ function listApp() {
                             if (ok) this.fetchReprintList();
                         }
                     } else { this.showToast(data.message || 'Failed', 'error'); }
-                } catch (e) { this.showToast('Network error', 'error'); }
+                } catch (e) {
+                    if (e && e.name === 'AbortError') {
+                        this.showToast('Upload timed out on mobile network. Please retry.', 'error');
+                    } else {
+                        this.showToast('Network error while uploading images', 'error');
+                    }
+                }
             } finally {
                 this.loading = false;
                 this.addFormSubmitting = false;

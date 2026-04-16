@@ -70,6 +70,13 @@ def _parse_json_body(request):
         return {}
 
 
+def _dashboard_recent_activity_cache_key(*, user, limit, surface):
+    """Per-user key for short-lived dashboard activity caches."""
+    user_id = getattr(user, 'pk', 'anon')
+    user_role = getattr(user, 'role', 'anon')
+    return f'dash:recent-activity:{surface}:{user_id}:{user_role}:{int(limit)}'
+
+
 def _get_dashboard_recent_activities(*, user, limit):
     """Return latest activity entries for the dashboard recent-updates feed."""
     return ActivityService.get_recent(limit=limit, hours=None, user=user, merge_card_activity=False)
@@ -223,11 +230,21 @@ def _enrich_recent_activities_for_dashboard(user, activities):
 
     client_id_by_name = {}
     if client_names:
-        accessible_clients = PermissionService.get_accessible_clients(user, Client.objects.all()).only('id', 'name')
-        for client in accessible_clients:
-            key = _normalize_activity_name(client.name)
-            if key in client_names and key not in client_id_by_name:
-                client_id_by_name[key] = client.id
+        name_filter = Q()
+        for name in client_names:
+            if name:
+                name_filter |= Q(name__iexact=name)
+
+        if name_filter:
+            accessible_clients = (
+                PermissionService.get_accessible_clients(user, Client.objects.all())
+                .filter(name_filter)
+                .only('id', 'name')
+            )
+            for client in accessible_clients:
+                key = _normalize_activity_name(client.name)
+                if key in client_names and key not in client_id_by_name:
+                    client_id_by_name[key] = client.id
 
     first_table_by_client = {}
     if client_id_by_name:
@@ -448,10 +465,18 @@ def dashboard(request):
         'overview_assistents_count': overview_stats.get('assistents', 0),
     }
 
-    recent_activities = _enrich_recent_activities_for_dashboard(
-        request.user,
-        _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX),
+    recent_cache_key = _dashboard_recent_activity_cache_key(
+        user=request.user,
+        limit=ACTIVITY_FEED_MAX,
+        surface='page',
     )
+    recent_activities = cache.get(recent_cache_key)
+    if recent_activities is None:
+        recent_activities = _enrich_recent_activities_for_dashboard(
+            request.user,
+            _get_dashboard_recent_activities(user=request.user, limit=ACTIVITY_FEED_MAX),
+        )
+        cache.set(recent_cache_key, recent_activities, 15)
 
     context.update({
         # Dashboard feed always shows latest ACTIVITY_FEED_MAX entries.
