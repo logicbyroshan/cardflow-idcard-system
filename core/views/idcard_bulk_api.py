@@ -23,6 +23,7 @@ from idcards.models import IDCard, IDCardTable
 from ..services import IDCardService
 from ..services.image_service import ImageService
 from ..services.base import BaseService
+from ..services.cache_version_service import CacheVersionService
 from ..services.permission_service import (
     api_require_any_authenticated,
     api_require_permission,
@@ -266,6 +267,13 @@ def api_idcard_bulk_upload(request, table_id):
         cards_created = result['cards_created']
         total_photos_matched = result['total_photos_matched']
         errors = result['errors']
+
+        if cards_created > 0:
+            try:
+                CacheVersionService.bump('mob_filter', int(table.id))
+                CacheVersionService.bump('class_section', int(table.group.client_id))
+            except Exception:
+                pass
         
         # Return result
         photo_msg = f" with {total_photos_matched} photos matched" if total_photos_matched > 0 else ""

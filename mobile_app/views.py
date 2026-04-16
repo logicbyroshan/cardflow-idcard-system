@@ -51,6 +51,7 @@ from accounts.rate_limit import rate_limit
 from accounts.rate_limit import _get_client_ip
 from accounts.services import AuthService
 from core.services.activity_service import ActivityService
+from core.services.cache_version_service import CacheVersionService
 from core.services import StaffService, IDCardService
 from core.utils.field_utils import normalize_class_value
 from mediafiles.utils import normalize_uploaded_image
@@ -817,7 +818,7 @@ def _staff_table_scope_filters(staff, table):
 
 
 def _get_table_filter_metadata(table, table_fields):
-    """Build and cache class/section filter metadata for list page."""
+    """Build class/section filter metadata for list page."""
     class_field_name = None
     section_field_name = None
     for _f in table_fields:
@@ -831,11 +832,6 @@ def _get_table_filter_metadata(table, table_fields):
             section_field_name = _fname
 
     options_qs = IDCard.objects.filter(table=table)
-    _stamp = options_qs.aggregate(total=Count('id'), max_id=Max('id'))
-    cache_key = f"mob_filter_meta:v2:{table.id}:{_stamp.get('total') or 0}:{_stamp.get('max_id') or 0}"
-    cached = cache.get(cache_key)
-    if cached:
-        return cached
 
     all_classes = []
     if class_field_name:
@@ -910,7 +906,6 @@ def _get_table_filter_metadata(table, table_fields):
             for _cls, _sections in class_to_sections.items()
         },
     }
-    cache.set(cache_key, payload, 300)
     return payload
 
 
@@ -1497,7 +1492,7 @@ def home(request):
         **perms,
     }
 
-    # Admin-specific counts for dashboard management section (cached 5 min)
+    # Admin-specific counts for dashboard management section.
     if _is_admin:
         from client.models import Client
         from staff.models import Staff
@@ -1514,31 +1509,21 @@ def home(request):
                 Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
             ).distinct()
 
-        cache_key = 'mob_admin_home_counts' if accessible_ids is None else f'mob_admin_home_counts:{user.id}'
-        _admin_counts = cache.get(cache_key)
-        if _admin_counts is None:
-            _admin_counts = {
-                'admin_client_count': scoped_clients.count(),
-                'admin_staff_count': scoped_staff.count(),
-                'admin_table_count': scoped_tables.count(),
-                'admin_total_cards': scoped_cards.count(),
-            }
-            cache.set(cache_key, _admin_counts, 300)
+        _admin_counts = {
+            'admin_client_count': scoped_clients.count(),
+            'admin_staff_count': scoped_staff.count(),
+            'admin_table_count': scoped_tables.count(),
+            'admin_total_cards': scoped_cards.count(),
+        }
         ctx.update(_admin_counts)
 
     # ── Card status counts ───────────────────────────────────────────────
-    # For admins: single cached aggregate across accessible scope.
     # For client/client_staff: use ClientDashboardService result (already computed).
     if _is_admin:
-        # Super-admins all see the same global aggregate → shared cache key is intentional.
-        _status_cache_key = 'mob_admin_status_counts' if accessible_ids is None else f'mob_admin_status_counts:{user.id}'
-        _gcounts = cache.get(_status_cache_key)
-        if _gcounts is None:
-            _gcards = IDCard.objects.all()
-            if accessible_ids is not None:
-                _gcards = _gcards.filter(table__group__client_id__in=accessible_ids)
-            _gcounts = {r['status']: r['n'] for r in _gcards.order_by().values('status').annotate(n=Count('id'))}
-            cache.set(_status_cache_key, _gcounts, 30)
+        _gcards = IDCard.objects.all()
+        if accessible_ids is not None:
+            _gcards = _gcards.filter(table__group__client_id__in=accessible_ids)
+        _gcounts = {r['status']: r['n'] for r in _gcards.order_by().values('status').annotate(n=Count('id'))}
         ctx.update({
             'pending_count': _gcounts.get('pending', 0),
             'verified_count': _gcounts.get('verified', 0),
@@ -3359,6 +3344,12 @@ def api_card_add(request, table_id):
                 if not update_result.success:
                     raise ValueError(update_result.message or 'Image upload failed')
 
+        try:
+            CacheVersionService.bump('mob_filter', int(table.id))
+            CacheVersionService.bump('class_section', int(table.group.client_id))
+        except Exception:
+            pass
+
         return JsonResponse({'success': True, 'message': 'Card added successfully', 'card_id': card.id})
     except ValueError as err:
         return JsonResponse({'success': False, 'message': str(err)}, status=400)
@@ -3487,6 +3478,12 @@ def api_table_update_fields(request, table_id):
             table.save(update_fields=['fields'])
             cards_updated = _migrate_table_field_data_for_renames(table.id, rename_pairs)
             media_updated = _migrate_cardmedia_field_names_for_renames(table.id, rename_pairs)
+
+        try:
+            CacheVersionService.bump('mob_filter', int(table.id))
+            CacheVersionService.bump('class_section', int(table.group.client_id))
+        except Exception:
+            pass
 
         return JsonResponse({
             'success': True,
@@ -3858,8 +3855,16 @@ def api_card_delete(request, card_id):
                 }, status=400)
 
             card_id_for_log = card.id
+            table_id_for_cache = card.table_id
+            client_id_for_cache = getattr(getattr(card.table, 'group', None), 'client_id', None)
             table_name = card.table.name if card.table_id else ''
             card.delete()
+            try:
+                CacheVersionService.bump('mob_filter', int(table_id_for_cache))
+                if client_id_for_cache:
+                    CacheVersionService.bump('class_section', int(client_id_for_cache))
+            except Exception:
+                pass
             try:
                 suffix = f' in table "{table_name}"' if table_name else ''
                 ActivityService.log(

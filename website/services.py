@@ -94,6 +94,13 @@ def _parse_bool(value, default=False):
     return value in (True, 'true', '1', 'on', 'True')
 
 
+def _invalidate_public_section_caches():
+    """Invalidate public website section caches after content mutations."""
+    cache.delete('home_sections')
+    cache.delete('business_details')
+    cache.delete('website:why_choose_us:sections')
+
+
 def _detect_orientation(image_file):
     """Detect image orientation from its dimensions. Returns orientation string."""
     try:
@@ -241,6 +248,7 @@ class BusinessDetailsService:
             if is_active is not None:
                 business.is_active = _parse_bool(is_active)
             business.save()
+        _invalidate_public_section_caches()
         return business
 
     @staticmethod
@@ -252,6 +260,7 @@ class BusinessDetailsService:
         with transaction.atomic():
             business.is_active = not business.is_active
             business.save()
+        _invalidate_public_section_caches()
         return True, business.is_active
 
 
@@ -358,6 +367,7 @@ class TestimonialService:
             if attachment_image:
                 review.attachment_image = attachment_image
             review.save()
+        _invalidate_public_section_caches()
         return review
 
     @staticmethod
@@ -396,6 +406,7 @@ class TestimonialService:
                 update_fields.append('attachment_image')
             if update_fields:
                 review.save(update_fields=update_fields)
+        _invalidate_public_section_caches()
         return review
 
     @staticmethod
@@ -453,6 +464,7 @@ class TestimonialService:
             if attachment_image:
                 review.attachment_image = attachment_image
             review.save()
+        _invalidate_public_section_caches()
         return review
 
     @staticmethod
@@ -472,6 +484,7 @@ class TestimonialService:
                 except Exception:
                     logger.warning("Failed to delete attachment file for Testimonial %d", pk)
             review.delete()
+        _invalidate_public_section_caches()
 
     @staticmethod
     def toggle(pk):
@@ -480,6 +493,7 @@ class TestimonialService:
             review = get_object_or_404(Testimonial, pk=pk)
             review.is_active = not review.is_active
             review.save()
+        _invalidate_public_section_caches()
         return review.is_active
 
 
@@ -543,6 +557,7 @@ class PortfolioItemService:
             if video_file:
                 item.video_file = video_file
             item.save()
+        _invalidate_public_section_caches()
         return item
 
     @staticmethod
@@ -612,6 +627,7 @@ class PortfolioItemService:
                 item.video_url = ''
 
             item.save()
+        _invalidate_public_section_caches()
         return item
 
     @staticmethod
@@ -631,6 +647,7 @@ class PortfolioItemService:
             if old_video_name:
                 purge_portfolio_video_derivatives(old_video_name)
             item.delete()
+        _invalidate_public_section_caches()
 
     @staticmethod
     def toggle(pk):
@@ -639,6 +656,7 @@ class PortfolioItemService:
             item = get_object_or_404(PortfolioItem, pk=pk)
             item.is_active = not item.is_active
             item.save()
+        _invalidate_public_section_caches()
         return item.is_active
 
 
@@ -736,6 +754,7 @@ class HeroImageService:
                 order=int(order),
                 is_active=True,
             )
+        _invalidate_public_section_caches()
         return hero
 
     @staticmethod
@@ -756,6 +775,7 @@ class HeroImageService:
             if image:
                 hero.image = image
             hero.save()
+        _invalidate_public_section_caches()
         return hero
 
     @staticmethod
@@ -770,6 +790,7 @@ class HeroImageService:
                 except Exception:
                     logger.warning("Failed to delete image file for HeroImage %d", pk)
             hero.delete()
+        _invalidate_public_section_caches()
 
     @staticmethod
     def reorder(order_list):
@@ -780,6 +801,7 @@ class HeroImageService:
         with transaction.atomic():
             for idx, pk in enumerate(order_list):
                 HeroImage.objects.filter(pk=pk).update(order=idx + 1)
+        _invalidate_public_section_caches()
 
 
 # =============================================================================

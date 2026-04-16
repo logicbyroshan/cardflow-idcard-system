@@ -105,6 +105,10 @@ class NotificationService:
             if recipient_user_ids:
                 cls._invalidate_users_notification_caches(recipient_user_ids)
 
+            # Ensure unread counters for all targets (selected/role/all) move
+            # to a fresh cache namespace immediately after creation.
+            CacheVersionService.bump('notif_global', 'all')
+
             logger.info(
                 "Notification created: '%s' → %s (%d recipients) by %s",
                 title, target, recipient_count,
@@ -177,7 +181,8 @@ class NotificationService:
         Cached per user for 30 s — this endpoint is polled on every page load.
         Cache is invalidated immediately when the user marks notifications read.
         """
-        cache_key = f'notif_unread:{user.pk}'
+        global_version = CacheVersionService.get('notif_global', 'all')
+        cache_key = f'notif_unread:{user.pk}:v{global_version}'
         cached = _cache.get(cache_key)
         if cached is not None:
             return cached
@@ -201,6 +206,9 @@ class NotificationService:
     def _invalidate_user_notification_caches(cls, user_id):
         if not user_id:
             return
+        global_version = CacheVersionService.get('notif_global', 'all')
+        _cache.delete(f'notif_unread:{user_id}:v{global_version}')
+        # Backward-compatible cleanup for any legacy key readers.
         _cache.delete(f'notif_unread:{user_id}')
         CacheVersionService.bump('client_messages_drawer_user', f'user:{int(user_id)}')
 

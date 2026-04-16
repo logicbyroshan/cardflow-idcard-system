@@ -12,7 +12,6 @@ import logging
 import re
 from typing import Dict, Any, List
 
-from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q, CharField
 from django.db.models.fields.json import KeyTextTransform
@@ -20,6 +19,7 @@ from django.db.models.functions import Cast, Coalesce
 from django.utils.timezone import localtime
 
 from idcards.models import IDCardGroup, IDCardTable, IDCard
+from .cache_version_service import CacheVersionService
 from .base import BaseService, ServiceResult
 from .image_service import ImageService
 
@@ -49,6 +49,20 @@ class IDCardCardService(BaseService):
     }
 
     # ==================== Helper Methods ====================
+
+    @classmethod
+    def _bump_table_cache_versions(cls, table):
+        """Invalidate table-scoped caches affected by card data mutations."""
+        try:
+            table_id = int(getattr(table, 'id', 0) or 0)
+            if table_id > 0:
+                CacheVersionService.bump('mob_filter', table_id)
+
+            client_id = int(getattr(getattr(table, 'group', None), 'client_id', 0) or 0)
+            if client_id > 0:
+                CacheVersionService.bump('class_section', client_id)
+        except Exception as exc:
+            logger.debug('IDCardCardService cache version bump failed: %s', exc)
 
     @classmethod
     def _get_missing_image_fields(cls, card, image_field_names):
@@ -147,30 +161,20 @@ class IDCardCardService(BaseService):
         and matches them all.  E.g. filtering by 'KG1' also finds
         'KG-I', 'KGI', 'LKG', 'kgI', etc.
 
-        table_id is used to cache the distinct raw values per table (60 s TTL)
-        so that repeated filtered-list requests skip the pre-scan DB round-trip.
+        table_id scopes the distinct raw-value scan to one table.
         """
         from core.utils.field_utils import normalize_class_value
 
         norm_filter = normalize_class_value(class_filter)
 
-        # Cache distinct raw class values per (table, field) — 60-second TTL.
-        # Query against the full table (no status restriction) so one cached scan
-        # serves all status-filtered list views for the same table.
-        cache_key = f'cls_raw_vals:{table_id}:{class_field_name}' if table_id else None
-        all_raw = cache.get(cache_key) if cache_key else None
-
-        if all_raw is None:
-            base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
-            all_raw = list(
-                base_qs
-                .annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
-                .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
-                .order_by()
-                .values_list('_cv_raw', flat=True).distinct()
-            )
-            if cache_key:
-                cache.set(cache_key, all_raw, 60)
+        base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
+        all_raw = list(
+            base_qs
+            .annotate(_cv_raw=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+            .exclude(_cv_raw__isnull=True).exclude(_cv_raw='')
+            .order_by()
+            .values_list('_cv_raw', flat=True).distinct()
+        )
 
         matching_raw = [r for r in all_raw if normalize_class_value(r) == norm_filter]
 
@@ -192,7 +196,6 @@ class IDCardCardService(BaseService):
         *,
         table_id=None,
         alias='_flt_txt',
-        cache_prefix='compact_raw_vals',
     ):
         """Apply punctuation/space-insensitive filtering for course/branch text."""
         from core.utils.field_utils import normalize_compact_text_value
@@ -201,20 +204,14 @@ class IDCardCardService(BaseService):
         if not normalized_filter:
             return qs.none()
 
-        cache_key = f'{cache_prefix}:{table_id}:{field_name}' if table_id else None
-        all_raw = cache.get(cache_key) if cache_key else None
-
-        if all_raw is None:
-            base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
-            all_raw = list(
-                base_qs
-                .annotate(_fv_raw=Cast(KeyTextTransform(field_name, 'field_data'), CharField()))
-                .exclude(_fv_raw__isnull=True).exclude(_fv_raw='')
-                .order_by()
-                .values_list('_fv_raw', flat=True).distinct()
-            )
-            if cache_key:
-                cache.set(cache_key, all_raw, 60)
+        base_qs = qs.model.objects.filter(table_id=table_id) if table_id else qs
+        all_raw = list(
+            base_qs
+            .annotate(_fv_raw=Cast(KeyTextTransform(field_name, 'field_data'), CharField()))
+            .exclude(_fv_raw__isnull=True).exclude(_fv_raw='')
+            .order_by()
+            .values_list('_fv_raw', flat=True).distinct()
+        )
 
         matching_raw = [raw for raw in all_raw if normalize_compact_text_value(raw) == normalized_filter]
         if not matching_raw:
@@ -780,6 +777,8 @@ class IDCardCardService(BaseService):
                     except Exception as photo_err:
                         logger.error("Error saving legacy photo during create: %s", photo_err)
 
+            cls._bump_table_cache_versions(table)
+
             return ServiceResult(
                 success=True,
                 message='ID Card created successfully!',
@@ -963,6 +962,7 @@ class IDCardCardService(BaseService):
             # Refresh updated_at after commit so the caller can send it
             # back for the next concurrency check.
             card.refresh_from_db(fields=['updated_at'])
+            cls._bump_table_cache_versions(table)
 
             card_data = cls.serialize_card(card)
             # Include ISO updated_at for concurrency round-trip
@@ -1024,6 +1024,7 @@ class IDCardCardService(BaseService):
                 if modified_by:
                     card.modified_by = modified_by
                 card.save()
+                cls._bump_table_cache_versions(table)
 
                 return ServiceResult(
                     success=True,
@@ -1040,8 +1041,10 @@ class IDCardCardService(BaseService):
     def delete_card(cls, card_id: int) -> ServiceResult:
         """Delete an ID Card"""
         try:
-            card = get_object_or_404(IDCard, id=card_id)
+            card = get_object_or_404(IDCard.objects.select_related('table__group'), id=card_id)
+            table = card.table
             card.delete()
+            cls._bump_table_cache_versions(table)
 
             return ServiceResult(
                 success=True,

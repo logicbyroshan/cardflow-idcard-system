@@ -88,34 +88,28 @@ def mobile_globals(request):
             from django.db.models import Q
 
             accessible_ids = None
-            cache_key = 'mobile:admin:overview:counts:v2:all'
             if PermissionService.is_admin_staff(user):
                 accessible_ids = PermissionService.get_accessible_client_ids(user)
-                cache_key = f'mobile:admin:overview:counts:v2:user:{user.id}'
 
-            cached_counts = cache.get(cache_key)
-            if cached_counts is None:
-                scoped_clients = Client.objects.filter(status='active')
-                scoped_tables = IDCardTable.objects.filter(is_active=True)
-                scoped_cards = IDCard.objects.all()
-                scoped_staff = Staff.objects.all()
-                if accessible_ids is not None:
-                    scoped_clients = scoped_clients.filter(id__in=accessible_ids)
-                    scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
-                    scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
-                    scoped_staff = scoped_staff.filter(
-                        Q(client_id__in=accessible_ids) |
-                        Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
-                    ).distinct()
+            scoped_clients = Client.objects.filter(status='active')
+            scoped_tables = IDCardTable.objects.filter(is_active=True)
+            scoped_cards = IDCard.objects.all()
+            scoped_staff = Staff.objects.all()
+            if accessible_ids is not None:
+                scoped_clients = scoped_clients.filter(id__in=accessible_ids)
+                scoped_tables = scoped_tables.filter(group__client_id__in=accessible_ids)
+                scoped_cards = scoped_cards.filter(table__group__client_id__in=accessible_ids)
+                scoped_staff = scoped_staff.filter(
+                    Q(client_id__in=accessible_ids) |
+                    Q(staff_type='admin_staff', assigned_clients__id__in=accessible_ids)
+                ).distinct()
 
-                cached_counts = {
-                    'admin_client_count': scoped_clients.count(),
-                    'admin_staff_count': scoped_staff.count(),
-                    'admin_table_count': scoped_tables.count(),
-                    'admin_total_cards': scoped_cards.count(),
-                }
-                cache.set(cache_key, cached_counts, 60)
-            ctx.update(cached_counts)
+            ctx.update({
+                'admin_client_count': scoped_clients.count(),
+                'admin_staff_count': scoped_staff.count(),
+                'admin_table_count': scoped_tables.count(),
+                'admin_total_cards': scoped_cards.count(),
+            })
         except Exception:
             logger.exception(
                 'mobile_globals: admin stats query failed for user %s', user.pk,

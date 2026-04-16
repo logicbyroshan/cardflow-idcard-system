@@ -531,7 +531,7 @@ class WorkflowService:
 
     @staticmethod
     def _bump_dashboard_cache_versions(table: IDCardTable) -> None:
-        """Invalidate dashboard card caches for affected client scope."""
+        """Invalidate dashboard cache versions for affected scope."""
         try:
             client_id = getattr(getattr(table, 'group', None), 'client_id', None)
             CacheVersionService.bump('dash_rcu', 'global')

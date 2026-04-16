@@ -22,7 +22,6 @@ from idcards.models import IDCard, IDCardTable
 from ..models import User
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
-from ..services.cache_version_service import CacheVersionService
 from ..services.live_presence_service import LiveClientPresenceService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
@@ -414,23 +413,19 @@ def dashboard(request):
     # when is_scoped=True, regardless of which cache keys hit/miss.
     accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
 
-    # Combine card status counts into a single aggregate query (cached 30s)
-    # Exclude 'pool' status from total count
-    card_cache_key = f'dashboard_card_stats{cache_suffix}'
-    card_stats = cache.get(card_cache_key)
-    if card_stats is None:
-        card_qs = IDCard.objects.all()
-        if is_scoped:
-            card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
-        card_stats = card_qs.aggregate(
-            total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
-            pending=Count('id', filter=Q(status='pending')),
-            verified=Count('id', filter=Q(status='verified')),
-            approved=Count('id', filter=Q(status='approved')),
-            downloaded=Count('id', filter=Q(status='download')),
-            pool=Count('id', filter=Q(status='pool')),
-        )
-        cache.set(card_cache_key, card_stats, 30)
+    # Combine card status counts into a single aggregate query.
+    # Exclude 'pool' status from total count.
+    card_qs = IDCard.objects.all()
+    if is_scoped:
+        card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+    card_stats = card_qs.aggregate(
+        total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+        pending=Count('id', filter=Q(status='pending')),
+        verified=Count('id', filter=Q(status='verified')),
+        approved=Count('id', filter=Q(status='approved')),
+        downloaded=Count('id', filter=Q(status='download')),
+        pool=Count('id', filter=Q(status='pool')),
+    )
 
     # Sidebar overview counts (clients/admins/operators/assistents).
     # Show total records, not only active ones.
@@ -493,34 +488,28 @@ def api_dashboard_card_stats(request):
     try:
         user = request.user
         is_scoped = PermissionService.is_admin_staff(user)
-        cache_suffix = f':{user.pk}' if is_scoped else ':sa'
-        cache_key = f'dash_card_stats_api{cache_suffix}'
+        accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
 
-        stats = cache.get(cache_key)
-        if stats is None:
-            accessible_ids = PermissionService.get_accessible_client_ids(user) if is_scoped else []
+        card_qs = IDCard.objects.all()
+        if is_scoped:
+            card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
 
-            card_qs = IDCard.objects.all()
-            if is_scoped:
-                card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
-
-            agg = card_qs.aggregate(
-                total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
-                pending=Count('id', filter=Q(status='pending')),
-                verified=Count('id', filter=Q(status='verified')),
-                approved=Count('id', filter=Q(status='approved')),
-                downloaded=Count('id', filter=Q(status='download')),
-                pool=Count('id', filter=Q(status='pool')),
-            )
-            stats = {
-                'total': agg.get('total', 0),
-                'pending': agg.get('pending', 0),
-                'verified': agg.get('verified', 0),
-                'approved': agg.get('approved', 0),
-                'downloaded': agg.get('downloaded', 0),
-                'pool': agg.get('pool', 0),
-            }
-            cache.set(cache_key, stats, 20)
+        agg = card_qs.aggregate(
+            total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+            pending=Count('id', filter=Q(status='pending')),
+            verified=Count('id', filter=Q(status='verified')),
+            approved=Count('id', filter=Q(status='approved')),
+            downloaded=Count('id', filter=Q(status='download')),
+            pool=Count('id', filter=Q(status='pool')),
+        )
+        stats = {
+            'total': agg.get('total', 0),
+            'pending': agg.get('pending', 0),
+            'verified': agg.get('verified', 0),
+            'approved': agg.get('approved', 0),
+            'downloaded': agg.get('downloaded', 0),
+            'pool': agg.get('pool', 0),
+        }
 
         return JsonResponse({'success': True, 'stats': stats})
     except Exception as e:
@@ -535,24 +524,6 @@ def api_recent_client_updates(request):
     try:
         limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
-
-        # Cache per-user with 20-second TTL for client rows.
-        # Live-active count is recomputed on every request to keep refreshes accurate.
-        # admin_staff sees a scoped view (their assigned clients only), so the key
-        # must include user.pk to prevent cross-user data leakage.
-        is_scoped = PermissionService.is_admin_staff(user)
-        scope_key = f'user:{user.pk}' if is_scoped else 'global'
-        cache_version = CacheVersionService.get('dash_rcu', scope_key)
-        cache_key = f'dash_rcu:v3:{scope_key}:{limit}:{cache_version}'
-        cached = cache.get(cache_key)
-        if cached is not None:
-            cached_clients = cached.get('clients', []) if isinstance(cached, dict) else cached
-            presence_payload = LiveClientPresenceService.get_live_payload_for_user(user)
-            return JsonResponse({
-                'success': True,
-                'clients': cached_clients,
-                **presence_payload,
-            })
 
         # Get recent clients - scoped by PermissionService
         # Show all accessible clients (including inactive) for dashboard recents.
@@ -662,8 +633,6 @@ def api_recent_client_updates(request):
             'clients': results,
             **presence_payload,
         }
-
-        cache.set(cache_key, {'clients': results}, 20)
         return JsonResponse({
             'success': True,
             **payload,
@@ -775,13 +744,6 @@ def api_print_reprint_overview(request):
 
         limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
         user = request.user
-
-        # 20-second per-user cache — same pattern as api_recent_client_updates.
-        is_scoped = PermissionService.is_admin_staff(user)
-        cache_key = f'dash_ppr:{user.pk if is_scoped else "sa"}:{limit}'
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return JsonResponse({'success': True, **cached})
 
         # Show all accessible clients (including inactive) for both admin roles.
         base_qs = Client.objects.all()
@@ -1006,7 +968,6 @@ def api_print_reprint_overview(request):
             'reprint_clients': reprint_clients,
             'reprint_total_requested': reprint_total_requested,
         }
-        cache.set(cache_key, payload, 20)
         return JsonResponse({
             'success': True,
             'print_clients': print_clients,

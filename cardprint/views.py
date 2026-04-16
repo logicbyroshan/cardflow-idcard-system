@@ -1116,6 +1116,10 @@ def print_cards(request, table_id):
     if current_step not in ('generate_list', 'finalized'):
         current_step = 'generate_list'
 
+    # Existing field configuration drives which columns are shown in Generate List.
+    template_obj = _get_template_for_table(table, create_default=False)
+    selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
+
     # Step counts for tabs
     counts = PrintRequest.objects.filter(table=table).aggregate(
         fn=Count('id', filter=Q(status='finalized')),
@@ -1132,10 +1136,6 @@ def print_cards(request, table_id):
     finalized_items = []
     generate_total = 0
     finalized_total = 0
-
-    # Existing field configuration drives which columns are shown in Generate List.
-    template_obj = _get_template_for_table(table, create_default=False)
-    selected_generate_field_names = _get_selected_generate_field_names(table, template_obj)
 
     if current_step == 'generate_list':
         base_qs = PrintRequest.objects.filter(table=table, status='generate_list')
@@ -1325,13 +1325,14 @@ def api_print_step_counts(request, table_id):
         po=Count('id', filter=Q(status='pool')),
     )
     approved_count = IDCard.objects.filter(table=table, status='approved').count()
-    return JsonResponse({
+    payload = {
         'status': 'ok',
         'generate_list': counts['gl'],
         'finalized': counts['fn'],
         'pool': counts['po'],
         'approved': approved_count,
-    })
+    }
+    return JsonResponse(payload)
 
 
 # ---------------------------------------------------------------------------
@@ -1349,8 +1350,10 @@ def api_print_generate_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    from_dt = _parse_local_datetime_filter(request.GET.get('from'))
-    to_dt = _parse_local_datetime_filter(request.GET.get('to'))
+    from_raw = (request.GET.get('from') or '').strip()
+    to_raw = (request.GET.get('to') or '').strip()
+    from_dt = _parse_local_datetime_filter(from_raw)
+    to_dt = _parse_local_datetime_filter(to_raw)
     offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
@@ -1398,14 +1401,15 @@ def api_print_generate_list(request, table_id):
             'ordered_fields': ordered_fields,
         })
 
-    return JsonResponse({
+    payload = {
         'status': 'ok',
         'items': items,
         'total': total,
         'has_more': has_more,
         'offset': offset,
         'limit': limit,
-    })
+    }
+    return JsonResponse(payload)
 
 
 @require_http_methods(["POST"])
@@ -1469,8 +1473,10 @@ def api_print_finalized_list(request, table_id):
         return err
 
     query = request.GET.get('q', '').strip()
-    from_dt = _parse_local_datetime_filter(request.GET.get('from'))
-    to_dt = _parse_local_datetime_filter(request.GET.get('to'))
+    from_raw = (request.GET.get('from') or '').strip()
+    to_raw = (request.GET.get('to') or '').strip()
+    from_dt = _parse_local_datetime_filter(from_raw)
+    to_dt = _parse_local_datetime_filter(to_raw)
     offset, limit = _parse_offset_limit(request, default_limit=100, max_limit=200)
 
     pr_qs = PrintRequest.objects.filter(
@@ -1515,14 +1521,15 @@ def api_print_finalized_list(request, table_id):
             'ordered_fields': ordered_fields,
         })
 
-    return JsonResponse({
+    payload = {
         'status': 'ok',
         'items': items,
         'total': total,
         'has_more': has_more,
         'offset': offset,
         'limit': limit,
-    })
+    }
+    return JsonResponse(payload)
 
 
 @require_http_methods(["POST"])

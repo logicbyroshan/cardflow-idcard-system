@@ -12,6 +12,7 @@ from typing import Dict, Any, List
 from django.shortcuts import get_object_or_404
 
 from idcards.models import IDCardTable, IDCard
+from .cache_version_service import CacheVersionService
 from .base import BaseService, ServiceResult
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,13 @@ class IDCardBulkService(BaseService):
                 deleted_count = locked_qs.count()
                 locked_qs.delete()
                 transaction.on_commit(_delete_media_after_commit)
+
+            if deleted_count:
+                try:
+                    CacheVersionService.bump('mob_filter', int(table.id))
+                    CacheVersionService.bump('class_section', int(table.group.client_id))
+                except Exception as exc:
+                    logger.debug('IDCardBulkService cache version bump failed: %s', exc)
 
             return ServiceResult(
                 success=True,

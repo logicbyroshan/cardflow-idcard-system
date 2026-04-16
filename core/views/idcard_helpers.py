@@ -172,14 +172,7 @@ def _safe_error(e, fallback='An error occurred. Please try again.'):
 
 
 def _get_class_variant_map(table_id, class_field_name):
-    """Get cached mapping: canonical → [raw_variants] for a table.
-    
-    Cached for 60 seconds. Invalidated by inline edits that change class.
-    """
-    cache_key = f'class_variants_map:{table_id}:{class_field_name}'
-    cached = django_cache.get(cache_key)
-    if cached is not None:
-        return cached
+    """Build mapping: canonical → [raw_variants] for a table."""
     
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
@@ -201,16 +194,14 @@ def _get_class_variant_map(table_id, class_field_name):
     for raw in all_raw:
         canonical = normalize_class_value(raw)
         variant_map[canonical].append(raw)
-    
-    result = dict(variant_map)
-    django_cache.set(cache_key, result, 60)  # Cache for 60 seconds
-    return result
+
+    return dict(variant_map)
 
 
 def invalidate_class_variant_cache(table_id):
-    """Invalidate class variant cache for a table (call after class field edits)."""
-    # Wildcard delete not available in all backends — use table-scoped keys
-    # The cache auto-expires in 60s anyway; this is for immediate consistency.
+    """Best-effort cleanup for legacy class-variant cache keys."""
+    # Class variants are now computed live; this keeps backward compatibility
+    # with any leftover cache keys from older deployments.
     from idcards.models import IDCardTable
     try:
         table = IDCardTable.objects.select_related().get(id=table_id)

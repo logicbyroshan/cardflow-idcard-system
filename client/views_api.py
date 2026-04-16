@@ -711,12 +711,6 @@ def api_class_section_options(request):
         except Exception:
             group_ids = []
 
-    group_key = ','.join(str(gid) for gid in group_ids) if group_ids else 'all'
-    cache_key = f'client:class-section-options:{client.id}:{group_key}:{resolved_id_source}'
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return JsonResponse(cached)
-
     # Resolve effective tables.
     # Accepts either:
     # - group IDs (legacy behavior), or
@@ -875,7 +869,6 @@ def api_class_section_options(request):
             for cls_name, sec_counts in sorted(class_section_counts.items(), key=lambda x: x[0])
         },
     }
-    cache.set(cache_key, payload, 120)
     return JsonResponse(payload)
 
 

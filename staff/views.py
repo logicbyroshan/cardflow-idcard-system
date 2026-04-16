@@ -369,7 +369,6 @@ def staff_dashboard(request):
     Admin Staff dashboard with scoped data.
     """
     from django.db.models import Count, Q
-    from django.core.cache import cache
     from idcards.models import IDCard
     from core.services.permission_service import PermissionService
 
@@ -379,22 +378,17 @@ def staff_dashboard(request):
     # Card stats scoped by admin_staff's assigned clients
     user = request.user
     is_scoped = PermissionService.is_admin_staff(user)
-    cache_suffix = f':{user.pk}' if is_scoped else ''
-    card_cache_key = f'staff_dash_card_stats{cache_suffix}'
-    card_stats = cache.get(card_cache_key)
-    if card_stats is None:
-        card_qs = IDCard.objects.all()
-        if is_scoped:
-            accessible_ids = PermissionService.get_accessible_client_ids(user)
-            card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
-        card_stats = card_qs.aggregate(
-            total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
-            pending=Count('id', filter=Q(status='pending')),
-            verified=Count('id', filter=Q(status='verified')),
-            approved=Count('id', filter=Q(status='approved')),
-            downloaded=Count('id', filter=Q(status='download')),
-        )
-        cache.set(card_cache_key, card_stats, 30)
+    card_qs = IDCard.objects.all()
+    if is_scoped:
+        accessible_ids = PermissionService.get_accessible_client_ids(user)
+        card_qs = card_qs.filter(table__group__client_id__in=accessible_ids)
+    card_stats = card_qs.aggregate(
+        total=Count('id', filter=Q(status__in=['pending', 'verified', 'approved', 'download'])),
+        pending=Count('id', filter=Q(status='pending')),
+        verified=Count('id', filter=Q(status='verified')),
+        approved=Count('id', filter=Q(status='approved')),
+        downloaded=Count('id', filter=Q(status='download')),
+    )
 
     # Recent activity scoped to this staff user
     recent_activities = ActivityService.get_recent(limit=15, user=user)

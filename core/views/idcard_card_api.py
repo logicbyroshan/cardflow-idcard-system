@@ -21,6 +21,7 @@ from mediafiles.utils import normalize_image_bytes_for_storage
 from ..services import IDCardService
 from ..services.base import BaseService
 from ..services.activity_service import ActivityService
+from ..services.cache_version_service import CacheVersionService
 from ..services.permission_service import (
     PermissionService,
     api_require_any_authenticated,
@@ -31,7 +32,6 @@ from .idcard_helpers import (
     _safe_error,
     _check_client_scope_by_table,
     _check_client_scope_by_card,
-    _assigned_group_ids_for_access,
     _get_class_section_course_branch_field_names,
     _build_class_filter_q,
     invalidate_class_variant_cache,
@@ -144,44 +144,6 @@ def _forbidden_card_ids_for_client_staff(user, table, card_ids):
         ).values_list('id', flat=True)
     )
     return [cid for cid in normalized if cid not in scoped_ids]
-
-
-def _filter_options_cache_key(user, table_id):
-    """Build a cache key for filter-options that is safe for scoped users."""
-    from django.core.cache import cache as django_cache
-
-    version_key = f'filter_options_version:{table_id}'
-    version = django_cache.get(version_key, 1)
-    try:
-        version = int(version)
-    except Exception:
-        version = 1
-
-    base = f'filter_options:{table_id}:v{version}'
-    if not PermissionService.is_client_staff(user):
-        return base
-
-    staff = getattr(user, 'staff_profile', None)
-    if not staff:
-        return f'{base}:client_staff:{user.id}:no_staff'
-
-    table_ids = sorted({
-        int(v) for v in (staff.assigned_table_ids or [])
-        if str(v).strip().isdigit() and int(v) > 0
-    })
-    table_sig = ','.join(str(v) for v in table_ids) if table_ids else 'all'
-    group_ids = sorted(_assigned_group_ids_for_access(staff))
-    group_sig = ','.join(str(v) for v in group_ids) if group_ids else 'all'
-    scope_sig = 'none'
-    if isinstance(staff.assignment_scopes, list):
-        try:
-            scope_sig = json.dumps(staff.assignment_scopes, sort_keys=True, separators=(',', ':'))
-        except Exception:
-            scope_sig = str(staff.assignment_scopes)
-    cls_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_classes or []) if str(v).strip())) or 'all'
-    sec_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_sections or []) if str(v).strip())) or 'all'
-    br_sig = ','.join(sorted(str(v).strip() for v in (staff.allowed_branches or []) if str(v).strip())) or 'all'
-    return f'{base}:client_staff:{user.id}:{table_sig}:{group_sig}:{cls_sig}:{sec_sig}:{br_sig}:{scope_sig}'
 
 
 def _build_modifier_role_map(modifier_names):
@@ -730,8 +692,6 @@ def api_idcard_filter_options(request, table_id):
     E.g. 'KG-I', 'KGI', 'KG1', 'kgI' all map to canonical 'KG1' and show
     the most-used raw format as the display label.
 
-    Cached for 30 seconds per table (no status filter).
-
     Response shape:
         class_values:   [{value: "KG1", display: "KG-I"}, ...]
         section_values: ["A", "B", ...]
@@ -741,7 +701,6 @@ def api_idcard_filter_options(request, table_id):
     from django.db.models.fields.json import KeyTextTransform
     from django.db.models.functions import Cast
     from django.db.models import CharField, Count
-    from django.core.cache import cache as django_cache
     from core.utils.field_utils import (
         CLASS_ORDER, CLASS_ORDER_UNKNOWN, normalize_class_value, normalize_compact_text_value,
     )
@@ -753,14 +712,6 @@ def api_idcard_filter_options(request, table_id):
 
     status_filter = request.GET.get('status', '').strip()
     
-    # Cache key includes table scope and (for client_staff) user scope.
-    # Status filtering was removed because filtering a dropdown by status
-    # makes no sense (user wants to see all possible class/section values).
-    cache_key = _filter_options_cache_key(request.user, table_id)
-    cached = django_cache.get(cache_key)
-    if cached is not None:
-        return JsonResponse(cached)
-
     qs = IDCard.objects.filter(table=table)
     qs = _apply_client_staff_row_scope(qs, request.user, table, status_filter=status_filter)
     # NOTE: Removed status filter — filter options should show ALL values
@@ -963,9 +914,6 @@ def api_idcard_filter_options(request, table_id):
         'branch_field': branch_field_name,
     }
     
-    # Cache for 30 seconds
-    django_cache.set(cache_key, result, 30)
-
     return JsonResponse(result)
 
 
@@ -1583,6 +1531,10 @@ def api_upgrade_all_classes(request, table_id):
         try:
             invalidate_class_variant_cache(table_id)
             invalidate_filter_options_cache(table_id)
+            CacheVersionService.bump('mob_filter', int(table_id))
+            table_client_id = getattr(getattr(_tbl, 'group', None), 'client_id', None)
+            if table_client_id:
+                CacheVersionService.bump('class_section', int(table_client_id))
         except Exception:
             pass
 

@@ -206,96 +206,62 @@ class ClientDashboardService(BaseService):
                     message='Client profile not found'
                 )
 
-            marker = cls._scope_marker(user)
-            counts_version = cls._client_card_counts_version(client.id)
-            staff_version = cls._client_staff_version(client.id)
-            counts_cache_key = cls._dashboard_counts_cache_key(user, client.id, marker, counts_version)
-            cached_meta = cache.get(counts_cache_key)
-
-            if cached_meta is None:
-                tables = list(
-                    cls._get_accessible_tables_qs(user, client)
-                    .only('id', 'group_id', 'fields')
-                )
-                table_ids = [table.id for table in tables]
-                counts = cls._status_template()
-
-                if table_ids:
-                    if PermissionService.is_client_staff(user):
-                        staff = getattr(user, 'staff_profile', None)
-                        unrestricted_table_ids = []
-                        restricted_tables = []
-
-                        if staff is not None:
-                            for table in tables:
-                                allowed_classes, allowed_sections, allowed_branches = ClientCardService._table_scope_filters(staff, table)
-                                if allowed_classes or allowed_sections or allowed_branches:
-                                    restricted_tables.append(table)
-                                else:
-                                    unrestricted_table_ids.append(table.id)
-
-                        if unrestricted_table_ids:
-                            unrestricted_rows = IDCard.objects.filter(
-                                table_id__in=unrestricted_table_ids
-                            ).values('status').annotate(count=Count('id'))
-                            cls._accumulate_status_rows(counts, unrestricted_rows)
-
-                        for table in restricted_tables:
-                            table_cache_key = cls._dashboard_staff_table_counts_cache_key(
-                                user,
-                                table.id,
-                                marker,
-                                counts_version,
-                            )
-                            table_status_map = cache.get(table_cache_key)
-                            if table_status_map is None:
-                                scoped_qs = ClientCardService._apply_client_staff_row_scope(
-                                    user,
-                                    table,
-                                    IDCard.objects.filter(table_id=table.id),
-                                )
-                                table_status_map = {
-                                    row['status']: int(row.get('count', 0) or 0)
-                                    for row in scoped_qs.values('status').annotate(count=Count('id'))
-                                    if row.get('status')
-                                }
-                                cache.set(
-                                    table_cache_key,
-                                    table_status_map,
-                                    cls.STAFF_SCOPED_TABLE_COUNTS_CACHE_TTL,
-                                )
-                            cls._accumulate_status_map(counts, table_status_map)
-                    else:
-                        status_rows = IDCard.objects.filter(
-                            table_id__in=table_ids
-                        ).values('status').annotate(count=Count('id'))
-                        cls._accumulate_status_rows(counts, status_rows)
-
-                cached_meta = {
-                    'counts': counts,
-                    'table_count': len(table_ids),
-                    'group_count': len({table.group_id for table in tables}),
-                }
-                cache.set(counts_cache_key, cached_meta, cls.DASHBOARD_COUNTS_CACHE_TTL)
-
+            tables = list(
+                cls._get_accessible_tables_qs(user, client)
+                .only('id', 'group_id', 'fields')
+            )
+            table_ids = [table.id for table in tables]
             counts = cls._status_template()
-            cls._accumulate_status_map(counts, cached_meta.get('counts', {}))
 
-            table_count = int(cached_meta.get('table_count') or 0)
-            group_count = int(cached_meta.get('group_count') or 0)
+            if table_ids:
+                if PermissionService.is_client_staff(user):
+                    staff = getattr(user, 'staff_profile', None)
+                    unrestricted_table_ids = []
+                    restricted_tables = []
+
+                    if staff is not None:
+                        for table in tables:
+                            allowed_classes, allowed_sections, allowed_branches = ClientCardService._table_scope_filters(staff, table)
+                            if allowed_classes or allowed_sections or allowed_branches:
+                                restricted_tables.append(table)
+                            else:
+                                unrestricted_table_ids.append(table.id)
+
+                    if unrestricted_table_ids:
+                        unrestricted_rows = IDCard.objects.filter(
+                            table_id__in=unrestricted_table_ids
+                        ).values('status').annotate(count=Count('id'))
+                        cls._accumulate_status_rows(counts, unrestricted_rows)
+
+                    for table in restricted_tables:
+                        scoped_qs = ClientCardService._apply_client_staff_row_scope(
+                            user,
+                            table,
+                            IDCard.objects.filter(table_id=table.id),
+                        )
+                        table_status_map = {
+                            row['status']: int(row.get('count', 0) or 0)
+                            for row in scoped_qs.values('status').annotate(count=Count('id'))
+                            if row.get('status')
+                        }
+                        cls._accumulate_status_map(counts, table_status_map)
+                else:
+                    status_rows = IDCard.objects.filter(
+                        table_id__in=table_ids
+                    ).values('status').annotate(count=Count('id'))
+                    cls._accumulate_status_rows(counts, status_rows)
+
+            table_count = len(table_ids)
+            group_count = len({table.group_id for table in tables})
             
             # Total cards - exclude 'pool' status
             total_cards = counts['pending'] + counts['verified'] + counts['approved'] + counts['download']
 
             # Get staff count (client_staff under this client)
-            staff_count_key = cls._staff_count_cache_key(client.id, staff_version)
-            staff_count = cache.get(staff_count_key)
-            if staff_count is None:
-                staff_count = Staff.objects.filter(
-                    client=client,
-                    staff_type='client_staff'
-                ).count()
-                cache.set(staff_count_key, int(staff_count), cls.STAFF_COUNT_CACHE_TTL)
+            staff_count = Staff.objects.filter(
+                client=client,
+                staff_type='client_staff'
+            ).count()
             
             # Use centralized role-aware activity feed so legacy per-card logs are merged.
             recent_activity = ActivityService.get_recent(limit=6, hours=None, user=user)
