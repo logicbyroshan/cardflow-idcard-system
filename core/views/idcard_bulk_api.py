@@ -535,11 +535,12 @@ def api_idcard_reupload_images(request, table_id):
         if not image_field_names:
             return JsonResponse({'success': False, 'message': 'No image fields defined in table!'}, status=400)
         
-        # Get target field from request (optional - defaults to first image field)
-        target_field = request.POST.get('target_field', image_field_names[0])
-        if target_field not in image_field_names:
-            target_field = image_field_names[0]
-        image_fields_to_process = [target_field]
+        # Optional single-field mode via target_field; default is all image fields.
+        target_field = str(request.POST.get('target_field', '') or '').strip()
+        if target_field and target_field in image_field_names:
+            image_fields_to_process = [target_field]
+        else:
+            image_fields_to_process = list(image_field_names)
         
         # Extract photos from ZIP — use temp file if available (avoids OOM on large uploads)
         # Uses strict canonical stem keys for exact matching consistency.

@@ -109,7 +109,13 @@ class BaseService:
         'sign': 'signature',
         'sig': 'signature',
         'signature': 'signature',
+        'qr': 'qr',
+        'qrcode': 'qr',
+        'barcode': 'barcode',
     }
+
+    # Tokens that describe media type, not semantic field identity.
+    _IMAGE_DESCRIPTOR_TOKENS = {'photo', 'image', 'img', 'pic', 'picture'}
 
     @classmethod
     def normalize_image_field_name(cls, name: str) -> str:
@@ -158,6 +164,14 @@ class BaseService:
             if cls.normalize_image_field_name(field) == header_expanded:
                 return field
 
+        # 3b. Relaxed semantic match: ignore generic media tokens so
+        # SIGNATURE matches SIGNATURE PHOTO and QR matches QR CODE PHOTO.
+        header_semantic = cls._semantic_image_match_key(header_expanded)
+        if header_semantic:
+            for field in image_fields:
+                if cls._semantic_image_match_key(field) == header_semantic:
+                    return field
+
         # 4. Levenshtein distance on expanded names
         best_match = None
         best_distance = float('inf')
@@ -170,6 +184,25 @@ class BaseService:
                 best_match = field
 
         return best_match
+
+    @classmethod
+    def _semantic_image_match_key(cls, value: str) -> str:
+        """
+        Build a semantic key for image-field comparison.
+
+        Drops generic media words (photo/image/pic) so headers without suffixes
+        still match configured image columns.
+        """
+        expanded = cls.normalize_image_field_name(value)
+        if not expanded:
+            return ''
+
+        # Normalize common variants before tokenization.
+        normalized = expanded.replace('qr code', 'qr').replace('bar code', 'barcode')
+        tokens = [tok for tok in normalized.split(' ') if tok]
+        semantic_tokens = [tok for tok in tokens if tok not in cls._IMAGE_DESCRIPTOR_TOKENS]
+
+        return ' '.join(semantic_tokens).strip()
 
     @staticmethod
     def normalize_image_identifier(identifier: str) -> str:

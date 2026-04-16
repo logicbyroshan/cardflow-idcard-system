@@ -122,22 +122,38 @@ def process_bulk_upload(task):
         unified_zip_paths = metadata.get('unified_zip_paths', [])
         task_user = getattr(task, 'user', None)
 
-        # Build ZIP index ONCE before the row loop.
-        # Scans every ZIP's central directory a single time so each row can do
-        # an O(1) dict lookup + a direct seek-read instead of iterating all ZIP
-        # entries for every row (the old approach was O(rows × zip_entries)).
-        zip_index = {}  # {normalized_key: (ZipFile_handle, internal_path, ext)}
-        for _zip_rel in list(zip_paths.values()) + list(unified_zip_paths):
+        # Build ZIP indexes ONCE before the row loop.
+        # Field-specific ZIPs are indexed separately to prevent key collisions
+        # across columns (e.g., PHOTO zip and SIGNATURE zip both containing "1.jpg").
+        # Unified ZIPs are indexed into a shared fallback index.
+        field_zip_indexes = {}  # {field_name: {normalized_key: (ZipFile_handle, internal_path, ext)}}
+        unified_zip_index = {}  # {normalized_key: (ZipFile_handle, internal_path, ext)}
+
+        for _field_name, _zip_rel in zip_paths.items():
             _zip_full = os.path.join(settings.MEDIA_ROOT, _zip_rel)
             if not os.path.exists(_zip_full):
                 continue
             try:
                 _zf = zipfile.ZipFile(_zip_full, 'r')
                 open_zip_handles.append(_zf)
-                _populate_zip_index(_zf, zip_index)
-                logger.info("ZIP indexed: %s  keys=%d", _zip_rel, len(zip_index))
+                field_index = {}
+                _populate_zip_index(_zf, field_index)
+                field_zip_indexes[_field_name] = field_index
+                logger.info("Field ZIP indexed: %s (%s)  keys=%d", _zip_rel, _field_name, len(field_index))
             except Exception as _idx_err:
-                logger.warning("Could not index ZIP %s: %s", _zip_rel, _idx_err)
+                logger.warning("Could not index field ZIP %s (%s): %s", _zip_rel, _field_name, _idx_err)
+
+        for _zip_rel in unified_zip_paths:
+            _zip_full = os.path.join(settings.MEDIA_ROOT, _zip_rel)
+            if not os.path.exists(_zip_full):
+                continue
+            try:
+                _zf = zipfile.ZipFile(_zip_full, 'r')
+                open_zip_handles.append(_zf)
+                _populate_zip_index(_zf, unified_zip_index)
+                logger.info("Unified ZIP indexed: %s  keys=%d", _zip_rel, len(unified_zip_index))
+            except Exception as _idx_err:
+                logger.warning("Could not index unified ZIP %s: %s", _zip_rel, _idx_err)
 
         # Process rows in batches
         batch = []
@@ -163,7 +179,9 @@ def process_bulk_upload(task):
                         # Try to find and save image from ZIP (O(1) index lookup)
                         result = _find_and_save_image_from_zips(
                             photo_column_value=photo_column_value,
-                            zip_index=zip_index,
+                            img_field=img_field,
+                            field_zip_indexes=field_zip_indexes,
+                            unified_zip_index=unified_zip_index,
                             client=client,
                             batch_counter=len(batch) + cards_created + 1,
                             uploaded_by=task_user if getattr(task_user, 'is_authenticated', False) else None,
@@ -533,13 +551,23 @@ def _populate_zip_index(zf, index):
             index[key] = (zf, info.filename, ext)
 
 
-def _find_and_save_image_from_zips(photo_column_value, zip_index, client, batch_counter, uploaded_by=None):
+def _find_and_save_image_from_zips(
+    photo_column_value,
+    img_field,
+    field_zip_indexes,
+    unified_zip_index,
+    client,
+    batch_counter,
+    uploaded_by=None,
+):
     """
-    Find an image using the pre-built zip_index and save it.
+    Find an image using pre-built ZIP indexes and save it.
 
-    zip_index is built once before the row loop by _populate_zip_index so
-    this function does an O(1) dict lookup + a single seek-read instead
-    of iterating all ZIP entries for every row.
+    Resolution order:
+    1) Field-specific ZIP index for current image field
+    2) Unified ZIP index fallback
+
+    This prevents collisions where different field ZIPs contain the same key.
     """
     from core.services.base import BaseService
     from core.utils.field_utils import validate_image_bytes
@@ -548,7 +576,15 @@ def _find_and_save_image_from_zips(photo_column_value, zip_index, client, batch_
     if not normalized_key:
         return {'success': False, 'error': 'Invalid photo reference'}
 
-    entry = zip_index.get(normalized_key)
+    entry = None
+
+    field_index = (field_zip_indexes or {}).get(img_field)
+    if field_index:
+        entry = field_index.get(normalized_key)
+
+    if not entry:
+        entry = (unified_zip_index or {}).get(normalized_key)
+
     if not entry:
         return {'success': False, 'error': 'Image not found in any ZIP'}
 

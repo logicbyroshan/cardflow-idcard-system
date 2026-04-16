@@ -143,7 +143,7 @@ def process_reupload_images(task):
             - file_path: Path to saved ZIP file
             - metadata: {
                 'table_id': int,
-                'target_field': str (optional),
+                'target_field': str (optional; when omitted, all image fields are processed),
                 'card_ids': list (optional),
                 'status_filter': str (optional)
             }
@@ -180,11 +180,24 @@ def process_reupload_images(task):
         task.mark_failed("No image fields defined in table")
         return
     
-    # Target field (defaults to first image field)
-    target_field = metadata.get('target_field', image_field_names[0])
-    if target_field not in image_field_names:
-        target_field = image_field_names[0]
-    target_image_fields = [target_field]
+    # Target field resolution:
+    # - explicit target_field (single-field mode)
+    # - optional target_fields list (multi-field mode)
+    # - default: process all image fields
+    requested_target_fields = []
+
+    raw_target_fields = metadata.get('target_fields')
+    if isinstance(raw_target_fields, (list, tuple)):
+        for candidate in raw_target_fields:
+            field_name = str(candidate or '').strip()
+            if field_name and field_name in image_field_names and field_name not in requested_target_fields:
+                requested_target_fields.append(field_name)
+
+    raw_target_field = str(metadata.get('target_field', '') or '').strip()
+    if raw_target_field and raw_target_field in image_field_names and raw_target_field not in requested_target_fields:
+        requested_target_fields.append(raw_target_field)
+
+    target_image_fields = requested_target_fields or list(image_field_names)
     
     # Get cards to process
     card_ids = metadata.get('card_ids', [])

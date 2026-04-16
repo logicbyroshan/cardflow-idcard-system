@@ -107,7 +107,7 @@ def _validate_uploaded_file(uploaded_file, allowed_extensions, max_size, label='
 
 def _parse_reupload_scope_payload(request):
     """Parse reupload scope payload from request.POST in a safe, normalized form."""
-    target_field = str(request.POST.get('target_field', '') or '').strip()
+    target_field = str(request.POST.get('target_field', '') or '').strip() or None
 
     card_ids = []
     if 'card_ids' in request.POST:
@@ -802,7 +802,7 @@ def api_create_reupload_task(request, table_id):
     
     Request:
         - photos_zip: ZIP file with images (required)
-        - target_field: Target image field name (optional)
+        - target_field: Target image field name (optional; if omitted, all image fields are processed)
         - card_ids: JSON array of card IDs to limit scope (optional)
         - status: Status filter (optional)
     

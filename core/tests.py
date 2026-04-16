@@ -679,6 +679,108 @@ class DiskBackedImageStoreTests(TestCase):
         self.assertIsNone(store.get('k'))
 
 
+class BulkUploadImageHeaderMappingTests(SimpleTestCase):
+    def test_image_headers_match_without_photo_suffix(self):
+        from core.services.bulk_upload_processor import _map_headers_to_fields
+
+        headers = ['NAME', 'PHOTO', 'SIGNATURE', 'MOTHER', 'FATHER', 'QR']
+        table_fields = ['NAME']
+        image_fields = ['PHOTO', 'SIGNATURE PHOTO', 'MOTHER PHOTO', 'FATHER PHOTO', 'QR CODE']
+
+        header_to_field, image_ref_columns = _map_headers_to_fields(
+            headers,
+            table_fields,
+            image_fields,
+            all_table_fields=[],
+            frontend_mapping=None,
+        )
+
+        self.assertEqual(header_to_field.get(0), 'NAME')
+        self.assertEqual(image_ref_columns.get('PHOTO'), 1)
+        self.assertEqual(image_ref_columns.get('SIGNATURE PHOTO'), 2)
+        self.assertEqual(image_ref_columns.get('MOTHER PHOTO'), 3)
+        self.assertEqual(image_ref_columns.get('FATHER PHOTO'), 4)
+        self.assertEqual(image_ref_columns.get('QR CODE'), 5)
+
+
+class BulkUploadZipFieldIsolationTests(SimpleTestCase):
+    class _FakeZip:
+        def __init__(self, payload_by_path):
+            self.payload_by_path = payload_by_path
+
+        def read(self, path):
+            return self.payload_by_path[path]
+
+    @patch('core.utils.field_utils.validate_image_bytes', return_value=(True, None))
+    @patch('core.services.bulk_upload_processor._save_extracted_image')
+    def test_field_specific_zip_preferred_for_same_key(self, mock_save, _mock_validate):
+        from core.services.bulk_upload_processor import _find_and_save_image_from_zips
+
+        photo_zip = self._FakeZip({'PHOTO/1.jpg': b'photo-bytes'})
+        sign_zip = self._FakeZip({'SIGN/1.jpg': b'sign-bytes'})
+
+        def _save_side_effect(result, client, batch_counter, uploaded_by=None):
+            payload = result['bytes']
+            if payload == b'photo-bytes':
+                return {'success': True, 'path': 'adarshimg/photo.jpg'}
+            if payload == b'sign-bytes':
+                return {'success': True, 'path': 'adarshimg/sign.jpg'}
+            return {'success': False, 'error': 'unexpected payload'}
+
+        mock_save.side_effect = _save_side_effect
+
+        field_zip_indexes = {
+            'PHOTO': {'1': (photo_zip, 'PHOTO/1.jpg', '.jpg')},
+            'SIGN': {'1': (sign_zip, 'SIGN/1.jpg', '.jpg')},
+        }
+
+        photo_result = _find_and_save_image_from_zips(
+            photo_column_value='1',
+            img_field='PHOTO',
+            field_zip_indexes=field_zip_indexes,
+            unified_zip_index={},
+            client=None,
+            batch_counter=1,
+            uploaded_by=None,
+        )
+        sign_result = _find_and_save_image_from_zips(
+            photo_column_value='1',
+            img_field='SIGN',
+            field_zip_indexes=field_zip_indexes,
+            unified_zip_index={},
+            client=None,
+            batch_counter=2,
+            uploaded_by=None,
+        )
+
+        self.assertTrue(photo_result['success'])
+        self.assertEqual(photo_result['path'], 'adarshimg/photo.jpg')
+        self.assertTrue(sign_result['success'])
+        self.assertEqual(sign_result['path'], 'adarshimg/sign.jpg')
+
+    @patch('core.utils.field_utils.validate_image_bytes', return_value=(True, None))
+    @patch('core.services.bulk_upload_processor._save_extracted_image')
+    def test_unified_zip_used_when_field_specific_missing(self, mock_save, _mock_validate):
+        from core.services.bulk_upload_processor import _find_and_save_image_from_zips
+
+        unified_zip = self._FakeZip({'ALL/ABC.jpg': b'unified-bytes'})
+
+        mock_save.return_value = {'success': True, 'path': 'adarshimg/unified.jpg'}
+
+        result = _find_and_save_image_from_zips(
+            photo_column_value='abc',
+            img_field='SIGN',
+            field_zip_indexes={'PHOTO': {}},
+            unified_zip_index={'ABC': (unified_zip, 'ALL/ABC.jpg', '.jpg')},
+            client=None,
+            batch_counter=1,
+            uploaded_by=None,
+        )
+
+        self.assertTrue(result['success'])
+        self.assertEqual(result['path'], 'adarshimg/unified.jpg')
+
+
 # ── Permission Tests ──
 class PermissionTests(TestCase):
     def setUp(self):
@@ -2828,6 +2930,48 @@ class ReuploadDirectTaskFlowTests(TestCase):
         self.assertEqual(mock_resolve.call_count, 1)
         self.assertEqual(mock_resolve.call_args.args[0], '20240101121212')
 
+    def test_sync_reupload_processes_all_image_fields_when_target_missing(self):
+        self.client.login(username='reupload-admin@test.com', password='adminpass1')
+
+        _group, table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+            {'name': 'SIGN', 'type': 'photo', 'order': 3},
+        ])
+        card = _create_card(
+            table,
+            field_data={
+                'NAME': 'TARGET USER',
+                'PHOTO': 'adarshimg/20240101121212.jpg',
+                'SIGN': 'adarshimg/20240202131313.jpg',
+            },
+            status='pending',
+        )
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'photo-bytes')
+            zf.writestr('SIGN/20240202131313.jpg', b'sign-bytes')
+        upload = SimpleUploadedFile('reupload.zip', buf.getvalue(), content_type='application/zip')
+
+        with patch('core.views.idcard_bulk_api.validate_image_bytes', return_value=(True, None)), \
+             patch('core.views.idcard_bulk_api._resolve_reupload_photo', return_value=None) as mock_resolve:
+            response = self.client.post(
+                f'/panel/api/table/{table.id}/cards/reupload-images/',
+                data={
+                    'photos_zip': upload,
+                    'card_ids': json.dumps([card.id]),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        self.assertEqual(mock_resolve.call_count, 2)
+        self.assertCountEqual(
+            [call.args[0] for call in mock_resolve.call_args_list],
+            ['20240101121212', '20240202131313'],
+        )
+
     def test_async_reupload_processor_processes_only_requested_target_field(self):
         from core.models import BackgroundTask
         from core.services.reupload_processor import process_reupload_images
@@ -2872,6 +3016,54 @@ class ReuploadDirectTaskFlowTests(TestCase):
         self.assertEqual(task.status, 'completed')
         self.assertEqual(mock_resolve.call_count, 1)
         self.assertEqual(mock_resolve.call_args.args[0], '20240101121212')
+
+    def test_async_reupload_processor_processes_all_image_fields_when_target_missing(self):
+        from core.models import BackgroundTask
+        from core.services.reupload_processor import process_reupload_images
+
+        _group, table = _create_table(self.client_obj, fields=[
+            {'name': 'NAME', 'type': 'text', 'order': 1},
+            {'name': 'PHOTO', 'type': 'photo', 'order': 2},
+            {'name': 'SIGN', 'type': 'photo', 'order': 3},
+        ])
+        card = _create_card(
+            table,
+            field_data={
+                'NAME': 'ASYNC TARGET USER',
+                'PHOTO': 'adarshimg/20240101121212.jpg',
+                'SIGN': 'adarshimg/20240202131313.jpg',
+            },
+            status='pending',
+        )
+
+        temp_dir = os.path.join(self._tmp_media.name, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        zip_abs_path = os.path.join(temp_dir, 'async-reupload-all-fields.zip')
+        with zipfile.ZipFile(zip_abs_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr('PHOTO/20240101121212.jpg', b'photo-bytes')
+            zf.writestr('SIGN/20240202131313.jpg', b'sign-bytes')
+
+        task = BackgroundTask.objects.create(
+            user=self.admin,
+            task_type='reupload_images',
+            file_path=os.path.relpath(zip_abs_path, self._tmp_media.name),
+            metadata={
+                'table_id': table.id,
+                'card_ids': [card.id],
+            },
+        )
+
+        with patch('core.services.reupload_processor._run_reupload_preflight', return_value={}), \
+             patch('core.services.reupload_processor._resolve_reupload_zip_entry', return_value=None) as mock_resolve:
+            process_reupload_images(task)
+
+        task.refresh_from_db()
+        self.assertEqual(task.status, 'completed')
+        self.assertEqual(mock_resolve.call_count, 2)
+        self.assertCountEqual(
+            [call.args[0] for call in mock_resolve.call_args_list],
+            ['20240101121212', '20240202131313'],
+        )
 
     def test_bulk_upload_task_cleans_temp_files_when_zip_validation_fails(self):
         self.client.login(username='reupload-admin@test.com', password='adminpass1')
