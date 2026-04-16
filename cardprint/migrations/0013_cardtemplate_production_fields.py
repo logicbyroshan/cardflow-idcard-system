@@ -5,6 +5,11 @@ from django.db.models import Q
 
 class Migration(migrations.Migration):
 
+    # PostgreSQL can raise "cannot ALTER TABLE ... because it has pending
+    # trigger events" when this migration updates rows and then adds
+    # constraints on the same table within one transaction.
+    atomic = False
+
     dependencies = [
         ('cardprint', '0012_alter_cardtemplate_template_json'),
     ]
