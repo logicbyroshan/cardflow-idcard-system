@@ -57,6 +57,7 @@ class IDCardCardService(BaseService):
             table_id = int(getattr(table, 'id', 0) or 0)
             if table_id > 0:
                 CacheVersionService.bump('mob_filter', table_id)
+                CacheVersionService.bump('global_search', 'all')
 
             client_id = int(getattr(getattr(table, 'group', None), 'client_id', 0) or 0)
             if client_id > 0:

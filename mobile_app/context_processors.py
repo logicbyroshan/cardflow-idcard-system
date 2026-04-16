@@ -19,7 +19,6 @@ This fixes:
 """
 
 import logging
-from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -49,29 +48,9 @@ def mobile_globals(request):
 
     # ── Unread notification count (cached 30s per user) ──────────────────────
     try:
-        notif_cache_key = f'mobile:notif_count:{user.pk}'
-        notif_count = cache.get(notif_cache_key)
-        if notif_count is None:
-            from core.models import Notification
-            from django.db.models import Q
-            from django.utils import timezone
+        from core.services.notification_service import NotificationService
 
-            now = timezone.now()
-            visible_notifications = (
-                Notification.objects
-                .filter(
-                    Q(target='all') | Q(target=role) | Q(target='selected', target_users=user),
-                    is_active=True,
-                )
-                .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
-                .distinct()
-            )
-            notif_count = min(
-                visible_notifications.exclude(reads__user=user).count(),
-                99,
-            )
-            cache.set(notif_cache_key, notif_count, 30)
-        ctx['notification_count'] = notif_count
+        ctx['notification_count'] = min(NotificationService.get_unread_count(user), 99)
     except Exception:
         logger.exception(
             'mobile_globals: notification_count query failed for user %s', user.pk,

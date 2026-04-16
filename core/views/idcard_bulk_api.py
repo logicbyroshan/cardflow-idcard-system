@@ -272,6 +272,7 @@ def api_idcard_bulk_upload(request, table_id):
             try:
                 CacheVersionService.bump('mob_filter', int(table.id))
                 CacheVersionService.bump('class_section', int(table.group.client_id))
+                CacheVersionService.bump('global_search', 'all')
             except Exception:
                 pass
         

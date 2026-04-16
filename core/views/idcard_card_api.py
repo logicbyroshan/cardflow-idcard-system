@@ -1532,6 +1532,7 @@ def api_upgrade_all_classes(request, table_id):
             invalidate_class_variant_cache(table_id)
             invalidate_filter_options_cache(table_id)
             CacheVersionService.bump('mob_filter', int(table_id))
+            CacheVersionService.bump('global_search', 'all')
             table_client_id = getattr(getattr(_tbl, 'group', None), 'client_id', None)
             if table_client_id:
                 CacheVersionService.bump('class_section', int(table_client_id))

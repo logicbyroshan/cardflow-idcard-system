@@ -119,6 +119,7 @@ class IDCardBulkService(BaseService):
                 try:
                     CacheVersionService.bump('mob_filter', int(table.id))
                     CacheVersionService.bump('class_section', int(table.group.client_id))
+                    CacheVersionService.bump('global_search', 'all')
                 except Exception as exc:
                     logger.debug('IDCardBulkService cache version bump failed: %s', exc)
 

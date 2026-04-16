@@ -21,6 +21,7 @@ from django.db.models import Q
 from django.db import transaction, DatabaseError
 from django.shortcuts import get_object_or_404
 from client.models import Client as PanelClient
+from core.services.cache_version_service import CacheVersionService
 
 from .models import (
     BusinessDetails, ContactSubmission, Feature, HeroImage,
@@ -96,9 +97,14 @@ def _parse_bool(value, default=False):
 
 def _invalidate_public_section_caches():
     """Invalidate public website section caches after content mutations."""
+    cache.delete('home_hero_images')
     cache.delete('home_sections')
     cache.delete('business_details')
     cache.delete('website:why_choose_us:sections')
+    try:
+        CacheVersionService.bump('website_public_sections', 'public')
+    except Exception as exc:
+        logger.debug('Website public cache version bump failed: %s', exc)
 
 
 def _detect_orientation(image_file):
@@ -322,7 +328,7 @@ class WebsiteClientLogoService:
                 client.save()
 
         if dirty:
-            cache.delete('home_sections')
+            _invalidate_public_section_caches()
         return client
 
 

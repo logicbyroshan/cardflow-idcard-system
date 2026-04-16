@@ -249,20 +249,6 @@ def api_messages_drawer(request):
                 )
             )
         )
-        .select_related('client', 'sent_by')
-        .only(
-            'id',
-            'notification_id',
-            'message',
-            'scope',
-            'visibility',
-            'expires_at',
-            'created_at',
-            'client__name',
-            'sent_by__first_name',
-            'sent_by__last_name',
-            'sent_by__username',
-        )
         .order_by('-created_at')
     )
 
@@ -272,7 +258,23 @@ def api_messages_drawer(request):
     )
     total_count = int(counts.get('total_count') or 0)
     unread_count = int(counts.get('unread_count') or 0)
-    rows = list(base_qs[:limit])
+    rows = list(
+        base_qs
+        .select_related('sent_by')
+        .only(
+            'id',
+            'notification_id',
+            'message',
+            'scope',
+            'visibility',
+            'expires_at',
+            'created_at',
+            'sent_by__first_name',
+            'sent_by__last_name',
+            'sent_by__username',
+        )[:limit]
+    )
+    client_name = client.name
 
     items = []
     for row in rows:
@@ -289,7 +291,7 @@ def api_messages_drawer(request):
             'expires_at': row.expires_at.isoformat() if row.expires_at else None,
             'created_at': row.created_at.isoformat(),
             'sent_by_name': sender_name,
-            'client_name': row.client.name if row.client_id else '',
+            'client_name': client_name,
             'is_read': bool(getattr(row, 'is_read', False)),
         })
 
@@ -299,7 +301,7 @@ def api_messages_drawer(request):
         'total_count': total_count,
         'unread_count': unread_count,
     }
-    cache.set(cache_key, payload, 8)
+    cache.set(cache_key, payload, 90)
     return JsonResponse(payload)
 
 

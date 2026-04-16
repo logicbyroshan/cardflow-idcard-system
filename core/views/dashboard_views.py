@@ -22,6 +22,7 @@ from idcards.models import IDCard, IDCardTable
 from ..models import User
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
+from ..services.cache_version_service import CacheVersionService
 from ..services.live_presence_service import LiveClientPresenceService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
@@ -38,6 +39,7 @@ from .base_helpers import (
 )
 
 logger = logging.getLogger(__name__)
+GLOBAL_SEARCH_CACHE_TTL = 120
 _ACTIVITY_STATUS_TO_QUERY = {
     'pending': 'pending',
     'verified': 'verified',
@@ -1030,7 +1032,8 @@ def api_global_search(request):
 
         user = request.user
         scope_sig = f'table:{scoped_table_id}' if scoped_table_id else 'all'
-        cache_key = f'global-search:{user.id}:{scope_sig}:{filter_type}:{query.lower()}'
+        search_version = CacheVersionService.get('global_search', 'all')
+        cache_key = f'global-search:v2:{search_version}:{user.id}:{scope_sig}:{filter_type}:{query.lower()}'
         cached = cache.get(cache_key)
         if cached is not None:
             return JsonResponse(cached)
@@ -1090,7 +1093,7 @@ def api_global_search(request):
                 'count': 0,
                 'query': query,
             }
-            cache.set(cache_key, payload, 30)
+            cache.set(cache_key, payload, GLOBAL_SEARCH_CACHE_TTL)
             return JsonResponse(payload)
 
         table_ids = sorted({card.table_id for card in cards if card.table_id})
@@ -1259,7 +1262,7 @@ def api_global_search(request):
             'count': len(results),
             'query': query
         }
-        cache.set(cache_key, payload, 30)
+        cache.set(cache_key, payload, GLOBAL_SEARCH_CACHE_TTL)
         return JsonResponse(payload)
     except Exception as e:
         logger.exception('api_global_search error: %s', e)

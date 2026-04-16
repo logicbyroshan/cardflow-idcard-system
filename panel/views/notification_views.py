@@ -38,9 +38,16 @@ def api_notifications_list(request):
     except (ValueError, TypeError):
         limit, offset = 20, 0
     unread_only = request.GET.get('unread_only', '').lower() == 'true'
+    include_expired = request.GET.get('include_expired', '').lower() == 'true'
+    if unread_only:
+        include_expired = False
 
     data = NotificationService.get_notifications_for_user(
-        user=request.user, limit=limit, offset=offset, unread_only=unread_only,
+        user=request.user,
+        limit=limit,
+        offset=offset,
+        unread_only=unread_only,
+        include_expired=include_expired,
     )
     return JsonResponse({'success': True, **data})
 

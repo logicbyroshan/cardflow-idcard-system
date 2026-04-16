@@ -3347,6 +3347,7 @@ def api_card_add(request, table_id):
         try:
             CacheVersionService.bump('mob_filter', int(table.id))
             CacheVersionService.bump('class_section', int(table.group.client_id))
+            CacheVersionService.bump('global_search', 'all')
         except Exception:
             pass
 
@@ -3482,6 +3483,7 @@ def api_table_update_fields(request, table_id):
         try:
             CacheVersionService.bump('mob_filter', int(table.id))
             CacheVersionService.bump('class_section', int(table.group.client_id))
+            CacheVersionService.bump('global_search', 'all')
         except Exception:
             pass
 
@@ -3863,6 +3865,7 @@ def api_card_delete(request, card_id):
                 CacheVersionService.bump('mob_filter', int(table_id_for_cache))
                 if client_id_for_cache:
                     CacheVersionService.bump('class_section', int(client_id_for_cache))
+                CacheVersionService.bump('global_search', 'all')
             except Exception:
                 pass
             try:
@@ -3884,6 +3887,10 @@ def api_card_delete(request, card_id):
 
             card.status = 'pool'
             card.save(update_fields=['status'])
+            try:
+                CacheVersionService.bump('global_search', 'all')
+            except Exception:
+                pass
             return JsonResponse({'success': True, 'message': 'Card moved to pool'})
     except Exception:
         logger.exception('Card delete error')

@@ -14,6 +14,7 @@ from django.urls import resolve, Resolver404
 import logging
 
 from accounts.rate_limit import rate_limit
+from core.services.cache_version_service import CacheVersionService
 from .services import TestimonialService, ContactSubmissionService
 from client.models import Client as PanelClient
 
@@ -40,8 +41,14 @@ CATEGORY_MODAL_INITIAL_LIMIT = 15
 CATEGORY_MODAL_MAX_LIMIT = 30
 REELS_INITIAL_LIMIT = 10
 BUSINESS_CACHE_TTL = 300  # 5 minutes
-WHY_CHOOSE_US_CACHE_KEY = 'website:why_choose_us:sections'
 WHY_CHOOSE_US_CACHE_TTL = 300
+WEBSITE_PUBLIC_CACHE_SCOPE = 'public'
+
+
+def _website_public_cache_key(bucket):
+    """Build versioned cache keys for public website sections."""
+    version = CacheVersionService.get('website_public_sections', WEBSITE_PUBLIC_CACHE_SCOPE)
+    return f'website:{bucket}:v{version}'
 
 # Public bento overrides.
 # Removed from bento: school-stationery, office-stationery
@@ -74,10 +81,11 @@ def get_common_context():
     Returns global data required by the navbar and footer on every page.
     Caches BusinessDetails for 5 minutes to avoid querying on every page load.
     """
-    business = cache.get('business_details')
+    business_cache_key = _website_public_cache_key('business_details')
+    business = cache.get(business_cache_key)
     if business is None:
         business = BusinessDetails.objects.first()
-        cache.set('business_details', business, BUSINESS_CACHE_TTL)
+        cache.set(business_cache_key, business, BUSINESS_CACHE_TTL)
 
     return {
         'business': business,
@@ -290,15 +298,17 @@ def home(request):
     """Homepage: Displays a summary of all sections"""
     context = get_common_context()
     
-    # Dynamic hero images (cached 60s)
-    hero_images = cache.get('home_hero_images')
+    # Dynamic hero images (cached 60s with versioned key)
+    hero_cache_key = _website_public_cache_key('home_hero_images')
+    hero_images = cache.get(hero_cache_key)
     if hero_images is None:
         hero_images = list(HeroImage.objects.filter(is_active=True).order_by('order', 'pk'))
-        cache.set('home_hero_images', hero_images, 60)
+        cache.set(hero_cache_key, hero_images, 60)
     context['hero_images'] = hero_images
     
-    # Website section data (cached 60s)
-    home_sections = cache.get('home_sections')
+    # Website section data (cached 60s with versioned key)
+    home_sections_cache_key = _website_public_cache_key('home_sections')
+    home_sections = cache.get(home_sections_cache_key)
     if home_sections is None:
         image_products_filter = Q(item_type='image') & Q(image__isnull=False) & ~Q(image='')
         home_sections = {
@@ -311,19 +321,21 @@ def home(request):
             ),
             'featured_portfolio': list(
                 PortfolioItem.objects
+                .select_related('category')
                 .filter(is_active=True, is_featured=True)
                 .filter(image_products_filter)
                 .order_by('order')
             ),
             'recent_portfolio': list(
                 PortfolioItem.objects
+                .select_related('category')
                 .filter(is_active=True)
                 .filter(image_products_filter)
                 .order_by('-created_at')[:HOME_RECENT_PORTFOLIO_LIMIT]
             ),
             'testimonials': list(Testimonial.objects.filter(is_active=True).order_by('-review_date')[:HOME_TESTIMONIALS_LIMIT]),
         }
-        cache.set('home_sections', home_sections, 60)
+        cache.set(home_sections_cache_key, home_sections, 60)
     context.update(home_sections)
 
     # Build a randomized, mixed-category stream for both product rows.
@@ -554,7 +566,8 @@ def load_more_reels(request):
 def why_choose_us(request):
     """About/Features Page"""
     context = get_common_context()
-    why_sections = cache.get(WHY_CHOOSE_US_CACHE_KEY)
+    why_cache_key = _website_public_cache_key('why_choose_us_sections')
+    why_sections = cache.get(why_cache_key)
     if why_sections is None:
         why_sections = {
             'features': list(
@@ -563,7 +576,7 @@ def why_choose_us(request):
                 .order_by('order')
             ),
         }
-        cache.set(WHY_CHOOSE_US_CACHE_KEY, why_sections, WHY_CHOOSE_US_CACHE_TTL)
+        cache.set(why_cache_key, why_sections, WHY_CHOOSE_US_CACHE_TTL)
     context.update(why_sections)
     return render(request, 'website/why-choose-us.html', context)
 

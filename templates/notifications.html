@@ -201,7 +201,7 @@
 
   function loadPage(append) {
     if (!append) pageOffset = 0;
-    fetch(`/api/notifications/list/?limit=${PAGE_LIMIT}&offset=${pageOffset}`)
+    fetch(`/api/notifications/list/?limit=${PAGE_LIMIT}&offset=${pageOffset}&include_expired=true`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data || !data.success) return;

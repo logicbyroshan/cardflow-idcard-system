@@ -149,6 +149,14 @@ class PanelNotificationApiTests(PanelBaseTestCase):
             created_by=self.super_admin,
         )
         self.notif_selected.target_users.add(self.client_user)
+        self.notif_expired = Notification.objects.create(
+            title='Expired notice',
+            message='Should stay in history only',
+            target='selected',
+            created_by=self.super_admin,
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        self.notif_expired.target_users.add(self.client_user)
 
     def test_user_notifications_list_returns_visible_entries(self):
         self.client.login(username='panel-client@test.com', password='pass1234')
@@ -161,6 +169,28 @@ class PanelNotificationApiTests(PanelBaseTestCase):
         self.assertIn(self.notif_all.id, returned_ids)
         self.assertIn(self.notif_client.id, returned_ids)
         self.assertIn(self.notif_selected.id, returned_ids)
+
+    def test_user_notifications_list_hides_expired_by_default(self):
+        self.client.login(username='panel-client@test.com', password='pass1234')
+
+        response = self.client.get('/panel/api/notifications/list/?limit=20&offset=0')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        returned_ids = {item['id'] for item in payload['notifications']}
+        self.assertNotIn(self.notif_expired.id, returned_ids)
+
+    def test_user_notifications_history_includes_expired_when_requested(self):
+        self.client.login(username='panel-client@test.com', password='pass1234')
+
+        response = self.client.get('/panel/api/notifications/list/?limit=20&offset=0&include_expired=true')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+
+        returned_ids = {item['id'] for item in payload['notifications']}
+        self.assertIn(self.notif_expired.id, returned_ids)
 
     def test_mark_read_updates_unread_count(self):
         self.client.login(username='panel-client@test.com', password='pass1234')

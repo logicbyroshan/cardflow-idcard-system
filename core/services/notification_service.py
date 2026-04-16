@@ -132,16 +132,24 @@ class NotificationService:
 
     @classmethod
     def get_notifications_for_user(cls, user, limit=20, offset=0,
-                                   unread_only=False):
+                                   unread_only=False, include_expired=False):
         """
         Get notifications visible to a user, annotated with read status.
+
+        Args:
+            user: Request user.
+            limit: Max rows to return.
+            offset: Pagination offset.
+            unread_only: If True, return only unread items.
+            include_expired: If True, include expired notifications in results.
 
         Returns list of dicts with 'is_read' flag and 'time_ago' string.
         """
         now = timezone.now()
-        qs = Notification.objects.filter(is_active=True).filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
-        ).select_related('created_by')
+        qs = Notification.objects.filter(is_active=True)
+        if not include_expired:
+            qs = qs.filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        qs = qs.select_related('created_by')
 
         # Filter by target scope
         role_filter = Q(target='all') | Q(target=user.role)
@@ -178,11 +186,12 @@ class NotificationService:
     def get_unread_count(cls, user):
         """Fast count of unread notifications for badge display.
         
-        Cached per user for 30 s — this endpoint is polled on every page load.
-        Cache is invalidated immediately when the user marks notifications read.
+        Cached per user with version keys (global + user scopes).
+        Invalidated immediately on notification create/read operations.
         """
         global_version = CacheVersionService.get('notif_global', 'all')
-        cache_key = f'notif_unread:{user.pk}:v{global_version}'
+        user_version = CacheVersionService.get('client_messages_drawer_user', f'user:{int(user.pk)}')
+        cache_key = f'notif_unread:{user.pk}:gv{global_version}:uv{user_version}'
         cached = _cache.get(cache_key)
         if cached is not None:
             return cached
@@ -197,7 +206,7 @@ class NotificationService:
         qs = qs.filter(role_filter | selected_filter).distinct()
 
         count = qs.exclude(reads__user=user).count()
-        _cache.set(cache_key, count, 30)
+        _cache.set(cache_key, count, 120)
         return count
 
     # ── read tracking ───────────────────────────────────────
@@ -206,11 +215,14 @@ class NotificationService:
     def _invalidate_user_notification_caches(cls, user_id):
         if not user_id:
             return
+        user_id_int = int(user_id)
         global_version = CacheVersionService.get('notif_global', 'all')
-        _cache.delete(f'notif_unread:{user_id}:v{global_version}')
+        user_version = CacheVersionService.get('client_messages_drawer_user', f'user:{user_id_int}')
+        _cache.delete(f'notif_unread:{user_id_int}:gv{global_version}:uv{user_version}')
+        _cache.delete(f'notif_unread:{user_id_int}:v{global_version}')
         # Backward-compatible cleanup for any legacy key readers.
-        _cache.delete(f'notif_unread:{user_id}')
-        CacheVersionService.bump('client_messages_drawer_user', f'user:{int(user_id)}')
+        _cache.delete(f'notif_unread:{user_id_int}')
+        CacheVersionService.bump('client_messages_drawer_user', f'user:{user_id_int}')
 
     @classmethod
     def _invalidate_users_notification_caches(cls, user_ids):
@@ -237,11 +249,8 @@ class NotificationService:
 
     @classmethod
     def mark_all_as_read(cls, user):
-        """Mark all visible notifications as read for a user."""
-        now = timezone.now()
-        qs = Notification.objects.filter(is_active=True).filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
-        )
+        """Mark all user-visible notifications as read, including historical expired items."""
+        qs = Notification.objects.filter(is_active=True)
         role_filter = Q(target='all') | Q(target=user.role)
         selected_filter = Q(target='selected', target_users=user)
         qs = qs.filter(role_filter | selected_filter).distinct()

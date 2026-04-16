@@ -535,6 +535,7 @@ class WorkflowService:
         try:
             client_id = getattr(getattr(table, 'group', None), 'client_id', None)
             CacheVersionService.bump('dash_rcu', 'global')
+            CacheVersionService.bump('global_search', 'all')
             if client_id:
                 CacheVersionService.bump('client_dash_counts', f'client:{int(client_id)}')
         except Exception as exc:
