@@ -1,5 +1,5 @@
 {
-    "generated_on":  "2026-04-11",
+    "generated_on":  "2026-04-16",
     "branch":  "feature/mobile-pwa-shell-phase1",
     "notes":  "Phase 1 critical template hash baseline for visual drift detection.",
     "templates":  [
@@ -17,7 +17,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/list_page.html",
-                          "sha256":  "405B240168F092B5681F452D9C89E57F7F68C2A5E4D90CD6548711C6D4014648"
+                          "sha256":  "D7AE567D1DE1D0CDFADB5DF4319332C2AFF285D811B1CD3B598C7B2904DC384B"
                       },
                       {
                           "path":  "templates/mobile_app/card_detail.html",
@@ -41,7 +41,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/partials/add_form_sheet.html",
-                          "sha256":  "E72CB3C1E23C665D030DB41AC67EB0BA5ABAB02EDFEDD4E27E1E70C3D8BA65DA"
+                          "sha256":  "EE6E223A9F7F39CB95916E1ADD2925B8453712529F5EB1A9E46ED43C6E49B5DE"
                       }
                   ]
 }

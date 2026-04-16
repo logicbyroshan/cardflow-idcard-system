@@ -1197,11 +1197,8 @@ function listApp() {
         },
 
         _fieldInputType(field) {
-            const t = this._normalizeFieldType(field?.type);
-            if (t === 'number') return 'number';
-            if (t === 'date') return 'date';
-            if (t === 'textarea') return 'textarea';
-            if (t === 'select') return 'select';
+            // Mobile requirement: every non-image field is a plain text input.
+            // Image fields are handled separately via image slots, not dynamic inputs.
             return 'text';
         },
 

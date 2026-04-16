@@ -139,41 +139,13 @@
                         <span class="text-red-400" x-show="field.mandatory">*</span>
                     </label>
 
-                    <template x-if="_fieldInputType(field) === 'textarea'">
-                        <textarea x-model="form.dynamicValues[field.name]" rows="2"
-                            :readonly="viewMode"
-                            :placeholder="'Enter ' + _fieldLabel(field.name)"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition resize-none"></textarea>
-                    </template>
-
-                    <template x-if="_fieldInputType(field) === 'select' && _fieldOptions(field).length">
-                        <select x-model="form.dynamicValues[field.name]"
-                            :disabled="viewMode"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition appearance-none">
-                            <option value="">Select</option>
-                            <template x-for="opt in _fieldOptions(field)" :key="field.name + '-opt-' + opt">
-                                <option :value="opt" x-text="opt"></option>
-                            </template>
-                        </select>
-                    </template>
-
-                    <template x-if="_fieldInputType(field) !== 'textarea' && !(_fieldInputType(field) === 'select' && _fieldOptions(field).length)">
-                        <input :type="_fieldInputType(field) === 'date' ? 'date' : (_fieldInputType(field) === 'number' ? 'number' : 'text')"
-                            x-model="form.dynamicValues[field.name]"
-                            :list="_isClassField(field) ? 'class-options' : (_isSectionField(field) ? 'section-options' : '')"
-                            :readonly="viewMode"
-                            :placeholder="'Enter ' + _fieldLabel(field.name)"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
-                    </template>
+                    <input type="text"
+                        x-model="form.dynamicValues[field.name]"
+                        :readonly="viewMode"
+                        :placeholder="'Enter ' + _fieldLabel(field.name)"
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
             </template>
-
-            <datalist id="class-options">
-                {% for cls in classes %}<option value="{{ cls }}">{% endfor %}
-            </datalist>
-            <datalist id="section-options">
-                {% for sec in sections %}<option value="{{ sec }}">{% endfor %}
-            </datalist>
 
             <!-- Submit Buttons -->
             <div class="sticky bottom-0 z-20 flex gap-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] bg-white/95 backdrop-blur-sm border-t border-gray-100" x-show="!viewMode">

@@ -1962,6 +1962,14 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn(':disabled="addFormSubmitting"', html)
 		self.assertIn("fa-spinner fa-spin", html)
 
+	def test_add_form_sheet_non_image_fields_are_plain_text_inputs(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'add_form_sheet.html'
+		html = template_path.read_text(encoding='utf-8')
+		self.assertIn('<input type="text"', html)
+		self.assertNotIn("=== 'select'", html)
+		self.assertNotIn('<datalist id="class-options">', html)
+		self.assertNotIn('<datalist id="section-options">', html)
+
 	def test_mobile_list_toast_is_above_modal_layers(self):
 		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'list_toast.html'
 		html = template_path.read_text(encoding='utf-8')
