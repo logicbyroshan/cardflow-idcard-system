@@ -1069,8 +1069,7 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		markers = [
 			'x-data="cameraApp()"',
 			'Capture Photo',
-			'new Cropper(',
-			'@click="applyCrop()"',
+			'@click="retakePhoto()"',
 			'@click="savePhoto()"',
 		]
 
@@ -1081,6 +1080,8 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 			response = self.client.get(f'/app/camera/{self.table.id}/')
 			self.assertEqual(response.status_code, 200, msg=f'{role_name} camera view should load')
 			content = response.content.decode('utf-8')
+			self.assertNotIn('new Cropper(', content)
+			self.assertNotIn('@click="applyCrop()"', content)
 
 			presence = {marker: (marker in content) for marker in markers}
 			if baseline is None:
@@ -1839,7 +1840,8 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		html = template_path.read_text(encoding='utf-8')
 		self.assertIn('x-for="fieldName in imageFormFields"', html)
 		self.assertIn('@click="if(!viewMode) startImageSelection(fieldName)"', html)
-		self.assertIn('@click="openCropForField(fieldName)"', html)
+		self.assertNotIn('@click="openCropForField(fieldName)"', html)
+		self.assertNotIn('showCropModal', html)
 
 	def test_home_and_groups_templates_keep_sections_open_by_default(self):
 		base = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app'

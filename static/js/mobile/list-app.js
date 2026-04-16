@@ -91,11 +91,6 @@ function listApp() {
         // Add/Edit Form state
         showAddForm: false,
         showImagePicker: false,
-        showCropModal: false,
-        cropSourceUrl: null,
-        cropSourceFile: null,
-        cropTargetField: null,
-        cropperInstance: null,
         viewMode: false,
         editMode: false,
         editingId: null,
@@ -208,14 +203,6 @@ function listApp() {
                 }
             });
 
-            this.$watch('showCropModal', (isOpen) => {
-                if (isOpen) {
-                    this._openOverlay('cropModal', () => { this.closeCropModal(); });
-                } else {
-                    this._closeOverlay('cropModal');
-                }
-            });
-
             this.$watch('downloadModal.show', (isOpen) => {
                 if (isOpen) {
                     this._openOverlay('downloadModal', () => { this.closeDownloadModal(); });
@@ -266,7 +253,7 @@ function listApp() {
             const token = this.overlayTokens[key];
             if (!token) {
                 if (!window.mobileOverlay) {
-                    const anyOpen = this.showFilters || this.showAddForm || this.showCropModal || this.downloadModal.show || this.permanentDeleteModal.show || this.reprintPicker.show || this.reprintConfirm.show;
+                    const anyOpen = this.showFilters || this.showAddForm || this.downloadModal.show || this.permanentDeleteModal.show || this.reprintPicker.show || this.reprintConfirm.show;
                     if (!anyOpen) document.body.classList.remove('overflow-hidden');
                 }
                 return;
@@ -1663,20 +1650,6 @@ function listApp() {
             this.showImagePicker = true;
         },
 
-        openCropForField(fieldName) {
-            if (this.viewMode) return;
-            const target = fieldName || this.activeImageField || this._defaultImageFieldName();
-            const currentPreview = this._imagePreview(target);
-            if (!currentPreview) return;
-
-            this.activeImageField = target;
-            this.cropTargetField = target;
-            this.cropSourceUrl = currentPreview;
-            this.cropSourceFile = null;
-            this.showCropModal = true;
-            this.$nextTick(() => this.initCropper());
-        },
-
         _bumpTabCounts(fromStatus, toStatus, n) {
             const count = Number(n || 0);
             if (!count || count < 1) return;
@@ -2314,86 +2287,24 @@ function listApp() {
             if (!file) return;
             if (!file.type.startsWith('image/')) { this.showToast('Please select an image file', 'error'); return; }
             if (file.size > 10 * 1024 * 1024) { this.showToast('Image must be less than 10MB', 'error'); return; }
-            this.cropTargetField = this.activeImageField || this._defaultImageFieldName();
-            this.cropSourceFile = file;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                this.cropSourceUrl = e.target.result;
-                this.showCropModal = true;
-                this.$nextTick(() => this.initCropper());
-            };
-            reader.readAsDataURL(file);
-            event.target.value = '';
-        },
-        initCropper() {
-            const img = document.getElementById('crop-img-target');
-            if (!img || typeof Cropper === 'undefined') return;
-            if (this.cropperInstance) { this.cropperInstance.destroy(); this.cropperInstance = null; }
-            this.cropperInstance = new Cropper(img, {
-                aspectRatio: 3 / 4,
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 0.85,
-                responsive: true,
-                restore: false,
-                background: false,
-                movable: true,
-                rotatable: true,
-                scalable: false,
-                zoomable: true,
-                zoomOnTouch: true,
-            });
-        },
-        cropAndUse() {
-            if (!this.cropperInstance) { this.skipCrop(); return; }
-            const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
-            const canvas = this.cropperInstance.getCroppedCanvas({
-                width: 900,
-                height: 1200,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-                fillColor: '#ffffff',
-            });
-            if (!canvas) { this.skipCrop(); return; }
-            canvas.toBlob((blob) => {
-                if (!blob) { this.skipCrop(); return; }
-                const fileName = (this.cropSourceFile && this.cropSourceFile.name) ? this.cropSourceFile.name : 'photo.jpg';
-                const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
-                if (!this.form.imageFiles) this.form.imageFiles = {};
-                if (!this.form.imagePreviews) this.form.imagePreviews = {};
-                if (!this.form.imageHasPath) this.form.imageHasPath = {};
-                this.form.imageFiles[targetField] = croppedFile;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.form.imagePreviews[targetField] = e.target.result;
-                    this.form.imageHasPath[targetField] = true;
-                };
-                reader.readAsDataURL(croppedFile);
-                this.closeCropModal();
-            }, 'image/jpeg', 0.96);
-        },
-        skipCrop() {
-            // Use original file without cropping
-            const targetField = this.cropTargetField || this.activeImageField || this._defaultImageFieldName();
+            const targetField = this.activeImageField || this._defaultImageFieldName();
             if (!this.form.imageFiles) this.form.imageFiles = {};
             if (!this.form.imagePreviews) this.form.imagePreviews = {};
             if (!this.form.imageHasPath) this.form.imageHasPath = {};
 
-            if (this.cropSourceFile) {
-                this.form.imageFiles[targetField] = this.cropSourceFile;
-            }
-            if (this.cropSourceUrl) {
-                this.form.imagePreviews[targetField] = this.cropSourceUrl;
+            const previousPreview = this.form.imagePreviews[targetField] || null;
+            this.form.imageFiles[targetField] = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.form.imagePreviews[targetField] = e.target.result;
                 this.form.imageHasPath[targetField] = true;
-            }
-            this.closeCropModal();
-        },
-        closeCropModal() {
-            if (this.cropperInstance) { this.cropperInstance.destroy(); this.cropperInstance = null; }
-            this.showCropModal = false;
-            this.cropSourceUrl = null;
-            this.cropSourceFile = null;
-            this.cropTargetField = null;
+            };
+            reader.onerror = () => {
+                this.form.imagePreviews[targetField] = previousPreview;
+                this.showToast('Selected image could not be loaded', 'error');
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
         },
         async submitAddForm() {
             if (this.viewMode) {

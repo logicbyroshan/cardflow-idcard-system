@@ -91,14 +91,6 @@
                                     </div>
                                 </template>
                             </div>
-                            <div class="h-7">
-                                <button type="button"
-                                        x-show="!viewMode && _imagePreview(fieldName)"
-                                        @click="openCropForField(fieldName)"
-                                        class="w-full h-7 rounded-lg text-[9px] font-semibold text-brand-light bg-brand-light/10 border border-brand-light/20 active:scale-95 transition-all">
-                                    Crop / Adjust
-                                </button>
-                            </div>
                         </div>
                     </template>
                 </div>
@@ -205,38 +197,5 @@
             </div>
 
         </div>
-    </div>
-</div>
-
-<!-- Image Crop Modal (z-[80]  -  above add form) -->
-<div x-show="showCropModal" x-cloak class="fixed inset-0 z-[80] flex flex-col bg-black" data-mobile-overlay-root>
-    <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-3 bg-black/80 flex-shrink-0">
-        <div>
-            <h3 class="text-white font-bold text-sm">Crop Photo</h3>
-            <p class="text-white/50 text-[10px]">Drag to adjust  Pinch to zoom</p>
-        </div>
-        <button @click="closeCropModal()" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
-            <i class="fa-solid fa-xmark text-sm"></i>
-        </button>
-    </div>
-
-    <!-- Crop area -->
-    <div class="flex-1 overflow-hidden relative">
-        <img id="crop-img-target"
-             :src="cropSourceUrl"
-             style="max-width: 100%; display: block;">
-    </div>
-
-    <!-- Footer buttons -->
-    <div class="flex gap-3 px-4 py-4 bg-black/80 flex-shrink-0">
-        <button @click="skipCrop()"
-                class="flex-1 py-3.5 text-xs font-semibold text-gray-800 bg-gray-100 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all">
-            <i class="fa-solid fa-image text-gray-600"></i>Use Original
-        </button>
-        <button @click="cropAndUse()"
-                class="flex-[2] py-3.5 text-xs font-bold text-white bg-gradient-to-r from-brand-light to-brand-dark rounded-2xl shadow-lg active:scale-[0.98] transition-all">
-            <i class="fa-solid fa-crop-simple mr-1.5"></i>Crop &amp; Use
-        </button>
     </div>
 </div>

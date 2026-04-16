@@ -4,15 +4,6 @@
 {% block title %}Camera Capture - Adarsh ID Cards{% endblock %}
 
 {% block extra_head %}
-<!-- Cropper.js for photo cropping -->
-<link rel="stylesheet" href="{% static 'css/vendor/cropper.min.css' %}">
-<script src="{% static 'js/vendor/cropper.min.js' %}"></script>
-<style>
-.crop-modal { position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.95);display:flex;flex-direction:column; }
-.crop-modal img { max-height:70vh;width:100%; }
-.crop-actions { display:flex;gap:12px;padding:16px;justify-content:center; }
-.crop-actions button { padding:12px 28px;border-radius:12px;font-weight:600;font-size: var(--ui-font-size-md, 13px); }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -140,9 +131,6 @@
                     <button @click="retakePhoto()" class="w-14 h-14 rounded-lg bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30 active:scale-95 transition-transform">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
-                    <button @click="openCropper()" class="w-14 h-14 rounded-lg bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
-                        <i class="fa-solid fa-crop-simple text-xl"></i>
-                    </button>
                     <button @click="savePhoto()" class="w-14 h-14 rounded-lg bg-green-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30 active:scale-95 transition-transform" :disabled="uploading">
                         <span x-show="!uploading"><i class="fa-solid fa-check text-xl"></i></span>
                         <span x-show="uploading"><i class="fa-solid fa-spinner fa-spin text-xl"></i></span>
@@ -153,22 +141,6 @@
                     :class="{ 'bg-amber-500/40 text-amber-300': flashOn }">
                 <i :class="flashOn ? 'fa-solid fa-bolt text-lg' : 'fa-solid fa-bolt-slash text-lg'"></i>
             </button>
-        </div>
-    </div>
-
-    <!-- Crop Modal -->
-    <div x-show="showCropper" class="crop-modal" x-cloak data-mobile-overlay-root>
-        <div class="flex items-center justify-between px-4 py-3">
-            <button @click="closeCropper()" class="text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            <h3 class="text-white font-bold text-sm">Crop Photo</h3>
-            <button @click="applyCrop()" class="text-green-400 font-bold text-sm">Done</button>
-        </div>
-        <div class="flex-1 flex items-center justify-center overflow-hidden px-2">
-            <img x-ref="cropImage" class="max-w-full">
-        </div>
-        <div class="crop-actions">
-            <button @click="closeCropper()" class="bg-white/10 text-white">Cancel</button>
-            <button @click="applyCrop()" class="bg-gradient-to-r from-brand-light to-brand-dark text-white">Apply Crop</button>
         </div>
     </div>
 
@@ -194,9 +166,6 @@ function cameraApp() {
         cameraError: false,
         flashOn: false,
         facingMode: 'environment',
-        showCropper: false,
-        cropperOverlayToken: null,
-        cropper: null,
         cameraBusy: false,
         uploading: false,
         toast: { show: false, message: '', type: 'info' },
@@ -231,19 +200,6 @@ function cameraApp() {
                 this.startCamera();
             };
             document.addEventListener('visibilitychange', this._onVisibilityChange, { passive: true });
-
-            this.$watch('showCropper', (isOpen) => {
-                if (isOpen) {
-                    if (!this.cropperOverlayToken && window.mobileOverlay) {
-                        this.cropperOverlayToken = window.mobileOverlay.open(() => {
-                            this.closeCropper();
-                            this._closeCropperOverlay(true);
-                        });
-                    }
-                } else {
-                    this._closeCropperOverlay(false);
-                }
-            });
         },
 
         stopStream() {
@@ -349,14 +305,6 @@ function cameraApp() {
                 throw new Error('Camera is taking too long to open. Please try again.');
             }
             return picked || null;
-        },
-
-        _closeCropperOverlay(fromPopstate) {
-            if (!this.cropperOverlayToken) return;
-            if (window.mobileOverlay) {
-                window.mobileOverlay.close(this.cropperOverlayToken, { fromPopstate: !!fromPopstate });
-            }
-            this.cropperOverlayToken = null;
         },
 
         filterCards() {
@@ -543,38 +491,6 @@ function cameraApp() {
                 this.cameraBusy = false;
             }
             await this.startCamera();
-        },
-
-        openCropper() {
-            this.showCropper = true;
-            this.$nextTick(() => {
-                const dataUrl = this.$refs.canvas.toDataURL('image/jpeg', 0.95);
-                this.$refs.cropImage.src = dataUrl;
-                if (this.cropper) this.cropper.destroy();
-                this.cropper = new Cropper(this.$refs.cropImage, {
-                    aspectRatio: NaN,
-                    viewMode: 1,
-                    movable: true,
-                    zoomable: true,
-                    rotatable: true,
-                    scalable: true,
-                    background: false,
-                });
-            });
-        },
-
-        applyCrop() {
-            if (!this.cropper) return;
-            const croppedCanvas = this.cropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 1200 });
-            const c = this.$refs.canvas;
-            c.width = croppedCanvas.width; c.height = croppedCanvas.height;
-            c.getContext('2d').drawImage(croppedCanvas, 0, 0);
-            this.closeCropper();
-        },
-
-        closeCropper() {
-            this.showCropper = false;
-            if (this.cropper) { this.cropper.destroy(); this.cropper = null; }
         },
 
         async savePhoto() {
