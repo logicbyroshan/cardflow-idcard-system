@@ -519,6 +519,48 @@ class ReprintApiIntegrationTests(TestCase):
 		self.assertIsNotNone(photo_field)
 		self.assertEqual(photo_field.get('value'), 'mediafiles/cards/alpha.jpg')
 
+	def test_reprint_list_relation_photo_media_type_fallback(self):
+		from idcards.models import IDCardTable, IDCard
+		from mediafiles.models import CardMedia
+
+		rel_table = IDCardTable.objects.create(
+			group=self.group,
+			name='Relation Photo Fallback Table',
+			fields=[
+				{'name': 'Name', 'type': 'text'},
+				{'name': 'Rel 1 Photo', 'type': 'image'},
+			],
+		)
+		rel_card = IDCard.objects.create(
+			table=rel_table,
+			field_data={
+				'Name': 'Legacy Relation',
+				'Rel 1 Photo': '',
+			},
+			status='download',
+		)
+
+		CardMedia.objects.create(
+			card=rel_card,
+			client=self.client_obj,
+			file='mediafiles/cards/rel-fallback.jpg',
+			media_type='rel_photo',
+			field_name=None,
+			uploaded_by=self.super_admin,
+		)
+
+		self.client.force_login(self.super_admin)
+		response = self.client.get(self._url('api_reprint_list', table_id=rel_table.id))
+		self.assertEqual(response.status_code, 200)
+
+		payload = response.json()
+		self.assertEqual(payload.get('status'), 'ok')
+		item = next((entry for entry in payload.get('items', []) if entry.get('card_id') == rel_card.id), None)
+		self.assertIsNotNone(item)
+		rel_field = next((f for f in item.get('ordered_fields', []) if str(f.get('name', '')).lower() == 'rel 1 photo'), None)
+		self.assertIsNotNone(rel_field)
+		self.assertEqual(rel_field.get('value'), 'mediafiles/cards/rel-fallback.jpg')
+
 	def test_request_list_normalizes_legacy_mediafiles_image_paths(self):
 		from idcards.models import IDCardTable, IDCard
 		from reprintcard.models import ReprintRequest
