@@ -17,5 +17,5 @@ Usage:
 
 # Lazy imports to avoid circular dependencies at app loading time
 # Import directly when needed:
-# from exports.services import ExportService, export_xlsx, export_docx, export_zip
+# from exports.services import ExportService
 

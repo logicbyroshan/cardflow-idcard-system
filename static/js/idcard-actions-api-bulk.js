@@ -234,6 +234,30 @@ function generatePrintVerificationCode() {
         : String(Math.floor(1000000000 + Math.random() * 9000000000));
 }
 
+function refreshApprovedPrintStepCounts() {
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+    if (!tableId || typeof apiCall !== 'function') return;
+
+    var generateCountEl = document.getElementById('approvedGenerateCount');
+    var finalizedCountEl = document.getElementById('approvedFinalizedCount');
+    if (!generateCountEl && !finalizedCountEl) return;
+
+    apiCall(panelUrl(`/print/api/table/${tableId}/step-counts/`), 'GET')
+        .then(function(data) {
+            if (!data || data.status !== 'ok') return;
+
+            if (generateCountEl && data.generate_list !== undefined) {
+                generateCountEl.textContent = String(data.generate_list);
+            }
+            if (finalizedCountEl && data.finalized !== undefined) {
+                finalizedCountEl.textContent = String(data.finalized);
+            }
+        })
+        .catch(function() {
+            // Keep UI stable when count API is temporarily unavailable.
+        });
+}
+
 function showPrintCodeConfirm(cardCount, onConfirm) {
     var expectedCode = generatePrintVerificationCode();
 
@@ -364,10 +388,25 @@ function bulkPrintSend(cardIds) {
                         if (typeof showToast === 'function') showToast(data.message || 'Cannot send to generate list', false);
                         return;
                     }
+
+                    var generateCountEl = document.getElementById('approvedGenerateCount');
+                    if (generateCountEl && Number.isFinite(Number(data.created))) {
+                        var currentVal = parseInt(generateCountEl.textContent || '0', 10);
+                        generateCountEl.textContent = String((Number.isFinite(currentVal) ? currentVal : 0) + Number(data.created));
+                    }
+
                     if (typeof showToast === 'function') {
                         showToast(data.message || `${data.created} card(s) added to generate list`, true);
                     }
-                    IDCardApp.refreshCardTable();
+
+                    if (typeof IDCardApp.removeCardRows === 'function') {
+                        IDCardApp.removeCardRows(cardIds, { removedCount: Number(data.created) || cardIds.length });
+                    } else {
+                        IDCardApp.refreshCardTable();
+                    }
+
+                    refreshApprovedPrintStepCounts();
+                    setTimeout(refreshApprovedPrintStepCounts, 500);
                 })
                 .catch(err => {
                     if (typeof showToast === 'function') showToast(err.message || 'Print send failed', false);
@@ -527,6 +566,7 @@ function initBulkActionHandlers() {
 function initApiModule() {
     initRowActionHandlers();
     initBulkActionHandlers();
+    refreshApprovedPrintStepCounts();
 }
 
 // ==========================================

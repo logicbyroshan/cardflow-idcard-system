@@ -23,6 +23,7 @@ from django.utils.timesince import timesince
 
 from core.models import Notification, NotificationRead, User
 from core.utils.email_utils import build_unified_email_html
+from .cache_version_service import CacheVersionService
 from .base import ServiceResult
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class NotificationService:
             expires_at = timezone.now() + timedelta(hours=visibility_hours)
 
         try:
+            recipient_user_ids = []
             with transaction.atomic():
                 notif = Notification.objects.create(
                     title=title.strip(),
@@ -90,14 +92,18 @@ class NotificationService:
                     users = User.objects.filter(
                         id__in=target_user_ids, is_active=True
                     )
+                    recipient_user_ids = list(users.values_list('id', flat=True))
                     notif.target_users.set(users)
-                    recipient_count = users.count()
+                    recipient_count = len(recipient_user_ids)
                 else:
                     recipient_count = cls._count_target_users(target)
 
             # Optional email alert (fire-and-forget in background thread)
             if send_email:
                 cls._send_email_alerts(notif)
+
+            if recipient_user_ids:
+                cls._invalidate_users_notification_caches(recipient_user_ids)
 
             logger.info(
                 "Notification created: '%s' → %s (%d recipients) by %s",
@@ -185,14 +191,28 @@ class NotificationService:
         selected_filter = Q(target='selected', target_users=user)
         qs = qs.filter(role_filter | selected_filter).distinct()
 
-        read_ids = NotificationRead.objects.filter(user=user).values_list(
-            'notification_id', flat=True
-        )
-        count = qs.exclude(id__in=read_ids).count()
+        count = qs.exclude(reads__user=user).count()
         _cache.set(cache_key, count, 30)
         return count
 
     # ── read tracking ───────────────────────────────────────
+
+    @classmethod
+    def _invalidate_user_notification_caches(cls, user_id):
+        if not user_id:
+            return
+        _cache.delete(f'notif_unread:{user_id}')
+        CacheVersionService.bump('client_messages_drawer_user', f'user:{int(user_id)}')
+
+    @classmethod
+    def _invalidate_users_notification_caches(cls, user_ids):
+        for raw_uid in (user_ids or []):
+            try:
+                uid = int(raw_uid)
+            except (TypeError, ValueError):
+                continue
+            if uid > 0:
+                cls._invalidate_user_notification_caches(uid)
 
     @classmethod
     def mark_as_read(cls, user, notification_id):
@@ -202,7 +222,7 @@ class NotificationService:
                 user=user,
                 notification_id=notification_id,
             )
-            _cache.delete(f'notif_unread:{user.pk}')
+            cls._invalidate_user_notification_caches(getattr(user, 'pk', None))
             return ServiceResult(success=True)
         except Notification.DoesNotExist:
             return ServiceResult(success=False, message='Notification not found.')
@@ -232,7 +252,7 @@ class NotificationService:
         if new_reads:
             NotificationRead.objects.bulk_create(new_reads, ignore_conflicts=True)
 
-        _cache.delete(f'notif_unread:{user.pk}')
+        cls._invalidate_user_notification_caches(getattr(user, 'pk', None))
         return ServiceResult(
             success=True,
             message=f'Marked {len(new_reads)} notification(s) as read.'

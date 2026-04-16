@@ -123,16 +123,15 @@ class RequestTimingMiddleware:
     - All others → DEBUG (only visible when DEBUG=True)
     - Server-Timing header visible in browser DevTools → Network → Timing tab
     
-    Query counting uses connection.execute_wrapper only when DEBUG=True
-    to avoid overhead in production. In production, only request duration
-    is tracked.
+    Query counting via connection.execute_wrapper is opt-in using
+    ENABLE_REQUEST_QUERY_TRACKING. Request duration timing is always tracked.
     """
 
     SKIP_PREFIXES = ('/static/', '/media/', '/favicon.ico')
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self._debug = getattr(django_settings, 'DEBUG', False)
+        self._track_queries = bool(getattr(django_settings, 'ENABLE_REQUEST_QUERY_TRACKING', False))
 
     def __call__(self, request):
         if any(request.path.startswith(p) for p in self.SKIP_PREFIXES):
@@ -140,11 +139,11 @@ class RequestTimingMiddleware:
 
         start = time.monotonic()
 
-        if self._debug:
-            # Full query counting only in DEBUG mode (avoids production overhead)
+        if self._track_queries:
+            # Full query counting is opt-in because execute wrappers add overhead.
             response = self._call_with_query_tracking(request, start)
         else:
-            # Production: just time the request, no per-query wrapper
+            # Default: just time the request, no per-query wrapper
             response = self.get_response(request)
             duration = time.monotonic() - start
             duration_ms = duration * 1000
@@ -154,7 +153,7 @@ class RequestTimingMiddleware:
         return response
 
     def _call_with_query_tracking(self, request, start):
-        """Track individual queries — DEBUG mode only."""
+        """Track individual queries when query tracking is explicitly enabled."""
         from django.db import connection
         query_count = 0
         query_time = 0.0

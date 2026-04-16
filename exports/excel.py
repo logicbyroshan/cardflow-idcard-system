@@ -260,22 +260,3 @@ class ExcelExporter:
         name, _ = _os.path.splitext(basename)
         return name
 
-
-# =============================================================================
-# MODULE-LEVEL CONVENIENCE FUNCTION
-# =============================================================================
-
-def export_cards_to_xlsx(table, cards: QuerySet, uppercase: bool = True) -> ExcelExportResult:
-    """
-    Convenience function to export cards to Excel.
-    
-    Args:
-        table: IDCardTable instance
-        cards: QuerySet of IDCard instances
-        uppercase: Convert values to uppercase
-        
-    Returns:
-        ExcelExportResult
-    """
-    exporter = ExcelExporter()
-    return exporter.export_cards(table, cards, uppercase_values=uppercase)

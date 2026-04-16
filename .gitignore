@@ -254,3 +254,6 @@ Face Cropper/
 
 # Deployment examples/configs are local-only
 deployment/
+
+# Mobile shell platform output (local generated artifacts)
+mobile_shell_app/

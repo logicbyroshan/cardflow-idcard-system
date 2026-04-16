@@ -4,22 +4,6 @@
 		{
 			"label": "build-css",
 			"type": "shell",
-			"command": "build-css.bat",
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "build"
-		},
-		{
-			"label": "build-css",
-			"type": "shell",
-			"command": ".\\build-css.bat",
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "build"
-		},
-		{
-			"label": "build-css-cmd",
-			"type": "shell",
 			"command": "cmd",
 			"args": [
 				"/c",

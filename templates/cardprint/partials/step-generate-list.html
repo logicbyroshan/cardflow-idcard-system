@@ -9,10 +9,6 @@
             <i class="fa-solid fa-gears"></i>
             <span class="btn-text">Generate Selected</span>
         </button>
-        <button class="btn action-btn btn-gray" id="generateListViewBtn" disabled title="View first card">
-            <i class="fa-solid fa-eye"></i>
-            <span class="btn-text">View</span>
-        </button>
         <button class="btn action-btn btn-blue" id="generateRetrieveBtn" disabled title="Move selected back to approved list">
             <i class="fa-solid fa-arrow-rotate-left"></i>
             <span class="btn-text">Retrieve</span>
@@ -124,6 +120,7 @@
                                 <i class="fa-solid fa-user-astronaut"></i>
                             </div>
                             {% endif %}
+                            <button type="button" class="edit-photo-btn view-photo-btn btn-view-single" data-card-id="{{ item.card_id }}" title="View card">View</button>
                         </div>
                     </td>
                     {% else %}

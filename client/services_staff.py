@@ -7,12 +7,14 @@ import os
 import secrets
 
 from django.db import transaction
+from django.db.models import Prefetch
 
 from core.models import User
 from client.models import Client
 from staff.models import Staff
 from idcards.models import IDCardGroup, IDCardTable, IDCard
 from core.services.base import BaseService, ServiceResult
+from core.services.cache_version_service import CacheVersionService
 from core.services.permission_service import PermissionService
 
 from .services_access import ClientAccessService
@@ -64,6 +66,15 @@ class ClientStaffService(BaseService):
     def _unexpected_error_result(action: str, exc: Exception) -> ServiceResult:
         logger.exception('ClientStaffService.%s failed: %s', action, exc)
         return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
+
+    @staticmethod
+    def _bump_dashboard_cache_versions(client_id: int) -> None:
+        try:
+            cid = int(client_id)
+        except (TypeError, ValueError):
+            return
+        CacheVersionService.bump('dash_team_overview', 'global')
+        CacheVersionService.bump('client_staff', f'client:{cid}')
 
     @staticmethod
     def _resolve_assignment_scope_ids(
@@ -279,14 +290,35 @@ class ClientStaffService(BaseService):
             # Check permission
             if not PermissionService.has_permission(user, 'perm_idcard_client_list'):
                 return ServiceResult(success=False, message='Permission denied')
+
+            staff_only_fields = [
+                'id',
+                'user',
+                'created_at',
+                'department',
+                'designation',
+                'assigned_table_ids',
+                'allowed_classes',
+                'allowed_sections',
+                'assignment_scopes',
+                'user__first_name',
+                'user__last_name',
+                'user__username',
+                'user__email',
+                'user__phone',
+                'user__is_active',
+            ] + list(cls.STAFF_PERMISSION_FIELDS)
             
             staff_list = Staff.objects.filter(
                 client=client,
                 staff_type='client_staff'
-            ).select_related('user').prefetch_related('assigned_groups')
+            ).select_related('user').only(*staff_only_fields).prefetch_related(
+                Prefetch('assigned_groups', queryset=IDCardGroup.objects.only('id'))
+            )
             
             staff_data = []
             for staff in staff_list:
+                assigned_group_ids = [group.id for group in staff.assigned_groups.all()]
                 item = {
                     'id': staff.id,
                     'name': staff.user.get_full_name() or staff.user.username,
@@ -296,7 +328,7 @@ class ClientStaffService(BaseService):
                     'designation': staff.designation or '',
                     'is_active': staff.user.is_active,
                     'created_at': staff.created_at.strftime('%d %b %Y'),
-                    'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
+                    'assigned_group_ids': assigned_group_ids,
                     'assigned_table_ids': [
                         int(v) for v in (staff.assigned_table_ids or [])
                         if str(v).strip().isdigit() and int(v) > 0
@@ -340,13 +372,17 @@ class ClientStaffService(BaseService):
             
             # Get staff and verify ownership
             try:
-                staff = Staff.objects.select_related('user').prefetch_related('assigned_groups').get(
+                staff = Staff.objects.select_related('user').prefetch_related(
+                    Prefetch('assigned_groups', queryset=IDCardGroup.objects.only('id'))
+                ).get(
                     id=staff_id, 
                     client=client, 
                     staff_type='client_staff'
                 )
             except Staff.DoesNotExist:
                 return ServiceResult(success=False, message='Staff not found')
+
+            assigned_group_ids = [group.id for group in staff.assigned_groups.all()]
             
             # Include which permissions the client can grant
             client_permissions = {
@@ -368,7 +404,7 @@ class ClientStaffService(BaseService):
                 'status': 'active' if staff.user.is_active else 'inactive',
                 'created_at': staff.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
                 'profile_image_url': None,  # profile_image removed in Phase 1 refactor
-                'assigned_group_ids': list(staff.assigned_groups.values_list('id', flat=True)),
+                'assigned_group_ids': assigned_group_ids,
                 'assigned_table_ids': [
                     int(v) for v in (staff.assigned_table_ids or [])
                     if str(v).strip().isdigit() and int(v) > 0
@@ -578,6 +614,8 @@ class ClientStaffService(BaseService):
                     staff.allowed_sections = sections_u
                     staff.allowed_branches = branches_u
                     staff.save(update_fields=['assignment_scopes', 'allowed_classes', 'allowed_sections', 'allowed_branches'])
+
+                transaction.on_commit(lambda cid=client.id: cls._bump_dashboard_cache_versions(cid))
             
             return ServiceResult(
                 success=True,
@@ -744,6 +782,8 @@ class ClientStaffService(BaseService):
                     staff.allowed_sections = sections_u
                     staff.allowed_branches = branches_u
                     staff.save(update_fields=['assignment_scopes', 'allowed_classes', 'allowed_sections', 'allowed_branches'])
+
+                transaction.on_commit(lambda cid=client.id: cls._bump_dashboard_cache_versions(cid))
             
             return ServiceResult(
                 success=True,
@@ -772,6 +812,8 @@ class ClientStaffService(BaseService):
                 staff_user = staff.user
                 staff_user.is_active = not staff_user.is_active
                 staff_user.save(update_fields=['is_active'])
+
+                transaction.on_commit(lambda cid=client.id: cls._bump_dashboard_cache_versions(cid))
             
             status = 'active' if staff_user.is_active else 'inactive'
             
@@ -811,6 +853,8 @@ class ClientStaffService(BaseService):
             with transaction.atomic():
                 staff.delete()
                 staff_user.delete()
+
+            cls._bump_dashboard_cache_versions(client.id)
             
             return ServiceResult(
                 success=True,

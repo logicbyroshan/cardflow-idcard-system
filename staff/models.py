@@ -161,4 +161,5 @@ class Staff(models.Model):
             models.Index(fields=['staff_type', 'created_at']),
             models.Index(fields=['created_at']),
             models.Index(fields=['client', 'staff_type']),
+            models.Index(fields=['client', 'staff_type', '-created_at'], name='staff_client_type_time_idx'),
         ]

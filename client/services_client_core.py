@@ -15,6 +15,7 @@ from staff.models import Staff
 from core.utils import send_welcome_email
 from core.utils.email_utils import generate_secure_password
 from core.services.base import BaseService, ServiceResult
+from core.services.cache_version_service import CacheVersionService
 
 import logging
 logger = logging.getLogger(__name__)
@@ -115,6 +116,19 @@ class ClientService(BaseService):
         """Return a safe error response while retaining full server-side diagnostics."""
         logger.exception('ClientService.%s failed: %s', action, exc)
         return ServiceResult(success=False, message='An unexpected error occurred. Please try again.')
+
+    @staticmethod
+    def _bump_client_cache_versions(client_id: int) -> None:
+        try:
+            cid = int(client_id)
+        except (TypeError, ValueError):
+            return
+
+        CacheVersionService.bump('dash_rcu', 'global')
+        CacheVersionService.bump('dash_team_overview', 'global')
+        CacheVersionService.bump('client_dash_counts', f'client:{cid}')
+        CacheVersionService.bump('client_staff', f'client:{cid}')
+        CacheVersionService.bump('client_messages_drawer_client', f'client:{cid}')
     
     @classmethod
     def create(cls, data: Dict[str, Any], request=None, photo=None) -> ServiceResult:
@@ -451,6 +465,8 @@ class ClientService(BaseService):
                 if staff_user_ids:
                     from django.contrib.auth import get_user_model
                     get_user_model().objects.filter(id__in=staff_user_ids).delete()
+
+            cls._bump_client_cache_versions(client_id)
             
             return ServiceResult(
                 success=True,

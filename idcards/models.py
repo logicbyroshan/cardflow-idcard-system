@@ -344,6 +344,9 @@ class IDCard(models.Model):
             models.Index(fields=['updated_at']),
             # Performance indexes added in Block 1 audit
             models.Index(fields=['table', 'status', '-id'], name='idcard_tbl_status_id_desc'),
+            models.Index(fields=['table', 'status', '-status_changed_at', '-id'], name='idc_tbl_st_chg_id_idx'),
+            models.Index(fields=['table', 'status', '-downloaded_at', '-id'], name='idc_tbl_st_dld_id_idx'),
+            models.Index(fields=['table', 'status', '-deleted_at', '-id'], name='idc_tbl_st_del_id_idx'),
             models.Index(fields=['downloaded_at'], name='idcard_downloaded_at_idx'),
             models.Index(fields=['deleted_at'], name='idcard_deleted_at_idx'),
             models.Index(fields=['status_changed_at'], name='idcard_status_changed_at_idx'),

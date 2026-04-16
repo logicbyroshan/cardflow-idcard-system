@@ -6,6 +6,8 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db.models.signals import m2m_changed, post_save
 
+from .cache_version_service import CacheVersionService
+
 logger = logging.getLogger(__name__)
 
 _CACHE_PREFIX = 'pvm_reval_marker:'
@@ -50,6 +52,22 @@ def register_revalidation_signals() -> None:
 
     User = get_user_model()
 
+    def _bump_dashboard_versions_for_client(client_id):
+        if not client_id:
+            return
+        try:
+            CacheVersionService.bump('client_dash_counts', f'client:{int(client_id)}')
+            CacheVersionService.bump('client_staff', f'client:{int(client_id)}')
+        except Exception as exc:
+            logger.debug('Client dashboard cache bump failed for client=%s: %s', client_id, exc)
+
+    def _bump_admin_dashboard_versions():
+        try:
+            CacheVersionService.bump('dash_team_overview', 'global')
+            CacheVersionService.bump('dash_rcu', 'global')
+        except Exception as exc:
+            logger.debug('Admin dashboard cache bump failed: %s', exc)
+
     def _on_user_saved(sender, instance, created=False, raw=False, update_fields=None, **kwargs):
         if raw or not getattr(instance, 'pk', None):
             return
@@ -59,6 +77,22 @@ def register_revalidation_signals() -> None:
             if touched.issubset({'last_login', 'updated_at'}):
                 return
         bump_user_revalidation(instance.pk)
+
+        role = str(getattr(instance, 'role', '') or '').strip().lower()
+        if role in ('admin_staff', 'client_staff'):
+            _bump_admin_dashboard_versions()
+        if role == 'client_staff':
+            try:
+                from staff.models import Staff
+
+                client_id = (
+                    Staff.objects.filter(user_id=instance.pk, staff_type='client_staff')
+                    .values_list('client_id', flat=True)
+                    .first()
+                )
+                _bump_dashboard_versions_for_client(client_id)
+            except Exception as exc:
+                logger.debug('Client staff cache bump from user save failed for user=%s: %s', instance.pk, exc)
 
     def _on_user_m2m_changed(sender, instance, action, **kwargs):
         if action in ('post_add', 'post_remove', 'post_clear'):
@@ -79,6 +113,8 @@ def register_revalidation_signals() -> None:
                 .values_list('user_id', flat=True)
             )
             bump_users_revalidation(affected)
+            _bump_admin_dashboard_versions()
+            _bump_dashboard_versions_for_client(getattr(instance, 'pk', None))
         except Exception as exc:
             logger.debug('Client revalidation bump failed for client=%s: %s', getattr(instance, 'pk', None), exc)
 
@@ -86,10 +122,14 @@ def register_revalidation_signals() -> None:
         if raw:
             return
         bump_user_revalidation(getattr(instance, 'user_id', None))
+        _bump_admin_dashboard_versions()
+        _bump_dashboard_versions_for_client(getattr(instance, 'client_id', None))
 
     def _on_staff_m2m_changed(sender, instance, action, **kwargs):
         if action in ('post_add', 'post_remove', 'post_clear'):
             bump_user_revalidation(getattr(instance, 'user_id', None))
+            _bump_admin_dashboard_versions()
+            _bump_dashboard_versions_for_client(getattr(instance, 'client_id', None))
 
     post_save.connect(
         _on_user_saved,

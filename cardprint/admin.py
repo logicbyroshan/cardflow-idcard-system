@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PrintRequest, CardTemplate
+from .models import PrintRequest, CardTemplate, CardTemplateDoc
 
 
 @admin.register(PrintRequest)
@@ -14,7 +14,20 @@ class PrintRequestAdmin(admin.ModelAdmin):
 
 @admin.register(CardTemplate)
 class CardTemplateAdmin(admin.ModelAdmin):
-    list_display = ('id', 'table', 'is_two_sided', 'font_size', 'font_family', 'created_at')
-    list_filter = ('is_two_sided', 'font_family')
+    list_display = (
+        'id', 'name', 'table', 'version', 'is_active', 'is_default',
+        'usage_count', 'last_used_at', 'is_two_sided', 'font_size', 'font_family', 'created_at',
+    )
+    list_filter = ('is_active', 'is_default', 'is_two_sided', 'font_family')
+    search_fields = ('name', 'table__name')
     raw_id_fields = ('table',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(CardTemplateDoc)
+class CardTemplateDocAdmin(admin.ModelAdmin):
+    list_display = ('id', 'template', 'layout_id', 'name', 'created_by', 'updated_at')
+    list_filter = ('template',)
+    search_fields = ('name', 'layout_id', 'template__table__name')
+    raw_id_fields = ('template', 'created_by')
     readonly_fields = ('created_at', 'updated_at')

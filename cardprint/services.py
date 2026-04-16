@@ -11,6 +11,11 @@ import io
 import logging
 import os
 import re
+import hashlib
+import base64
+import tempfile
+import zipfile
+from urllib.parse import urlparse, unquote_to_bytes
 
 from django.db import transaction
 from django.utils import timezone
@@ -196,18 +201,33 @@ IMAGE_FIELD_TYPES = {'photo', 'rel_photo', 'image', 'mother_photo', 'father_phot
 
 class GenerateCardService:
     """
-    Generates a data-layer PDF for ID cards using ReportLab.
+    Generates ID-card PDFs using ReportLab data overlay merged onto design PDFs.
     Card size: 87mm × 57mm (CR80 ID card).
-    One page per card side. No background — pure positioned data.
-    Merging with the template design PDF is done separately.
+    One page per card side.
     """
-    CARD_W_MM = 87.0
-    CARD_H_MM = 57.0
+    CARD_LANDSCAPE_W_MM = 87.0
+    CARD_LANDSCAPE_H_MM = 57.0
+    CARD_PORTRAIT_W_MM = 57.0
+    CARD_PORTRAIT_H_MM = 87.0
+    DEFAULT_RENDER_BATCH_SIZE = 100
 
     @classmethod
-    def generate(cls, table, template, print_requests):
+    def dimensions_for_orientation_mm(cls, orientation):
+        if orientation == 'portrait':
+            return cls.CARD_PORTRAIT_W_MM, cls.CARD_PORTRAIT_H_MM
+        return cls.CARD_LANDSCAPE_W_MM, cls.CARD_LANDSCAPE_H_MM
+
+    @classmethod
+    def _resolve_dimensions_mm(cls, template):
+        cfg = template.field_config if isinstance(template.field_config, dict) else {}
+        orientation = cfg.get('card_orientation') or 'landscape'
+        return cls.dimensions_for_orientation_mm(orientation)
+
+    @classmethod
+    def generate(cls, table, template, print_requests, layout_options=None, batch_size=None):
         """
         Generate a multi-page PDF: one page per card (two pages per card for 2-sided).
+        Uses ReportLab for data overlay and merges each page onto uploaded design PDF.
 
         Args:
             table: IDCardTable instance
@@ -222,50 +242,960 @@ class GenerateCardService:
             from reportlab.lib.units import mm
             from reportlab.pdfgen import canvas as rl_canvas
 
-            buffer = io.BytesIO()
-            card_w_pt = cls.CARD_W_MM * mm
-            card_h_pt = cls.CARD_H_MM * mm
-
-            c = rl_canvas.Canvas(buffer, pagesize=(card_w_pt, card_h_pt))
-
-            font = template.font_family or 'Helvetica-Bold'
-            font_size = max(7, min(10, template.font_size or 8))
+            style = cls._pdf_style_from_template(template)
             front_mappings = (template.field_mappings or {}).get('front', {})
             back_mappings = (template.field_mappings or {}).get('back', {})
+            front_elements = cls._template_elements_for_side(template, 'front')
+            back_elements = cls._template_elements_for_side(template, 'back')
+            use_template_json = bool(front_elements) or (bool(back_elements) and template.is_two_sided)
             field_cfg = template.field_config or {}
             front_allowed = set(field_cfg.get('front_fields') or [])
             back_allowed = set(field_cfg.get('back_fields') or [])
 
+            card_w_mm, card_h_mm = cls._resolve_dimensions_mm(template)
+            canvas_metrics = cls._template_canvas_metrics(template, card_w_mm, card_h_mm)
+
+            render_card_w_mm = canvas_metrics['real_width_mm'] if use_template_json else card_w_mm
+            render_card_h_mm = canvas_metrics['real_height_mm'] if use_template_json else card_h_mm
+
+            layout = cls._resolve_layout_config(
+                template=template,
+                card_w_mm=render_card_w_mm,
+                card_h_mm=render_card_h_mm,
+                layout_options=layout_options,
+            )
+            if not use_template_json and layout['cards_per_page'] > 1:
+                # Multi-card grid depends on template_json geometry. Keep old mapping path unchanged.
+                layout = cls._resolve_layout_config(
+                    template=template,
+                    card_w_mm=render_card_w_mm,
+                    card_h_mm=render_card_h_mm,
+                    layout_options={'mode': '1'},
+                )
+
+            page_w_pt = layout['page_width_mm'] * mm
+            page_h_pt = layout['page_height_mm'] * mm
+
+            # Use spooled temp file so large jobs spill to disk instead of exhausting memory.
+            buffer = tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024, mode='w+b')
+            c = rl_canvas.Canvas(buffer, pagesize=(page_w_pt, page_h_pt))
+
+            render_batch_size = max(1, int(batch_size or cls.DEFAULT_RENDER_BATCH_SIZE))
+
             # Build field type map from table definition
             field_type_map = {f['name']: f.get('type', 'text') for f in (table.fields or [])}
 
-            for pr in print_requests:
-                card = pr.card
-                fd = card.field_data or {}
-                fd_upper = {k.upper(): v for k, v in fd.items()}
+            if layout['cards_per_page'] <= 1:
+                card_h_pt = render_card_h_mm * mm
+                for request_batch in cls._iter_batches(print_requests, render_batch_size):
+                    for pr in request_batch:
+                        card = pr.card
+                        fd = card.field_data or {}
+                        fd_upper = {k.upper(): v for k, v in fd.items()}
 
-                # Front
-                cls._draw_side(
-                    c, fd, fd_upper, field_type_map, front_mappings,
-                    font, font_size, card_h_pt, front_allowed,
-                )
-                c.showPage()
+                        if use_template_json:
+                            cls._draw_side_from_template_json(
+                                c,
+                                template,
+                                'front',
+                                front_elements,
+                                fd,
+                                fd_upper,
+                                field_type_map,
+                                render_card_w_mm,
+                                render_card_h_mm,
+                                style,
+                                origin_x_pt=0.0,
+                                origin_y_pt=0.0,
+                                slot_w_mm=render_card_w_mm,
+                                slot_h_mm=render_card_h_mm,
+                                canvas_metrics=canvas_metrics,
+                            )
+                        else:
+                            cls._draw_side(
+                                c, fd, fd_upper, field_type_map, front_mappings,
+                                card_h_pt, style, front_allowed,
+                            )
+                        c.showPage()
 
-                # Back (only if 2-sided and back mappings exist)
-                if template.is_two_sided and back_mappings:
-                    cls._draw_side(
-                        c, fd, fd_upper, field_type_map, back_mappings,
-                        font, font_size, card_h_pt, back_allowed,
-                    )
-                    c.showPage()
+                        if template.is_two_sided:
+                            if use_template_json:
+                                cls._draw_side_from_template_json(
+                                    c,
+                                    template,
+                                    'back',
+                                    back_elements,
+                                    fd,
+                                    fd_upper,
+                                    field_type_map,
+                                    render_card_w_mm,
+                                    render_card_h_mm,
+                                    style,
+                                    origin_x_pt=0.0,
+                                    origin_y_pt=0.0,
+                                    slot_w_mm=render_card_w_mm,
+                                    slot_h_mm=render_card_h_mm,
+                                    canvas_metrics=canvas_metrics,
+                                )
+                            else:
+                                cls._draw_side(
+                                    c, fd, fd_upper, field_type_map, back_mappings,
+                                    card_h_pt, style, back_allowed,
+                                )
+                            c.showPage()
+            else:
+                slots = cls._layout_slots(layout, render_card_w_mm, render_card_h_mm)
+                if not slots:
+                    slots = [{'x_mm': 0.0, 'y_mm': 0.0}]
+
+                page_slot_size = max(1, layout['cards_per_page'])
+                for request_batch in cls._iter_batches(print_requests, render_batch_size):
+                    for i in range(0, len(request_batch), page_slot_size):
+                        chunk = request_batch[i:i + page_slot_size]
+
+                        for slot_idx, pr in enumerate(chunk):
+                            slot = slots[slot_idx]
+                            card = pr.card
+                            fd = card.field_data or {}
+                            fd_upper = {k.upper(): v for k, v in fd.items()}
+                            cls._draw_side_from_template_json(
+                                c,
+                                template,
+                                'front',
+                                front_elements,
+                                fd,
+                                fd_upper,
+                                field_type_map,
+                                render_card_w_mm,
+                                render_card_h_mm,
+                                style,
+                                origin_x_pt=slot['x_mm'] * mm,
+                                origin_y_pt=slot['y_mm'] * mm,
+                                slot_w_mm=render_card_w_mm,
+                                slot_h_mm=render_card_h_mm,
+                                canvas_metrics=canvas_metrics,
+                            )
+                        c.showPage()
+
+                        if template.is_two_sided:
+                            for slot_idx, pr in enumerate(chunk):
+                                slot = slots[slot_idx]
+                                card = pr.card
+                                fd = card.field_data or {}
+                                fd_upper = {k.upper(): v for k, v in fd.items()}
+                                cls._draw_side_from_template_json(
+                                    c,
+                                    template,
+                                    'back',
+                                    back_elements,
+                                    fd,
+                                    fd_upper,
+                                    field_type_map,
+                                    render_card_w_mm,
+                                    render_card_h_mm,
+                                    style,
+                                    origin_x_pt=slot['x_mm'] * mm,
+                                    origin_y_pt=slot['y_mm'] * mm,
+                                    slot_w_mm=render_card_w_mm,
+                                    slot_h_mm=render_card_h_mm,
+                                    canvas_metrics=canvas_metrics,
+                                )
+                            c.showPage()
 
             c.save()
             buffer.seek(0)
-            return buffer, None
+
+            if layout['cards_per_page'] > 1:
+                return buffer, None
+
+            merged_buffer, merge_err = cls._merge_overlay_with_design(template, buffer)
+            if merge_err:
+                return None, merge_err
+            return merged_buffer, None
 
         except Exception as exc:
             logger.error('GenerateCardService.generate error: %s', exc, exc_info=True)
             return None, str(exc)
+
+    @classmethod
+    def _iter_batches(cls, items, batch_size):
+        size = max(1, int(batch_size or cls.DEFAULT_RENDER_BATCH_SIZE))
+        for idx in range(0, len(items), size):
+            yield items[idx:idx + size]
+
+    @classmethod
+    def build_job_payload(
+        cls,
+        table_id,
+        template_id,
+        request_ids,
+        requested_by=None,
+        layout_options=None,
+        export_format='pdf',
+        batch_size=None,
+    ):
+        if hasattr(table_id, 'id'):
+            table_id = getattr(table_id, 'id', None)
+        if hasattr(template_id, 'id'):
+            template_id = getattr(template_id, 'id', None)
+        if request_ids and hasattr(request_ids[0], 'id'):
+            request_ids = [getattr(x, 'id', x) for x in request_ids]
+
+        user_id = None
+        if requested_by is not None:
+            user_id = getattr(requested_by, 'id', requested_by)
+
+        return {
+            'queue': 'cardprint-generate',
+            'table_id': int(table_id),
+            'template_id': int(template_id),
+            'request_ids': [int(x) for x in (request_ids or [])],
+            'layout': layout_options if isinstance(layout_options, dict) else None,
+            'format': str(export_format or 'pdf').lower(),
+            'batch_size': int(batch_size) if batch_size else None,
+            'requested_by': int(user_id) if user_id else None,
+            'requested_at': timezone.now().isoformat(),
+        }
+
+    @classmethod
+    def render_pdf_pages_to_png(cls, pdf_bytes, dpi=220):
+        if not pdf_bytes:
+            return None, 'No PDF data to convert'
+        try:
+            import fitz
+        except Exception:
+            return None, 'PyMuPDF is not available for PNG export'
+
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+        except Exception as exc:
+            logger.error('PNG export open failed: %s', exc, exc_info=True)
+            return None, 'Unable to open generated PDF for PNG conversion'
+
+        images = []
+        try:
+            scale = max(1.0, float(dpi) / 72.0)
+            matrix = fitz.Matrix(scale, scale)
+            for page_idx in range(doc.page_count):
+                page = doc.load_page(page_idx)
+                pix = page.get_pixmap(matrix=matrix, alpha=False)
+                images.append({'name': f'card_{page_idx + 1:04d}.png', 'bytes': pix.tobytes('png')})
+            return images, None
+        except Exception as exc:
+            logger.error('PNG export render failed: %s', exc, exc_info=True)
+            return None, 'Failed to render PDF pages as PNG'
+        finally:
+            try:
+                doc.close()
+            except Exception:
+                pass
+
+    @classmethod
+    def build_png_zip_bytes(cls, image_items, file_prefix='cards'):
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for idx, item in enumerate(image_items or [], start=1):
+                if isinstance(item, dict):
+                    name = str((item or {}).get('name') or '').strip()
+                    data = (item or {}).get('bytes')
+                else:
+                    name = ''
+                    data = item
+                if not name or not data:
+                    name = f'{file_prefix}_{idx:04d}.png'
+                zf.writestr(name, data)
+        out.seek(0)
+        return out.getvalue()
+
+    @classmethod
+    def build_pdf_zip_for_cards(cls, table, template, print_requests, layout_options=None, batch_size=None):
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for idx, pr in enumerate(print_requests or [], start=1):
+                single_buffer, err = cls.generate(
+                    table,
+                    template,
+                    [pr],
+                    layout_options=layout_options or {'mode': '1'},
+                    batch_size=batch_size or 1,
+                )
+                if err or not single_buffer:
+                    return None, err or f'Failed to generate card {idx}'
+
+                try:
+                    if hasattr(single_buffer, 'seek'):
+                        single_buffer.seek(0)
+                    pdf_bytes = single_buffer.read()
+                except Exception as exc:
+                    logger.error('Single-card zip read failed: %s', exc, exc_info=True)
+                    return None, f'Failed to read generated card {idx}'
+
+                zf.writestr(f'card_{idx:04d}.pdf', pdf_bytes)
+
+        out.seek(0)
+        return out.getvalue(), None
+
+    @classmethod
+    def _template_canvas_metrics(cls, template, fallback_w_mm, fallback_h_mm):
+        raw = template.template_json if isinstance(getattr(template, 'template_json', None), dict) else {}
+        canvas = raw.get('canvas') if isinstance(raw.get('canvas'), dict) else {}
+
+        try:
+            width = float(canvas.get('width') or 350)
+        except (TypeError, ValueError):
+            width = 350.0
+        try:
+            height = float(canvas.get('height') or 200)
+        except (TypeError, ValueError):
+            height = 200.0
+
+        width = max(100.0, width)
+        height = max(60.0, height)
+
+        if canvas.get('realWidthMM') is not None:
+            try:
+                real_w_mm = float(canvas.get('realWidthMM'))
+            except (TypeError, ValueError):
+                real_w_mm = float(fallback_w_mm)
+        else:
+            real_w_mm = float(fallback_w_mm)
+
+        if canvas.get('realHeightMM') is not None:
+            try:
+                real_h_mm = float(canvas.get('realHeightMM'))
+            except (TypeError, ValueError):
+                real_h_mm = float(fallback_h_mm)
+        else:
+            real_h_mm = float(fallback_h_mm)
+
+        real_w_mm = max(10.0, real_w_mm)
+        real_h_mm = max(10.0, real_h_mm)
+
+        return {
+            'width': width,
+            'height': height,
+            'real_width_mm': real_w_mm,
+            'real_height_mm': real_h_mm,
+        }
+
+    @classmethod
+    def _resolve_layout_config(cls, template, card_w_mm, card_h_mm, layout_options=None):
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+
+        raw = template.template_json if isinstance(getattr(template, 'template_json', None), dict) else {}
+        canvas = raw.get('canvas') if isinstance(raw.get('canvas'), dict) else {}
+        layout_raw = canvas.get('printLayout') if isinstance(canvas.get('printLayout'), dict) else {}
+
+        override = layout_options if isinstance(layout_options, dict) else {}
+
+        mode = str(override.get('mode') or layout_raw.get('mode') or '1').strip().lower()
+        if mode not in ('1', '2', '4', 'custom'):
+            mode = '1'
+
+        def _intv(value, default):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return int(default)
+
+        def _floatv(value, default):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return float(default)
+
+        cols = _intv(override.get('columns') or layout_raw.get('columns'), 1)
+        rows = _intv(override.get('rows') or layout_raw.get('rows'), 1)
+
+        if mode == '1':
+            cols, rows = 1, 1
+        elif mode == '2':
+            cols, rows = 2, 1
+        elif mode == '4':
+            cols, rows = 2, 2
+
+        cols = max(1, min(12, cols))
+        rows = max(1, min(12, rows))
+
+        margin_mm = max(0.0, min(40.0, _floatv(override.get('marginMM') or layout_raw.get('marginMM'), 8.0)))
+        gap_x_mm = max(0.0, min(40.0, _floatv(override.get('gapXMM') or layout_raw.get('gapXMM'), 4.0)))
+        gap_y_mm = max(0.0, min(40.0, _floatv(override.get('gapYMM') or layout_raw.get('gapYMM'), 4.0)))
+
+        page_size = str(override.get('pageSize') or layout_raw.get('pageSize') or 'a4').strip().lower()
+        if page_size not in ('a4',):
+            page_size = 'a4'
+
+        if cols == 1 and rows == 1:
+            return {
+                'mode': '1',
+                'columns': 1,
+                'rows': 1,
+                'cards_per_page': 1,
+                'margin_mm': 0.0,
+                'gap_x_mm': 0.0,
+                'gap_y_mm': 0.0,
+                'page_width_mm': float(card_w_mm),
+                'page_height_mm': float(card_h_mm),
+                'page_size': 'card',
+            }
+
+        page_w_mm = A4[0] / mm
+        page_h_mm = A4[1] / mm
+
+        usable_w = max(1.0, page_w_mm - (2.0 * margin_mm))
+        usable_h = max(1.0, page_h_mm - (2.0 * margin_mm))
+        max_cols = max(1, int((usable_w + gap_x_mm) // max(0.1, (card_w_mm + gap_x_mm))))
+        max_rows = max(1, int((usable_h + gap_y_mm) // max(0.1, (card_h_mm + gap_y_mm))))
+
+        cols = max(1, min(cols, max_cols))
+        rows = max(1, min(rows, max_rows))
+
+        return {
+            'mode': mode,
+            'columns': cols,
+            'rows': rows,
+            'cards_per_page': max(1, cols * rows),
+            'margin_mm': margin_mm,
+            'gap_x_mm': gap_x_mm,
+            'gap_y_mm': gap_y_mm,
+            'page_width_mm': float(page_w_mm),
+            'page_height_mm': float(page_h_mm),
+            'page_size': page_size,
+        }
+
+    @classmethod
+    def _layout_slots(cls, layout, card_w_mm, card_h_mm):
+        cols = int(layout.get('columns') or 1)
+        rows = int(layout.get('rows') or 1)
+        margin_mm = float(layout.get('margin_mm') or 0.0)
+        gap_x_mm = float(layout.get('gap_x_mm') or 0.0)
+        gap_y_mm = float(layout.get('gap_y_mm') or 0.0)
+        page_h_mm = float(layout.get('page_height_mm') or card_h_mm)
+
+        slots = []
+        for row in range(rows):
+            for col in range(cols):
+                x_mm = margin_mm + (col * (card_w_mm + gap_x_mm))
+                y_top_mm = page_h_mm - margin_mm - (row * (card_h_mm + gap_y_mm))
+                y_mm = y_top_mm - card_h_mm
+                slots.append({'x_mm': x_mm, 'y_mm': y_mm})
+        return slots
+
+    @classmethod
+    def _normalize_font_weight_value(cls, weight_raw):
+        weight = str(weight_raw or '').strip().lower()
+        if weight == 'normal':
+            return 400
+        if weight == 'bold':
+            return 700
+        try:
+            num = int(round(float(weight)))
+        except (TypeError, ValueError):
+            num = 400
+        num = int(round(num / 100.0) * 100)
+        return max(100, min(900, num))
+
+    @classmethod
+    def _normalize_font_style_value(cls, style_raw):
+        style = str(style_raw or '').strip().lower()
+        return 'italic' if style in ('italic', 'oblique') else 'normal'
+
+    @classmethod
+    def _builtin_font_name(cls, base_family, weight_raw, style_raw='normal'):
+        base = str(base_family or 'helvetica').strip().lower()
+        weight = cls._normalize_font_weight_value(weight_raw)
+        style = cls._normalize_font_style_value(style_raw)
+        is_bold = weight >= 600
+        is_italic = style == 'italic'
+
+        if base == 'times':
+            if is_bold and is_italic:
+                return 'Times-BoldItalic'
+            if is_bold:
+                return 'Times-Bold'
+            if is_italic:
+                return 'Times-Italic'
+            return 'Times-Roman'
+
+        if base == 'courier':
+            if is_bold and is_italic:
+                return 'Courier-BoldOblique'
+            if is_bold:
+                return 'Courier-Bold'
+            if is_italic:
+                return 'Courier-Oblique'
+            return 'Courier'
+
+        if is_bold and is_italic:
+            return 'Helvetica-BoldOblique'
+        if is_bold:
+            return 'Helvetica-Bold'
+        if is_italic:
+            return 'Helvetica-Oblique'
+        return 'Helvetica'
+
+    @classmethod
+    def _font_family_key(cls, family_raw):
+        family = str(family_raw or '').strip().lower()
+        primary = family.split(',')[0].replace('"', '').replace("'", '').strip()
+        if any(token in primary for token in ('times', 'serif', 'cambria', 'georgia')):
+            return 'times'
+        if any(token in primary for token in ('courier', 'mono', 'consolas')):
+            return 'courier'
+        if any(token in primary for token in ('arial black', 'arial')):
+            return 'arial'
+        if 'calibri' in primary:
+            return 'calibri'
+        if 'futura' in primary:
+            return 'futura'
+        if 'poppins' in primary:
+            return 'poppins'
+        if any(token in primary for token in ('helvetica neue', 'helvetica')):
+            return 'helvetica'
+        if any(token in primary for token in ('verdana', 'tahoma')):
+            return 'helvetica'
+        return 'helvetica'
+
+    @classmethod
+    def _font_search_dirs(cls):
+        from django.conf import settings
+
+        base_dir = str(getattr(settings, 'BASE_DIR', '') or '')
+        paths = []
+        if base_dir:
+            paths.append(os.path.join(base_dir, 'static', 'fonts'))
+            paths.append(os.path.join(base_dir, 'staticfiles', 'fonts'))
+
+        windir = os.environ.get('WINDIR')
+        if windir:
+            paths.append(os.path.join(windir, 'Fonts'))
+
+        out = []
+        seen = set()
+        for item in paths:
+            norm = os.path.normcase(os.path.normpath(item))
+            if norm in seen:
+                continue
+            seen.add(norm)
+            out.append(item)
+        return out
+
+    @classmethod
+    def _font_candidate_files(cls, family_key, weight_raw, style_raw='normal'):
+        weight = cls._normalize_font_weight_value(weight_raw)
+        italic = cls._normalize_font_style_value(style_raw) == 'italic'
+        bold = weight >= 600
+
+        if family_key == 'arial':
+            if bold and italic:
+                return ['arialbi.ttf', 'ARIALBI.TTF']
+            if bold:
+                return ['arialbd.ttf', 'ARIALBD.TTF']
+            if italic:
+                return ['ariali.ttf', 'ARIALI.TTF']
+            return ['arial.ttf', 'ARIAL.TTF']
+
+        if family_key == 'calibri':
+            if bold and italic:
+                return ['calibriz.ttf', 'CALIBRIZ.TTF']
+            if bold:
+                return ['calibrib.ttf', 'CALIBRIB.TTF']
+            if italic:
+                return ['calibrii.ttf', 'CALIBRII.TTF']
+            return ['calibri.ttf', 'CALIBRI.TTF']
+
+        if family_key == 'poppins':
+            names = {
+                100: 'Thin',
+                200: 'ExtraLight',
+                300: 'Light',
+                400: 'Regular',
+                500: 'Medium',
+                600: 'SemiBold',
+                700: 'Bold',
+                800: 'ExtraBold',
+                900: 'Black',
+            }
+            style_suffix = 'Italic' if italic else ''
+            return [
+                f'Poppins-{names.get(weight, "Regular")}{style_suffix}.ttf',
+                f'poppins/Poppins-{names.get(weight, "Regular")}{style_suffix}.ttf',
+            ]
+
+        if family_key == 'futura':
+            if bold:
+                return [
+                    'Futura-Bold.ttf', 'futurab.ttf', 'FUTURAB.TTF', 'FUTURA_B.TTF',
+                    'Futura Bold font.ttf', 'Futura Md BT Bold.ttf', 'unicode.futurabb.ttf',
+                ]
+            if italic:
+                return [
+                    'Futura-Oblique.ttf', 'futurai.ttf', 'FUTURAI.TTF',
+                    'Futura Book Italic font.ttf', 'Futura Medium Italic font.ttf',
+                    'Futura Md BT Medium Italic.ttf', 'Futura Bk BT Book Italic.ttf',
+                ]
+            return [
+                'Futura.ttf', 'futura.ttf', 'FUTURA.TTF', 'FTLTLT.TTF',
+                'Futura Book font.ttf', 'Futura Medium font.ttf', 'Futura Md BT Medium.ttf',
+                'Futura Bk BT Book.ttf', 'futura medium bt.ttf',
+            ]
+
+        if family_key == 'helvetica':
+            direct = []
+            if bold and italic:
+                direct = [
+                    'Helvetica Condensed Bold Italic.ttf',
+                    'Helvetica Condensed Bold Oblique.otf',
+                ]
+            elif bold:
+                direct = [
+                    'Helvetica-Bold-Font.ttf',
+                    'Helvetica Condensed Bold.otf',
+                ]
+            elif italic:
+                direct = ['Helvetica Condensed Bold Oblique.otf']
+            else:
+                direct = [
+                    'Helvetica-Normal Regular.ttf',
+                    'Helvetica Condensed Regular.ttf',
+                ]
+            return direct + cls._font_candidate_files('arial', weight, 'italic' if italic else 'normal')
+
+        return []
+
+    @classmethod
+    def _find_font_path(cls, candidate_files):
+        if not candidate_files:
+            return None
+        dirs = cls._font_search_dirs()
+        for folder in dirs:
+            for candidate in candidate_files:
+                path = os.path.join(folder, candidate)
+                if os.path.isfile(path):
+                    return path
+        return None
+
+    @classmethod
+    def _register_ttf_font(cls, font_path):
+        if not font_path:
+            return None
+        try:
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+        except Exception:
+            return None
+
+        cache = getattr(cls, '_registered_ttf_fonts', None)
+        if not isinstance(cache, dict):
+            cache = {}
+            setattr(cls, '_registered_ttf_fonts', cache)
+
+        key = os.path.normcase(os.path.abspath(font_path))
+        existing = cache.get(key)
+        if existing:
+            return existing
+
+        alias = 'GCF_' + hashlib.md5(key.encode('utf-8', errors='ignore')).hexdigest()[:16]
+        try:
+            if alias not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(TTFont(alias, font_path))
+            cache[key] = alias
+            return alias
+        except Exception as exc:
+            logger.warning('GenerateCardService: font register failed for %s: %s', font_path, exc)
+            return None
+
+    @classmethod
+    def _resolve_pdf_font_name(cls, family_raw, weight_raw, style_raw='normal'):
+        family_key = cls._font_family_key(family_raw)
+        weight = cls._normalize_font_weight_value(weight_raw)
+        style = cls._normalize_font_style_value(style_raw)
+
+        if family_key in ('times', 'courier'):
+            return cls._builtin_font_name(family_key, weight, style)
+
+        candidates = cls._font_candidate_files(family_key, weight, style)
+        font_path = cls._find_font_path(candidates)
+        font_alias = cls._register_ttf_font(font_path)
+        if font_alias:
+            return font_alias
+
+        return cls._builtin_font_name('helvetica', weight, style)
+
+    @classmethod
+    def _pdf_style_from_template(cls, template):
+        cfg = template.field_config if isinstance(template.field_config, dict) else {}
+        raw = cfg.get('docx_text_style') if isinstance(cfg.get('docx_text_style'), dict) else {}
+
+        family_raw = str(raw.get('font_family') or template.font_family or 'Arial').strip().lower()
+        weight = str(raw.get('font_weight') or 'normal').strip().lower()
+        font_style = str(raw.get('font_style') or 'normal').strip().lower()
+        try:
+            size = float(raw.get('font_size_pt') or template.font_size or 11)
+        except (TypeError, ValueError):
+            size = float(template.font_size or 11)
+        size = max(6.0, min(72.0, size))
+
+        try:
+            line_height = float(raw.get('line_height') or 1.15)
+        except (TypeError, ValueError):
+            line_height = 1.15
+        line_height = max(0.8, min(3.0, line_height))
+
+        align = str(raw.get('align') or 'left').strip().lower()
+        if align not in ('left', 'center', 'right'):
+            align = 'left'
+
+        font_name = cls._resolve_pdf_font_name(family_raw, weight, font_style)
+
+        color_hex = cls._normalize_hex_color(raw.get('font_color_hex'), default='111111')
+        r = int(color_hex[0:2], 16) / 255.0
+        g = int(color_hex[2:4], 16) / 255.0
+        b = int(color_hex[4:6], 16) / 255.0
+
+        return {
+            'font_name': font_name,
+            'font_size': size,
+            'line_height': line_height,
+            'align': align,
+            'font_style': cls._normalize_font_style_value(font_style),
+            'color_rgb': (r, g, b),
+        }
+
+    @classmethod
+    def _template_canvas_size(cls, template):
+        fallback_w_mm, fallback_h_mm = cls._resolve_dimensions_mm(template)
+        metrics = cls._template_canvas_metrics(template, fallback_w_mm, fallback_h_mm)
+        return metrics['width'], metrics['height']
+
+    @classmethod
+    def _template_elements_for_side(cls, template, side):
+        raw = template.template_json if isinstance(getattr(template, 'template_json', None), dict) else {}
+        elements = raw.get('elements') if isinstance(raw.get('elements'), list) else []
+        wanted_side = 'back' if side == 'back' else 'front'
+        backgrounds = []
+        regular = []
+        for item in elements:
+            if not isinstance(item, dict):
+                continue
+            item_side = str(item.get('side') or 'front').strip().lower()
+            if item_side not in ('front', 'back', 'both'):
+                item_side = 'front'
+            if item_side not in (wanted_side, 'both'):
+                continue
+            if str(item.get('type') or '').strip().lower() == 'background':
+                backgrounds.append(item)
+            else:
+                regular.append(item)
+        return backgrounds + regular
+
+    @classmethod
+    def _draw_side_from_template_json(
+        cls,
+        c,
+        template,
+        side,
+        elements,
+        fd,
+        fd_upper,
+        field_type_map,
+        card_w_mm,
+        card_h_mm,
+        default_style,
+        origin_x_pt=0.0,
+        origin_y_pt=0.0,
+        slot_w_mm=None,
+        slot_h_mm=None,
+        canvas_metrics=None,
+    ):
+        from reportlab.lib.units import mm
+        from django.conf import settings
+
+        metrics = canvas_metrics if isinstance(canvas_metrics, dict) else cls._template_canvas_metrics(template, card_w_mm, card_h_mm)
+        canvas_w = float(metrics.get('width') or 350.0)
+        canvas_h = float(metrics.get('height') or 200.0)
+        real_w_mm = float(metrics.get('real_width_mm') or card_w_mm)
+        real_h_mm = float(metrics.get('real_height_mm') or card_h_mm)
+
+        target_w_mm = float(slot_w_mm if slot_w_mm is not None else real_w_mm)
+        target_h_mm = float(slot_h_mm if slot_h_mm is not None else real_h_mm)
+
+        scale_x = target_w_mm / max(0.001, real_w_mm)
+        scale_y = target_h_mm / max(0.001, real_h_mm)
+
+        for item in elements:
+            etype = str(item.get('type') or 'text').strip().lower()
+            field_name = str(item.get('field') or '').strip()
+            if etype in ('text', 'image') and not field_name:
+                continue
+
+            value = ''
+            if etype in ('text', 'image'):
+                value = fd.get(field_name)
+                if value in (None, ''):
+                    value = fd_upper.get(field_name.upper()) or ''
+            elif etype == 'background':
+                value = item.get('src') or ''
+
+            try:
+                x = float(item.get('x') or 0.0)
+            except (TypeError, ValueError):
+                x = 0.0
+            try:
+                y = float(item.get('y') or 0.0)
+            except (TypeError, ValueError):
+                y = 0.0
+            try:
+                w = float(item.get('width') or 120.0)
+            except (TypeError, ValueError):
+                w = 120.0
+            try:
+                h = float(item.get('height') or (50.0 if etype == 'image' else 24.0))
+            except (TypeError, ValueError):
+                h = 50.0 if etype == 'image' else 24.0
+
+            if etype == 'background':
+                x = 0.0
+                y = 0.0
+                w = canvas_w
+                h = canvas_h
+
+            x_mm = max(0.0, min(target_w_mm, ((x / canvas_w) * real_w_mm) * scale_x))
+            y_mm = max(0.0, min(target_h_mm, ((y / canvas_h) * real_h_mm) * scale_y))
+            w_mm = max(0.5, min(target_w_mm, ((w / canvas_w) * real_w_mm) * scale_x))
+            h_mm = max(0.5, min(target_h_mm, ((h / canvas_h) * real_h_mm) * scale_y))
+
+            rl_x = origin_x_pt + (x_mm * mm)
+            rl_y = origin_y_pt + ((target_h_mm - (y_mm + h_mm)) * mm)
+            rl_w = w_mm * mm
+            rl_h = h_mm * mm
+
+            if etype == 'background':
+                cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
+                continue
+
+            if etype == 'rectangle':
+                color_hex = cls._normalize_hex_color(item.get('color'), default='2563EB')
+                try:
+                    stroke_w = float(item.get('strokeWidth') or 1.2)
+                except (TypeError, ValueError):
+                    stroke_w = 1.2
+                stroke_w = max(0.2, min(8.0, stroke_w))
+
+                c.saveState()
+                c.setStrokeColorRGB(
+                    int(color_hex[0:2], 16) / 255.0,
+                    int(color_hex[2:4], 16) / 255.0,
+                    int(color_hex[4:6], 16) / 255.0,
+                )
+                c.setLineWidth(stroke_w)
+                c.rect(rl_x, rl_y, rl_w, rl_h, stroke=1, fill=0)
+                c.restoreState()
+                continue
+
+            mapped_type = field_type_map.get(field_name, 'text')
+            if etype == 'image' or cls._is_image_field(mapped_type, field_name):
+                cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
+                continue
+
+            elem_style = dict(default_style) if isinstance(default_style, dict) else {}
+            try:
+                elem_style['font_size'] = max(6.0, min(72.0, float(item.get('fontSize') or elem_style.get('font_size') or 11.0)))
+            except (TypeError, ValueError):
+                elem_style['font_size'] = float(elem_style.get('font_size') or 11.0)
+
+            try:
+                elem_style['line_height'] = max(0.8, min(3.0, float(item.get('lineHeight') or item.get('line_height') or elem_style.get('line_height') or 1.15)))
+            except (TypeError, ValueError):
+                elem_style['line_height'] = float(elem_style.get('line_height') or 1.15)
+
+            align = str(item.get('textAlign') or item.get('text_align') or item.get('align') or elem_style.get('align') or 'left').strip().lower()
+            if align not in ('left', 'center', 'right'):
+                align = 'left'
+            elem_style['align'] = align
+
+            family_raw = item.get('fontFamily') or item.get('font_family') or item.get('font') or ''
+            weight_raw = item.get('fontWeight') or item.get('font_weight') or ''
+            style_raw = item.get('fontStyle') or item.get('font_style') or elem_style.get('font_style') or 'normal'
+            if not weight_raw:
+                default_font_name = str(elem_style.get('font_name') or '')
+                weight_raw = 'bold' if default_font_name.lower().endswith('-bold') else 'normal'
+            elem_style['font_style'] = cls._normalize_font_style_value(style_raw)
+            elem_style['font_name'] = cls._resolve_pdf_font_name(family_raw, weight_raw, style_raw)
+
+            color_hex = cls._normalize_hex_color(item.get('color'), default='111111')
+            elem_style['color_rgb'] = (
+                int(color_hex[0:2], 16) / 255.0,
+                int(color_hex[2:4], 16) / 255.0,
+                int(color_hex[4:6], 16) / 255.0,
+            )
+
+            label = str(item.get('label') or cls._format_field_label(field_name)).strip()
+            show_label = bool(item.get('showLabel', True))
+            txt_value = str(value).strip() if value is not None else ''
+            if not txt_value:
+                txt_value = 'XXXXX'
+            if show_label and label:
+                text = f'{label}: {txt_value}'
+            else:
+                text = txt_value
+
+            cls._draw_text(c, text, rl_x, rl_y, rl_w, rl_h, elem_style)
+
+    @classmethod
+    def _template_pdf_bytes(cls, file_field):
+        if not file_field:
+            return None
+        try:
+            with file_field.open('rb') as fobj:
+                return fobj.read()
+        except Exception as exc:
+            logger.warning('Template PDF read failed: %s', exc)
+            return None
+
+    @classmethod
+    def _merge_overlay_with_design(cls, template, overlay_buffer):
+        try:
+            from pypdf import PdfReader, PdfWriter
+        except Exception:
+            # pypdf unavailable: return overlay-only PDF.
+            overlay_buffer.seek(0)
+            return overlay_buffer, None
+
+        try:
+            overlay_buffer.seek(0)
+            overlay_reader = PdfReader(overlay_buffer)
+            writer = PdfWriter()
+
+            front_design = cls._template_pdf_bytes(getattr(template, 'front_pdf', None))
+            back_design = cls._template_pdf_bytes(getattr(template, 'back_pdf', None))
+
+            page_idx = 0
+            for _ in range(len(overlay_reader.pages)):
+                side = 'front'
+                if template.is_two_sided and (page_idx % 2 == 1):
+                    side = 'back'
+
+                overlay_page = overlay_reader.pages[page_idx]
+                page_idx += 1
+
+                design_bytes = back_design if side == 'back' else front_design
+                if design_bytes:
+                    design_reader = PdfReader(io.BytesIO(design_bytes))
+                    base_page = design_reader.pages[0]
+                    base_page.merge_page(overlay_page)
+                    writer.add_page(base_page)
+                else:
+                    writer.add_page(overlay_page)
+
+            out = io.BytesIO()
+            writer.write(out)
+            out.seek(0)
+            return out, None
+        except Exception as exc:
+            logger.error('PDF merge failed: %s', exc, exc_info=True)
+            return None, 'Failed to merge data with design PDF'
 
     @classmethod
     def _draw_side(
@@ -275,9 +1205,8 @@ class GenerateCardService:
         fd_upper,
         field_type_map,
         mappings,
-        font,
-        font_size,
         card_h_pt,
+        style,
         allowed_fields=None,
     ):
         """Draw all mapped fields onto the current ReportLab canvas page."""
@@ -304,7 +1233,81 @@ class GenerateCardService:
             if cls._is_image_field(ftype, field_name):
                 cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
             else:
-                cls._draw_text(c, str(value) if value else '', rl_x, rl_y, rl_w, rl_h, font, font_size)
+                render_text = cls._build_render_text_for_mapping(field_name, mapping, value)
+                cls._draw_text(c, render_text, rl_x, rl_y, rl_w, rl_h, style)
+
+    @classmethod
+    def _build_render_text_for_mapping(cls, field_name, mapping, value):
+        label, text_value, show_key = cls._mapping_text_parts(field_name, mapping, value)
+
+        if show_key and label:
+            if not label.endswith(':'):
+                label = f'{label}:'
+            return f'{label}\n{text_value}'
+        return text_value
+
+    @classmethod
+    def _mapping_text_parts(cls, field_name, mapping, value):
+        label = str(mapping.get('label_text') or cls._format_field_label(field_name)).strip()
+        placeholder_raw = mapping.get('placeholder', None)
+        if placeholder_raw is None:
+            placeholder = 'XXXXX'
+        else:
+            placeholder = str(placeholder_raw).strip()
+        show_key_raw = mapping.get('show_key', True)
+        if isinstance(show_key_raw, str):
+            show_key = show_key_raw.strip().lower() not in ('false', '0', 'no')
+        else:
+            show_key = bool(show_key_raw)
+
+        text_value = str(value).strip() if value is not None else ''
+        if not text_value:
+            text_value = placeholder
+        return label, text_value, show_key
+
+    @classmethod
+    def _extract_key_prefix(cls, text):
+        src = str(text or '').strip()
+        if not src:
+            return ''
+        # Entire placeholder/date-mask style text is not a key prefix.
+        if re.fullmatch(r'[xX0-9\-\./_\s]{3,}', src):
+            return ''
+        m = re.match(r'^(.*?(?:[:=-]|\s{2,})\s*)', src)
+        if not m:
+            # Fallback for common key-placeholder style like "Mobile XXXXX".
+            parts = src.split()
+            if len(parts) >= 2:
+                tail = parts[-1]
+                if re.fullmatch(r'[xX*._-]{3,}', tail) or re.fullmatch(r'[xX0-9+\-]{4,}', tail):
+                    return ' '.join(parts[:-1]).strip() + ' '
+            return ''
+        prefix = str(m.group(1) or '').strip()
+        if not prefix:
+            return ''
+        return prefix + (' ' if not prefix.endswith(' ') else '')
+
+    @classmethod
+    def _format_field_label(cls, field_name):
+        raw = str(field_name or '').strip()
+        if not raw:
+            return 'Field'
+        txt = re.sub(r'[_\-]+', ' ', raw)
+        txt = re.sub(r'\s+', ' ', txt).strip()
+        return txt.title()
+
+    @classmethod
+    def _normalize_hex_color(cls, value, default='111111'):
+        raw = str(value or '').strip()
+        if not raw:
+            return default
+
+        v = raw[1:] if raw.startswith('#') else raw
+        if re.fullmatch(r'[0-9a-fA-F]{3}', v):
+            v = ''.join(ch * 2 for ch in v)
+        if not re.fullmatch(r'[0-9a-fA-F]{6}', v):
+            return default
+        return v.upper()
 
     @classmethod
     def _is_image_field(cls, ftype, field_name=''):
@@ -332,15 +1335,39 @@ class GenerateCardService:
             from reportlab.lib.utils import ImageReader
 
             raw_value = str(value).replace('\\', '/')
-            if raw_value.startswith('/media/'):
-                raw_value = raw_value[len('/media/'):]
-            elif raw_value.startswith('media/'):
-                raw_value = raw_value[len('media/'):]
+            img_reader = None
 
-            img_path = os.path.join(settings.MEDIA_ROOT, raw_value)
-            if not os.path.exists(img_path):
+            if raw_value.startswith('data:image'):
+                _, _, payload = raw_value.partition(',')
+                if not payload:
+                    return
+                header = raw_value.split(',', 1)[0]
+                if ';base64' in header:
+                    img_bytes = base64.b64decode(payload)
+                else:
+                    img_bytes = unquote_to_bytes(payload)
+                img_reader = ImageReader(io.BytesIO(img_bytes))
+            else:
+                if raw_value.startswith('http://') or raw_value.startswith('https://'):
+                    parsed = urlparse(raw_value)
+                    raw_value = parsed.path or ''
+
+                if raw_value.startswith('/media/'):
+                    raw_value = raw_value[len('/media/'):]
+                elif raw_value.startswith('media/'):
+                    raw_value = raw_value[len('media/'):]
+
+                if os.path.isabs(raw_value):
+                    img_path = raw_value
+                else:
+                    img_path = os.path.join(settings.MEDIA_ROOT, raw_value)
+
+                if not os.path.exists(img_path):
+                    return
+                img_reader = ImageReader(img_path)
+
+            if img_reader is None:
                 return
-            img_reader = ImageReader(img_path)
             iw, ih = img_reader.getSize()
             if iw <= 0 or ih <= 0:
                 return
@@ -357,39 +1384,51 @@ class GenerateCardService:
             logger.warning('GenerateCardService: image draw failed for %s: %s', value, exc)
 
     @classmethod
-    def _draw_text(cls, c, text, x, y, w, h, font, font_size):
+    def _draw_text(cls, c, text, x, y, w, h, style):
         """Draw text inside a bounding box with basic word-wrap."""
         if not text:
             return
         try:
+            font_name = style.get('font_name', 'Helvetica') if isinstance(style, dict) else 'Helvetica'
+            font_size = float(style.get('font_size', 11)) if isinstance(style, dict) else 11.0
+            line_height_mult = float(style.get('line_height', 1.3)) if isinstance(style, dict) else 1.3
+            align = style.get('align', 'left') if isinstance(style, dict) else 'left'
+            color_rgb = style.get('color_rgb', (0, 0, 0)) if isinstance(style, dict) else (0, 0, 0)
+
             c.saveState()
             # Clip to box
             path = c.beginPath()
             path.rect(x, y, w, h)
             c.clipPath(path, stroke=0, fill=0)
 
-            c.setFont(font, font_size)
-            c.setFillColorRGB(0, 0, 0)
+            try:
+                c.setFont(font_name, font_size)
+            except Exception:
+                fallback_name = cls._builtin_font_name(
+                    'helvetica',
+                    700 if 'bold' in str(font_name).lower() else 400,
+                    'italic' if any(token in str(font_name).lower() for token in ('italic', 'oblique')) else 'normal',
+                )
+                font_name = fallback_name
+                c.setFont(font_name, font_size)
+            c.setFillColorRGB(color_rgb[0], color_rgb[1], color_rgb[2])
 
-            line_height = font_size * 1.3
-            avg_char_w = font_size * 0.55
-            max_chars = max(1, int(w / avg_char_w))
+            line_height = font_size * line_height_mult
+            max_text_width = max(1.0, w - 2.0)
+            key_prefix_text = str(style.get('key_prefix_text') or '') if isinstance(style, dict) else ''
+            value_text = style.get('value_text') if isinstance(style, dict) else None
 
-            # Simple word wrap
-            lines = []
-            for raw_line in text.split('\n'):
-                words = raw_line.split()
-                current = ''
-                for word in words:
-                    candidate = (current + ' ' + word).strip() if current else word
-                    if len(candidate) <= max_chars:
-                        current = candidate
-                    else:
-                        if current:
-                            lines.append(current)
-                        current = word[:max_chars]
-                if current:
-                    lines.append(current)
+            if key_prefix_text and value_text is not None:
+                prefix_w = c.stringWidth(key_prefix_text, font_name, font_size)
+                first_line_width = max(1.0, max_text_width - prefix_w)
+                value_lines = cls._wrap_text_to_width(c, font_name, font_size, str(value_text), max_text_width, first_line_width)
+                if value_lines:
+                    lines = [key_prefix_text + value_lines[0]] + value_lines[1:]
+                else:
+                    lines = [key_prefix_text.strip()]
+                align = 'left'
+            else:
+                lines = cls._wrap_text_to_width(c, font_name, font_size, text, max_text_width)
 
             # Draw lines from top of box downward
             # In RL, y is from bottom. Top of box = y + h. First baseline just inside top.
@@ -397,9 +1436,66 @@ class GenerateCardService:
             for line in lines:
                 if baseline_y < y:
                     break
-                c.drawString(x + 1, baseline_y, line)
+                if align == 'right':
+                    text_width = c.stringWidth(line, font_name, font_size)
+                    draw_x = max(x + 1, x + w - text_width - 1)
+                elif align == 'center':
+                    text_width = c.stringWidth(line, font_name, font_size)
+                    draw_x = x + max(1, (w - text_width) / 2)
+                else:
+                    draw_x = x + 1
+                c.drawString(draw_x, baseline_y, line)
                 baseline_y -= line_height
 
             c.restoreState()
         except Exception as exc:
             logger.warning('GenerateCardService: text draw failed: %s', exc)
+
+    @classmethod
+    def _wrap_text_to_width(cls, c, font_name, font_size, text, max_width, first_line_width=None):
+        lines = []
+        first_limit = max(1.0, float(first_line_width if first_line_width is not None else max_width))
+        normal_limit = max(1.0, float(max_width))
+        line_limit = first_limit
+
+        for raw_line in str(text or '').split('\n'):
+            src = str(raw_line or '').strip()
+            if not src:
+                lines.append('')
+                line_limit = normal_limit
+                continue
+
+            words = src.split()
+            current = ''
+            for word in words:
+                candidate = (current + ' ' + word).strip() if current else word
+                if c.stringWidth(candidate, font_name, font_size) <= line_limit:
+                    current = candidate
+                    continue
+
+                if current:
+                    lines.append(current)
+                    current = ''
+                    line_limit = normal_limit
+
+                if c.stringWidth(word, font_name, font_size) <= line_limit:
+                    current = word
+                    continue
+
+                frag = ''
+                for ch in word:
+                    cand = frag + ch
+                    if c.stringWidth(cand, font_name, font_size) <= line_limit:
+                        frag = cand
+                    else:
+                        if frag:
+                            lines.append(frag)
+                            line_limit = normal_limit
+                        frag = ch
+                current = frag
+
+            if current:
+                lines.append(current)
+            line_limit = normal_limit
+
+        return lines
