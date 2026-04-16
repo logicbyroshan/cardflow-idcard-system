@@ -21,6 +21,17 @@
 
     {% include "mobile_app/partials/list_table.html" %}
 
+    <!-- Global action progress overlay (not used for infinite scroll pagination) -->
+    <div x-show="actionLoading" x-cloak class="fixed inset-0 z-[110] bg-black/35 backdrop-blur-[1px] flex items-center justify-center px-6" style="display:none;">
+        <div class="w-full max-w-[260px] rounded-2xl bg-white shadow-xl border border-slate-100 px-4 py-4 flex items-center gap-3">
+            <i class="fa-solid fa-spinner fa-spin text-brand-light text-lg"></i>
+            <div>
+                <p class="text-[13px] font-bold text-slate-800">Processing...</p>
+                <p class="text-[11px] text-slate-500">Please wait while we finish this action.</p>
+            </div>
+        </div>
+    </div>
+
     {% include "mobile_app/partials/list_toast.html" %}
 
     <!-- Download Progress Modal -->

@@ -23,6 +23,7 @@ function listApp() {
         showFilters: false,
         selectAll: false,
         selectedIds: [],
+        actionLoading: false,
         loading: false,
         toast: { show: false, message: '', type: 'info' },
         downloadModal: {
@@ -2102,6 +2103,7 @@ function listApp() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             const actedIds = [...this.selectedIds];
             let keepSelected = [];
+            this.actionLoading = true;
             this.loading = true;
             var _ac = new AbortController();
             setTimeout(function() { _ac.abort(); }, 120000);
@@ -2170,6 +2172,7 @@ function listApp() {
             document.querySelectorAll('[data-sid]').forEach(el => {
                 this._updateRowClass(Number(el.getAttribute('data-sid')));
             });
+            this.actionLoading = false;
         },
 
         // Add/Edit form methods
@@ -2734,6 +2737,7 @@ function listApp() {
                 return;
             }
 
+            this.actionLoading = true;
             this.loading = true;
 
             // Large exports: use async background task flow like PDF.
@@ -2761,6 +2765,7 @@ function listApp() {
                     }
                 }
                 this.loading = false;
+                this.actionLoading = false;
                 return;
             }
 
@@ -2776,6 +2781,7 @@ function listApp() {
                     const errData = await res.json().catch(() => ({}));
                     this.showToast(errData.message || 'Excel export failed', 'error');
                     this.loading = false;
+                    this.actionLoading = false;
                     return;
                 }
 
@@ -2800,6 +2806,7 @@ function listApp() {
                 this.showToast('Excel export failed', 'error');
             }
             this.loading = false;
+            this.actionLoading = false;
         },
         downloadAgain() { this.apiAction('download', 're-downloaded'); },
         async _permanentlyDeleteSelected() {
@@ -2807,6 +2814,7 @@ function listApp() {
             if (!this.selectedIds.length) { this.showToast('Select items first', 'error'); return; }
             const requestedIds = [...this.selectedIds];
             const deletedIds = [];
+            this.actionLoading = true;
             this.loading = true;
             let success = 0, failed = 0;
             for (const id of requestedIds) {
@@ -2833,6 +2841,7 @@ function listApp() {
                 this._removeCardsFromCurrentList(deletedIds);
             } else { this.showToast('Failed to delete cards', 'error'); }
             this.selectedIds = [];
+            this.actionLoading = false;
         },
         async permanentlyDelete() {
             await this._permanentlyDeleteSelected();
