@@ -12,437 +12,181 @@
   <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/cardprint/generate-card.css' %}">
   {% include 'partials/common/alpine-loader.html' %}
-  <!-- Inject server data before generate-card.js runs -->
   <script>
-    var TABLE_ID   = {{ table.id }};
+    var TABLE_ID = {{ table.id }};
     var TABLE_NAME = '{{ table.name|escapejs }}';
-    var TEMPLATE_DATA   = {{ template_data_json|safe }};
-    var FRONT_PDF_URL   = '{{ front_pdf_url|escapejs }}';
-    var BACK_PDF_URL    = '{{ back_pdf_url|escapejs }}';
-    var TABLE_FIELDS    = {{ table_fields_json|safe }};
-    var FIELD_CONFIG     = {{ field_config_json|safe }};
+    var TEMPLATE_DATA = {{ template_data_json|safe }};
+    var FRONT_PDF_URL = '{{ front_pdf_url|escapejs }}';
+    var BACK_PDF_URL = '{{ back_pdf_url|escapejs }}';
+    var TABLE_FIELDS = {{ table_fields_json|safe }};
+    var FIELD_CONFIG = {{ field_config_json|safe }};
   </script>
+  <style>
+    .gc-editor-overlay-inline {
+      position: relative;
+      inset: auto;
+      display: block;
+      background: transparent;
+      backdrop-filter: none;
+      height: calc(100vh - 92px);
+      min-height: 620px;
+    }
+
+    .gc-editor-overlay-inline .gc-editor-box {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14);
+    }
+
+    .gc-editor-alert {
+      margin: 0;
+      padding: 8px 20px;
+      font-size: var(--ui-font-size-sm, 12px);
+      border-bottom: 1px solid var(--border-color, var(--color-gray-200));
+      background: var(--color-yellow-50);
+      color: var(--color-gray-800);
+    }
+
+    .gc-editor-alert.hidden {
+      display: none;
+    }
+
+    .gc-editor-alert.gc-alert-error {
+      background: var(--color-red-50);
+      color: var(--color-red-700);
+      border-bottom-color: var(--color-red-200);
+    }
+
+    .gc-editor-alert.gc-alert-warning {
+      background: var(--color-yellow-50);
+      color: var(--color-amber-700);
+      border-bottom-color: var(--color-yellow-200);
+    }
+
+    .gc-editor-header .gc-modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted,var(--color-gray-400));
+      font-size: var(--ui-font-size-2xl, 18px);
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: color .15s, background .15s;
+    }
+
+    .gc-editor-header .gc-modal-close:hover {
+      color: var(--color-danger);
+      background: var(--color-red-100);
+    }
+
+    @media (max-width: 900px) {
+      .gc-editor-overlay-inline {
+        height: calc(100vh - 76px);
+        min-height: 520px;
+      }
+    }
+  </style>
 </head>
-<body x-data="layoutState()" x-init="init()">
+<body x-data="layoutState" x-init="init">
   {% include 'partials/sidebar.html' %}
   <main class="main generate-card-page">
-
-    <!-- Topbar -->
     <header class="topbar">
       <div class="nav-left">
         <button class="sidebar-toggle" id="sidebarToggle" @click="toggleSidebar()" aria-label="Toggle sidebar">
           <i class="fa-solid fa-bars" :class="sidebarOpen ? 'fa-xmark' : 'fa-bars'"></i>
         </button>
         <div class="breadcrumb">
-          {% if is_super_admin %}
-          <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-          {% elif is_admin_staff %}
-          <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-          {% endif %}
-          <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-          <a href="{% url 'manage_clients' %}" class="breadcrumb-item">Manage Clients</a>
-          <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-          <span class="breadcrumb-item">{{ client.name }}</span>
+          <a href="{% url 'cardprint:print_cards' table.id %}?step=generate_list" class="breadcrumb-item">
+            <i class="fa-solid fa-arrow-left"></i> Back to Generate List
+          </a>
           <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
           <span class="breadcrumb-item active">{{ table.name }}</span>
         </div>
       </div>
-      <div class="nav-right ml-auto mr-2 grow-0">
-        {% include 'partials/notification-bell.html' %}
-      </div>
-
     </header>
 
-    <!-- Editor Layout: Left + Right split -->
-    <div class="main-content gen-editor-wrap">
-      <div class="gen-layout">
-
-        <!-- ============================================ -->
-        <!-- LEFT PANEL                                   -->
-        <!-- ============================================ -->
-        <div class="gen-left-panel">
-
-          <!-- Section: Template Setup -->
-          <div class="gen-section" id="genTemplateModeSection">
-            <div class="gen-section-header">
-              <i class="fa-solid fa-file-pdf text-sky-500"></i>
-              <h3>Template Setup</h3>
+    <div class="main-content">
+      <div class="gc-editor-overlay gc-editor-overlay-inline" id="gcEditorModal">
+        <div class="gc-editor-box">
+          <div class="gc-editor-header">
+            <div class="gc-flow-header-left">
+              <i class="fa-solid fa-id-card text-blue-500"></i>
+              <span class="gc-modal-title">Generate Cards &mdash; {{ table.name }}</span>
+              <span class="gc-step-pill" id="gcStepCounter">Step 1 of 3</span>
             </div>
-            <p class="gen-setup-status" id="genSetupStatus"></p>
-            <p class="gen-flow-stage-hint" id="genFlowStageHint"></p>
-            <div class="gen-row gen-row-end gen-tight-row">
-              <button type="button" class="btn btn-sm btn-outline" id="flowToggleCardSettingsBtn">Card Settings</button>
+            <div class="gc-header-stepper" id="gcHeaderStepper" aria-hidden="false">
+              <button type="button" class="gc-mini-step is-active" data-step="1">1 Setup</button>
+              <button type="button" class="gc-mini-step" data-step="2">2 Map</button>
+              <button type="button" class="gc-mini-step" data-step="3">3 Generate</button>
             </div>
-          </div>
-
-          <div class="gen-section" id="genLayoutBuilderSection">
-            <div class="gen-section-header">
-              <i class="fa-solid fa-layer-group text-blue-500"></i>
-              <h3>Design Format Builder</h3>
-            </div>
-
-            <div id="genSetupTemplateControls">
-              <div class="gen-row">
-                <label>Saved DOC</label>
-                <select id="docLayoutSelect">
-                  <option value="">Select saved DOC</option>
-                </select>
-              </div>
-
-              <div class="gen-row gen-doc-layout-actions">
-                <input type="text" id="docLayoutNameInput" class="gen-text-input" maxlength="80" placeholder="Enter DOC name">
-                <button type="button" class="btn btn-sm btn-outline" id="loadDocLayoutBtn" title="Load selected DOC">
-                  <i class="fa-solid fa-folder-open"></i> Load
-                </button>
-                <button type="button" class="btn btn-sm btn-outline" id="downloadDocLayoutBtn" title="Download selected DOC file">
-                  <i class="fa-solid fa-file-arrow-down"></i> Download DOC
-                </button>
-                <button type="button" class="btn btn-sm btn-blue" id="saveDocLayoutBtn" title="Save current editor as named DOC">
-                  <i class="fa-solid fa-file-circle-plus"></i> Save DOC
-                </button>
-              </div>
-            </div>
-
-            <div id="genDocStyleControls">
-              <div class="gen-row">
-                <label>Margins</label>
-                <div class="gen-page-margin-inputs">
-                  <input id="marginTopInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Top margin in mm" placeholder="T">
-                  <input id="marginRightInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Right margin in mm" placeholder="R">
-                  <input id="marginBottomInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Bottom margin in mm" placeholder="B">
-                  <input id="marginLeftInput" type="number" min="0" max="25" step="0.1" class="gen-mini-input" value="3" title="Left margin in mm" placeholder="L">
-                </div>
-              </div>
-
-              <div class="gen-row">
-                <label>Line Gap</label>
-                <input id="lineGapInput" type="number" min="0" max="12" step="0.1" class="gen-mini-input" value="2.5">
-                <span class="gen-unit">mm</span>
-              </div>
-
-              <div class="gen-row">
-                <label>Wrap</label>
-                <select id="wrapModeSelect">
-                  <option value="margin">Wrap To Margins</option>
-                  <option value="box">Wrap In Text Box</option>
-                </select>
-              </div>
-
-              <div class="gen-row">
-                <label>Snap</label>
-                <label class="gen-inline-check" for="snapGuidesToggle">
-                  <input id="snapGuidesToggle" type="checkbox" checked>
-                  <span>Snap to guides</span>
-                </label>
-              </div>
-
-              <div class="gen-row">
-                <label>V Guides</label>
-                <input id="verticalGuidesInput" type="text" class="gen-text-input" placeholder="10, 20, 35 (mm)">
-              </div>
-
-              <div class="gen-row">
-                <label>H Guides</label>
-                <input id="horizontalGuidesInput" type="text" class="gen-text-input" placeholder="8, 22, 41 (mm)">
-              </div>
-
-              <div class="gen-row gen-row-end gen-word-builder-actions" id="genSaveFormatRow">
-                <button type="button" class="btn btn-sm btn-blue" id="saveFormatBtn">
-                  <i class="fa-solid fa-floppy-disk"></i> Save Format
-                </button>
-              </div>
-            </div>
-
-            <div id="genMappingControls">
-              <div class="gen-row">
-                <label>Field</label>
-                <select id="fieldToPlaceSelect">
-                  <option value="">Select field to place</option>
-                </select>
-              </div>
-
-              <div class="gen-map-actions">
-                <button type="button" class="btn btn-sm btn-outline" id="autoMapSideBtn" title="Auto map fields on current side based on converted text/image blocks">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> Auto Map Side
-                </button>
-                <button type="button" class="btn btn-sm btn-outline" id="clearSideMappingsBtn" title="Clear mapped fields for current side">
-                  <i class="fa-solid fa-eraser"></i> Clear Side Maps
-                </button>
-              </div>
-
-              <div class="gen-map-actions gen-map-actions-tools">
-                <button type="button" class="btn btn-sm btn-outline" id="autoFlowLinesBtn" title="Auto-flow text blocks in reading order inside page margins">
-                  <i class="fa-solid fa-align-left"></i> Auto Flow Lines
-                </button>
-                <button type="button" class="btn btn-sm btn-outline" id="distributeLinesBtn" title="Distribute text blocks evenly from top to bottom margins">
-                  <i class="fa-solid fa-arrow-down-wide-short"></i> Distribute Lines
-                </button>
-                <select id="bulkAlignSelect" class="gen-tool-select" title="Choose horizontal alignment for all text blocks on active side">
-                  <option value="left">Align All Left</option>
-                  <option value="center">Align All Center</option>
-                  <option value="right">Align All Right</option>
-                </select>
-                <button type="button" class="btn btn-sm btn-outline" id="applyBulkAlignBtn" title="Apply selected horizontal alignment to all text blocks on active side">
-                  <i class="fa-solid fa-arrows-left-right-to-line"></i> Apply Align
-                </button>
-              </div>
-
-              <div class="gen-row gen-row-inline-tools">
-                <label class="gen-inline-check" for="lockMappedBlocksToggle">
-                  <input type="checkbox" id="lockMappedBlocksToggle">
-                  <span>Lock mapped blocks</span>
-                </label>
-                <button type="button" class="btn btn-sm btn-outline" id="auditMappingsBtn" title="Audit active side mappings for overlaps, missing sources, and out-of-bounds placements">
-                  <i class="fa-solid fa-list-check"></i> Audit Side Maps
-                </button>
-              </div>
-
-              <div class="gen-mini-panel">
-                <div class="gen-mini-panel-title">Multi-Select Group Tools</div>
-                <p class="gen-mini-panel-hint" id="multiSelectHint">Tip: Shift+Click blocks to multi-select. Hold Alt and drag on empty canvas area to box-select.</p>
-                <div class="gen-map-actions gen-map-actions-tools gen-tight-actions">
-                  <button type="button" class="btn btn-sm btn-outline" id="groupAlignLeftBtn" title="Align selected blocks to left edge">Group Left</button>
-                  <button type="button" class="btn btn-sm btn-outline" id="groupAlignCenterBtn" title="Align selected blocks to center">Group Center</button>
-                  <button type="button" class="btn btn-sm btn-outline" id="groupAlignRightBtn" title="Align selected blocks to right edge">Group Right</button>
-                  <button type="button" class="btn btn-sm btn-outline" id="groupDistributeHorizontalBtn" title="Distribute selected blocks horizontally">Distribute X</button>
-                  <button type="button" class="btn btn-sm btn-outline" id="groupDistributeVerticalBtn" title="Distribute selected blocks vertically">Distribute Y</button>
-                  <button type="button" class="btn btn-sm btn-outline" id="clearMultiSelectionBtn" title="Clear all selected blocks">Clear Selection</button>
-                </div>
-              </div>
-
-              <div class="gen-mini-panel">
-                <div class="gen-mini-panel-title">Collision Watch</div>
-                <div class="gen-row gen-row-inline-tools gen-tight-row">
-                  <span class="gen-inline-note" id="collisionStatusText">No collisions detected.</span>
-                  <button type="button" class="btn btn-sm btn-outline" id="resolveCollisionsBtn" title="Auto-resolve overlapping blocks on active side">Resolve Collisions</button>
-                </div>
-              </div>
-
-              <div class="gen-mini-panel">
-                <div class="gen-mini-panel-title">Side Sync</div>
-                <div class="gen-row gen-tight-row">
-                  <label>Direction</label>
-                  <select id="syncDirectionSelect">
-                    <option value="front_to_back">Front -> Back</option>
-                    <option value="back_to_front">Back -> Front</option>
-                  </select>
-                </div>
-                <div class="gen-row gen-row-inline-tools gen-tight-row">
-                  <label class="gen-inline-check" for="syncIncludeLayoutToggle">
-                    <input type="checkbox" id="syncIncludeLayoutToggle" checked>
-                    <span>Layout</span>
-                  </label>
-                  <label class="gen-inline-check" for="syncIncludeStylesToggle">
-                    <input type="checkbox" id="syncIncludeStylesToggle" checked>
-                    <span>Styles</span>
-                  </label>
-                  <label class="gen-inline-check" for="syncIncludeMappingsToggle">
-                    <input type="checkbox" id="syncIncludeMappingsToggle">
-                    <span>Mappings</span>
-                  </label>
-                  <button type="button" class="btn btn-sm btn-outline" id="runSideSyncBtn" title="Copy selected data from one side to the other">Run Sync</button>
-                </div>
-              </div>
-
-              <div class="gen-mini-panel">
-                <div class="gen-mini-panel-title">Compare and Restore</div>
-                <div class="gen-row gen-tight-row">
-                  <label>Version</label>
-                  <select id="historyCompareSelect">
-                    <option value="">Select history version</option>
-                  </select>
-                </div>
-                <div class="gen-row gen-row-end gen-tight-row">
-                  <button type="button" class="btn btn-sm btn-outline" id="runHistoryCompareBtn" title="Compare selected version against current editor state">Compare</button>
-                </div>
-                <p class="gen-mini-panel-hint" id="historyCompareSummary">Select a version and click Compare.</p>
-                <div class="gen-row gen-row-inline-tools gen-tight-row">
-                  <label class="gen-inline-check" for="restoreMappingsToggle">
-                    <input type="checkbox" id="restoreMappingsToggle" checked>
-                    <span>Mappings</span>
-                  </label>
-                  <label class="gen-inline-check" for="restoreLayoutToggle">
-                    <input type="checkbox" id="restoreLayoutToggle" checked>
-                    <span>Layout</span>
-                  </label>
-                  <label class="gen-inline-check" for="restoreStylesToggle">
-                    <input type="checkbox" id="restoreStylesToggle" checked>
-                    <span>Styles</span>
-                  </label>
-                  <label class="gen-inline-check" for="restoreGuidesToggle">
-                    <input type="checkbox" id="restoreGuidesToggle">
-                    <span>Guides</span>
-                  </label>
-                  <button type="button" class="btn btn-sm btn-outline" id="applySelectiveRestoreBtn" title="Restore selected parts from compared version">Apply Restore</button>
-                </div>
-              </div>
-
-              <div class="gen-active-side-info">Active side: <strong id="activeSideLabel">Front</strong></div>
-              <div id="genPlacedFields"></div>
-              <p class="gen-empty-msg" id="noFieldsMsg">No fields mapped yet.</p>
-            </div>
-          </div>
-
-          <!-- Section: Card Settings (kept in import-only mode) -->
-          <div class="gen-section" id="genCardSettingsSection">
-            <div class="gen-section-header">
-              <i class="fa-solid fa-sliders text-indigo-500"></i>
-              <h3>Card Settings</h3>
-            </div>
-            <div class="gen-row">
-              <label>Card Type</label>
-              <div class="gen-toggle">
-                <button class="gen-toggle-btn active" id="singleSidedBtn">1-Sided</button>
-                <button class="gen-toggle-btn" id="twoSidedBtn">2-Sided</button>
-              </div>
-            </div>
-            <div class="gen-row">
-              <label>Orientation</label>
-              <div class="gen-toggle">
-                <button class="gen-toggle-btn active" id="landscapeBtn">Horizontal</button>
-                <button class="gen-toggle-btn" id="portraitBtn">Vertical</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom actions -->
-          <div class="gen-actions">
-            <button class="btn btn-outline" id="generatePreviewBtn" disabled>
-              <i class="fa-regular fa-eye"></i> Generate Preview
-            </button>
-            <button class="btn btn-green" id="generatePdfBtn" disabled>
-              <i class="fa-solid fa-gears"></i> Generate All
+            <button class="gc-modal-close" id="gcEditorClose" type="button" title="Close">
+              <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
 
-        </div><!-- /gen-left-panel -->
+          <div class="gc-editor-alert hidden" id="gcEditorAlertBar" role="status" aria-live="polite"></div>
 
-        <!-- ============================================ -->
-        <!-- RIGHT PANEL                                  -->
-        <!-- ============================================ -->
-        <div class="gen-right-panel">
-
-          <div class="gen-tools-sticky" id="genToolsSticky">
-            <!-- Canvas toolbar -->
-            <div class="gen-canvas-toolbar">
-              <!-- Front / Back toggle -->
-              <div class="gen-side-toggle hidden" id="sideToggle">
-                <button class="gen-side-btn active" id="frontSideBtn"><i class="fa-solid fa-square"></i> Front</button>
-                <button class="gen-side-btn" id="backSideBtn"><i class="fa-regular fa-square"></i> Back</button>
-              </div>
-
-            </div>
-
-            <div class="gen-style-actionbar" id="genStyleActionbar">
-              <div class="gen-style-action-item gen-style-action-item-family">
-                <span class="gen-style-action-label">Font</span>
-                <select id="fontFamilySelect">
-                  <option value="Arial">Arial</option>
-                  <option value="Arial Narrow">Arial Narrow</option>
-                  <option value="Arial Black">Arial Black</option>
-                  <option value="Arial Rounded MT Bold">Arial Rounded MT Bold</option>
-                  <option value="Arial Unicode MS">Arial Unicode MS</option>
-                  <option value="Calibri">Calibri</option>
-                  <option value="Times New Roman">Times New Roman</option>
-                  <option value="Nirmala UI">Nirmala UI</option>
-                  <option value="Noto Sans">Noto Sans</option>
-                  <option value="Noto Sans Condensed">Noto Sans Condensed</option>
-                </select>
-              </div>
-
-              <div class="gen-style-action-item">
-                <span class="gen-style-action-label">Weight</span>
-                <select id="fontWeightSelect">
-                  <option value="normal">Regular</option>
-                  <option value="semibold">Semi Bold</option>
-                  <option value="bold">Bold</option>
-                </select>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-size">
-                <span class="gen-style-action-label">Size</span>
-                <input id="fontSizeInput" type="number" min="6" max="72" class="gen-mini-input" value="12">
-                <span class="gen-unit">pt</span>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-size">
-                <span class="gen-style-action-label">Line</span>
-                <input id="lineHeightInput" type="number" min="0.8" max="3" step="0.05" class="gen-mini-input" value="1.15">
-                <span class="gen-unit">x</span>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-size">
-                <span class="gen-style-action-label">Spacing</span>
-                <input id="charSpacingInput" type="number" min="-5" max="20" step="0.1" class="gen-mini-input" value="0">
-                <span class="gen-unit">pt</span>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-color">
-                <span class="gen-style-action-label">Color</span>
-                <input id="fontColorInput" type="color" class="gen-color-input" value="#111111">
-                <input id="fontColorTextInput" type="text" class="gen-color-text" value="#111111" maxlength="7" placeholder="#111111">
-              </div>
-
-              <div class="gen-style-action-item">
-                <span class="gen-style-action-label">Align</span>
-                <select id="textAlignSelect">
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
-                </select>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-button">
-                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="toggleGuidesBtn" title="Show or hide layout guidelines">Hide Guides</button>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-button">
-                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="undoEditBtn" title="Undo (Ctrl+Z)">Undo</button>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-button">
-                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="redoEditBtn" title="Redo (Ctrl+Y or Ctrl+Shift+Z)">Redo</button>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-button">
-                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="addTextLineBtn" title="Add a new text block like DOC editor">Add Text</button>
-              </div>
-
-              <div class="gen-style-action-item gen-style-action-button">
-                <button type="button" class="btn btn-sm btn-outline gen-style-inline-btn" id="applyStyleToAllLinesBtn" title="Apply current style controls to all text blocks on active side">Apply Style To All</button>
-              </div>
-            </div>
+          <div class="gc-editor-body">
+            <div class="gc-simple-flow-root" id="gcSimpleFlowRoot"></div>
           </div>
-
-          <!-- Card canvas -->
-          <div class="gen-canvas-container">
-            <div class="gen-canvas-pair" id="genCanvasPair">
-              <div class="gen-card-wrapper" id="genCardWrapper">
-                <canvas id="genCardCanvas"></canvas>
-                <div class="gen-editable-layer hidden" id="genEditableLayerFront" aria-label="Editable front design layer"></div>
-              </div>
-
-              <div class="gen-side-preview-panel hidden" id="genCardSecondaryPanel">
-                <div class="gen-side-preview-title"><span id="genSecondarySideLabel">Back Preview</span></div>
-                <div class="gen-card-wrapper gen-card-wrapper-secondary" id="genCardSecondaryWrapper">
-                  <canvas id="genCardSecondaryCanvas"></canvas>
-                  <div class="gen-editable-layer hidden" id="genEditableLayerBack" aria-label="Editable back design layer"></div>
-                </div>
-              </div>
-            </div>
-            <p class="gen-canvas-info">Card size: 87 mm x 57 mm &nbsp;|&nbsp; 1 pixel = 0.143 mm</p>
-          </div>
-
-        </div><!-- /gen-right-panel -->
-
-      </div><!-- /gen-layout -->
-    </div><!-- /main-content -->
-
+        </div>
+      </div>
+    </div>
   </main>
+
   {% include 'partials/components/toast.html' %}
+
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
-  <script defer src="{% static 'js/vendor/fabric.min.js' %}"></script>
+
+  <script>
+    (function () {
+      function loadWithFallback(urls) {
+        if (!urls || urls.length === 0) return;
+        var idx = 0;
+        function loadNext() {
+          if (idx >= urls.length) return;
+          var s = document.createElement('script');
+          s.src = urls[idx++];
+          s.async = false;
+          s.onerror = loadNext;
+          document.head.appendChild(s);
+        }
+        loadNext();
+      }
+      loadWithFallback([
+        '{% static "js/vendor/pdf.min.js" %}',
+        'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+        'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+      ]);
+      loadWithFallback([
+        '{% static "js/vendor/fabric.min.js" %}',
+        'https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js',
+        'https://unpkg.com/fabric@5.3.0/dist/fabric.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
+      ]);
+    })();
+  </script>
+
   <script defer src="{% static 'js/cardprint/generate-card.js' %}"></script>
   {% include 'partials/htmx-config.html' %}
+
+  <script>
+    (function () {
+      function backToGenerateList() {
+        window.location.href = "{% url 'cardprint:print_cards' table.id %}?step=generate_list";
+      }
+
+      var closeBtn = document.getElementById('gcEditorClose');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', backToGenerateList);
+      }
+
+      window.openGcEditorModal = function () {};
+      window.closeGcEditorModal = backToGenerateList;
+    })();
+  </script>
 </body>
 </html>

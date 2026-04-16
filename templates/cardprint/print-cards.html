@@ -84,9 +84,26 @@
     .gc-editor-header .gc-modal-close { background:none;border:none;cursor:pointer;color:var(--text-muted,var(--color-gray-400));font-size: var(--ui-font-size-2xl, 18px);line-height:1;padding:2px 6px;border-radius:6px;transition:color .15s,background .15s; }
     .gc-editor-header .gc-modal-close:hover { color:var(--color-danger);background:var(--color-red-100); }
     .gc-editor-body { flex:1;overflow:hidden;display:flex;flex-direction:column; }
-    .gc-editor-body .gen-layout { flex:1;overflow:hidden; }
-    .gc-editor-footer { display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 20px;border-top:1px solid var(--border-color,var(--color-gray-200));background:var(--bg-surface,var(--color-white));flex-shrink:0; }
-    #gcDownloadPdfBtn:disabled { opacity:0.45;cursor:not-allowed; }
+
+    .gc-editor-alert {
+      margin: 0;
+      padding: 8px 20px;
+      font-size: var(--ui-font-size-sm, 12px);
+      border-bottom: 1px solid var(--border-color, var(--color-gray-200));
+      background: var(--color-yellow-50);
+      color: var(--color-gray-800);
+    }
+    .gc-editor-alert.hidden { display: none; }
+    .gc-editor-alert.gc-alert-error {
+      background: var(--color-red-50);
+      color: var(--color-red-700);
+      border-bottom-color: var(--color-red-200);
+    }
+    .gc-editor-alert.gc-alert-warning {
+      background: var(--color-yellow-50);
+      color: var(--color-amber-700);
+      border-bottom-color: var(--color-yellow-200);
+    }
 
     /* -- Global btn colour / size variants (not scoped to action-bar) -- */
     .btn-green  { background:var(--color-success);color:var(--color-white)!important;border-color:var(--color-success); }
@@ -115,143 +132,29 @@
   <!--  Generate Card Editor Modal  -->
   <div class="gc-editor-overlay hidden" id="gcEditorModal">
     <div class="gc-editor-box">
-      <!-- Header -->
       <div class="gc-editor-header">
-        <i class="fa-solid fa-id-card text-blue-500"></i>
-        <span class="gc-modal-title">Generate Cards &mdash; {{ table.name }}</span>
-        <button class="gc-modal-close" id="gcEditorClose" title="Close">
+        <div class="gc-flow-header-left">
+          <i class="fa-solid fa-id-card text-blue-500"></i>
+          <span class="gc-modal-title">Generate Cards &mdash; {{ table.name }}</span>
+          <span class="gc-step-pill" id="gcStepCounter">Step 1 of 3</span>
+        </div>
+        <div class="gc-header-stepper" id="gcHeaderStepper" aria-hidden="false">
+          <button type="button" class="gc-mini-step is-active" data-step="1">1 Setup</button>
+          <button type="button" class="gc-mini-step" data-step="2">2 Map</button>
+          <button type="button" class="gc-mini-step" data-step="3">3 Generate</button>
+        </div>
+        <button class="gc-modal-close" id="gcEditorClose" type="button" title="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-      <!-- Body: full editor layout -->
+
+      <div class="gc-editor-alert hidden" id="gcEditorAlertBar" role="status" aria-live="polite"></div>
+
       <div class="gc-editor-body">
-        <div class="gen-layout">
-
-          <!-- -- LEFT PANEL -- -->
-          <div class="gen-left-panel">
-
-            <!-- Card Settings -->
-            <div class="gen-section">
-              <div class="gen-section-header">
-                <i class="fa-solid fa-sliders text-indigo-500"></i>
-                <h3>Card Settings</h3>
-              </div>
-              <div class="gen-row">
-                <label>Card Type</label>
-                <div class="gen-toggle">
-                  <button class="gen-toggle-btn active" id="singleSidedBtn">1-Sided</button>
-                  <button class="gen-toggle-btn" id="twoSidedBtn">2-Sided</button>
-                </div>
-              </div>
-              <div class="gen-row">
-                <label>Font Size</label>
-                <input type="number" id="fontSizeInput" class="gen-mini-input" min="7" max="10" value="8"> <span class="gen-unit">pt</span>
-              </div>
-              <div class="gen-row">
-                <label>Font</label>
-                <select id="fontFamilySelect" class="form-select">
-                  <option value="Helvetica-Bold">Arial Bold</option>
-                  <option value="Helvetica">Arial Regular</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Place Fields -->
-            <div class="gen-section">
-              <div class="gen-section-header">
-                <i class="fa-solid fa-crosshairs text-amber-500"></i>
-                <h3>Place Fields on Card</h3>
-              </div>
-              <p class="gen-active-side-info">Placing on: <strong id="activeSideLabel">Front</strong></p>
-              <div class="gen-row">
-                <label>Field</label>
-                <select id="fieldToPlaceSelect" class="form-select">
-                  <option value="">&#8212; select &#8212;</option>
-                </select>
-                <button class="btn btn-xs btn-blue" id="startDrawBtn" disabled title="Click then drag on the card canvas to draw the field area">
-                  <i class="fa-solid fa-vector-square"></i> Draw
-                </button>
-                <button class="btn btn-xs btn-green" id="autoDetectBtn" title="Auto-detect field positions from PDF text">
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> Auto
-                </button>
-              </div>
-              <p class="gen-hint" id="drawHintText">Select a field, then click Draw and drag a rectangle on the card canvas &rarr;</p>
-              <div id="genPlacedFields">
-                <p class="gen-empty-msg" id="noFieldsMsg">No fields placed yet.</p>
-              </div>
-            </div>
-
-            <!-- Bottom actions -->
-            <div class="gen-actions">
-              <button class="btn btn-gray btn-sm" id="saveTemplateBtn">
-                <i class="fa-solid fa-floppy-disk"></i> Save Template
-              </button>
-              <button class="btn btn-green btn-sm" id="generatePdfBtn" disabled>
-                <i class="fa-solid fa-gears"></i> Generate PDF
-              </button>
-            </div>
-
-          </div><!-- /gen-left-panel -->
-
-          <!-- -- RIGHT PANEL -- -->
-          <div class="gen-right-panel">
-
-            <!-- Canvas toolbar -->
-            <div class="gen-canvas-toolbar">
-              <div class="gen-side-toggle hidden" id="sideToggle">
-                <button class="gen-side-btn active" id="frontSideBtn"><i class="fa-solid fa-square"></i> Front</button>
-                <button class="gen-side-btn" id="backSideBtn"><i class="fa-regular fa-square"></i> Back</button>
-              </div>
-              <div class="gen-draw-mode-indicator hidden" id="drawModeIndicator">
-                <i class="fa-solid fa-crosshairs"></i>
-                Drawing: <strong id="drawFieldName">&mdash;</strong>
-                <button class="gen-cancel-draw" id="cancelDrawBtn">&times; Cancel</button>
-              </div>
-              <div class="gen-upload-area ml-auto">
-                <label class="btn btn-sm btn-outline cursor-pointer" id="uploadFrontWrapper" title="Upload front-side PDF template">
-                  <i class="fa-solid fa-upload"></i> <span id="uploadFrontLabel">Upload Front PDF</span>
-                  <input type="file" id="uploadFrontInput" accept=".pdf" class="hidden">
-                </label>
-                <label class="btn btn-sm btn-outline hidden cursor-pointer" id="uploadBackWrapper" title="Upload back-side PDF template">
-                  <i class="fa-solid fa-upload"></i> Upload Back PDF
-                  <input type="file" id="uploadBackInput" accept=".pdf" class="hidden">
-                </label>
-              </div>
-            </div>
-
-            <!-- Card canvas -->
-            <div class="gen-canvas-container">
-              <div class="gen-card-wrapper" id="genCardWrapper">
-                <canvas id="genCardCanvas"></canvas>
-                <div class="gen-pdf-loading hidden" id="pdfLoadingOverlay">
-                  <div class="gen-pdf-skeleton" aria-hidden="true">
-                    <div class="gen-pdf-skeleton-block gen-pdf-skeleton-title"></div>
-                    <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line"></div>
-                    <div class="gen-pdf-skeleton-block gen-pdf-skeleton-line gen-pdf-skeleton-line-short"></div>
-                  </div>
-                  <span class="sr-only">Loading template...</span>
-                </div>
-                <div class="gen-no-template" id="noTemplateMsg" {% if has_template_front_pdf %}hidden{% endif %}>
-                  <i class="fa-solid fa-file-pdf"></i>
-                  <p>Upload a PDF template to see it here.<br>Then draw rectangles to position each field.</p>
-                </div>
-              </div>
-              <p class="gen-canvas-info">Card size: 87 mm &times; 57 mm &nbsp;|&nbsp; 1 pixel = 0.143 mm</p>
-            </div>
-
-          </div><!-- /gen-right-panel -->
-
-        </div><!-- /gen-layout -->
-      </div><!-- /gc-editor-body -->
-      <!-- Footer -->
-      <div class="gc-editor-footer">
-        <button class="btn btn-gray btn-sm" id="gcEditorCancel">Cancel</button>
-        <button class="btn btn-blue btn-sm" id="gcDownloadPdfBtn" disabled>
-          <i class="fa-solid fa-download"></i> Download PDF
-        </button>
+        <div class="gc-simple-flow-root" id="gcSimpleFlowRoot"></div>
       </div>
-    </div><!-- /gc-editor-box -->
-  </div><!-- /gcEditorModal -->
+    </div>
+  </div>
 
   <script defer src="{% static 'dist/js/core.min.js' %}"></script>
   <script defer src="{% static 'dist/js/cardprint-shared.min.js' %}"></script>
@@ -294,8 +197,6 @@
   (function() {
     var overlay = document.getElementById('gcEditorModal');
     var closeBtn = document.getElementById('gcEditorClose');
-    var cancelBtn = document.getElementById('gcEditorCancel');
-    var downloadBtn = document.getElementById('gcDownloadPdfBtn');
 
     function openGcModal() {
       if (!overlay) return;
@@ -303,23 +204,32 @@
       document.body.style.overflow = 'hidden';
       if (typeof window.gcEditorRefresh === 'function') window.gcEditorRefresh();
     }
-    function closeGcModal() {
+
+    function applyClose() {
       if (!overlay) return;
       overlay.classList.add('hidden');
       document.body.style.overflow = '';
     }
 
+    function closeGcModal() {
+      var beforeClose = (typeof window.gcEditorBeforeClose === 'function') ? window.gcEditorBeforeClose() : null;
+      if (beforeClose && typeof beforeClose.then === 'function') {
+        beforeClose.finally(applyClose);
+      } else {
+        applyClose();
+      }
+    }
+
     if (closeBtn) closeBtn.addEventListener('click', closeGcModal);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeGcModal);
     overlay && overlay.addEventListener('click', function(e) {
       if (e.target === overlay) closeGcModal();
     });
 
-    if (downloadBtn) {
-      downloadBtn.addEventListener('click', function() {
-        if (typeof window.gcDownloadLastPdf === 'function') window.gcDownloadLastPdf();
-      });
-    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) {
+        closeGcModal();
+      }
+    });
 
     window.openGcEditorModal = openGcModal;
     window.closeGcEditorModal = closeGcModal;
