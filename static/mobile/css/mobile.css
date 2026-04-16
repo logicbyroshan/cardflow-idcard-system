@@ -22,6 +22,25 @@
 html, body {
     overscroll-behavior-y: contain;
     background-color: #eaf2ff;
+    color-scheme: light;
+}
+
+:root {
+    color-scheme: light;
+}
+
+html,
+body,
+#mobile-app {
+    forced-color-adjust: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    html,
+    body {
+        background-color: #eaf2ff;
+        color: #182235;
+    }
 }
 
 body {
@@ -103,6 +122,25 @@ body.mobile-page-leave [class*='backdrop-blur'] {
 }
 
 body.mobile-route-progress-active #mobile-route-progress {
+    opacity: 1;
+}
+
+#mobile-action-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0;
+    opacity: 0;
+    z-index: 10066;
+    pointer-events: none;
+    background: linear-gradient(90deg, #22c55e 0%, #2f80ed 42%, #33b7ef 100%);
+    box-shadow: 0 2px 10px rgba(47, 128, 237, 0.4);
+    will-change: width, opacity;
+    transition: opacity 120ms ease;
+}
+
+body.mobile-action-progress-active #mobile-action-progress {
     opacity: 1;
 }
 

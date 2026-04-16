@@ -176,6 +176,8 @@ window.showConfirm = function showConfirm(options) {
 
     document.body.classList.add('mobile-fast-tap-ready');
 
+    var pendingRouteHref = window.location.pathname + window.location.search;
+
     function ensureRouteSkeleton() {
         var existing = document.getElementById('mobile-route-skeleton');
         if (existing) return existing;
@@ -189,15 +191,7 @@ window.showConfirm = function showConfirm(options) {
         shell.style.padding = '18px 14px 88px';
         shell.style.display = 'none';
         shell.style.pointerEvents = 'none';
-        shell.innerHTML = '' +
-            '<div style="height:18px;width:40%;border-radius:8px;background:#dfeafb;margin-bottom:16px;"></div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
-                '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
-                '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
-            '</div>' +
-            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
-            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
-            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;"></div>';
+        shell.innerHTML = '<div id="mobile-route-skeleton-content"></div>';
 
         var style = document.createElement('style');
         style.textContent = '' +
@@ -205,6 +199,20 @@ window.showConfirm = function showConfirm(options) {
                 'background:linear-gradient(90deg,#dfeafb 20%,#eff5ff 45%,#dfeafb 70%);' +
                 'background-size:220% 100%;' +
                 'animation:adarshSkeletonShimmer 1.15s linear infinite;' +
+                'box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);' +
+            '}' +
+            '#mobile-route-skeleton .adarsh-skeleton-chip{' +
+                'display:inline-block;' +
+                'height:10px;' +
+                'border-radius:999px;' +
+                'background:linear-gradient(90deg,#dfeafb 20%,#eff5ff 45%,#dfeafb 70%);' +
+                'background-size:220% 100%;' +
+                'animation:adarshSkeletonShimmer 1.15s linear infinite;' +
+            '}' +
+            '#mobile-route-skeleton .adarsh-skeleton-grid2{' +
+                'display:grid;' +
+                'grid-template-columns:1fr 1fr;' +
+                'gap:10px;' +
             '}' +
             '@keyframes adarshSkeletonShimmer{' +
                 '0%{background-position:220% 0;}' +
@@ -216,10 +224,143 @@ window.showConfirm = function showConfirm(options) {
         return shell;
     }
 
+    function normalizeSkeletonPath(rawHref) {
+        var href = String(rawHref || '').trim();
+        if (!href) return window.location.pathname;
+        try {
+            var resolved = new URL(href, window.location.href);
+            return resolved.pathname || window.location.pathname;
+        } catch (err) {
+            return window.location.pathname;
+        }
+    }
+
+    function inferSkeletonKindFromHref(rawHref) {
+        var path = normalizeSkeletonPath(rawHref).toLowerCase();
+        if (path === '/app' || path === '/app/') return 'home';
+        if (path.indexOf('/app/search') === 0) return 'search';
+        if (path.indexOf('/app/table/') === 0 || path.indexOf('/app/tables/') === 0) return 'list';
+        if (path.indexOf('/app/card/') === 0) return 'detail';
+        if (path.indexOf('/app/reprint/') === 0) return 'reprint';
+        if (path.indexOf('/app/clients') === 0) return 'clients';
+        if (path.indexOf('/app/groups') === 0) return 'groups';
+        if (path.indexOf('/app/settings') === 0) return 'settings';
+        if (path.indexOf('/app/profile') === 0) return 'profile';
+        if (path.indexOf('/app/staff') === 0) return 'staff';
+        if (path.indexOf('/app/website') === 0) return 'website';
+        if (path.indexOf('/app/camera') === 0) return 'camera';
+        if (path.indexOf('/app/notifications') === 0) return 'notifications';
+        if (path.indexOf('/app/permissions') === 0) return 'permissions';
+        return 'default';
+    }
+
+    function renderPageSkeleton(kind) {
+        var top = '' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+                '<span class="adarsh-skeleton-block" style="width:34px;height:34px;border-radius:12px;"></span>' +
+                '<span class="adarsh-skeleton-block" style="height:14px;flex:1;border-radius:8px;"></span>' +
+                '<span class="adarsh-skeleton-block" style="width:34px;height:34px;border-radius:12px;"></span>' +
+            '</div>';
+
+        if (kind === 'home') {
+            return top +
+                '<div class="adarsh-skeleton-grid2" style="margin-bottom:12px;">' +
+                    '<div class="adarsh-skeleton-block" style="height:94px;border-radius:16px;"></div>' +
+                    '<div class="adarsh-skeleton-block" style="height:94px;border-radius:16px;"></div>' +
+                '</div>' +
+                '<div class="adarsh-skeleton-grid2" style="margin-bottom:12px;">' +
+                    '<div class="adarsh-skeleton-block" style="height:68px;border-radius:14px;"></div>' +
+                    '<div class="adarsh-skeleton-block" style="height:68px;border-radius:14px;"></div>' +
+                '</div>' +
+                '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;"></div>';
+        }
+
+        if (kind === 'list' || kind === 'search' || kind === 'reprint') {
+            return top +
+                '<div class="adarsh-skeleton-block" style="height:42px;border-radius:12px;margin-bottom:10px;"></div>' +
+                '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
+                    '<span class="adarsh-skeleton-chip" style="width:22%;"></span>' +
+                    '<span class="adarsh-skeleton-chip" style="width:18%;"></span>' +
+                    '<span class="adarsh-skeleton-chip" style="width:26%;"></span>' +
+                '</div>' +
+                '<div class="adarsh-skeleton-block" style="height:86px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:86px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:86px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:86px;border-radius:14px;"></div>';
+        }
+
+        if (kind === 'detail' || kind === 'profile') {
+            return top +
+                '<div class="adarsh-skeleton-block" style="height:182px;border-radius:18px;margin-bottom:12px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:14px;width:72%;border-radius:8px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:12px;width:44%;border-radius:8px;margin-bottom:14px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:54px;border-radius:12px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:54px;border-radius:12px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:54px;border-radius:12px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:44px;border-radius:12px;"></div>';
+        }
+
+        if (kind === 'settings' || kind === 'permissions') {
+            return top +
+                '<div class="adarsh-skeleton-block" style="height:112px;border-radius:16px;margin-bottom:12px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:56px;border-radius:12px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:56px;border-radius:12px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:56px;border-radius:12px;margin-bottom:8px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:56px;border-radius:12px;"></div>';
+        }
+
+        if (kind === 'clients' || kind === 'groups' || kind === 'staff' || kind === 'website') {
+            return top +
+                '<div class="adarsh-skeleton-block" style="height:42px;border-radius:12px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-grid2" style="margin-bottom:10px;">' +
+                    '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
+                    '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
+                '</div>' +
+                '<div class="adarsh-skeleton-block" style="height:74px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:74px;border-radius:14px;margin-bottom:10px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:74px;border-radius:14px;"></div>';
+        }
+
+        if (kind === 'camera' || kind === 'notifications') {
+            return top +
+                '<div class="adarsh-skeleton-block" style="height:240px;border-radius:18px;margin-bottom:12px;"></div>' +
+                '<div class="adarsh-skeleton-grid2" style="margin-bottom:10px;">' +
+                    '<div class="adarsh-skeleton-block" style="height:52px;border-radius:12px;"></div>' +
+                    '<div class="adarsh-skeleton-block" style="height:52px;border-radius:12px;"></div>' +
+                '</div>' +
+                '<div class="adarsh-skeleton-block" style="height:68px;border-radius:14px;"></div>';
+        }
+
+        return top +
+            '<div class="adarsh-skeleton-grid2" style="margin-bottom:14px;">' +
+                '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
+                '<div class="adarsh-skeleton-block" style="height:78px;border-radius:14px;"></div>' +
+            '</div>' +
+            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
+            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;margin-bottom:10px;"></div>' +
+            '<div class="adarsh-skeleton-block" style="height:84px;border-radius:14px;"></div>';
+    }
+
+    function setRouteSkeletonForHref(rawHref) {
+        var shell = ensureRouteSkeleton();
+        if (!shell) return;
+        var content = shell.querySelector('#mobile-route-skeleton-content');
+        if (!content) return;
+        var kind = inferSkeletonKindFromHref(rawHref);
+        shell.setAttribute('data-route-kind', kind);
+        content.innerHTML = renderPageSkeleton(kind);
+    }
+
     var skeletonTimer = null;
     var progressGuardTimer = null;
     var progressHideTimer = null;
     var progressRampTimer = null;
+    var actionProgressGuardTimer = null;
+    var actionProgressHideTimer = null;
+    var actionProgressRampTimer = null;
+    var activeActionRequests = 0;
     var prefetchedRoutes = Object.create(null);
     var prefetchedRouteCount = 0;
     var PREFETCH_ROUTE_LIMIT = 6;
@@ -290,6 +431,177 @@ window.showConfirm = function showConfirm(options) {
         document.body.classList.remove('mobile-route-progress-active');
         bar.style.transition = 'none';
         bar.style.width = '0%';
+    }
+
+    function ensureActionProgress() {
+        var existing = document.getElementById('mobile-action-progress');
+        if (existing) return existing;
+        var bar = document.createElement('div');
+        bar.id = 'mobile-action-progress';
+        document.body.appendChild(bar);
+        return bar;
+    }
+
+    function clearActionProgressTimers() {
+        if (actionProgressGuardTimer) {
+            clearTimeout(actionProgressGuardTimer);
+            actionProgressGuardTimer = null;
+        }
+        if (actionProgressHideTimer) {
+            clearTimeout(actionProgressHideTimer);
+            actionProgressHideTimer = null;
+        }
+        if (actionProgressRampTimer) {
+            clearTimeout(actionProgressRampTimer);
+            actionProgressRampTimer = null;
+        }
+    }
+
+    function startActionProgress() {
+        var bar = ensureActionProgress();
+        if (!bar) return;
+        if (activeActionRequests === 0) {
+            clearActionProgressTimers();
+            document.body.classList.add('mobile-action-progress-active');
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            bar.offsetWidth;
+            bar.style.transition = 'width 260ms ease-out';
+            bar.style.width = '24%';
+
+            actionProgressRampTimer = setTimeout(function() {
+                bar.style.transition = 'width 1000ms linear';
+                bar.style.width = '84%';
+            }, 260);
+
+            actionProgressGuardTimer = setTimeout(function() {
+                finishActionProgress();
+            }, 18000);
+        }
+        activeActionRequests += 1;
+    }
+
+    function finishActionProgress() {
+        if (activeActionRequests > 0) {
+            activeActionRequests -= 1;
+        }
+        if (activeActionRequests > 0) return;
+
+        var bar = ensureActionProgress();
+        if (!bar) return;
+        clearActionProgressTimers();
+        bar.style.transition = 'width 180ms ease-out';
+        bar.style.width = '100%';
+        actionProgressHideTimer = setTimeout(function() {
+            document.body.classList.remove('mobile-action-progress-active');
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+        }, 220);
+    }
+
+    function getRequestMethod(input, init) {
+        var method = '';
+        if (init && init.method) {
+            method = init.method;
+        } else if (input && typeof input === 'object' && input.method) {
+            method = input.method;
+        }
+        return String(method || 'GET').toUpperCase();
+    }
+
+    function getHeaderValue(headers, key) {
+        if (!headers) return '';
+        var target = String(key || '').toLowerCase();
+
+        if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+            var found = headers.get(key);
+            return String(found || '');
+        }
+
+        if (Array.isArray(headers)) {
+            for (var i = 0; i < headers.length; i++) {
+                var row = headers[i];
+                if (!row || row.length < 2) continue;
+                if (String(row[0] || '').toLowerCase() === target) {
+                    return String(row[1] || '');
+                }
+            }
+            return '';
+        }
+
+        if (typeof headers === 'object') {
+            var keys = Object.keys(headers);
+            for (var k = 0; k < keys.length; k++) {
+                var name = keys[k];
+                if (String(name || '').toLowerCase() === target) {
+                    return String(headers[name] || '');
+                }
+            }
+        }
+        return '';
+    }
+
+    function shouldTrackActionRequest(input, init) {
+        var method = getRequestMethod(input, init);
+        if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return false;
+
+        var headers = (init && init.headers) || (input && typeof input === 'object' ? input.headers : null);
+        var skipHeader = getHeaderValue(headers, 'X-Skip-Action-Progress');
+        if (String(skipHeader || '').toLowerCase() === '1' || String(skipHeader || '').toLowerCase() === 'true') {
+            return false;
+        }
+        return true;
+    }
+
+    if (typeof window.fetch === 'function' && !window.__adarshMobileActionFetchWrapped) {
+        var originalFetch = window.fetch;
+        window.fetch = function wrappedMobileFetch(input, init) {
+            var track = shouldTrackActionRequest(input, init);
+            if (track) startActionProgress();
+
+            var requestPromise;
+            try {
+                requestPromise = originalFetch.apply(this, arguments);
+            } catch (err) {
+                if (track) finishActionProgress();
+                throw err;
+            }
+
+            if (!track || !requestPromise || typeof requestPromise.then !== 'function') {
+                return requestPromise;
+            }
+
+            return requestPromise.then(function(result) {
+                finishActionProgress();
+                return result;
+            }).catch(function(error) {
+                finishActionProgress();
+                throw error;
+            });
+        };
+        window.__adarshMobileActionFetchWrapped = true;
+    }
+
+    if (window.XMLHttpRequest && !window.__adarshMobileActionXhrWrapped) {
+        var originalXhrOpen = XMLHttpRequest.prototype.open;
+        var originalXhrSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function wrappedMobileXhrOpen(method) {
+            this.__adarshMobileMethod = String(method || 'GET').toUpperCase();
+            return originalXhrOpen.apply(this, arguments);
+        };
+
+        XMLHttpRequest.prototype.send = function wrappedMobileXhrSend() {
+            var method = String(this.__adarshMobileMethod || 'GET');
+            var track = !(method === 'GET' || method === 'HEAD' || method === 'OPTIONS');
+            if (track) {
+                startActionProgress();
+                this.addEventListener('loadend', finishActionProgress, { once: true });
+            }
+            return originalXhrSend.apply(this, arguments);
+        };
+
+        window.__adarshMobileActionXhrWrapped = true;
     }
 
     function canPrefetchRoutes() {
@@ -388,8 +700,9 @@ window.showConfirm = function showConfirm(options) {
         activeTapEl.classList.add('mobile-tap-active');
     }
 
-    function showRouteSkeleton() {
+    function showRouteSkeleton(rawHref) {
         var shell = ensureRouteSkeleton();
+        setRouteSkeletonForHref(rawHref || pendingRouteHref || window.location.href);
         if (shell) shell.style.display = 'block';
     }
 
@@ -400,6 +713,7 @@ window.showConfirm = function showConfirm(options) {
         }
         var shell = document.getElementById('mobile-route-skeleton');
         if (shell) shell.style.display = 'none';
+        pendingRouteHref = '';
         clearTapState();
     }
 
@@ -427,10 +741,13 @@ window.showConfirm = function showConfirm(options) {
         if (!shouldTrackAnchor(anchor)) return;
         if (event.defaultPrevented) return;
 
-        prefetchRoute(anchor.getAttribute('href'));
+        pendingRouteHref = anchor.getAttribute('href') || '';
+        prefetchRoute(pendingRouteHref);
         startRouteProgress();
         if (skeletonTimer) clearTimeout(skeletonTimer);
-        skeletonTimer = setTimeout(showRouteSkeleton, 70);
+        skeletonTimer = setTimeout(function() {
+            showRouteSkeleton(pendingRouteHref);
+        }, 70);
         setTimeout(function() {
             hideRouteProgress(true);
         }, 1400);

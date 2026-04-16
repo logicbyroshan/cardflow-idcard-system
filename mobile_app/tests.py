@@ -1970,6 +1970,21 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertNotIn('<datalist id="class-options">', html)
 		self.assertNotIn('<datalist id="section-options">', html)
 
+	def test_mobile_navigation_script_has_page_specific_skeleton_and_action_progress(self):
+		script_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'js' / 'app.js'
+		script = script_path.read_text(encoding='utf-8')
+		self.assertIn('inferSkeletonKindFromHref', script)
+		self.assertIn('renderPageSkeleton', script)
+		self.assertIn('ensureActionProgress', script)
+		self.assertIn('wrappedMobileFetch', script)
+
+	def test_mobile_css_locks_light_color_scheme_and_action_progress_bar(self):
+		css_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'css' / 'mobile.css'
+		css = css_path.read_text(encoding='utf-8')
+		self.assertIn('color-scheme: light;', css)
+		self.assertIn('forced-color-adjust: none;', css)
+		self.assertIn('#mobile-action-progress', css)
+
 	def test_mobile_list_toast_is_above_modal_layers(self):
 		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'list_toast.html'
 		html = template_path.read_text(encoding='utf-8')
