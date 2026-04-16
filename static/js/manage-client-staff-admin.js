@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var addStaffBtn = document.getElementById('addStaffBtn');
     var editStaffBtn = document.getElementById('editStaffBtn');
     var viewStaffBtn = document.getElementById('viewStaffBtn');
+    var assignStaffBtn = document.getElementById('assignStaffBtn');
     var deleteStaffBtn = document.getElementById('deleteStaffBtn');
     var activeStaffBtn = document.getElementById('activeStaffBtn');
 
@@ -58,6 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var clientMultiselectText = document.getElementById('client-multiselect-text');
     var clientSearchInput = document.getElementById('client-search-input');
     var clientMultiselectEmpty = document.getElementById('client-multiselect-empty');
+    var assignmentSummarySection = document.getElementById('staff-assignment-summary-section');
+    var assignmentSummaryMeta = document.getElementById('staff-assignment-summary-meta');
+    var assignmentSummaryList = document.getElementById('staff-assignment-summary-list');
 
     function escapeHtml(str) {
         return String(str == null ? '' : str)
@@ -78,6 +82,131 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function clientStaffAssignmentHistoryApiUrl(staffId) {
         return panelBasePath() + '/api/client-staff/' + encodeURIComponent(String(staffId)) + '/assignment-timeline/?limit=80';
+    }
+
+    function normalizeStringList(values) {
+        if (!Array.isArray(values)) return [];
+        var out = [];
+        var seen = {};
+        values.forEach(function(v) {
+            var text = String(v == null ? '' : v).trim();
+            if (!text) return;
+            var key = text.toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            out.push(text);
+        });
+        return out;
+    }
+
+    function normalizePositiveIntList(values) {
+        if (!Array.isArray(values)) return [];
+        var out = [];
+        var seen = {};
+        values.forEach(function(v) {
+            var num = parseInt(v, 10);
+            if (!Number.isFinite(num) || num <= 0) return;
+            if (seen[num]) return;
+            seen[num] = true;
+            out.push(num);
+        });
+        return out;
+    }
+
+    function assignmentCardHtml(title, classes, sections, branches) {
+        var chips = [];
+        if (classes.length) {
+            chips.push(
+                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:700;">Classes: ' +
+                escapeHtml(classes.join(', ')) +
+                '</span>'
+            );
+        }
+        if (sections.length) {
+            chips.push(
+                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;border-radius:6px;font-size:11px;font-weight:700;">Sections: ' +
+                escapeHtml(sections.join(', ')) +
+                '</span>'
+            );
+        }
+        if (branches.length) {
+            chips.push(
+                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #a5f3fc;background:#ecfeff;color:#0f766e;border-radius:6px;font-size:11px;font-weight:700;">Branches: ' +
+                escapeHtml(branches.join(', ')) +
+                '</span>'
+            );
+        }
+        if (!chips.length) {
+            chips.push(
+                '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:6px;font-size:11px;font-weight:700;">All classes and sections</span>'
+            );
+        }
+
+        return '' +
+            '<div style="border:1px solid #dbeafe;border-radius:8px;padding:8px;background:#f8fbff;display:grid;gap:6px;">' +
+                '<div style="font-size:12px;font-weight:700;color:#1e3a8a;">' + escapeHtml(title) + '</div>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + chips.join('') + '</div>' +
+            '</div>';
+    }
+
+    function renderAssignmentSummary(staffData) {
+        if (!assignmentSummarySection || !assignmentSummaryMeta || !assignmentSummaryList) return;
+
+        if (!staffData) {
+            assignmentSummarySection.style.display = 'none';
+            assignmentSummaryMeta.textContent = '';
+            assignmentSummaryList.innerHTML = '<div class="text-xs text-gray-500">No class/section assignments found.</div>';
+            return;
+        }
+
+        assignmentSummarySection.style.display = '';
+
+        var groupIds = normalizePositiveIntList(staffData.assigned_group_ids || []);
+        var tableIds = normalizePositiveIntList(staffData.assigned_table_ids || []);
+        var allClasses = normalizeStringList(staffData.allowed_classes || []);
+        var allSections = normalizeStringList(staffData.allowed_sections || []);
+        var allBranches = normalizeStringList(staffData.allowed_branches || []);
+        var scopes = Array.isArray(staffData.assignment_scopes) ? staffData.assignment_scopes : [];
+
+        assignmentSummaryMeta.textContent =
+            'Groups: ' + groupIds.length +
+            ' | Tables: ' + tableIds.length +
+            ' | Scope rows: ' + scopes.length;
+
+        if (scopes.length) {
+            var cards = scopes.map(function(scope, index) {
+                var item = scope || {};
+                var scopeId = parseInt(item.scope_id || item.group_id || item.table_id, 10);
+                var scopeType = String(item.scope_type || '').toLowerCase();
+                var scopeName = String(item.group_name || item.table_name || '').trim();
+                if (!scopeName) {
+                    if (scopeType === 'table' && Number.isFinite(scopeId) && scopeId > 0) {
+                        scopeName = 'Table #' + scopeId;
+                    } else if (Number.isFinite(scopeId) && scopeId > 0) {
+                        scopeName = 'Group #' + scopeId;
+                    } else {
+                        scopeName = 'Scope #' + (index + 1);
+                    }
+                }
+
+                return assignmentCardHtml(
+                    scopeName,
+                    normalizeStringList(item.classes || []),
+                    normalizeStringList(item.sections || []),
+                    normalizeStringList(item.branches || [])
+                );
+            });
+
+            assignmentSummaryList.innerHTML = cards.join('');
+            return;
+        }
+
+        assignmentSummaryList.innerHTML = assignmentCardHtml(
+            'Global Assignment',
+            allClasses,
+            allSections,
+            allBranches
+        );
     }
 
     function ensureStaffHistoryDrawer() {
@@ -526,6 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeStaffBtn) activeStaffBtn.disabled = !enable;
         if (deleteStaffBtn) deleteStaffBtn.disabled = !enable;
         if (viewStaffBtn) viewStaffBtn.disabled = !enable;
+        if (assignStaffBtn) assignStaffBtn.disabled = !enable;
     }
 
     function updateActiveButtonState() {
@@ -592,7 +722,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var staffData = await fetchStaffDetails(targetId);
         if (staffData) {
-            openDrawer('view', staffData);
+            openDrawer('assign', staffData);
         }
     }
 
@@ -855,6 +985,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         resetClientAssignment();
+        renderAssignmentSummary(null);
 
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -874,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (tempPwBtn) tempPwBtn.style.display = 'none';
             enableFormInputs(true);
             initClientAssignment(null);
+            renderAssignmentSummary(null);
         } else if (mode === 'edit') {
             if (drawerTitle) drawerTitle.textContent = 'Edit Assistent';
             if (drawerIcon) drawerIcon.className = 'fa-solid fa-pen-to-square';
@@ -897,6 +1029,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 initClientAssignment(staffData.client_id || null);
+                renderAssignmentSummary(staffData);
+            }
+        } else if (mode === 'assign') {
+            if (drawerTitle) drawerTitle.textContent = 'Assigned Classes';
+            if (drawerIcon) drawerIcon.className = 'fa-solid fa-layer-group';
+            if (submitBtn) submitBtn.style.display = 'none';
+            if (pwRow) pwRow.style.display = 'none';
+            if (tempPwBtn) tempPwBtn.style.display = 'none';
+            enableFormInputs(false);
+
+            if (staffData) {
+                document.getElementById('staff-name').value = staffData.name || '';
+                document.getElementById('staff-email').value = staffData.email || '';
+                document.getElementById('staff-phone').value = staffData.phone || '';
+                document.getElementById('staff-address').value = staffData.address || '';
+                setStatusDropdown(staffData.status === 'active' ? 'true' : 'false');
+
+                NS.permissionFields.forEach(function(field) {
+                    var el = document.getElementById(field);
+                    var apiField = field.replace(/-/g, '_');
+                    if (el) el.checked = staffData[apiField] === true;
+                });
+
+                initClientAssignment(staffData.client_id || null);
+                renderAssignmentSummary(staffData);
             }
         } else {
             if (drawerTitle) drawerTitle.textContent = 'View Assistent';
@@ -920,6 +1077,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 initClientAssignment(staffData.client_id || null);
+                renderAssignmentSummary(staffData);
             }
         }
 
@@ -1001,6 +1159,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!NS.selectedStaffId) return;
             var staffData = await fetchStaffDetails(NS.selectedStaffId);
             if (staffData) openDrawer('view', staffData);
+        });
+    }
+
+    if (assignStaffBtn) {
+        assignStaffBtn.addEventListener('click', async function() {
+            if (!NS.selectedStaffId) return;
+            var staffData = await fetchStaffDetails(NS.selectedStaffId);
+            if (staffData) openDrawer('assign', staffData);
         });
     }
 

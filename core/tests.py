@@ -3488,6 +3488,55 @@ class AdminClientStaffManagementTests(TestCase):
         self.assertTrue(staff_obj.perm_mobile_app)
         self.assertFalse(staff_obj.perm_idcard_approve)
 
+    def test_client_staff_detail_api_includes_assignment_payload(self):
+        from staff.models import Staff
+        from idcards.models import IDCardGroup
+
+        user = User.objects.create_user(
+            username='client-staff-assignment-detail@test.com',
+            email='client-staff-assignment-detail@test.com',
+            password='pass1234',
+            role='client_staff',
+            first_name='Assignment',
+            last_name='Detail',
+        )
+        staff_obj = Staff.objects.create(
+            user=user,
+            staff_type='client_staff',
+            client=self.client_a,
+            allowed_classes=['Class 10'],
+            allowed_sections=['A'],
+            allowed_branches=['Science'],
+            assigned_table_ids=[321],
+            assignment_scopes=[
+                {
+                    'scope_type': 'group',
+                    'scope_id': 1,
+                    'group_id': 1,
+                    'classes': ['Class 10'],
+                    'sections': ['A'],
+                    'branches': ['Science'],
+                }
+            ],
+        )
+        group = IDCardGroup.objects.create(client=self.client_a, name='Assignment Group')
+        staff_obj.assigned_groups.add(group)
+
+        self.client.login(username='client-staff-admin@test.com', password='adminpass1')
+        response = self.client.get(f'/panel/api/client-staff/{staff_obj.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        staff_data = payload.get('staff') or {}
+
+        self.assertEqual(staff_data.get('allowed_classes'), ['Class 10'])
+        self.assertEqual(staff_data.get('allowed_sections'), ['A'])
+        self.assertEqual(staff_data.get('allowed_branches'), ['Science'])
+        self.assertEqual(staff_data.get('assigned_table_ids'), [321])
+        self.assertEqual(staff_data.get('assigned_group_ids'), [group.id])
+        self.assertEqual(len(staff_data.get('assignment_scopes') or []), 1)
+
     def test_admin_staff_without_manage_client_permission_is_denied(self):
         self.admin_staff_profile.perm_idcard_client_list = False
         self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])

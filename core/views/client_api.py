@@ -104,6 +104,12 @@ def _serialize_admin_client_staff(staff_obj, include_permissions=True):
     data = StaffService.serialize(staff_obj, include_permissions=include_permissions)
     data['client_id'] = staff_obj.client_id
     data['client_name'] = getattr(staff_obj.client, 'name', '')
+    data['assigned_group_ids'] = list(staff_obj.assigned_groups.values_list('id', flat=True))
+    data['assigned_table_ids'] = list(staff_obj.assigned_table_ids or [])
+    data['allowed_classes'] = list(staff_obj.allowed_classes or [])
+    data['allowed_sections'] = list(staff_obj.allowed_sections or [])
+    data['allowed_branches'] = list(staff_obj.allowed_branches or [])
+    data['assignment_scopes'] = list(staff_obj.assignment_scopes or [])
     return data
 
 

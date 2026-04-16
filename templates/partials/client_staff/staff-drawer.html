@@ -20,6 +20,15 @@
             </div>
 
             {% include 'partials/client_staff/staff-drawer-client-assignment.html' %}
+            <div class="form-section" id="staff-assignment-summary-section" style="display: none;">
+                <h3 class="section-title">
+                    <i class="fa-solid fa-layer-group"></i> Assigned Classes &amp; Sections
+                </h3>
+                <div id="staff-assignment-summary-meta" class="text-xs text-gray-500" style="margin-bottom: 8px;"></div>
+                <div id="staff-assignment-summary-list" style="display: grid; gap: 8px;">
+                    <div class="text-xs text-gray-500">No class/section assignments found.</div>
+                </div>
+            </div>
             {% include 'partials/staff/staff-drawer-info.html' %}
             {% include 'partials/client_staff/staff-drawer-permissions.html' %}
         </div>
