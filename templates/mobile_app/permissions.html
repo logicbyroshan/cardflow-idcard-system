@@ -15,8 +15,8 @@
         </button>
     </div>
 
-    <div class="px-4 pt-4 space-y-3">
-        <div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-4">
+    <div class="px-4 pt-4 space-y-2.5">
+        <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm p-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <p class="text-[11px] uppercase tracking-widest font-bold text-emerald-600">Android Native Health</p>
@@ -30,7 +30,7 @@
         </div>
 
         <template x-for="item in permissionCards" :key="item.key">
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5">
+            <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm p-3.5">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2.5">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -42,14 +42,14 @@
                             <p class="text-[11px] text-gray-500" x-text="item.subtitle"></p>
                         </div>
                     </div>
-                    <span class="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase"
+                    <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase"
                           :class="statusClass(item.status)"
                           x-text="statusLabel(item.status)"></span>
                 </div>
             </div>
         </template>
 
-        <div class="bg-white rounded-2xl border border-cyan-100 shadow-sm p-3.5 space-y-2.5">
+        <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm p-3.5 space-y-2.5">
             <button @click="requestMediaAccess()" :disabled="requesting || !isNativeShell"
                     class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-[12px] font-bold disabled:opacity-60 disabled:cursor-not-allowed">
                 <span x-show="!requesting">Allow Camera + Gallery + Storage</span>
@@ -57,24 +57,24 @@
             </button>
 
             <button @click="requestNotificationAccess()" :disabled="requesting || !isNativeShell"
-                    class="w-full py-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
+                    class="w-full py-3 rounded-xl bg-blue-50 border border-blue-100/70 text-blue-700 text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
                 Allow Notifications
             </button>
 
             <button @click="openDeviceSettings()" :disabled="!isNativeShell"
-                    class="w-full py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
+                    class="w-full py-3 rounded-xl bg-gray-50 border border-slate-200 text-gray-700 text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
                 Open App Settings
             </button>
         </div>
 
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5">
+        <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm p-3.5">
             <p class="text-[11px] font-semibold text-gray-700">Quick test links</p>
             <div class="mt-2 space-y-2">
-                <a href="{% url 'mobile_app:home' %}" class="flex items-center justify-between py-2.5 px-3 rounded-xl text-[12px] bg-gray-50 border border-gray-200 text-gray-700">
+                <a href="{% url 'mobile_app:home' %}" class="flex items-center justify-between py-2.5 px-3 rounded-xl text-[12px] bg-gray-50 border border-slate-200 text-gray-700">
                     <span>Go to Home</span>
                     <i class="fa-solid fa-chevron-right text-[10px] text-gray-400"></i>
                 </a>
-                <a href="{% url 'mobile_app:website_manage' %}" class="flex items-center justify-between py-2.5 px-3 rounded-xl text-[12px] bg-gray-50 border border-gray-200 text-gray-700">
+                <a href="{% url 'mobile_app:website_manage' %}" class="flex items-center justify-between py-2.5 px-3 rounded-xl text-[12px] bg-gray-50 border border-slate-200 text-gray-700">
                     <span>Go to Website Upload</span>
                     <i class="fa-solid fa-chevron-right text-[10px] text-gray-400"></i>
                 </a>

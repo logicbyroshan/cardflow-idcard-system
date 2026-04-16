@@ -2,6 +2,7 @@
     'use strict';
 
     var HEARTBEAT_MS = 20000;
+    var HEARTBEAT_MOBILE_MS = 60000;
     var LIVE_POLL_FALLBACK_MS = 2000;
 
     function panelUrl(path) {
@@ -81,14 +82,19 @@
         var role = String((body && body.getAttribute('data-user-role')) || '').toLowerCase();
         if (role !== 'client' && role !== 'client_staff') return;
 
+        var pathname = String(window.location.pathname || '');
+        var isMobileSurface = pathname.indexOf('/app/') === 0 || pathname === '/app';
+        var heartbeatMs = isMobileSurface ? HEARTBEAT_MOBILE_MS : HEARTBEAT_MS;
+
         var tabId = getOrCreateTabId();
         var heartbeatTimer = null;
 
         function startHeartbeat() {
             if (heartbeatTimer) return;
             heartbeatTimer = window.setInterval(function () {
+                if (document.hidden) return;
                 postPresence('heartbeat', tabId, false);
-            }, HEARTBEAT_MS);
+            }, heartbeatMs);
         }
 
         function stopHeartbeat() {
@@ -104,6 +110,9 @@
             if (document.hidden) {
                 // Keep the session live for background tabs; only close on real page exit.
                 postPresence('heartbeat', tabId, true);
+                if (isMobileSurface) {
+                    stopHeartbeat();
+                }
                 return;
             }
             postPresence('heartbeat', tabId, false);
@@ -116,19 +125,23 @@
         });
 
         window.addEventListener('pagehide', function () {
-            postPresence('stop', tabId, true);
             stopHeartbeat();
+            if (!isMobileSurface) {
+                postPresence('stop', tabId, true);
+            }
         });
 
-        window.addEventListener('beforeunload', function () {
-            postPresence('stop', tabId, true);
-            stopHeartbeat();
-        });
+        if (!isMobileSurface) {
+            window.addEventListener('beforeunload', function () {
+                postPresence('stop', tabId, true);
+                stopHeartbeat();
+            });
 
-        window.addEventListener('unload', function () {
-            postPresence('stop', tabId, true);
-            stopHeartbeat();
-        });
+            window.addEventListener('unload', function () {
+                postPresence('stop', tabId, true);
+                stopHeartbeat();
+            });
+        }
     }
 
     function updateLiveBadges(clientCount, assistantCount) {

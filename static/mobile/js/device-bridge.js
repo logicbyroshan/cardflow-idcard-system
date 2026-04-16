@@ -836,7 +836,7 @@
             var permissionState = await requestPermissionBundle({
                 requestCamera: sourceMode === 'camera',
                 requestPhotos: sourceMode !== 'camera',
-                requestStorage: true,
+                requestStorage: false,
                 requestNotifications: false,
             });
 
@@ -845,9 +845,6 @@
             }
             if (sourceMode !== 'camera' && !isUsableStatus(permissionState.photos)) {
                 throw new Error('Gallery permission is required. Enable Photos/Storage from app settings and try again.');
-            }
-            if (!isUsableStatus(permissionState.storage)) {
-                throw new Error('Storage permission is required. Enable it from app settings and try again.');
             }
 
             var timeoutPromise = new Promise(function(resolve) {

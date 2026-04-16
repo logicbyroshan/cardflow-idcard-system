@@ -2186,9 +2186,15 @@ def card_list(request, table_id, status):
             allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
         cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
 
-    _card_batch_raw = list(cards_qs[:51])
-    _has_more_raw = len(_card_batch_raw) > 50
-    cards_batch = _card_batch_raw[:50]
+    try:
+        initial_page_size = int(getattr(settings, 'MOBILE_LIST_INITIAL_PAGE_SIZE', 24) or 24)
+    except (TypeError, ValueError):
+        initial_page_size = 24
+    initial_page_size = max(12, min(initial_page_size, 80))
+
+    _card_batch_raw = list(cards_qs[:initial_page_size + 1])
+    _has_more_raw = len(_card_batch_raw) > initial_page_size
+    cards_batch = _card_batch_raw[:initial_page_size]
 
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
@@ -2260,11 +2266,6 @@ def card_list(request, table_id, status):
 
     def _extract_photo_slots(fd, primary_photo_url, field_defs):
         _fd = fd or {}
-        _fd_lookup = {
-            str(_k).strip().lower(): _v
-            for _k, _v in _fd.items()
-            if _k is not None and str(_k).strip()
-        }
 
         photo_field_names = []
         _seen = set()
@@ -2284,16 +2285,27 @@ def card_list(request, table_id, status):
 
         if photo_field_names:
             for _fname in photo_field_names:
-                _val = _fd_lookup.get(_fname.lower())
+                _val = _get_field_value_case_insensitive(_fd, _fname)
+                if not _has_meaningful_field_value(_val):
+                    _slot = _rel_photo_slot_for_name(_fname)
+                    if _slot:
+                        for _alias in _rel_photo_aliases_for_slot(_slot):
+                            _val = _get_field_value_case_insensitive(_fd, _alias)
+                            if _has_meaningful_field_value(_val):
+                                break
                 _url, _has_path = _normalize_photo_value(_val)
-                slots.append({'url': _url, 'has_path': _has_path})
+                slots.append({'url': _url, 'has_path': _has_path, 'field_name': _fname})
                 if _url and _url not in urls:
                     urls.append(_url)
 
             if primary_photo_url and primary_photo_url not in urls:
                 _empty_idx = next((i for i, _slot in enumerate(slots) if not _slot.get('url')), None)
                 if _empty_idx is not None:
-                    slots[_empty_idx] = {'url': primary_photo_url, 'has_path': True}
+                    slots[_empty_idx] = {
+                        'url': primary_photo_url,
+                        'has_path': True,
+                        'field_name': slots[_empty_idx].get('field_name'),
+                    }
                 else:
                     slots.insert(0, {'url': primary_photo_url, 'has_path': True})
                 urls.append(primary_photo_url)
@@ -3110,11 +3122,52 @@ def api_upload_photo(request, table_id):
         # Keep mobile + desktop lists in sync by writing through the same
         # field_data/CardMedia image pipeline used by idcard-actions tables.
         image_field_names = ImageService.get_image_field_names(card.table.fields or [])
+        requested_field_name = str(request.POST.get('field_name') or '').strip()
         preferred_field_name = None
-        for field_name in image_field_names:
-            if 'photo' in str(field_name or '').lower():
+
+        if requested_field_name:
+            requested_token = _field_token(requested_field_name)
+            for field_name in image_field_names:
+                if _field_token(field_name) == requested_token:
+                    preferred_field_name = field_name
+                    break
+
+        if not preferred_field_name:
+            image_names_by_token = {
+                _field_token(field_name): field_name
+                for field_name in image_field_names
+            }
+            relation_name_tokens = ('father', 'mother', 'guardian', 'rel')
+            for field_def in (card.table.fields or []):
+                field_name = str(field_def.get('name', '')).strip()
+                if not field_name:
+                    continue
+
+                token = _field_token(field_name)
+                matched_name = image_names_by_token.get(token)
+                if not matched_name:
+                    continue
+
+                field_type = str(field_def.get('type', '')).strip().lower()
+                field_name_lower = field_name.lower()
+                is_relation_like = (
+                    field_type in {'rel_photo', 'mother_photo', 'father_photo'}
+                    or any(tok in field_name_lower for tok in relation_name_tokens)
+                )
+                if field_type == 'photo' and not is_relation_like:
+                    preferred_field_name = matched_name
+                    break
+
+        if not preferred_field_name:
+            for field_name in image_field_names:
+                field_name_lower = str(field_name or '').lower()
+                if 'photo' not in field_name_lower:
+                    continue
+                if any(tok in field_name_lower for tok in ('rel', 'father', 'mother', 'guardian')):
+                    continue
                 preferred_field_name = field_name
                 break
+
         if not preferred_field_name and image_field_names:
             preferred_field_name = image_field_names[0]
 

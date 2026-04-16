@@ -261,6 +261,77 @@ function cameraApp() {
             return new Promise((resolve) => setTimeout(resolve, ms));
         },
 
+        _blobToImageFile(blob, fallbackName) {
+            if (!(blob instanceof Blob)) return null;
+            const mime = String(blob.type || '').toLowerCase();
+            let ext = 'jpg';
+            if (mime.includes('png')) ext = 'png';
+            else if (mime.includes('webp')) ext = 'webp';
+            else if (mime.includes('gif')) ext = 'gif';
+            else if (mime.includes('heic') || mime.includes('heif')) ext = 'heic';
+            const safeName = String(fallbackName || '').trim() || ('capture_' + Date.now() + '.' + ext);
+            return new File([blob], safeName, { type: blob.type || 'image/jpeg' });
+        },
+
+        async normalizePickedImageInput(picked) {
+            if (!picked) return null;
+            if (picked instanceof File) return picked;
+            if (picked instanceof Blob) return this._blobToImageFile(picked);
+
+            const wrappedFile = picked.file || picked.blob || picked.data || null;
+            if (wrappedFile instanceof File) return wrappedFile;
+            if (wrappedFile instanceof Blob) {
+                return this._blobToImageFile(wrappedFile, picked.name);
+            }
+
+            const rawDataUrl = typeof picked.dataUrl === 'string'
+                ? picked.dataUrl
+                : (typeof picked.base64 === 'string' ? picked.base64 : '');
+            if (rawDataUrl && /^data:image\//i.test(rawDataUrl)) {
+                try {
+                    const res = await fetch(rawDataUrl);
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        const fromDataUrl = this._blobToImageFile(blob, picked.name);
+                        if (fromDataUrl) return fromDataUrl;
+                    }
+                } catch (e) {}
+            }
+
+            const candidates = [];
+            ['webPath', 'path', 'uri', 'url'].forEach((key) => {
+                const value = typeof picked[key] === 'string' ? picked[key].trim() : '';
+                if (value) candidates.push(value);
+            });
+
+            const cap = window.Capacitor;
+            if (cap && typeof cap.convertFileSrc === 'function') {
+                const extra = [];
+                candidates.forEach((candidate) => {
+                    if (/^(https?:|data:|blob:)/i.test(candidate)) return;
+                    try {
+                        const converted = cap.convertFileSrc(candidate);
+                        if (converted) extra.push(converted);
+                    } catch (e) {}
+                });
+                extra.forEach((item) => {
+                    if (!candidates.includes(item)) candidates.push(item);
+                });
+            }
+
+            for (const candidate of candidates) {
+                try {
+                    const res = await fetch(candidate);
+                    if (!res.ok) continue;
+                    const blob = await res.blob();
+                    const fetchedFile = this._blobToImageFile(blob, picked.name);
+                    if (fetchedFile) return fetchedFile;
+                } catch (e) {}
+            }
+
+            return null;
+        },
+
         async pickImageWithTimeout(source, quality, timeoutMs) {
             const bridge = window.adarshDeviceBridge;
             if (!(bridge && typeof bridge.pickImage === 'function')) return null;
@@ -333,8 +404,14 @@ function cameraApp() {
                 try {
                     const picked = await this.pickImageWithTimeout('camera', 92, 15000);
                     if (picked) {
+                        const pickedFile = await this.normalizePickedImageInput(picked);
+                        if (!pickedFile) {
+                            this.showMsg('Selected image could not be read. Please try another photo.', 'error');
+                            this.cameraBusy = false;
+                            return;
+                        }
                         this.cameraError = false;
-                        this.loadImageFile(picked, 'camera');
+                        this.loadImageFile(pickedFile, 'camera');
                     } else {
                         this.showMsg('No photo captured. Please try again in Photo mode.', 'info');
                     }
@@ -421,7 +498,13 @@ function cameraApp() {
                 try {
                     const picked = await this.pickImageWithTimeout('gallery', 92, 15000);
                     if (picked) {
-                        this.loadImageFile(picked, 'gallery');
+                        const pickedFile = await this.normalizePickedImageInput(picked);
+                        if (!pickedFile) {
+                            this.showMsg('Selected image could not be read. Please try another photo.', 'error');
+                            this.cameraBusy = false;
+                            return;
+                        }
+                        this.loadImageFile(pickedFile, 'gallery');
                         this.cameraBusy = false;
                         return;
                     }
@@ -442,8 +525,14 @@ function cameraApp() {
                 try {
                     const picked = await this.pickImageWithTimeout('camera', 92, 15000);
                     if (picked) {
+                        const pickedFile = await this.normalizePickedImageInput(picked);
+                        if (!pickedFile) {
+                            this.showMsg('Selected image could not be read. Please try another photo.', 'error');
+                            this.cameraBusy = false;
+                            return;
+                        }
                         this.cameraError = false;
-                        this.loadImageFile(picked, 'camera');
+                        this.loadImageFile(pickedFile, 'camera');
                         this.cameraBusy = false;
                         return;
                     }

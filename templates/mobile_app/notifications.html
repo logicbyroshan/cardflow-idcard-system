@@ -19,9 +19,9 @@
     <!-- Notification List -->
     <div class="p-4 space-y-2.5">
         {% for notif in notifications %}
-        <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl p-4 shadow-sm border border-indigo-100 {% if not notif.read %}ring-1 ring-brand-light/30 border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
+        <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl p-4 shadow-sm border border-slate-100/80 {% if not notif.read %}ring-1 ring-brand-light/30 border-l-4 border-l-brand-light{% endif %} transition hover:shadow-md">
             <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0
+                <div class="w-10 h-10 rounded-xl border border-slate-100/70 flex items-center justify-center flex-shrink-0
                     {% if notif.color == 'green' %}bg-green-100 text-green-500
                     {% elif notif.color == 'blue' %}bg-blue-100 text-blue-500
                     {% elif notif.color == 'purple' %}bg-purple-100 text-purple-500

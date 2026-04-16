@@ -64,8 +64,8 @@
          style="padding-bottom: calc(env(safe-area-inset-bottom,0px) + 80px)">
 
         <template x-for="c in filteredClients" :key="c.id">
-                  <div class="rounded-2xl m-pop-card m-pop-card-indigo overflow-hidden transition-all duration-200"
-                      :class="expandedId === c.id ? 'shadow-lg ring-2 ring-indigo-200/70' : 'shadow-sm'">
+                  <div class="rounded-2xl m-pop-card m-pop-card-indigo border border-slate-100/80 overflow-hidden transition-all duration-200"
+                      :class="isExpanded(c.id) ? 'shadow-lg ring-2 ring-indigo-200/70' : 'shadow-sm'">
 
                      <!-- Client Row (tap to expand) -->
                      <div class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none active:bg-indigo-50/40 transition-colors"
@@ -89,35 +89,35 @@
                             <p class="text-[13px] font-bold text-gray-900 truncate" x-text="c.name"></p>
                         </div>
                         <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                        <span class="text-[9px] font-bold px-2 py-0.5 rounded-md"
-                                  :class="c.status === 'active' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-slate-200 text-slate-700 border border-slate-300'">
+                                                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-lg"
+                                                                :class="c.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700'">
                                 <span x-text="c.status === 'active' ? ' Active' : ' Inactive'"></span>
                             </span>
                             <span class="text-[10px] text-gray-600" x-text="(c.tables_count || 0) + ' tables  ' + (c.cards_count || 0) + ' cards'"></span>
                         </div>
                     </div>
                     <!-- Chevron -->
-                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
-                        :class="expandedId === c.id ? 'bg-indigo-200' : 'bg-white/90 border border-indigo-100'">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                        :class="isExpanded(c.id) ? 'bg-indigo-200' : 'bg-white/90 border border-slate-200/70'">
                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200"
-                           :class="expandedId === c.id ? 'rotate-180 text-indigo-700' : 'text-gray-600'"></i>
+                           :class="isExpanded(c.id) ? 'rotate-180 text-indigo-700' : 'text-gray-600'"></i>
                     </div>
                     {% if can_manage_clients %}
                     <div class="flex items-center gap-1.5 ml-1" @click.stop>
                         <button type="button" @click="openEditForm(c.id)"
-                                class="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center active:scale-95 transition-all"
+                                class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 border border-blue-100 flex items-center justify-center active:scale-95 transition-all"
                                 title="Edit client">
                             <i class="fa-solid fa-pen text-[10px]"></i>
                         </button>
                         <button type="button" @click="toggleClientStatus(c)"
-                                class="w-8 h-8 rounded-xl border flex items-center justify-center active:scale-95 transition-all"
-                                :class="c.status === 'active' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200'"
+                                class="w-8 h-8 rounded-lg border flex items-center justify-center active:scale-95 transition-all"
+                                :class="c.status === 'active' ? 'bg-amber-100 text-amber-700 border-amber-100' : 'bg-green-100 text-green-700 border-green-100'"
                                 :title="c.status === 'active' ? 'Deactivate client' : 'Activate client'">
                             <i class="text-[10px]" :class="c.status === 'active' ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
                         </button>
                         {% if can_delete_clients %}
                         <button type="button" @click="deleteClient(c)"
-                                class="w-8 h-8 rounded-xl bg-red-100 text-red-700 border border-red-200 flex items-center justify-center active:scale-95 transition-all"
+                                class="w-8 h-8 rounded-lg bg-red-100 text-red-700 border border-red-100 flex items-center justify-center active:scale-95 transition-all"
                                 title="Delete client">
                             <i class="fa-solid fa-trash text-[10px]"></i>
                         </button>
@@ -127,14 +127,14 @@
                 </div>
 
                 <!-- Expanded: Tables with Pending/Verified/Approved/Download counts -->
-                <div x-show="expandedId === c.id"
+                 <div x-show="isExpanded(c.id)"
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 -translate-y-2"
                      x-transition:enter-end="opacity-100 translate-y-0"
-                     class="bg-indigo-50/60">
+                     class="bg-indigo-50/50">
 
                     <!-- Header row -->
-                    <div class="flex items-center px-4 py-2 border-b border-indigo-100/60">
+                    <div class="flex items-center px-4 py-2 border-b border-indigo-100/50">
                         <p class="flex-1 text-[9px] font-bold text-indigo-700 uppercase tracking-widest">Table</p>
                         <p class="w-[52px] text-center text-[8px] font-bold text-amber-700 uppercase tracking-wide">Pending</p>
                         <p class="w-[52px] text-center text-[8px] font-bold text-emerald-700 uppercase tracking-wide">Verified</p>
@@ -164,9 +164,9 @@
                     <template x-if="!loadingTables[c.id] && c.tables && c.tables.length > 0">
                         <div>
                             <template x-for="t in c.tables" :key="t.id">
-                                <div class="flex items-center gap-2 px-4 py-2 border-b border-indigo-50 last:border-b-0">
+                                <div class="flex items-center gap-2 px-4 py-2 border-b border-indigo-50/80 last:border-b-0">
                                     <!-- Table icon -->
-                                    <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-indigo-100">
+                                    <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-slate-100">
                                         <i class="fa-solid fa-table-list text-indigo-700 text-[9px]"></i>
                                     </div>
                                     <!-- Table name + group -->
@@ -176,22 +176,22 @@
                                     </div>
                                     <!-- Pending badge -->
                                     <a :href="'/app/table/' + t.id + '/pending/'"
-                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-amber-100 text-amber-700 border border-amber-200 active:scale-95 transition-all flex-shrink-0">
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-amber-100 text-amber-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
                                         <span class="mobile-chip-count" x-text="t.pending_count"></span>
                                     </a>
                                     <!-- Verified badge -->
                                     <a :href="'/app/table/' + t.id + '/verified/'"
-                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200 active:scale-95 transition-all flex-shrink-0">
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-emerald-100 text-emerald-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
                                         <span class="mobile-chip-count" x-text="t.verified_count"></span>
                                     </a>
                                     <!-- Approved badge -->
                                     <a :href="'/app/table/' + t.id + '/approved/'"
-                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-sky-100 text-sky-700 border border-sky-200 active:scale-95 transition-all flex-shrink-0">
+                                                    class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-sky-100 text-sky-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
                                         <span class="mobile-chip-count" x-text="t.approved_count || 0"></span>
                                     </a>
                                     <!-- Download badge -->
                                     <a :href="'/app/table/' + t.id + '/download/'"
-                                       class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-md bg-violet-100 text-violet-700 border border-violet-200 active:scale-95 transition-all flex-shrink-0">
+                                       class="w-[52px] h-7 inline-flex mobile-status-chip items-center justify-center gap-1 rounded-lg bg-violet-100 text-violet-700 border border-transparent active:scale-95 transition-all flex-shrink-0">
                                         <span class="mobile-chip-count" x-text="t.download_count || 0"></span>
                                     </a>
                                 </div>
@@ -375,7 +375,7 @@ function clientsApp() {
         clients: CLIENTS_DATA,
         filterStatus: 'all',
         searchQuery: '',
-        expandedId: null,
+        expandedState: {},
         loadingTables: {},
         toast: { show: false, message: '', type: 'success' },
         canManageClients: CAN_MANAGE_CLIENTS,
@@ -498,9 +498,13 @@ function clientsApp() {
                 permissions: perms,
             };
         },
+        isExpanded(id) {
+            return !!this.expandedState[id];
+        },
         async toggleExpand(id) {
-            if (this.expandedId === id) { this.expandedId = null; return; }
-            this.expandedId = id;
+            const shouldOpen = !this.isExpanded(id);
+            this.expandedState = { ...this.expandedState, [id]: shouldOpen };
+            if (!shouldOpen) return;
             const client = this.clients.find(c => c.id === id);
             if (client && client.tables === null && !this.loadingTables[id]) {
                 this.loadingTables = { ...this.loadingTables, [id]: true };
@@ -703,7 +707,11 @@ function clientsApp() {
                     return;
                 }
                 this.clients = this.clients.filter(c => c.id !== client.id);
-                if (this.expandedId === client.id) this.expandedId = null;
+                if (this.expandedState[client.id]) {
+                    const nextExpanded = { ...this.expandedState };
+                    delete nextExpanded[client.id];
+                    this.expandedState = nextExpanded;
+                }
                 this.showToast(data.message || 'Client deleted', 'success');
             } catch (e) {
                 this.showToast('Network error', 'error');

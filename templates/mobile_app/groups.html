@@ -27,7 +27,7 @@
 
     <!-- Tab Switcher -->
     <div class="px-4 pt-3">
-        <div class="flex bg-white rounded-xl shadow-sm p-1">
+        <div class="flex bg-white rounded-2xl shadow-sm border border-slate-100 p-1.5">
             <button @click="activeTab = 'groups'" class="flex-1 py-2.5 text-[12px] font-semibold rounded-xl transition-all"
                     :class="activeTab === 'groups' ? 'bg-gradient-to-r from-brand-light to-brand-dark text-white shadow-sm' : 'text-gray-500'">
                 <i class="fa-solid fa-layer-group mr-1.5"></i>ID Card Groups
@@ -42,10 +42,11 @@
     </div>
 
     <!-- Groups Tab -->
-    <div x-show="activeTab === 'groups'" class="px-4 pt-3 space-y-2">
+    <div x-show="activeTab === 'groups'" class="px-4 pt-3 space-y-2.5">
         {% for group in groups %}
-        <div x-data="{ open: false }" class="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <button type="button" @click="open = !open" class="w-full flex items-center justify-between p-3 text-left active:scale-[0.99] transition-all">
+        <div x-data="{ open: {% if is_client or is_client_staff %}true{% else %}false{% endif %}, collapsible: {% if is_client or is_client_staff %}false{% else %}true{% endif %} }" class="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
+            <button type="button" @click="if (collapsible) open = !open" class="w-full flex items-center justify-between px-3.5 py-3 text-left transition-all"
+                    :class="collapsible ? 'active:scale-[0.99] cursor-pointer' : 'cursor-default'">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-light/10 to-brand-dark/10 flex items-center justify-center flex-shrink-0">
                         <i class="fa-solid fa-folder text-brand-light text-[16px]"></i>
@@ -55,23 +56,26 @@
                         <p class="text-[10px] text-gray-400">{{ group.table_count }} table(s) &middot; {{ group.total_cards }} card(s)</p>
                     </div>
                 </div>
-                <span class="text-[9px] font-semibold text-indigo-500 uppercase tracking-wide whitespace-nowrap" x-text="open ? 'Hide' : 'Show'"></span>
+                <div class="flex items-center gap-1.5">
+                    <span class="inline-flex items-center justify-center min-w-[66px] h-6 px-2.5 rounded-lg text-[9px] font-semibold text-slate-600 bg-slate-100/80" x-text="group.table_count ? group.table_count + ' tables' : 'No tables'"></span>
+                    <i x-show="collapsible" class="fa-solid fa-chevron-down text-[10px] text-indigo-400 transition-transform" :class="open ? 'rotate-180' : ''"></i>
+                </div>
             </button>
-            <div x-show="open" x-transition class="px-3 pb-3 pt-2">
+            <div x-show="open" x-transition class="px-3.5 pb-3.5 pt-2">
                 <div class="grid grid-cols-4 gap-1.5 mb-2.5">
-                    <div class="text-center p-2 bg-amber-200/75 rounded-lg">
+                    <div class="text-center p-2 bg-amber-100/80 rounded-xl">
                         <p class="mobile-chip-count text-amber-600">{{ group.pending_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Pending</p>
                     </div>
-                    <div class="text-center p-2 bg-emerald-200/75 rounded-lg">
+                    <div class="text-center p-2 bg-emerald-100/80 rounded-xl">
                         <p class="mobile-chip-count text-emerald-600">{{ group.verified_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Verified</p>
                     </div>
-                    <div class="text-center p-2 bg-sky-200/75 rounded-lg">
+                    <div class="text-center p-2 bg-sky-100/80 rounded-xl">
                         <p class="mobile-chip-count text-sky-600">{{ group.approved_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Approved</p>
                     </div>
-                    <div class="text-center p-2 bg-violet-200/75 rounded-lg">
+                    <div class="text-center p-2 bg-violet-100/80 rounded-xl">
                         <p class="mobile-chip-count text-violet-600">{{ group.download_cards }}</p>
                         <p class="mobile-chip-label text-gray-400 font-medium">Download</p>
                     </div>
@@ -79,47 +83,47 @@
                 <!-- Tables in this group -->
                 {% for table in tables %}
                 {% if table.group_id == group.id %}
-                <div class="py-2 px-2.5 bg-white/95 rounded-md mb-1.5">
+                <div class="py-2 px-2.5 bg-white rounded-xl border border-slate-100/80 mb-1.5">
                     <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-table-cells text-indigo-300 text-[10px]"></i>
                         <span class="text-[12px] font-bold text-gray-700 flex-1 truncate">{{ table.name }}</span>
-                        <span class="text-[9px] font-semibold text-gray-500 bg-white/85 px-2 py-0.5 rounded whitespace-nowrap">{{ table.total_cards }} cards</span>
+                        <span class="text-[9px] font-semibold text-gray-500 bg-slate-100 px-2 py-0.5 rounded-lg whitespace-nowrap">{{ table.total_cards }} cards</span>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                         {% if perm_idcard_pending_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-                                    class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.pending_cards > 0 %}bg-amber-100 text-amber-700 border-amber-200{% else %}bg-amber-50 text-amber-600 border-amber-100{% endif %}">
+                                    class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.pending_cards > 0 %}bg-amber-100 text-amber-700{% else %}bg-amber-50 text-amber-600{% endif %}">
                             <span class="mobile-chip-label">Pending</span><span class="mobile-chip-count">{{ table.pending_cards|default:0 }}</span>
                         </a>
                         {% else %}
-                                <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Pending</span><span class="mobile-chip-count">{{ table.pending_cards|default:0 }}</span></span>
+                                <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Pending</span><span class="mobile-chip-count">{{ table.pending_cards|default:0 }}</span></span>
                         {% endif %}
 
                         {% if perm_idcard_verified_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-                                    class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.verified_cards > 0 %}bg-emerald-100 text-emerald-700 border-emerald-200{% else %}bg-emerald-50 text-emerald-600 border-emerald-100{% endif %}">
+                                class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.verified_cards > 0 %}bg-emerald-100 text-emerald-700{% else %}bg-emerald-50 text-emerald-600{% endif %}">
                             <span class="mobile-chip-label">Verified</span><span class="mobile-chip-count">{{ table.verified_cards|default:0 }}</span>
                         </a>
                         {% else %}
-                                <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Verified</span><span class="mobile-chip-count">{{ table.verified_cards|default:0 }}</span></span>
+                            <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Verified</span><span class="mobile-chip-count">{{ table.verified_cards|default:0 }}</span></span>
                         {% endif %}
 
                         {% if perm_idcard_approved_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
-                                    class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.approved_cards > 0 %}bg-sky-100 text-sky-700 border-sky-200{% else %}bg-sky-50 text-sky-600 border-sky-100{% endif %}">
+                                class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.approved_cards > 0 %}bg-sky-100 text-sky-700{% else %}bg-sky-50 text-sky-600{% endif %}">
                             <span class="mobile-chip-label">Approved</span><span class="mobile-chip-count">{{ table.approved_cards|default:0 }}</span>
                         </a>
                         {% else %}
-                                <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Approved</span><span class="mobile-chip-count">{{ table.approved_cards|default:0 }}</span></span>
+                            <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Approved</span><span class="mobile-chip-count">{{ table.approved_cards|default:0 }}</span></span>
                         {% endif %}
 
                         {% if perm_idcard_download_list %}
                         <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
-                                    class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.download_cards > 0 %}bg-violet-100 text-violet-700 border-violet-200{% else %}bg-violet-50 text-violet-600 border-violet-100{% endif %}">
+                                    class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.download_cards > 0 %}bg-violet-100 text-violet-700{% else %}bg-violet-50 text-violet-600{% endif %}">
                             <span class="mobile-chip-label">Download</span><span class="mobile-chip-count">{{ table.download_cards|default:0 }}</span>
                         </a>
                         {% else %}
-                                <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-bold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Download</span><span class="mobile-chip-count">{{ table.download_cards|default:0 }}</span></span>
+                                <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-bold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Download</span><span class="mobile-chip-count">{{ table.download_cards|default:0 }}</span></span>
                         {% endif %}
                     </div>
                 </div>
@@ -140,9 +144,9 @@
 
     <!-- Tables Tab (Group Settings  only for users with group management permission) -->
     {% if is_super_admin or is_admin_staff or perm_idcard_group_create or perm_idcard_group_delete %}
-    <div x-show="activeTab === 'tables'" class="px-4 pt-3 space-y-2">
+    <div x-show="activeTab === 'tables'" class="px-4 pt-3 space-y-2.5">
         {% for table in tables %}
-        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
             <div class="p-4" data-fields="{{ table.fields|json_encode|force_escape }}">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
@@ -155,44 +159,44 @@
                             <p class="text-[10px] text-gray-400">{{ table.group.name }} &middot; <span class="text-indigo-500">tap to edit columns</span></p>
                         </div>
                     </div>
-                    <span class="bg-indigo-200/70 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-xl flex-shrink-0">{{ table.total_cards }}</span>
+                    <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0">{{ table.total_cards }}</span>
                 </div>
                 <!-- Status pills -->
                 <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                     {% if perm_idcard_pending_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='pending' %}"
-                              class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.pending_cards > 0 %}bg-amber-100 text-amber-700 border-amber-200{% else %}bg-amber-50 text-amber-600 border-amber-100{% endif %}">
+                              class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.pending_cards > 0 %}bg-amber-100 text-amber-700{% else %}bg-amber-50 text-amber-600{% endif %}">
                         <span class="mobile-chip-label">Pending</span><span class="mobile-chip-count">{{ table.pending_cards|default:0 }}</span>
                     </a>
                     {% else %}
-                          <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Pending</span><span class="mobile-chip-count">{{ table.pending_cards|default:0 }}</span></span>
+                          <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Pending</span><span class="mobile-chip-count">{{ table.pending_cards|default:0 }}</span></span>
                     {% endif %}
 
                     {% if perm_idcard_verified_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='verified' %}"
-                              class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.verified_cards > 0 %}bg-emerald-100 text-emerald-700 border-emerald-200{% else %}bg-emerald-50 text-emerald-600 border-emerald-100{% endif %}">
+                            class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.verified_cards > 0 %}bg-emerald-100 text-emerald-700{% else %}bg-emerald-50 text-emerald-600{% endif %}">
                         <span class="mobile-chip-label">Verified</span><span class="mobile-chip-count">{{ table.verified_cards|default:0 }}</span>
                     </a>
                     {% else %}
-                          <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Verified</span><span class="mobile-chip-count">{{ table.verified_cards|default:0 }}</span></span>
+                          <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Verified</span><span class="mobile-chip-count">{{ table.verified_cards|default:0 }}</span></span>
                     {% endif %}
 
                     {% if perm_idcard_approved_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='approved' %}"
-                              class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.approved_cards > 0 %}bg-sky-100 text-sky-700 border-sky-200{% else %}bg-sky-50 text-sky-600 border-sky-100{% endif %}">
+                            class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.approved_cards > 0 %}bg-sky-100 text-sky-700{% else %}bg-sky-50 text-sky-600{% endif %}">
                         <span class="mobile-chip-label">Approved</span><span class="mobile-chip-count">{{ table.approved_cards|default:0 }}</span>
                     </a>
                     {% else %}
-                          <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Approved</span><span class="mobile-chip-count">{{ table.approved_cards|default:0 }}</span></span>
+                          <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Approved</span><span class="mobile-chip-count">{{ table.approved_cards|default:0 }}</span></span>
                     {% endif %}
 
                     {% if perm_idcard_download_list %}
                     <a href="{% url 'mobile_app:card_list' table_id=table.id status='download' %}"
-                       class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap active:scale-95 transition border {% if table.download_cards > 0 %}bg-violet-100 text-violet-700 border-violet-200{% else %}bg-violet-50 text-violet-600 border-violet-100{% endif %}">
+                       class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap active:scale-95 transition border border-transparent {% if table.download_cards > 0 %}bg-violet-100 text-violet-700{% else %}bg-violet-50 text-violet-600{% endif %}">
                         <span class="mobile-chip-label">Download</span><span class="mobile-chip-count">{{ table.download_cards|default:0 }}</span>
                     </a>
                     {% else %}
-                    <span class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between gap-1 text-[9px] font-semibold px-1.5 py-1 rounded-md text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Download</span><span class="mobile-chip-count">{{ table.download_cards|default:0 }}</span></span>
+                    <span class="inline-flex mobile-status-chip mobile-status-chip-fixed w-[52px] h-7 items-center justify-center gap-1 text-[9px] font-semibold rounded-lg text-center whitespace-nowrap bg-gray-50 text-gray-300 border border-gray-100"><span class="mobile-chip-label">Download</span><span class="mobile-chip-count">{{ table.download_cards|default:0 }}</span></span>
                     {% endif %}
                 </div>
             </div>

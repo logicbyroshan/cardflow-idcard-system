@@ -23,10 +23,10 @@
         </div>
 
         <!-- Tab bar -->
-        <div class="flex bg-white border-b border-gray-100 shadow-sm">
+        <div class="mx-4 mt-2 flex bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5">
                 <button @click="setTab('notifications')"
                     :class="tab==='notifications' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
-                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors relative">
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors relative">
                 <i class="fa-solid fa-bell text-[14px]"></i>
                 <span>Notify</span>
                 {% if unread_system_count > 0 %}
@@ -35,26 +35,26 @@
             </button>
                 <button @click="setTab('logs')"
                     :class="tab==='logs' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
-                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
                 <i class="fa-solid fa-clock-rotate-left text-[14px]"></i>
                 <span>Logs</span>
             </button>
                 <button @click="setTab('email')"
                     :class="tab==='email' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
-                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
                 <i class="fa-solid fa-envelope text-[14px]"></i>
                 <span>Email</span>
             </button>
             {% if is_super_admin %}
             <button @click="setTab('system')"
                     :class="tab==='system' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
-                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
                 <i class="fa-solid fa-circle-info text-[14px]"></i>
                 <span>System</span>
             </button>
             <button @click="setTab('server')"
                     :class="tab==='server' ? 'border-b-2 border-brand-light text-brand-light' : 'text-gray-400'"
-                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold transition-colors">
+                    class="flex-1 flex flex-col items-center gap-1 px-1 py-2.5 text-[9px] font-semibold rounded-xl transition-colors">
                 <i class="fa-solid fa-server text-[14px]"></i>
                 <span>Server</span>
             </button>
@@ -80,7 +80,7 @@
             <div class="px-4 flex flex-col gap-2 pb-4">
                 {% for notif in system_notifications %}
                 <div class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl border shadow-sm overflow-hidden
-                            {% if not notif.is_read %}border-l-4 border-l-brand-light{% else %}border-gray-100{% endif %}">
+                            {% if not notif.is_read %}border-l-4 border-l-brand-light border-slate-100/80{% else %}border-slate-100/80{% endif %}">
                     <div class="flex items-start gap-3 p-4">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                              style="background-color:{{ notif.priority_color }}20;">
@@ -136,7 +136,7 @@
             </div>
 
             {% if log_activities %}
-            <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 mx-4 rounded-2xl border border-indigo-100 shadow-sm overflow-hidden mb-4">
+            <div class="bg-gradient-to-br from-white via-white to-indigo-50/30 mx-4 rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden mb-4">
                 <div class="flex items-center px-3 py-2 bg-indigo-50/70 border-b border-indigo-100">
                     <span class="w-7 flex-shrink-0 mr-2"></span>
                     <span class="flex-[3] text-[9px] font-bold text-gray-400 uppercase tracking-wider pr-2">Name</span>
@@ -254,8 +254,8 @@
                 </div>
                 {% endif %}
 
-                <div class="bg-gradient-to-br from-white via-white to-slate-50 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <div class="bg-gradient-to-br from-white via-white to-slate-50 rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center gap-2">
                         <div class="w-7 h-7 rounded-xl bg-gray-100 flex items-center justify-center">
                             <i class="fa-solid fa-gear text-gray-500 text-[11px]"></i>
                         </div>
@@ -357,8 +357,8 @@
                 </div>
 
                 <!-- Platform info -->
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center gap-2">
                         <div class="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
                             <i class="fa-solid fa-server text-indigo-500 text-[11px]"></i>
                         </div>
@@ -384,8 +384,8 @@
                 </div>
 
                 <!-- Platform stats -->
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center gap-2">
                         <div class="w-7 h-7 rounded-xl bg-green-50 flex items-center justify-center">
                             <i class="fa-solid fa-chart-pie text-green-500 text-[11px]"></i>
                         </div>
@@ -437,8 +437,8 @@
         {% if is_super_admin %}
         <div x-show="tab==='server'" style="display:none;">
             <div class="px-4 pt-4 flex flex-col gap-3 pb-4">
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                <div class="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100/70 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <div class="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center">
                                 <i class="fa-solid fa-server text-sky-500 text-[11px]"></i>

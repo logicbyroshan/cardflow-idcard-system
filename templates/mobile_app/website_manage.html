@@ -31,7 +31,7 @@
                 <div class="grid grid-cols-2 gap-2.5">
                     <template x-for="cat in categories" :key="cat.id">
                         <button {% if perm_website_edit %}@click="openUploadSheet(cat)"{% endif %}
-                                class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl p-4 text-left shadow-sm border border-indigo-100 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
+                                class="bg-gradient-to-br from-white via-white to-indigo-50/35 rounded-2xl p-4 text-left shadow-sm border border-slate-100/80 {% if perm_website_edit %}active:scale-95{% endif %} transition-transform relative">
                             <!-- icon -->
                             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mb-2.5"
                                    style="background:linear-gradient(135deg,var(--color-brand-light),var(--color-brand-dark));">
@@ -42,14 +42,14 @@
                             <!-- count badge -->
                             <p class="text-[10px] text-gray-400 mt-0.5" x-text="cat.count + ' item' + (cat.count !== 1 ? 's' : '')"></p>
                             <template x-if="cat.is_public_bento">
-                                <span class="inline-flex items-center gap-1 mt-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide">
+                                <span class="inline-flex items-center gap-1 mt-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100/70 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide">
                                     <i class="fa-solid fa-grip text-[7px]"></i>
                                     Bento
                                 </span>
                             </template>
                             <!-- upload arrow -->
                             {% if perm_website_edit %}
-                            <div class="absolute top-3 right-3 w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center">
+                            <div class="absolute top-3 right-3 w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100/70 flex items-center justify-center">
                                 <i class="fa-solid fa-plus text-indigo-400 text-[9px]"></i>
                             </div>
                             {% endif %}
@@ -93,12 +93,12 @@
                 <div class="w-10 h-1.5 rounded-md bg-gray-300"></div>
             </div>
             <!-- Header -->
-            <div class="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
+            <div class="flex items-center justify-between px-5 pb-3 border-b border-slate-100/70">
                 <div>
                     <h3 class="text-[14px] font-bold text-gray-800" x-text="activeCategory ? activeCategory.name : 'Upload Media'"></h3>
                     <p class="text-[10px] text-gray-400">Choose source to add photos or reels</p>
                 </div>
-                <button @click="closeUploadSheet()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
+                <button @click="closeUploadSheet()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
                     <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
@@ -137,7 +137,7 @@
                        x-text="pendingFiles.length + ' file(s) ready'"></p>
                     <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         <template x-for="(pf, idx) in pendingFiles" :key="idx">
-                            <div class="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                            <div class="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
                                 <template x-if="pf.kind === 'image' && pf.preview">
                                     <img :src="pf.preview" class="w-full h-full object-cover" alt="">
                                 </template>
@@ -148,7 +148,7 @@
                                     </div>
                                 </template>
                                 <button @click.stop="removeFile(idx)"
-                                        class="absolute top-0.5 right-0.5 w-5 h-5 rounded-md bg-red-500 flex items-center justify-center shadow">
+                                        class="absolute top-0.5 right-0.5 w-5 h-5 rounded-lg bg-red-500 flex items-center justify-center shadow">
                                     <i class="fa-solid fa-xmark text-white text-[8px]"></i>
                                 </button>
                             </div>
@@ -206,12 +206,12 @@
         <div class="absolute inset-0 bg-black/55 backdrop-blur-[2px]" @click="closeCategoryPreview()"></div>
         <div class="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col">
             <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
-            <div class="px-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+            <div class="px-4 pb-3 border-b border-slate-100/70 flex items-center justify-between">
                 <div>
                     <p class="text-[14px] font-bold text-gray-800" x-text="categoryPreview.name || 'Media'"></p>
                     <p class="text-[10px] text-gray-400" x-text="(categoryPreview.items ? categoryPreview.items.length : 0) + ' item(s)'"></p>
                 </div>
-                <button @click="closeCategoryPreview()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark text-xs"></i></button>
+                <button @click="closeCategoryPreview()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark text-xs"></i></button>
             </div>
             <div class="overflow-y-auto p-3 pb-6">
                 <template x-if="categoryPreview.loading">
@@ -226,7 +226,7 @@
                 </template>
                 <div class="grid grid-cols-3 gap-2" x-show="!categoryPreview.loading && categoryPreview.items && categoryPreview.items.length > 0">
                     <template x-for="img in categoryPreview.items" :key="img.id">
-                        <div class="w-full aspect-square rounded-xl border border-gray-100 overflow-hidden">
+                        <div class="w-full aspect-square rounded-xl border border-slate-100/80 overflow-hidden">
                             <template x-if="img.type === 'image' && img.url">
                                 <img :src="img.url" :alt="img.title" class="w-full h-full object-cover" loading="lazy" decoding="async">
                             </template>
@@ -363,6 +363,72 @@ function websiteManageApp() {
             }
             return picked || null;
         },
+        _blobToPortfolioFile(blob, fallbackName) {
+            if (!(blob instanceof Blob)) return null;
+            const mime = String(blob.type || '').toLowerCase();
+            let ext = 'jpg';
+            if (mime.includes('png')) ext = 'png';
+            else if (mime.includes('webp')) ext = 'webp';
+            else if (mime.includes('gif')) ext = 'gif';
+            else if (mime.includes('heic') || mime.includes('heif')) ext = 'heic';
+            const name = String(fallbackName || '').trim() || ('portfolio_' + Date.now() + '.' + ext);
+            return new File([blob], name, { type: blob.type || 'image/jpeg' });
+        },
+        async normalizePortfolioPickedFile(picked) {
+            if (!picked) return null;
+            if (picked instanceof File) return picked;
+            if (picked instanceof Blob) return this._blobToPortfolioFile(picked);
+
+            const wrappedFile = picked.file || picked.blob || picked.data || null;
+            if (wrappedFile instanceof File) return wrappedFile;
+            if (wrappedFile instanceof Blob) return this._blobToPortfolioFile(wrappedFile, picked.name);
+
+            const rawDataUrl = typeof picked.dataUrl === 'string'
+                ? picked.dataUrl
+                : (typeof picked.base64 === 'string' ? picked.base64 : '');
+            if (rawDataUrl && /^data:image\//i.test(rawDataUrl)) {
+                try {
+                    const dataRes = await fetch(rawDataUrl);
+                    if (dataRes.ok) {
+                        const dataBlob = await dataRes.blob();
+                        const fromData = this._blobToPortfolioFile(dataBlob, picked.name);
+                        if (fromData) return fromData;
+                    }
+                } catch (err) {}
+            }
+
+            const candidates = [];
+            ['webPath', 'path', 'uri', 'url'].forEach((key) => {
+                const value = typeof picked[key] === 'string' ? picked[key].trim() : '';
+                if (value) candidates.push(value);
+            });
+
+            const cap = window.Capacitor;
+            if (cap && typeof cap.convertFileSrc === 'function') {
+                const convertedCandidates = [];
+                candidates.forEach((candidate) => {
+                    if (/^(https?:|data:|blob:)/i.test(candidate)) return;
+                    try {
+                        const converted = cap.convertFileSrc(candidate);
+                        if (converted) convertedCandidates.push(converted);
+                    } catch (err) {}
+                });
+                convertedCandidates.forEach((converted) => {
+                    if (!candidates.includes(converted)) candidates.push(converted);
+                });
+            }
+
+            for (const candidate of candidates) {
+                try {
+                    const res = await fetch(candidate);
+                    if (!res.ok) continue;
+                    const blob = await res.blob();
+                    const fetchedFile = this._blobToPortfolioFile(blob, picked.name);
+                    if (fetchedFile) return fetchedFile;
+                } catch (err) {}
+            }
+            return null;
+        },
         addPortfolioFiles(files, options) {
             const MAX_FILES = 20;
             const MAX_IMAGE_MB = 15;
@@ -423,7 +489,12 @@ function websiteManageApp() {
                 try {
                     const picked = await this.pickPortfolioWithTimeout('camera', 92, 15000);
                     if (picked) {
-                        this.addPortfolioFiles([picked], { source: 'camera' });
+                        const pickedFile = await this.normalizePortfolioPickedFile(picked);
+                        if (!pickedFile) {
+                            this.showToast('Selected image could not be read. Please try another photo.', false);
+                        } else {
+                            this.addPortfolioFiles([pickedFile], { source: 'camera' });
+                        }
                     }
                     return;
                 } catch (err) {
@@ -445,7 +516,12 @@ function websiteManageApp() {
                 try {
                     const picked = await this.pickPortfolioWithTimeout('gallery', 92, 15000);
                     if (picked) {
-                        this.addPortfolioFiles([picked], { source: 'gallery' });
+                        const pickedFile = await this.normalizePortfolioPickedFile(picked);
+                        if (!pickedFile) {
+                            this.showToast('Selected image could not be read. Please try another photo.', false);
+                        } else {
+                            this.addPortfolioFiles([pickedFile], { source: 'gallery' });
+                        }
                     }
                     return;
                 } catch (err) {

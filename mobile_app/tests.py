@@ -993,6 +993,69 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertEqual(captured.get('content_type'), 'image/jpeg')
 		self.assertGreater(captured.get('size', 0), 0)
 
+	def test_pending_list_photo_slots_match_case_insensitive_image_keys(self):
+		self.table.fields = [
+			{'name': 'PHOTO', 'type': 'photo', 'order': 0},
+			{'name': 'FATHER PHOTO', 'type': 'rel_photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self.card.field_data = {
+			'NAME': 'Student One',
+			'photo': 'adarshimg/CODE/student.jpg',
+			'FATHER_PHOTO': 'adarshimg/CODE/father.jpg',
+			'mother photo': 'adarshimg/CODE/mother.jpg',
+		}
+		self.card.save(update_fields=['field_data'])
+
+		self._login_mobile_super_admin()
+		response = self.client.get(f'/app/table/{self.table.id}/pending/')
+
+		self.assertEqual(response.status_code, 200)
+		students = response.context.get('students', [])
+		matched = next((row for row in students if row.get('id') == self.card.id), None)
+		self.assertIsNotNone(matched)
+		slots = matched.get('photo_slots') or []
+		self.assertGreaterEqual(len(slots), 3)
+
+		slot_urls = [slot.get('url') for slot in slots[:3]]
+		self.assertEqual(slot_urls[0], '/media/adarshimg/CODE/student.jpg')
+		self.assertEqual(slot_urls[1], '/media/adarshimg/CODE/father.jpg')
+		self.assertEqual(slot_urls[2], '/media/adarshimg/CODE/mother.jpg')
+
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	@mock.patch('mobile_app.views.ThumbnailService.ensure_thumbnail_exists')
+	@mock.patch('mobile_app.views.ImageService.process_image_field')
+	def test_upload_photo_prefers_primary_photo_field_over_relation_fields(self, mock_process_image, _mock_thumb, _mock_validate):
+		self.table.fields = [
+			{'name': 'FATHER PHOTO', 'type': 'rel_photo', 'order': 0},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 1},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		mock_process_image.return_value = mock.Mock(
+			success=True,
+			message='ok',
+			data={'final_value': 'adarshimg/TST/student.jpg'},
+		)
+
+		self._login_mobile_super_admin()
+		photo = SimpleUploadedFile('ok.jpg', b'fake', content_type='image/jpeg')
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/upload-photo/',
+			data={'card_id': str(self.card.id), 'photo': photo},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		self.assertEqual(response.json().get('field_name'), 'PHOTO')
+		self.assertEqual(mock_process_image.call_args.kwargs.get('field_name'), 'PHOTO')
+
+		self.card.refresh_from_db()
+		self.assertEqual(self.card.field_data.get('PHOTO'), 'adarshimg/TST/student.jpg')
+
 	def test_camera_ui_is_consistent_across_mobile_roles(self):
 		self._enable_mobile_photo_edit_for_all_roles()
 
@@ -1801,7 +1864,8 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn('var apkDownloadUrl =', mobile_login_html)
 		self.assertIn('if (apkDownloadUrl) {', mobile_login_html)
 		self.assertIn("section.style.display = 'none';", website_pwa_html)
-		self.assertIn("website/apk/adarsh-admin.apk' %}?v={{ APP_VERSION }}", website_pwa_html)
+		self.assertIn('MOBILE_ANDROID_APP_DOWNLOAD_URL', website_pwa_html)
+		self.assertIn('id="downloadApkCta"', website_pwa_html)
 
 	def test_reprint_table_prefers_field_data_photo_url(self):
 		from reprintcard.models import ReprintRequest

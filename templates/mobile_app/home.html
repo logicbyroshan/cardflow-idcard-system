@@ -179,7 +179,7 @@
 
                 {% if recent_client_updates %}
                  <div class="flex-1 min-h-0 bg-gradient-to-b from-white via-indigo-50/40 to-sky-100/45 rounded-lg shadow-sm overflow-hidden flex flex-col"
-                     x-data="recentClientsTable()">
+                     x-data="recentClientsTable({ collapsible: {% if is_super_admin or is_admin_staff %}true{% else %}false{% endif %} })">
 
                     <div x-show="loading" class="p-2.5 space-y-2" x-cloak>
                         <template x-for="i in 6" :key="'recent-sk-' + i">
@@ -217,8 +217,10 @@
                         {% for rc in recent_client_updates %}
 
                         <!-- Client parent row -->
-                                <div class="flex items-center border-b border-gray-50 select-none bg-indigo-50/40"
-                                      style="min-height:44px;">
+                                  <div class="flex items-center border-b border-gray-50 select-none bg-indigo-50/40"
+                                      style="min-height:44px;"
+                                      :class="collapsible ? 'cursor-pointer active:bg-indigo-100/50 transition-colors' : ''"
+                                      @click="toggleRowByKey('recent-client-{{ rc.client_id|default:forloop.counter0 }}')">
                             <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0">
                                 <!-- Mini avatar/logo -->
                                 <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 overflow-hidden"
@@ -230,9 +232,12 @@
                                     {% endif %}
                                 </div>
                                 <span class="text-[12px] font-semibold text-gray-800 truncate leading-tight">{{ rc.client_name }}</span>
-                                          {% if rc.tables %}
-                                          <i class="fa-solid fa-table-cells text-[9px] flex-shrink-0 text-indigo-300 ml-auto mr-1"></i>
-                                          {% endif %}
+                                                        {% if rc.tables %}
+                                                        <i class="fa-solid fa-table-cells text-[9px] flex-shrink-0 text-indigo-300 ml-auto"></i>
+                                                        <i x-show="collapsible"
+                                                            class="fa-solid fa-chevron-down text-[9px] flex-shrink-0 text-indigo-400 ml-1 mr-1 transition-transform"
+                                                            :class="isOpenByKey('recent-client-{{ rc.client_id|default:forloop.counter0 }}') ? 'rotate-180' : ''"></i>
+                                                        {% endif %}
                             </div>
                             <div class="w-1/2 grid grid-cols-4">
                                 <div class="text-center py-2">
@@ -268,46 +273,48 @@
 
                         <!-- Expanded sub-rows: one per table -->
                         {% if rc.tables %}
-                        {% for tbl in rc.tables %}
-                            <div class="flex items-center border-b border-indigo-50 bg-indigo-50/35"
-                                style="min-height:38px;">
-                            <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0 pl-8">
-                                <i class="fa-solid fa-table-cells text-indigo-300 text-[9px] flex-shrink-0"></i>
-                                <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                   class="text-[11px] font-semibold text-indigo-600 truncate leading-tight hover:underline">{{ tbl.name }}</a>
-                            </div>
-                            <div class="w-1/2 grid grid-cols-4">
-                                <div class="text-center py-2">
+                        <div x-show="isOpenByKey('recent-client-{{ rc.client_id|default:forloop.counter0 }}')" x-cloak>
+                            {% for tbl in rc.tables %}
+                                <div class="flex items-center border-b border-indigo-50 bg-indigo-50/35"
+                                    style="min-height:38px;">
+                                <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0 pl-8">
+                                    <i class="fa-solid fa-table-cells text-indigo-300 text-[9px] flex-shrink-0"></i>
                                     <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.pending > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                        {{ tbl.pending }}
-                                    </a>
+                                       class="text-[11px] font-semibold text-indigo-600 truncate leading-tight hover:underline">{{ tbl.name }}</a>
                                 </div>
-                                <div class="text-center py-2">
-                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='verified' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.verified > 0 %}text-emerald-500 bg-emerald-50 border border-emerald-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                        {{ tbl.verified }}
-                                    </a>
-                                </div>
-                                <div class="text-center py-2">
-                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='approved' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.approved > 0 %}text-sky-500 bg-sky-50 border border-sky-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                        {{ tbl.approved|default:0 }}
-                                    </a>
-                                </div>
-                                <div class="text-center py-2">
-                                    <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='download' %}"
-                                       class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.download > 0 %}text-violet-500 bg-violet-50 border border-violet-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                        {{ tbl.download|default:0 }}
-                                    </a>
+                                <div class="w-1/2 grid grid-cols-4">
+                                    <div class="text-center py-2">
+                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='pending' %}"
+                                           class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.pending > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                            {{ tbl.pending }}
+                                        </a>
+                                    </div>
+                                    <div class="text-center py-2">
+                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='verified' %}"
+                                           class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.verified > 0 %}text-emerald-500 bg-emerald-50 border border-emerald-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                            {{ tbl.verified }}
+                                        </a>
+                                    </div>
+                                    <div class="text-center py-2">
+                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='approved' %}"
+                                           class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.approved > 0 %}text-sky-500 bg-sky-50 border border-sky-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                            {{ tbl.approved|default:0 }}
+                                        </a>
+                                    </div>
+                                    <div class="text-center py-2">
+                                        <a href="{% url 'mobile_app:card_list' table_id=tbl.id status='download' %}"
+                                           class="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.download > 0 %}text-violet-500 bg-violet-50 border border-violet-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                            {{ tbl.download|default:0 }}
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
+                            {% empty %}
+                            <div class="px-8 py-2 text-[10px] text-gray-400 bg-indigo-50/20 border-b border-indigo-50">
+                                No active tables
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% empty %}
-                        <div class="px-8 py-2 text-[10px] text-gray-400 bg-indigo-50/20 border-b border-indigo-50">
-                            No active tables
-                        </div>
-                        {% endfor %}
                         {% endif %}
 
                         {% endfor %}
@@ -360,7 +367,7 @@
 
                     {% if recent_reprint_updates %}
                     <div class="flex-1 min-h-0 bg-gradient-to-b from-white via-cyan-50/45 to-blue-100/40 rounded-lg shadow-sm overflow-hidden flex flex-col"
-                         x-data="recentClientsTable()">
+                        x-data="recentClientsTable({ collapsible: {% if is_super_admin or is_admin_staff %}true{% else %}false{% endif %} })">
 
                         <div class="flex items-center border-b border-cyan-200 bg-cyan-100/70 flex-shrink-0" style="min-height:34px;">
                             <div class="w-1/2 px-2.5 py-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
@@ -375,7 +382,9 @@
                         <div class="flex-1 overflow-y-auto" style="-webkit-overflow-scrolling:touch;">
                             {% for rr in recent_reprint_updates %}
                                                         <div class="flex items-center border-b border-gray-50 select-none bg-blue-50/30"
-                                                                 style="min-height:44px;">
+                                                                 style="min-height:44px;"
+                                                                 :class="collapsible ? 'cursor-pointer active:bg-blue-100/50 transition-colors' : ''"
+                                                                 @click="toggleRowByKey('recent-reprint-{{ rr.group_id|default:rr.client_id|default:forloop.counter0 }}')">
                                 <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0">
                                      <div class="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0 overflow-hidden"
                                          style="background: linear-gradient(135deg, var(--color-blue,#0ea5e9), var(--primary,var(--color-blue-dark)));">
@@ -387,7 +396,10 @@
                                     </div>
                                     <span class="text-[12px] font-semibold text-gray-800 truncate leading-tight">{{ rr.client_name }}</span>
                                                 {% if rr.tables %}
-                                                <i class="fa-solid fa-table-cells text-[9px] flex-shrink-0 text-blue-300 ml-auto mr-1"></i>
+                                                                <i class="fa-solid fa-table-cells text-[9px] flex-shrink-0 text-blue-300 ml-auto"></i>
+                                                                <i x-show="collapsible"
+                                                                    class="fa-solid fa-chevron-down text-[9px] flex-shrink-0 text-blue-400 ml-1 mr-1 transition-transform"
+                                                                    :class="isOpenByKey('recent-reprint-{{ rr.group_id|default:rr.client_id|default:forloop.counter0 }}') ? 'rotate-180' : ''"></i>
                                                 {% endif %}
                                 </div>
                                 <div class="w-1/2 grid grid-cols-2">
@@ -417,29 +429,31 @@
                             </div>
 
                             {% if rr.tables %}
-                            {% for tbl in rr.tables %}
-                               <div class="flex items-center border-b border-blue-50 bg-blue-50/30"
-                                   style="min-height:38px;">
-                                <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0 pl-8">
-                                    <i class="fa-solid fa-table-cells text-blue-300 text-[9px] flex-shrink-0"></i>
-                                    <span class="text-[11px] font-semibold text-blue-700 truncate leading-tight">{{ tbl.name }}</span>
-                                </div>
-                                <div class="w-1/2 grid grid-cols-2">
-                                    <div class="text-center py-2">
-                                        <a href="{% url 'mobile_app:reprint_table' table_id=tbl.id %}?step=request_list"
-                                           class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.requested > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                            {{ tbl.requested|default:0 }}
-                                        </a>
+                            <div x-show="isOpenByKey('recent-reprint-{{ rr.group_id|default:rr.client_id|default:forloop.counter0 }}')" x-cloak>
+                                {% for tbl in rr.tables %}
+                                   <div class="flex items-center border-b border-blue-50 bg-blue-50/30"
+                                       style="min-height:38px;">
+                                    <div class="w-1/2 px-2.5 py-2 flex items-center gap-2 min-w-0 pl-8">
+                                        <i class="fa-solid fa-table-cells text-blue-300 text-[9px] flex-shrink-0"></i>
+                                        <span class="text-[11px] font-semibold text-blue-700 truncate leading-tight">{{ tbl.name }}</span>
                                     </div>
-                                    <div class="text-center py-2">
-                                        <a href="{% url 'mobile_app:reprint_table' table_id=tbl.id %}?step=confirmed"
-                                           class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.confirmed > 0 %}text-blue-500 bg-blue-50 border border-blue-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
-                                            {{ tbl.confirmed|default:0 }}
-                                        </a>
+                                    <div class="w-1/2 grid grid-cols-2">
+                                        <div class="text-center py-2">
+                                            <a href="{% url 'mobile_app:reprint_table' table_id=tbl.id %}?step=request_list"
+                                               class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.requested > 0 %}text-amber-500 bg-amber-50 border border-amber-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                                {{ tbl.requested|default:0 }}
+                                            </a>
+                                        </div>
+                                        <div class="text-center py-2">
+                                            <a href="{% url 'mobile_app:reprint_table' table_id=tbl.id %}?step=confirmed"
+                                               class="inline-flex items-center justify-center min-w-[26px] h-[20px] px-1.5 rounded text-[10px] font-bold whitespace-nowrap {% if tbl.confirmed > 0 %}text-blue-500 bg-blue-50 border border-blue-100{% else %}text-gray-300 bg-white/70 border border-gray-100{% endif %}">
+                                                {{ tbl.confirmed|default:0 }}
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
                             {% endif %}
 
                             {% endfor %}
@@ -482,14 +496,24 @@ function homeApp() {
     };
 }
 
-function recentClientsTable() {
+function recentClientsTable(config = {}) {
     return {
         loading: true,
+        collapsible: !!config.collapsible,
+        openRows: {},
         init() {
             setTimeout(() => {
                 this.loading = false;
             }, 450);
-        }
+        },
+        isOpenByKey(key) {
+            if (!this.collapsible) return true;
+            return !!this.openRows[key];
+        },
+        toggleRowByKey(key) {
+            if (!this.collapsible) return;
+            this.openRows[key] = !this.openRows[key];
+        },
     };
 }
 </script>

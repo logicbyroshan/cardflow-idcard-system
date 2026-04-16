@@ -14,14 +14,14 @@
             <p class="text-white/80 text-[10px] truncate">{{ client.name }}</p>
         </div>
         <a href="{% url 'mobile_app:table_picker' status='download' %}"
-              class="inline-flex mobile-status-chip items-center gap-1 px-2 py-1 rounded-md border border-white/35 bg-white/15 text-white text-[10px] font-semibold active:scale-95 transition">
+              class="inline-flex mobile-status-chip items-center gap-1 min-w-[92px] h-7 px-2.5 rounded-lg border border-white/25 bg-white/15 text-white text-[10px] font-semibold active:scale-95 transition">
                         <span class="uppercase tracking-wide mobile-chip-label">Download</span>
             <span class="mobile-chip-count">{{ download_total|default:0 }}</span>
         </a>
     </div>
 
     <div class="px-4 pt-3">
-        <div class="flex bg-white rounded-xl shadow-sm p-1">
+        <div class="flex bg-white rounded-2xl shadow-sm border border-slate-100 p-1.5">
             {% if can_reprint_request_list %}
             <a href="{% url 'mobile_app:reprint_lists' client_id=client.id %}?step=request_list"
                     class="flex-1 mobile-status-tab py-2 text-[10px] font-semibold rounded-lg transition-all text-center whitespace-nowrap inline-flex items-center justify-center gap-1 border {% if active_step == 'request_list' %}bg-gradient-to-r from-brand-light to-brand-dark text-white border-brand-light shadow-sm{% else %}bg-slate-50 text-slate-600 border-slate-200{% endif %}">
@@ -39,31 +39,33 @@
         </div>
     </div>
 
-    <div class="p-4 pt-3 space-y-2">
+    <div class="p-4 pt-3 space-y-2.5">
         {% for t in tables %}
-        <div class="rounded-xl bg-white border border-gray-200 shadow-sm p-3">
+        <div class="rounded-2xl bg-white border border-slate-100/80 shadow-sm p-3.5">
             <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0">
                     <p class="text-[13px] font-bold text-gray-800 truncate">{{ t.name }}</p>
                     <p class="text-[10px] text-gray-400 truncate">{{ t.group_name }}</p>
                 </div>
-                <i class="fa-solid fa-table-cells text-cyan-400 text-[12px]"></i>
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-cyan-50 text-cyan-500 border border-cyan-100">
+                    <i class="fa-solid fa-table-cells text-[11px]"></i>
+                </span>
             </div>
 
-            <div class="mt-2.5 pt-2.5 border-t border-gray-100 grid {% if can_reprint_request_list and can_reprint_confirmed_list %}grid-cols-2{% else %}grid-cols-1{% endif %} gap-1.5">
+            <div class="mt-2.5 pt-2.5 border-t border-slate-100 grid {% if can_reprint_request_list and can_reprint_confirmed_list %}grid-cols-2{% else %}grid-cols-1{% endif %} gap-1.5">
                 {% if can_reprint_request_list %}
                 <a href="{% url 'mobile_app:reprint_table' table_id=t.id %}?step=request_list"
-                         class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-2 active:scale-[0.98] transition">
+                         class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between rounded-xl border border-sky-100 bg-sky-50 px-2.5 py-2 active:scale-[0.98] transition">
                     <span class="mobile-tab-label text-sky-700">Request List</span>
-                    <span class="inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded-md mobile-chip-count {% if t.requested > 0 %}text-sky-700 bg-sky-100 border border-sky-200{% else %}text-gray-500 bg-gray-100 border border-gray-200{% endif %}">{{ t.requested|default:0 }}</span>
+                    <span class="inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded-lg mobile-chip-count {% if t.requested > 0 %}text-sky-700 bg-sky-100{% else %}text-gray-500 bg-gray-100{% endif %}">{{ t.requested|default:0 }}</span>
                 </a>
                 {% endif %}
 
                 {% if can_reprint_confirmed_list %}
                 <a href="{% url 'mobile_app:reprint_table' table_id=t.id %}?step=confirmed"
-                   class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-2 active:scale-[0.98] transition">
+                   class="inline-flex mobile-status-chip mobile-status-chip-fixed items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 px-2.5 py-2 active:scale-[0.98] transition">
                     <span class="mobile-tab-label text-indigo-700">Confirmed List</span>
-                    <span class="inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded-md mobile-chip-count {% if t.confirmed > 0 %}text-indigo-700 bg-indigo-100 border border-indigo-200{% else %}text-gray-500 bg-gray-100 border border-gray-200{% endif %}">{{ t.confirmed|default:0 }}</span>
+                    <span class="inline-flex items-center justify-center min-w-[28px] h-[20px] px-1.5 rounded-lg mobile-chip-count {% if t.confirmed > 0 %}text-indigo-700 bg-indigo-100{% else %}text-gray-500 bg-gray-100{% endif %}">{{ t.confirmed|default:0 }}</span>
                 </a>
                 {% endif %}
             </div>

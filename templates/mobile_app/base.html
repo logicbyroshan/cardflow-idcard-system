@@ -75,8 +75,21 @@
                 document.getElementById('desktop-block').style.display = 'none';
             }
         }
-        window.addEventListener('load', checkDevice);
-        window.addEventListener('resize', checkDevice);
+        var __mobileResizeTimer = null;
+        function scheduleDeviceCheck() {
+            if (__mobileResizeTimer) {
+                clearTimeout(__mobileResizeTimer);
+            }
+            __mobileResizeTimer = setTimeout(checkDevice, 180);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkDevice, { once: true });
+        } else {
+            checkDevice();
+        }
+        window.addEventListener('pageshow', checkDevice);
+        window.addEventListener('resize', scheduleDeviceCheck, { passive: true });
     </script>
 </head>
 <body data-user-role="{{ request.user.role|default:'' }}" class="bg-[#eaf2ff] font-sans overscroll-none pwa-v2">

@@ -221,6 +221,8 @@ window.showConfirm = function showConfirm(options) {
     var progressHideTimer = null;
     var progressRampTimer = null;
     var prefetchedRoutes = Object.create(null);
+    var prefetchedRouteCount = 0;
+    var PREFETCH_ROUTE_LIMIT = 6;
 
     function ensureRouteProgress() {
         var existing = document.getElementById('mobile-route-progress');
@@ -296,7 +298,9 @@ window.showConfirm = function showConfirm(options) {
         if (!conn) return true;
         if (conn.saveData) return false;
         var effectiveType = String(conn.effectiveType || '').toLowerCase();
-        if (effectiveType.indexOf('2g') !== -1) return false;
+        if (effectiveType.indexOf('2g') !== -1 || effectiveType.indexOf('3g') !== -1) return false;
+        var downlink = Number(conn.downlink || 0);
+        if (downlink > 0 && downlink < 1.5) return false;
         return true;
     }
 
@@ -322,6 +326,7 @@ window.showConfirm = function showConfirm(options) {
 
     function prefetchRoute(href) {
         if (!canPrefetchRoutes()) return false;
+        if (prefetchedRouteCount >= PREFETCH_ROUTE_LIMIT) return false;
         var normalizedHref = resolveTrackedRouteHref(href);
         if (!normalizedHref) return false;
         if (prefetchedRoutes[normalizedHref]) return false;
@@ -333,6 +338,7 @@ window.showConfirm = function showConfirm(options) {
             prefetchLink.as = 'document';
             prefetchLink.href = normalizedHref;
             document.head.appendChild(prefetchLink);
+            prefetchedRouteCount += 1;
             return true;
         } catch (err) {
             return false;
@@ -342,7 +348,7 @@ window.showConfirm = function showConfirm(options) {
     function warmupLikelyRoutes() {
         if (!canPrefetchRoutes()) return;
         var anchors = document.querySelectorAll('.pwa-bottom-nav a[href], .pwa-nav-search-btn[href], a[href^="/app/"]');
-        var limit = 12;
+        var limit = 4;
         for (var i = 0; i < anchors.length && limit > 0; i++) {
             var anchor = anchors[i];
             if (!anchor || anchor.hasAttribute('data-no-prefetch')) continue;
@@ -353,6 +359,7 @@ window.showConfirm = function showConfirm(options) {
     }
 
     function scheduleWarmupLikelyRoutes() {
+        if (document.visibilityState === 'hidden') return;
         if (typeof window.requestIdleCallback === 'function') {
             window.requestIdleCallback(warmupLikelyRoutes, { timeout: 1300 });
             return;
@@ -555,7 +562,7 @@ window.showConfirm = function showConfirm(options) {
     });
     window.addEventListener('online', refreshSyncBadge);
     window.addEventListener('offline', refreshSyncBadge);
-    setInterval(refreshSyncBadge, 20000);
+    setInterval(refreshSyncBadge, 60000);
     refreshSyncBadge();
 })();
 

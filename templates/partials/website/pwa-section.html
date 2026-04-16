@@ -31,10 +31,15 @@
                         <i class="fa-solid fa-mobile-screen-button"></i>
                         <span>Open App Now</span>
                     </a>
-                    <a id="downloadApkCta" class="download-app-btn download-app-btn-secondary download-app-btn-disabled" aria-disabled="true" title="Download temporarily unavailable">
+                    {% with apk_download_url=MOBILE_ANDROID_APP_DOWNLOAD_URL|default:'' %}
+                    <a id="downloadApkCta"
+                       href="{% if apk_download_url %}{{ apk_download_url }}{% else %}#{% endif %}"
+                       class="download-app-btn download-app-btn-secondary{% if not apk_download_url %} download-app-btn-disabled{% endif %}"
+                       {% if apk_download_url %}target="_blank" rel="noopener noreferrer"{% else %}aria-disabled="true" title="Download temporarily unavailable"{% endif %}>
                         <i class="fa-solid fa-download"></i>
                         <span>Download App</span>
                     </a>
+                    {% endwith %}
                 </div>
             </div>
             <div class="download-app-visual">

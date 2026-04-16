@@ -26,14 +26,14 @@
         <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
             <input type="text" x-model="searchQuery" @input="filterStaff()" placeholder="Search staff..."
-                class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition shadow-sm">
+                class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition shadow-sm">
         </div>
     </div>
 
     <!-- Staff List -->
-    <div class="px-4 space-y-2">
+    <div class="px-4 space-y-2.5">
         <template x-for="staff in filteredStaff" :key="staff.id">
-            <div class="bg-gradient-to-br from-white via-white to-indigo-50/40 rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+            <div class="bg-gradient-to-br from-white via-white to-indigo-50/40 rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
                 <div class="flex items-center gap-3 p-3">
                     <!-- Avatar -->
                     <div class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
@@ -53,14 +53,14 @@
                     <!-- Actions -->
                     {% if is_super_admin or is_client and perm_idcard_client_list %}
                     <div class="flex items-center gap-1 flex-shrink-0">
-                        <button @click="toggleStaff(staff)" class="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-95"
+                        <button @click="toggleStaff(staff)" class="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95"
                                 :class="staff.is_active ? 'bg-yellow-50 text-yellow-500' : 'bg-green-50 text-green-500'">
                             <i class="text-xs" :class="staff.is_active ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
                         </button>
-                        <button @click="openEditForm(staff)" class="w-8 h-8 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center transition-all active:scale-95">
+                        <button @click="openEditForm(staff)" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center transition-all active:scale-95">
                             <i class="fa-solid fa-pen text-xs"></i>
                         </button>
-                        <button @click="deleteStaff(staff)" class="w-8 h-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center transition-all active:scale-95">
+                        <button @click="deleteStaff(staff)" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center transition-all active:scale-95">
                             <i class="fa-solid fa-trash text-xs"></i>
                         </button>
                     </div>
@@ -90,8 +90,8 @@
              style="height: 85vh; height: 85dvh;"
              x-transition:enter="transition ease-out duration-400" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
              x-transition:leave="transition ease-in duration-300" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
-            <div class="flex justify-center pt-3 pb-1 flex-shrink-0"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
-            <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100 flex-shrink-0">
+            <div class="flex justify-center pt-3 pb-1 flex-shrink-0"><div class="w-10 h-1.5 rounded-md bg-slate-300"></div></div>
+            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100/70 flex-shrink-0">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-xl flex items-center justify-center"
                          :class="editMode ? 'bg-amber-500' : 'bg-gradient-to-br from-brand-light to-brand-dark'">
@@ -99,7 +99,7 @@
                     </div>
                     <h3 class="text-sm font-bold text-gray-800" x-text="editMode ? 'Edit Staff' : 'Create Staff'"></h3>
                 </div>
-                <button @click="closeForm()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
+                <button @click="closeForm()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-200 transition-colors">
                     <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
@@ -108,30 +108,30 @@
                     <div class="space-y-1">
                         <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">First Name <span class="text-red-400">*</span></label>
                         <input type="text" x-model="form.first_name" placeholder="First name"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                     </div>
                     <div class="space-y-1">
                         <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Last Name</label>
                         <input type="text" x-model="form.last_name" placeholder="Last name"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                     </div>
                 </div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Email <span class="text-red-400">*</span></label>
                     <input type="email" x-model="form.email" placeholder="staff@example.com" :disabled="editMode"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition disabled:opacity-50">
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition disabled:opacity-50">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Phone</label>
                     <input type="tel" x-model="form.phone" placeholder="9876543210"
-                        class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                        class="w-full px-3 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3" x-show="!editMode" x-cloak>
                     <div class="space-y-1">
                         <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Password Option</label>
                         <select x-model="form.passwordOption"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                             <option value="phone">Use Phone Number</option>
                             <option value="custom">Custom Password</option>
                         </select>
@@ -139,10 +139,10 @@
                     <div class="space-y-1" x-show="form.passwordOption === 'custom'" x-cloak>
                         <label class="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Custom Password <span class="text-red-400">*</span></label>
                         <input :type="form.showPassword ? 'text' : 'password'" x-model="form.password" placeholder="Enter password"
-                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-light/20 transition">
                     </div>
                 </div>
-                <label class="flex items-center justify-between p-2 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer" x-show="!editMode && form.passwordOption === 'custom'" x-cloak>
+                <label class="flex items-center justify-between p-2 bg-gray-50 rounded-xl border border-slate-200 cursor-pointer" x-show="!editMode && form.passwordOption === 'custom'" x-cloak>
                     <span class="text-xs font-semibold text-gray-700">Show Password</span>
                     <div class="toggle-switch-sm">
                         <input type="checkbox" x-model="form.showPassword">
@@ -155,11 +155,11 @@
                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Permissions</p>
                     <div class="space-y-2">
                         <template x-for="group in permissionGroups" :key="group.title">
-                            <div class="rounded-xl border border-gray-200 bg-gray-50/75 p-2">
+                            <div class="rounded-xl border border-slate-200 bg-gray-50/75 p-2">
                                 <p class="text-[10px] font-bold text-gray-600 uppercase tracking-wider px-1 pb-1" x-text="group.title"></p>
                                 <div class="space-y-1">
                                     <template x-for="perm in group.items" :key="perm.key">
-                                        <label class="flex items-center justify-between p-2 bg-white rounded-xl cursor-pointer hover:bg-gray-50 transition border border-gray-100">
+                                        <label class="flex items-center justify-between p-2 bg-white rounded-xl cursor-pointer hover:bg-gray-50 transition border border-slate-100/70">
                                             <span class="text-xs text-gray-700" x-text="perm.label"></span>
                                             <div class="toggle-switch-sm">
                                                 <input type="checkbox" x-model="form.permissions[perm.key]">
@@ -174,10 +174,10 @@
                 </div>
 
                 <!-- Submit -->
-                <div class="sticky bottom-0 z-10 flex gap-2 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] bg-white/95 backdrop-blur-sm border-t border-gray-100">
-                    <button @click="closeForm()" class="flex-1 py-3 text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-xl active:scale-[0.98] transition-all">Cancel</button>
+                <div class="sticky bottom-0 z-10 flex gap-2 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] bg-white/95 backdrop-blur-sm border-t border-slate-100/70">
+                    <button @click="closeForm()" class="flex-1 py-3 text-xs font-semibold text-gray-600 bg-gray-100 border border-slate-200 rounded-xl active:scale-[0.98] transition-all">Cancel</button>
                     <button type="button" @click="setTempPassword()" x-show="editMode" x-cloak
-                        class="py-3 px-3 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-200 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1">
+                        class="py-3 px-3 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-100 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1">
                         <i class="fa-solid fa-key text-[10px]"></i>
                         Temp Pass
                     </button>
@@ -197,7 +197,7 @@
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDetail = false" x-transition></div>
         <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-[430px] mx-auto p-4 max-h-[70vh] overflow-y-auto"
              x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-            <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1.5 rounded-md bg-gray-300"></div></div>
+            <div class="flex justify-center pt-1 pb-3"><div class="w-10 h-1.5 rounded-md bg-slate-300"></div></div>
             <div class="text-center mb-4">
                 <div class="w-16 h-16 rounded-3xl bg-gradient-to-br from-brand-light to-brand-dark flex items-center justify-center text-white text-xl font-bold mx-auto mb-2">
                     <span x-text="(detailStaff.name || 'S').substring(0,2).toUpperCase()"></span>
@@ -206,16 +206,16 @@
                 <p class="text-xs text-gray-500" x-text="detailStaff.email"></p>
             </div>
             <div class="space-y-2">
-                <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
+                <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl border border-slate-100/70">
                     <span class="text-xs text-gray-500">Phone</span>
                     <span class="text-xs font-medium text-gray-800" x-text="detailStaff.phone || ' - '"></span>
                 </div>
-                <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
+                <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl border border-slate-100/70">
                     <span class="text-xs text-gray-500">Status</span>
                     <span class="text-xs font-semibold" :class="detailStaff.is_active ? 'text-green-600' : 'text-red-500'"
                           x-text="detailStaff.is_active ? 'Active' : 'Inactive'"></span>
                 </div>
-                <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl">
+                <div class="flex justify-between p-2.5 bg-gray-50 rounded-xl border border-slate-100/70">
                     <span class="text-xs text-gray-500">Created</span>
                     <span class="text-xs font-medium text-gray-800" x-text="detailStaff.created_at || ' - '"></span>
                 </div>

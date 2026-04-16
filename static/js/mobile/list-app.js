@@ -8,6 +8,9 @@ const MOBILE_ENDPOINTS = Object.freeze({
     panelReprintApi: '/panel/reprint/api',
 });
 
+const MOBILE_LIST_AUTO_FILTER_MAX_PAGES = 3;
+const MOBILE_LIST_LOAD_MORE_PAGE_SIZE = 30;
+
 function buildEndpoint(base, path) {
     const normalizedBase = String(base || '').replace(/\/+$/, '');
     const normalizedPath = String(path || '').replace(/^\/+/, '');
@@ -540,13 +543,20 @@ function listApp() {
             );
 
             const searchActive = !!String(this.searchQuery || '').trim();
+            const canAutoExpand = this.studentsData.length < 150;
 
-            // Only force full-data loading for strict filter modes. Text search stays incremental.
-            if (this.filtersActive && this.hasMore) {
+            // Keep filtering responsive on large tables. Expand a few pages only
+            // for smaller datasets, otherwise filter loaded records immediately.
+            if (this.filtersActive && this.hasMore && canAutoExpand) {
                 this.loadingAllForFilters = true;
-                this.showToast('Loading all records for accurate filtering...', 'info');
-                await this.loadAllDataForFiltering(20);
+                this.showToast('Loading more records for better filter accuracy...', 'info');
+                await this.loadAllDataForFiltering(MOBILE_LIST_AUTO_FILTER_MAX_PAGES);
                 this.loadingAllForFilters = false;
+                if (this.hasMore) {
+                    this.showToast('Filters apply to loaded records. Scroll to load more matches.', 'info');
+                }
+            } else if (this.filtersActive && this.hasMore && !canAutoExpand) {
+                this.showToast('Filters apply to loaded records. Scroll to load more matches.', 'info');
             } else if (searchActive && this.hasMore && !this.searchScopeHintShown) {
                 this.showToast('Search currently applies to loaded records. Scroll to load more for wider matches.', 'info');
                 this.searchScopeHintShown = true;
@@ -557,7 +567,7 @@ function listApp() {
             this._applyAllFilters({ showCountToast: true });
             this.showFilters = false;
         },
-        async loadAllDataForFiltering(maxPages = 20) {
+        async loadAllDataForFiltering(maxPages = MOBILE_LIST_AUTO_FILTER_MAX_PAGES) {
             let safety = 0;
             while (this.hasMore && safety < maxPages) {
                 await this.loadMore(true);
@@ -569,6 +579,22 @@ function listApp() {
         },
         _applyAllFilters(options = {}) {
             const q = (this.searchQuery || '').toLowerCase().trim();
+            const hasStructuredFilters = (
+                this.filters.photo !== 'all' ||
+                this.filters.selectedClass !== '' ||
+                this.filters.selectedSection !== '' ||
+                (LIST_TYPE === 'download' && (this.filters.dateFrom !== '' || this.filters.dateTo !== ''))
+            );
+
+            if (!q && !hasStructuredFilters) {
+                const allCards = document.querySelectorAll('[data-sid]');
+                allCards.forEach((el) => {
+                    el.style.display = '';
+                });
+                this.visibleCount = this.studentsData.length;
+                return;
+            }
+
             let filtered = this.studentsData.filter(s => {
                 // Text search
                 if (q) {
@@ -2018,7 +2044,7 @@ function listApp() {
                 const page = this.loadMorePage + 1;
                 const params = new URLSearchParams();
                 params.set('status', LIST_TYPE);
-                params.set('per_page', '50');
+                params.set('per_page', String(MOBILE_LIST_LOAD_MORE_PAGE_SIZE));
                 params.set('page', String(page));
                 const q = String(this.searchQuery || '').trim();
                 if (q) params.set('search', q);
@@ -2069,7 +2095,7 @@ function listApp() {
                 if (!newCards.length) {
                     // Keep pagination moving even if this page contained duplicate IDs.
                     this.hasMore = !!apiData.has_more;
-                    this.loadMoreOffset += rawCards.length || 50;
+                    this.loadMoreOffset += rawCards.length || MOBILE_LIST_LOAD_MORE_PAGE_SIZE;
                     if (!silent && !this.hasMore) this.showToast('All records loaded', 'info');
                     this.loading = false;
                     return;
@@ -2086,8 +2112,13 @@ function listApp() {
                 } else if (!silent) {
                     this.showToast('+' + newCards.length + ' loaded', 'success');
                 }
-                this.rebuildClassSectionOptions();
-                this._applyAllFilters();
+                const hasLocalFilters = this.filtersActive || !!String(this.searchQuery || '').trim();
+                if (hasLocalFilters) {
+                    this.rebuildClassSectionOptions();
+                    this._applyAllFilters();
+                } else {
+                    this.visibleCount = this.studentsData.length;
+                }
             } catch (e) { this.showToast('Load failed', 'error'); }
             this.loading = false;
         },
