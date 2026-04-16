@@ -161,11 +161,6 @@ def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
     return [f for f in ordered_fields if f.get('name') in allowed]
 
 
-def _promote_legacy_print_list(table):
-    """One-way compatibility: move legacy print_list rows into generate_list."""
-    PrintRequest.objects.filter(table=table, status='print_list').update(status='generate_list')
-
-
 def _safe_template_pdf_url(file_field):
     """Return a usable template file URL only when the underlying file exists."""
     if not file_field:
@@ -904,42 +899,10 @@ def _snapshot_to_docx_bytes(snapshot, name):
 
 
 def _migrate_legacy_doc_layouts(tmpl, user=None):
-    """One-time migration: old field_config snapshots -> CardTemplateDoc rows."""
+    """Normalize field_config to the current doc-layout format."""
     cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
-    legacy = _sanitize_doc_layout_library(cfg.get('doc_layout_library') or [])
-    if not legacy:
-        return cfg
-
-    existing_ids = set(
-        CardTemplateDoc.objects.filter(template=tmpl).values_list('layout_id', flat=True)
-    )
-    changed = False
-
-    for item in legacy:
-        layout_id = str(item.get('id') or '').strip()
-        if not layout_id or layout_id in existing_ids:
-            continue
-        snapshot = item.get('snapshot') if isinstance(item.get('snapshot'), dict) else None
-        if not snapshot:
-            continue
-
-        doc_obj = CardTemplateDoc(
-            template=tmpl,
-            layout_id=layout_id,
-            name=_sanitize_doc_layout_name(item.get('name')) or 'Saved DOC',
-            snapshot=snapshot,
-            created_by=user if getattr(user, 'is_authenticated', False) else None,
-        )
-        doc_bytes, _ = _snapshot_to_docx_bytes(snapshot, doc_obj.name)
-        if doc_bytes:
-            filename = f'table_{tmpl.table_id}_{layout_id}.docx'
-            doc_obj.docx_file.save(filename, ContentFile(doc_bytes), save=False)
-        doc_obj.save()
-        existing_ids.add(layout_id)
-        changed = True
-
-    cfg.pop('doc_layout_library', None)
-    if changed or 'doc_layout_library' in (tmpl.field_config or {}):
+    if 'doc_layout_library' in cfg:
+        cfg.pop('doc_layout_library', None)
         tmpl.field_config = cfg
         tmpl.save(update_fields=['field_config', 'updated_at'])
     return cfg
@@ -1149,8 +1112,6 @@ def print_cards(request, table_id):
     if not PermissionService.can_access_client(user, table.group.client_id):
         return redirect('manage_clients')
 
-    _promote_legacy_print_list(table)
-
     current_step = request.GET.get('step', 'generate_list')
     if current_step not in ('generate_list', 'finalized'):
         current_step = 'generate_list'
@@ -1297,8 +1258,6 @@ def api_print_send(request, table_id):
     if err:
         return err
 
-    _promote_legacy_print_list(table)
-
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -1360,8 +1319,6 @@ def api_print_step_counts(request, table_id):
     if err:
         return err
 
-    _promote_legacy_print_list(table)
-
     counts = PrintRequest.objects.filter(table=table).aggregate(
         gl=Count('id', filter=Q(status='generate_list')),
         fn=Count('id', filter=Q(status='finalized')),
@@ -1390,8 +1347,6 @@ def api_print_generate_list(request, table_id):
     table, err = _check_print_table_scope(request.user, table_id)
     if err:
         return err
-
-    _promote_legacy_print_list(table)
 
     query = request.GET.get('q', '').strip()
     from_dt = _parse_local_datetime_filter(request.GET.get('from'))
@@ -2613,17 +2568,9 @@ def api_generate_pdf(request, table_id):
             has_front_elements = True
 
     if not has_front_elements:
-        # Backward compatibility: allow old mapping-only templates.
-        mappings = tmpl.field_mappings if isinstance(tmpl.field_mappings, dict) else {}
-        front_map = mappings.get('front') if isinstance(mappings.get('front'), dict) else {}
-        back_map = mappings.get('back') if isinstance(mappings.get('back'), dict) else {}
-        if not front_map:
-            return JsonResponse({'status': 'error', 'message': 'Add at least one front element before generating'}, status=400)
-        if tmpl.is_two_sided and not has_back_elements and not back_map:
-            return JsonResponse({'status': 'error', 'message': 'Add at least one back element before generating'}, status=400)
-    else:
-        if tmpl.is_two_sided and not has_back_elements:
-            return JsonResponse({'status': 'error', 'message': 'Add at least one back element before generating'}, status=400)
+        return JsonResponse({'status': 'error', 'message': 'Add at least one front element before generating'}, status=400)
+    if tmpl.is_two_sided and not has_back_elements:
+        return JsonResponse({'status': 'error', 'message': 'Add at least one back element before generating'}, status=400)
 
     prs = list(
         PrintRequest.objects.filter(
