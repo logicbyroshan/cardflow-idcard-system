@@ -11,6 +11,7 @@ import logging
 from typing import Dict, Optional, List
 from functools import wraps
 
+from django.core.cache import cache as _cache
 from django.http import JsonResponse
 from django.shortcuts import redirect
 
@@ -35,6 +36,9 @@ class PermissionService:
         client       — must have perm on Client model + client active
         client_staff — double-gated: Staff perm AND parent Client perm
     """
+
+    PERMISSION_CONTEXT_CACHE_TTL = 30
+    ACCESSIBLE_CLIENT_IDS_CACHE_TTL = 30
 
     # ==================== Known Permission Keys ====================
 
@@ -210,6 +214,29 @@ class PermissionService:
     # ==================== Profile Lookup ====================
 
     @classmethod
+    def _revalidation_marker(cls, user) -> str:
+        """Read a marker that changes whenever access-relevant models change."""
+        try:
+            from core.services.session_revalidation import get_user_revalidation_marker
+
+            marker = get_user_revalidation_marker(getattr(user, 'pk', None))
+            return str(marker or '')
+        except Exception:
+            return ''
+
+    @classmethod
+    def _permission_context_cache_key(cls, user) -> str:
+        marker = cls._revalidation_marker(user)
+        role = str(getattr(user, 'role', '') or '')
+        return f'perm:ctx:v1:{user.pk}:{role}:{marker}'
+
+    @classmethod
+    def _accessible_client_ids_cache_key(cls, user) -> str:
+        marker = cls._revalidation_marker(user)
+        role = str(getattr(user, 'role', '') or '')
+        return f'perm:client_ids:v1:{user.pk}:{role}:{marker}'
+
+    @classmethod
     def get_profile(cls, user):
         """
         Get the permission-bearing profile for a user.
@@ -294,7 +321,10 @@ class PermissionService:
                 return False
             # Scope check: if a client is supplied, staff must be assigned to it
             if client is not None:
-                if not staff.assigned_clients.filter(id=client.id).exists():
+                client_id = getattr(client, 'id', None)
+                if not client_id:
+                    return False
+                if int(client_id) not in cls.get_accessible_client_ids(user):
                     return False
             return True
 
@@ -360,11 +390,8 @@ class PermissionService:
         if cls.is_super_admin(user):
             return qs
         if cls.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                assigned_ids = staff.assigned_clients.values_list('id', flat=True)
-                return qs.filter(id__in=assigned_ids)
-            return qs.none()
+            assigned_ids = cls.get_accessible_client_ids(user)
+            return qs.filter(id__in=assigned_ids)
         return qs.none()
 
     @classmethod
@@ -378,10 +405,7 @@ class PermissionService:
         if cls.is_super_admin(user):
             return True
         if cls.is_admin_staff(user):
-            staff = getattr(user, 'staff_profile', None)
-            if staff:
-                return staff.assigned_clients.filter(id=client_id).exists()
-            return False
+            return int(client_id) in cls.get_accessible_client_ids(user)
         if cls.is_client(user):
             client_profile = getattr(user, 'client_profile', None)
             return client_profile is not None and client_profile.id == client_id
@@ -393,21 +417,44 @@ class PermissionService:
     @classmethod
     def get_accessible_client_ids(cls, user) -> List[int]:
         """Return list of client IDs the user may access."""
+        cached_ids = getattr(user, '_cached_accessible_client_ids', None)
+        if cached_ids is not None:
+            return cached_ids
+
         if not user.is_authenticated:
             return []
         if cls.is_super_admin(user):
+            user._cached_accessible_client_ids = []
             return []  # Empty means "all" for super_admin — caller should handle
         if cls.is_admin_staff(user):
+            cache_key = cls._accessible_client_ids_cache_key(user)
+            cached = _cache.get(cache_key)
+            if cached is not None:
+                ids = [int(cid) for cid in cached]
+                user._cached_accessible_client_ids = ids
+                return ids
+
             staff = getattr(user, 'staff_profile', None)
             if staff:
-                return list(staff.assigned_clients.values_list('id', flat=True))
-            return []
+                ids = list(staff.assigned_clients.values_list('id', flat=True))
+            else:
+                ids = []
+
+            _cache.set(cache_key, ids, cls.ACCESSIBLE_CLIENT_IDS_CACHE_TTL)
+            user._cached_accessible_client_ids = ids
+            return ids
         if cls.is_client(user):
             cp = getattr(user, 'client_profile', None)
-            return [cp.id] if cp else []
+            ids = [cp.id] if cp else []
+            user._cached_accessible_client_ids = ids
+            return ids
         if cls.is_client_staff(user):
             staff = getattr(user, 'staff_profile', None)
-            return [staff.client_id] if staff and staff.client_id else []
+            ids = [staff.client_id] if staff and staff.client_id else []
+            user._cached_accessible_client_ids = ids
+            return ids
+
+        user._cached_accessible_client_ids = []
         return []
 
     # ==================== Template Context ====================
@@ -421,6 +468,28 @@ class PermissionService:
         Performance: fetches the permission-bearing profile ONCE and reads all
         boolean fields directly instead of calling has() N times.
         """
+        if not user.is_authenticated:
+            context = {
+                'is_pro_user': False,
+                'is_super_admin': False,
+                'is_admin_staff': False,
+                'is_client': False,
+                'is_client_staff': False,
+                'user_role': None,
+            }
+            for perm in cls.ALL_PERMISSION_KEYS:
+                context[perm] = False
+            context['user_permissions'] = {perm: False for perm in cls.ALL_PERMISSION_KEYS}
+            return context
+
+        cache_key = cls._permission_context_cache_key(user)
+        cached = _cache.get(cache_key)
+        if isinstance(cached, dict):
+            ctx = dict(cached)
+            if isinstance(cached.get('user_permissions'), dict):
+                ctx['user_permissions'] = dict(cached['user_permissions'])
+            return ctx
+
         is_sa = cls.is_super_admin(user)
         is_as = cls.is_admin_staff(user)
         is_cl = cls.is_client(user)
@@ -489,6 +558,7 @@ class PermissionService:
             perm: context[perm] for perm in cls.ALL_PERMISSION_KEYS
         }
 
+        _cache.set(cache_key, context, cls.PERMISSION_CONTEXT_CACHE_TTL)
         return context
 
     # ==================== Convenience Methods ====================

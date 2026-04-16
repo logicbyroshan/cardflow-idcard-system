@@ -14,6 +14,7 @@ from client.services_staff import ClientStaffService
 from staff.models import Staff
 from ..services import ClientService, StaffService
 from ..services.activity_service import ActivityService
+from ..services.cache_version_service import CacheVersionService
 from ..services.notification_service import NotificationService
 from ..services.permission_service import (
     PermissionService,
@@ -680,6 +681,24 @@ def api_client_messages(request, client_id):
     })
 
 
+def _bump_client_message_cache_versions(client_id, recipient_user_ids=None):
+    """Invalidate client message drawer caches for affected client/users."""
+    try:
+        client_id = int(client_id)
+    except (TypeError, ValueError):
+        return
+
+    CacheVersionService.bump('client_messages_drawer_client', f'client:{client_id}')
+
+    for raw_uid in (recipient_user_ids or []):
+        try:
+            uid = int(raw_uid)
+        except (TypeError, ValueError):
+            continue
+        if uid > 0:
+            CacheVersionService.bump('client_messages_drawer_user', f'user:{uid}')
+
+
 @require_http_methods(["POST"])
 @api_require_any_admin
 @rate_limit(max_requests=20, window_seconds=60, key_prefix='client_msg_send')
@@ -760,6 +779,8 @@ def api_client_message_send(request, client_id):
                 Notification.objects.filter(id=notif_id).update(is_active=False)
             return _client_message_table_unavailable_response()
         raise
+
+    _bump_client_message_cache_versions(client.id, recipient_ids)
 
     ActivityService.log(
         'notification_create',
@@ -919,6 +940,7 @@ def api_client_messages_group_send(request):
                     Notification.objects.filter(id=notif_id).update(is_active=False)
                 return _client_message_table_unavailable_response()
             raise
+        _bump_client_message_cache_versions(client.id, recipient_ids)
         sent_items.append({'id': row.id, 'client_id': client.id, 'client_name': client.name})
         total_recipients += len(recipient_ids)
 
@@ -974,8 +996,14 @@ def api_client_message_delete(request, client_id, message_id):
     if not row:
         return JsonResponse({'success': False, 'message': 'Message not found'}, status=404)
 
+    recipient_user_ids = []
+    if row.notification_id and row.notification is not None:
+        recipient_user_ids = list(row.notification.target_users.values_list('id', flat=True))
+
     if row.notification_id:
         Notification.objects.filter(id=row.notification_id).update(is_active=False)
+
+    _bump_client_message_cache_versions(client_id, recipient_user_ids)
 
     ActivityService.log(
         'notification_update',

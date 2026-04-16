@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
+from django.db import connection
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
@@ -21,6 +22,8 @@ from idcards.models import IDCard, IDCardTable
 from ..models import User
 from ..services import IDCardService
 from ..services.activity_service import ActivityService
+from ..services.cache_version_service import CacheVersionService
+from ..services.session_revalidation import get_user_revalidation_marker
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
@@ -92,6 +95,11 @@ def _safe_public_email(value):
 
 def _get_live_active_user_ids_for_dashboard():
     """Return user IDs with recent authenticated dashboard activity."""
+    cache_key = 'dash_live_active_user_ids:v2'
+    cached_ids = cache.get(cache_key)
+    if cached_ids is not None:
+        return {int(uid) for uid in (cached_ids or [])}
+
     now = timezone.now()
     live_window_seconds = max(int(getattr(django_settings, 'DASHBOARD_LIVE_ACTIVE_WINDOW_SECONDS', 180) or 0), 30)
     live_cutoff_epoch = now.timestamp() - live_window_seconds
@@ -121,6 +129,7 @@ def _get_live_active_user_ids_for_dashboard():
         except (TypeError, ValueError):
             continue
 
+    cache.set(cache_key, sorted(active_user_ids), 5)
     return active_user_ids
 
 
@@ -131,6 +140,16 @@ def _get_live_active_client_sets_for_dashboard(user):
     - active_client_ids: clients with direct-client or assistent live activity
     - active_assistant_client_ids: clients with live assistent activity only
     """
+    is_scoped_admin = PermissionService.is_admin_staff(user)
+    marker = str(get_user_revalidation_marker(getattr(user, 'pk', None)) or '') if is_scoped_admin else ''
+    cache_key = f'dash_live_client_sets:v2:{user.pk if is_scoped_admin else "all"}:{marker}'
+    cached_sets = cache.get(cache_key)
+    if isinstance(cached_sets, dict):
+        return {
+            'active_client_ids': set(cached_sets.get('active_client_ids') or []),
+            'active_assistant_client_ids': set(cached_sets.get('active_assistant_client_ids') or []),
+        }
+
     active_user_ids = _get_live_active_user_ids_for_dashboard()
     if not active_user_ids:
         return {
@@ -163,10 +182,19 @@ def _get_live_active_client_sets_for_dashboard(user):
         active_client_ids &= allowed_ids
         active_assistant_client_ids &= allowed_ids
 
-    return {
+    result = {
         'active_client_ids': active_client_ids,
         'active_assistant_client_ids': active_assistant_client_ids,
     }
+    cache.set(
+        cache_key,
+        {
+            'active_client_ids': sorted(active_client_ids),
+            'active_assistant_client_ids': sorted(active_assistant_client_ids),
+        },
+        5,
+    )
+    return result
 
 
 def _get_live_active_client_ids_for_dashboard(user):
@@ -593,7 +621,9 @@ def api_recent_client_updates(request):
         # admin_staff sees a scoped view (their assigned clients only), so the key
         # must include user.pk to prevent cross-user data leakage.
         is_scoped = PermissionService.is_admin_staff(user)
-        cache_key = f'dash_rcu:{user.pk if is_scoped else "sa"}:{limit}'
+        scope_key = f'user:{user.pk}' if is_scoped else 'global'
+        cache_version = CacheVersionService.get('dash_rcu', scope_key)
+        cache_key = f'dash_rcu:v3:{scope_key}:{limit}:{cache_version}'
         cached = cache.get(cache_key)
         if cached is not None:
             cached_clients = cached.get('clients', []) if isinstance(cached, dict) else cached
@@ -630,55 +660,72 @@ def api_recent_client_updates(request):
         # DBs that may not yet have newer optional Client columns.
         clients = list(clients_qs)
         client_ids = [c['id'] for c in clients]
-        
-        results = []
-        
-        # Batch-fetch card counts for all clients in 1 query (instead of N)
-        card_counts_qs = IDCard.objects.filter(
-            table__group__client_id__in=client_ids
-        ).values('table__group__client_id').annotate(
-            pending=Count('id', filter=Q(status='pending')),
-            verified=Count('id', filter=Q(status='verified')),
-            approved=Count('id', filter=Q(status='approved')),
-            downloaded=Count('id', filter=Q(status='download')),
-            pool=Count('id', filter=Q(status='pool')),
-        )
-        counts_map = {item['table__group__client_id']: item for item in card_counts_qs}
-        
-        # Batch-fetch first table IDs in 1 query (instead of N)
-        first_table_qs = IDCardTable.objects.filter(
-            group__client_id__in=client_ids
-        ).values('group__client_id').annotate(first_table_id=Min('id'))
-        first_table_map = {item['group__client_id']: item['first_table_id'] for item in first_table_qs}
-        
-        # Batch-fetch all tables with per-table card counts
-        tables_qs = IDCardTable.objects.filter(
-            group__client_id__in=client_ids
-        ).values('id', 'name', 'group__client_id').annotate(
-            pending=Count('id_cards', filter=Q(id_cards__status='pending')),
-            verified=Count('id_cards', filter=Q(id_cards__status='verified')),
-            approved=Count('id_cards', filter=Q(id_cards__status='approved')),
-            downloaded=Count('id_cards', filter=Q(id_cards__status='download')),
-            pool=Count('id_cards', filter=Q(id_cards__status='pool')),
-        ).order_by('id')
+
         tables_map = {}
-        for t in tables_qs:
-            cid = t['group__client_id']
-            if cid not in tables_map:
-                tables_map[cid] = []
-            tables_map[cid].append({
-                'id': t['id'],
-                'name': t['name'],
-                'pending': t['pending'],
-                'verified': t['verified'],
-                'approved': t['approved'],
-                'downloaded': t['downloaded'],
-                'pool': t['pool'],
-            })
-        
+        client_counts_map = {}
+        first_table_map = {}
+
+        if client_ids:
+            placeholders = ','.join(['%s'] * len(client_ids))
+            sql = (
+                'SELECT '
+                '  t.id AS table_id, '
+                '  t.name AS table_name, '
+                '  g.client_id AS client_id, '
+                '  COALESCE(SUM(CASE WHEN c.status = %s THEN 1 ELSE 0 END), 0) AS pending, '
+                '  COALESCE(SUM(CASE WHEN c.status = %s THEN 1 ELSE 0 END), 0) AS verified, '
+                '  COALESCE(SUM(CASE WHEN c.status = %s THEN 1 ELSE 0 END), 0) AS approved, '
+                '  COALESCE(SUM(CASE WHEN c.status = %s THEN 1 ELSE 0 END), 0) AS downloaded, '
+                '  COALESCE(SUM(CASE WHEN c.status = %s THEN 1 ELSE 0 END), 0) AS pool '
+                'FROM core_idcardtable t '
+                'JOIN core_idcardgroup g ON g.id = t.group_id '
+                'LEFT JOIN core_idcard c ON c.table_id = t.id '
+                f'WHERE g.client_id IN ({placeholders}) '
+                'GROUP BY t.id, t.name, g.client_id '
+                'ORDER BY t.id ASC'
+            )
+            sql_params = ['pending', 'verified', 'approved', 'download', 'pool', *client_ids]
+
+            with connection.cursor() as cursor:
+                cursor.execute(sql, sql_params)
+                for table_id, table_name, client_id, pending, verified, approved, downloaded, pool in cursor.fetchall():
+                    cid = int(client_id)
+                    table_payload = {
+                        'id': int(table_id),
+                        'name': table_name,
+                        'pending': int(pending or 0),
+                        'verified': int(verified or 0),
+                        'approved': int(approved or 0),
+                        'downloaded': int(downloaded or 0),
+                        'pool': int(pool or 0),
+                    }
+
+                    if cid not in tables_map:
+                        tables_map[cid] = []
+                    tables_map[cid].append(table_payload)
+
+                    if cid not in client_counts_map:
+                        client_counts_map[cid] = {
+                            'pending': 0,
+                            'verified': 0,
+                            'approved': 0,
+                            'downloaded': 0,
+                            'pool': 0,
+                        }
+                    client_counts_map[cid]['pending'] += table_payload['pending']
+                    client_counts_map[cid]['verified'] += table_payload['verified']
+                    client_counts_map[cid]['approved'] += table_payload['approved']
+                    client_counts_map[cid]['downloaded'] += table_payload['downloaded']
+                    client_counts_map[cid]['pool'] += table_payload['pool']
+
+                    current_first = first_table_map.get(cid)
+                    if current_first is None or int(table_id) < current_first:
+                        first_table_map[cid] = int(table_id)
+
+        results = []
         for client in clients:
             client_id = client['id']
-            cc = counts_map.get(client_id, {})
+            cc = client_counts_map.get(client_id, {})
             client_name = client.get('name') or ''
             results.append({
                 'id': client_id,
@@ -733,6 +780,15 @@ def api_dashboard_team_overview(request):
         query = str(request.GET.get('search') or '').strip()
         status = str(request.GET.get('status') or '').strip().lower()
         limit = _parse_dashboard_limit(request.GET.get('limit', 500), default=500, max_limit=500)
+
+        marker = str(get_user_revalidation_marker(getattr(user, 'pk', None)) or '')
+        cache_version = CacheVersionService.get('dash_team_overview', 'global')
+        cache_key = (
+            f'dash_team_overview:v3:{cache_version}:{user.pk}:{scope}:{query.lower()}:{status}:{limit}:{marker}'
+        )
+        cached_payload = cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            return JsonResponse(cached_payload)
 
         is_super_admin = PermissionService.is_super_admin(user)
         can_manage_clients = bool(is_super_admin or PermissionService.has(user, 'perm_idcard_client_list'))
@@ -880,7 +936,7 @@ def api_dashboard_team_overview(request):
                     'client_name': row.get('client__name') or '',
                 })
 
-        return JsonResponse({
+        payload = {
             'success': True,
             'scope': scope,
             'items': items,
@@ -890,7 +946,9 @@ def api_dashboard_team_overview(request):
                 'can_manage_staff': can_manage_staff,
                 'can_manage_client_staff': can_manage_client_staff,
             },
-        })
+        }
+        cache.set(cache_key, payload, 15)
+        return JsonResponse(payload)
     except Exception as e:
         logger.exception('api_dashboard_team_overview error: %s', e)
         return JsonResponse({
@@ -1185,7 +1243,9 @@ def api_global_search(request):
     """API endpoint for global search across all ID cards within clients"""
     try:
         query = request.GET.get('q', '').strip()
-        filter_type = request.GET.get('filter', 'all')
+        filter_type = str(request.GET.get('filter', 'all') or 'all').strip().lower()
+        if filter_type not in ('all', 'name', 'address', 'mobile'):
+            filter_type = 'all'
         raw_table_id = (request.GET.get('table_id') or '').strip()
 
         scoped_table_id = None
@@ -1216,13 +1276,9 @@ def api_global_search(request):
         non_searchable_field_types = {'file', 'barcode', 'qr_code'}
         non_searchable_name_tokens = ('BARCODE', 'QR', 'FILE')
         
-        # Build base queryset - scope by user role
-        base_cards = IDCard.objects.select_related(
-            'table', 'table__group', 'table__group__client'
-        ).only(
-            'id', 'field_data', 'status', 'photo',
-            'table__id', 'table__name', 'table__fields',
-            'table__group__id', 'table__group__client__id', 'table__group__client__name',
+        # Build base queryset - keep the card payload narrow.
+        base_cards = IDCard.objects.only(
+            'id', 'table_id', 'field_data', 'status', 'photo'
         ).filter(
             field_data__icontains=query
         )
@@ -1247,7 +1303,7 @@ def api_global_search(request):
                 base_cards = base_cards.none()
 
         if scoped_table_id:
-            scoped_table = IDCardTable.objects.select_related('group').filter(id=scoped_table_id).first()
+            scoped_table = IDCardTable.objects.select_related('group').only('id', 'group__client_id').filter(id=scoped_table_id).first()
             if not scoped_table:
                 return JsonResponse({'success': False, 'message': 'Table not found.'}, status=404)
 
@@ -1261,20 +1317,69 @@ def api_global_search(request):
 
             base_cards = base_cards.filter(table_id=scoped_table_id)
         
-        cards = base_cards[:GLOBAL_SEARCH_DB_LIMIT]  # Limit at database level for speed
-        
+        cards = list(base_cards[:GLOBAL_SEARCH_DB_LIMIT])  # Limit at database level for speed
+        if not cards:
+            payload = {
+                'success': True,
+                'results': [],
+                'count': 0,
+                'query': query,
+            }
+            cache.set(cache_key, payload, 30)
+            return JsonResponse(payload)
+
+        table_ids = sorted({card.table_id for card in cards if card.table_id})
+        table_map = {
+            table.id: table
+            for table in IDCardTable.objects.filter(id__in=table_ids).select_related('group__client').only(
+                'id',
+                'name',
+                'fields',
+                'group__client__name',
+            )
+        }
+
+        field_type_map_by_table = {}
+        display_field_by_table = {}
+        image_fields_by_table = {}
+        for table_id, table in table_map.items():
+            field_type_by_name = {}
+            display_field_name = ''
+            image_field_names = []
+
+            for field in (table.fields or []):
+                field_name = str(field.get('name', '')).strip()
+                if not field_name:
+                    continue
+
+                field_name_upper = field_name.upper()
+                field_type = str(field.get('type', 'text')).strip().lower()
+                field_type_by_name[field_name_upper] = field_type
+
+                if not display_field_name and field_type in ('text', 'textarea'):
+                    display_field_name = field_name
+
+                if field_type in ('photo', 'mother_photo', 'father_photo', 'image'):
+                    image_field_names.append(field_name)
+
+            field_type_map_by_table[table_id] = field_type_by_name
+            display_field_by_table[table_id] = display_field_name
+            image_fields_by_table[table_id] = image_field_names
+
+        is_client_role = user.role in ('client', 'client_staff')
+        route_name = 'client:idcard_actions' if is_client_role else 'idcard_actions'
+        route_prefix_by_table = {}
+
         for card in cards:
-            field_data = card.field_data or {}
+            table = table_map.get(card.table_id)
+            if not table:
+                continue
+
+            field_data = card.field_data if isinstance(card.field_data, dict) else {}
             matched_field = ''
             matched_value = ''
 
-            field_type_by_name = {}
-            if card.table and card.table.fields:
-                for field in card.table.fields:
-                    fname = str(field.get('name', '')).strip().upper()
-                    if not fname:
-                        continue
-                    field_type_by_name[fname] = str(field.get('type', 'text')).strip().lower()
+            field_type_by_name = field_type_map_by_table.get(card.table_id, {})
             
             # Find which field matched
             for field_name, field_value in field_data.items():
@@ -1327,45 +1432,50 @@ def api_global_search(request):
                 
             # Get display name from first text field
             display_name = ''
-            if card.table and card.table.fields:
-                for field in card.table.fields:
-                    if field.get('type') in ['text', 'textarea'] and field.get('name') in field_data:
-                        display_name = field_data.get(field.get('name'), '')
-                        break
-            
-            client_name = card.table.group.client.name if card.table and card.table.group else 'Unknown'
-            table_name = card.table.name if card.table else 'Unknown'
+            display_field_name = display_field_by_table.get(card.table_id, '')
+            if display_field_name:
+                display_name = str(field_data.get(display_field_name) or '').strip()
+            if not display_name:
+                display_name = str(
+                    field_data.get('NAME') or
+                    field_data.get('name') or
+                    field_data.get('Name') or
+                    ''
+                ).strip()
+
+            client_name = table.group.client.name if table.group_id and table.group and table.group.client else 'Unknown'
+            table_name = table.name or 'Unknown'
             
             # Find first valid photo from image fields
             photo_url = None
-            if card.table and card.table.fields:
-                for field in card.table.fields:
-                    fname = field.get('name', '')
-                    ftype = field.get('type', 'text')
-                    if ftype in ('photo', 'mother_photo', 'father_photo', 'image'):
-                        val = field_data.get(fname, '')
-                        if val and not str(val).startswith('PENDING:') and val != 'NOT_FOUND':
-                            photo_url = f'/media/{val}' if not str(val).startswith('/') else val
-                            break
+            for field_name in image_fields_by_table.get(card.table_id, []):
+                val = field_data.get(field_name, '')
+                if val and not str(val).startswith('PENDING:') and val != 'NOT_FOUND':
+                    photo_url = f'/media/{val}' if not str(val).startswith('/') else val
+                    break
+
             # Fallback to legacy photo field
             if not photo_url and card.photo:
                 try:
                     photo_url = card.photo.url
                 except Exception:
                     pass
+
+            if card.table_id not in route_prefix_by_table:
+                route_prefix_by_table[card.table_id] = reverse(route_name, args=[card.table_id])
+
+            detail_url = f'{route_prefix_by_table[card.table_id]}?status={card.status}&highlight={card.id}'
             
             results.append({
                 'type': 'idcard',
                 'id': card.id,
                 'title': display_name or f'Card #{card.id}',
                 'subtitle': f'{client_name} • {table_name} • {card.get_status_display()}',
-                'table_id': card.table.id if card.table else None,
+                'table_id': card.table_id,
                 'table_name': table_name,
                 'matched_field': matched_field or 'Field',
                 'matched_value': matched_value or query,
-                'url': (f'{reverse("client:idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}'
-                        if is_client_role else
-                        f'{reverse("idcard_actions", args=[card.table.id])}?status={card.status}&highlight={card.id}') if card.table else '#',
+                'url': detail_url,
                 'icon': 'fa-id-card',
                 'status': card.status,
                 'status_display': card.get_status_display(),

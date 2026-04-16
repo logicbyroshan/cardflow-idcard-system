@@ -52,26 +52,24 @@ def mobile_globals(request):
         notif_cache_key = f'mobile:notif_count:{user.pk}'
         notif_count = cache.get(notif_cache_key)
         if notif_count is None:
-            from core.models import Notification, NotificationRead
+            from core.models import Notification
             from django.db.models import Q
+            from django.utils import timezone
 
-            active_ids = list(
+            now = timezone.now()
+            visible_notifications = (
                 Notification.objects
                 .filter(
                     Q(target='all') | Q(target=role) | Q(target='selected', target_users=user),
                     is_active=True,
                 )
-                .values_list('id', flat=True)
+                .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+                .distinct()
             )
-            if active_ids:
-                read_ids = set(
-                    NotificationRead.objects
-                    .filter(user=user, notification_id__in=active_ids)
-                    .values_list('notification_id', flat=True)
-                )
-                notif_count = min(len(set(active_ids) - read_ids), 99)
-            else:
-                notif_count = 0
+            notif_count = min(
+                visible_notifications.exclude(reads__user=user).count(),
+                99,
+            )
             cache.set(notif_cache_key, notif_count, 30)
         ctx['notification_count'] = notif_count
     except Exception:

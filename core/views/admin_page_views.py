@@ -3,6 +3,7 @@ Admin page views — staff, client, ID card management pages.
 Split from base.py for maintainability.
 """
 import logging
+from collections import defaultdict
 from django.conf import settings as django_settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
@@ -11,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
 from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.timesince import timesince as django_timesince
@@ -454,42 +456,7 @@ def active_clients(request):
         status_filter = 'all'  # normalise invalid statuses for template awareness
         base_qs = Client.objects.all().select_related('user')
 
-    clients_qs = PermissionService.get_accessible_clients(
-        user, base_qs
-    ).prefetch_related('id_card_groups').annotate(
-        group_count=Count('id_card_groups', distinct=True),
-        table_count=Count('id_card_groups__tables', distinct=True),
-        pending_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='pending'),
-            distinct=True,
-        ),
-        verified_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='verified'),
-            distinct=True,
-        ),
-        approved_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='approved'),
-            distinct=True,
-        ),
-        download_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='download'),
-            distinct=True,
-        ),
-        pool_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='pool'),
-            distinct=True,
-        ),
-        reprint_count=Count(
-            'id_card_groups__tables__id_cards',
-            filter=Q(id_card_groups__tables__id_cards__status='reprint'),
-            distinct=True,
-        ),
-    ).order_by('-id')
+    clients_qs = PermissionService.get_accessible_clients(user, base_qs).order_by('-id')
     
     if search_query:
         clients_qs = clients_qs.filter(
@@ -501,10 +468,72 @@ def active_clients(request):
     paginator = Paginator(clients_qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
+    # Compute card/group/table counters only for visible rows on the current
+    # page to avoid expensive full-dataset DISTINCT aggregates.
+    paged_clients = list(page_obj.object_list)
+    paged_client_ids = [client.id for client in paged_clients]
+
+    stats_by_client = defaultdict(lambda: {
+        'group_count': 0,
+        'table_count': 0,
+        'pending_count': 0,
+        'verified_count': 0,
+        'approved_count': 0,
+        'download_count': 0,
+        'pool_count': 0,
+        'reprint_count': 0,
+    })
+
+    if paged_client_ids:
+        for row in (
+            IDCardGroup.objects
+            .filter(client_id__in=paged_client_ids)
+            .values('client_id')
+            .annotate(count=Count('id'))
+        ):
+            stats_by_client[row['client_id']]['group_count'] = row['count']
+
+        for row in (
+            IDCardTable.objects
+            .filter(group__client_id__in=paged_client_ids)
+            .values('group__client_id')
+            .annotate(count=Count('id'))
+        ):
+            stats_by_client[row['group__client_id']]['table_count'] = row['count']
+
+        status_to_key = {
+            'pending': 'pending_count',
+            'verified': 'verified_count',
+            'approved': 'approved_count',
+            'download': 'download_count',
+            'pool': 'pool_count',
+            'reprint': 'reprint_count',
+        }
+        for row in (
+            IDCard.objects
+            .filter(table__group__client_id__in=paged_client_ids)
+            .values('table__group__client_id', 'status')
+            .annotate(count=Count('id'))
+        ):
+            stat_key = status_to_key.get(row['status'])
+            if stat_key:
+                stats_by_client[row['table__group__client_id']][stat_key] = row['count']
+
+    for client in paged_clients:
+        client_stats = stats_by_client[client.id]
+        client.group_count = client_stats['group_count']
+        client.table_count = client_stats['table_count']
+        client.pending_count = client_stats['pending_count']
+        client.verified_count = client_stats['verified_count']
+        client.approved_count = client_stats['approved_count']
+        client.download_count = client_stats['download_count']
+        client.pool_count = client_stats['pool_count']
+        client.reprint_count = client_stats['reprint_count']
+
     context = {
         'active_page': 'active_clients',
         'user_role': get_user_role(request.user),
-        'clients': page_obj.object_list,
+        'clients': paged_clients,
         'search_query': search_query,
         'status_filter': status_filter,
         'page_obj': page_obj,
@@ -836,88 +865,118 @@ def build_idcard_actions_context(request, table, *, default_per_page=100,
 
     total_count = id_cards_query.count()
 
-    if PermissionService.is_client_staff(request.user):
-        scoped_cards_qs = _apply_client_staff_row_scope(
-            IDCard.objects.filter(table=table),
-            request.user,
-            table,
-        )
-        status_counts = {
-            'pending': 0,
-            'verified': 0,
-            'pool': 0,
-            'approved': 0,
-            'download': 0,
-            'reprint': 0,
-            'total': 0,
-        }
-        for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
-            st = row.get('status')
-            ct = row.get('count', 0)
-            if st in status_counts:
-                status_counts[st] = ct
-                status_counts['total'] += ct
+    counts_cache_key = ''
+    is_client_staff_user = PermissionService.is_client_staff(request.user)
+    if is_client_staff_user:
+        try:
+            from core.services.session_revalidation import get_user_revalidation_marker
 
-        status_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
-        status_counts['total'] = (
-            status_counts.get('pending', 0)
-            + status_counts.get('verified', 0)
-            + status_counts.get('pool', 0)
-            + status_counts.get('approved', 0)
-            + status_counts.get('download', 0)
-            + status_counts.get('reprint', 0)
-        )
-
-        reprint_counts = {
-            'request_list': ReprintRequest.objects.filter(
-                table=table,
-                status='requested',
-                card__status='download',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-            'confirmed': ReprintRequest.objects.filter(
-                table=table,
-                status='confirmed',
-                card__status='download',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-        }
-        print_counts = {
-            'generate_list': PrintRequest.objects.filter(
-                table=table,
-                status='generate_list',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-            'finalized': PrintRequest.objects.filter(
-                table=table,
-                status='finalized',
-                card_id__in=scoped_cards_qs.values('id'),
-            ).count(),
-        }
+            marker = str(get_user_revalidation_marker(getattr(request.user, 'pk', None)) or '')
+        except Exception:
+            marker = ''
+        counts_cache_key = f'idcard_actions:counts:v1:table:{table.id}:user:{request.user.id}:m:{marker}'
     else:
-        status_counts = IDCardService.get_status_counts(table)
-        reprint_counts = {
-            'request_list': ReprintRequest.objects.filter(
-                table=table,
-                status='requested',
-                card__status='download',
-            ).count(),
-            'confirmed': ReprintRequest.objects.filter(
-                table=table,
-                status='confirmed',
-                card__status='download',
-            ).count(),
-        }
-        print_counts = {
-            'generate_list': PrintRequest.objects.filter(
-                table=table,
-                status='generate_list',
-            ).count(),
-            'finalized': PrintRequest.objects.filter(
-                table=table,
-                status='finalized',
-            ).count(),
-        }
+        counts_cache_key = f'idcard_actions:counts:v1:table:{table.id}:role:admin'
+
+    cached_counts = cache.get(counts_cache_key)
+    if isinstance(cached_counts, dict):
+        status_counts = cached_counts.get('status_counts', {})
+        reprint_counts = cached_counts.get('reprint_counts', {})
+        print_counts = cached_counts.get('print_counts', {})
+    else:
+        if is_client_staff_user:
+            scoped_cards_qs = _apply_client_staff_row_scope(
+                IDCard.objects.filter(table=table),
+                request.user,
+                table,
+            )
+            status_counts = {
+                'pending': 0,
+                'verified': 0,
+                'pool': 0,
+                'approved': 0,
+                'download': 0,
+                'reprint': 0,
+                'total': 0,
+            }
+            for row in scoped_cards_qs.values('status').annotate(count=Count('id')):
+                st = row.get('status')
+                ct = row.get('count', 0)
+                if st in status_counts:
+                    status_counts[st] = ct
+                    status_counts['total'] += ct
+
+            # Pool is intentionally unscoped for client_staff visibility.
+            status_counts['pool'] = IDCard.objects.filter(table=table, status='pool').count()
+            status_counts['total'] = (
+                status_counts.get('pending', 0)
+                + status_counts.get('verified', 0)
+                + status_counts.get('pool', 0)
+                + status_counts.get('approved', 0)
+                + status_counts.get('download', 0)
+                + status_counts.get('reprint', 0)
+            )
+
+            reprint_counts = {
+                'request_list': ReprintRequest.objects.filter(
+                    table=table,
+                    status='requested',
+                    card__status='download',
+                    card_id__in=scoped_cards_qs.values('id'),
+                ).count(),
+                'confirmed': ReprintRequest.objects.filter(
+                    table=table,
+                    status='confirmed',
+                    card__status='download',
+                    card_id__in=scoped_cards_qs.values('id'),
+                ).count(),
+            }
+            print_counts = {
+                'generate_list': PrintRequest.objects.filter(
+                    table=table,
+                    status='generate_list',
+                    card_id__in=scoped_cards_qs.values('id'),
+                ).count(),
+                'finalized': PrintRequest.objects.filter(
+                    table=table,
+                    status='finalized',
+                    card_id__in=scoped_cards_qs.values('id'),
+                ).count(),
+            }
+        else:
+            status_counts = IDCardService.get_status_counts(table)
+            reprint_counts = {
+                'request_list': ReprintRequest.objects.filter(
+                    table=table,
+                    status='requested',
+                    card__status='download',
+                ).count(),
+                'confirmed': ReprintRequest.objects.filter(
+                    table=table,
+                    status='confirmed',
+                    card__status='download',
+                ).count(),
+            }
+            print_counts = {
+                'generate_list': PrintRequest.objects.filter(
+                    table=table,
+                    status='generate_list',
+                ).count(),
+                'finalized': PrintRequest.objects.filter(
+                    table=table,
+                    status='finalized',
+                ).count(),
+            }
+
+        cache.set(
+            counts_cache_key,
+            {
+                'status_counts': status_counts,
+                'reprint_counts': reprint_counts,
+                'print_counts': print_counts,
+            },
+            10,
+        )
 
     return {
         'active_page': active_page,

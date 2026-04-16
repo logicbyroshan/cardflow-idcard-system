@@ -1397,7 +1397,27 @@ Custom commands live under `core/management/commands/`.
 | `BACKGROUND_WORKER_MAX_WORKERS` | Background worker pool size (bounded) | No | `2` (range 1-4) |
 | `BACKGROUND_HEAVY_TASK_CONCURRENCY` | Heavy task concurrency cap | No | `1` |
 | `REDIS_URL` | Redis cache URL for shared locks/rate limiting | **Yes (prod)** | LocMemCache fallback (dev only) |
-| `REDIS_DB` | Redis database number | No | `1` |
+| `REDIS_HOST` | Redis hostname (alternative to REDIS_URL) | No | unset |
+| `REDIS_PORT` | Redis port (when REDIS_HOST is used) | No | `6379` |
+| `REDIS_DB` | Redis database number (when REDIS_HOST is used) | No | `1` |
+| `REDIS_USERNAME` | Redis username for ACL auth | No | unset |
+| `REDIS_PASSWORD` | Redis password for auth | No | unset |
+| `CACHE_DEFAULT_TIMEOUT` | Default cache TTL in seconds | No | `300` |
+| `CACHE_KEY_PREFIX` | Cache key prefix namespace | No | `adarsh` |
+| `CACHE_VERSION` | Global cache key version | No | `1` |
+| `REDIS_SOCKET_TIMEOUT` | Redis read timeout in seconds | No | `1.5` |
+| `REDIS_SOCKET_CONNECT_TIMEOUT` | Redis connect timeout in seconds | No | `1.5` |
+| `REDIS_HEALTH_CHECK_INTERVAL` | Redis health-check ping interval | No | `30` |
+| `REDIS_MAX_CONNECTIONS` | Redis connection pool cap | No | `100` |
+| `WEB_CONCURRENCY` | Gunicorn worker process count | No | auto (typically `2` on 1 GB host) |
+| `GUNICORN_THREADS` | Threads per Gunicorn worker (gthread mode) | No | `2` |
+| `GUNICORN_WORKER_CLASS` | Gunicorn worker class | No | `gthread` |
+| `GUNICORN_TIMEOUT` | Worker timeout in seconds | No | `90` |
+| `GUNICORN_GRACEFUL_TIMEOUT` | Graceful shutdown timeout in seconds | No | `30` |
+| `GUNICORN_KEEPALIVE` | Keep-alive seconds | No | `5` |
+| `GUNICORN_MAX_REQUESTS` | Worker recycle request count | No | `1000` |
+| `GUNICORN_MAX_REQUESTS_JITTER` | Jitter added to max requests | No | `100` |
+| `GUNICORN_BIND` | Gunicorn bind target (socket or host:port) | No | `unix:/run/gunicorn.sock` |
 | `EMAIL_HOST` | SMTP server hostname | No | — |
 | `EMAIL_PORT` | SMTP port | No | 587 |
 | `EMAIL_USE_TLS` | Use TLS for SMTP | No | `True` |
@@ -1456,13 +1476,14 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ### Gunicorn Configuration
 
 ```python
-# Example Gunicorn settings for a 1 GB server
-workers = 2              # 1 GB RAM = 2 workers max
-worker_class = 'sync'    # Sync workers (no async needed)
-bind = 'unix:/tmp/gunicorn.sock'
-timeout = 120            # Long timeout for exports
-max_requests = 500       # Worker recycling
-max_requests_jitter = 50
+# Use the repository config file (tuned for 1 CPU / 1 GB defaults)
+gunicorn config.wsgi:application --config config/gunicorn.conf.py
+
+# Optional override examples via environment:
+# WEB_CONCURRENCY=2
+# GUNICORN_THREADS=2
+# GUNICORN_TIMEOUT=90
+# GUNICORN_MAX_REQUESTS=1000
 ```
 
 ---

@@ -8,6 +8,7 @@ import json
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.core.cache import cache
 from django.db.models import Count, Q
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -73,20 +74,47 @@ def client_idcard_group(request):
                 elif assigned_group_ids:
                     tables_qs = tables_qs.filter(group_id__in=assigned_group_ids)
 
-            scoped_tables = []
-            for table in tables_qs.order_by('-updated_at'):
-                scoped_cards = _apply_client_staff_row_scope(
-                    IDCard.objects.filter(table=table),
-                    user,
-                    table,
+            ordered_tables = list(tables_qs.order_by('-updated_at'))
+            table_ids = [table.id for table in ordered_tables]
+            pool_counts = {
+                row['table_id']: row['count']
+                for row in (
+                    IDCard.objects
+                    .filter(table_id__in=table_ids, status='pool')
+                    .values('table_id')
+                    .annotate(count=Count('id'))
                 )
-                counts_by_status = {
-                    row['status']: row['count']
-                    for row in scoped_cards.values('status').annotate(count=Count('id'))
-                }
+            } if table_ids else {}
+
+            try:
+                from core.services.session_revalidation import get_user_revalidation_marker
+
+                marker = str(get_user_revalidation_marker(getattr(user, 'pk', None)) or '')
+            except Exception:
+                marker = ''
+
+            scoped_tables = []
+            for table in ordered_tables:
+                counts_cache_key = (
+                    f'client:idcard_group:staff_counts:v1:'
+                    f'user:{user.id}:table:{table.id}:m:{marker}'
+                )
+                counts_by_status = cache.get(counts_cache_key)
+                if not isinstance(counts_by_status, dict):
+                    scoped_cards = _apply_client_staff_row_scope(
+                        IDCard.objects.filter(table=table),
+                        user,
+                        table,
+                    )
+                    counts_by_status = {
+                        row['status']: row['count']
+                        for row in scoped_cards.values('status').annotate(count=Count('id'))
+                    }
+                    cache.set(counts_cache_key, counts_by_status, 10)
+
                 table.pending_count = counts_by_status.get('pending', 0)
                 table.verified_count = counts_by_status.get('verified', 0)
-                table.pool_count = IDCard.objects.filter(table=table, status='pool').count()
+                table.pool_count = pool_counts.get(table.id, 0)
                 table.approved_count = counts_by_status.get('approved', 0)
                 table.download_count = counts_by_status.get('download', 0)
                 table.reprint_count = counts_by_status.get('reprint', 0)

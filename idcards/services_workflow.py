@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from idcards.models import IDCard, IDCardTable
 from core.services.base import BaseService, ServiceResult
+from core.services.cache_version_service import CacheVersionService
 from core.services.permission_service import PermissionService
 
 logger = logging.getLogger(__name__)
@@ -299,6 +300,8 @@ class WorkflowService:
             update_fields.append('status_changed_at')
 
             card.save(update_fields=update_fields)
+
+        cls._bump_dashboard_cache_versions(table)
         actor_id = getattr(user, 'pk', None)
         logger.info("Card %d: %s → %s by user %s", card.pk, current, target_status, actor_id if actor_id is not None else 'system')
 
@@ -484,6 +487,9 @@ class WorkflowService:
                 table=table, id__in=eligible_ids, status__in=valid_from
             ).update(**update_kwargs)
 
+        if updated_count:
+            cls._bump_dashboard_cache_versions(table)
+
         actor_id = getattr(user, 'pk', None)
         logger.info(
             "Bulk transition: %d cards → %s in table %d by user %s",
@@ -522,6 +528,17 @@ class WorkflowService:
         )
 
     # ── Activity logging helpers ────────────────────────────────────
+
+    @staticmethod
+    def _bump_dashboard_cache_versions(table: IDCardTable) -> None:
+        """Invalidate dashboard card caches for affected client scope."""
+        try:
+            client_id = getattr(getattr(table, 'group', None), 'client_id', None)
+            CacheVersionService.bump('dash_rcu', 'global')
+            if client_id:
+                CacheVersionService.bump('client_dash_counts', f'client:{int(client_id)}')
+        except Exception as exc:
+            logger.debug('WorkflowService cache version bump failed: %s', exc)
 
     @staticmethod
     def _log_transition(card, _old_status, new_status, _user, request):

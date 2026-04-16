@@ -8,7 +8,7 @@ import json
 import logging
 
 from django.core.cache import cache
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Count, Exists, OuterRef, Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -18,6 +18,8 @@ from staff.models import Staff
 from core.models import ClientMessage, NotificationRead
 from core.services.permission_service import PermissionService
 from core.services.activity_service import ActivityService
+from core.services.cache_version_service import CacheVersionService
+from core.services.session_revalidation import get_user_revalidation_marker
 
 from .views_decorators import require_client_user, require_client_admin
 from .services import (
@@ -185,6 +187,17 @@ def api_messages_drawer(request):
     except (TypeError, ValueError):
         limit = 40
 
+    marker = str(get_user_revalidation_marker(getattr(user, 'pk', None)) or '')
+    user_cache_version = CacheVersionService.get('client_messages_drawer_user', f'user:{user.id}')
+    client_cache_version = CacheVersionService.get('client_messages_drawer_client', f'client:{client.id}')
+    cache_key = (
+        f'client:messages_drawer:v3:{user.id}:{client.id}:{limit}:{marker}:'
+        f'{user_cache_version}:{client_cache_version}'
+    )
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None:
+        return JsonResponse(cached_payload)
+
     now = timezone.now()
     base_qs = (
         ClientMessage.objects
@@ -203,12 +216,29 @@ def api_messages_drawer(request):
                 )
             )
         )
-        .select_related('client', 'sent_by', 'notification')
+        .select_related('client', 'sent_by')
+        .only(
+            'id',
+            'notification_id',
+            'message',
+            'scope',
+            'visibility',
+            'expires_at',
+            'created_at',
+            'client__name',
+            'sent_by__first_name',
+            'sent_by__last_name',
+            'sent_by__username',
+        )
         .order_by('-created_at')
     )
 
-    total_count = base_qs.count()
-    unread_count = base_qs.filter(is_read=False).count()
+    counts = base_qs.aggregate(
+        total_count=Count('id'),
+        unread_count=Count('id', filter=Q(is_read=False)),
+    )
+    total_count = int(counts.get('total_count') or 0)
+    unread_count = int(counts.get('unread_count') or 0)
     rows = list(base_qs[:limit])
 
     items = []
@@ -230,12 +260,14 @@ def api_messages_drawer(request):
             'is_read': bool(getattr(row, 'is_read', False)),
         })
 
-    return JsonResponse({
+    payload = {
         'success': True,
         'items': items,
         'total_count': total_count,
         'unread_count': unread_count,
-    })
+    }
+    cache.set(cache_key, payload, 8)
+    return JsonResponse(payload)
 
 
 # =============================================================================

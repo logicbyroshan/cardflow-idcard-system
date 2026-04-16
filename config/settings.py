@@ -44,6 +44,36 @@ def _env_bool(name: str, default: bool = False) -> bool:
         return default
     return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
+
+def _env_int(name: str, default: int, *, minimum: int | None = None, maximum: int | None = None) -> int:
+    """Read integer-like environment variables safely with optional bounds."""
+    value = os.getenv(name)
+    try:
+        parsed = int(str(value).strip()) if value is not None else int(default)
+    except (TypeError, ValueError):
+        parsed = int(default)
+
+    if minimum is not None:
+        parsed = max(minimum, parsed)
+    if maximum is not None:
+        parsed = min(maximum, parsed)
+    return parsed
+
+
+def _env_float(name: str, default: float, *, minimum: float | None = None, maximum: float | None = None) -> float:
+    """Read float-like environment variables safely with optional bounds."""
+    value = os.getenv(name)
+    try:
+        parsed = float(str(value).strip()) if value is not None else float(default)
+    except (TypeError, ValueError):
+        parsed = float(default)
+
+    if minimum is not None:
+        parsed = max(minimum, parsed)
+    if maximum is not None:
+        parsed = min(maximum, parsed)
+    return parsed
+
 # Allowed Hosts
 # In DEBUG mode, default to localhost hosts only. Override via DEBUG_ALLOWED_HOSTS.
 if DEBUG:
@@ -469,30 +499,75 @@ BACKGROUND_HEAVY_TASK_CONCURRENCY = max(
 # CACHING
 # =============================================================================
 
-# Auto-detect Redis: set REDIS_URL in .env for production
-# (e.g., REDIS_URL=redis://127.0.0.1:6379/1)
-# Without REDIS_URL, falls back to LocMemCache (fine for single-process dev).
-REDIS_URL = os.getenv('REDIS_URL', '')
+def _build_redis_location() -> str:
+    """Return Redis location from URL or host/port components."""
+    redis_url = os.getenv('REDIS_URL', '').strip()
+    if redis_url:
+        return redis_url
 
-if REDIS_URL:
+    redis_host = os.getenv('REDIS_HOST', '').strip()
+    if not redis_host:
+        return ''
+
+    redis_scheme = os.getenv('REDIS_SCHEME', 'redis').strip() or 'redis'
+    redis_port = _env_int('REDIS_PORT', 6379, minimum=1, maximum=65535)
+    redis_db = _env_int('REDIS_DB', 1, minimum=0, maximum=15)
+    redis_username = os.getenv('REDIS_USERNAME', '').strip()
+    redis_password = os.getenv('REDIS_PASSWORD', '').strip()
+
+    auth_segment = ''
+    if redis_username or redis_password:
+        auth_segment = f'{redis_username}:{redis_password}@' if redis_username else f':{redis_password}@'
+
+    return f'{redis_scheme}://{auth_segment}{redis_host}:{redis_port}/{redis_db}'
+
+
+# Production/shared cache path:
+# - REDIS_URL (preferred), or REDIS_HOST + REDIS_PORT + REDIS_DB components.
+# Local dev:
+# - falls back to LocMemCache when Redis is not configured.
+REDIS_LOCATION = _build_redis_location()
+CACHE_DEFAULT_TIMEOUT = _env_int('CACHE_DEFAULT_TIMEOUT', 300, minimum=1, maximum=86400)
+CACHE_KEY_PREFIX = os.getenv('CACHE_KEY_PREFIX', 'adarsh').strip() or 'adarsh'
+CACHE_VERSION = _env_int('CACHE_VERSION', 1, minimum=1)
+
+if REDIS_LOCATION:
     # Production: Redis — OTP, rate limiting, and export locks are shared
     # across all Gunicorn workers.
+    REDIS_SOCKET_TIMEOUT = _env_float('REDIS_SOCKET_TIMEOUT', 1.5, minimum=0.1, maximum=30.0)
+    REDIS_SOCKET_CONNECT_TIMEOUT = _env_float('REDIS_SOCKET_CONNECT_TIMEOUT', 1.5, minimum=0.1, maximum=30.0)
+    REDIS_HEALTH_CHECK_INTERVAL = _env_int('REDIS_HEALTH_CHECK_INTERVAL', 30, minimum=1, maximum=300)
+    REDIS_MAX_CONNECTIONS = _env_int('REDIS_MAX_CONNECTIONS', 100, minimum=10, maximum=2000)
+
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-            'TIMEOUT': 300,
+            'LOCATION': REDIS_LOCATION,
+            'TIMEOUT': CACHE_DEFAULT_TIMEOUT,
+            'KEY_PREFIX': CACHE_KEY_PREFIX,
+            'VERSION': CACHE_VERSION,
             'OPTIONS': {
-                'db': int(os.getenv('REDIS_DB', '1')),
+                'socket_connect_timeout': REDIS_SOCKET_CONNECT_TIMEOUT,
+                'socket_timeout': REDIS_SOCKET_TIMEOUT,
+                'health_check_interval': REDIS_HEALTH_CHECK_INTERVAL,
+                'retry_on_timeout': True,
+                'max_connections': REDIS_MAX_CONNECTIONS,
+                'client_name': os.getenv('REDIS_CLIENT_NAME', 'adarsh-django-cache').strip() or 'adarsh-django-cache',
             },
         }
     }
+
+    # Reduce session DB pressure in production by caching session reads.
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+    SESSION_CACHE_ALIAS = 'default'
 else:
     # Local development: LocMemCache (per-process, no setup needed)
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'TIMEOUT': 300,
+            'TIMEOUT': CACHE_DEFAULT_TIMEOUT,
+            'KEY_PREFIX': CACHE_KEY_PREFIX,
+            'VERSION': CACHE_VERSION,
             'OPTIONS': {
                 'MAX_ENTRIES': 1000,
             },
@@ -622,6 +697,11 @@ QUERY_COUNT_THRESHOLD = int(os.getenv('QUERY_COUNT_THRESHOLD', '50'))
 # Individual SQL queries slower than this (seconds) are logged to queries.log
 SLOW_QUERY_THRESHOLD = float(os.getenv('SLOW_QUERY_THRESHOLD', '0.1'))
 
+# Optional per-query execute_wrapper instrumentation.
+# Keep disabled by default because it adds noticeable overhead on busy systems,
+# especially when DEBUG=True.
+ENABLE_REQUEST_QUERY_TRACKING = _env_bool('ENABLE_REQUEST_QUERY_TRACKING', default=False)
+
 
 # =============================================================================
 # LOGGING
@@ -632,6 +712,12 @@ SLOW_QUERY_THRESHOLD = float(os.getenv('SLOW_QUERY_THRESHOLD', '0.1'))
 # Leave unset (default False) on ephemeral containers (Render, Docker)
 # where logs/ is wiped on restart — stdout/stderr is captured by the host.
 LOG_TO_FILE = os.getenv('LOG_TO_FILE', 'false').strip().lower() in ('1', 'true', 'yes')
+
+# Keep DB backend query logging conservative by default. Full DEBUG SQL logs
+# can significantly slow requests under concurrent usage.
+_DB_BACKEND_LOG_LEVEL = os.getenv('DJANGO_DB_LOG_LEVEL', 'WARNING').strip().upper()
+if _DB_BACKEND_LOG_LEVEL not in {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}:
+    _DB_BACKEND_LOG_LEVEL = 'WARNING'
 
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 if LOG_TO_FILE:
@@ -758,7 +844,7 @@ LOGGING = {
         # DB backend query logging — only verbose in DEBUG mode
         'django.db.backends': {
             'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'WARNING',
+            'level': _DB_BACKEND_LOG_LEVEL,
             'propagate': False,
         },
     },
