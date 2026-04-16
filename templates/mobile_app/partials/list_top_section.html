@@ -15,7 +15,7 @@
 
         <!-- Title + subtitle -->
         <div class="flex-1 min-w-0">
-            <h1 class="text-white font-bold text-[13px] leading-tight">
+            <h1 class="mobile-list-topbar-title text-white font-bold text-[13px] leading-tight">
                 {% if list_type == 'pending' %}Pending List
                 {% elif list_type == 'verified' %}Verified List
                 {% elif list_type == 'approved' %}Approved List
@@ -23,7 +23,7 @@
                 {% elif list_type == 'pool' %}Pool List
                 {% else %}List{% endif %}
             </h1>
-            <p class="text-white/80 text-[10px] truncate leading-tight mt-0.5">
+            <p class="mobile-list-topbar-subtitle text-white/80 text-[10px] truncate leading-tight mt-0.5">
                 {% if table %}{{ table.name }}{% endif %}{% if table and table.group and table.group.client %} &mdash; {{ table.group.client.name }}{% elif client %} &mdash; {{ client.name }}{% endif %}
             </p>
         </div>

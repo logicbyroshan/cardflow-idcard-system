@@ -1904,12 +1904,14 @@ body.pwa-v2 .absolute.bottom-0.left-0.right-0.bg-white.rounded-t-3xl {
 body.pwa-v2 {
     --m-chip-height: 24px;
     --m-chip-radius: 9px;
-    --m-chip-font-size: 10px;
-    --m-chip-count-font-size: 10px;
+    --m-chip-font-size: 9px;
+    --m-chip-count-font-size: 9px;
     --m-modal-title-size: 14px;
     --m-modal-body-size: 12px;
     --m-section-title-size: 10px;
     --m-section-title-tracking: 0.08em;
+    --m-list-title-size: 12px;
+    --m-list-subtitle-size: 9px;
 }
 
 body.pwa-v2 #mobile-app p[class*='text-[11px]'],
@@ -1960,6 +1962,17 @@ body.pwa-v2 #mobile-app .mobile-chip-label {
 body.pwa-v2 #mobile-app .mobile-chip-count {
     font-size: var(--m-chip-count-font-size);
     min-width: 3.4ch;
+}
+
+body.pwa-v2 #mobile-app .mobile-list-topbar-title {
+    font-size: var(--m-list-title-size) !important;
+    line-height: 1.15 !important;
+    letter-spacing: 0.01em;
+}
+
+body.pwa-v2 #mobile-app .mobile-list-topbar-subtitle {
+    font-size: var(--m-list-subtitle-size) !important;
+    line-height: 1.25 !important;
 }
 
 body.pwa-v2 #mobile-app button[class*='rounded-xl'][class*='py-3'],
