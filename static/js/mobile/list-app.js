@@ -2366,17 +2366,10 @@ function listApp() {
                 }
 
                 fd.append('field_data', JSON.stringify(fieldData));
-                let legacyPhotoFile = null;
                 Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
                     if (!fileObj) return;
                     fd.append('image_' + fieldName, fileObj);
-                    if (!legacyPhotoFile && this._isImageLikeFieldName(fieldName)) {
-                        legacyPhotoFile = fileObj;
-                    }
                 });
-                if (legacyPhotoFile) {
-                    fd.append('photo', legacyPhotoFile);
-                }
 
                 try {
                     const _ac2 = new AbortController();

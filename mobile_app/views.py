@@ -3339,6 +3339,11 @@ def api_card_add(request, table_id):
                 elif key_l.startswith('image_'):
                     image_files[file_key] = validated_file
 
+        # Guard against accidental PHOTO overwrite from mixed payloads.
+        # When explicit image_<field> files are present, ignore legacy photo key.
+        if image_files:
+            legacy_photo = None
+
         with transaction.atomic():
             card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
 
@@ -3401,6 +3406,11 @@ def api_card_update(request, table_id, card_id):
                     legacy_photo = validated_file
                 elif key_l.startswith('image_'):
                     image_files[file_key] = validated_file
+
+        # Guard against accidental PHOTO overwrite from mixed payloads.
+        # When explicit image_<field> files are present, ignore legacy photo key.
+        if image_files:
+            legacy_photo = None
 
         update_result = IDCardService.update_card(
             card_id=card.id,

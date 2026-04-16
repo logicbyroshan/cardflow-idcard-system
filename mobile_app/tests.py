@@ -1152,6 +1152,36 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 
 	@mock.patch('mobile_app.views.IDCardService.update_card')
 	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_card_update_ignores_legacy_photo_when_image_field_uploads_present(self, _mock_validate, mock_update_card):
+		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {'id': self.card.id}})
+
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/{self.card.id}/update/',
+			data={
+				'field_data': json.dumps({'NAME': 'Student With Two New Images'}),
+				'photo': SimpleUploadedFile('legacy.jpg', b'legacy-bytes', content_type='image/jpeg'),
+				'image_PHOTO': SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+				'image_MOTHER PHOTO': SimpleUploadedFile('mother.jpg', b'mother-bytes', content_type='image/jpeg'),
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		mock_update_card.assert_called_once()
+		kwargs = mock_update_card.call_args.kwargs
+		self.assertIsNone(kwargs.get('legacy_photo_file'))
+		self.assertEqual(set(kwargs.get('image_files', {}).keys()), {'image_PHOTO', 'image_MOTHER PHOTO'})
+
+	@mock.patch('mobile_app.views.IDCardService.update_card')
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
 	def test_card_update_accepts_two_image_field_upload_keys(self, _mock_validate, mock_update_card):
 		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {'id': self.card.id}})
 
@@ -1212,6 +1242,36 @@ class MobileAppCardApiTests(MobileAppBaseTestCase):
 		self.assertIn('image_PHOTO', kwargs.get('image_files', {}))
 		self.assertIn('image_MOTHER PHOTO', kwargs.get('image_files', {}))
 		self.assertIn('image_FATHER PHOTO', kwargs.get('image_files', {}))
+
+	@mock.patch('mobile_app.views.IDCardService.update_card')
+	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
+	def test_card_add_ignores_legacy_photo_when_image_field_uploads_present(self, _mock_validate, mock_update_card):
+		mock_update_card.return_value = mock.Mock(success=True, message='ok', data={'card': {}})
+
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+			{'name': 'MOTHER PHOTO', 'type': 'rel_photo', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self._login_mobile_super_admin()
+		response = self.client.post(
+			f'/app/api/table/{self.table.id}/card/add/',
+			data={
+				'field_data': json.dumps({'NAME': 'Add With Two New Images'}),
+				'photo': SimpleUploadedFile('legacy.jpg', b'legacy-bytes', content_type='image/jpeg'),
+				'image_PHOTO': SimpleUploadedFile('photo.jpg', b'photo-bytes', content_type='image/jpeg'),
+				'image_MOTHER PHOTO': SimpleUploadedFile('mother.jpg', b'mother-bytes', content_type='image/jpeg'),
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json()['success'])
+		mock_update_card.assert_called_once()
+		kwargs = mock_update_card.call_args.kwargs
+		self.assertIsNone(kwargs.get('legacy_photo_file'))
+		self.assertEqual(set(kwargs.get('image_files', {}).keys()), {'image_PHOTO', 'image_MOTHER PHOTO'})
 
 	@mock.patch('mobile_app.views.IDCardService.update_card')
 	@mock.patch('mobile_app.views._validate_image', return_value=(True, ''))
