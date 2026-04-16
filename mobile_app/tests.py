@@ -1842,6 +1842,14 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn('@click="if(!viewMode) startImageSelection(fieldName)"', html)
 		self.assertNotIn('@click="openCropForField(fieldName)"', html)
 		self.assertNotIn('showCropModal', html)
+		self.assertIn(':disabled="addFormSubmitting"', html)
+		self.assertIn("fa-spinner fa-spin", html)
+
+	def test_mobile_list_toast_is_above_modal_layers(self):
+		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'list_toast.html'
+		html = template_path.read_text(encoding='utf-8')
+		self.assertIn('z-[120]', html)
+		self.assertIn('pointer-events-none', html)
 
 	def test_home_and_groups_templates_keep_sections_open_by_default(self):
 		base = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app'

@@ -91,6 +91,7 @@ function listApp() {
         // Add/Edit Form state
         showAddForm: false,
         showImagePicker: false,
+        addFormSubmitting: false,
         viewMode: false,
         editMode: false,
         editingId: null,
@@ -2238,12 +2239,14 @@ function listApp() {
             if (!this.selectedIds.length) { this.showToast('Select a card first', 'error'); return; }
             return this.openEditById(this.selectedIds[0]);
         },
-        closeAddForm() {
+        closeAddForm(forceClose) {
+            if (this.addFormSubmitting && !forceClose) return;
             this.showAddForm = false;
             this.showImagePicker = false;
             this.viewMode = false;
             this.editMode = false;
             this.editingId = null;
+            this.addFormSubmitting = false;
             this.reprintPendingAfterEdit = false;
             this.reprintPendingCardIds = [];
         },
@@ -2264,7 +2267,7 @@ function listApp() {
             this.showImagePicker = !this.showImagePicker;
         },
         takePhoto() {
-            if (this.viewMode) return;
+            if (this.viewMode || this.addFormSubmitting) return;
             const hasSingleImageField = (this.imageFormFields || []).length <= 1;
             if (this.editMode && this.editingId && hasSingleImageField) {
                 // Redirect to full camera.html  same as top-bar camera button
@@ -2278,7 +2281,7 @@ function listApp() {
             }
         },
         pickFromGallery() {
-            if (this.viewMode) return;
+            if (this.viewMode || this.addFormSubmitting) return;
             if (this.$refs.galleryInput) this.$refs.galleryInput.click();
             this.showImagePicker = false;
         },
@@ -2311,161 +2314,165 @@ function listApp() {
                 this.closeAddForm();
                 return;
             }
+            if (this.addFormSubmitting) return;
+            this.addFormSubmitting = true;
             this.loading = true;
-            const url = this.editMode
-                ? buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/' + this.editingId + '/update/')
-                : buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/add/');
-            const fd = new FormData();
-            const fieldData = {};
-            Object.entries(this.form.dynamicValues || {}).forEach(([key, value]) => {
-                if (value === null || value === undefined) return;
-                fieldData[key] = String(value).trim();
-            });
-
-            const missingMandatory = (this.dynamicFormFields || []).find((field) => {
-                if (!field.mandatory) return false;
-                const val = fieldData[field.name];
-                return String(val || '').trim() === '';
-            });
-            if (missingMandatory) {
-                this.showToast(this._fieldLabel(missingMandatory.name) + ' is required', 'error');
-                this.loading = false;
-                return;
-            }
-
-            const hasNameField = (this.dynamicFormFields || []).some((field) => {
-                const n = this._normalizeFieldName(field.name);
-                return n === 'name' || n.includes('name');
-            });
-            const resolvedName = this._resolveStudentName(fieldData, '').trim();
-            if (hasNameField && !resolvedName) {
-                this.showToast('Name is required', 'error');
-                this.loading = false;
-                return;
-            }
-
-            fd.append('field_data', JSON.stringify(fieldData));
-            let legacyPhotoFile = null;
-            Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
-                if (!fileObj) return;
-                fd.append('image_' + fieldName, fileObj);
-                if (!legacyPhotoFile && this._isImageLikeFieldName(fieldName)) {
-                    legacyPhotoFile = fileObj;
-                }
-            });
-            if (legacyPhotoFile) {
-                fd.append('photo', legacyPhotoFile);
-            }
             try {
-                var _ac2 = new AbortController();
-                setTimeout(function() { _ac2.abort(); }, 120000);
-                const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd, signal: _ac2.signal });
-                if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
-                    this.showToast('Server error (' + res.status + ')', 'error');
-                    this.loading = false;
+                const url = this.editMode
+                    ? buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/' + this.editingId + '/update/')
+                    : buildEndpoint(MOBILE_ENDPOINTS.appApi, 'table/' + TABLE_ID + '/card/add/');
+                const fd = new FormData();
+                const fieldData = {};
+                Object.entries(this.form.dynamicValues || {}).forEach(([key, value]) => {
+                    if (value === null || value === undefined) return;
+                    fieldData[key] = String(value).trim();
+                });
+
+                const missingMandatory = (this.dynamicFormFields || []).find((field) => {
+                    if (!field.mandatory) return false;
+                    const val = fieldData[field.name];
+                    return String(val || '').trim() === '';
+                });
+                if (missingMandatory) {
+                    this.showToast(this._fieldLabel(missingMandatory.name) + ' is required', 'error');
                     return;
                 }
-                const data = await res.json();
-                if (data.success) {
-                    this.showToast(data.message || (this.editMode ? 'Updated!' : 'Added!'), 'success');
-                    const cardId = this.editMode ? this.editingId : data.card_id;
 
-                    if (cardId) {
-                        try {
-                            const latestCard = await this._fetchCardSnapshot(cardId);
-                            if (latestCard.status === LIST_TYPE) {
-                                this._upsertStudentCard(latestCard, this.editMode ? 'edit' : 'add');
-                            } else if (this.editMode) {
-                                // If edited card moved to a different status, remove from current list.
-                                this._removeCardsFromCurrentList([cardId]);
-                            }
-                        } catch (snapshotErr) {
-                            const summary = this._summarizeCardFromFieldData(fieldData);
-                            if (this.editMode) {
-                                // Fall back to in-memory update when snapshot endpoint fails.
-                                const idx = this._findStudentIndex(cardId);
-                                if (idx > -1) {
-                                    const existing = this.studentsData[idx];
-                                    const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
-                                    const fallbackSlots = (this.imageFormFields || []).map((fieldName, slotIdx) => {
-                                        const previewUrl = (this.form.imagePreviews || {})[fieldName]
-                                            || ((existing.photo_slots || [])[slotIdx] || {}).url
-                                            || null;
-                                        const hasPath = !!(
-                                            (this.form.imageHasPath || {})[fieldName]
-                                            || ((existing.photo_slots || [])[slotIdx] || {}).has_path
-                                            || previewUrl
-                                        );
-                                        return {
-                                            url: previewUrl,
-                                            has_path: hasPath,
-                                        };
-                                    });
-                                    const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
-                                    const fallbackCard = Object.assign({}, existing, {
-                                        name: summary.name,
-                                        roll_no: summary.roll_no,
-                                        father_name: summary.father_name,
-                                        mother_name: summary.mother_name,
-                                        class_name: summary.class_name,
-                                        section: summary.section,
-                                        dob: summary.dob,
-                                        photo_url: fallbackUrls.length ? fallbackUrls[0] : existing.photo_url,
-                                        photo_urls: fallbackUrls.length ? fallbackUrls : (existing.photo_urls || []),
-                                        photo_slots: fallbackSlots.length ? fallbackSlots : (existing.photo_slots || []),
-                                        has_photo: fallbackUrls.length ? true : !!(existing.has_photo),
-                                        field_data: mergedFieldData,
-                                        display_fields: this._buildDisplayFieldsFromData(mergedFieldData),
-                                    });
-                                    this._upsertStudentCard(fallbackCard, 'edit');
+                const hasNameField = (this.dynamicFormFields || []).some((field) => {
+                    const n = this._normalizeFieldName(field.name);
+                    return n === 'name' || n.includes('name');
+                });
+                const resolvedName = this._resolveStudentName(fieldData, '').trim();
+                if (hasNameField && !resolvedName) {
+                    this.showToast('Name is required', 'error');
+                    return;
+                }
+
+                fd.append('field_data', JSON.stringify(fieldData));
+                let legacyPhotoFile = null;
+                Object.entries(this.form.imageFiles || {}).forEach(([fieldName, fileObj]) => {
+                    if (!fileObj) return;
+                    fd.append('image_' + fieldName, fileObj);
+                    if (!legacyPhotoFile && this._isImageLikeFieldName(fieldName)) {
+                        legacyPhotoFile = fileObj;
+                    }
+                });
+                if (legacyPhotoFile) {
+                    fd.append('photo', legacyPhotoFile);
+                }
+
+                try {
+                    var _ac2 = new AbortController();
+                    setTimeout(function() { _ac2.abort(); }, 120000);
+                    const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd, signal: _ac2.signal });
+                    if (!res.ok && !(res.headers.get('content-type') || '').includes('application/json')) {
+                        this.showToast('Server error (' + res.status + ')', 'error');
+                        return;
+                    }
+                    const data = await res.json();
+                    if (data.success) {
+                        this.showToast(data.message || (this.editMode ? 'Updated!' : 'Added!'), 'success');
+                        const cardId = this.editMode ? this.editingId : data.card_id;
+
+                        if (cardId) {
+                            try {
+                                const latestCard = await this._fetchCardSnapshot(cardId);
+                                if (latestCard.status === LIST_TYPE) {
+                                    this._upsertStudentCard(latestCard, this.editMode ? 'edit' : 'add');
+                                } else if (this.editMode) {
+                                    // If edited card moved to a different status, remove from current list.
+                                    this._removeCardsFromCurrentList([cardId]);
                                 }
-                            } else if (LIST_TYPE === 'pending' && cardId) {
-                                const fallbackSummary = this._summarizeCardFromFieldData(fieldData);
-                                const fallbackFieldData = Object.assign({}, fieldData);
-                                const fallbackSlots = (this.imageFormFields || []).map((fieldName) => ({
-                                    url: (this.form.imagePreviews || {})[fieldName] || null,
-                                    has_path: !!((this.form.imageHasPath || {})[fieldName]),
-                                }));
-                                const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
-                                const fallbackCard = {
-                                    id: Number(cardId),
-                                    sr_no: this.studentsData.length + 1,
-                                    name: fallbackSummary.name,
-                                    roll_no: fallbackSummary.roll_no,
-                                    father_name: fallbackSummary.father_name,
-                                    mother_name: fallbackSummary.mother_name,
-                                    class_name: fallbackSummary.class_name,
-                                    section: fallbackSummary.section,
-                                    dob: fallbackSummary.dob,
-                                    photo_url: fallbackUrls.length ? fallbackUrls[0] : null,
-                                    photo_urls: fallbackUrls,
-                                    photo_slots: fallbackSlots,
-                                    has_photo: !!fallbackUrls.length,
-                                    status: 'pending',
-                                    field_data: fallbackFieldData,
-                                    display_fields: this._buildDisplayFieldsFromData(fallbackFieldData),
-                                };
-                                this._upsertStudentCard(fallbackCard, 'add');
+                            } catch (snapshotErr) {
+                                const summary = this._summarizeCardFromFieldData(fieldData);
+                                if (this.editMode) {
+                                    // Fall back to in-memory update when snapshot endpoint fails.
+                                    const idx = this._findStudentIndex(cardId);
+                                    if (idx > -1) {
+                                        const existing = this.studentsData[idx];
+                                        const mergedFieldData = Object.assign({}, existing.field_data || {}, fieldData);
+                                        const fallbackSlots = (this.imageFormFields || []).map((fieldName, slotIdx) => {
+                                            const previewUrl = (this.form.imagePreviews || {})[fieldName]
+                                                || ((existing.photo_slots || [])[slotIdx] || {}).url
+                                                || null;
+                                            const hasPath = !!(
+                                                (this.form.imageHasPath || {})[fieldName]
+                                                || ((existing.photo_slots || [])[slotIdx] || {}).has_path
+                                                || previewUrl
+                                            );
+                                            return {
+                                                url: previewUrl,
+                                                has_path: hasPath,
+                                            };
+                                        });
+                                        const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
+                                        const fallbackCard = Object.assign({}, existing, {
+                                            name: summary.name,
+                                            roll_no: summary.roll_no,
+                                            father_name: summary.father_name,
+                                            mother_name: summary.mother_name,
+                                            class_name: summary.class_name,
+                                            section: summary.section,
+                                            dob: summary.dob,
+                                            photo_url: fallbackUrls.length ? fallbackUrls[0] : existing.photo_url,
+                                            photo_urls: fallbackUrls.length ? fallbackUrls : (existing.photo_urls || []),
+                                            photo_slots: fallbackSlots.length ? fallbackSlots : (existing.photo_slots || []),
+                                            has_photo: fallbackUrls.length ? true : !!(existing.has_photo),
+                                            field_data: mergedFieldData,
+                                            display_fields: this._buildDisplayFieldsFromData(mergedFieldData),
+                                        });
+                                        this._upsertStudentCard(fallbackCard, 'edit');
+                                    }
+                                } else if (LIST_TYPE === 'pending' && cardId) {
+                                    const fallbackSummary = this._summarizeCardFromFieldData(fieldData);
+                                    const fallbackFieldData = Object.assign({}, fieldData);
+                                    const fallbackSlots = (this.imageFormFields || []).map((fieldName) => ({
+                                        url: (this.form.imagePreviews || {})[fieldName] || null,
+                                        has_path: !!((this.form.imageHasPath || {})[fieldName]),
+                                    }));
+                                    const fallbackUrls = fallbackSlots.map((slot) => slot.url).filter(Boolean);
+                                    const fallbackCard = {
+                                        id: Number(cardId),
+                                        sr_no: this.studentsData.length + 1,
+                                        name: fallbackSummary.name,
+                                        roll_no: fallbackSummary.roll_no,
+                                        father_name: fallbackSummary.father_name,
+                                        mother_name: fallbackSummary.mother_name,
+                                        class_name: fallbackSummary.class_name,
+                                        section: fallbackSummary.section,
+                                        dob: fallbackSummary.dob,
+                                        photo_url: fallbackUrls.length ? fallbackUrls[0] : null,
+                                        photo_urls: fallbackUrls,
+                                        photo_slots: fallbackSlots,
+                                        has_photo: !!fallbackUrls.length,
+                                        status: 'pending',
+                                        field_data: fallbackFieldData,
+                                        display_fields: this._buildDisplayFieldsFromData(fallbackFieldData),
+                                    };
+                                    this._upsertStudentCard(fallbackCard, 'add');
+                                }
+                            }
+
+                            if (!this.editMode) {
+                                this.tabCounts.pending = Number(this.tabCounts.pending || 0) + 1;
                             }
                         }
 
-                        if (!this.editMode) {
-                            this.tabCounts.pending = Number(this.tabCounts.pending || 0) + 1;
+                        const reprintAfterEdit = !!(this.reprintPendingAfterEdit && this.editMode && cardId);
+                        this.closeAddForm(true);
+
+                        if (reprintAfterEdit) {
+                            const ok = await this._createReprintRequest([cardId]);
+                            this.reprintPendingAfterEdit = false;
+                            this.reprintPendingCardIds = [];
+                            if (ok) this.fetchReprintList();
                         }
-                    }
-
-                    const reprintAfterEdit = !!(this.reprintPendingAfterEdit && this.editMode && cardId);
-                    this.closeAddForm();
-
-                    if (reprintAfterEdit) {
-                        const ok = await this._createReprintRequest([cardId]);
-                        this.reprintPendingAfterEdit = false;
-                        this.reprintPendingCardIds = [];
-                        if (ok) this.fetchReprintList();
-                    }
-                } else { this.showToast(data.message || 'Failed', 'error'); }
-            } catch (e) { this.showToast('Network error', 'error'); }
-            this.loading = false;
+                    } else { this.showToast(data.message || 'Failed', 'error'); }
+                } catch (e) { this.showToast('Network error', 'error'); }
+            } finally {
+                this.loading = false;
+                this.addFormSubmitting = false;
+            }
         },
 
         // List action methods  wired to real APIs

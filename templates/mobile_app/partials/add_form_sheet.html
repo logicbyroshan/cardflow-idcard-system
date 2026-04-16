@@ -15,7 +15,7 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         class="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        @click="closeAddForm()"
+        @click="if(!addFormSubmitting) closeAddForm()"
     ></div>
 
     <!-- Sheet -->
@@ -47,7 +47,7 @@
                     <p class="text-[11px] text-gray-400" x-text="viewMode ? 'Read-only details from selected card' : (editMode ? 'Update student details below' : 'Fill in the student details below')"></p>
                 </div>
             </div>
-            <button @click="closeAddForm()" class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-95 transition-all">
+            <button @click="closeAddForm()" :disabled="addFormSubmitting" class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -73,7 +73,7 @@
                                     <img
                                         :src="_imagePreview(fieldName)"
                                         class="absolute inset-0 w-full h-full object-contain bg-slate-900 rounded-xl"
-                                        @error="if (imageFormState && imageFormState[fieldName]) { imageFormState[fieldName].preview = null; imageFormState[fieldName].has_path = true; imageFormState[fieldName].existing = null; }"
+                                        @error="if (form && form.imagePreviews) { form.imagePreviews[fieldName] = null; } if (form && form.imageHasPath) { form.imageHasPath[fieldName] = true; }"
                                     >
                                 </template>
                                 <template x-if="!_imagePreview(fieldName)">
@@ -103,11 +103,11 @@
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Choose Photo Source</p>
                 <p class="text-[10px] text-slate-500 mb-2.5" x-show="activeImageField" x-text="'For ' + _fieldLabel(activeImageField)"></p>
                 <div class="grid grid-cols-2 gap-2">
-                    <button @click="takePhoto()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-sky-200 shadow-sm active:scale-95 transition-all">
+                    <button @click="takePhoto()" :disabled="addFormSubmitting" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-sky-200 shadow-sm active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
                         <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center"><i class="fa-solid fa-camera text-blue-500 text-lg"></i></div>
                         <span class="text-[10px] font-bold text-gray-600">Camera</span>
                     </button>
-                    <button @click="pickFromGallery()" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-violet-200 shadow-sm active:scale-95 transition-all">
+                    <button @click="pickFromGallery()" :disabled="addFormSubmitting" class="flex flex-col items-center gap-1.5 py-3.5 px-2 bg-white rounded-xl border border-violet-200 shadow-sm active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
                         <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center"><i class="fa-solid fa-images text-purple-500 text-lg"></i></div>
                         <span class="text-[10px] font-bold text-gray-600">Gallery</span>
                     </button>
@@ -177,15 +177,25 @@
 
             <!-- Submit Buttons -->
             <div class="sticky bottom-0 z-20 flex gap-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] bg-white/95 backdrop-blur-sm border-t border-gray-100" x-show="!viewMode">
-                <button @click="closeAddForm()"
-                    class="flex-1 py-3.5 text-[13px] font-semibold text-gray-500 bg-gray-100 border border-gray-150 rounded-2xl hover:bg-gray-200 active:scale-[0.98] transition-all">
+                <button @click="closeAddForm()" :disabled="addFormSubmitting"
+                    class="flex-1 py-3.5 text-[13px] font-semibold text-gray-500 bg-gray-100 border border-gray-150 rounded-2xl hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">
                     Cancel
                 </button>
-                <button @click="submitAddForm()"
-                    class="flex-[2] py-3.5 text-[13px] font-bold text-white rounded-2xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                <button @click="submitAddForm()" :disabled="addFormSubmitting"
+                    class="flex-[2] py-3.5 text-[13px] font-bold text-white rounded-2xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
                     :class="editMode ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-gradient-to-r from-brand-light to-brand-dark'">
-                    <i class="text-[11px]" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-user-plus'"></i>
-                    <span x-text="editMode ? 'Update Student' : 'Add Student'"></span>
+                    <template x-if="addFormSubmitting">
+                        <span class="inline-flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin text-[11px]"></i>
+                            <span x-text="editMode ? 'Updating...' : 'Adding...'"></span>
+                        </span>
+                    </template>
+                    <template x-if="!addFormSubmitting">
+                        <span class="inline-flex items-center gap-2">
+                            <i class="text-[11px]" :class="editMode ? 'fa-solid fa-pen' : 'fa-solid fa-user-plus'"></i>
+                            <span x-text="editMode ? 'Update Student' : 'Add Student'"></span>
+                        </span>
+                    </template>
                 </button>
             </div>
 
