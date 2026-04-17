@@ -2466,6 +2466,7 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		root = Path(__file__).resolve().parent.parent
 		list_page = (root / 'templates' / 'mobile_app' / 'list_page.html').read_text(encoding='utf-8')
 		list_table = (root / 'templates' / 'mobile_app' / 'partials' / 'list_table.html').read_text(encoding='utf-8')
+		list_filters = (root / 'templates' / 'mobile_app' / 'partials' / 'list_filter_panel.html').read_text(encoding='utf-8')
 		script = (root / 'static' / 'js' / 'mobile' / 'list-app.js').read_text(encoding='utf-8')
 
 		self.assertIn('const TOTAL_RECORDS = {{ total_count|default:0 }};', list_page)
@@ -2486,6 +2487,8 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn("if (this.filters.photo === 'with' || this.filters.photo === 'without')", script)
 		self.assertIn('this.totalRecords = Math.max(0, apiTotal);', script)
 		self.assertIn('this._queueNextPageIfNeeded();', script)
+		self.assertIn('@click="applyFilters()"', list_filters)
+		self.assertNotIn('@click="applyFilters(); showFilters = false"', list_filters)
 
 	def test_profile_page_and_profile_update_api_work_for_mobile_client(self):
 		self._login_mobile_client()
