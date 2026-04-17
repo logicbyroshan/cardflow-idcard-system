@@ -3084,7 +3084,7 @@ class MobileAppProfileUpdateFlowContractTests(TestCase):
 		self.assertIn('window.location.assign(targetUrl);', content)
 		self.assertIn('var shouldOpenInstaller = shouldOpenInstallerForConfig(configData);', content)
 		self.assertIn('var updateLink = resolveUpdateLink(configData);', content)
-		self.assertIn('await openUpdateLink(updateLink, { preferExternalForApk: false });', content)
+		self.assertIn('await openUpdateLink(updateLink);', content)
 		self.assertIn('setUpdateProgress(90, \'Installer opened. Confirm install, then reopen the app.\');', content)
 
 	def test_profile_template_shows_update_status_card_and_runtime_check(self):

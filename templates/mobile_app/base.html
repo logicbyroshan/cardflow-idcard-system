@@ -508,7 +508,7 @@
                 var updateLink = resolveUpdateLink(configData);
                 if (shouldOpenInstaller && updateLink) {
                     await rampUpdateProgress(18, 42, 420, 'Contacting secure update server...');
-                    var opened = await openUpdateLink(updateLink, { preferExternalForApk: false });
+                    var opened = await openUpdateLink(updateLink);
                     if (opened) {
                         await rampUpdateProgress(42, 76, 560, 'Opening Android package installer...');
                         setUpdateProgress(90, 'Installer opened. Confirm install, then reopen the app.');

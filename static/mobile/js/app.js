@@ -1153,10 +1153,23 @@ window.showConfirm = function showConfirm(options) {
             var anchor = el.closest('a[href]');
             if (!anchor) return;
             var href = anchor.getAttribute('href') || '';
-            if (!isExternalHttpUrl(href)) return;
+
+            var isApkLink = /\.apk(?:\?|#|$)/i.test(href);
+            if (!isExternalHttpUrl(href) && !isApkLink) return;
+
+            var targetUrl = href;
+            if (isApkLink) {
+                try {
+                    var resolved = new URL(href, window.location.href);
+                    resolved.searchParams.set('_ts', String(Date.now()));
+                    targetUrl = resolved.toString();
+                } catch (err) {
+                    targetUrl = href;
+                }
+            }
 
             event.preventDefault();
-            Browser.open({ url: href }).catch(function() {});
+            Browser.open({ url: targetUrl }).catch(function() {});
         }, true);
     }
 

@@ -720,9 +720,9 @@ except ValueError:
 MOBILE_SHELL_ANDROID_MIN_BUILD = max(1, int(os.getenv('MOBILE_SHELL_ANDROID_MIN_BUILD', '1')))
 MOBILE_SHELL_ANDROID_LATEST_BUILD = max(
     MOBILE_SHELL_ANDROID_MIN_BUILD,
-    int(os.getenv('MOBILE_SHELL_ANDROID_LATEST_BUILD', '4')),
+    int(os.getenv('MOBILE_SHELL_ANDROID_LATEST_BUILD', '5')),
 )
-MOBILE_SHELL_ANDROID_LATEST_VERSION = os.getenv('MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.3').strip() or '1.0.3'
+MOBILE_SHELL_ANDROID_LATEST_VERSION = os.getenv('MOBILE_SHELL_ANDROID_LATEST_VERSION', '1.0.4').strip() or '1.0.4'
 MOBILE_SHELL_ANDROID_FORCE_UPDATE = _env_bool('MOBILE_SHELL_ANDROID_FORCE_UPDATE', False)
 MOBILE_SHELL_ANDROID_UPDATE_URL = os.getenv('MOBILE_SHELL_ANDROID_UPDATE_URL', '/static/website/apk/adarsh-admin.apk').strip()
 # Keep push bootstrap disabled by default until Firebase is correctly wired
