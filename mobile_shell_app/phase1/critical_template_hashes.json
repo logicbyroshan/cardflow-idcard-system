@@ -5,11 +5,11 @@
     "templates":  [
                       {
                           "path":  "templates/mobile_app/base.html",
-                          "sha256":  "DDE5189DE9011D4F042C16FFBFCD70E0D94E41F99DDF9A29B5742AB5A34C7632"
+                          "sha256":  "E9F3F2118B437F85BC33D2BCE4C599849352195D9DD3450C034B8299205C5A31"
                       },
                       {
                           "path":  "templates/mobile_app/login.html",
-                          "sha256":  "C61C9A50CD5A0F6952EBF3F5A4EAEDC9DDAB93D56B4140B32C5424D83A84D516"
+                          "sha256":  "BAE1D438C2F38DB48B77905666995FF52F7D2BEC2736A946EE33880C3FE70FF5"
                       },
                       {
                           "path":  "templates/mobile_app/home.html",
@@ -17,7 +17,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/list_page.html",
-                          "sha256":  "D7AE567D1DE1D0CDFADB5DF4319332C2AFF285D811B1CD3B598C7B2904DC384B"
+                          "sha256":  "411FEE74C39AC82F4F8614AE32E6CB40F8AFAD4CD57DF2ADB02CA54CE5925AE5"
                       },
                       {
                           "path":  "templates/mobile_app/card_detail.html",
@@ -41,7 +41,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/partials/add_form_sheet.html",
-                          "sha256":  "EE6E223A9F7F39CB95916E1ADD2925B8453712529F5EB1A9E46ED43C6E49B5DE"
+                          "sha256":  "A64858597DCFB1EE99CCDEDFDA4278B41589CE4896BB8CA4279117795FD61191"
                       }
                   ]
 }
