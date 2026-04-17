@@ -153,6 +153,7 @@ function listApp() {
 
         init() {
             this.totalRecords = Math.max(Number(this.totalRecords || 0), Number(this.studentsData.length || 0));
+            this.filtersActive = this._computeFiltersActive();
             this.rebuildClassSectionOptions();
             this._wirePhotoFallbacks(document);
             this._bindOverlayWatchers();
@@ -453,6 +454,10 @@ function listApp() {
                     this._reloadWithServerFilters();
                     return;
                 }
+                if (this._computeFiltersActive()) {
+                    this.visibleCount = this.studentsData.length;
+                    return;
+                }
                 this._applyAllFilters({ showCountToast: false });
             }, 180);
         },
@@ -486,6 +491,17 @@ function listApp() {
         getSectionOptions() {
             if (!this.filters.selectedClass) return this.sectionOptions || [];
             return this.classToSections[this.filters.selectedClass] || [];
+        },
+        _computeFiltersActive() {
+            if (String(this.searchQuery || '').trim()) return true;
+            if (this.filters.photo !== 'all') return true;
+            if (this.filters.selectedClass !== '') return true;
+            if (this.filters.selectedSection !== '') return true;
+            if (LIST_TYPE === 'download') {
+                if (this.filters.dateFrom !== '') return true;
+                if (this.filters.dateTo !== '') return true;
+            }
+            return false;
         },
         _hasServerBackedFilterChange() {
             if (String(this.searchQuery || '').trim() !== String(this.serverFilterState.searchQuery || '').trim()) return true;
@@ -538,8 +554,9 @@ function listApp() {
         _reloadWithServerFilters() {
             const nextUrl = this._buildServerFilterUrl();
             const currentUrl = window.location.pathname + window.location.search;
-            if (nextUrl === currentUrl) return;
+            if (nextUrl === currentUrl) return false;
             window.location.href = nextUrl;
+            return true;
         },
         _normalizeClassValue(value) {
             const raw = String(value || '').trim();
@@ -664,29 +681,23 @@ function listApp() {
             this.searchScopeHintShown = false;
             this.lastSearchAutoExpandQuery = '';
 
-            if (this._hasServerBackedFilterChange()) {
-                this._reloadWithServerFilters();
+            const navigated = this._reloadWithServerFilters();
+            if (navigated) {
                 return;
             }
 
             this._applyAllFilters();
         },
         async applyFilters() {
-            this.filtersActive = (
-                this.filters.photo !== 'all' ||
-                this.filters.selectedClass !== '' ||
-                this.filters.selectedSection !== '' ||
-                this.filters.dateFrom !== '' ||
-                this.filters.dateTo !== ''
-            );
+            this.filtersActive = this._computeFiltersActive();
 
-            // Search/filter behavior is server-backed so matching runs across full dataset.
-            if (this._hasServerBackedFilterChange()) {
-                this._reloadWithServerFilters();
+            // Always attempt server-backed apply so filtering/counting is full-dataset, not loaded rows only.
+            const navigated = this._reloadWithServerFilters();
+            if (navigated) {
                 return;
             }
 
-            this._applyAllFilters({ showCountToast: true });
+            this.visibleCount = this.studentsData.length;
             this.showFilters = false;
         },
         async loadAllDataForFiltering(maxPages = MOBILE_LIST_AUTO_FILTER_MAX_PAGES) {
@@ -2227,10 +2238,10 @@ function listApp() {
                 } else if (!silent) {
                     this.showToast('+' + newCards.length + ' loaded', 'success');
                 }
-                const hasLocalFilters = this.filtersActive || !!String(this.searchQuery || '').trim();
-                if (hasLocalFilters) {
+                const hasServerFilters = this._computeFiltersActive();
+                if (hasServerFilters) {
                     this.rebuildClassSectionOptions();
-                    this._applyAllFilters();
+                    this.visibleCount = this.studentsData.length;
                 } else {
                     this.visibleCount = this.studentsData.length;
                 }
