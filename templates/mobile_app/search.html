@@ -168,11 +168,11 @@
             resultUrl(card) {
                 if (!card) return '#';
                 const status = (card.status || '').toLowerCase();
-                const safeStatus = ['pending', 'verified', 'approved', 'download', 'pool'].includes(status)
-                    ? status
-                    : 'pending';
-                if (!card.table_id) return this.cardUrl(card.id);
-                return `/app/table/${card.table_id}/${safeStatus}/?focus_card=${card.id}`;
+                const listStatuses = ['pending', 'verified', 'approved', 'download', 'pool'];
+                if (!card.table_id || !listStatuses.includes(status)) {
+                    return this.cardUrl(card.id);
+                }
+                return `/app/table/${card.table_id}/${status}/?focus_card=${card.id}`;
             },
 
             openResult(card) {

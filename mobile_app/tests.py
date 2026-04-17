@@ -1603,6 +1603,73 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		ids = [item['id'] for item in payload['data']['results']]
 		self.assertIn(card.id, ids)
 
+	def test_mobile_global_search_api_respects_client_staff_row_scope(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'CLASS', 'type': 'class', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self.client_staff_profile.allowed_classes = ['10']
+		self.client_staff_profile.allowed_sections = []
+		self.client_staff_profile.save(update_fields=['allowed_classes', 'allowed_sections'])
+		self.client_staff_profile.assigned_groups.set([self.group])
+
+		in_scope = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Scoped Search Student', 'ROLL NO': '771', 'CLASS': '10'},
+			status='pending',
+		)
+		out_scope = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Scoped Search Student', 'ROLL NO': '772', 'CLASS': '11'},
+			status='pending',
+		)
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/api/search/?q=Scoped Search Student&filter=name&table_id={self.table.id}')
+
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['results']]
+		self.assertIn(in_scope.id, ids)
+		self.assertNotIn(out_scope.id, ids)
+
+	def test_mobile_global_search_page_respects_client_staff_row_scope(self):
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'ROLL NO', 'type': 'text', 'order': 1},
+			{'name': 'CLASS', 'type': 'class', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		self.client_staff_profile.allowed_classes = ['10']
+		self.client_staff_profile.allowed_sections = []
+		self.client_staff_profile.save(update_fields=['allowed_classes', 'allowed_sections'])
+		self.client_staff_profile.assigned_groups.set([self.group])
+
+		in_scope = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Scoped Search Page', 'ROLL NO': '781', 'CLASS': '10'},
+			status='pending',
+		)
+		out_scope = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Scoped Search Page', 'ROLL NO': '782', 'CLASS': '11'},
+			status='pending',
+		)
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/search/?q=Scoped Search Page&filter=name&table_id={self.table.id}')
+
+		self.assertEqual(response.status_code, 200)
+		results = response.context.get('results', [])
+		ids = [item.get('id') for item in results]
+		self.assertIn(in_scope.id, ids)
+		self.assertNotIn(out_scope.id, ids)
+
 	def test_mobile_list_api_search_matches_dynamic_table_field(self):
 		self._login_mobile_super_admin()
 		self.table.fields = [

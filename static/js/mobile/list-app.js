@@ -9,6 +9,8 @@ const MOBILE_ENDPOINTS = Object.freeze({
 });
 
 const MOBILE_LIST_AUTO_FILTER_MAX_PAGES = 3;
+const MOBILE_LIST_FOCUS_MAX_PAGES = 12;
+const MOBILE_LIST_SEARCH_AUTO_EXPAND_PAGES = 8;
 const MOBILE_LIST_LOAD_MORE_PAGE_SIZE = 30;
 
 function buildEndpoint(base, path) {
@@ -74,6 +76,8 @@ function listApp() {
         reprintSearchTimer: null,
         searchFilterTimer: null,
         searchScopeHintShown: false,
+        searchAutoExpandInFlight: false,
+        lastSearchAutoExpandQuery: '',
 
         permanentDeleteModal: {
             show: false,
@@ -282,14 +286,41 @@ function listApp() {
         },
 
         async focusCardById(cardId) {
+            const targetId = Number(cardId);
+            if (!targetId) return;
+
             // Try to find the card in loaded data
-            const findCardEl = () => document.querySelector('[data-sid="' + cardId + '"]');
+            const findCardEl = () => document.querySelector('[data-sid="' + targetId + '"]');
             let target = findCardEl();
             if (!target && this.hasMore) {
-                // Load all data if not found
-                await this.loadAllDataForFiltering();
+                // Search deep-links must scan beyond the initial page window.
+                await this.loadAllDataForFiltering(MOBILE_LIST_FOCUS_MAX_PAGES);
                 target = findCardEl();
             }
+
+            if (!target) {
+                try {
+                    // Fallback to direct card fetch so deep-link open works even if
+                    // the card sits far beyond currently loaded pagination chunks.
+                    const latestCard = await this._fetchCardSnapshot(targetId);
+                    if (String(latestCard.status || '').toLowerCase() !== String(LIST_TYPE || '').toLowerCase()) {
+                        this.showToast('This card moved to another status list', 'info');
+                        return;
+                    }
+
+                    this._upsertStudentCard(latestCard, 'add');
+                    target = findCardEl();
+                } catch (e) {
+                    const errText = String((e && e.message) || '').toLowerCase();
+                    if (errText.includes('access denied') || errText.includes('permission')) {
+                        this.showToast('This card is outside your current access scope', 'error');
+                    } else {
+                        this.showToast('Searched card not found in this list', 'error');
+                    }
+                    return;
+                }
+            }
+
             if (!target) {
                 this.showToast('Searched card not found in this list', 'error');
                 return;
@@ -401,7 +432,36 @@ function listApp() {
             }
             this.searchFilterTimer = setTimeout(() => {
                 this._applyAllFilters({ showCountToast: false });
+
+                const trimmedQuery = String(this.searchQuery || '').trim();
+                if (!trimmedQuery) {
+                    this.searchScopeHintShown = false;
+                    this.lastSearchAutoExpandQuery = '';
+                    return;
+                }
+
+                this._maybeExpandSearchScope(trimmedQuery);
             }, 180);
+        },
+        async _maybeExpandSearchScope(query) {
+            const normalizedQuery = String(query || '').trim().toLowerCase();
+            if (!normalizedQuery || normalizedQuery.length < 2) return;
+            if (!this.hasMore || this.searchAutoExpandInFlight) return;
+            if (this.lastSearchAutoExpandQuery === normalizedQuery) return;
+
+            this.lastSearchAutoExpandQuery = normalizedQuery;
+            this.searchAutoExpandInFlight = true;
+            try {
+                if (!this.searchScopeHintShown) {
+                    this.showToast('Searching more records in background...', 'info');
+                    this.searchScopeHintShown = true;
+                }
+
+                await this.loadAllDataForFiltering(MOBILE_LIST_SEARCH_AUTO_EXPAND_PAGES);
+                this._applyAllFilters({ showCountToast: false });
+            } finally {
+                this.searchAutoExpandInFlight = false;
+            }
         },
         setClassFilter(classValue) {
             this.filters.selectedClass = classValue || '';
@@ -534,6 +594,8 @@ function listApp() {
             this.filters = { photo: 'all', selectedClass: '', selectedSection: '', dateFrom: '', dateTo: '' };
             this.filtersActive = false;
             this.searchQuery = '';
+            this.searchScopeHintShown = false;
+            this.lastSearchAutoExpandQuery = '';
             this._applyAllFilters();
         },
         async applyFilters() {
@@ -2032,8 +2094,8 @@ function listApp() {
                 params.set('status', LIST_TYPE);
                 params.set('per_page', String(MOBILE_LIST_LOAD_MORE_PAGE_SIZE));
                 params.set('page', String(page));
-                const q = String(this.searchQuery || '').trim();
-                if (q) params.set('search', q);
+                // Keep load-more pagination source aligned with first render.
+                // List text search is applied client-side against loaded rows.
                 if (LIST_TYPE === 'download') {
                     if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
                     if (this.filters.dateTo) params.set('to', this.filters.dateTo);

@@ -3794,6 +3794,9 @@ def search_page(request):
             base_qs = base_qs.filter(table_id=table_scope_id)
 
         cards_qs = _search_cards_for_global_results(base_qs, query, limit=50, filter_type=filter_type)
+        if PermissionService.is_client_staff(user):
+            # Keep global search visibility aligned with list/detail row scope.
+            cards_qs = [card for card in cards_qs if _can_access_card_with_row_scope(user, card)]
 
         for card in cards_qs:
             fd = card.field_data or {}
@@ -4128,6 +4131,9 @@ def api_search(request):
         base_qs = base_qs.filter(table_id=scoped_table_id)
 
     cards_qs = _search_cards_for_global_results(base_qs, query, limit=30, filter_type=filter_type)
+    if PermissionService.is_client_staff(user):
+        # Keep global search visibility aligned with list/detail row scope.
+        cards_qs = [card for card in cards_qs if _can_access_card_with_row_scope(user, card)]
 
     results = []
     for card in cards_qs:
