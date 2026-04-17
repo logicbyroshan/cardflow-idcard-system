@@ -2405,10 +2405,15 @@ def card_list(request, table_id, status):
             cards_qs = cards_qs.filter(id__in=matching_photo_ids)
 
     try:
-        initial_page_size = int(getattr(settings, 'MOBILE_LIST_INITIAL_PAGE_SIZE', 24) or 24)
+        _page_size_raw = getattr(
+            settings,
+            'MOBILE_LIST_PAGE_SIZE',
+            getattr(settings, 'MOBILE_LIST_INITIAL_PAGE_SIZE', 50),
+        )
+        initial_page_size = int(_page_size_raw or 50)
     except (TypeError, ValueError):
-        initial_page_size = 24
-    initial_page_size = max(12, min(initial_page_size, 80))
+        initial_page_size = 50
+    initial_page_size = max(10, min(initial_page_size, 200))
 
     _card_batch_raw = list(cards_qs[:initial_page_size + 1])
     _has_more_raw = len(_card_batch_raw) > initial_page_size
@@ -2738,6 +2743,7 @@ def card_list(request, table_id, status):
         'group': table.group,
         'students': cards,
         'total_count': total_count,
+        'page_size': initial_page_size,
         'has_more': has_more,
         'list_type': status,
         'classes': all_classes,

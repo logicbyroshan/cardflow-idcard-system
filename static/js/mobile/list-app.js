@@ -11,7 +11,6 @@ const MOBILE_ENDPOINTS = Object.freeze({
 const MOBILE_LIST_AUTO_FILTER_MAX_PAGES = 3;
 const MOBILE_LIST_FOCUS_MAX_PAGES = 12;
 const MOBILE_LIST_SEARCH_AUTO_EXPAND_PAGES = 8;
-const MOBILE_LIST_LOAD_MORE_PAGE_SIZE = 30;
 
 function buildEndpoint(base, path) {
     const normalizedBase = String(base || '').replace(/\/+$/, '');
@@ -136,6 +135,9 @@ function listApp() {
         loadMoreOffset: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
         loadMorePage: 1,
         visibleCount: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
+        pageSize: (typeof INITIAL_PAGE_SIZE !== 'undefined' && Number.isFinite(Number(INITIAL_PAGE_SIZE)))
+            ? Math.max(10, Math.min(Number(INITIAL_PAGE_SIZE), 200))
+            : 50,
         allClassesRaw: (typeof ALL_CLASSES !== 'undefined' && Array.isArray(ALL_CLASSES)) ? ALL_CLASSES : [],
         allSectionsRaw: (typeof ALL_SECTIONS !== 'undefined' && Array.isArray(ALL_SECTIONS)) ? ALL_SECTIONS : [],
         allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
@@ -155,6 +157,7 @@ function listApp() {
 
         init() {
             this.totalRecords = Math.max(Number(this.totalRecords || 0), Number(this.studentsData.length || 0));
+            this._syncPagingFromInitialData();
             this.filtersActive = this._computeFiltersActive();
             this.rebuildClassSectionOptions();
             this._wirePhotoFallbacks(document);
@@ -505,6 +508,12 @@ function listApp() {
                 if (this.filters.dateTo !== '') return true;
             }
             return false;
+        },
+        _syncPagingFromInitialData() {
+            const loaded = Number(this.studentsData.length || 0);
+            const pageSize = Number(this.pageSize || 50);
+            this.loadMoreOffset = loaded;
+            this.loadMorePage = Math.max(1, Math.floor(loaded / pageSize));
         },
         _hasServerBackedFilterChange() {
             if (String(this.searchQuery || '').trim() !== String(this.serverFilterState.searchQuery || '').trim()) return true;
@@ -2211,9 +2220,10 @@ function listApp() {
             this.loading = true;
             try {
                 const page = this.loadMorePage + 1;
+                const pageSize = Number(this.pageSize || 50);
                 const params = new URLSearchParams();
                 params.set('status', LIST_TYPE);
-                params.set('per_page', String(MOBILE_LIST_LOAD_MORE_PAGE_SIZE));
+                params.set('per_page', String(pageSize));
                 params.set('page', String(page));
                 // Keep load-more pagination source aligned with first render.
                 const searchValue = String(this.searchQuery || '').trim();
@@ -2274,7 +2284,7 @@ function listApp() {
                 if (!newCards.length) {
                     // Keep pagination moving even if this page contained duplicate IDs.
                     this.hasMore = !!apiData.has_more;
-                    this.loadMoreOffset += rawCards.length || MOBILE_LIST_LOAD_MORE_PAGE_SIZE;
+                    this.loadMoreOffset += rawCards.length || pageSize;
                     if (!silent && !this.hasMore) this.showToast('All records loaded', 'info');
                     this.loading = false;
                     return;

@@ -1924,7 +1924,7 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 			field_data={'NAME': 'Legacy Scope Card', 'CLASS': 'LEGACY', 'SECTION': 'Z'},
 			status='pending',
 		)
-		for idx in range(40):
+		for idx in range(80):
 			IDCard.objects.create(
 				table=self.table,
 				field_data={'NAME': f'Recent Scope Card {idx}', 'CLASS': 'RECENT', 'SECTION': 'A'},
@@ -1951,6 +1951,40 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn('A', sections)
 		self.assertIn('LEGACY', class_to_sections)
 		self.assertIn('Z', class_to_sections.get('LEGACY', []))
+
+	def test_mobile_list_initial_batch_and_load_more_use_same_page_size(self):
+		self._login_mobile_super_admin()
+		table = IDCardTable.objects.create(
+			group=self.group,
+			name='Paging Alignment Table',
+			fields=[{'name': 'NAME', 'type': 'text', 'order': 0}],
+		)
+
+		for idx in range(130):
+			IDCard.objects.create(
+				table=table,
+				field_data={'NAME': f'Paging Student {idx:03d}'},
+				status='pending',
+			)
+
+		page_response = self.client.get(f'/app/table/{table.id}/pending/')
+		self.assertEqual(page_response.status_code, 200)
+		self.assertEqual(page_response.context.get('page_size'), 50)
+		students = page_response.context.get('students') or []
+		self.assertEqual(len(students), 50)
+		self.assertTrue(page_response.context.get('has_more'))
+
+		first_page_ids = [int(item.get('id')) for item in students if item.get('id') is not None]
+
+		api_page_two = self.client.get(f'/app/api/table/{table.id}/cards/?status=pending&page=2&per_page=50')
+		self.assertEqual(api_page_two.status_code, 200)
+		payload_two = api_page_two.json()
+		self.assertTrue(payload_two['success'])
+		cards_two = payload_two['data'].get('cards') or []
+		self.assertEqual(len(cards_two), 50)
+
+		second_page_ids = [int(item.get('id')) for item in cards_two if item.get('id') is not None]
+		self.assertEqual(len(set(first_page_ids).intersection(set(second_page_ids))), 0)
 
 	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
 		self._login_mobile_super_admin()
@@ -2401,11 +2435,14 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		script = (root / 'static' / 'js' / 'mobile' / 'list-app.js').read_text(encoding='utf-8')
 
 		self.assertIn('const TOTAL_RECORDS = {{ total_count|default:0 }};', list_page)
+		self.assertIn('const INITIAL_PAGE_SIZE = {{ page_size|default:50 }};', list_page)
 		self.assertIn("const INITIAL_SEARCH_QUERY = '{{ selected_search|default:\"\"|escapejs }}';", list_page)
 		self.assertIn("const INITIAL_PHOTO_FILTER = '{{ selected_photo|default:\"\"|escapejs }}';", list_page)
 		self.assertIn("'Showing ' + visibleCount + ' of ' + totalRecords + ' records'", list_table)
+		self.assertIn('this._syncPagingFromInitialData();', script)
 		self.assertIn('if (this._hasServerBackedFilterChange()) {', script)
 		self.assertIn("if (searchValue) params.set('search', searchValue);", script)
+		self.assertIn("params.set('per_page', String(pageSize));", script)
 		self.assertIn('table/${TABLE_ID}/filter-options/', script)
 		self.assertIn('this.refreshFilterOptionsFromServer();', script)
 		self.assertIn('const forceReloadWhenSame = !!(options && options.forceReloadWhenSame);', script)
