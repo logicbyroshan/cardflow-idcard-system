@@ -679,6 +679,15 @@ window.showConfirm = function showConfirm(options) {
         setTimeout(warmupLikelyRoutes, 480);
     }
 
+    function runWhenIdle(task, timeoutMs) {
+        if (typeof task !== 'function') return;
+        if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(task, { timeout: timeoutMs || 1000 });
+            return;
+        }
+        setTimeout(task, 120);
+    }
+
     var activeTapEl = null;
     function clearTapState() {
         if (!activeTapEl) return;
@@ -770,6 +779,11 @@ window.showConfirm = function showConfirm(options) {
         scheduleWarmupLikelyRoutes();
     }
 
+    // Prebuild the route skeleton during idle time to avoid first-navigation jank.
+    runWhenIdle(function() {
+        ensureRouteSkeleton();
+    }, 900);
+
     window.addEventListener('pageshow', function() {
         hideRouteSkeleton();
         finishRouteProgress();
@@ -806,10 +820,14 @@ window.showConfirm = function showConfirm(options) {
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            markMediaLazy(document);
+            runWhenIdle(function() {
+                markMediaLazy(document);
+            }, 1200);
         }, { once: true });
     } else {
-        markMediaLazy(document);
+        runWhenIdle(function() {
+            markMediaLazy(document);
+        }, 1200);
     }
 
     var bridge = window.adarshDeviceBridge || null;
@@ -868,6 +886,9 @@ window.showConfirm = function showConfirm(options) {
     }
 
     async function refreshSyncBadge() {
+        if (document.visibilityState === 'hidden') {
+            return;
+        }
         try {
             var state = await bridge.getDeferredSyncState();
             renderSyncBadge(state || {});
@@ -879,7 +900,7 @@ window.showConfirm = function showConfirm(options) {
     });
     window.addEventListener('online', refreshSyncBadge);
     window.addEventListener('offline', refreshSyncBadge);
-    setInterval(refreshSyncBadge, 60000);
+    setInterval(refreshSyncBadge, 90000);
     refreshSyncBadge();
 })();
 
@@ -1169,7 +1190,8 @@ window.showConfirm = function showConfirm(options) {
             }
 
             event.preventDefault();
-            Browser.open({ url: targetUrl }).catch(function() {});
+            href = targetUrl;
+            Browser.open({ url: href }).catch(function() {});
         }, true);
     }
 

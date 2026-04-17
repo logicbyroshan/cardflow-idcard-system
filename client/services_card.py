@@ -434,9 +434,9 @@ class ClientCardService(BaseService):
             elif status_filter == 'pool':
                 cards_query = IDCard.objects.filter(table=table).order_by('-deleted_at', '-id')
             elif status_filter in ('verified', 'approved'):
-                cards_query = IDCard.objects.filter(table=table).order_by('-status_changed_at', 'id')
+                cards_query = IDCard.objects.filter(table=table).order_by('-status_changed_at', '-id')
             else:
-                cards_query = IDCard.objects.filter(table=table).order_by('-created_at', 'id')
+                cards_query = IDCard.objects.filter(table=table).order_by('-created_at', '-id')
             
             if status_filter:
                 cards_query = cards_query.filter(status=status_filter)

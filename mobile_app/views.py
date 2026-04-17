@@ -2303,9 +2303,9 @@ def card_list(request, table_id, status):
     elif status == 'pool':
         cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-deleted_at', '-id')
     elif status in ('verified', 'approved'):
-        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-status_changed_at', 'id')
+        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-status_changed_at', '-id')
     else:
-        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-created_at', 'id')
+        cards_qs = IDCard.objects.filter(table=table, status=status).order_by('-created_at', '-id')
 
     # Keep the first render query lean: only fields used by this view are loaded.
     cards_qs = cards_qs.only(
@@ -3561,9 +3561,9 @@ def api_all_card_ids(request, table_id):
     elif status_filter == 'pool':
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-deleted_at', '-id')
     elif status_filter in ('verified', 'approved'):
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', 'id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', '-id')
     else:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-created_at', 'id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-created_at', '-id')
 
     cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs)
 
@@ -3701,9 +3701,9 @@ def api_filter_options(request, table_id):
     elif status_filter == 'pool':
         cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-deleted_at', '-id')
     elif status_filter in ('verified', 'approved'):
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', 'id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', '-id')
     else:
-        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-created_at', 'id')
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-created_at', '-id')
 
     cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs)
 
