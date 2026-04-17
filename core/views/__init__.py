@@ -11,6 +11,7 @@ from .base import (
     pro_user_activity_logs_page,
     pro_user_activity_logs_detail_page,
     pro_user_feedback_page,
+    pro_user_super_mode_page,
     dashboard,
     api_presence_track,
     api_live_client_presence,
@@ -155,6 +156,7 @@ from .settings_api import (
     api_update_profile,
     api_change_password,
     api_update_security_settings,
+    api_toggle_super_mode,
     api_upload_profile_image,
     api_remove_profile_image,
 )
@@ -248,4 +250,10 @@ from .pro_user_data_guard_api import (
     api_pro_user_data_guard_preview,
     api_pro_user_data_guard_generate_code,
     api_pro_user_data_guard_delete,
+)
+
+from .pro_user_super_mode_api import (
+    api_pro_user_super_mode_users,
+    api_pro_user_super_mode_assign,
+    api_pro_user_super_mode_self,
 )

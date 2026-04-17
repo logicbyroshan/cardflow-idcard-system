@@ -33,6 +33,7 @@ from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
 from core.services.activity_service import ActivityService
 from core.views.base import get_user_role, require_any_admin
+from core.services.super_mode_service import SuperModeService
 from core.services import IDCardService
 from accounts.rate_limit import rate_limit
 
@@ -2345,7 +2346,9 @@ def api_template_doc_layout_download(request, table_id, layout_id):
         selected.docx_file.save(regen_name, ContentFile(doc_bytes), save=False)
         selected.save(update_fields=['docx_file', 'updated_at'])
 
-    return FileResponse(selected.docx_file.open('rb'), as_attachment=True, filename=filename)
+    response = FileResponse(selected.docx_file.open('rb'), as_attachment=True, filename=filename)
+    response.block_size = SuperModeService.download_block_size_bytes(request.user)
+    return response
 
 
 @require_http_methods(["POST"])

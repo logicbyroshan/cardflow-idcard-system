@@ -25,22 +25,11 @@
     top: auto;
     margin: 0;
     padding: 0 20px;
-    min-height: 46px;
-    border: 1px solid #dbe5f1;
+    min-height: 42px;
+    border: 1px solid var(--color-gray-200, var(--color-gray-200));
     border-left: 0;
     border-right: 0;
-    background: linear-gradient(180deg, var(--color-white) 0%, #f8fbff 100%);
-  }
-
-  .guard-page .pro-feature-tab {
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-  }
-
-  .guard-page .pro-feature-tab.active {
-    border-color: var(--color-blue-200);
-    background: linear-gradient(180deg, var(--color-blue-50) 0%, var(--color-blue-100) 100%);
-    color: var(--color-blue-700);
+    background: var(--color-white);
   }
 
   .guard-page .action-bar {
@@ -303,23 +292,7 @@
 
 {% block content %}
 <div class="guard-page pro-feature-page" id="logClearGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
-  <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
-    <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-user-secret"></i> Login As User
-    </a>
-    <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
-    </a>
-    <a href="{% url 'pro_user_feedback' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-comment-dots"></i> Feedback
-    </a>
-    <a href="{% url 'pro_user_log_deletion_guard' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
-      <i class="fa-solid fa-shield"></i> Log Deletion Guard
-    </a>
-    <a href="{% url 'pro_user_data_deletion_guard' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-database"></i> Data Deletion Guard
-    </a>
-  </div>
+  {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_log_deletion_guard' %}
 
   <div class="action-bar">
     <div class="action-left guard-head-left">

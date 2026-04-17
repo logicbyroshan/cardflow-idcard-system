@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser, UserManager
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -210,6 +211,75 @@ class SystemSettings(models.Model):
         keys = list(cls.EXPORT_DEFAULTS.keys())
         db_settings = {s.key: s.value for s in cls.objects.filter(key__in=keys)}
         return {key: db_settings.get(key, default_val) for key, default_val in cls.EXPORT_DEFAULTS.items()}
+
+
+class SuperModeAssignment(models.Model):
+    """Per-user Super Mode access and RAM allocation managed by Pro User."""
+
+    ROLE_RAM_OPTIONS = {
+        'super_admin': [100, 150, 200, 250, 300, 350, 400, 450, 500],
+        'admin_staff': [50, 100, 150, 200, 250],
+        'pro_user': [100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750],
+    }
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='super_mode_assignment',
+    )
+    is_assigned = models.BooleanField(default=False, db_index=True)
+    is_enabled = models.BooleanField(default=False, db_index=True)
+    ram_allocation_mb = models.PositiveIntegerField(default=0)
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='super_mode_assigned_users',
+    )
+    assigned_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Super Mode Assignment'
+        verbose_name_plural = 'Super Mode Assignments'
+        indexes = [
+            models.Index(fields=['is_assigned', 'is_enabled'], name='supermode_state_idx'),
+        ]
+
+    def __str__(self):
+        state = 'ON' if self.effective_enabled else 'OFF'
+        role = getattr(self.user, 'role', '-')
+        return f"SuperMode<{self.user_id}:{role}:{self.ram_allocation_mb}MB:{state}>"
+
+    @property
+    def effective_enabled(self) -> bool:
+        return bool(self.is_assigned and self.is_enabled and int(self.ram_allocation_mb or 0) > 0)
+
+    @classmethod
+    def allowed_options_for_role(cls, role: str):
+        return list(cls.ROLE_RAM_OPTIONS.get(str(role or '').strip().lower(), []))
+
+    def clean(self):
+        role = str(getattr(self.user, 'role', '') or '').strip().lower()
+        options = self.allowed_options_for_role(role)
+
+        if not options:
+            raise ValidationError({'user': 'Super Mode is available only for Pro User, Super Admin, and Admin Staff.'})
+
+        if self.is_enabled and not self.is_assigned:
+            raise ValidationError({'is_enabled': 'Cannot enable Super Mode before assignment.'})
+
+        if self.is_assigned:
+            if int(self.ram_allocation_mb or 0) not in options:
+                options_text = ', '.join(str(v) for v in options)
+                raise ValidationError({'ram_allocation_mb': f'Invalid RAM allocation for {role}. Allowed values: {options_text} MB.'})
+        else:
+            # Keep inactive records normalized.
+            self.is_enabled = False
+            if int(self.ram_allocation_mb or 0) < 0:
+                self.ram_allocation_mb = 0
 
 
 class ExportTemplate(models.Model):
@@ -804,7 +874,7 @@ class BackgroundTask(models.Model):
     @classmethod
     def create_if_no_active(cls, user, task_type, **kwargs):
         """
-        Atomically create a task only if user has no active tasks
+        Atomically create a task only if user is within active task slot limits
         AND the system-wide queue is not full.
         
         Args:
@@ -821,13 +891,30 @@ class BackgroundTask(models.Model):
         
         with transaction.atomic():
             # Lock the user's active tasks for update
-            active = cls.objects.select_for_update().filter(
+            active_qs = cls.objects.select_for_update().filter(
                 user=user,
                 status__in=["pending", "processing"]
-            ).first()
-            
-            if active:
-                return None, f"You already have an active task ({active.get_task_type_display()}). Please wait for it to complete."
+            ).order_by('-created_at', '-id')
+
+            active_count = active_qs.count()
+            active = active_qs.first()
+
+            allowed_slots = 1
+            try:
+                from core.services.super_mode_service import SuperModeService
+
+                allowed_slots = max(1, int(SuperModeService.allowed_concurrent_tasks(user, task_type=task_type) or 1))
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('Failed resolving Super Mode task slot allowance for user=%s', getattr(user, 'id', None))
+
+            if active_count >= allowed_slots:
+                if allowed_slots <= 1 and active is not None:
+                    return None, f"You already have an active task ({active.get_task_type_display()}). Please wait for it to complete."
+                return None, (
+                    f"You already have {active_count} active task(s). "
+                    f"Your current limit is {allowed_slots}. Please wait for one to finish."
+                )
             
             # Check system-wide queue depth
             pending_count = cls.objects.filter(

@@ -158,6 +158,38 @@
     margin-top: auto;
 }
 
+.profile-super-mode {
+    margin-bottom: 12px;
+    border: 1px solid var(--color-blue-200, #bfdbfe);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    padding: 10px;
+}
+
+.profile-super-mode-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.profile-super-mode-title {
+    font-size: var(--ui-font-size-sm, 12px);
+    font-weight: 700;
+    color: var(--color-blue-900, #1e3a8a);
+    line-height: 1.25;
+}
+
+.profile-super-mode-sub {
+    margin-top: 2px;
+    font-size: var(--ui-font-size-xs, 11px);
+    color: var(--color-blue-700, #1d4ed8);
+}
+
+.profile-super-mode-toggle {
+    flex-shrink: 0;
+}
+
 .btn-logout {
     width: 100%;
     padding: 9px 16px;

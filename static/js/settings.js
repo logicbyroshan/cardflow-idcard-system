@@ -4,6 +4,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load profile data on page load
     loadProfile();
 
+    const profileSuperModeCard = document.getElementById('profileSuperMode');
+    const profileSuperModeToggle = document.getElementById('profileSuperModeToggle');
+    const profileSuperModeMeta = document.getElementById('profileSuperModeMeta');
+    let superModeState = null;
+    let superModeSaving = false;
+
     // ===== Password Toggle =====
     const passwordToggles = document.querySelectorAll('.password-toggle');
     
@@ -177,6 +183,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ===== Load Profile Data =====
+    function renderSuperModeStatus() {
+        if (!profileSuperModeCard || !profileSuperModeToggle || !profileSuperModeMeta) {
+            return;
+        }
+
+        const sm = superModeState || {};
+        const supported = !!sm.supported;
+
+        if (!supported) {
+            profileSuperModeCard.hidden = true;
+            return;
+        }
+
+        profileSuperModeCard.hidden = false;
+
+        const isAssigned = !!sm.is_assigned;
+        const isEnabled = !!sm.is_enabled;
+        const effectiveEnabled = !!sm.effective_enabled;
+        const ramMb = parseInt(sm.ram_allocation_mb || 0, 10) || 0;
+
+        profileSuperModeToggle.checked = isEnabled;
+        profileSuperModeToggle.disabled = !sm.can_toggle || superModeSaving;
+
+        if (effectiveEnabled) {
+            profileSuperModeMeta.textContent = `Active at ${ramMb} MB`;
+        } else if (isAssigned) {
+            profileSuperModeMeta.textContent = `Assigned (${ramMb} MB) but currently off`;
+        } else if (sm.message) {
+            profileSuperModeMeta.textContent = sm.message;
+        } else {
+            profileSuperModeMeta.textContent = 'Not assigned';
+        }
+    }
+
     async function loadProfile() {
         try {
             const data = await ApiClient.get('/api/profile/');
@@ -234,6 +274,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.syncUnifiedSelectDropdowns();
                     }
                 }
+
+                superModeState = profile.super_mode || null;
+                renderSuperModeStatus();
             }
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -323,6 +366,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.dataset.previous = value;
             } else {
                 this.value = previousValue;
+            }
+        });
+    }
+
+    if (profileSuperModeToggle) {
+        profileSuperModeToggle.addEventListener('change', async function() {
+            if (!superModeState || !superModeState.can_toggle) {
+                this.checked = !!(superModeState && superModeState.is_enabled);
+                return;
+            }
+
+            const nextValue = this.checked;
+            superModeSaving = true;
+            renderSuperModeStatus();
+
+            try {
+                const data = await ApiClient.post('/api/profile/super-mode/toggle/', {
+                    enabled: nextValue,
+                });
+
+                if (!data.success) {
+                    this.checked = !nextValue;
+                    showToast(data.message || 'Failed to update Super Mode', 'error');
+                } else {
+                    superModeState = data.super_mode || superModeState;
+                    showToast(nextValue ? 'Super Mode enabled' : 'Super Mode disabled', 'success');
+                }
+            } catch (error) {
+                console.error('Super mode toggle error:', error);
+                this.checked = !nextValue;
+                showToast('Failed to update Super Mode', 'error');
+            } finally {
+                superModeSaving = false;
+                renderSuperModeStatus();
             }
         });
     }

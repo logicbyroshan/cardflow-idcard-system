@@ -1312,12 +1312,13 @@ def product_gallery(request):
         )
         .exclude(image='')
         .select_related('category')
-        .order_by('-created_at')[:100]
+        .order_by('-created_at', '-id')[:100]
     )
     portfolio_items.sort(
         key=lambda item: (
             _portfolio_relevance_score(item, gallery_user_type),
             item.created_at,
+            item.id,
         ),
         reverse=True,
     )

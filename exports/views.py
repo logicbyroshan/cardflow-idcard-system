@@ -23,6 +23,7 @@ from django.shortcuts import get_object_or_404
 
 from idcards.models import IDCardTable
 from core.services.permission_service import PermissionService
+from core.services.super_mode_service import SuperModeService
 from accounts.rate_limit import rate_limit
 
 from django.core.cache import cache as django_cache
@@ -593,7 +594,7 @@ def _log_export_failure(request, export_type, message, table_id=None, table_name
         logger.exception('Failed to write export failure activity log')
 
 
-def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurrent=3, ttl=300):
+def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurrent=3, ttl=300, request_user=None):
     """Allow up to max_concurrent concurrent exports per user/table/type.
 
     Each export type (pdf, xlsx, docx, images, download_all) gets its own
@@ -605,7 +606,15 @@ def _acquire_export_lock(user_id, table_id, export_type='generic', max_concurren
 
     Returns (acquired: bool, lock_key: str).
     """
-    for slot in range(max_concurrent):
+    effective_max_concurrent = max(1, int(max_concurrent or 1))
+    if request_user is not None:
+        try:
+            effective_max_concurrent += int(SuperModeService.calculate_export_lock_boost(request_user) or 0)
+        except Exception:
+            logger.exception('Failed resolving Super Mode lock boost for export_type=%s', export_type)
+    effective_max_concurrent = max(1, min(effective_max_concurrent, 10))
+
+    for slot in range(effective_max_concurrent):
         lock_key = f'export_lock:{user_id}:{table_id}:{export_type}:{slot}'
         if django_cache.add(lock_key, 1, ttl):
             return True, lock_key
@@ -738,7 +747,7 @@ def api_export_xlsx(request, table_id: int) -> HttpResponse:
         }, status=400)
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'xlsx')
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'xlsx', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many Excel exports running. Please wait.'}, status=429)
     try:
@@ -828,18 +837,20 @@ def api_export_docx(request, table_id: int) -> HttpResponse:
         doc_format = 'docx'
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'docx')
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'docx', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many Word exports running. Please wait.'}, status=429)
     try:
         service = ExportService(request.user)
+        allow_large_exports = bool(is_super_admin or SuperModeService.is_effective_enabled(request.user))
+
         result = service.export_word(
             table_id,
             card_ids,
             doc_format=doc_format,
             status=_get_status_from_request(request),
             template_id=template_id,
-            allow_large=is_super_admin,
+            allow_large=allow_large_exports,
         )
         
         if not result.success:
@@ -917,7 +928,7 @@ def api_export_pdf(request, table_id: int) -> HttpResponse:
             break_mode = requested_break_mode
     
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf')
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'pdf', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many PDF exports running. Please wait.'}, status=429)
     try:
@@ -1126,7 +1137,7 @@ def api_export_images(request, table_id: int) -> JsonResponse:
     export_status = _get_status_from_request(request)
 
     # Concurrent export guard
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'images')
+    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'images', request_user=request.user)
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'Too many image exports running. Please wait.'}, status=429)
     try:
@@ -1136,12 +1147,14 @@ def api_export_images(request, table_id: int) -> JsonResponse:
         if mode_perm_error:
             return mode_perm_error
         is_pdf_zip_mode = bool(rename_options and rename_options.get('output_format') == 'pdf_zip')
+        allow_large_exports = bool(is_super_admin or SuperModeService.is_effective_enabled(request.user))
+
         result = service.export_images(
             table_id,
             card_ids,
             status=export_status,
             rename_options=rename_options,
-            allow_large_base64=is_super_admin,
+            allow_large_base64=allow_large_exports,
         )
 
         # Fallback: when inline base64 payload is too large for non-super-admin,
@@ -1316,7 +1329,13 @@ def api_download_all_cards(request, table_id: int) -> JsonResponse:
         return JsonResponse({'success': False, 'message': 'Table not found'}, status=404)
     
     # Concurrent export guard — download-all is heavy, keep max_concurrent=1
-    acquired, lock_key = _acquire_export_lock(request.user.id, table_id, 'download_all', max_concurrent=1)
+    acquired, lock_key = _acquire_export_lock(
+        request.user.id,
+        table_id,
+        'download_all',
+        max_concurrent=1,
+        request_user=request.user,
+    )
     if not acquired:
         return JsonResponse({'success': False, 'level': 'warning', 'message': 'A bulk download is already in progress. Please wait.'}, status=429)
     try:

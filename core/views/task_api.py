@@ -37,6 +37,7 @@ from core.services.permission_service import (
     api_require_any_authenticated,
     api_require_permission,
 )
+from core.services.super_mode_service import SuperModeService
 from core.services.background_worker import (
     background_worker,
     cancel_task as background_cancel_task,
@@ -355,6 +356,7 @@ def api_task_download(request, task_id):
             as_attachment=True,
             filename=filename
         )
+        response.block_size = SuperModeService.download_block_size_bytes(request.user)
         
         return response
         
@@ -654,6 +656,8 @@ def api_create_bulk_upload_task(request, table_id):
     try:
         # Validate table exists
         table = get_object_or_404(IDCardTable, id=table_id)
+
+        upload_chunk_size = SuperModeService.upload_chunk_size_bytes(request.user)
         
         # Check for required file
         if 'file' not in request.FILES:
@@ -675,7 +679,7 @@ def api_create_bulk_upload_task(request, table_id):
             return JsonResponse({'success': False, 'message': err_msg}, status=400)
         
         # Save main file to disk
-        main_file_path = save_uploaded_file_to_disk(uploaded_file)
+        main_file_path = save_uploaded_file_to_disk(uploaded_file, chunk_size_bytes=upload_chunk_size)
         field_mapping = _parse_field_mapping_payload(request.POST.get('field_mapping', ''))
 
         # Process ZIP files
@@ -694,7 +698,7 @@ def api_create_bulk_upload_task(request, table_id):
                 ok, err_msg = _validate_uploaded_file(zip_file, ('.zip',), MAX_ZIP_SIZE, f'ZIP ({field_name})')
                 if not ok:
                     return JsonResponse({'success': False, 'message': err_msg}, status=400)
-                zip_path = save_uploaded_file_to_disk(zip_file)
+                zip_path = save_uploaded_file_to_disk(zip_file, chunk_size_bytes=upload_chunk_size)
                 # ZIP bomb/safety check
                 zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
                 if not zok:
@@ -711,7 +715,7 @@ def api_create_bulk_upload_task(request, table_id):
             from core.services.base import BaseService
             image_field_names = BaseService.get_image_field_names(table.fields)
             first_field = image_field_names[0] if image_field_names else 'PHOTO'
-            zip_path = save_uploaded_file_to_disk(legacy_zip)
+            zip_path = save_uploaded_file_to_disk(legacy_zip, chunk_size_bytes=upload_chunk_size)
             # ZIP bomb/safety check
             zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
             if not zok:
@@ -733,7 +737,7 @@ def api_create_bulk_upload_task(request, table_id):
                 ok, err_msg = _validate_uploaded_file(uz_file, ('.zip',), MAX_ZIP_SIZE, f'Unified ZIP #{i+1}')
                 if not ok:
                     return JsonResponse({'success': False, 'message': err_msg}, status=400)
-                zip_path = save_uploaded_file_to_disk(uz_file)
+                zip_path = save_uploaded_file_to_disk(uz_file, chunk_size_bytes=upload_chunk_size)
                 # ZIP bomb/safety check
                 zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
                 if not zok:
@@ -742,6 +746,7 @@ def api_create_bulk_upload_task(request, table_id):
                 unified_zip_paths.append(zip_path)
         
         # Create BackgroundTask atomically (prevents race conditions)
+        super_mode_metadata = SuperModeService.build_task_metadata(request.user)
         task, error_msg = BackgroundTask.create_if_no_active(
             user=request.user,
             task_type='bulk_upload',
@@ -752,6 +757,7 @@ def api_create_bulk_upload_task(request, table_id):
                 'zip_paths': zip_paths,
                 'unified_zip_paths': unified_zip_paths,
                 'original_filename': uploaded_file.name,
+                **super_mode_metadata,
             }
         )
         
@@ -841,6 +847,8 @@ def api_create_reupload_task(request, table_id):
         # Validate table exists
         get_object_or_404(IDCardTable, id=table_id)
 
+        upload_chunk_size = SuperModeService.upload_chunk_size_bytes(request.user)
+
         # Check for required ZIP file
         if 'photos_zip' not in request.FILES:
             return JsonResponse({
@@ -855,7 +863,7 @@ def api_create_reupload_task(request, table_id):
             return JsonResponse({'success': False, 'message': err_msg}, status=400)
 
         # Save ZIP to disk
-        zip_path = save_uploaded_file_to_disk(reup_zip)
+        zip_path = save_uploaded_file_to_disk(reup_zip, chunk_size_bytes=upload_chunk_size)
 
         # ZIP bomb/safety check
         zok, zerr = validate_zip_safety(os.path.join(settings.MEDIA_ROOT, zip_path))
@@ -870,6 +878,7 @@ def api_create_reupload_task(request, table_id):
         status_filter = scope_payload['status_filter']
         
         # Create BackgroundTask atomically (prevents race conditions)
+        super_mode_metadata = SuperModeService.build_task_metadata(request.user)
         task, error_msg = BackgroundTask.create_if_no_active(
             user=request.user,
             task_type='reupload_images',
@@ -879,6 +888,7 @@ def api_create_reupload_task(request, table_id):
                 'target_field': target_field,
                 'card_ids': card_ids,
                 'status_filter': status_filter,
+                **super_mode_metadata,
             }
         )
         
@@ -1009,6 +1019,7 @@ def api_create_export_task(request, table_id):
             'card_ids': card_ids,
             'status': status_filter,
         }
+        metadata.update(SuperModeService.build_task_metadata(request.user))
         if task_type == 'export_docx':
             metadata['doc_format'] = doc_format
             metadata['template_id'] = template_id

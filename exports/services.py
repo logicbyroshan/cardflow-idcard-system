@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404
 
 from idcards.models import IDCardTable, IDCard
 from core.services.permission_service import PermissionService
+from core.services.super_mode_service import SuperModeService
 
 from .excel import ExcelExporter, ExcelExportResult
 from .word import WordExporter, WordExportResult
@@ -282,7 +283,7 @@ class ExportService:
             )
         
         if allow_large is None:
-            allow_large = PermissionService.is_super_admin(self.user)
+            allow_large = PermissionService.is_super_admin(self.user) or SuperModeService.is_effective_enabled(self.user)
 
         return self._word_exporter.export_cards(
             context.table, context.cards, doc_format=doc_format, status=status,
@@ -365,7 +366,7 @@ class ExportService:
             )
         
         if allow_large_base64 is None:
-            allow_large_base64 = PermissionService.is_super_admin(self.user)
+            allow_large_base64 = PermissionService.is_super_admin(self.user) or SuperModeService.is_effective_enabled(self.user)
 
         return self._zip_exporter.export_images(
             context.table,

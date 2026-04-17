@@ -122,7 +122,18 @@ def _protected_media_serve(request, path, document_root=None):
         return response
 
     # Fallback: Django serves the file directly (dev + prod without X-Accel)
-    return serve(request, rel_path, document_root=document_root)
+    response = serve(request, rel_path, document_root=document_root)
+
+    # Super Mode can use larger stream blocks for protected downloads.
+    if hasattr(response, 'block_size') and getattr(request, 'user', None) and request.user.is_authenticated:
+        try:
+            from core.services.super_mode_service import SuperModeService
+
+            response.block_size = SuperModeService.download_block_size_bytes(request.user)
+        except Exception:
+            pass
+
+    return response
 
 
 

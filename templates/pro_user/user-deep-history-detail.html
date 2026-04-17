@@ -216,20 +216,7 @@
      data-user-role="{{ audit_target.role_display }}"
      data-user-contact="{{ audit_target.email_or_username }}">
 
-  <div class="pro-feature-tabs" role="tablist" aria-label="Pro Feature Tabs">
-    <a href="{% url 'login_as_user' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-user-secret"></i> Login As User
-    </a>
-    <a href="{% url 'pro_user_activity_logs' %}" class="pro-feature-tab active" role="tab" aria-selected="true">
-      <i class="fa-solid fa-clock-rotate-left"></i> User Deep History
-    </a>
-    <a href="{% url 'pro_user_log_deletion_guard' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-shield"></i> Log Deletion Guard
-    </a>
-    <a href="{% url 'pro_user_data_deletion_guard' %}" class="pro-feature-tab" role="tab" aria-selected="false">
-      <i class="fa-solid fa-database"></i> Data Deletion Guard
-    </a>
-  </div>
+  {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_activity_logs' %}
 
   <div class="action-bar">
     <div class="action-left" style="flex:1;gap:8px;flex-wrap:wrap;">

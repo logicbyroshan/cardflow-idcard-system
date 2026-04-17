@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import time
+from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
@@ -24,6 +25,7 @@ from ..services import IDCardService
 from ..services.activity_service import ActivityService
 from ..services.cache_version_service import CacheVersionService
 from ..services.live_presence_service import LiveClientPresenceService
+from ..services.super_mode_service import SuperModeService
 from ..utils.htmx import is_htmx
 from ..services.permission_service import (
     PermissionService,
@@ -345,6 +347,7 @@ def pro_user_feedback_page(request):
 
     feedback_items = []
     feedback_total = 0
+    feedback_write_url = '#'
     try:
         feedback_qs = Testimonial.objects.all().order_by('-created_at', '-id')
         feedback_items = list(feedback_qs[:200])
@@ -352,11 +355,24 @@ def pro_user_feedback_page(request):
     except DatabaseError as exc:
         logger.warning('Failed loading Pro User feedback inbox: %s', exc)
 
+    website_base = str(getattr(settings, 'WEBSITE_URL', '') or '').rstrip('/')
+    if website_base:
+        feedback_write_url = f"{website_base}/testimonials/?review=open"
+    else:
+        try:
+            feedback_write_url = f"{reverse('website:testimonials')}?review=open"
+        except Exception:
+            try:
+                feedback_write_url = f"{reverse('testimonials')}?review=open"
+            except Exception:
+                feedback_write_url = '#'
+
     context = {
         'active_page': 'pro_user_feedback',
         'user_role': get_user_role(request.user),
         'feedback_items': feedback_items,
         'feedback_total': feedback_total,
+        'feedback_write_url': feedback_write_url,
     }
     return render(request, 'pro_user/feedback.html', context)
 
@@ -372,6 +388,22 @@ def pro_user_data_deletion_guard_page(request):
         'user_role': get_user_role(request.user),
     }
     return render(request, 'pro_user/data-deletion-guard.html', context)
+
+
+@login_required
+def pro_user_super_mode_page(request):
+    """Dedicated page for Pro User Super Mode assignment and self controls."""
+    if request.user.role != 'pro_user':
+        return redirect('dashboard')
+
+    self_status = SuperModeService.build_status(request.user)
+    context = {
+        'active_page': 'pro_user_super_mode',
+        'user_role': get_user_role(request.user),
+        'super_mode_self': self_status,
+        'super_mode_self_options': SuperModeService.allowed_options_for_role('pro_user'),
+    }
+    return render(request, 'pro_user/super-mode-manager.html', context)
 
 
 @login_required

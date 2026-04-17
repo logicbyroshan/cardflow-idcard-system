@@ -150,6 +150,21 @@ def rate_limit(max_requests=5, window_seconds=60, key_prefix='rl'):
                 hits = _fallback_limiter_hit(cache_key, window_seconds)
 
             if hits > max_requests:
+                effective_max_requests = int(max_requests)
+                try:
+                    user = getattr(request, 'user', None)
+                    if user and getattr(user, 'is_authenticated', False):
+                        from core.services.super_mode_service import SuperModeService
+
+                        bonus = int(SuperModeService.rate_limit_bonus(user, key_prefix=key_prefix) or 0)
+                        if bonus > 0:
+                            effective_max_requests += bonus
+                except Exception:
+                    logger.exception('Failed resolving Super Mode rate-limit bonus for key_prefix=%s', key_prefix)
+
+                if hits <= effective_max_requests:
+                    return view_func(request, *args, **kwargs)
+
                 logger.warning('Rate limit hit: %s from %s', view_func.__name__, ip)
                 return JsonResponse({
                     'success': False,

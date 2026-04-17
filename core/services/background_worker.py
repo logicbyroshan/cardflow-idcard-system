@@ -65,7 +65,13 @@ class BackgroundWorker:
             1,
             min(self.max_workers, int(getattr(settings, 'BACKGROUND_HEAVY_TASK_CONCURRENCY', 1) or 1))
         )
+        self.super_max_workers = max(1, int(getattr(settings, 'BACKGROUND_SUPER_WORKER_MAX_WORKERS', 2) or 2))
+        self.super_heavy_task_concurrency = max(
+            1,
+            min(self.super_max_workers, int(getattr(settings, 'BACKGROUND_SUPER_HEAVY_TASK_CONCURRENCY', 2) or 2))
+        )
         self._heavy_task_semaphore = threading.BoundedSemaphore(self.heavy_task_concurrency)
+        self._super_heavy_task_semaphore = threading.BoundedSemaphore(self.super_heavy_task_concurrency)
         self._heavy_task_types = {
             'bulk_upload',
             'reupload_images',
@@ -75,12 +81,41 @@ class BackgroundWorker:
         }
 
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="bg_worker")
+        self.super_executor = ThreadPoolExecutor(max_workers=self.super_max_workers, thread_name_prefix="bg_super_worker")
         self._initialized = True
         logger.info(
-            "BackgroundWorker initialized with max_workers=%d heavy_task_concurrency=%d",
+            "BackgroundWorker initialized with max_workers=%d heavy_task_concurrency=%d super_max_workers=%d super_heavy_task_concurrency=%d",
             self.max_workers,
             self.heavy_task_concurrency,
+            self.super_max_workers,
+            self.super_heavy_task_concurrency,
         )
+
+    def _resolve_task_lane(self, task_id: int) -> str:
+        """Return task lane (normal/super) based on task metadata or live assignment state."""
+        from core.models import BackgroundTask
+
+        try:
+            task = BackgroundTask.objects.select_related('user').get(id=task_id)
+        except BackgroundTask.DoesNotExist:
+            return 'normal'
+        except Exception:
+            logger.exception('Failed resolving task lane for task_id=%s', task_id)
+            return 'normal'
+
+        metadata = task.metadata if isinstance(task.metadata, dict) else {}
+        if metadata.get('super_mode_active'):
+            return 'super'
+
+        try:
+            from core.services.super_mode_service import SuperModeService
+
+            if SuperModeService.is_effective_enabled(task.user):
+                return 'super'
+        except Exception:
+            logger.exception('Failed checking live super mode state for task_id=%s', task_id)
+
+        return 'normal'
     
     def submit_task(self, task_id: int):
         """
@@ -92,8 +127,10 @@ class BackgroundWorker:
         Returns:
             Future object (for testing/debugging)
         """
-        future = self.executor.submit(self._process_task, task_id)
-        logger.info("Task %d submitted to background worker", task_id)
+        lane = self._resolve_task_lane(task_id)
+        executor = self.super_executor if lane == 'super' else self.executor
+        future = executor.submit(self._process_task, task_id)
+        logger.info("Task %d submitted to background worker lane=%s", task_id, lane)
         return future
     
     def _process_task(self, task_id: int):
@@ -134,16 +171,23 @@ class BackgroundWorker:
         
         task_start = time.monotonic()
         heavy_slot_acquired = False
+        acquired_heavy_slot = None
         try:
+            task_metadata = task.metadata if isinstance(task.metadata, dict) else {}
+            is_super_lane = bool(task_metadata.get('super_mode_active'))
+
             if task.task_type in self._heavy_task_types:
-                self._heavy_task_semaphore.acquire()
+                acquired_heavy_slot = self._super_heavy_task_semaphore if is_super_lane else self._heavy_task_semaphore
+                acquired_heavy_slot.acquire()
                 heavy_slot_acquired = True
 
             task.mark_started()
             logger.info(
-                "TASK_START task_id=%d type=%s user=%s",
+                "TASK_START task_id=%d type=%s user=%s lane=%s super_ram_mb=%s",
                 task_id, task.task_type,
                 getattr(task, 'user', None) or '-',
+                'super' if is_super_lane else 'normal',
+                task_metadata.get('super_mode_ram_mb', 0),
             )
             
             # Route to appropriate handler
@@ -199,8 +243,8 @@ class BackgroundWorker:
             except Exception as mark_err:
                 logger.warning('Failed to mark task %d as failed: %s', task_id, mark_err)
         finally:
-            if heavy_slot_acquired:
-                self._heavy_task_semaphore.release()
+            if heavy_slot_acquired and acquired_heavy_slot is not None:
+                acquired_heavy_slot.release()
 
             # ── Close DB connections after task completes ──
             # Prevents the background thread from holding an idle
@@ -271,6 +315,7 @@ class BackgroundWorker:
         """
         logger.info("Shutting down BackgroundWorker (wait=%s)", wait)
         self.executor.shutdown(wait=wait)
+        self.super_executor.shutdown(wait=wait)
 
 
 # Singleton instance
@@ -301,7 +346,7 @@ def ensure_exports_directory():
     return exports_dir
 
 
-def save_uploaded_file_to_disk(uploaded_file, filename=None):
+def save_uploaded_file_to_disk(uploaded_file, filename=None, chunk_size_bytes=None):
     """
     Save an uploaded file to disk in chunks.
     
@@ -311,6 +356,7 @@ def save_uploaded_file_to_disk(uploaded_file, filename=None):
     Args:
         uploaded_file: Django UploadedFile object
         filename: Optional filename (defaults to uploaded_file.name)
+        chunk_size_bytes: Optional write chunk size in bytes (defaults to 8 MB)
         
     Returns:
         Relative path to saved file (relative to MEDIA_ROOT)
@@ -330,9 +376,15 @@ def save_uploaded_file_to_disk(uploaded_file, filename=None):
     unique_name = f"{uuid.uuid4().hex[:8]}_{safe_name}"
     full_path = os.path.join(temp_dir, unique_name)
     
-    # Write in 8 MB chunks — 8× fewer syscalls vs 1 MB, same memory footprint
+    # Write in configurable chunks (default 8 MB) to keep memory bounded.
+    try:
+        chunk_size = int(chunk_size_bytes or (8 * 1024 * 1024))
+    except (TypeError, ValueError):
+        chunk_size = 8 * 1024 * 1024
+    chunk_size = max(1 * 1024 * 1024, min(chunk_size, 64 * 1024 * 1024))
+
     with open(full_path, 'wb+') as destination:
-        for chunk in uploaded_file.chunks(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
+        for chunk in uploaded_file.chunks(chunk_size=chunk_size):
             destination.write(chunk)
     
     # Return relative path for storage in BackgroundTask

@@ -1656,7 +1656,7 @@ def _get_readable_field_name(field_name: str) -> str:
     return name_upper.replace(' ', '_')
 
 
-def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True):
+def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True, user=None):
     """
     Create a streaming FileResponse for a ZIP file with optional cleanup.
     
@@ -1667,6 +1667,7 @@ def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True)
         zip_path: Full path to the ZIP file
         filename: Filename for the download
         delete_after: If True, delete file after response completes
+        user: Optional user for Super Mode stream block-size tuning
         
     Returns:
         FileResponse
@@ -1678,6 +1679,14 @@ def stream_zip_response(zip_path: str, filename: str, delete_after: bool = True)
         as_attachment=True,
         filename=filename
     )
+
+    if user is not None:
+        try:
+            from core.services.super_mode_service import SuperModeService
+
+            response.block_size = SuperModeService.download_block_size_bytes(user)
+        except Exception:
+            logger.exception('Failed applying Super Mode block size for ZIP stream response')
     
     if delete_after:
         # Attach cleanup callback so temp file is deleted after streaming

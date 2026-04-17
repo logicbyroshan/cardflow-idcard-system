@@ -87,6 +87,7 @@ urlpatterns = [
     path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
     path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),
     path('pro-user/feedback/', views.pro_user_feedback_page, name='pro_user_feedback'),
+    path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
     # Engine installer download (served via Django so headers are correct)
@@ -278,12 +279,16 @@ urlpatterns = [
     path('api/pro-user/data-guard/preview/', views.api_pro_user_data_guard_preview, name='api_pro_user_data_guard_preview'),
     path('api/pro-user/data-guard/generate-code/', views.api_pro_user_data_guard_generate_code, name='api_pro_user_data_guard_generate_code'),
     path('api/pro-user/data-guard/delete/', views.api_pro_user_data_guard_delete, name='api_pro_user_data_guard_delete'),
+    path('api/pro-user/super-mode/users/', views.api_pro_user_super_mode_users, name='api_pro_user_super_mode_users'),
+    path('api/pro-user/super-mode/assign/', views.api_pro_user_super_mode_assign, name='api_pro_user_super_mode_assign'),
+    path('api/pro-user/super-mode/self/', views.api_pro_user_super_mode_self, name='api_pro_user_super_mode_self'),
 
     # Settings/Profile APIs (for all user types)
     path('api/profile/', views.api_get_profile, name='api_get_profile'),
     path('api/profile/update/', views.api_update_profile, name='api_update_profile'),
     path('api/profile/change-password/', views.api_change_password, name='api_change_password'),
     path('api/profile/security-settings/update/', views.api_update_security_settings, name='api_update_security_settings'),
+    path('api/profile/super-mode/toggle/', views.api_toggle_super_mode, name='api_toggle_super_mode'),
     path('api/profile/upload-image/', views.api_upload_profile_image, name='api_upload_profile_image'),
     path('api/profile/remove-image/', views.api_remove_profile_image, name='api_remove_profile_image'),
 

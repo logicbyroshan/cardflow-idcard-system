@@ -18,6 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 
 from core.services.user_profile_service import UserProfileService
+from core.services.super_mode_service import SuperModeService
 from accounts.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ def api_get_profile(request):
     """Get current user's profile data."""
     user = request.user
     security_settings = UserProfileService.get_security_settings(user)
+    super_mode = SuperModeService.build_status(user)
     return JsonResponse({
         'success': True,
         'profile': {
@@ -43,6 +45,7 @@ def api_get_profile(request):
             'profile_image': None,  # profile_image removed in Phase 1 refactor
             'member_since': user.date_joined.strftime('%b %Y') if user.date_joined else '',
             'security_settings': security_settings,
+            'super_mode': super_mode,
         }
     })
 
@@ -118,6 +121,35 @@ def api_update_security_settings(request):
 
 @login_required
 @require_http_methods(["POST"])
+@rate_limit(max_requests=30, window_seconds=60, key_prefix='super_mode_toggle')
+def api_toggle_super_mode(request):
+    """Toggle runtime Super Mode state for the currently authenticated user."""
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    enabled = SuperModeService.parse_bool(data.get('enabled'), default=False)
+
+    try:
+        SuperModeService.toggle_runtime(request.user, enabled=enabled)
+        status_payload = SuperModeService.build_status(request.user)
+        return JsonResponse({
+            'success': True,
+            'message': 'Super Mode updated successfully.',
+            'super_mode': status_payload,
+        })
+    except PermissionError as exc:
+        return JsonResponse({'success': False, 'message': str(exc)}, status=403)
+    except ValueError as exc:
+        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
+    except Exception as e:
+        logger.exception("Settings API error (toggle_super_mode): %s", e)
+        return JsonResponse({'success': False, 'message': 'Failed to update Super Mode'}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
 @rate_limit(max_requests=10, window_seconds=60, key_prefix='profile_image')
 def api_upload_profile_image(request):
     """Upload profile image."""
@@ -152,6 +184,7 @@ __all__ = [
     'api_update_profile',
     'api_change_password',
     'api_update_security_settings',
+    'api_toggle_super_mode',
     'api_upload_profile_image',
     'api_remove_profile_image',
 ]

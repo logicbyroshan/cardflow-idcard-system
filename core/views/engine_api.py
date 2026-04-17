@@ -31,6 +31,7 @@ from django.http import FileResponse, JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
 from core.services.permission_service import PermissionService, require_any_admin
+from core.services.super_mode_service import SuperModeService
 
 logger = logging.getLogger(__name__)
 
@@ -376,7 +377,9 @@ def api_engine_serve_image(request):
 
     content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
     # Open explicitly so FileResponse works correctly on Windows with BackslashPaths
-    return FileResponse(open(path, 'rb'), content_type=content_type)
+    response = FileResponse(open(path, 'rb'), content_type=content_type)
+    response.block_size = SuperModeService.download_block_size_bytes(request.user)
+    return response
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -941,6 +944,7 @@ def engine_download(request):
         as_attachment=True,
         filename=download_filename,
     )
+    response.block_size = SuperModeService.download_block_size_bytes(request.user)
     # Suppress browsers/proxies from sniffing the content type
     response['X-Content-Type-Options'] = 'nosniff'
     # Tell the browser the exact byte size so it shows a proper progress bar

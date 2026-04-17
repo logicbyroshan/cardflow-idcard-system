@@ -33,6 +33,7 @@ from django.http import FileResponse, JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
 from core.services.permission_service import PermissionService, require_any_admin
+from core.services.super_mode_service import SuperModeService
 
 logger = logging.getLogger(__name__)
 
@@ -273,7 +274,9 @@ def api_crop_batch_serve_image(request, batch_id):
         return JsonResponse({"error": "Not an image file"}, status=400)
 
     content_type = mimetypes.guess_type(str(file_path))[0] or "image/jpeg"
-    return FileResponse(open(file_path, "rb"), content_type=content_type)
+    response = FileResponse(open(file_path, "rb"), content_type=content_type)
+    response.block_size = SuperModeService.download_block_size_bytes(request.user)
+    return response
 
 
 # ═══════════════════════════════════════════════════════════════════════════
