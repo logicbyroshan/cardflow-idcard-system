@@ -554,10 +554,17 @@ function listApp() {
             const query = params.toString();
             return parsed.pathname + (query ? ('?' + query) : '');
         },
-        _reloadWithServerFilters() {
+        _reloadWithServerFilters(options = {}) {
+            const forceReloadWhenSame = !!(options && options.forceReloadWhenSame);
             const nextUrl = this._buildServerFilterUrl();
             const currentUrl = window.location.pathname + window.location.search;
-            if (nextUrl === currentUrl) return false;
+            if (nextUrl === currentUrl) {
+                if (forceReloadWhenSame) {
+                    window.location.reload();
+                    return true;
+                }
+                return false;
+            }
             window.location.href = nextUrl;
             return true;
         },
@@ -737,8 +744,8 @@ function listApp() {
         async applyFilters() {
             this.filtersActive = this._computeFiltersActive();
 
-            // Always attempt server-backed apply so filtering/counting is full-dataset, not loaded rows only.
-            const navigated = this._reloadWithServerFilters();
+            // Always attempt server-backed apply; if URL is unchanged, force refresh so post-update filtering still applies.
+            const navigated = this._reloadWithServerFilters({ forceReloadWhenSame: this.filtersActive });
             if (navigated) {
                 return;
             }
@@ -2652,6 +2659,8 @@ function listApp() {
                                     this._upsertStudentCard(fallbackCard, 'add');
                                 }
                             }
+
+                            await this.refreshFilterOptionsFromServer();
 
                             if (!this.editMode) {
                                 this.tabCounts.pending = Number(this.tabCounts.pending || 0) + 1;

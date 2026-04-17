@@ -2408,6 +2408,9 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn("if (searchValue) params.set('search', searchValue);", script)
 		self.assertIn('table/${TABLE_ID}/filter-options/', script)
 		self.assertIn('this.refreshFilterOptionsFromServer();', script)
+		self.assertIn('const forceReloadWhenSame = !!(options && options.forceReloadWhenSame);', script)
+		self.assertIn('window.location.reload();', script)
+		self.assertIn('forceReloadWhenSame: this.filtersActive', script)
 		self.assertIn("if (this.filters.photo === 'with' || this.filters.photo === 'without')", script)
 		self.assertIn('this.totalRecords = Math.max(0, apiTotal);', script)
 
