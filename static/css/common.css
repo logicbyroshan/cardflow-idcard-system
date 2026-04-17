@@ -1407,6 +1407,33 @@ body[style*="overflow:hidden"] {
   background: rgba(var(--primary-rgb), 0.06);
 }
 
+.pro-feature-page.pro-feature-fullwidth-tabs .pro-feature-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow-x: visible;
+}
+
+.pro-feature-page.pro-feature-fullwidth-tabs .pro-feature-tab {
+  justify-content: center;
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+@media (max-width: 1100px) {
+  .pro-feature-page.pro-feature-fullwidth-tabs .pro-feature-tabs {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .pro-feature-page.pro-feature-fullwidth-tabs .pro-feature-tab {
+    justify-content: flex-start;
+    min-width: max-content;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
 .pro-feature-page .action-bar {
   top: 47px !important;
   z-index: 24;

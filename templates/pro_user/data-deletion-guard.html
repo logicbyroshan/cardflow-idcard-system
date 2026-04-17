@@ -82,7 +82,7 @@
     border: 1px solid #fecaca;
     background: #fef2f2;
     color: #991b1b;
-    border-radius: 999px;
+    border-radius: 6px;
     font-size: var(--ui-font-size-xs, 11px);
     font-weight: 800;
     padding: 6px 11px;
@@ -96,7 +96,7 @@
   }
 
   .data-guard-inner {
-    width: min(1220px, 100%);
+    width: 100%;
     margin: 0 auto;
     display: grid;
     gap: 12px;
@@ -105,7 +105,7 @@
   .guard-card {
     background: var(--color-white);
     border: 1px solid #dbe5f1;
-    border-radius: 14px;
+    border-radius: 6px;
     padding: 16px;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
   }
@@ -163,7 +163,7 @@
     width: 100%;
     height: 38px;
     border: 1px solid var(--color-slate-300);
-    border-radius: 9px;
+    border-radius: 6px;
     padding: 0 10px;
     font-size: var(--ui-font-size-sm, 12px);
     color: var(--color-slate-900);
@@ -199,7 +199,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    border-radius: 999px;
+    border-radius: 6px;
     border: 1px solid var(--color-blue-200);
     background: var(--color-blue-50);
     color: var(--color-blue-700);
@@ -211,7 +211,7 @@
   .guard-preview-list {
     margin-top: 10px;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border-radius: 6px;
     max-height: 220px;
     overflow: auto;
   }
@@ -251,7 +251,7 @@
   .guard-modal {
     width: min(560px, 100%);
     background: var(--color-white);
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid #fecaca;
     box-shadow: 0 24px 56px rgba(2, 6, 23, 0.34);
     overflow: hidden;
@@ -297,7 +297,7 @@
     color: #b91c1c;
     padding: 10px;
     border: 1px dashed #fca5a5;
-    border-radius: 10px;
+    border-radius: 6px;
     background: #fff7f7;
     text-align: center;
   }
@@ -352,7 +352,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="data-guard-page pro-feature-page" id="proDataGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
+<div class="data-guard-page pro-feature-page pro-feature-fullwidth-tabs" id="proDataGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_data_deletion_guard' %}
 
   <div class="guard-action-bar">

@@ -95,7 +95,7 @@
     font-weight: 600;
     background: #f8fafc;
     border: 1px solid var(--color-slate-200);
-    border-radius: 999px;
+    border-radius: 6px;
     padding: 6px 10px;
     white-space: nowrap;
   }
@@ -108,7 +108,7 @@
   }
 
   .guard-content-inner {
-    width: min(1160px, 100%);
+    width: 100%;
     margin: 0 auto;
     display: grid;
     gap: 12px;
@@ -117,7 +117,7 @@
   .guard-card {
     background: var(--color-white);
     border: 1px solid #dbe5f1;
-    border-radius: 14px;
+    border-radius: 6px;
     padding: 16px;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
   }
@@ -159,7 +159,7 @@
     display: inline-flex;
     align-items: center;
     padding: 5px 10px;
-    border-radius: 999px;
+    border-radius: 6px;
     font-size: var(--ui-font-size-xs, 11px);
     font-weight: 800;
     letter-spacing: 0.02em;
@@ -194,7 +194,7 @@
     width: 100%;
     height: 42px;
     border: 1px solid var(--color-slate-300);
-    border-radius: 10px;
+    border-radius: 6px;
     padding: 0 12px;
     font-size: var(--ui-font-size-lg, 15px);
     letter-spacing: 0.13em;
@@ -234,7 +234,7 @@
 
   #guardRoleHint {
     border: 1px solid #dbe5f1;
-    border-radius: 10px;
+    border-radius: 6px;
     background: #f8fbff;
     padding: 10px 12px;
     min-height: 42px;
@@ -267,7 +267,7 @@
 
     .guard-head-right {
       white-space: normal;
-      border-radius: 10px;
+      border-radius: 6px;
       width: 100%;
     }
 
@@ -291,7 +291,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="guard-page pro-feature-page" id="logClearGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
+<div class="guard-page pro-feature-page pro-feature-fullwidth-tabs" id="logClearGuardRoot" data-role="{{ request.user.role|default:''|lower }}">
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_log_deletion_guard' %}
 
   <div class="action-bar">
@@ -373,6 +373,8 @@
   const currentRole = String(root.dataset.role || '').toLowerCase();
   let guardState = null;
   let autoRefreshTimer = null;
+  let guardDisabled = false;
+  let guardDisabledToastShown = false;
 
   function csrfToken() {
     if (typeof getCSRFToken === 'function') return getCSRFToken();
@@ -386,6 +388,24 @@
       return;
     }
     window.alert(message);
+  }
+
+  function applyGuardDisabledState(message) {
+    guardDisabled = true;
+
+    if (autoRefreshTimer) {
+      window.clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+
+    stateBadge.textContent = 'Disabled';
+    stateBadge.classList.remove('idle');
+    stateText.textContent = message || 'Log deletion guard is disabled by server policy.';
+    stateMeta.textContent = 'Enable manual log-clear policy on server to use this page.';
+    roleHint.textContent = 'This feature is disabled by server policy.';
+
+    generateBtn.disabled = true;
+    submitBtn.disabled = true;
   }
 
   function setBusy(btn, busy, htmlWhenIdle, htmlWhenBusy) {
@@ -447,11 +467,29 @@
         method: 'GET',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_err) {
+        data = {};
+      }
+
       if (!res.ok || !data.success) {
-        notify((data && data.message) || 'Unable to load log deletion state.', 'error');
+        const errorCode = String((data && data.code) || '');
+        const errorMessage = (data && data.message) || 'Unable to load log deletion state.';
+        if (errorCode === 'log_clear_disabled') {
+          applyGuardDisabledState(errorMessage);
+          if (!guardDisabledToastShown) {
+            notify(errorMessage, 'error');
+            guardDisabledToastShown = true;
+          }
+          return;
+        }
+        notify(errorMessage, 'error');
         return;
       }
+
+      guardDisabled = false;
       renderState(data.state || {});
     } catch (err) {
       console.error('fetchState error', err);
@@ -460,6 +498,11 @@
   }
 
   async function generateCode() {
+    if (guardDisabled) {
+      notify('Log deletion guard is disabled by server policy.', 'error');
+      return;
+    }
+
     setBusy(generateBtn, true, '<i class="fa-solid fa-hashtag"></i> Generate Code', '<i class="fa-solid fa-spinner fa-spin"></i> Generating');
     try {
       const res = await fetch('/api/activity-logs/clear/generate-code/', {
@@ -482,6 +525,11 @@
   }
 
   async function submitAction() {
+    if (guardDisabled) {
+      notify('Log deletion guard is disabled by server policy.', 'error');
+      return;
+    }
+
     const code = normalizeCodeInput();
     if (code.length !== 10) {
       notify('Enter a valid 10-digit confirmation code first.', 'error');
@@ -535,14 +583,14 @@
       window.clearInterval(autoRefreshTimer);
     }
     autoRefreshTimer = window.setInterval(() => {
-      if (!document.hidden) {
+      if (!document.hidden && !guardDisabled) {
         fetchState();
       }
     }, 8000);
   }
 
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
+    if (!document.hidden && !guardDisabled) {
       fetchState();
     }
   });

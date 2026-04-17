@@ -39,7 +39,7 @@
   }
 
   .sm-inner {
-    max-width: 1220px;
+    width: 100%;
     margin: 0 auto;
     display: grid;
     gap: 14px;
@@ -47,7 +47,7 @@
 
   .sm-card {
     border: 1px solid #dbe5f1;
-    border-radius: 14px;
+    border-radius: 6px;
     background: #fff;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
     overflow: hidden;
@@ -248,7 +248,7 @@
 
 {% block content %}
 <div
-  class="super-mode-page pro-feature-page"
+  class="super-mode-page pro-feature-page pro-feature-fullwidth-tabs"
   id="superModeRoot"
   data-users-api="{% url 'api_pro_user_super_mode_users' %}"
   data-assign-api="{% url 'api_pro_user_super_mode_assign' %}"

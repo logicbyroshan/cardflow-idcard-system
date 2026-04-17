@@ -52,7 +52,37 @@
             entry.wrapper.classList.remove('open');
             entry.wrapper.classList.remove('open-up');
             entry.button.setAttribute('aria-expanded', 'false');
+            if (entry.optionsEl) {
+                entry.optionsEl.classList.remove('show');
+            }
+            unmountOptions(entry);
         });
+    }
+
+    function mountOptionsToBody(entry) {
+        if (!entry || !entry.optionsEl || entry.isPortaled) return;
+        if (!document.body || !entry.wrapper || !document.body.contains(entry.wrapper)) return;
+
+        document.body.appendChild(entry.optionsEl);
+        entry.optionsEl.classList.add('usd-portaled');
+        entry.isPortaled = true;
+    }
+
+    function unmountOptions(entry) {
+        if (!entry || !entry.optionsEl || !entry.isPortaled) return;
+        if (entry.wrapper && document.body.contains(entry.wrapper)) {
+            entry.wrapper.appendChild(entry.optionsEl);
+        }
+
+        entry.optionsEl.classList.remove('usd-portaled');
+        entry.optionsEl.style.position = '';
+        entry.optionsEl.style.left = '';
+        entry.optionsEl.style.top = '';
+        entry.optionsEl.style.width = '';
+        entry.optionsEl.style.maxHeight = '';
+        entry.optionsEl.style.overflowY = '';
+        entry.optionsEl.style.zIndex = '';
+        entry.isPortaled = false;
     }
 
     function updatePlacement(entry) {
@@ -63,6 +93,7 @@
         }
 
         var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
         var triggerRect = entry.button.getBoundingClientRect();
         var dropdownHeight = entry.optionsEl.scrollHeight || 0;
         var maxHeight = 260;
@@ -72,6 +103,36 @@
         var shouldOpenUp = availableBelow < requiredSpace && availableAbove > availableBelow;
 
         entry.wrapper.classList.toggle('open-up', shouldOpenUp);
+
+        if (!entry.isPortaled) {
+            return;
+        }
+
+        var minimumVisibleSpace = 80;
+        var maxAllowedHeight = maxHeight;
+        var maxHeightUp = Math.max(minimumVisibleSpace, availableAbove - 8);
+        var maxHeightDown = Math.max(minimumVisibleSpace, availableBelow - 8);
+        var finalMaxHeight = Math.min(maxAllowedHeight, shouldOpenUp ? maxHeightUp : maxHeightDown);
+        var idealHeight = Math.min(dropdownHeight || maxHeight, finalMaxHeight);
+
+        entry.optionsEl.style.position = 'fixed';
+        var desiredWidth = Math.max(120, triggerRect.width);
+        var finalWidth = Math.min(desiredWidth, Math.max(120, viewportWidth - 16));
+        var left = Math.min(
+            Math.max(8, triggerRect.left),
+            Math.max(8, viewportWidth - finalWidth - 8)
+        );
+
+        entry.optionsEl.style.left = left + 'px';
+        entry.optionsEl.style.width = finalWidth + 'px';
+        entry.optionsEl.style.maxHeight = finalMaxHeight + 'px';
+        entry.optionsEl.style.overflowY = 'auto';
+        entry.optionsEl.style.zIndex = '2147483640';
+
+        var top = shouldOpenUp
+            ? Math.max(8, triggerRect.top - idealHeight - 4)
+            : Math.min(viewportHeight - idealHeight - 8, triggerRect.bottom + 4);
+        entry.optionsEl.style.top = Math.max(8, top) + 'px';
     }
 
     function updateOpenPlacements() {
@@ -186,7 +247,7 @@
         button.appendChild(icon);
 
         var optionsEl = document.createElement('div');
-        optionsEl.className = 'dropdown-options';
+        optionsEl.className = 'dropdown-options unified-select-dropdown-options';
         optionsEl.id = selectEl.id + '__options';
 
         wrapper.appendChild(button);
@@ -204,7 +265,8 @@
             button: button,
             labelEl: labelEl,
             optionsEl: optionsEl,
-            signature: ''
+            signature: '',
+            isPortaled: false
         };
 
         button.addEventListener('click', function (event) {
@@ -217,11 +279,15 @@
             button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             if (willOpen) {
                 syncEntry(entry, false);
+                mountOptionsToBody(entry);
+                optionsEl.classList.add('show');
                 window.requestAnimationFrame(function () {
                     updatePlacement(entry);
                 });
             } else {
                 wrapper.classList.remove('open-up');
+                optionsEl.classList.remove('show');
+                unmountOptions(entry);
             }
         });
 
@@ -238,6 +304,8 @@
             wrapper.classList.remove('open');
             wrapper.classList.remove('open-up');
             button.setAttribute('aria-expanded', 'false');
+            optionsEl.classList.remove('show');
+            unmountOptions(entry);
 
             var changeEvent = new Event('change', { bubbles: true });
             var inputEvent = new Event('input', { bubbles: true });
@@ -272,7 +340,10 @@
         wrappers = wrappers.filter(function (entry) {
             if (!entry || !entry.selectEl || !entry.wrapper) return false;
             var stillExists = document.body.contains(entry.selectEl) && document.body.contains(entry.wrapper);
-            if (!stillExists) return false;
+            if (!stillExists) {
+                unmountOptions(entry);
+                return false;
+            }
             return true;
         });
     }

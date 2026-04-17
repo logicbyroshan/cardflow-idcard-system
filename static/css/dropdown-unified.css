@@ -195,6 +195,25 @@ select.wa-status-select:disabled,
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
 }
 
+.unified-select-dropdown {
+  overflow: visible !important;
+}
+
+.unified-select-dropdown-options.usd-portaled {
+  position: fixed !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  min-width: 0 !important;
+  max-height: 260px !important;
+  overflow-y: auto !important;
+  z-index: 2147483640 !important;
+  display: none;
+}
+
+.unified-select-dropdown-options.usd-portaled.show {
+  display: block !important;
+}
+
 .custom-dropdown.open-up .dropdown-options,
 .form-dropdown.open-up .dropdown-options,
 .filter-dropdown.open-up .dropdown-options,

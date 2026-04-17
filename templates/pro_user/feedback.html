@@ -40,7 +40,7 @@
   }
 
   .feedback-shell-inner {
-    width: min(1180px, 100%);
+    width: 100%;
     margin: 0 auto;
     display: grid;
     gap: 14px;
@@ -50,7 +50,7 @@
   .feedback-list-card {
     background: var(--color-white);
     border: 1px solid #dbe5f1;
-    border-radius: 16px;
+    border-radius: 6px;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
   }
 
@@ -89,7 +89,7 @@
   .feedback-meta {
     background: #f8fbff;
     border: 1px solid #dbe5f1;
-    border-radius: 12px;
+    border-radius: 6px;
     padding: 12px;
   }
 
@@ -134,7 +134,7 @@
 
   .feedback-item {
     border: 1px solid #dbe5f1;
-    border-radius: 14px;
+    border-radius: 6px;
     background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
     padding: 14px;
   }
@@ -215,7 +215,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="feedback-page pro-feature-page">
+<div class="feedback-page pro-feature-page pro-feature-fullwidth-tabs">
   {% include 'partials/pro-feature-tabs.html' with pro_tab='pro_user_feedback' %}
 
   <div class="feedback-shell">
