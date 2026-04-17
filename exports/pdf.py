@@ -29,6 +29,7 @@ from django.template.loader import render_to_string
 from django.db.models import QuerySet
 
 from mediafiles.services import ImageService
+from core.utils.template_rich_text import rich_text_to_plain_text
 
 from .utils import (
     separate_fields_by_type,
@@ -450,7 +451,7 @@ class PdfExporter:
             if template_id:
                 try:
                     tpl = ExportTemplate.objects.get(id=template_id)
-                    template_footer_text = (tpl.instructions or '').strip()
+                    template_footer_text = rich_text_to_plain_text(tpl.instructions or '').strip()
                     template_font = str(tpl.font_name or 'arial').strip().lower()
                     template_use_abbasi = template_font in {'hindi', 'abbasi', 'abbasinatraj', 'abbasi_natraj'}
                     template_bold = tpl.is_bold

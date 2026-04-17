@@ -39,30 +39,55 @@
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14);
     }
 
-    .gc-editor-alert {
-      margin: 0;
-      padding: 8px 20px;
-      font-size: var(--ui-font-size-sm, 12px);
+    .gc-editor-box {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .gc-editor-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 20px;
       border-bottom: 1px solid var(--border-color, var(--color-gray-200));
-      background: var(--color-yellow-50);
-      color: var(--color-gray-800);
+      background: var(--bg-surface, var(--color-white));
+      flex-shrink: 0;
+      flex-wrap: nowrap;
     }
 
-    .gc-editor-alert.hidden {
-      display: none;
+    .gc-flow-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
-    .gc-editor-alert.gc-alert-error {
-      background: var(--color-red-50);
-      color: var(--color-red-700);
-      border-bottom-color: var(--color-red-200);
+    .gc-flow-header-left .gc-modal-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .gc-editor-alert.gc-alert-warning {
-      background: var(--color-yellow-50);
-      color: var(--color-amber-700);
-      border-bottom-color: var(--color-yellow-200);
+    .gc-header-stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 0 1 auto;
     }
+
+    .gc-header-modal-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-left: auto;
+      flex: 0 0 auto;
+    }
+
 
     .gc-editor-header .gc-modal-close {
       background: none;
@@ -73,12 +98,21 @@
       line-height: 1;
       padding: 2px 6px;
       border-radius: 6px;
+      margin-left: auto;
+      flex: 0 0 auto;
       transition: color .15s, background .15s;
     }
 
     .gc-editor-header .gc-modal-close:hover {
       color: var(--color-danger);
       background: var(--color-red-100);
+    }
+
+    .gc-editor-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     @media (max-width: 900px) {
@@ -121,12 +155,13 @@
               <button type="button" class="gc-mini-step" data-step="2">2 Map</button>
               <button type="button" class="gc-mini-step" data-step="3">3 Generate</button>
             </div>
-            <button class="gc-modal-close" id="gcEditorClose" type="button" title="Close">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+            <div class="gc-header-modal-actions">
+              <button type="button" class="btn btn-blue hidden" id="gcHeaderSaveTemplateBtn">Save Template</button>
+              <button class="gc-modal-close" id="gcEditorClose" type="button" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
-
-          <div class="gc-editor-alert hidden" id="gcEditorAlertBar" role="status" aria-live="polite"></div>
 
           <div class="gc-editor-body">
             <div class="gc-simple-flow-root" id="gcSimpleFlowRoot"></div>

@@ -1298,6 +1298,7 @@ let _templateSearchText = '';
 let _templatePage = 1;
 let _templatePerPage = 25;
 let _templatePagerBound = false;
+let _templateEditorBound = false;
 
 function _setTemplateRowsDropdownValue(value) {
   const rowsText = document.getElementById('templateRowsSelectedText');
@@ -1427,7 +1428,7 @@ function _filterTemplates() {
 
   panelTemplateFiltered = panelTemplates.filter(function (tpl) {
     const fontLabel = tpl.font_name === 'hindi' ? 'hindi abbasi' : 'english arial';
-    const haystack = [tpl.name, tpl.instructions, fontLabel, tpl.is_default ? 'default' : '', tpl.is_bold ? 'bold' : '']
+    const haystack = [tpl.name, tpl.instructions_plain || '', fontLabel, tpl.is_default ? 'default' : '', tpl.is_bold ? 'bold' : '']
       .join(' ')
       .toLowerCase();
     return haystack.indexOf(q) !== -1;
@@ -1450,34 +1451,444 @@ function templateGoPage(page) {
   renderTemplateTable();
 }
 
-/* Live-preview: update textarea font based on language + bold selection */
+function _templateHtmlToPlainText(value) {
+  const raw = String(value || '');
+  if (!raw) return '';
+
+  const holder = document.createElement('div');
+  holder.innerHTML = raw;
+  return String(holder.textContent || holder.innerText || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _templateLooksLikeHtml(value) {
+  return /<\/?[a-z][\s\S]*>/i.test(String(value || ''));
+}
+
+function _templatePlainTextToHtml(value) {
+  const text = String(value || '');
+  if (!text.trim()) return '<p><br></p>';
+  const lines = text.split(/\r?\n/);
+  return lines
+    .map(function (line) {
+      const content = escHtml(line);
+      return '<p>' + (content || '<br>') + '</p>';
+    })
+    .join('');
+}
+
+function _sanitizeTemplateInlineStyle(styleValue) {
+  const style = String(styleValue || '');
+  if (!style) return '';
+
+  const allowedProps = {
+    'font-weight': true,
+    'font-style': true,
+    'text-decoration': true,
+    'text-align': true,
+    'font-size': true,
+    'font-family': true,
+    'color': true,
+  };
+
+  const cleaned = [];
+  style.split(';').forEach(function (chunk) {
+    const pair = chunk.split(':');
+    if (pair.length < 2) return;
+    const prop = String(pair[0] || '').trim().toLowerCase();
+    const value = String(pair.slice(1).join(':') || '').trim();
+    if (!allowedProps[prop]) return;
+    if (/expression\s*\(|url\s*\(\s*javascript:/i.test(value)) return;
+    cleaned.push(prop + ':' + value);
+  });
+
+  return cleaned.join(';');
+}
+
+function _sanitizeTemplateHtml(rawHtml) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString('<div>' + String(rawHtml || '') + '</div>', 'text/html');
+  const root = doc.body.firstElementChild;
+  if (!root) return '';
+
+  const allowedTags = {
+    p: true,
+    br: true,
+    strong: true,
+    b: true,
+    em: true,
+    i: true,
+    u: true,
+    span: true,
+    div: true,
+    ul: true,
+    ol: true,
+    li: true,
+    a: true,
+    img: true,
+    h1: true,
+    h2: true,
+    h3: true,
+    h4: true,
+    h5: true,
+    h6: true,
+    table: true,
+    thead: true,
+    tbody: true,
+    tr: true,
+    th: true,
+    td: true,
+    blockquote: true,
+  };
+
+  root.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,textarea,select').forEach(function (el) {
+    el.remove();
+  });
+
+  Array.from(root.querySelectorAll('*')).forEach(function (el) {
+    const tag = String(el.tagName || '').toLowerCase();
+    if (!allowedTags[tag]) {
+      const parent = el.parentNode;
+      if (!parent) return;
+      while (el.firstChild) parent.insertBefore(el.firstChild, el);
+      parent.removeChild(el);
+      return;
+    }
+
+    Array.from(el.attributes).forEach(function (attr) {
+      const name = String(attr.name || '').toLowerCase();
+      const value = String(attr.value || '');
+
+      if (name.indexOf('on') === 0) {
+        el.removeAttribute(attr.name);
+        return;
+      }
+
+      if (name === 'style') {
+        const cleanStyle = _sanitizeTemplateInlineStyle(value);
+        if (cleanStyle) {
+          el.setAttribute('style', cleanStyle);
+        } else {
+          el.removeAttribute(attr.name);
+        }
+        return;
+      }
+
+      if (name === 'href') {
+        if (!/^\s*(https?:|mailto:|#|\/)/i.test(value)) {
+          el.removeAttribute(attr.name);
+        }
+        return;
+      }
+
+      if (name === 'src') {
+        if (tag === 'img') {
+          if (!/^\s*(data:image\/|https?:|\/media\/|\/static\/)/i.test(value)) {
+            el.removeAttribute(attr.name);
+          }
+        } else {
+          el.removeAttribute(attr.name);
+        }
+        return;
+      }
+
+      if (tag === 'img' && (name === 'alt' || name === 'title')) return;
+      if (tag === 'a' && (name === 'target' || name === 'rel' || name === 'title')) return;
+
+      el.removeAttribute(attr.name);
+    });
+
+    if (tag === 'a') {
+      if (!el.getAttribute('rel')) el.setAttribute('rel', 'noopener noreferrer');
+      if (!el.getAttribute('target')) el.setAttribute('target', '_blank');
+    }
+  });
+
+  return root.innerHTML.trim();
+}
+
+function _setTemplateEditorHtml(value) {
+  const editor = document.getElementById('templateInstructionsEditor');
+  const hiddenInput = document.getElementById('templateInstructions');
+  if (!editor || !hiddenInput) return;
+
+  const raw = String(value || '');
+  const html = _templateLooksLikeHtml(raw)
+    ? _sanitizeTemplateHtml(raw)
+    : _templatePlainTextToHtml(raw);
+
+  editor.innerHTML = html || '<p><br></p>';
+  hiddenInput.value = html || '';
+  _templateBoldState = /<(strong|b)\b/i.test(editor.innerHTML);
+  _syncTemplatePreviewFont();
+  _syncTemplateBoldBtn();
+}
+
+function _getTemplateEditorHtml() {
+  const editor = document.getElementById('templateInstructionsEditor');
+  if (!editor) return '';
+  const cleanHtml = _sanitizeTemplateHtml(editor.innerHTML || '');
+  editor.innerHTML = cleanHtml || '<p><br></p>';
+  const hiddenInput = document.getElementById('templateInstructions');
+  if (hiddenInput) hiddenInput.value = cleanHtml;
+  return cleanHtml;
+}
+
+/* Live-preview: update editor font based on language selection */
 function _syncTemplatePreviewFont() {
-  const ta = document.getElementById('templateInstructions');
+  const editor = document.getElementById('templateInstructionsEditor');
   const sel = document.getElementById('templateFontName');
-  if (!ta || !sel) return;
+  if (!editor || !sel) return;
+
   const isHindi = sel.value === 'hindi';
-  ta.style.fontFamily = isHindi ? "'AbbasiNatraj', 'AbbasiNagari', sans-serif" : "Arial, sans-serif";
-  ta.style.fontWeight = _templateBoldState ? 'bold' : 'normal';
-  ta.style.fontSize = isHindi ? '15px' : '13px';
+  editor.style.fontFamily = isHindi
+    ? "'AbbasiNatraj', 'AbbasiNagari', sans-serif"
+    : 'Arial, sans-serif';
+  editor.style.fontSize = isHindi ? '15px' : '13px';
 }
 
 function _syncTemplateBoldBtn() {
   const btn = document.getElementById('templateBoldBtn');
   if (!btn) return;
-  btn.style.background = _templateBoldState ? '#4f46e5' : '';
-  btn.style.color = _templateBoldState ? '#fff' : '';
+  btn.classList.toggle('is-active', !!_templateBoldState);
+}
+
+function _refreshTemplateToolbarState() {
+  const editor = document.getElementById('templateInstructionsEditor');
+  if (!editor) return;
+  const hasFocus = editor === document.activeElement || editor.contains(document.activeElement);
+  if (hasFocus) {
+    try {
+      _templateBoldState = !!document.queryCommandState('bold');
+    } catch (e) {
+      _templateBoldState = /<(strong|b)\b/i.test(editor.innerHTML || '');
+    }
+  }
+  _syncTemplateBoldBtn();
+}
+
+function _focusTemplateEditorEnd() {
+  const editor = document.getElementById('templateInstructionsEditor');
+  if (!editor) return;
+  editor.focus();
+
+  const selection = window.getSelection();
+  if (!selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function _insertHtmlAtCursor(html) {
+  const editor = document.getElementById('templateInstructionsEditor');
+  if (!editor) return;
+  editor.focus();
+  try {
+    document.execCommand('insertHTML', false, String(html || ''));
+  } catch (e) {
+    editor.innerHTML += String(html || '');
+  }
+  _getTemplateEditorHtml();
 }
 
 function toggleTemplateBold() {
-  _templateBoldState = !_templateBoldState;
-  _syncTemplateBoldBtn();
-  _syncTemplatePreviewFont();
+  templateExecCommand('bold');
 }
 
-/* Attach font selector change listener once DOM is ready */
+function templateExecCommand(command, value) {
+  const editor = document.getElementById('templateInstructionsEditor');
+  if (!editor) return;
+
+  editor.focus();
+  try {
+    document.execCommand(command, false, value || null);
+  } catch (e) {
+    console.warn('Template editor command failed:', command, e);
+  }
+
+  const html = _getTemplateEditorHtml();
+  _templateBoldState = /<(strong|b)\b/i.test(html);
+  _syncTemplateBoldBtn();
+}
+
+function templateApplyFontSize(sizeValue) {
+  const editor = document.getElementById('templateInstructionsEditor');
+  if (!editor) return;
+  const px = parseInt(String(sizeValue || ''), 10);
+  if (!Number.isFinite(px) || px < 8 || px > 72) return;
+
+  editor.focus();
+  try {
+    document.execCommand('fontSize', false, '7');
+    editor.querySelectorAll('font[size="7"]').forEach(function (fontEl) {
+      const span = document.createElement('span');
+      span.style.fontSize = px + 'px';
+      while (fontEl.firstChild) span.appendChild(fontEl.firstChild);
+      fontEl.parentNode.replaceChild(span, fontEl);
+    });
+  } catch (e) {
+    console.warn('templateApplyFontSize failed:', e);
+  }
+
+  _getTemplateEditorHtml();
+}
+
+function openTemplateImagePicker() {
+  const input = document.getElementById('templateImageUploadInput');
+  if (!input) return;
+  input.click();
+}
+
+function openTemplateDocImportPicker() {
+  const input = document.getElementById('templateDocImportInput');
+  if (!input) return;
+  input.click();
+}
+
+async function _importTemplateDocFile(file) {
+  if (!file) return;
+  const importBtn = document.getElementById('templateImportDocBtn');
+  const originalBtnHtml = importBtn ? importBtn.innerHTML : '';
+
+  if (importBtn) {
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Importing...</span>';
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const resp = await fetch('/api/export-templates/import-doc/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCSRFToken() },
+      body: formData,
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      if (window.showToast) showToast((data && data.message) || 'Could not import Word document', 'error');
+      return;
+    }
+
+    _setTemplateEditorHtml(String(data.html || ''));
+    _focusTemplateEditorEnd();
+    if (window.showToast) showToast('Word content imported successfully', 'success');
+  } catch (err) {
+    console.error('importTemplateDoc:', err);
+    if (window.showToast) showToast('Import failed. Please try again.', 'error');
+  } finally {
+    if (importBtn) {
+      importBtn.disabled = false;
+      importBtn.innerHTML = originalBtnHtml;
+    }
+  }
+}
+
+function _bindTemplateEditorHandlers() {
+  if (_templateEditorBound) return;
+  _templateEditorBound = true;
+
+  const editor = document.getElementById('templateInstructionsEditor');
+  const docInput = document.getElementById('templateDocImportInput');
+  const imageInput = document.getElementById('templateImageUploadInput');
+  const fontSel = document.getElementById('templateFontName');
+
+  if (editor) {
+    editor.addEventListener('input', function () {
+      _getTemplateEditorHtml();
+      _refreshTemplateToolbarState();
+    });
+    editor.addEventListener('keyup', _refreshTemplateToolbarState);
+    editor.addEventListener('mouseup', _refreshTemplateToolbarState);
+    editor.addEventListener('blur', _refreshTemplateToolbarState);
+
+    editor.addEventListener('paste', function (event) {
+      const clip = event.clipboardData || window.clipboardData;
+      if (!clip) return;
+
+      const htmlPayload = clip.getData('text/html');
+      if (htmlPayload) {
+        event.preventDefault();
+        _insertHtmlAtCursor(_sanitizeTemplateHtml(htmlPayload));
+        return;
+      }
+
+      const textPayload = clip.getData('text/plain');
+      if (textPayload) {
+        event.preventDefault();
+        document.execCommand('insertText', false, textPayload);
+      }
+    });
+  }
+
+  if (docInput) {
+    docInput.addEventListener('change', async function () {
+      const file = this.files && this.files[0] ? this.files[0] : null;
+      if (!file) return;
+
+      if (!/\.docx$/i.test(file.name || '')) {
+        if (window.showToast) showToast('Please select a .docx file', 'error');
+        this.value = '';
+        return;
+      }
+
+      if (file.size > 12 * 1024 * 1024) {
+        if (window.showToast) showToast('File too large. Maximum allowed size is 12 MB.', 'error');
+        this.value = '';
+        return;
+      }
+
+      await _importTemplateDocFile(file);
+      this.value = '';
+    });
+  }
+
+  if (imageInput) {
+    imageInput.addEventListener('change', function () {
+      const file = this.files && this.files[0] ? this.files[0] : null;
+      if (!file) return;
+
+      if (!String(file.type || '').toLowerCase().startsWith('image/')) {
+        if (window.showToast) showToast('Please choose an image file', 'error');
+        this.value = '';
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        if (window.showToast) showToast('Image too large. Maximum allowed size is 5 MB.', 'error');
+        this.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const src = String((ev && ev.target && ev.target.result) || '');
+        if (!src) return;
+        _insertHtmlAtCursor('<img src="' + escAttr(src) + '" alt="Template image">');
+      };
+      reader.readAsDataURL(file);
+      this.value = '';
+    });
+  }
+
+  if (fontSel) {
+    fontSel.addEventListener('change', function () {
+      const isHindi = fontSel.value === 'hindi';
+      templateExecCommand('fontName', isHindi ? 'AbbasiNatraj' : 'Arial');
+      _syncTemplatePreviewFont();
+    });
+  }
+}
+
+/* Attach editor and pagination listeners once DOM is ready */
 document.addEventListener('DOMContentLoaded', function () {
-  var sel = document.getElementById('templateFontName');
-  if (sel) sel.addEventListener('change', _syncTemplatePreviewFont);
+  _bindTemplateEditorHandlers();
+  _syncTemplatePreviewFont();
+  _syncTemplateBoldBtn();
 
   _bindTemplatePaginationControls();
   _setTemplateRowsDropdownValue(_templatePerPage);
@@ -1510,10 +1921,12 @@ async function loadTemplates() {
     if (data.success) {
       await waitForPanelSkeletonDelay(skeletonStart);
       panelTemplates = (data.templates || []).map(function (tpl) {
+        const instructionsValue = String(tpl.instructions || '');
         return {
           id: Number(tpl.id),
           name: String(tpl.name || ''),
-          instructions: String(tpl.instructions || ''),
+          instructions: instructionsValue,
+          instructions_plain: _templateHtmlToPlainText(instructionsValue),
           font_name: String(tpl.font_name || 'arial').toLowerCase() === 'hindi' ? 'hindi' : 'arial',
           is_bold: Boolean(tpl.is_bold),
           is_default: Boolean(tpl.is_default),
@@ -1569,7 +1982,8 @@ function renderTemplateTable() {
   const pageRows = panelTemplateFiltered.slice(startIndex, startIndex + _templatePerPage);
 
   tbody.innerHTML = pageRows.map((t, i) => {
-    const preview = t.instructions.length > 80 ? t.instructions.substring(0, 80) + '...' : t.instructions;
+    const previewSource = t.instructions_plain || '';
+    const preview = previewSource.length > 80 ? previewSource.substring(0, 80) + '...' : previewSource;
     const fontLabel = t.font_name === 'hindi' ? 'Hindi' : 'Arial';
     const boldLabel = t.is_bold ? '<span class="template-style-pill">Bold</span>' : '<span class="template-style-pill muted">Normal</span>';
     return `<tr>
@@ -1602,7 +2016,7 @@ function renderTemplateTable() {
 async function openCreateTemplateModal() {
   document.getElementById('templateEditId').value = '';
   document.getElementById('templateName').value = '';
-  document.getElementById('templateInstructions').value = '';
+  _setTemplateEditorHtml('');
   document.getElementById('templateIsDefault').checked = false;
   document.getElementById('templateFontName').value = 'arial';
   _templateBoldState = false;
@@ -1615,6 +2029,7 @@ async function openCreateTemplateModal() {
     document.getElementById('templateModal').classList.add('show');
     document.body.style.overflow = 'hidden';
   }
+  setTimeout(_focusTemplateEditorEnd, 30);
 }
 
 async function editTemplate(id) {
@@ -1622,10 +2037,10 @@ async function editTemplate(id) {
   if (!t) return;
   document.getElementById('templateEditId').value = id;
   document.getElementById('templateName').value = t.name;
-  document.getElementById('templateInstructions').value = t.instructions;
+  _setTemplateEditorHtml(t.instructions || '');
   document.getElementById('templateIsDefault').checked = t.is_default;
   document.getElementById('templateFontName').value = t.font_name || 'arial';
-  _templateBoldState = !!t.is_bold;
+  _templateBoldState = /<(strong|b)\b/i.test(String(t.instructions || '')) || !!t.is_bold;
   _syncTemplateBoldBtn();
   _syncTemplatePreviewFont();
   document.getElementById('templateModalTitle').innerHTML = '<i class="fa-solid fa-file-lines"></i> Edit Template';
@@ -1635,6 +2050,7 @@ async function editTemplate(id) {
     document.getElementById('templateModal').classList.add('show');
     document.body.style.overflow = 'hidden';
   }
+  setTimeout(_focusTemplateEditorEnd, 30);
 }
 
 function closeTemplateModal() {
@@ -1649,15 +2065,18 @@ function closeTemplateModal() {
 async function saveTemplate() {
   const editId = document.getElementById('templateEditId').value;
   const name = document.getElementById('templateName').value.trim();
-  const instructions = document.getElementById('templateInstructions').value.trim();
+  const instructions = _getTemplateEditorHtml();
+  const instructionsText = _templateHtmlToPlainText(instructions);
+  const hasImage = /<img\b/i.test(instructions);
   const is_default = document.getElementById('templateIsDefault').checked;
   const font_name = document.getElementById('templateFontName').value;
-  const is_bold = _templateBoldState;
-  const saveBtn = document.querySelector('#templateModal .center-modal-btn-confirm');
+  const is_bold = /<(strong|b)\b/i.test(instructions);
+  const saveBtn = document.getElementById('templateHeaderSaveBtn');
   const originalSaveHtml = saveBtn ? saveBtn.innerHTML : '';
 
   if (!name) { if (window.showToast) showToast('Template name is required', 'error'); return; }
-  if (!instructions) { if (window.showToast) showToast('Footer text is required', 'error'); return; }
+  if (!instructionsText && !hasImage) { if (window.showToast) showToast('Footer content is required', 'error'); return; }
+  if (instructions.length > 250000) { if (window.showToast) showToast('Content is too large. Keep it under 250000 characters.', 'error'); return; }
 
   const url = editId
     ? `/api/export-templates/${editId}/update/`

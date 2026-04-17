@@ -4,9 +4,9 @@
   var TABLE_ID = Number(window.TABLE_ID || 0);
   var modalEl = document.getElementById('gcEditorModal');
   var flowRoot = document.getElementById('gcSimpleFlowRoot');
-  var alertBar = document.getElementById('gcEditorAlertBar');
   var stepCounterEl = document.getElementById('gcStepCounter');
   var headerStepperEl = document.getElementById('gcHeaderStepper');
+  var headerSaveTemplateBtnEl = document.getElementById('gcHeaderSaveTemplateBtn');
 
   if (!TABLE_ID || !modalEl || !flowRoot) {
     return;
@@ -39,6 +39,11 @@
     draftInlineEditingElementId: '',
     draftPendingTextEdit: null,
     draftSelectedGuideId: '',
+    draftGuidesLocked: false,
+    draftMergePreview: false,
+    draftAutoMapScope: 'active',
+    draftAutoMapReport: null,
+    draftAutoMapReportOpen: false,
     draftActiveSide: 'front',
     draftTool: 'select',
     draftDragging: null,
@@ -46,12 +51,15 @@
     draftGuideDragging: null,
     draftTextDrag: null,
     draftRectDrag: null,
-    draftZoom: 1,
+    draftSelectDrag: null,
+    draftZoom: 2,
     draftZoomOriginX: 50,
     draftZoomOriginY: 50,
     draftUnit: 'mm',
     draftSnapMm: 0.1,
     draftDirty: false,
+    draftHistory: null,
+    draftInlineEditHistoryActive: false,
     pendingZoomAnchor: null,
     draftLastPointerClientX: null,
     draftLastPointerClientY: null,
@@ -66,6 +74,10 @@
   var draftElementSeed = 1;
   var draftGuideSeed = 1;
   var PT_TO_PX = 96 / 72;
+  var DRAFT_HANDLE_SIZE_MIN_PX = 4;
+  var DRAFT_HANDLE_SIZE_MAX_PX = 9;
+  var DRAFT_HANDLE_GAP_MIN_PX = 3;
+  var DRAFT_HANDLE_GAP_MAX_PX = 5;
   var draftTextMeasureNode = null;
 
   function ptToPx(value) {
@@ -92,38 +104,6 @@
     return String(num % 1 === 0 ? Math.round(num) : num);
   }
 
-  function buildPoppinsFaces() {
-    var defs = [
-      { id: 'thin', label: 'Thin', weight: '100' },
-      { id: 'extra-light', label: 'Extra Light', weight: '200' },
-      { id: 'light', label: 'Light', weight: '300' },
-      { id: 'regular', label: 'Regular', weight: '400' },
-      { id: 'medium', label: 'Medium', weight: '500' },
-      { id: 'semi-bold', label: 'Semi Bold', weight: '600' },
-      { id: 'bold', label: 'Bold', weight: '700' },
-      { id: 'extra-bold', label: 'Extra Bold', weight: '800' },
-      { id: 'black', label: 'Black', weight: '900' },
-    ];
-    var out = [];
-    defs.forEach(function (item) {
-      out.push({
-        id: item.id,
-        label: item.label,
-        family: 'Poppins',
-        weight: item.weight,
-        style: 'normal',
-      });
-      out.push({
-        id: item.id + '-italic',
-        label: item.label + ' Italic',
-        family: 'Poppins',
-        weight: item.weight,
-        style: 'italic',
-      });
-    });
-    return out;
-  }
-
   var FONT_CATALOG = [
     {
       id: 'arial',
@@ -131,22 +111,7 @@
       aliases: ['arial', 'arial black', 'arial mt'],
       faces: [
         { id: 'regular', label: 'Regular', family: 'Arial', weight: '400', style: 'normal' },
-        { id: 'italic', label: 'Italic', family: 'Arial', weight: '400', style: 'italic' },
         { id: 'bold', label: 'Bold', family: 'Arial', weight: '700', style: 'normal' },
-        { id: 'bold-italic', label: 'Bold Italic', family: 'Arial', weight: '700', style: 'italic' },
-        { id: 'black', label: 'Black', family: 'Arial Black', weight: '800', style: 'normal' },
-      ],
-    },
-    {
-      id: 'calibri',
-      label: 'Calibri',
-      aliases: ['calibri'],
-      faces: [
-        { id: 'light', label: 'Light', family: 'Calibri', weight: '300', style: 'normal' },
-        { id: 'regular', label: 'Regular', family: 'Calibri', weight: '400', style: 'normal' },
-        { id: 'italic', label: 'Italic', family: 'Calibri', weight: '400', style: 'italic' },
-        { id: 'bold', label: 'Bold', family: 'Calibri', weight: '700', style: 'normal' },
-        { id: 'bold-italic', label: 'Bold Italic', family: 'Calibri', weight: '700', style: 'italic' },
       ],
     },
     {
@@ -154,32 +119,228 @@
       label: 'Futura',
       aliases: ['futura'],
       faces: [
+        { id: 'light-bt', label: 'Light BT', family: 'Futura', weight: '300', style: 'normal' },
         { id: 'book', label: 'Book', family: 'Futura', weight: '400', style: 'normal' },
-        { id: 'book-italic', label: 'Book Italic', family: 'Futura', weight: '400', style: 'italic' },
         { id: 'medium', label: 'Medium', family: 'Futura', weight: '500', style: 'normal' },
-        { id: 'medium-italic', label: 'Medium Italic', family: 'Futura', weight: '500', style: 'italic' },
+        { id: 'medium-condensed', label: 'Medium Condensed', family: 'Futura', weight: '500', style: 'normal' },
         { id: 'bold', label: 'Bold', family: 'Futura', weight: '700', style: 'normal' },
       ],
     },
-    {
-      id: 'poppins',
-      label: 'Poppins',
-      aliases: ['poppins'],
-      faces: buildPoppinsFaces(),
-    },
-    {
-      id: 'helvetica',
-      label: 'Helvetica',
-      aliases: ['helvetica', 'helvetica neue'],
-      faces: [
-        { id: 'regular', label: 'Regular', family: 'Helvetica', weight: '400', style: 'normal' },
-        { id: 'italic', label: 'Italic', family: 'Helvetica', weight: '400', style: 'italic' },
-        { id: 'medium', label: 'Medium', family: 'Helvetica', weight: '500', style: 'normal' },
-        { id: 'bold', label: 'Bold', family: 'Helvetica', weight: '700', style: 'normal' },
-        { id: 'bold-italic', label: 'Bold Italic', family: 'Helvetica', weight: '700', style: 'italic' },
-      ],
-    },
   ];
+  var TABLE_SCHEMA_FIELDS = normalizeTableSchemaFields(window.TABLE_FIELDS);
+
+  function normalizeTableSchemaFields(raw) {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+
+    return raw
+      .filter(function (item) {
+        return item && typeof item === 'object' && String(item.name || '').trim();
+      })
+      .map(function (item) {
+        var fieldName = String(item.name || '').trim();
+        var fieldType = String(item.type || 'text').trim().toLowerCase();
+        if (!fieldType) {
+          fieldType = 'text';
+        }
+        return {
+          name: fieldName,
+          type: fieldType,
+          label: String(item.label || item.verbose_name || fieldName),
+        };
+      });
+  }
+
+  function normalizeFieldLookupKey(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  function findTableFieldByName(fieldName) {
+    var wantedRaw = String(fieldName || '').trim().toLowerCase();
+    var wantedNorm = normalizeFieldLookupKey(fieldName);
+    var match = null;
+
+    TABLE_SCHEMA_FIELDS.some(function (field) {
+      var nameRaw = String(field.name || '').trim().toLowerCase();
+      var nameNorm = normalizeFieldLookupKey(field.name);
+      if ((wantedRaw && nameRaw === wantedRaw) || (wantedNorm && nameNorm === wantedNorm)) {
+        match = field;
+        return true;
+      }
+      return false;
+    });
+
+    return match;
+  }
+
+  function extractMergeTokenFieldName(text) {
+    var raw = String(text || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    var tokenMatch = raw.match(/^\{\{\s*([^{}]+?)\s*\}\}$/);
+    if (!tokenMatch) {
+      tokenMatch = raw.match(/^<<\s*([^<>]+?)\s*>>$/);
+    }
+    if (!tokenMatch) {
+      tokenMatch = raw.match(/^\[\[\s*([^\[\]]+?)\s*\]\]$/);
+    }
+    return tokenMatch ? String(tokenMatch[1] || '').trim() : '';
+  }
+
+  function findBestSchemaFieldForLabel(rawLabel) {
+    var candidates = schemaFieldMatchCandidates(rawLabel);
+    if (!candidates.length) {
+      return null;
+    }
+    return candidates[0].field || null;
+  }
+
+  function schemaFieldMatchCandidates(rawLabel) {
+    var tokenField = extractMergeTokenFieldName(rawLabel);
+    if (tokenField) {
+      var tokenExact = findTableFieldByName(tokenField);
+      if (tokenExact) {
+        return [{ field: tokenExact, score: 200, reason: 'token-exact' }];
+      }
+    }
+
+    var cleaned = String(rawLabel || '')
+      .replace(/^\s*\d+[.)\-\s]+/, '')
+      .replace(/^[\s\[\]{}<>()'"`~!@#$%^&*+=|\\/:;,.?-]+/, '')
+      .replace(/[\s\[\]{}<>()'"`~!@#$%^&*+=|\\/:;,.?-]+$/, '')
+      .trim();
+    if (!cleaned) {
+      return [];
+    }
+
+    var exact = findTableFieldByName(cleaned);
+    if (exact) {
+      return [{ field: exact, score: 190, reason: 'exact' }];
+    }
+
+    var wantedNorm = normalizeFieldLookupKey(cleaned);
+    if (!wantedNorm) {
+      return [];
+    }
+
+    var out = [];
+    TABLE_SCHEMA_FIELDS.forEach(function (field) {
+      var nameNorm = normalizeFieldLookupKey(field.name);
+      var labelNorm = normalizeFieldLookupKey(field.label || field.name);
+      if (!nameNorm && !labelNorm) {
+        return;
+      }
+
+      var score = 0;
+      var reason = '';
+      if (wantedNorm && nameNorm && wantedNorm === nameNorm) {
+        score = 120;
+        reason = 'name-eq';
+      } else if (wantedNorm && labelNorm && wantedNorm === labelNorm) {
+        score = 112;
+        reason = 'label-eq';
+      } else {
+        if (wantedNorm && nameNorm && wantedNorm.indexOf(nameNorm) >= 0 && nameNorm.length >= 3) {
+          score = Math.max(score, 82 + Math.min(12, nameNorm.length));
+          reason = score >= 90 ? 'name-in-label' : reason;
+        }
+        if (wantedNorm && labelNorm && wantedNorm.indexOf(labelNorm) >= 0 && labelNorm.length >= 4) {
+          var scoreFromLabelInside = 78 + Math.min(10, labelNorm.length);
+          if (scoreFromLabelInside > score) {
+            score = scoreFromLabelInside;
+            reason = 'label-in-label';
+          }
+        }
+        if (wantedNorm && nameNorm && nameNorm.indexOf(wantedNorm) >= 0 && wantedNorm.length >= 4) {
+          var scoreFromNameContains = 70 + Math.min(8, wantedNorm.length);
+          if (scoreFromNameContains > score) {
+            score = scoreFromNameContains;
+            reason = 'name-contains';
+          }
+        }
+        if (wantedNorm && labelNorm && labelNorm.indexOf(wantedNorm) >= 0 && wantedNorm.length >= 4) {
+          var scoreFromLabelContains = 68 + Math.min(8, wantedNorm.length);
+          if (scoreFromLabelContains > score) {
+            score = scoreFromLabelContains;
+            reason = 'label-contains';
+          }
+        }
+      }
+
+      if (score >= 78) {
+        out.push({
+          field: field,
+          score: score,
+          reason: reason || 'fuzzy',
+        });
+      }
+    });
+
+    out.sort(function (a, b) {
+      return Number(b.score || 0) - Number(a.score || 0);
+    });
+    return out;
+  }
+
+  function isImageCompatibleSchemaField(field) {
+    if (!field || typeof field !== 'object') {
+      return false;
+    }
+    var t = String(field.type || '').toLowerCase();
+    var n = String(field.name || '').toLowerCase();
+    return t === 'photo'
+      || t === 'rel_photo'
+      || t === 'image'
+      || t === 'mother_photo'
+      || t === 'father_photo'
+      || t === 'signature'
+      || t === 'barcode'
+      || t === 'qr_code'
+      || n.indexOf('photo') >= 0
+      || n.indexOf('image') >= 0
+      || n.indexOf('barcode') >= 0
+      || n.indexOf('signature') >= 0
+      || /(^|_)qr(_|$)/.test(n);
+  }
+
+  function fieldLabelForUi(fieldName) {
+    var field = findTableFieldByName(fieldName);
+    if (field && field.label) {
+      return String(field.label);
+    }
+    return String(fieldName || '');
+  }
+
+  function renderSchemaFieldOptions(selectedField, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var wanted = String(selectedField || '');
+    var includeEmpty = opts.includeEmpty !== false;
+    var imageOnly = !!opts.imageOnly;
+
+    var rows = [];
+    if (includeEmpty) {
+      rows.push('<option value=""' + (!wanted ? ' selected' : '') + '>' + escapeHtml(String(opts.emptyLabel || 'Static content (no field)')) + '</option>');
+    }
+
+    TABLE_SCHEMA_FIELDS.forEach(function (field) {
+      if (imageOnly && !isImageCompatibleSchemaField(field)) {
+        return;
+      }
+      var name = String(field.name || '');
+      var isSelected = wanted && normalizeFieldLookupKey(wanted) === normalizeFieldLookupKey(name);
+      var display = fieldLabelForUi(name);
+      rows.push('<option value="' + escapeAttr(name) + '"' + (isSelected ? ' selected' : '') + '>' + escapeHtml(display) + '</option>');
+    });
+
+    return rows.join('');
+  }
 
   function normalizeFontWeightValue(rawWeight) {
     var weightRaw = String(rawWeight || '').trim().toLowerCase();
@@ -303,42 +464,15 @@
     }).join('');
   }
 
-  function poppinsFontFaceCss() {
-    var names = [
-      { file: 'Poppins-Thin.ttf', weight: '100', style: 'normal' },
-      { file: 'Poppins-ThinItalic.ttf', weight: '100', style: 'italic' },
-      { file: 'Poppins-ExtraLight.ttf', weight: '200', style: 'normal' },
-      { file: 'Poppins-ExtraLightItalic.ttf', weight: '200', style: 'italic' },
-      { file: 'Poppins-Light.ttf', weight: '300', style: 'normal' },
-      { file: 'Poppins-LightItalic.ttf', weight: '300', style: 'italic' },
-      { file: 'Poppins-Regular.ttf', weight: '400', style: 'normal' },
-      { file: 'Poppins-Italic.ttf', weight: '400', style: 'italic' },
-      { file: 'Poppins-Medium.ttf', weight: '500', style: 'normal' },
-      { file: 'Poppins-MediumItalic.ttf', weight: '500', style: 'italic' },
-      { file: 'Poppins-SemiBold.ttf', weight: '600', style: 'normal' },
-      { file: 'Poppins-SemiBoldItalic.ttf', weight: '600', style: 'italic' },
-      { file: 'Poppins-Bold.ttf', weight: '700', style: 'normal' },
-      { file: 'Poppins-BoldItalic.ttf', weight: '700', style: 'italic' },
-      { file: 'Poppins-ExtraBold.ttf', weight: '800', style: 'normal' },
-      { file: 'Poppins-ExtraBoldItalic.ttf', weight: '800', style: 'italic' },
-      { file: 'Poppins-Black.ttf', weight: '900', style: 'normal' },
-      { file: 'Poppins-BlackItalic.ttf', weight: '900', style: 'italic' },
-    ];
-    return names.map(function (item) {
-      return '@font-face{font-family:"Poppins";font-style:' + item.style + ';font-weight:' + item.weight + ';font-display:swap;src:url("/static/fonts/poppins/' + item.file + '") format("truetype");}';
-    }).join('');
-  }
-
   function coreLocalFontFaceCss() {
     var rules = [
-      { family: 'Arial', style: 'normal', weight: '400', file: 'arial.ttf' },
-      { family: 'Arial', style: 'italic', weight: '400', file: 'ariali.ttf' },
-      { family: 'Arial', style: 'normal', weight: '700', file: 'arialbd.ttf' },
-      { family: 'Arial', style: 'italic', weight: '700', file: 'arialbi.ttf' },
-      { family: 'Calibri', style: 'normal', weight: '400', file: 'calibri.ttf' },
-      { family: 'Calibri', style: 'italic', weight: '400', file: 'calibrii.ttf' },
-      { family: 'Calibri', style: 'normal', weight: '700', file: 'calibrib.ttf' },
-      { family: 'Calibri', style: 'italic', weight: '700', file: 'calibriz.ttf' },
+      { family: 'Arial', style: 'normal', weight: '400', file: 'Roshan_Font/arial.ttf' },
+      { family: 'Arial', style: 'normal', weight: '700', file: 'Roshan_Font/Arial%20Bold.ttf' },
+      { family: 'Futura', style: 'normal', weight: '300', file: 'Roshan_Font/futura%20light%20bt.ttf' },
+      { family: 'Futura', style: 'normal', weight: '400', file: 'Roshan_Font/Futura%20Book%20font.ttf' },
+      { family: 'Futura', style: 'normal', weight: '500', file: 'Roshan_Font/futura%20medium%20bt.ttf' },
+      { family: 'Futura', style: 'normal', weight: '500', file: 'Roshan_Font/futura%20medium%20condensed%20bt.ttf' },
+      { family: 'Futura', style: 'normal', weight: '700', file: 'Roshan_Font/Futura%20Bold%20font.ttf' },
     ];
     return rules.map(function (item) {
       return '@font-face{font-family:"' + item.family + '";font-style:' + item.style + ';font-weight:' + item.weight + ';font-display:swap;src:url("/static/fonts/' + item.file + '") format("truetype");}';
@@ -354,7 +488,6 @@
     style.id = 'gcThreeStepStyles';
     style.textContent = ''
       + coreLocalFontFaceCss()
-      + poppinsFontFaceCss()
       + '.gc-flow-box{max-width:none;width:90vw;height:90vh;}'
       + '.gc-flow-header{justify-content:space-between;}'
       + '.gc-flow-header-left{display:flex;align-items:center;gap:10px;min-width:0;}'
@@ -422,6 +555,8 @@
     style.textContent = ''
       + '.gc-flow-header{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;}'
       + '.gc-header-stepper{display:flex;align-items:center;gap:6px;min-width:0;}'
+      + '.gc-header-modal-actions{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;}'
+      + '.gc-header-modal-actions .btn{height:28px;padding:0 10px;font-size:11px;line-height:1;}'
       + '.gc-mini-step{display:inline-flex;align-items:center;justify-content:center;height:26px;padding:0 8px;border:1px solid #cbd5e1;border-radius:4px;background:#ffffff;color:#64748b;font-size:10px;font-weight:700;line-height:1;white-space:nowrap;}'
       + '.gc-mini-step.is-active{border-color:#3b82f6;background:#eff6ff;color:#1d4ed8;}'
       + '.gc-mini-step.is-done{border-color:#86efac;background:#ecfdf5;color:#15803d;}'
@@ -469,10 +604,15 @@
       + '.gc-step2-toolbar-left,.gc-step2-toolbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}'
       + '.gc-step2-toolbar .btn{height:30px;padding:0 10px;font-size:11px;line-height:1;}'
       + '.gc-step2-main{display:grid;grid-template-columns:58px minmax(0,1fr) 320px;gap:8px;min-height:0;flex:1;}'
-      + '.gc-step2-tools{border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;padding:6px 4px;display:flex;flex-direction:column;gap:6px;align-items:stretch;}'
-      + '.gc-step2-tool-btn{height:52px;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;color:#334155;font-size:10px;font-weight:700;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;}'
-      + '.gc-step2-tool-btn i{font-size:13px;}'
-      + '.gc-step2-tool-btn.is-active{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;}'
+      + '.gc-step2-tools{border:1px solid #dbe2ea;border-radius:8px;background:linear-gradient(180deg,#ffffff,#f8fbff);padding:8px 6px;display:flex;flex-direction:column;gap:8px;align-items:stretch;box-shadow:0 1px 0 rgba(15,23,42,0.04);}'
+      + '.gc-step2-tool-btn{height:54px;border:1px solid #cbd5e1;border-radius:7px;background:#f8fafc;color:#334155;font-size:10px;font-weight:700;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;transition:all .16s ease;}'
+      + '.gc-step2-tool-btn:hover{border-color:#94a3b8;background:#f1f5f9;color:#0f172a;}'
+      + '.gc-step2-tool-icon{width:28px;height:28px;border-radius:8px;background:#e2e8f0;color:#1f2937;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(148,163,184,.35);}'
+      + '.gc-step2-tool-icon i{font-size:14px;line-height:1;}'
+      + '.gc-step2-tool-label{font-size:10px;font-weight:700;letter-spacing:.01em;line-height:1.1;text-align:center;}'
+      + '.gc-step2-tool-btn .gc-step2-tool-label{display:none;}'
+      + '.gc-step2-tool-btn.is-active{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;box-shadow:0 0 0 1px rgba(59,130,246,.15),0 6px 14px rgba(37,99,235,.16);}'
+      + '.gc-step2-tool-btn.is-active .gc-step2-tool-icon{background:#2563eb;color:#ffffff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);}'
       + '.gc-step2-canvas-shell{display:flex;flex-direction:column;min-height:0;border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;overflow:hidden;}'
       + '.gc-step2-canvas-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #e2e8f0;background:#f8fbff;}'
       + '.gc-step2-canvas-head .gc-inline-label{font-size:10px;}'
@@ -480,14 +620,18 @@
       + '.gc-step2-zoom-range{width:120px;accent-color:#2563eb;}'
       + '.gc-step2-zoom-pill{font-size:10px;font-weight:800;color:#1e3a8a;background:#e0e7ff;border:1px solid #bfdbfe;border-radius:999px;padding:2px 7px;line-height:1.2;min-width:52px;text-align:center;}'
       + '.gc-step2-unit-select{height:28px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 8px;font-size:11px;color:#0f172a;}'
-      + '.gc-step2-size-controls{display:flex;align-items:center;gap:4px;}'
-      + '.gc-step2-size-label{font-size:10px;font-weight:700;color:#334155;}'
-      + '.gc-step2-size-input{height:28px;width:64px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 6px;font-size:11px;color:#0f172a;}'
+      + '.gc-step2-size-controls{display:flex;align-items:center;gap:2px;}'
+      + '.gc-step2-size-label{font-size:9px;font-weight:700;color:#334155;}'
+      + '.gc-step2-size-input{height:24px;width:48px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 4px;font-size:10px;color:#0f172a;text-align:center;}'
+      + '.gc-step2-size-input[readonly]{background:#f8fafc;color:#334155;border-color:#d1d5db;pointer-events:none;}'
       + '.gc-step2-snap-control{display:flex;align-items:center;gap:4px;}'
       + '.gc-step2-snap-label{font-size:10px;font-weight:700;color:#334155;white-space:nowrap;}'
       + '.gc-step2-snap-input{height:28px;width:70px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 6px;font-size:11px;color:#0f172a;}'
+      + '.gc-step2-merge-select{height:28px;min-width:170px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 8px;font-size:11px;color:#0f172a;}'
+      + '.gc-step2-center-controls .btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
       + '.gc-step2-side-switch{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}'
       + '.gc-step2-side-switch .gc-choice-btn{height:28px;padding:0 10px;border-radius:4px;font-size:11px;}'
+      + '.gc-step2-target-side{display:inline-flex;align-items:center;height:26px;padding:0 8px;border:1px solid #cbd5e1;border-radius:4px;background:#ffffff;color:#334155;font-size:10px;font-weight:700;white-space:nowrap;}'
       + '.gc-step2-canvas-stage{position:relative;flex:1;min-height:360px;background:#d6dde7;overflow:hidden;}'
       + '.gc-step2-stage-content{position:absolute;top:10px;left:10px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:18px;}'
       + '.gc-step2-stage-content.is-space-pan{cursor:grab;}'
@@ -500,6 +644,11 @@
       + '.gc-step2-guide-layer{position:absolute;inset:0;pointer-events:none;z-index:2;}'
       + '.gc-step2-guide-layer .gc-draft-guide{pointer-events:auto;}'
       + '.gc-step2-canvas{position:relative;width:100%;height:100%;background:#ffffff;border:1px solid #b8c1cc;border-radius:2px;box-shadow:8px 8px 0 rgba(15,23,42,0.12);}'
+      + '.gc-step2-canvas.is-two-sided{background:linear-gradient(90deg,#ffffff 0,#ffffff calc(50% - .5px),#d1d9e4 calc(50% - .5px),#d1d9e4 calc(50% + .5px),#ffffff calc(50% + .5px),#ffffff 100%);}'
+      + '.gc-step2-dual-divider{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:2px dashed rgba(71,85,105,.55);pointer-events:none;z-index:1;}'
+      + '.gc-step2-dual-side-tag{position:absolute;top:8px;display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:22px;padding:0 8px;border-radius:999px;border:1px solid #bfdbfe;background:rgba(239,246,255,.9);color:#1e3a8a;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;pointer-events:none;z-index:1;}'
+      + '.gc-step2-dual-side-tag.is-front{left:8px;}'
+      + '.gc-step2-dual-side-tag.is-back{left:calc(50% + 8px);}'
       + '.gc-step2-canvas.is-text-mode{cursor:text;}'
       + '.gc-step2-canvas.is-photo-mode{cursor:crosshair;}'
       + '.gc-step2-canvas.is-rect-mode{cursor:crosshair;}'
@@ -514,17 +663,20 @@
       + '.gc-draft-el.is-selected{border:1px solid #111827;background:transparent;box-shadow:none;overflow:visible;}'
       + '.gc-draft-el.gc-draft-el-text.is-selected{background:transparent;border-color:transparent;}'
       + '.gc-draft-el.gc-draft-el-text.gc-draft-el-artistic.is-selected::after{display:none;}'
+      + '.gc-draft-el.is-merge-preview{border-style:dashed;}'
+      + '.gc-draft-el.gc-draft-el-text.is-merge-preview{background:rgba(219,234,254,.32);border-color:rgba(37,99,235,.42);color:#1e3a8a;}'
+      + '.gc-draft-el.gc-draft-el-photo.is-merge-preview{background:repeating-linear-gradient(45deg,rgba(14,165,233,.12) 0,rgba(14,165,233,.12) 6px,rgba(2,132,199,.18) 6px,rgba(2,132,199,.18) 12px);border-color:#0284c7;color:#075985;}'
       + '.gc-draft-el.gc-draft-el-text.is-editing::after{display:none;}'
       + '.gc-draft-el.gc-draft-el-text.is-editing{border-color:transparent;background:transparent;box-shadow:none;}'
       + '.gc-draft-selection-handle{position:absolute;width:var(--gc-handle-size,5px);height:var(--gc-handle-size,5px);border:1px solid #111827;background:#ffffff;border-radius:1px;box-sizing:border-box;pointer-events:auto;z-index:3;}'
-      + '.gc-draft-selection-handle.is-nw{left:calc(-1 * var(--gc-handle-offset-x,12px));top:calc(-1 * var(--gc-handle-offset-y,15px));}'
-      + '.gc-draft-selection-handle.is-n{left:50%;top:calc(-1 * var(--gc-handle-offset-y,15px));transform:translateX(-50%);}'
-      + '.gc-draft-selection-handle.is-ne{right:calc(-1 * var(--gc-handle-offset-x,12px));top:calc(-1 * var(--gc-handle-offset-y,15px));}'
-      + '.gc-draft-selection-handle.is-e{right:calc(-1 * var(--gc-handle-offset-x,12px));top:50%;transform:translateY(-50%);}'
-      + '.gc-draft-selection-handle.is-sw{left:calc(-1 * var(--gc-handle-offset-x,12px));bottom:calc(-1 * var(--gc-handle-offset-y,15px));}'
-      + '.gc-draft-selection-handle.is-s{left:50%;bottom:calc(-1 * var(--gc-handle-offset-y,15px));transform:translateX(-50%);}'
-      + '.gc-draft-selection-handle.is-se{right:calc(-1 * var(--gc-handle-offset-x,12px));bottom:calc(-1 * var(--gc-handle-offset-y,15px));}'
-      + '.gc-draft-selection-handle.is-w{left:calc(-1 * var(--gc-handle-offset-x,12px));top:50%;transform:translateY(-50%);}'
+      + '.gc-draft-selection-handle.is-nw{left:calc(-1 * var(--gc-handle-offset-x,6px));top:calc(-1 * var(--gc-handle-offset-y,6px));}'
+      + '.gc-draft-selection-handle.is-n{left:50%;top:calc(-1 * var(--gc-handle-offset-y,6px));transform:translateX(-50%);}'
+      + '.gc-draft-selection-handle.is-ne{right:calc(-1 * var(--gc-handle-offset-x,6px));top:calc(-1 * var(--gc-handle-offset-y,6px));}'
+      + '.gc-draft-selection-handle.is-e{right:calc(-1 * var(--gc-handle-offset-x,6px));top:50%;transform:translateY(-50%);}'
+      + '.gc-draft-selection-handle.is-sw{left:calc(-1 * var(--gc-handle-offset-x,6px));bottom:calc(-1 * var(--gc-handle-offset-y,6px));}'
+      + '.gc-draft-selection-handle.is-s{left:50%;bottom:calc(-1 * var(--gc-handle-offset-y,6px));transform:translateX(-50%);}'
+      + '.gc-draft-selection-handle.is-se{right:calc(-1 * var(--gc-handle-offset-x,6px));bottom:calc(-1 * var(--gc-handle-offset-y,6px));}'
+      + '.gc-draft-selection-handle.is-w{left:calc(-1 * var(--gc-handle-offset-x,6px));top:50%;transform:translateY(-50%);}'
       + '.gc-draft-selection-handle.is-n,.gc-draft-selection-handle.is-s{cursor:ns-resize;}'
       + '.gc-draft-selection-handle.is-e,.gc-draft-selection-handle.is-w{cursor:ew-resize;}'
       + '.gc-draft-selection-handle.is-nw,.gc-draft-selection-handle.is-se{cursor:nwse-resize;}'
@@ -534,12 +686,17 @@
       + '.gc-draft-guide{position:absolute;border:0;background:transparent;z-index:2;}'
       + '.gc-draft-guide.is-vertical{width:14px;transform:translateX(-7px);cursor:ew-resize;}'
       + '.gc-draft-guide.is-horizontal{height:14px;transform:translateY(-7px);cursor:ns-resize;}'
-      + '.gc-draft-guide::before{content:"";position:absolute;background:#64748b;opacity:.45;}'
-      + '.gc-draft-guide.is-vertical::before{left:6.5px;top:0;width:1px;height:100%;}'
-      + '.gc-draft-guide.is-horizontal::before{left:0;top:6.5px;width:100%;height:1px;}'
-      + '.gc-draft-guide.is-selected::before{background:#0284c7;opacity:.85;box-shadow:0 0 0 1px rgba(2,132,199,0.28);}'
+      + '.gc-draft-guide::before{content:"";position:absolute;opacity:.8;}'
+      + '.gc-draft-guide.is-vertical::before{left:6.5px;top:0;width:1px;height:100%;background-image:repeating-linear-gradient(to bottom,rgba(71,85,105,.85) 0,rgba(71,85,105,.85) 5px,transparent 5px,transparent 9px);}'
+      + '.gc-draft-guide.is-horizontal::before{left:0;top:6.5px;width:100%;height:1px;background-image:repeating-linear-gradient(to right,rgba(71,85,105,.85) 0,rgba(71,85,105,.85) 5px,transparent 5px,transparent 9px);}'
+      + '.gc-draft-guide.is-selected::before{opacity:1;}'
+      + '.gc-draft-guide.is-selected.is-vertical::before{background-image:repeating-linear-gradient(to bottom,rgba(2,132,199,1) 0,rgba(2,132,199,1) 5px,transparent 5px,transparent 9px);}'
+      + '.gc-draft-guide.is-selected.is-horizontal::before{background-image:repeating-linear-gradient(to right,rgba(2,132,199,1) 0,rgba(2,132,199,1) 5px,transparent 5px,transparent 9px);}'
+      + '.gc-step2-canvas-shell.is-guides-locked .gc-step2-ruler-top,.gc-step2-canvas-shell.is-guides-locked .gc-step2-ruler-left{cursor:not-allowed;opacity:.65;}'
+      + '.gc-step2-canvas-shell.is-guides-locked .gc-draft-guide{pointer-events:none;}'
       + '.gc-draft-insert-guide{position:absolute;border:1px dashed #0f766e;background:rgba(45,212,191,0.18);pointer-events:none;z-index:2;}'
       + '.gc-draft-insert-guide.is-rect{border-color:#2563eb;background:rgba(37,99,235,0.13);}'
+      + '.gc-draft-insert-guide.is-select{border-color:#0f172a;background:rgba(15,23,42,0.08);}'
       + '.gc-step2-props{border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;}'
       + '.gc-prop-section-title{font-size:10px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:.05em;margin:2px 0;}'
       + '.gc-prop-group{display:flex;flex-direction:column;gap:4px;}'
@@ -549,6 +706,26 @@
       + '.gc-prop-note{font-size:11px;color:#64748b;line-height:1.35;}'
       + '.gc-prop-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}'
       + '.gc-prop-actions .btn{height:28px;padding:0 8px;font-size:11px;line-height:1;}'
+      + '.gc-prop-actions.gc-prop-actions-icons{gap:4px;}'
+      + '.gc-prop-icon-btn{min-width:30px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;gap:4px;}'
+      + '.gc-prop-icon-btn i{font-size:11px;line-height:1;}'
+      + '.gc-prop-icon-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
+      + '.gc-step2-report-overlay{position:fixed;inset:0;background:rgba(15,23,42,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:16000;}'
+      + '.gc-step2-report-modal{width:min(980px,96vw);max-height:min(86vh,820px);display:flex;flex-direction:column;border:1px solid #dbe2ea;border-radius:10px;background:#ffffff;box-shadow:0 24px 60px rgba(2,8,23,.34);overflow:hidden;}'
+      + '.gc-step2-report-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid #e2e8f0;background:#f8fbff;}'
+      + '.gc-step2-report-title{font-size:13px;font-weight:800;color:#0f172a;}'
+      + '.gc-step2-report-summary{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-bottom:1px solid #e2e8f0;background:#ffffff;}'
+      + '.gc-step2-report-pill{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;font-size:11px;font-weight:700;}'
+      + '.gc-step2-report-grid{padding:10px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:auto;min-height:0;}'
+      + '.gc-step2-report-card{border:1px solid #dbe2ea;border-radius:8px;background:#ffffff;padding:8px;display:flex;flex-direction:column;gap:5px;min-height:120px;}'
+      + '.gc-step2-report-card-title{font-size:11px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:.04em;}'
+      + '.gc-step2-report-row{display:flex;align-items:center;gap:6px;min-height:24px;padding:3px 5px;border-radius:6px;background:#f8fafc;color:#334155;font-size:11px;line-height:1.25;}'
+      + '.gc-step2-report-lbl{font-weight:700;color:#1f2937;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.gc-step2-report-arrow{opacity:.65;}'
+      + '.gc-step2-report-field{font-weight:700;color:#1d4ed8;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.gc-step2-report-meta{color:#64748b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.gc-step2-report-empty{font-size:11px;color:#94a3b8;padding:4px 2px;}'
+      + '.gc-step2-report-more{font-size:11px;color:#64748b;padding:2px 2px 0;}'
       + '.gc-step-panel-step2 .gc-actions{margin-top:auto;padding:8px 10px 10px;position:sticky;bottom:0;background:#f8fafc;z-index:1;}'
       + '.gc-step-panel.gc-step-panel-step3{width:100%;max-width:none;margin:0;border-radius:4px;padding:4px 0 0;display:flex;flex-direction:column;gap:6px;min-height:100%;background:#f8fafc;}'
       + '.gc-step-panel-step3 .gc-step-title,.gc-step-panel-step3 .gc-step-subtitle{padding:0 10px;}'
@@ -564,7 +741,7 @@
       + '.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:52mm;max-width:100%;height:auto;aspect-ratio:1/1.526;}'
       + '.gc-step-panel-step3 .gc-actions{margin-top:auto;padding:8px 10px 10px;position:sticky;bottom:0;background:#f8fafc;z-index:1;}'
       + '@media (max-width:1180px){.gc-flow-header{grid-template-columns:minmax(0,1fr) auto;}.gc-header-stepper{grid-column:1 / -1;order:3;overflow-x:auto;padding-bottom:2px;}.gc-inline-group.gc-inline-group-selection{align-items:flex-start;text-align:left;margin-left:0;}}'
-      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;padding:6px;justify-content:space-between;}.gc-step2-tool-btn{flex:1;height:44px;}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-zoom-range{width:100px;}.gc-step2-size-input{width:58px;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
+      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;padding:6px;justify-content:space-between;}.gc-step2-tool-btn{flex:1;height:44px;}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-zoom-range{width:100px;}.gc-step2-size-input{width:58px;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
 
     document.head.appendChild(style);
   }
@@ -637,43 +814,41 @@
   }
 
   function setAlert(message, kind) {
-    if (!alertBar) {
-      return;
-    }
-
     if (!message) {
-      alertBar.classList.add('hidden');
-      alertBar.classList.remove('gc-alert-error');
-      alertBar.classList.remove('gc-alert-warning');
-      alertBar.textContent = '';
       return;
     }
-
-    alertBar.textContent = String(message);
-    alertBar.classList.remove('hidden');
-    alertBar.classList.remove('gc-alert-error');
-    alertBar.classList.remove('gc-alert-warning');
-    alertBar.classList.add(kind === 'error' ? 'gc-alert-error' : 'gc-alert-warning');
+    showToast(String(message), kind === 'error' ? 'error' : 'warning');
   }
 
   function setStepCounter() {
     if (!stepCounterEl) {
+      syncHeaderActionButtons();
       return;
     }
     stepCounterEl.textContent = 'Step ' + String(state.step) + ' of 3';
 
-    if (!headerStepperEl) {
-      return;
+    if (headerStepperEl) {
+      var stepNodes = headerStepperEl.querySelectorAll('[data-step]');
+      Array.prototype.forEach.call(stepNodes, function (node) {
+        var stepNum = Number(node.getAttribute('data-step') || 0);
+        var isActive = stepNum === state.step;
+        var isDone = stepNum > 0 && stepNum < state.step;
+        node.classList.toggle('is-active', isActive);
+        node.classList.toggle('is-done', isDone);
+      });
     }
 
-    var stepNodes = headerStepperEl.querySelectorAll('[data-step]');
-    Array.prototype.forEach.call(stepNodes, function (node) {
-      var stepNum = Number(node.getAttribute('data-step') || 0);
-      var isActive = stepNum === state.step;
-      var isDone = stepNum > 0 && stepNum < state.step;
-      node.classList.toggle('is-active', isActive);
-      node.classList.toggle('is-done', isDone);
-    });
+    syncHeaderActionButtons();
+  }
+
+  function syncHeaderActionButtons() {
+    var showStep2Actions = state.step === 2;
+
+    if (headerSaveTemplateBtnEl) {
+      headerSaveTemplateBtnEl.classList.toggle('hidden', !showStep2Actions);
+      headerSaveTemplateBtnEl.disabled = !!state.loading;
+      headerSaveTemplateBtnEl.textContent = state.loading ? 'Saving...' : 'Save Template';
+    }
   }
 
   function normalizeOrientation(value) {
@@ -702,10 +877,6 @@
 
   function uploadPdfPath(side) {
     return '/api/generate-card/table/' + TABLE_ID + '/template/upload-pdf/' + side + '/';
-  }
-
-  function clearPdfPath(side) {
-    return '/api/generate-card/table/' + TABLE_ID + '/template/clear-pdf/' + side + '/';
   }
 
   function staticAssetPath(path) {
@@ -939,6 +1110,11 @@
     state.draftInlineEditingElementId = '';
     state.draftPendingTextEdit = null;
     state.draftSelectedGuideId = '';
+    state.draftGuidesLocked = false;
+    state.draftMergePreview = false;
+    state.draftAutoMapScope = 'active';
+    state.draftAutoMapReport = null;
+    state.draftAutoMapReportOpen = false;
     state.draftActiveSide = 'front';
     state.draftTool = 'select';
     state.draftDragging = null;
@@ -946,7 +1122,8 @@
     state.draftGuideDragging = null;
     state.draftTextDrag = null;
     state.draftRectDrag = null;
-    state.draftZoom = 1;
+    state.draftSelectDrag = null;
+    state.draftZoom = 2;
     state.draftZoomOriginX = 50;
     state.draftZoomOriginY = 50;
     state.draftLastPointerClientX = null;
@@ -954,6 +1131,233 @@
     state.draftUnit = 'mm';
     state.draftSnapMm = 0.1;
     state.draftDirty = false;
+    state.draftHistory = {
+      undo: [],
+      redo: [],
+      applying: false,
+      inTxn: false,
+      txnCaptured: false,
+      maxDepth: 15,
+      lastSig: '',
+    };
+    state.draftInlineEditHistoryActive = false;
+  }
+
+  function ensureDraftHistoryState() {
+    if (!state.draftHistory || typeof state.draftHistory !== 'object') {
+      state.draftHistory = {
+        undo: [],
+        redo: [],
+        applying: false,
+        inTxn: false,
+        txnCaptured: false,
+        maxDepth: 15,
+        lastSig: '',
+      };
+    }
+    return state.draftHistory;
+  }
+
+  function draftHistorySnapshot() {
+    ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+    return {
+      templateDraft: deepCloneJson(state.templateDraft, defaultTemplateJson()),
+      templateDraftName: String(state.templateDraftName || ''),
+      draftSelectedElementId: String(state.draftSelectedElementId || ''),
+      draftSelectedElementIds: Array.from(selectedDraftElementSet()).map(function (id) {
+        return String(id || '');
+      }).sort(),
+      draftSelectedGuideId: String(state.draftSelectedGuideId || ''),
+      draftMergePreview: !!state.draftMergePreview,
+      draftActiveSide: state.draftActiveSide === 'back' ? 'back' : 'front',
+      draftTool: String(state.draftTool || 'select'),
+      orientation: normalizeOrientation(state.orientation || 'landscape'),
+      isTwoSided: !!state.isTwoSided,
+      draftUnit: currentDraftUnit(),
+      draftSnapMm: normalizeDraftSnapMm(state.draftSnapMm),
+      draftZoom: Number(state.draftZoom || 1),
+      draftZoomOriginX: Number(state.draftZoomOriginX || 50),
+      draftZoomOriginY: Number(state.draftZoomOriginY || 50),
+    };
+  }
+
+  function draftHistorySignature(snapshot) {
+    return JSON.stringify(snapshot || {});
+  }
+
+  function captureDraftHistoryPoint() {
+    if (state.step !== 2) {
+      return false;
+    }
+
+    var hist = ensureDraftHistoryState();
+    if (hist.applying) {
+      return false;
+    }
+
+    var snap = draftHistorySnapshot();
+    var sig = draftHistorySignature(snap);
+    if (sig === hist.lastSig) {
+      return false;
+    }
+
+    hist.undo.push(snap);
+    while (hist.undo.length > Math.max(1, Number(hist.maxDepth || 15))) {
+      hist.undo.shift();
+    }
+    hist.redo = [];
+    hist.lastSig = sig;
+    if (hist.inTxn) {
+      hist.txnCaptured = true;
+    }
+    return true;
+  }
+
+  function beginDraftHistoryTransaction() {
+    if (state.step !== 2) {
+      return;
+    }
+    var hist = ensureDraftHistoryState();
+    if (!hist.inTxn) {
+      hist.inTxn = true;
+      hist.txnCaptured = false;
+    }
+  }
+
+  function endDraftHistoryTransaction() {
+    var hist = ensureDraftHistoryState();
+    if (!hist.inTxn) {
+      return;
+    }
+    hist.inTxn = false;
+    hist.txnCaptured = false;
+    if (state.step === 2) {
+      hist.lastSig = draftHistorySignature(draftHistorySnapshot());
+    }
+  }
+
+  function prepareDraftHistoryMutation() {
+    if (state.step !== 2) {
+      return;
+    }
+    var hist = ensureDraftHistoryState();
+    if (hist.applying) {
+      return;
+    }
+    if (hist.inTxn) {
+      if (!hist.txnCaptured) {
+        captureDraftHistoryPoint();
+      }
+      return;
+    }
+    captureDraftHistoryPoint();
+  }
+
+  function applyDraftHistorySnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') {
+      return false;
+    }
+
+    state.templateDraft = deepCloneJson(snapshot.templateDraft, defaultTemplateJson());
+    state.templateDraftName = String(snapshot.templateDraftName || '');
+    state.draftSelectedElementId = String(snapshot.draftSelectedElementId || '');
+    state.draftSelectedElementIds = new Set(Array.isArray(snapshot.draftSelectedElementIds)
+      ? snapshot.draftSelectedElementIds.map(function (id) { return String(id || ''); })
+      : []);
+    state.draftSelectedGuideId = String(snapshot.draftSelectedGuideId || '');
+    state.draftMergePreview = !!snapshot.draftMergePreview;
+    state.draftActiveSide = snapshot.draftActiveSide === 'back' ? 'back' : 'front';
+
+    var tool = String(snapshot.draftTool || 'select');
+    if (tool !== 'select' && tool !== 'text' && tool !== 'photo' && tool !== 'rectangle') {
+      tool = 'select';
+    }
+    state.draftTool = tool;
+
+    state.orientation = normalizeOrientation(snapshot.orientation || state.orientation || 'landscape');
+    state.isTwoSided = !!snapshot.isTwoSided;
+
+    var unit = String(snapshot.draftUnit || 'mm').toLowerCase();
+    if (unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
+      unit = 'mm';
+    }
+    state.draftUnit = unit;
+    state.draftSnapMm = normalizeDraftSnapMm(snapshot.draftSnapMm);
+
+    setDraftZoom(Number(snapshot.draftZoom || 1));
+    var originX = Number(snapshot.draftZoomOriginX);
+    var originY = Number(snapshot.draftZoomOriginY);
+    state.draftZoomOriginX = Number.isFinite(originX) ? Math.max(0, Math.min(100, originX)) : 50;
+    state.draftZoomOriginY = Number.isFinite(originY) ? Math.max(0, Math.min(100, originY)) : 50;
+
+    state.draftDragging = null;
+    state.draftResizeDragging = null;
+    state.draftGuideDragging = null;
+    state.draftTextDrag = null;
+    state.draftRectDrag = null;
+    state.draftSelectDrag = null;
+    clearDraftInlineTextEditing();
+    state.draftInlineEditHistoryActive = false;
+
+    normalizeDraftElementSelection();
+    state.draftDirty = true;
+    syncDraftToSelectedTemplate();
+    return true;
+  }
+
+  function undoDraftHistory() {
+    if (state.step !== 2) {
+      return false;
+    }
+    var hist = ensureDraftHistoryState();
+    if (!hist.undo.length) {
+      return false;
+    }
+
+    var current = draftHistorySnapshot();
+    var previous = hist.undo.pop();
+    hist.redo.push(current);
+    while (hist.redo.length > Math.max(1, Number(hist.maxDepth || 15))) {
+      hist.redo.shift();
+    }
+
+    hist.applying = true;
+    try {
+      applyDraftHistorySnapshot(previous);
+    } finally {
+      hist.applying = false;
+    }
+
+    hist.lastSig = draftHistorySignature(draftHistorySnapshot());
+    return true;
+  }
+
+  function redoDraftHistory() {
+    if (state.step !== 2) {
+      return false;
+    }
+    var hist = ensureDraftHistoryState();
+    if (!hist.redo.length) {
+      return false;
+    }
+
+    var current = draftHistorySnapshot();
+    var next = hist.redo.pop();
+    hist.undo.push(current);
+    while (hist.undo.length > Math.max(1, Number(hist.maxDepth || 15))) {
+      hist.undo.shift();
+    }
+
+    hist.applying = true;
+    try {
+      applyDraftHistorySnapshot(next);
+    } finally {
+      hist.applying = false;
+    }
+
+    hist.lastSig = draftHistorySignature(draftHistorySnapshot());
+    return true;
   }
 
   function deepCloneJson(value, fallback) {
@@ -1004,6 +1408,36 @@
     }
 
     return { width: width, height: height };
+  }
+
+  function normalizeDraftEditorSide(value) {
+    return String(value || '').toLowerCase() === 'back' ? 'back' : 'front';
+  }
+
+  function draftCanvasLayoutMetrics(metrics) {
+    var cardMetrics = metrics || draftCanvasMetrics();
+    var cardWidth = Math.max(1, Number(cardMetrics.width || 1));
+    var cardHeight = Math.max(1, Number(cardMetrics.height || 1));
+    var sideCount = state.isTwoSided ? 2 : 1;
+
+    return {
+      cardWidth: cardWidth,
+      cardHeight: cardHeight,
+      sideCount: sideCount,
+      totalWidth: cardWidth * sideCount,
+      totalHeight: cardHeight,
+    };
+  }
+
+  function draftElementRenderSides(item) {
+    var side = normalizeDraftEditorSide(item && item.side);
+    if (String(item && item.side || '').toLowerCase() === 'both') {
+      return state.isTwoSided ? ['front', 'back'] : ['front'];
+    }
+    if (!state.isTwoSided && side === 'back') {
+      return [];
+    }
+    return [side];
   }
 
   function draftCanvasDisplayInfo(metrics) {
@@ -1153,6 +1587,7 @@
 
   function addDraftGuide(axis, pos) {
     var guides = draftGuides();
+    prepareDraftHistoryMutation();
     var guide = normalizeDraftGuide({ axis: axis, pos: pos });
     guides.push(guide);
     state.draftSelectedGuideId = guide.id;
@@ -1168,6 +1603,7 @@
     if (!target) {
       return false;
     }
+    prepareDraftHistoryMutation();
     var normalized = normalizeDraftGuide({ id: target.id, axis: target.axis, pos: pos });
     target.pos = normalized.pos;
     markDraftDirty();
@@ -1178,6 +1614,7 @@
     var guides = draftGuides();
     var before = guides.length;
     var wanted = String(id || '');
+    prepareDraftHistoryMutation();
     state.templateDraft.canvas.guides = guides.filter(function (item) {
       return String(item && item.id || '') !== wanted;
     });
@@ -1194,6 +1631,7 @@
   function renderDraftGuidesHtml(options) {
     options = options || {};
     var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
     var guides = draftGuides();
     if (!guides.length) {
       return '';
@@ -1206,16 +1644,22 @@
     var layerWidth = Number(options.layerWidth || canvasWidth);
     var layerHeight = Number(options.layerHeight || canvasHeight);
     var outside = !!options.outside;
+    var activeSide = normalizeDraftEditorSide(state.draftActiveSide);
+    if (!state.isTwoSided) {
+      activeSide = 'front';
+    }
+    var sideStart = state.isTwoSided && activeSide === 'back' ? (canvasWidth / 2) : 0;
+    var sideWidth = state.isTwoSided ? (canvasWidth / 2) : canvasWidth;
 
     return guides.map(function (guide) {
       var isVertical = guide.axis === 'x';
-      var ratio = Number(guide.pos || 0) / (isVertical ? Math.max(1, metrics.width) : Math.max(1, metrics.height));
-      var posPx = ratio * (isVertical ? canvasWidth : canvasHeight);
+      var ratio = Number(guide.pos || 0) / (isVertical ? Math.max(1, layout.cardWidth) : Math.max(1, layout.cardHeight));
+      var posPx = ratio * (isVertical ? sideWidth : canvasHeight);
       var cls = 'gc-draft-guide ' + (isVertical ? 'is-vertical' : 'is-horizontal')
         + (String(guide.id || '') === state.draftSelectedGuideId ? ' is-selected' : '');
       var style = isVertical
-        ? 'left:' + String(canvasLeft + posPx) + 'px;top:' + String(outside ? 0 : canvasTop) + 'px;height:' + String(outside ? layerHeight : canvasHeight) + 'px;'
-        : 'top:' + String(canvasTop + posPx) + 'px;left:' + String(outside ? 0 : canvasLeft) + 'px;width:' + String(outside ? layerWidth : canvasWidth) + 'px;';
+        ? 'left:' + String(canvasLeft + sideStart + posPx) + 'px;top:' + String(outside ? 0 : canvasTop) + 'px;height:' + String(outside ? layerHeight : canvasHeight) + 'px;'
+        : 'top:' + String(canvasTop + posPx) + 'px;left:' + String((outside ? 0 : canvasLeft) + sideStart) + 'px;width:' + String(outside ? Math.min(layerWidth, sideWidth) : sideWidth) + 'px;';
 
       return '<button type="button" class="' + cls + '" data-action="select-draft-guide" data-guide-id="' + escapeAttr(String(guide.id || '')) + '" style="' + style + '"></button>';
     }).join('');
@@ -1627,8 +2071,8 @@
     if (!Number.isFinite(x)) x = 16;
     if (!Number.isFinite(y)) y = 16;
 
-    var minWidth = type === 'text' ? 6 : 12;
-    var minHeight = type === 'text' ? 10 : 12;
+    var minWidth = type === 'text' ? 6 : (type === 'rectangle' ? 20 : 12);
+    var minHeight = type === 'text' ? 10 : (type === 'rectangle' ? 20 : 12);
     if (isArtisticText) {
       var artisticLimits = draftArtisticLimits(metrics);
       width = Math.max(minWidth, Math.min(artisticLimits.maxWidth, width));
@@ -1714,13 +2158,14 @@
     var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label');
     var fallbackLabel = type === 'image'
       ? 'Image'
-      : (type === 'rectangle' ? 'Rectangle' : 'Text');
+      : (type === 'rectangle' ? 'Rectangle' : '');
 
     var normalizedItem = {
       __id: item.__id || nextDraftElementId(),
       type: type,
       field: String(item.field || ''),
       label: hasStoredLabel ? String(item.label) : fallbackLabel,
+      showLabel: item.showLabel !== false,
       side: side,
       x: x,
       y: y,
@@ -1739,6 +2184,7 @@
       color: color,
       textMode: type === 'text' ? textMode : '',
       imageKind: type === 'image' ? String(item.imageKind || '') : '',
+      src: type === 'image' ? String(item.src || item.data_url || '') : '',
     };
 
     if (normalizedItem.type === 'text' && normalizedItem.textMode === 'artistic') {
@@ -1953,6 +2399,7 @@
     }
 
     ensureStep2DraftInitialized();
+    prepareDraftHistoryMutation();
     var changed = false;
     state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
       if (!item || String(item.__id || '') !== wanted) {
@@ -1988,6 +2435,7 @@
     }
 
     ensureStep2DraftInitialized();
+    prepareDraftHistoryMutation();
     var changed = false;
     state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
       if (!item || String(item.__id || '') !== wanted) {
@@ -2039,7 +2487,7 @@
       return false;
     }
 
-    var scaleX = Number(resizeDrag.metrics && resizeDrag.metrics.width || 0) / Math.max(1, Number(resizeDrag.canvasRect && resizeDrag.canvasRect.width || 0));
+    var scaleX = Number(resizeDrag.metrics && resizeDrag.metrics.width || 0) / Math.max(1, draftCanvasSideDisplayWidthPx(resizeDrag.canvasRect));
     var scaleY = Number(resizeDrag.metrics && resizeDrag.metrics.height || 0) / Math.max(1, Number(resizeDrag.canvasRect && resizeDrag.canvasRect.height || 0));
     if (!Number.isFinite(scaleX) || scaleX <= 0) {
       scaleX = 1;
@@ -2069,10 +2517,11 @@
       bottom += deltaY;
     }
 
-    var isArtisticText = String(resizeDrag.type || '').toLowerCase() === 'text'
+    var resizeType = String(resizeDrag.type || '').toLowerCase();
+    var isArtisticText = resizeType === 'text'
       && String(resizeDrag.textMode || '').toLowerCase() === 'artistic';
-    var minWidth = isArtisticText ? 6 : (String(resizeDrag.type || '').toLowerCase() === 'text' ? 8 : 12);
-    var minHeight = isArtisticText ? 10 : 12;
+    var minWidth = isArtisticText ? 6 : (resizeType === 'text' ? 8 : (resizeType === 'rectangle' ? 20 : 12));
+    var minHeight = isArtisticText ? 10 : (resizeType === 'rectangle' ? 20 : 12);
 
     if ((right - left) < minWidth) {
       if (hasWest && !hasEast) {
@@ -2193,6 +2642,7 @@
       return false;
     }
 
+    prepareDraftHistoryMutation();
     var changed = false;
     state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
       if (!item || !selected.has(item.__id)) {
@@ -2298,6 +2748,70 @@
       });
     }
 
+    if (mode === 'distribute-h') {
+      if (selected.length < 3) {
+        return false;
+      }
+      var sortedH = selected.slice().sort(function (a, b) {
+        return Number(a.x || 0) - Number(b.x || 0);
+      });
+      var firstH = sortedH[0];
+      var lastH = sortedH[sortedH.length - 1];
+      var minLeft = Number(firstH.x || 0);
+      var maxRightH = Number(lastH.x || 0) + Number(lastH.width || 0);
+      var totalWidth = sortedH.reduce(function (sum, item) {
+        return sum + Math.max(0, Number(item.width || 0));
+      }, 0);
+      var gapH = (maxRightH - minLeft - totalWidth) / Math.max(1, sortedH.length - 1);
+      if (!Number.isFinite(gapH)) {
+        return false;
+      }
+      var nextXById = {};
+      var cursorX = minLeft;
+      sortedH.forEach(function (item) {
+        nextXById[String(item.__id || '')] = cursorX;
+        cursorX += Math.max(0, Number(item.width || 0)) + gapH;
+      });
+      return applyToSelectedDraftElements(function (draft) {
+        var key = String(draft.__id || '');
+        if (Object.prototype.hasOwnProperty.call(nextXById, key)) {
+          draft.x = nextXById[key];
+        }
+      });
+    }
+
+    if (mode === 'distribute-v') {
+      if (selected.length < 3) {
+        return false;
+      }
+      var sortedV = selected.slice().sort(function (a, b) {
+        return Number(a.y || 0) - Number(b.y || 0);
+      });
+      var firstV = sortedV[0];
+      var lastV = sortedV[sortedV.length - 1];
+      var minTop = Number(firstV.y || 0);
+      var maxBottomV = Number(lastV.y || 0) + Number(lastV.height || 0);
+      var totalHeight = sortedV.reduce(function (sum, item) {
+        return sum + Math.max(0, Number(item.height || 0));
+      }, 0);
+      var gapV = (maxBottomV - minTop - totalHeight) / Math.max(1, sortedV.length - 1);
+      if (!Number.isFinite(gapV)) {
+        return false;
+      }
+      var nextYById = {};
+      var cursorY = minTop;
+      sortedV.forEach(function (item) {
+        nextYById[String(item.__id || '')] = cursorY;
+        cursorY += Math.max(0, Number(item.height || 0)) + gapV;
+      });
+      return applyToSelectedDraftElements(function (draft) {
+        var key = String(draft.__id || '');
+        if (Object.prototype.hasOwnProperty.call(nextYById, key)) {
+          draft.y = nextYById[key];
+        }
+      });
+    }
+
     return false;
   }
 
@@ -2326,6 +2840,284 @@
     syncDraftToSelectedTemplate();
   }
 
+  function sanitizeTextElementLabelForField(fieldName, currentLabel) {
+    var field = findTableFieldByName(fieldName);
+    var fallback = field ? fieldLabelForUi(field.name) : String(fieldName || '').trim();
+    var next = String(currentLabel || '').trim();
+    if (!next || /^\{\{.*\}\}$/.test(next)) {
+      return fallback;
+    }
+    return next;
+  }
+
+  function normalizeAutoMapScope(rawScope) {
+    var scope = String(rawScope || '').trim().toLowerCase();
+    if (scope === 'front' || scope === 'back' || scope === 'all' || scope === 'active') {
+      return scope;
+    }
+    return 'active';
+  }
+
+  function draftElementMatchesAutoMapScope(item, scope) {
+    var wanted = normalizeAutoMapScope(scope);
+    if (wanted === 'all') {
+      return true;
+    }
+    if (wanted === 'active') {
+      return draftElementVisibleOnSide(item, state.draftActiveSide === 'back' ? 'back' : 'front');
+    }
+    return draftElementVisibleOnSide(item, wanted);
+  }
+
+  function autoMapDraftFields(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var scope = normalizeAutoMapScope(opts.scope || state.draftAutoMapScope || 'active');
+    ensureStep2DraftInitialized();
+    if (!Array.isArray(state.templateDraft.elements) || !state.templateDraft.elements.length) {
+      return {
+        scope: scope,
+        checked: 0,
+        mappedCount: 0,
+        mapped: [],
+        unchanged: [],
+        skippedManual: [],
+        skippedNoLabel: [],
+        ambiguous: [],
+        unmatched: [],
+      };
+    }
+
+    prepareDraftHistoryMutation();
+    var report = {
+      scope: scope,
+      checked: 0,
+      mappedCount: 0,
+      mapped: [],
+      unchanged: [],
+      skippedManual: [],
+      skippedNoLabel: [],
+      ambiguous: [],
+      unmatched: [],
+    };
+
+    state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+      if (!item || String(item.type || '').toLowerCase() !== 'text') {
+        return item;
+      }
+
+      if (!draftElementMatchesAutoMapScope(item, scope)) {
+        return item;
+      }
+
+      report.checked += 1;
+      var draft = Object.assign({}, item);
+      var existingField = String(draft.field || '').trim();
+      var label = String(draft.label || '').trim();
+      var tokenField = extractMergeTokenFieldName(label);
+      var itemSide = String(item.side || 'front').toLowerCase();
+      if (itemSide !== 'front' && itemSide !== 'back' && itemSide !== 'both') {
+        itemSide = 'front';
+      }
+
+      if (existingField && !tokenField) {
+        report.skippedManual.push({
+          id: String(item.__id || ''),
+          label: label,
+          field: existingField,
+          side: itemSide,
+        });
+        return item;
+      }
+
+      if (!label) {
+        report.skippedNoLabel.push({
+          id: String(item.__id || ''),
+          side: itemSide,
+        });
+        return item;
+      }
+
+      var candidates = schemaFieldMatchCandidates(label);
+      if (!candidates.length) {
+        report.unmatched.push({
+          id: String(item.__id || ''),
+          label: label,
+          side: itemSide,
+        });
+        return item;
+      }
+
+      var top = candidates[0];
+      var runnerUp = candidates[1] || null;
+      var topScore = Number(top && top.score || 0);
+      var runnerScore = Number(runnerUp && runnerUp.score || 0);
+      var isTokenLocked = top && top.reason === 'token-exact';
+      var isAmbiguous = !isTokenLocked
+        && !!runnerUp
+        && topScore < 150
+        && (topScore - runnerScore) <= 5;
+
+      if (isAmbiguous) {
+        report.ambiguous.push({
+          id: String(item.__id || ''),
+          label: label,
+          side: itemSide,
+          candidates: candidates.slice(0, 3).map(function (entry) {
+            return {
+              name: String(entry && entry.field && entry.field.name || ''),
+              label: fieldLabelForUi(entry && entry.field && entry.field.name || ''),
+              score: Number(entry && entry.score || 0),
+            };
+          }),
+        });
+        return item;
+      }
+
+      var nextField = String(top && top.field && top.field.name || '').trim();
+      if (!nextField) {
+        return item;
+      }
+
+      if (normalizeFieldLookupKey(existingField) === normalizeFieldLookupKey(nextField)) {
+        report.unchanged.push({
+          id: String(item.__id || ''),
+          label: label,
+          field: nextField,
+          side: itemSide,
+        });
+        return item;
+      }
+
+      draft.field = nextField;
+      if (!label || tokenField) {
+        draft.label = fieldLabelForUi(nextField);
+        draft.showLabel = false;
+      }
+
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = item.__id;
+      report.mapped.push({
+        id: String(item.__id || ''),
+        label: label,
+        field: nextField,
+        side: itemSide,
+        score: topScore,
+      });
+      return normalized;
+    });
+
+    report.mappedCount = report.mapped.length;
+    if (report.mappedCount > 0) {
+      clearDraftInlineTextEditing();
+      normalizeDraftElementSelection();
+      markDraftDirty();
+    }
+
+    return report;
+  }
+
+  function syncSelectedElementField(rawFieldName) {
+    var current = selectedDraftElement();
+    if (!current) {
+      return false;
+    }
+
+    var wantedField = String(rawFieldName || '').trim();
+    var fieldMeta = wantedField ? findTableFieldByName(wantedField) : null;
+    if (wantedField && !fieldMeta) {
+      showToast('Selected field is not available in this table schema.', 'warning');
+      return false;
+    }
+
+    var patch = { field: fieldMeta ? String(fieldMeta.name || '') : '' };
+
+    if (String(current.type || '').toLowerCase() === 'text') {
+      if (fieldMeta) {
+        patch.label = sanitizeTextElementLabelForField(fieldMeta.name, current.label);
+      }
+      if (!fieldMeta && !String(current.label || '').trim()) {
+        patch.label = '';
+      }
+    }
+
+    if (String(current.type || '').toLowerCase() === 'image') {
+      if (fieldMeta) {
+        if (!isImageCompatibleSchemaField(fieldMeta)) {
+          showToast('This field is not image-compatible.', 'warning');
+          return false;
+        }
+        patch.src = '';
+      }
+    }
+
+    updateSelectedDraftElement(patch);
+    return true;
+  }
+
+  function insertPhotoFieldElement(rawFieldName) {
+    ensureStep2DraftInitialized();
+
+    var wantedField = String(rawFieldName || '').trim();
+    if (!wantedField) {
+      showToast('Select an image field to insert.', 'warning');
+      return false;
+    }
+
+    var fieldMeta = findTableFieldByName(wantedField);
+    if (!fieldMeta) {
+      showToast('Selected image field is not available.', 'warning');
+      return false;
+    }
+    if (!isImageCompatibleSchemaField(fieldMeta)) {
+      showToast('Selected field is not image-compatible.', 'warning');
+      return false;
+    }
+
+    var active = selectedDraftElement();
+    if (active && String(active.type || '').toLowerCase() === 'image') {
+      if (syncSelectedElementField(fieldMeta.name)) {
+        updateSelectedDraftElement({
+          imageKind: '',
+          showLabel: false,
+          label: fieldLabelForUi(fieldMeta.name),
+        });
+        showToast('Image field applied to selected image element.', 'success');
+        return true;
+      }
+      return false;
+    }
+
+    addPhotoPlaceholderElement({
+      field: fieldMeta.name,
+      side: state.draftActiveSide,
+      showLabel: false,
+      imageKind: '',
+      label: fieldLabelForUi(fieldMeta.name),
+    });
+    showToast('Photo field inserted.', 'success');
+    return true;
+  }
+
+  function toggleSelectedTextStyle(styleName) {
+    var selectedText = selectedDraftElement();
+    if (!selectedText || String(selectedText.type || '').toLowerCase() !== 'text') {
+      return false;
+    }
+
+    var style = String(styleName || '').toLowerCase();
+    if (style === 'bold') {
+      var isBold = Number(selectedText.fontWeight || 400) >= 600;
+      updateSelectedDraftElement({ fontWeight: isBold ? '400' : '700' });
+      return true;
+    }
+    if (style === 'italic') {
+      var isItalic = String(selectedText.fontStyle || 'normal').toLowerCase() === 'italic';
+      updateSelectedDraftElement({ fontStyle: isItalic ? 'normal' : 'italic' });
+      return true;
+    }
+    return false;
+  }
+
   function addDraftElement(type, options) {
     options = options || {};
     ensureStep2DraftInitialized();
@@ -2345,7 +3137,7 @@
       label: hasLabelOption ? String(options.label) : (
         baseType === 'image'
           ? 'Image ' + String(nextIndex + 1)
-          : (baseType === 'rectangle' ? 'Rectangle ' + String(nextIndex + 1) : 'Text ' + String(nextIndex + 1))
+          : (baseType === 'rectangle' ? 'Rectangle ' + String(nextIndex + 1) : '')
       ),
       field: String(options.field || ''),
       side: String(options.side || state.draftActiveSide || 'front'),
@@ -2364,12 +3156,15 @@
       color: String(options.color || '#1e293b'),
       textMode: String(options.textMode || (baseType === 'text' ? 'artistic' : '')),
       imageKind: String(options.imageKind || ''),
+      src: baseType === 'image' ? String(options.src || '') : '',
+      showLabel: options.showLabel !== false,
     };
 
     if (baseType === 'text' && String(itemDraft.textMode || '').toLowerCase() === 'artistic' && options.autoFitArtistic === true) {
       fitDraftArtisticTextBounds(itemDraft);
     }
 
+    prepareDraftHistoryMutation();
     var item = normalizeDraftElement(itemDraft, nextIndex);
     state.templateDraft.elements.push(item);
     state.draftSelectedElementId = item.__id;
@@ -2401,20 +3196,26 @@
       y = py - (height / 2);
     }
 
+    var fieldName = String(options.field || '').trim();
+    var fieldMeta = fieldName ? findTableFieldByName(fieldName) : null;
+
     addDraftElement('image', {
-      label: 'Photo 19 x 25 mm',
-      imageKind: 'photo_19x25',
+      label: String(options.label || (fieldMeta ? fieldLabelForUi(fieldMeta.name) : 'Photo 19 x 25 mm')),
+      field: fieldMeta ? String(fieldMeta.name || '') : '',
+      imageKind: String(options.imageKind || (fieldMeta ? '' : 'photo_19x25')),
+      showLabel: options.showLabel !== false,
       width: width,
       height: height,
       x: x,
       y: y,
-      side: state.draftActiveSide,
+      side: String(options.side || state.draftActiveSide),
       color: '#0369a1',
     });
   }
 
   function updateDraftCanvasSize(widthInput, heightInput, realSizeMm) {
     ensureStep2DraftInitialized();
+    prepareDraftHistoryMutation();
     var metrics = draftCanvasMetrics();
 
     var nextWidth = Number(widthInput);
@@ -2507,31 +3308,93 @@
     state.orientation = wanted;
   }
 
+  function resolveDualSidePoint(xCombined, layout) {
+    var side = 'front';
+    var x = Number(xCombined || 0);
+
+    if (!state.isTwoSided) {
+      return {
+        side: 'front',
+        x: x,
+      };
+    }
+
+    if (x >= layout.cardWidth) {
+      side = 'back';
+      x = x - layout.cardWidth;
+    }
+
+    return {
+      side: side,
+      x: x,
+    };
+  }
+
+  function draftCanvasSideDisplayWidthPx(rect) {
+    var width = Number(rect && rect.width || 0);
+    if (!Number.isFinite(width) || width <= 0) {
+      width = 1;
+    }
+    var sides = state.isTwoSided ? 2 : 1;
+    return width / sides;
+  }
+
   function canvasEventToDraftPoint(canvasEl, event, options) {
     options = options || {};
     var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
     var rect = canvasEl.getBoundingClientRect();
     var xPx = Number(event.clientX || 0) - rect.left;
     var yPx = Number(event.clientY || 0) - rect.top;
 
-    var x = (xPx / Math.max(1, rect.width)) * metrics.width;
-    var y = (yPx / Math.max(1, rect.height)) * metrics.height;
+    var xCombined = (xPx / Math.max(1, rect.width)) * layout.totalWidth;
+    var y = (yPx / Math.max(1, rect.height)) * layout.totalHeight;
+
+    var sidePoint = resolveDualSidePoint(xCombined, layout);
+    var side = sidePoint.side;
+    var x = sidePoint.x;
 
     if (!Number.isFinite(x)) x = metrics.width / 2;
     if (!Number.isFinite(y)) y = metrics.height / 2;
+    if (!Number.isFinite(xCombined)) xCombined = x;
 
     if (options.allowOutside) {
+      if (state.isTwoSided) {
+        if (xCombined < 0) {
+          side = 'front';
+          x = xCombined;
+        } else if (xCombined > layout.totalWidth) {
+          side = 'back';
+          x = xCombined - layout.cardWidth;
+        }
+      }
+
       return {
         x: x,
         y: y,
+        side: side,
         metrics: metrics,
         rect: rect,
       };
     }
 
+    x = Math.max(0, Math.min(layout.cardWidth, x));
+    y = Math.max(0, Math.min(layout.cardHeight, y));
+
+    if (state.isTwoSided) {
+      if (xCombined <= 0) {
+        side = 'front';
+        x = 0;
+      } else if (xCombined >= layout.totalWidth) {
+        side = 'back';
+        x = layout.cardWidth;
+      }
+    }
+
     return {
-      x: Math.max(0, Math.min(metrics.width, x)),
-      y: Math.max(0, Math.min(metrics.height, y)),
+      x: x,
+      y: y,
+      side: side,
       metrics: metrics,
       rect: rect,
     };
@@ -2693,6 +3556,7 @@
       return;
     }
 
+    prepareDraftHistoryMutation();
     state.templateDraft.elements = state.templateDraft.elements.filter(function (item) {
       return !selected.has(String(item && item.__id || ''));
     });
@@ -2762,6 +3626,7 @@
       color: selected.color,
       textMode: selected.textMode,
       imageKind: selected.imageKind,
+      src: selected.src,
     });
     return true;
   }
@@ -2861,19 +3726,25 @@
     ensureStep2DraftInitialized();
     normalizeDraftElementSelection();
     var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
     var selectedIds = selectedDraftElementSet();
-    var side = state.draftActiveSide === 'back' ? 'back' : 'front';
-    var rows = state.templateDraft.elements
-      .filter(function (item) {
-        return draftElementVisibleOnSide(item, side);
-      })
-      .map(function (item, idx) {
+    var mergePreviewMode = !!state.draftMergePreview;
+    var rows = [];
+
+    (state.templateDraft.elements || []).forEach(function (item, idx) {
+      if (!item) {
+        return;
+      }
+
+      var renderSides = draftElementRenderSides(item);
+      renderSides.forEach(function (renderSide) {
+        var sideOffsetUnits = state.isTwoSided && renderSide === 'back' ? layout.cardWidth : 0;
         var isArtisticGeometry = String(item.type || '').toLowerCase() === 'text'
           && String(item.textMode || 'artistic').toLowerCase() === 'artistic';
-        var leftRaw = (Number(item.x || 0) / Math.max(1, metrics.width)) * 100;
-        var topRaw = (Number(item.y || 0) / Math.max(1, metrics.height)) * 100;
-        var widthRaw = (Number(item.width || 1) / Math.max(1, metrics.width)) * 100;
-        var heightRaw = (Number(item.height || 1) / Math.max(1, metrics.height)) * 100;
+        var leftRaw = ((Number(item.x || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+        var topRaw = (Number(item.y || 0) / Math.max(1, layout.cardHeight)) * 100;
+        var widthRaw = (Number(item.width || 1) / Math.max(1, layout.totalWidth)) * 100;
+        var heightRaw = (Number(item.height || 1) / Math.max(1, layout.cardHeight)) * 100;
         var left = isArtisticGeometry ? leftRaw : Math.max(0, Math.min(100, leftRaw));
         var top = isArtisticGeometry ? topRaw : Math.max(0, Math.min(100, topRaw));
         var width = isArtisticGeometry ? Math.max(0.8, widthRaw) : Math.max(2, Math.min(100, widthRaw));
@@ -2885,14 +3756,22 @@
         if (!label && item.type !== 'text') {
           label = String(item.field || ('Field ' + String(idx + 1)));
         }
+        if (!label && item.type === 'text' && item.field) {
+          label = '{{' + fieldLabelForUi(item.field) + '}}';
+        }
+        if (mergePreviewMode && item.type === 'text' && item.field) {
+          label = '{{' + fieldLabelForUi(item.field) + '}}';
+        }
         var isSelected = isDraftElementSelected(item.__id);
         var cls = 'gc-draft-el gc-draft-el-' + (
           item.type === 'image'
             ? 'photo'
             : (item.type === 'rectangle' ? 'rect' : 'text')
         )
+          + ' gc-draft-el-side-' + renderSide
           + (item.type === 'text' ? (' gc-draft-el-' + (item.textMode === 'paragraph' ? 'paragraph' : 'artistic')) : '')
           + (item.type === 'text' && state.draftInlineEditingElementId === item.__id ? ' is-editing' : '')
+          + (mergePreviewMode && item.field ? ' is-merge-preview' : '')
           + (isSelected ? ' is-selected' : '');
         var style = 'left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;';
 
@@ -2902,9 +3781,10 @@
             fontSizePt = 12;
           }
           var fontSizePx = ptToPx(fontSizePt);
-          var handleSizePx = Math.round(Math.max(5, Math.min(16, fontSizePx * 0.12)));
-          var handleOffsetPx = Math.max(12, handleSizePx + 6);
-          var handleOffsetYPx = handleOffsetPx + 3;
+          var handleSizePx = Math.round(Math.max(DRAFT_HANDLE_SIZE_MIN_PX, Math.min(DRAFT_HANDLE_SIZE_MAX_PX, fontSizePx * 0.12)));
+          var handleGapPx = Math.max(DRAFT_HANDLE_GAP_MIN_PX, Math.min(DRAFT_HANDLE_GAP_MAX_PX, fontSizePx * 0.05));
+          var handleOffsetPx = Math.round((handleSizePx / 2) + handleGapPx);
+          var handleOffsetYPx = handleOffsetPx;
           var align = item.textAlign === 'left'
             ? 'flex-start'
             : (item.textAlign === 'right' ? 'flex-end' : 'center');
@@ -2931,7 +3811,10 @@
 
         if (item.type === 'rectangle') {
           var rectColor = String(item.color || '#2563eb');
-          style += 'border-color:' + escapeAttr(rectColor) + ';'
+          style += '--gc-handle-size:9px;'
+            + '--gc-handle-offset-x:8px;'
+            + '--gc-handle-offset-y:8px;'
+            + 'border-color:' + escapeAttr(rectColor) + ';'
             + 'background:' + hexToRgbaString(rectColor, 0.14, '#2563eb') + ';'
             + 'color:transparent;';
           label = '';
@@ -2942,8 +3825,23 @@
           label = 'Photo 19 x 25';
         }
 
+        if (item.type === 'image') {
+          var imageSrc = String(item.src || '').trim();
+          if (imageSrc) {
+            style += 'background-image:url(' + escapeAttr(imageSrc) + ');'
+              + 'background-size:cover;'
+              + 'background-position:center;'
+              + 'background-repeat:no-repeat;'
+              + 'color:transparent;';
+            label = '';
+          } else if (mergePreviewMode && item.field) {
+            label = '[IMG ' + fieldLabelForUi(item.field) + ']';
+          }
+        }
+
         var isInlineEditing = item.type === 'text'
           && state.draftInlineEditingElementId === item.__id
+          && (!state.isTwoSided || String(item.side || '').toLowerCase() !== 'both' || renderSide === normalizeDraftEditorSide(state.draftActiveSide))
           && selectedIds.size <= 1;
         var contentHtml = isInlineEditing
           ? '<div class="gc-draft-inline-editor" data-inline-text-editor="1" data-inline-editor-id="' + escapeAttr(item.__id) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '" contenteditable="true" spellcheck="false">' + escapeHtml(label) + '</div>'
@@ -2959,15 +3857,16 @@
             + '<span class="gc-draft-selection-handle is-w" data-handle="w"></span>'
           : '';
 
-        return '<div class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '" data-el-type="' + escapeAttr(String(item.type || 'text')) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '"'
+        rows.push('<div class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '" data-render-side="' + escapeAttr(renderSide) + '" data-el-type="' + escapeAttr(String(item.type || 'text')) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '"'
           + ' style="' + style + '">'
           + contentHtml
           + handlesHtml
-          + '</div>';
+          + '</div>');
       });
+    });
 
     if (!rows.length) {
-      return '<div class="gc-step2-canvas-empty">Use left tools to insert text, rectangle, or 19 x 25 mm photo placeholder</div>';
+      return '';
     }
 
     return rows.join('');
@@ -2999,8 +3898,69 @@
     };
   }
 
+  function draftBoxesIntersect(a, b) {
+    if (!a || !b) {
+      return false;
+    }
+
+    var aLeft = Number(a.x || 0);
+    var aTop = Number(a.y || 0);
+    var aRight = aLeft + Math.max(0, Number(a.width || 0));
+    var aBottom = aTop + Math.max(0, Number(a.height || 0));
+    var bLeft = Number(b.x || 0);
+    var bTop = Number(b.y || 0);
+    var bRight = bLeft + Math.max(0, Number(b.width || 0));
+    var bBottom = bTop + Math.max(0, Number(b.height || 0));
+
+    return aLeft <= bRight && aRight >= bLeft && aTop <= bBottom && aBottom >= bTop;
+  }
+
+  function selectDraftElementsByBox(box, appendSelection) {
+    ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+
+    var activeSide = normalizeDraftEditorSide((box && box.side) || state.draftActiveSide);
+    if (!state.isTwoSided) {
+      activeSide = 'front';
+    }
+    var selectedIds = appendSelection ? new Set(selectedDraftElementSet()) : new Set();
+    var elements = Array.isArray(state.templateDraft.elements) ? state.templateDraft.elements : [];
+
+    elements.forEach(function (item) {
+      if (!item || !item.__id) {
+        return;
+      }
+
+      var renderSides = draftElementRenderSides(item);
+      if (!renderSides.some(function (sideName) { return sideName === activeSide; })) {
+        return;
+      }
+
+      var itemBox = {
+        x: Number(item.x || 0),
+        y: Number(item.y || 0),
+        width: Math.max(0, Number(item.width || 0)),
+        height: Math.max(0, Number(item.height || 0)),
+      };
+      if (draftBoxesIntersect(box, itemBox)) {
+        selectedIds.add(String(item.__id));
+      }
+    });
+
+    state.draftSelectedElementIds = selectedIds;
+    state.draftSelectedElementId = '';
+    selectedIds.forEach(function (id) {
+      if (!state.draftSelectedElementId) {
+        state.draftSelectedElementId = String(id || '');
+      }
+    });
+    state.draftSelectedGuideId = '';
+    clearDraftInlineTextEditing();
+    normalizeDraftElementSelection();
+  }
+
   function renderDraftInsertGuideHtml() {
-    var drag = state.draftRectDrag || state.draftTextDrag;
+    var drag = state.draftRectDrag || state.draftTextDrag || state.draftSelectDrag;
     if (!drag) {
       return '';
     }
@@ -3013,7 +3973,16 @@
       }
     }
 
+    if (drag.kind === 'select') {
+      var selectDx = Math.abs(Number(drag.currentX || drag.startX || 0) - Number(drag.startX || 0));
+      var selectDy = Math.abs(Number(drag.currentY || drag.startY || 0) - Number(drag.startY || 0));
+      if (selectDx < 2 && selectDy < 2) {
+        return '';
+      }
+    }
+
     var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
     var box = draftDragBox(
       Number(drag.startX || 0),
       Number(drag.startY || 0),
@@ -3021,12 +3990,19 @@
       Number(drag.currentY || drag.startY || 0),
       !!(drag.kind === 'rectangle' && drag.lockSquare)
     );
+    var guideSide = normalizeDraftEditorSide(drag.side || state.draftActiveSide);
+    if (!state.isTwoSided) {
+      guideSide = 'front';
+    }
+    var sideOffsetUnits = state.isTwoSided && guideSide === 'back' ? layout.cardWidth : 0;
 
-    var left = Math.max(0, Math.min(100, (box.x / metrics.width) * 100));
-    var top = Math.max(0, Math.min(100, (box.y / metrics.height) * 100));
-    var width = Math.max(0.8, Math.min(100, (box.width / metrics.width) * 100));
-    var height = Math.max(0.8, Math.min(100, (box.height / metrics.height) * 100));
-    var cls = 'gc-draft-insert-guide' + (drag.kind === 'rectangle' ? ' is-rect' : '');
+    var left = Math.max(0, Math.min(100, ((box.x + sideOffsetUnits) / layout.totalWidth) * 100));
+    var top = Math.max(0, Math.min(100, (box.y / layout.cardHeight) * 100));
+    var width = Math.max(0.8, Math.min(100, (box.width / layout.totalWidth) * 100));
+    var height = Math.max(0.8, Math.min(100, (box.height / layout.cardHeight) * 100));
+    var cls = 'gc-draft-insert-guide'
+      + (drag.kind === 'rectangle' ? ' is-rect' : '')
+      + (drag.kind === 'select' ? ' is-select' : '');
 
     return '<div class="' + cls + '" style="left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;"></div>';
   }
@@ -3034,7 +4010,7 @@
   function renderDraftPropsHtml() {
     var item = selectedDraftElement();
     if (!item) {
-      return '<div class="gc-prop-note">No element selected. Add a field or click one from canvas.</div>';
+      return '<div class="gc-prop-note">Select an element to use text, nudge, and align tools.</div>';
     }
 
     var isText = item.type === 'text';
@@ -3059,41 +4035,73 @@
     var yValue = formatDraftMeasure(item.y, 'y');
     var wValue = formatDraftMeasure(item.width, 'x');
     var hValue = formatDraftMeasure(item.height, 'y');
+    var itemSide = String(item.side || 'front').toLowerCase();
+    if (itemSide !== 'front' && itemSide !== 'back' && itemSide !== 'both') {
+      itemSide = 'front';
+    }
+    var showLabelChecked = item.showLabel !== false ? ' checked' : '';
+    var textFieldOptions = renderSchemaFieldOptions(item.field, {
+      includeEmpty: true,
+      emptyLabel: 'Static text (no field)',
+      imageOnly: false,
+    });
+    var imageFieldOptions = renderSchemaFieldOptions(item.field, {
+      includeEmpty: true,
+      emptyLabel: 'Static image (no field)',
+      imageOnly: true,
+    });
+    var hasMergeField = isText && String(item.field || '').trim();
+    var mergePreview = hasMergeField ? '{{' + fieldLabelForUi(item.field) + '}}' : '';
+    var boldActive = isText && Number(item.fontWeight || 400) >= 600;
+    var italicActive = isText && String(item.fontStyle || 'normal').toLowerCase() === 'italic';
+    var imageSrc = String(item.src || '');
 
     return ''
-      + '<div class="gc-prop-section-title">Element</div>'
-      + '<div class="gc-prop-group">'
-      + '<label for="gcDraftLabelInput">Label</label>'
-      + '<input id="gcDraftLabelInput" class="gc-prop-input" type="text" value="' + escapeAttr(item.label || '') + '">'
-      + '</div>'
-      + '<div class="gc-prop-group">'
-      + '<label for="gcDraftFieldInput">Data Field</label>'
-      + '<input id="gcDraftFieldInput" class="gc-prop-input" type="text" value="' + escapeAttr(item.field || '') + '">'
-      + '</div>'
-      + '<div class="gc-prop-grid">'
-      + '<div class="gc-prop-group">'
-      + '<label for="gcDraftTypeInput">Type</label>'
-      + '<select id="gcDraftTypeInput" class="gc-prop-select">'
-      + '<option value="text"' + (item.type === 'text' ? ' selected' : '') + '>Text</option>'
-      + '<option value="image"' + (item.type === 'image' ? ' selected' : '') + '>Image</option>'
-      + '<option value="rectangle"' + (item.type === 'rectangle' ? ' selected' : '') + '>Rectangle</option>'
-      + '</select>'
-      + '</div>'
+      + '<div class="gc-prop-section-title">Content</div>'
+      + (isText
+        ? '<div class="gc-prop-group">'
+          + '<label for="gcDraftLabelInput">Text Label</label>'
+          + '<input id="gcDraftLabelInput" class="gc-prop-input" type="text" value="' + escapeAttr(item.label || '') + '" placeholder="Type visible text or keep empty for field-only value">'
+          + '</div>'
+          + '<div class="gc-prop-group">'
+          + '<label for="gcDraftFieldInput">Merge Field</label>'
+          + '<select id="gcDraftFieldInput" class="gc-prop-select">'
+          + textFieldOptions
+          + '</select>'
+          + '</div>'
+          + '<label class="gc-prop-note"><input id="gcDraftShowLabelInput" type="checkbox"' + showLabelChecked + '> Prefix value with label while printing</label>'
+          + (hasMergeField
+            ? '<div class="gc-prop-note">Merge preview token: <strong>' + escapeHtml(mergePreview) + '</strong></div>'
+            : '<div class="gc-prop-note">Tip: assign a merge field to print per-card data in Step 3.</div>')
+        : (isRectangle
+            ? '<div class="gc-prop-note">Rectangle is decorative only.</div>'
+            : '<div class="gc-prop-group">'
+              + '<label for="gcDraftFieldInput">Image Field</label>'
+              + '<select id="gcDraftFieldInput" class="gc-prop-select">'
+              + imageFieldOptions
+              + '</select>'
+              + '</div>'
+              + '<div class="gc-prop-group">'
+              + '<label for="gcDraftImageSrcInput">Static Image Source (URL/Data)</label>'
+              + '<input id="gcDraftImageSrcInput" class="gc-prop-input" type="text" value="' + escapeAttr(imageSrc) + '" placeholder="https://... or data:image/...">'
+              + '</div>'
+              + '<div class="gc-prop-note">Use an image field for per-card photos/signatures, or keep a static image source for fixed logos.</div>'))
       + '<div class="gc-prop-group">'
       + '<label for="gcDraftSideInput">Side</label>'
       + '<select id="gcDraftSideInput" class="gc-prop-select">'
-      + '<option value="front"' + (item.side === 'front' ? ' selected' : '') + '>Front</option>'
-      + '<option value="back"' + (item.side === 'back' ? ' selected' : '') + '>Back</option>'
-      + '<option value="both"' + (item.side === 'both' ? ' selected' : '') + '>Both</option>'
+      + '<option value="front"' + (itemSide === 'front' ? ' selected' : '') + '>Front</option>'
+      + '<option value="back"' + (itemSide === 'back' ? ' selected' : '') + '>Back</option>'
+      + '<option value="both"' + (itemSide === 'both' ? ' selected' : '') + '>Both</option>'
       + '</select>'
       + '</div>'
-      + '</div>'
+      + '<div class="gc-prop-section-title">Position &amp; Size</div>'
       + '<div class="gc-prop-grid">'
       + '<div class="gc-prop-group"><label for="gcDraftXInput">X (' + unit + ')</label><input id="gcDraftXInput" class="gc-prop-input" type="number" step="any" value="' + escapeAttr(xValue) + '"></div>'
       + '<div class="gc-prop-group"><label for="gcDraftYInput">Y (' + unit + ')</label><input id="gcDraftYInput" class="gc-prop-input" type="number" step="any" value="' + escapeAttr(yValue) + '"></div>'
-      + '<div class="gc-prop-group"><label for="gcDraftWInput">Width (' + unit + ')</label><input id="gcDraftWInput" class="gc-prop-input" type="number" step="any" value="' + escapeAttr(wValue) + '"></div>'
-      + '<div class="gc-prop-group"><label for="gcDraftHInput">Height (' + unit + ')</label><input id="gcDraftHInput" class="gc-prop-input" type="number" step="any" value="' + escapeAttr(hValue) + '"></div>'
+      + '<div class="gc-prop-group"><label for="gcDraftWInput">Width (' + unit + ')</label><input id="gcDraftWInput" class="gc-prop-input" type="number" step="any" min="1" value="' + escapeAttr(wValue) + '"></div>'
+      + '<div class="gc-prop-group"><label for="gcDraftHInput">Height (' + unit + ')</label><input id="gcDraftHInput" class="gc-prop-input" type="number" step="any" min="1" value="' + escapeAttr(hValue) + '"></div>'
       + '</div>'
+      + '<div class="gc-prop-section-title">Element Tools</div>'
       + (isText
         ? '<div class="gc-prop-group">'
           + '<label for="gcDraftFontInput">Font Size (pt)</label>'
@@ -3135,6 +4143,10 @@
           + '<label for="gcDraftColorInput">Color</label>'
           + '<input id="gcDraftColorInput" class="gc-prop-input" type="color" value="' + escapeAttr(String(item.color || '#1e293b')) + '">'
           + '</div>'
+          + '<div class="gc-prop-actions gc-prop-actions-icons">'
+          + '<button type="button" class="btn btn-outline gc-prop-icon-btn' + (boldActive ? ' is-active' : '') + '" data-action="toggle-text-style" data-style="bold" title="Bold" aria-label="Bold"><i class="fa-solid fa-bold"></i></button>'
+          + '<button type="button" class="btn btn-outline gc-prop-icon-btn' + (italicActive ? ' is-active' : '') + '" data-action="toggle-text-style" data-style="italic" title="Italic" aria-label="Italic"><i class="fa-solid fa-italic"></i></button>'
+          + '</div>'
           + '</div>'
         : (isRectangle
             ? '<div class="gc-prop-group">'
@@ -3142,12 +4154,26 @@
               + '<input id="gcDraftColorInput" class="gc-prop-input" type="color" value="' + escapeAttr(String(item.color || '#2563eb')) + '">'
               + '</div>'
               + '<div class="gc-prop-note">Rectangle selected. Hold Shift while drawing to lock square ratio.</div>'
-            : '<div class="gc-prop-note">Image placeholder selected. Use size and position controls above.</div>'))
-      + '<div class="gc-prop-actions">'
-      + '<button type="button" class="btn btn-outline" data-action="nudge-draft" data-dx="-1" data-dy="0">Left</button>'
-      + '<button type="button" class="btn btn-outline" data-action="nudge-draft" data-dx="1" data-dy="0">Right</button>'
-      + '<button type="button" class="btn btn-outline" data-action="nudge-draft" data-dx="0" data-dy="-1">Up</button>'
-      + '<button type="button" class="btn btn-outline" data-action="nudge-draft" data-dx="0" data-dy="1">Down</button>'
+            : '<div class="gc-prop-note">Image placeholder selected. Use drag/resize handles and alignment controls below.</div>'))
+      + '<div class="gc-prop-actions gc-prop-actions-icons">'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="-1" data-dy="0" title="Nudge Left" aria-label="Nudge Left"><i class="fa-solid fa-arrow-left"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="1" data-dy="0" title="Nudge Right" aria-label="Nudge Right"><i class="fa-solid fa-arrow-right"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="0" data-dy="-1" title="Nudge Up" aria-label="Nudge Up"><i class="fa-solid fa-arrow-up"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="0" data-dy="1" title="Nudge Down" aria-label="Nudge Down"><i class="fa-solid fa-arrow-down"></i></button>'
+        + '</div>'
+        + '<div class="gc-prop-section-title">Align &amp; Distribute</div>'
+        + '<div class="gc-prop-actions gc-prop-actions-icons">'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-left" title="Align Left" aria-label="Align Left"><i class="fa-solid fa-align-left"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-h-center" title="Align Center X" aria-label="Align Center X"><i class="fa-solid fa-align-center"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-right" title="Align Right" aria-label="Align Right"><i class="fa-solid fa-align-right"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-top" title="Align Top" aria-label="Align Top"><i class="fa-solid fa-arrow-up"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-v-center" title="Align Center Y" aria-label="Align Center Y"><i class="fa-solid fa-arrows-up-down"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-bottom" title="Align Bottom" aria-label="Align Bottom"><i class="fa-solid fa-arrow-down"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="canvas-center" title="Center To Canvas" aria-label="Center To Canvas"><i class="fa-solid fa-crosshairs"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="distribute-h" title="Distribute Horizontal" aria-label="Distribute Horizontal"><i class="fa-solid fa-arrows-left-right"></i></button>'
+        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="distribute-v" title="Distribute Vertical" aria-label="Distribute Vertical"><i class="fa-solid fa-arrows-up-down"></i></button>'
+          + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="duplicate-draft-element" title="Duplicate" aria-label="Duplicate"><i class="fa-solid fa-clone"></i></button>'
+          + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="remove-draft-element" title="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>'
       + '</div>';
   }
 
@@ -3220,12 +4246,7 @@
   }
 
   function step1Valid() {
-    if (!hasDesignForSide('front')) {
-      return false;
-    }
-    if (state.isTwoSided && !hasDesignForSide('back')) {
-      return false;
-    }
+    // Background PDFs are optional in Step 1.
     return true;
   }
 
@@ -3271,7 +4292,7 @@
         + '<canvas class="gc-pdf-canvas" data-side="' + escapeAttr(side) + '"></canvas>'
         + '<div class="gc-preview-loading" data-side-loading="' + escapeAttr(side) + '">Loading preview...</div>'
         + '</div>'
-      : '<div class="gc-preview-empty">Upload ' + escapeHtml(side) + ' design PDF to preview</div>';
+      : '<div class="gc-preview-empty">No ' + escapeHtml(side) + ' background selected (optional)</div>';
 
     var overlayHtml = withOverlay && hasPdf
       ? '<div class="gc-template-overlay">' + buildOverlayHtml(side) + '</div>'
@@ -3289,10 +4310,10 @@
   function renderStep1() {
     var frontName = state.frontFile
       ? state.frontFile.name
-      : (state.frontPreviewUrl ? 'Using saved design PDF' : 'No file selected');
+      : (state.frontPreviewUrl ? 'Background PDF selected' : 'No file selected (optional)');
     var backName = state.backFile
       ? state.backFile.name
-      : (state.backPreviewUrl ? 'Using saved design PDF' : 'No file selected');
+      : (state.backPreviewUrl ? 'Background PDF selected' : 'No file selected (optional)');
     var realSize = draftRealDimensionsMm();
     var sizeLabel = formatMmLabelValue(realSize.widthMm) + 'mm x ' + formatMmLabelValue(realSize.heightMm) + 'mm';
 
@@ -3301,10 +4322,7 @@
       + '<div class="gc-inline-controls">'
       + '<div class="gc-inline-control-block">'
       + '<div class="gc-inline-label">Card Type</div>'
-      + '<div class="gc-choice-row">'
-      + '<button type="button" class="gc-choice-btn' + (state.orientation === 'landscape' ? ' is-active' : '') + '" data-action="set-orientation" data-value="landscape">Horizontal</button>'
-      + '<button type="button" class="gc-choice-btn' + (state.orientation === 'portrait' ? ' is-active' : '') + '" data-action="set-orientation" data-value="portrait">Vertical</button>'
-      + '</div>'
+      + '<div class="gc-inline-value">Horizontal</div>'
       + '</div>'
       + '<div class="gc-inline-control-block">'
       + '<div class="gc-inline-label">Card Sides</div>'
@@ -3332,26 +4350,26 @@
     var uploadHtml = ''
       + '<div class="gc-step1-upload-row' + (state.isTwoSided ? '' : ' is-single-side') + '">'
       + '<div class="gc-step1-upload-col">'
-      + '<label>Front PDF</label>'
+      + '<label>Front Background PDF (Optional)</label>'
       + '<div class="gc-upload-input-wrap">'
       + '<input id="gcFrontPdfInput" class="gc-file-input-native" type="file" accept="application/pdf,.pdf">'
       + '<label for="gcFrontPdfInput" class="gc-upload-btn">Choose Front PDF</label>'
       + (hasDesignForSide('front')
         ? '<button type="button" class="btn btn-outline gc-upload-clear-btn" data-action="clear-pdf" data-side="front">Remove</button>'
         : '')
-      + '<div class="gc-file-pill' + (frontName === 'No file selected' ? ' is-empty' : '') + '">' + escapeHtml(frontName) + '</div>'
+      + '<div class="gc-file-pill' + (!hasDesignForSide('front') ? ' is-empty' : '') + '">' + escapeHtml(frontName) + '</div>'
       + '</div>'
       + '</div>'
       + (state.isTwoSided
         ? '<div class="gc-step1-upload-col">'
-          + '<label>Back PDF</label>'
+          + '<label>Back Background PDF (Optional)</label>'
           + '<div class="gc-upload-input-wrap">'
           + '<input id="gcBackPdfInput" class="gc-file-input-native" type="file" accept="application/pdf,.pdf">'
           + '<label for="gcBackPdfInput" class="gc-upload-btn">Choose Back PDF</label>'
           + (hasDesignForSide('back')
             ? '<button type="button" class="btn btn-outline gc-upload-clear-btn" data-action="clear-pdf" data-side="back">Remove</button>'
             : '')
-          + '<div class="gc-file-pill' + (backName === 'No file selected' ? ' is-empty' : '') + '">' + escapeHtml(backName) + '</div>'
+          + '<div class="gc-file-pill' + (!hasDesignForSide('back') ? ' is-empty' : '') + '">' + escapeHtml(backName) + '</div>'
           + '</div>'
           + '</div>'
         : '')
@@ -3397,14 +4415,136 @@
     return options.join('');
   }
 
+  function autoMapScopeLabel(scope) {
+    var normalized = normalizeAutoMapScope(scope);
+    if (normalized === 'all') {
+      return 'All Sides';
+    }
+    if (normalized === 'front') {
+      return 'Front Only';
+    }
+    if (normalized === 'back') {
+      return 'Back Only';
+    }
+    return 'Active Side';
+  }
+
+  function renderAutoMapScopeOptions(selectedScope) {
+    var selected = normalizeAutoMapScope(selectedScope);
+    if (!state.isTwoSided && selected === 'back') {
+      selected = 'active';
+    }
+    var rows = [];
+
+    rows.push('<option value="active"' + (selected === 'active' ? ' selected' : '') + '>Active Side</option>');
+    rows.push('<option value="front"' + (selected === 'front' ? ' selected' : '') + '>Front</option>');
+    if (state.isTwoSided) {
+      rows.push('<option value="back"' + (selected === 'back' ? ' selected' : '') + '>Back</option>');
+    }
+    rows.push('<option value="all"' + (selected === 'all' ? ' selected' : '') + '>All Sides</option>');
+    return rows.join('');
+  }
+
+  function renderAutoMapReportRows(items, limit, formatter) {
+    var rows = Array.isArray(items) ? items : [];
+    var maxRows = Math.max(1, Number(limit || 6));
+    if (!rows.length) {
+      return '<div class="gc-step2-report-empty">None</div>';
+    }
+
+    var html = rows.slice(0, maxRows).map(function (item) {
+      var line = formatter(item || {});
+      return '<div class="gc-step2-report-row">' + line + '</div>';
+    }).join('');
+
+    if (rows.length > maxRows) {
+      html += '<div class="gc-step2-report-more">+' + String(rows.length - maxRows) + ' more</div>';
+    }
+    return html;
+  }
+
+  function renderAutoMapReportModal() {
+    var report = state.draftAutoMapReport;
+    if (!state.draftAutoMapReportOpen || !report) {
+      return '';
+    }
+
+    var mappedCount = Number(report.mappedCount || 0);
+    var checkedCount = Number(report.checked || 0);
+    var unmatchedCount = Array.isArray(report.unmatched) ? report.unmatched.length : 0;
+    var ambiguousCount = Array.isArray(report.ambiguous) ? report.ambiguous.length : 0;
+    var manualCount = Array.isArray(report.skippedManual) ? report.skippedManual.length : 0;
+
+    return ''
+      + '<div class="gc-step2-report-overlay">'
+      + '<div class="gc-step2-report-modal" role="dialog" aria-modal="true" aria-label="Auto map report">'
+      + '<div class="gc-step2-report-head">'
+      + '<div class="gc-step2-report-title">Auto Map Report (' + escapeHtml(autoMapScopeLabel(report.scope)) + ')</div>'
+      + '<button type="button" class="btn btn-outline" data-action="close-auto-map-report">Close</button>'
+      + '</div>'
+      + '<div class="gc-step2-report-summary">'
+      + '<div class="gc-step2-report-pill">Checked: <strong>' + String(checkedCount) + '</strong></div>'
+      + '<div class="gc-step2-report-pill">Mapped: <strong>' + String(mappedCount) + '</strong></div>'
+      + '<div class="gc-step2-report-pill">Ambiguous: <strong>' + String(ambiguousCount) + '</strong></div>'
+      + '<div class="gc-step2-report-pill">Unmatched: <strong>' + String(unmatchedCount) + '</strong></div>'
+      + '<div class="gc-step2-report-pill">Manual-kept: <strong>' + String(manualCount) + '</strong></div>'
+      + '</div>'
+      + '<div class="gc-step2-report-grid">'
+      + '<div class="gc-step2-report-card"><div class="gc-step2-report-card-title">Mapped</div>'
+      + renderAutoMapReportRows(report.mapped, 7, function (item) {
+        var lbl = String(item.label || '').trim() || '(empty label)';
+        var fld = fieldLabelForUi(item.field || '');
+        return '<span class="gc-step2-report-lbl">' + escapeHtml(lbl) + '</span><span class="gc-step2-report-arrow">→</span><span class="gc-step2-report-field">' + escapeHtml(fld) + '</span>';
+      })
+      + '</div>'
+      + '<div class="gc-step2-report-card"><div class="gc-step2-report-card-title">Ambiguous</div>'
+      + renderAutoMapReportRows(report.ambiguous, 6, function (item) {
+        var lbl = String(item.label || '').trim() || '(empty label)';
+        var cands = Array.isArray(item.candidates) ? item.candidates.slice(0, 2).map(function (c) {
+          return fieldLabelForUi(c.name || '');
+        }).join(' / ') : '';
+        return '<span class="gc-step2-report-lbl">' + escapeHtml(lbl) + '</span><span class="gc-step2-report-meta">' + escapeHtml(cands || 'Needs manual selection') + '</span>';
+      })
+      + '</div>'
+      + '<div class="gc-step2-report-card"><div class="gc-step2-report-card-title">Unmatched</div>'
+      + renderAutoMapReportRows(report.unmatched, 6, function (item) {
+        var lbl = String(item.label || '').trim() || '(empty label)';
+        return '<span class="gc-step2-report-lbl">' + escapeHtml(lbl) + '</span>';
+      })
+      + '</div>'
+      + '<div class="gc-step2-report-card"><div class="gc-step2-report-card-title">Skipped Manual Mapping</div>'
+      + renderAutoMapReportRows(report.skippedManual, 6, function (item) {
+        var lbl = String(item.label || '').trim() || '(empty label)';
+        var fld = fieldLabelForUi(item.field || '');
+        return '<span class="gc-step2-report-lbl">' + escapeHtml(lbl) + '</span><span class="gc-step2-report-meta">Kept: ' + escapeHtml(fld) + '</span>';
+      })
+      + '</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function renderDualSideCanvasOverlayHtml() {
+    if (!state.isTwoSided) {
+      return '';
+    }
+
+    return ''
+      + '<div class="gc-step2-dual-divider" aria-hidden="true"></div>'
+      + '<div class="gc-step2-dual-side-tag is-front">Front</div>'
+      + '<div class="gc-step2-dual-side-tag is-back">Back</div>';
+  }
+
   function renderStep2() {
     ensureStep2DraftInitialized();
+    var draftHistoryState = ensureDraftHistoryState();
 
     var templateName = String(state.templateDraftName || (state.selectedTemplate && state.selectedTemplate.name) || 'New Template');
     var templateVersion = state.selectedTemplate && state.selectedTemplate.id
       ? Number(state.selectedTemplate.version || 1)
       : null;
     var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
     var zoom = Number(state.draftZoom || 1);
     if (!Number.isFinite(zoom) || zoom <= 0) {
       zoom = 1;
@@ -3420,8 +4560,9 @@
     zoomOriginX = Math.max(0, Math.min(100, zoomOriginX));
     zoomOriginY = Math.max(0, Math.min(100, zoomOriginY));
     var displayInfo = draftCanvasDisplayInfo(metrics);
-    var canvasDisplayWidth = Math.max(1, Math.round(Number(displayInfo.widthPx || 1)));
+    var canvasDisplayCardWidth = Math.max(1, Math.round(Number(displayInfo.widthPx || 1)));
     var canvasDisplayHeight = Math.max(1, Math.round(Number(displayInfo.heightPx || 1)));
+    var canvasDisplayWidth = Math.max(1, canvasDisplayCardWidth * layout.sideCount);
     var canvasWrapStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;transform-origin:' + zoomOriginX.toFixed(2) + '% ' + zoomOriginY.toFixed(2) + '%;transform:scale(' + zoom.toFixed(2) + ');';
     var canvasStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;';
     var guidesOuterHtml = renderDraftGuidesHtml({
@@ -3438,15 +4579,30 @@
     var unitLabel = unit.toUpperCase();
     var canvasWValue = formatDraftMeasure(metrics.width, 'x');
     var canvasHValue = formatDraftMeasure(metrics.height, 'y');
-    var canvasOrientation = draftReferenceOrientation(metrics);
-    var isCanvasPortrait = canvasOrientation === 'portrait';
     var snapMmLabel = formatDraftSnapMm(state.draftSnapMm);
-    var activeFront = state.draftActiveSide !== 'back';
+    var canUndo = !!(draftHistoryState && draftHistoryState.undo && draftHistoryState.undo.length);
+    var canRedo = !!(draftHistoryState && draftHistoryState.redo && draftHistoryState.redo.length);
+    var guidesLocked = !!state.draftGuidesLocked;
+    var mergeFieldOptions = renderSchemaFieldOptions('', {
+      includeEmpty: false,
+      imageOnly: false,
+    });
+    var photoFieldOptions = renderSchemaFieldOptions('', {
+      includeEmpty: false,
+      imageOnly: true,
+    });
+    var hasMergeFieldChoices = !!mergeFieldOptions;
+    var hasPhotoFieldChoices = !!photoFieldOptions;
+    var autoMapScope = normalizeAutoMapScope(state.draftAutoMapScope || 'active');
+    var autoMapScopeOptions = renderAutoMapScopeOptions(autoMapScope);
+    var hasAutoMapReport = !!state.draftAutoMapReport;
+    var activeFront = normalizeDraftEditorSide(state.draftActiveSide) !== 'back';
     var selectActive = state.draftTool === 'select';
     var textActive = state.draftTool === 'text';
     var photoActive = state.draftTool === 'photo';
     var rectActive = state.draftTool === 'rectangle';
     var canvasClass = 'gc-step2-canvas'
+      + (state.isTwoSided ? ' is-two-sided' : '')
       + (textActive ? ' is-text-mode' : '')
       + (photoActive ? ' is-photo-mode' : '')
       + (rectActive ? ' is-rect-mode' : '');
@@ -3455,20 +4611,20 @@
       + '<div class="gc-step2-workspace">'
       + '<div class="gc-step2-main">'
       + '<div class="gc-step2-tools">'
-      + '<button type="button" class="gc-step2-tool-btn' + (selectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="select">'
-      + '<i class="fa-solid fa-arrow-pointer"></i><span>Select</span>'
+      + '<button type="button" class="gc-step2-tool-btn' + (selectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="select" title="Select" aria-label="Select">'
+      + '<span class="gc-step2-tool-icon"><i class="fa-solid fa-arrow-pointer"></i></span>'
       + '</button>'
-      + '<button type="button" class="gc-step2-tool-btn' + (textActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="text">'
-      + '<i class="fa-solid fa-font"></i><span>Text</span>'
+      + '<button type="button" class="gc-step2-tool-btn' + (textActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="text" title="Text" aria-label="Text">'
+      + '<span class="gc-step2-tool-icon"><i class="fa-solid fa-font"></i></span>'
       + '</button>'
-      + '<button type="button" class="gc-step2-tool-btn' + (photoActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="photo">'
-      + '<i class="fa-solid fa-image"></i><span>Photo 19x25</span>'
+      + '<button type="button" class="gc-step2-tool-btn' + (photoActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="photo" title="Photo" aria-label="Photo">'
+      + '<span class="gc-step2-tool-icon"><i class="fa-solid fa-image"></i></span>'
       + '</button>'
-      + '<button type="button" class="gc-step2-tool-btn' + (rectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="rectangle">'
-      + '<i class="fa-solid fa-vector-square"></i><span>Rectangle</span>'
+      + '<button type="button" class="gc-step2-tool-btn' + (rectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="rectangle" title="Rectangle" aria-label="Rectangle">'
+      + '<span class="gc-step2-tool-icon"><i class="fa-solid fa-vector-square"></i></span>'
       + '</button>'
       + '</div>'
-      + '<div class="gc-step2-canvas-shell">'
+      + '<div class="gc-step2-canvas-shell' + (guidesLocked ? ' is-guides-locked' : '') + '">'
       + '<div class="gc-step2-canvas-head">'
       + '<div class="gc-inline-group">'
       + '<div class="gc-inline-label">Working Template</div>'
@@ -3479,6 +4635,8 @@
       + '<button type="button" class="btn btn-outline" data-action="zoom-in">+</button>'
       + '<button type="button" class="btn btn-outline" data-action="zoom-fit">Fit</button>'
       + '<span class="gc-step2-zoom-pill">' + zoomLabel + '%</span>'
+      + '<button type="button" class="btn btn-outline" data-action="undo-draft"' + (canUndo ? '' : ' disabled') + '>Undo</button>'
+      + '<button type="button" class="btn btn-outline" data-action="redo-draft"' + (canRedo ? '' : ' disabled') + '>Redo</button>'
       + '<select id="gcDraftUnitSelect" class="gc-step2-unit-select">'
       + '<option value="mm"' + (unit === 'mm' ? ' selected' : '') + '>mm</option>'
       + '<option value="cm"' + (unit === 'cm' ? ' selected' : '') + '>cm</option>'
@@ -3488,20 +4646,38 @@
       + '<span class="gc-step2-snap-label">Snap (mm)</span>'
       + '<input id="gcDraftSnapMmInput" class="gc-step2-snap-input" type="number" min="0" max="10" step="0.1" value="' + escapeAttr(snapMmLabel) + '" title="0 = off">'
       + '</label>'
+      + '<button type="button" class="btn btn-outline' + (guidesLocked ? ' is-active' : '') + '" data-action="toggle-guides-lock" title="Lock or unlock guide lines">'
+      + '<i class="fa-solid ' + (guidesLocked ? 'fa-lock' : 'fa-lock-open') + '"></i> '
+      + (guidesLocked ? 'Guides Locked' : 'Lock Guides')
+      + '</button>'
+      + '<button type="button" class="btn btn-outline' + (state.draftMergePreview ? ' is-active' : '') + '" data-action="toggle-merge-preview" title="Show merge-token preview on canvas">Merge Preview</button>'
       + '<div class="gc-step2-size-controls">'
       + '<span class="gc-step2-size-label">W (' + unitLabel + ')</span>'
-      + '<input id="gcDraftCanvasWidthCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasWValue) + '">'
+      + '<input id="gcDraftCanvasWidthCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasWValue) + '" readonly aria-readonly="true" tabindex="-1">'
       + '<span class="gc-step2-size-label">H (' + unitLabel + ')</span>'
-      + '<input id="gcDraftCanvasHeightCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasHValue) + '">'
+      + '<input id="gcDraftCanvasHeightCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasHValue) + '" readonly aria-readonly="true" tabindex="-1">'
       + '</div>'
-      + '<button type="button" class="btn btn-blue" data-action="save-draft-template">Save Template</button>'
+      + '<select id="gcDraftInsertFieldSelect" class="gc-step2-merge-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
+      + (hasMergeFieldChoices ? mergeFieldOptions : '<option value="">No fields available</option>')
+      + '</select>'
+      + '<button type="button" class="btn btn-outline" data-action="insert-merge-field"' + (hasMergeFieldChoices ? '' : ' disabled') + '>Insert Field</button>'
+      + '<select id="gcDraftAutoMapScopeSelect" class="gc-step2-merge-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
+      + autoMapScopeOptions
+      + '</select>'
+      + '<button type="button" class="btn btn-outline" data-action="auto-map-fields"' + (hasMergeFieldChoices ? '' : ' disabled') + '>Auto Map Fields</button>'
+      + '<button type="button" class="btn btn-outline" data-action="open-auto-map-report"' + (hasAutoMapReport ? '' : ' disabled') + '>View Map Report</button>'
+      + '<select id="gcDraftInsertPhotoFieldSelect" class="gc-step2-merge-select"' + (hasPhotoFieldChoices ? '' : ' disabled') + '>'
+      + (hasPhotoFieldChoices ? photoFieldOptions : '<option value="">No image fields</option>')
+      + '</select>'
+      + '<button type="button" class="btn btn-outline" data-action="insert-photo-field"' + (hasPhotoFieldChoices ? '' : ' disabled') + '>Insert Photo Field</button>'
       + '</div>'
       + '<div class="gc-step2-side-switch">'
-      + '<button type="button" class="gc-choice-btn' + (!isCanvasPortrait ? ' is-active' : '') + '" data-action="switch-draft-orientation" data-value="landscape">Landscape</button>'
-      + '<button type="button" class="gc-choice-btn' + (isCanvasPortrait ? ' is-active' : '') + '" data-action="switch-draft-orientation" data-value="portrait">Portrait</button>'
       + '<button type="button" class="gc-choice-btn' + (activeFront ? ' is-active' : '') + '" data-action="switch-draft-side" data-side="front">Front</button>'
       + (state.isTwoSided
         ? '<button type="button" class="gc-choice-btn' + (!activeFront ? ' is-active' : '') + '" data-action="switch-draft-side" data-side="back">Back</button>'
+        : '')
+      + (state.isTwoSided
+        ? '<span class="gc-step2-target-side">Target: ' + (activeFront ? 'Front' : 'Back') + '</span>'
         : '')
       + '</div>'
       + '</div>'
@@ -3513,6 +4689,7 @@
       + '<div class="gc-step2-canvas-wrap" style="' + canvasWrapStyle + '">'
       + '<div class="gc-step2-guide-layer">' + guidesOuterHtml + '</div>'
       + '<div class="' + canvasClass + '" style="' + canvasStyle + '">'
+      + renderDualSideCanvasOverlayHtml()
       + renderDraftElementsHtml()
       + renderDraftInsertGuideHtml()
       + '</div>'
@@ -3521,18 +4698,11 @@
       + '</div>'
       + '</div>'
       + '<div class="gc-step2-props">'
-      + '<div class="gc-prop-section-title">Template</div>'
-      + '<div class="gc-prop-group">'
-      + '<label for="gcTemplateNameInput">Template Name</label>'
-      + '<input id="gcTemplateNameInput" class="gc-prop-input" type="text" value="' + escapeAttr(templateName) + '">'
-      + '</div>'
-      + '<div class="gc-prop-actions">'
-      + '<button type="button" class="btn btn-outline" data-action="remove-draft-element">Delete Selected</button>'
-      + '</div>'
       + renderDraftPropsHtml()
       + '</div>'
       + '</div>'
       + '</div>'
+      + renderAutoMapReportModal()
       + '<div class="gc-actions">'
       + '<button type="button" class="btn btn-outline" data-action="prev-step">Back</button>'
       + '<div class="gc-actions-right">'
@@ -3741,11 +4911,10 @@
   }
 
   function parseInitialConfig() {
-    var templateData = window.TEMPLATE_DATA && typeof window.TEMPLATE_DATA === 'object' ? window.TEMPLATE_DATA : null;
-    state.orientation = normalizeOrientation(templateData && templateData.card_orientation ? templateData.card_orientation : 'landscape');
-    state.isTwoSided = !!(templateData && templateData.is_two_sided);
-    state.frontPreviewUrl = String(window.FRONT_PDF_URL || '');
-    state.backPreviewUrl = String(window.BACK_PDF_URL || '');
+    state.orientation = normalizeOrientation('landscape');
+    state.isTwoSided = false;
+    state.frontPreviewUrl = '';
+    state.backPreviewUrl = '';
   }
 
   function loadSelectionFromCards() {
@@ -3791,32 +4960,8 @@
     var detail = await requestJson('GET', templateDetailPath(id));
     state.selectedTemplateId = id;
     state.selectedTemplate = detail.template || null;
-    if (state.selectedTemplate && typeof state.selectedTemplate === 'object') {
-      if (state.selectedTemplate.card_orientation) {
-        state.orientation = normalizeOrientation(state.selectedTemplate.card_orientation);
-      }
-      if (typeof state.selectedTemplate.is_two_sided !== 'undefined') {
-        state.isTwoSided = !!state.selectedTemplate.is_two_sided;
-      }
-    }
     resetStep2DraftState();
     state.templateDraftName = state.selectedTemplate ? String(state.selectedTemplate.name || '') : '';
-  }
-
-  function bestTemplateId() {
-    var existing = Number(window.TEMPLATE_DATA && window.TEMPLATE_DATA.id ? window.TEMPLATE_DATA.id : 0);
-    if (existing) {
-      return existing;
-    }
-
-    var defaultTemplate = (state.templates || []).find(function (item) {
-      return !!(item && item.is_default);
-    });
-    if (defaultTemplate && defaultTemplate.id) {
-      return Number(defaultTemplate.id);
-    }
-
-    return state.templates.length ? Number(state.templates[0].id || 0) : 0;
   }
 
   function handlePdfFile(side, file) {
@@ -3888,23 +5033,12 @@
     ensureStep2DraftInitialized();
 
     var baseTemplate = state.selectedTemplate;
-    if ((!baseTemplate || !baseTemplate.template_json) && state.templates.length) {
-      var fallbackId = bestTemplateId();
-      if (fallbackId) {
-        try {
-          var fallbackDetail = await requestJson('GET', templateDetailPath(fallbackId));
-          baseTemplate = fallbackDetail && fallbackDetail.template ? fallbackDetail.template : baseTemplate;
-        } catch (_fallbackErr) {
-          // Keep creating a minimal draft when fallback fetch is unavailable.
-        }
-      }
-    }
 
     var payload = {
       name: String(state.templateDraftName || draftTemplateName()).slice(0, 120),
       is_two_sided: !!state.isTwoSided,
       card_orientation: normalizeOrientation(state.orientation),
-      template_json: state.templateDraft ? templateJsonForApi(state.templateDraft) : ((baseTemplate && baseTemplate.template_json) ? baseTemplate.template_json : defaultTemplateJson()),
+      template_json: state.templateDraft ? templateJsonForApi(state.templateDraft) : defaultTemplateJson(),
       font_size: Number((baseTemplate && baseTemplate.font_size) || 12),
       font_family: String((baseTemplate && baseTemplate.font_family) || 'Arial'),
       is_default: false,
@@ -3995,23 +5129,11 @@
     ensureStep2DraftInitialized();
     syncDraftToSelectedTemplate();
 
-    if (state.selectedTemplate && state.selectedTemplate.id && !state.draftDirty) {
-      return state.selectedTemplate;
-    }
-
-    if (state.draftDirty) {
-      return createDraftTemplate();
-    }
-
-    var preferredTemplateId = bestTemplateId();
-    if (preferredTemplateId) {
-      await selectTemplate(preferredTemplateId);
-      if (state.selectedTemplate && state.selectedTemplate.id) {
-        return state.selectedTemplate;
-      }
-    }
-
-    return createDraftTemplate();
+    var created = await createDraftTemplate();
+    return {
+      template: created,
+      transient: true,
+    };
   }
 
   async function uploadDesignPdfs() {
@@ -4019,18 +5141,31 @@
       var frontForm = new FormData();
       frontForm.append('pdf', state.frontFile, state.frontFile.name);
       await requestForm(uploadPdfPath('front'), frontForm);
-    } else if (!state.frontPreviewUrl) {
-      throw new Error('Front PDF is required.');
     }
 
-    if (state.isTwoSided) {
-      if (state.backFile) {
-        var backForm = new FormData();
-        backForm.append('pdf', state.backFile, state.backFile.name);
-        await requestForm(uploadPdfPath('back'), backForm);
-      } else if (!state.backPreviewUrl) {
-        throw new Error('Back PDF is required for 2 sided cards.');
+    if (state.isTwoSided && state.backFile) {
+      var backForm = new FormData();
+      backForm.append('pdf', state.backFile, state.backFile.name);
+      await requestForm(uploadPdfPath('back'), backForm);
+    }
+  }
+
+  async function deleteTransientTemplate(templateId) {
+    var id = Number(templateId || 0);
+    if (!id) {
+      return;
+    }
+    try {
+      await requestJson('DELETE', templatesPath(id), {});
+      state.templates = (state.templates || []).filter(function (item) {
+        return Number(item && item.id || 0) !== id;
+      });
+      if (Number(state.selectedTemplateId || 0) === id) {
+        state.selectedTemplateId = null;
+        state.selectedTemplate = null;
       }
+    } catch (_cleanupErr) {
+      // Cleanup is best-effort; generation result should not be blocked.
     }
   }
 
@@ -4039,42 +5174,22 @@
       return;
     }
 
-    state.loading = true;
-    render();
-
-    try {
-      var data = await requestJson('POST', clearPdfPath(side), {});
-      var template = data && data.template && typeof data.template === 'object' ? data.template : null;
-
-      revokeLocalPreview(side);
-      if (side === 'front') {
-        state.frontFile = null;
-        state.frontPreviewUrl = template && typeof template.front_pdf_url === 'string' ? template.front_pdf_url : '';
-      } else {
-        state.backFile = null;
-        state.backPreviewUrl = template && typeof template.back_pdf_url === 'string' ? template.back_pdf_url : '';
-      }
-
-      setAlert((side === 'front' ? 'Front' : 'Back') + ' design cleared.', 'warning');
-      showToast((side === 'front' ? 'Front' : 'Back') + ' design cleared.', 'success');
-    } catch (err) {
-      var message = err && err.message ? err.message : 'Unable to clear design PDF.';
-      setAlert(message, 'error');
-      showToast(message, 'error');
-    } finally {
-      state.loading = false;
-      render();
+    revokeLocalPreview(side);
+    if (side === 'front') {
+      state.frontFile = null;
+      state.frontPreviewUrl = '';
+    } else {
+      state.backFile = null;
+      state.backPreviewUrl = '';
     }
+
+    setAlert((side === 'front' ? 'Front' : 'Back') + ' background cleared.', 'warning');
+    showToast((side === 'front' ? 'Front' : 'Back') + ' background cleared.', 'success');
+    render();
   }
 
   async function handleGenerateAll() {
     if (state.generating) {
-      return;
-    }
-    if (!step1Valid()) {
-      setAlert('Please complete Step 1 before generating.', 'error');
-      state.step = 1;
-      render();
       return;
     }
     if (selectedCardCount() <= 0) {
@@ -4087,7 +5202,12 @@
 
     try {
       setAlert('Preparing template and uploading PDFs...', 'warning');
-      var workingTemplate = await createWorkingTemplate();
+      var working = await createWorkingTemplate();
+      var workingTemplate = working && working.template ? working.template : null;
+      var cleanupTransient = !!(working && working.transient && workingTemplate && workingTemplate.id);
+      if (!workingTemplate || !workingTemplate.id) {
+        throw new Error('Unable to prepare a working template for generation.');
+      }
       await uploadDesignPdfs();
 
       var requestIds = Array.from(state.selectedRequestIds);
@@ -4104,6 +5224,10 @@
 
       setAlert('Cards generated successfully.', 'warning');
       showToast('Cards generated successfully.', 'success');
+
+      if (cleanupTransient) {
+        await deleteTransientTemplate(workingTemplate.id);
+      }
 
       if (typeof window.closeGcEditorModal === 'function') {
         window.closeGcEditorModal();
@@ -4207,8 +5331,8 @@
     }
 
     if (action === 'switch-draft-side') {
-      var side = String(target.getAttribute('data-side') || 'front');
-      state.draftActiveSide = side === 'back' ? 'back' : 'front';
+      var side = normalizeDraftEditorSide(target.getAttribute('data-side'));
+      state.draftActiveSide = (!state.isTwoSided && side === 'back') ? 'front' : side;
       render();
       return;
     }
@@ -4237,10 +5361,66 @@
       return;
     }
 
+    if (action === 'toggle-guides-lock') {
+      state.draftGuidesLocked = !state.draftGuidesLocked;
+      if (state.draftGuidesLocked) {
+        state.draftGuideDragging = null;
+        state.draftSelectedGuideId = '';
+      }
+      showToast(state.draftGuidesLocked ? 'Guides locked.' : 'Guides unlocked.', 'info');
+      render();
+      return;
+    }
+
+    if (action === 'toggle-merge-preview') {
+      state.draftMergePreview = !state.draftMergePreview;
+      if (state.draftMergePreview) {
+        clearDraftInlineTextEditing();
+        state.draftPendingTextEdit = null;
+      }
+      showToast(state.draftMergePreview ? 'Merge preview enabled.' : 'Merge preview disabled.', 'info');
+      render();
+      return;
+    }
+
+    if (action === 'open-auto-map-report') {
+      if (state.draftAutoMapReport) {
+        state.draftAutoMapReportOpen = true;
+        render();
+      }
+      return;
+    }
+
+    if (action === 'close-auto-map-report') {
+      state.draftAutoMapReportOpen = false;
+      render();
+      return;
+    }
+
+    if (action === 'undo-draft') {
+      if (undoDraftHistory()) {
+        render();
+      }
+      return;
+    }
+
+    if (action === 'redo-draft') {
+      if (redoDraftHistory()) {
+        render();
+      }
+      return;
+    }
+
     if (action === 'set-draft-tool') {
       var tool = String(target.getAttribute('data-tool') || 'select');
+      if (state.draftInlineEditHistoryActive) {
+        endDraftHistoryTransaction();
+        state.draftInlineEditHistoryActive = false;
+      }
+      endDraftHistoryTransaction();
       state.draftTextDrag = null;
       state.draftRectDrag = null;
+      state.draftSelectDrag = null;
       state.draftDragging = null;
       state.draftResizeDragging = null;
       state.draftGuideDragging = null;
@@ -4258,13 +5438,84 @@
       return;
     }
 
+    if (action === 'insert-merge-field') {
+      ensureStep2DraftInitialized();
+      var selectEl = flowRoot.querySelector('#gcDraftInsertFieldSelect');
+      var wantedField = String(selectEl && selectEl.value || '').trim();
+      if (!wantedField) {
+        showToast('Select a field to insert.', 'warning');
+        return;
+      }
+      var fieldMeta = findTableFieldByName(wantedField);
+      if (!fieldMeta) {
+        showToast('Selected field is not available.', 'warning');
+        return;
+      }
+
+      var active = selectedDraftElement();
+      if (active && String(active.type || '').toLowerCase() === 'text') {
+        if (syncSelectedElementField(fieldMeta.name)) {
+          showToast('Field applied to selected text element.', 'success');
+        }
+      } else {
+        var created = addDraftElement('text', {
+          label: fieldLabelForUi(fieldMeta.name),
+          field: fieldMeta.name,
+          side: state.draftActiveSide,
+          textMode: 'paragraph',
+          textAlign: 'left',
+          showLabel: false,
+          width: 120,
+          height: 26,
+        });
+        if (created) {
+          showToast('Merge field inserted.', 'success');
+        }
+      }
+      render();
+      return;
+    }
+
+    if (action === 'auto-map-fields') {
+      var scopeSelectEl = flowRoot.querySelector('#gcDraftAutoMapScopeSelect');
+      var selectedScope = normalizeAutoMapScope(scopeSelectEl && scopeSelectEl.value || state.draftAutoMapScope || 'active');
+      state.draftAutoMapScope = selectedScope;
+      var mapping = autoMapDraftFields({ scope: selectedScope });
+      state.draftAutoMapReport = mapping;
+      state.draftAutoMapReportOpen = true;
+
+      var mappedCount = Number(mapping && mapping.mappedCount || 0);
+      var ambiguousCount = Array.isArray(mapping && mapping.ambiguous) ? mapping.ambiguous.length : 0;
+      var unmatchedCount = Array.isArray(mapping && mapping.unmatched) ? mapping.unmatched.length : 0;
+      if (mappedCount > 0) {
+        showToast('Mapped ' + String(mappedCount) + ' field(s). Ambiguous: ' + String(ambiguousCount) + ', unmatched: ' + String(unmatchedCount) + '.', 'success');
+      } else {
+        showToast('No new mappings. Ambiguous: ' + String(ambiguousCount) + ', unmatched: ' + String(unmatchedCount) + '.', 'info');
+      }
+      render();
+      return;
+    }
+
+    if (action === 'insert-photo-field') {
+      var photoFieldSelect = flowRoot.querySelector('#gcDraftInsertPhotoFieldSelect');
+      var wantedPhotoField = String(photoFieldSelect && photoFieldSelect.value || '').trim();
+      if (insertPhotoFieldElement(wantedPhotoField)) {
+        render();
+      }
+      return;
+    }
+
     if (action === 'select-draft-element') {
       if (event.target && event.target.closest && event.target.closest('.gc-draft-selection-handle')) {
         return;
       }
       var elId = String(target.getAttribute('data-el-id') || '');
+      var renderSide = normalizeDraftEditorSide(target.getAttribute('data-render-side'));
       if (!elId) {
         return;
+      }
+      if (state.isTwoSided) {
+        state.draftActiveSide = renderSide;
       }
       if (event.target && event.target.closest && event.target.closest('.gc-draft-inline-editor')
         && state.draftInlineEditingElementId === elId) {
@@ -4276,7 +5527,7 @@
       var clickedItem = findDraftElementById(elId);
       var clickedIsText = isDraftTextElement(clickedItem);
       var isDoubleClick = Number(event.detail || 0) >= 2;
-      if (!event.shiftKey && clickedIsText && isDoubleClick) {
+      if (!event.shiftKey && clickedIsText && isDoubleClick && !state.draftMergePreview) {
         state.draftSelectedElementId = elId;
         state.draftSelectedElementIds = new Set([elId]);
         state.draftSelectedGuideId = '';
@@ -4294,6 +5545,7 @@
       var shouldInlineEdit = !!(
         !event.shiftKey
         && clickedIsText
+        && !state.draftMergePreview
         && pendingTextEdit
         && pendingTextEdit.id === elId
         && !pendingTextEdit.moved
@@ -4333,6 +5585,9 @@
     }
 
     if (action === 'select-draft-guide') {
+      if (state.draftGuidesLocked) {
+        return;
+      }
       var guideId = String(target.getAttribute('data-guide-id') || '');
       state.draftSelectedGuideId = guideId;
       state.draftSelectedElementId = '';
@@ -4346,7 +5601,11 @@
       if (selectedDraftElement()) {
         removeDraftElement();
       } else if (selectedDraftGuide()) {
-        removeDraftGuideById(state.draftSelectedGuideId);
+        if (state.draftGuidesLocked) {
+          showToast('Unlock guides first to remove them.', 'warning');
+        } else {
+          removeDraftGuideById(state.draftSelectedGuideId);
+        }
       }
       render();
       return;
@@ -4356,6 +5615,41 @@
       var dx = Number(target.getAttribute('data-dx') || 0);
       var dy = Number(target.getAttribute('data-dy') || 0);
       if (nudgeSelectedDraftElement(dx, dy)) {
+        render();
+      }
+      return;
+    }
+
+    if (action === 'toggle-text-style') {
+      var styleName = String(target.getAttribute('data-style') || '').toLowerCase();
+      var selectedText = selectedDraftElement();
+      if (!selectedText || String(selectedText.type || '').toLowerCase() !== 'text') {
+        showToast('Select a text element first.', 'warning');
+        return;
+      }
+
+      if (styleName === 'bold') {
+        if (toggleSelectedTextStyle('bold')) {
+          render();
+        }
+      } else if (styleName === 'italic') {
+        if (toggleSelectedTextStyle('italic')) {
+          render();
+        }
+      }
+      return;
+    }
+
+    if (action === 'duplicate-draft-element') {
+      if (duplicateSelectedDraftElement()) {
+        render();
+      }
+      return;
+    }
+
+    if (action === 'align-selected') {
+      var mode = String(target.getAttribute('data-mode') || '');
+      if (alignSelectedDraftElements(mode)) {
         render();
       }
       return;
@@ -4441,6 +5735,10 @@
 
     var guideEl = event.target.closest('.gc-draft-guide');
     if (guideEl) {
+      if (state.draftGuidesLocked) {
+        event.preventDefault();
+        return;
+      }
       var guideShell = guideEl.closest('.gc-step2-canvas-shell');
       var guideCanvas = guideShell ? guideShell.querySelector('.gc-step2-canvas') : guideEl.closest('.gc-step2-canvas');
       var guideId = String(guideEl.getAttribute('data-guide-id') || '');
@@ -4452,6 +5750,7 @@
         }) || null;
       }
       if (guide && guideCanvas) {
+        beginDraftHistoryTransaction();
         state.draftSelectedGuideId = guideId;
         state.draftSelectedElementId = '';
         state.draftSelectedElementIds = new Set();
@@ -4470,14 +5769,20 @@
 
     var rulerEl = event.target.closest('.gc-step2-ruler-top, .gc-step2-ruler-left');
     if (rulerEl) {
+      if (state.draftGuidesLocked) {
+        event.preventDefault();
+        return;
+      }
       var shell = rulerEl.closest('.gc-step2-canvas-shell');
       var rulerCanvas = shell ? shell.querySelector('.gc-step2-canvas') : null;
       if (rulerCanvas) {
+        beginDraftHistoryTransaction();
         var axisAttr = String(rulerEl.getAttribute('data-axis') || '').toLowerCase();
         var axis = (axisAttr === 'x' || axisAttr === 'y')
           ? axisAttr
           : (rulerEl.classList.contains('gc-step2-ruler-top') ? 'x' : 'y');
         var startPoint = canvasEventToDraftPoint(rulerCanvas, event, { allowOutside: true });
+        state.draftActiveSide = normalizeDraftEditorSide(startPoint.side);
         var startPos = axis === 'x' ? startPoint.x : startPoint.y;
         startPos = snapCanvasValueToGrid(startPos, axis);
         var newGuideId = addDraftGuide(axis, startPos);
@@ -4504,55 +5809,87 @@
         return;
       }
       var startPoint = canvasEventToDraftPoint(canvasEl, event);
+      state.draftActiveSide = normalizeDraftEditorSide(startPoint.side);
       var snappedStartX = snapCanvasValueToGrid(startPoint.x, 'x');
       var snappedStartY = snapCanvasValueToGrid(startPoint.y, 'y');
       state.draftTextDrag = {
         kind: 'text',
         canvasEl: canvasEl,
+        side: state.draftActiveSide,
         startX: snappedStartX,
         startY: snappedStartY,
         currentX: snappedStartX,
         currentY: snappedStartY,
       };
+      beginDraftHistoryTransaction();
       event.preventDefault();
       render();
       return;
     }
 
     if (state.draftTool === 'rectangle') {
-      if (!canvasEl || event.target !== canvasEl) {
+      if (canvasEl && event.target === canvasEl) {
+        var rectStart = canvasEventToDraftPoint(canvasEl, event);
+        state.draftActiveSide = normalizeDraftEditorSide(rectStart.side);
+        var snappedRectStartX = snapCanvasValueToGrid(rectStart.x, 'x');
+        var snappedRectStartY = snapCanvasValueToGrid(rectStart.y, 'y');
+        state.draftRectDrag = {
+          kind: 'rectangle',
+          canvasEl: canvasEl,
+          side: state.draftActiveSide,
+          startX: snappedRectStartX,
+          startY: snappedRectStartY,
+          currentX: snappedRectStartX,
+          currentY: snappedRectStartY,
+          lockSquare: !!event.shiftKey,
+        };
+        beginDraftHistoryTransaction();
+        event.preventDefault();
+        render();
         return;
       }
-      var rectStart = canvasEventToDraftPoint(canvasEl, event);
-      var snappedRectStartX = snapCanvasValueToGrid(rectStart.x, 'x');
-      var snappedRectStartY = snapCanvasValueToGrid(rectStart.y, 'y');
-      state.draftRectDrag = {
-        kind: 'rectangle',
-        canvasEl: canvasEl,
-        startX: snappedRectStartX,
-        startY: snappedRectStartY,
-        currentX: snappedRectStartX,
-        currentY: snappedRectStartY,
-        lockSquare: !!event.shiftKey,
-      };
-      event.preventDefault();
-      render();
-      return;
     }
 
-    if (state.draftTool !== 'select') {
+    if (state.draftTool !== 'select' && state.draftTool !== 'rectangle') {
       return;
     }
 
     var el = event.target.closest('.gc-draft-el');
-    if (!el || !canvasEl) {
+    if (!canvasEl) {
+      return;
+    }
+
+    if (!el) {
+      var selectStart = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
+      state.draftActiveSide = normalizeDraftEditorSide(selectStart.side);
+      state.draftPendingTextEdit = null;
+      state.draftDragging = null;
+      state.draftResizeDragging = null;
+      state.draftSelectDrag = {
+        kind: 'select',
+        canvasEl: canvasEl,
+        side: state.draftActiveSide,
+        startX: Number(selectStart.x || 0),
+        startY: Number(selectStart.y || 0),
+        currentX: Number(selectStart.x || 0),
+        currentY: Number(selectStart.y || 0),
+        appendSelection: !!event.shiftKey,
+      };
+      beginDraftHistoryTransaction();
+      clearDraftInlineTextEditing();
+      event.preventDefault();
+      render();
       return;
     }
     var handleEl = event.target.closest('.gc-draft-selection-handle');
 
     var elId = String(el.getAttribute('data-el-id') || '');
+    var renderSideForEl = normalizeDraftEditorSide(el.getAttribute('data-render-side'));
     if (!elId) {
       return;
+    }
+    if (state.isTwoSided) {
+      state.draftActiveSide = renderSideForEl;
     }
 
     if (event.shiftKey) {
@@ -4562,6 +5899,8 @@
     }
 
     ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+    var selectedBefore = new Set(selectedDraftElementSet());
     var current = state.templateDraft.elements.find(function (item) {
       return item && item.__id === elId;
     });
@@ -4569,12 +5908,15 @@
       return;
     }
 
-    state.draftSelectedElementId = elId;
-    state.draftSelectedElementIds = new Set([elId]);
-    state.draftSelectedGuideId = '';
-    state.draftInlineEditingElementId = '';
+    var keepMultiSelection = !event.shiftKey
+      && selectedBefore.size > 1
+      && selectedBefore.has(elId);
 
     if (handleEl) {
+      state.draftSelectedElementId = elId;
+      state.draftSelectedElementIds = new Set([elId]);
+      state.draftSelectedGuideId = '';
+      state.draftInlineEditingElementId = '';
       var resizeHandle = normalizeDraftResizeHandle(handleEl.getAttribute('data-handle'));
       var resizePoint = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
       state.draftPendingTextEdit = null;
@@ -4595,12 +5937,39 @@
         canvasRect: resizePoint.rect,
         metrics: resizePoint.metrics,
       };
+      beginDraftHistoryTransaction();
       event.preventDefault();
       render();
       return;
     }
 
-    if (isDraftTextElement(current)) {
+    if (!keepMultiSelection) {
+      state.draftSelectedElementId = elId;
+      state.draftSelectedElementIds = new Set([elId]);
+    }
+    state.draftSelectedGuideId = '';
+    state.draftInlineEditingElementId = '';
+
+    var dragIds = keepMultiSelection ? Array.from(selectedBefore) : [elId];
+    var startPositions = {};
+    dragIds.forEach(function (sid) {
+      var item = findDraftElementById(sid);
+      if (!item) {
+        return;
+      }
+      startPositions[String(sid)] = {
+        x: Number(item.x || 0),
+        y: Number(item.y || 0),
+      };
+    });
+    if (!Object.prototype.hasOwnProperty.call(startPositions, elId)) {
+      startPositions[elId] = {
+        x: Number(current.x || 0),
+        y: Number(current.y || 0),
+      };
+    }
+
+    if (!keepMultiSelection && isDraftTextElement(current)) {
       state.draftPendingTextEdit = {
         id: elId,
         startMouseX: Number(event.clientX || 0),
@@ -4611,15 +5980,19 @@
       state.draftPendingTextEdit = null;
     }
     var point = canvasEventToDraftPoint(canvasEl, event);
+    var anchorStart = startPositions[elId];
     state.draftDragging = {
       id: elId,
+      dragIds: dragIds,
+      startPositions: startPositions,
       startMouseX: Number(event.clientX || 0),
       startMouseY: Number(event.clientY || 0),
-      startX: Number(current.x || 0),
-      startY: Number(current.y || 0),
+      startX: Number(anchorStart && anchorStart.x || current.x || 0),
+      startY: Number(anchorStart && anchorStart.y || current.y || 0),
       canvasRect: point.rect,
       metrics: point.metrics,
     };
+    beginDraftHistoryTransaction();
     state.draftResizeDragging = null;
 
     event.preventDefault();
@@ -4636,6 +6009,10 @@
 
     var guideEl = dblTarget.closest('.gc-draft-guide');
     if (guideEl) {
+      if (state.draftGuidesLocked) {
+        event.preventDefault();
+        return;
+      }
       var guideId = String(guideEl.getAttribute('data-guide-id') || '');
       if (guideId) {
         removeDraftGuideById(guideId);
@@ -4661,7 +6038,7 @@
       }
     }
 
-    if (state.step !== 2 || state.draftTool !== 'photo') {
+    if (state.step !== 2) {
       return;
     }
 
@@ -4670,11 +6047,36 @@
       return;
     }
 
+    if (state.draftTool === 'rectangle') {
+      var rectPoint = canvasEventToDraftPoint(canvasEl, event);
+      state.draftActiveSide = normalizeDraftEditorSide(rectPoint.side);
+      var metrics = draftCanvasMetrics();
+      var count = (state.templateDraft && state.templateDraft.elements ? state.templateDraft.elements.length : 0) + 1;
+      addDraftElement('rectangle', {
+        x: 0,
+        y: 0,
+        width: Number(metrics.width || 0),
+        height: Number(metrics.height || 0),
+        side: state.draftActiveSide,
+        color: '#2563eb',
+        label: 'Rectangle ' + String(count),
+      });
+      event.preventDefault();
+      render();
+      return;
+    }
+
+    if (state.draftTool !== 'photo') {
+      return;
+    }
+
     var point = canvasEventToDraftPoint(canvasEl, event);
+    state.draftActiveSide = normalizeDraftEditorSide(point.side);
     addPhotoPlaceholderElement({
       atPoint: true,
       x: point.x,
       y: point.y,
+      side: state.draftActiveSide,
     });
     state.draftTool = 'select';
     event.preventDefault();
@@ -4719,6 +6121,11 @@
 
     var guideDrag = state.draftGuideDragging;
     if (guideDrag) {
+      if (state.draftGuidesLocked) {
+        state.draftGuideDragging = null;
+        render();
+        return;
+      }
       var guideCanvas = resolveDraftCanvasEl(guideDrag.canvasEl);
       if (!guideCanvas) {
         return;
@@ -4761,12 +6168,26 @@
       return;
     }
 
+    var selectDrag = state.draftSelectDrag;
+    if (selectDrag) {
+      var selectCanvas = resolveDraftCanvasEl(selectDrag.canvasEl);
+      if (!selectCanvas) {
+        return;
+      }
+      selectDrag.canvasEl = selectCanvas;
+      var selectPoint = canvasEventToDraftPoint(selectCanvas, event, { allowOutside: true });
+      selectDrag.currentX = Number(selectPoint.x || selectDrag.startX || 0);
+      selectDrag.currentY = Number(selectPoint.y || selectDrag.startY || 0);
+      render();
+      return;
+    }
+
     var drag = state.draftDragging;
     if (!drag) {
       return;
     }
 
-    var scaleX = drag.metrics.width / Math.max(1, drag.canvasRect.width);
+    var scaleX = drag.metrics.width / Math.max(1, draftCanvasSideDisplayWidthPx(drag.canvasRect));
     var scaleY = drag.metrics.height / Math.max(1, drag.canvasRect.height);
     var x = drag.startX + ((Number(event.clientX || 0) - drag.startMouseX) * scaleX);
     var y = drag.startY + ((Number(event.clientY || 0) - drag.startMouseY) * scaleY);
@@ -4779,6 +6200,46 @@
       if (Math.abs(moveDx) > 2 || Math.abs(moveDy) > 2) {
         state.draftPendingTextEdit.moved = true;
       }
+    }
+
+    if (Array.isArray(drag.dragIds) && drag.dragIds.length > 1 && drag.startPositions && typeof drag.startPositions === 'object') {
+      var anchorStartX = Number(drag.startX || 0);
+      var anchorStartY = Number(drag.startY || 0);
+      var snappedAnchorX = snapCanvasValueToGrid(anchorStartX + ((Number(event.clientX || 0) - drag.startMouseX) * scaleX), 'x');
+      var snappedAnchorY = snapCanvasValueToGrid(anchorStartY + ((Number(event.clientY || 0) - drag.startMouseY) * scaleY), 'y');
+      var deltaX = snappedAnchorX - anchorStartX;
+      var deltaY = snappedAnchorY - anchorStartY;
+
+      ensureStep2DraftInitialized();
+        prepareDraftHistoryMutation();
+      var changed = false;
+      state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+        if (!item) {
+          return item;
+        }
+        var sid = String(item.__id || '');
+        var startPos = drag.startPositions[sid];
+        if (!startPos) {
+          return item;
+        }
+
+        var draft = Object.assign({}, item);
+        draft.x = Number(startPos.x || 0) + deltaX;
+        draft.y = Number(startPos.y || 0) + deltaY;
+
+        var normalized = normalizeDraftElement(draft, idx);
+        normalized.__id = item.__id;
+        changed = true;
+        return normalized;
+      });
+
+      if (changed) {
+        markDraftDirty();
+        normalizeDraftElementSelection();
+      }
+
+      render();
+      return;
     }
 
     updateSelectedDraftElement({ x: x, y: y });
@@ -4794,12 +6255,14 @@
 
     if (state.draftResizeDragging) {
       state.draftResizeDragging = null;
+      endDraftHistoryTransaction();
       render();
       return;
     }
 
     if (state.draftGuideDragging) {
       state.draftGuideDragging = null;
+      endDraftHistoryTransaction();
       render();
       return;
     }
@@ -4816,7 +6279,7 @@
           y: Math.min(Number(td.startY || 0), Number(td.currentY || td.startY || 0)),
           width: Math.max(36, dx),
           height: Math.max(20, dy),
-          side: state.draftActiveSide,
+          side: normalizeDraftEditorSide(td.side || state.draftActiveSide),
           textMode: 'paragraph',
           textAlign: 'left',
           label: '',
@@ -4825,7 +6288,7 @@
         createdTextItem = addDraftElement('text', {
           x: Number(td.startX || 0),
           y: Number(td.startY || 0),
-          side: state.draftActiveSide,
+          side: normalizeDraftEditorSide(td.side || state.draftActiveSide),
           textMode: 'artistic',
           textAlign: 'left',
           autoFitArtistic: true,
@@ -4838,6 +6301,7 @@
       }
 
       state.draftTextDrag = null;
+      endDraftHistoryTransaction();
       render();
       return;
     }
@@ -4859,34 +6323,53 @@
           y: rectBox.y,
           width: Math.max(12, rectBox.width),
           height: Math.max(12, rectBox.height),
-          side: state.draftActiveSide,
-          color: '#2563eb',
-          label: 'Rectangle ' + String(count),
-        });
-      } else {
-        var tinySquare = !!(event.shiftKey || rd.lockSquare);
-        var wDefault = tinySquare ? 56 : 84;
-        var hDefault = tinySquare ? 56 : 52;
-        addDraftElement('rectangle', {
-          x: Number(rd.startX || 0) - (wDefault / 2),
-          y: Number(rd.startY || 0) - (hDefault / 2),
-          width: wDefault,
-          height: hDefault,
-          side: state.draftActiveSide,
+          side: normalizeDraftEditorSide(rd.side || state.draftActiveSide),
           color: '#2563eb',
           label: 'Rectangle ' + String(count),
         });
       }
 
       state.draftRectDrag = null;
+      endDraftHistoryTransaction();
+      render();
+      return;
+    }
+
+    if (state.draftSelectDrag) {
+      var sd = state.draftSelectDrag;
+      var selectBox = draftDragBox(
+        Number(sd.startX || 0),
+        Number(sd.startY || 0),
+        Number(sd.currentX || sd.startX || 0),
+        Number(sd.currentY || sd.startY || 0),
+        false
+      );
+      selectBox.side = normalizeDraftEditorSide(sd.side || state.draftActiveSide);
+      var clickOnly = selectBox.width < 3 && selectBox.height < 3;
+
+      if (clickOnly) {
+        if (!sd.appendSelection) {
+          state.draftSelectedElementId = '';
+          state.draftSelectedElementIds = new Set();
+          state.draftSelectedGuideId = '';
+          clearDraftInlineTextEditing();
+        }
+      } else {
+        selectDraftElementsByBox(selectBox, !!sd.appendSelection);
+      }
+
+      state.draftSelectDrag = null;
+      endDraftHistoryTransaction();
       render();
       return;
     }
 
     if (!state.draftDragging) {
+      endDraftHistoryTransaction();
       return;
     }
     state.draftDragging = null;
+    endDraftHistoryTransaction();
   });
 
   flowRoot.addEventListener('keydown', function (event) {
@@ -4913,6 +6396,11 @@
       return;
     }
 
+    if (!state.draftInlineEditHistoryActive) {
+      beginDraftHistoryTransaction();
+      state.draftInlineEditHistoryActive = true;
+    }
+
     var nextText = String(typeof target.innerText === 'string' ? target.innerText : (target.textContent || ''));
     updateDraftTextLabelById(elId, nextText.replace(/\r\n?/g, '\n'));
   });
@@ -4921,6 +6409,11 @@
     var target = event.target;
     if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
       return;
+    }
+
+    if (state.draftInlineEditHistoryActive) {
+      endDraftHistoryTransaction();
+      state.draftInlineEditHistoryActive = false;
     }
 
     if (!state.draftInlineEditingElementId) {
@@ -4954,12 +6447,32 @@
     var ctrlOrMeta = !!(event.ctrlKey || event.metaKey);
     var handled = false;
 
-    if (!ctrlOrMeta && !event.altKey && (key === 'Delete' || key === 'Backspace')) {
+    if (state.draftAutoMapReportOpen && key === 'Escape') {
+      state.draftAutoMapReportOpen = false;
+      event.preventDefault();
+      render();
+      return;
+    }
+
+    if (ctrlOrMeta && !event.altKey && lower === 'z') {
+      handled = event.shiftKey ? redoDraftHistory() : undoDraftHistory();
+    } else if (ctrlOrMeta && !event.altKey && lower === 'y') {
+      handled = redoDraftHistory();
+    } else if (ctrlOrMeta && !event.altKey && lower === 'b') {
+      handled = toggleSelectedTextStyle('bold');
+    } else if (ctrlOrMeta && !event.altKey && lower === 'i') {
+      handled = toggleSelectedTextStyle('italic');
+    } else if (!ctrlOrMeta && !event.altKey && (key === 'Delete' || key === 'Backspace')) {
       if (selectedDraftElement()) {
         removeDraftElement();
         handled = true;
       } else if (selectedDraftGuide()) {
-        handled = removeDraftGuideById(state.draftSelectedGuideId);
+        if (state.draftGuidesLocked) {
+          showToast('Unlock guides first to remove them.', 'warning');
+          handled = true;
+        } else {
+          handled = removeDraftGuideById(state.draftSelectedGuideId);
+        }
       }
     } else if (!ctrlOrMeta && !event.altKey && key.indexOf('Arrow') === 0) {
       var step = event.shiftKey ? 10 : 1;
@@ -4992,6 +6505,12 @@
       state.draftGuideDragging = null;
       state.draftTextDrag = null;
       state.draftRectDrag = null;
+      state.draftSelectDrag = null;
+      if (state.draftInlineEditHistoryActive) {
+        endDraftHistoryTransaction();
+        state.draftInlineEditHistoryActive = false;
+      }
+      endDraftHistoryTransaction();
       clearDraftInlineTextEditing();
       state.draftTool = 'select';
       handled = true;
@@ -5141,7 +6660,23 @@
     }
 
     if (target.id === 'gcDraftFieldInput') {
-      updateSelectedDraftElement({ field: String(target.value || '') });
+      syncSelectedElementField(String(target.value || ''));
+      render();
+      return;
+    }
+
+    if (target.id === 'gcDraftImageSrcInput') {
+      var selectedImage = selectedDraftElement();
+      if (!selectedImage || String(selectedImage.type || '').toLowerCase() !== 'image') {
+        return;
+      }
+      updateSelectedDraftElement({ src: String(target.value || '').trim() });
+      render();
+      return;
+    }
+
+    if (target.id === 'gcDraftShowLabelInput') {
+      updateSelectedDraftElement({ showLabel: !!target.checked });
       render();
       return;
     }
@@ -5285,6 +6820,15 @@
         return;
       }
       goToStep(node.getAttribute('data-step'));
+    });
+  }
+
+  if (headerSaveTemplateBtnEl) {
+    headerSaveTemplateBtnEl.addEventListener('click', function () {
+      if (state.step !== 2) {
+        return;
+      }
+      triggerSaveDraftTemplate();
     });
   }
 

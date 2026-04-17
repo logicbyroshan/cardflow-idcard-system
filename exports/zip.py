@@ -945,26 +945,22 @@ class ZipExporter:
 
         if prefer_narrow:
             font_candidates.extend([
-                os.path.join(static_fonts_dir, 'arialn.ttf'),
-                os.path.join(static_fonts_dir, 'ArialN.ttf'),
-                os.path.join(static_fonts_dir, 'arial.ttf'),
+                os.path.join(static_fonts_dir, 'Roshan_Font', 'arial.ttf'),
                 os.path.join(static_fonts_dir, 'saira-semi-condensed-500.ttf'),
                 os.path.join(static_fonts_dir, 'saira-semi-condensed-400.ttf'),
             ])
         else:
             font_candidates.extend([
-                os.path.join(static_fonts_dir, 'arialbd.ttf'),
-                os.path.join(static_fonts_dir, 'arial.ttf'),
-                os.path.join(static_fonts_dir, 'arialn.ttf'),
+                os.path.join(static_fonts_dir, 'Roshan_Font', 'Arial Bold.ttf'),
+                os.path.join(static_fonts_dir, 'Roshan_Font', 'arial.ttf'),
                 os.path.join(static_fonts_dir, 'saira-semi-condensed-600.ttf'),
                 os.path.join(static_fonts_dir, 'saira-semi-condensed-700.ttf'),
             ])
 
         font_candidates.extend([
-            'arialn.ttf',
-            'Arial Narrow.ttf',
-            'arialbd.ttf',
-            'arial.ttf',
+            os.path.join(static_fonts_dir, 'Roshan_Font', 'Arial Bold.ttf'),
+            os.path.join(static_fonts_dir, 'Roshan_Font', 'arial.ttf'),
+            'Arial Bold.ttf',
             'Arial.ttf',
             'saira-semi-condensed-500.ttf',
             'saira-semi-condensed-600.ttf',

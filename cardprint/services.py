@@ -739,23 +739,15 @@ class GenerateCardService:
     def _font_family_key(cls, family_raw):
         family = str(family_raw or '').strip().lower()
         primary = family.split(',')[0].replace('"', '').replace("'", '').strip()
-        if any(token in primary for token in ('times', 'serif', 'cambria', 'georgia')):
-            return 'times'
-        if any(token in primary for token in ('courier', 'mono', 'consolas')):
-            return 'courier'
-        if any(token in primary for token in ('arial black', 'arial')):
-            return 'arial'
-        if 'calibri' in primary:
-            return 'calibri'
         if 'futura' in primary:
             return 'futura'
-        if 'poppins' in primary:
-            return 'poppins'
-        if any(token in primary for token in ('helvetica neue', 'helvetica')):
-            return 'helvetica'
-        if any(token in primary for token in ('verdana', 'tahoma')):
-            return 'helvetica'
-        return 'helvetica'
+        if 'saira' in primary:
+            return 'saira'
+        if any(token in primary for token in ('arial black', 'arial')):
+            return 'arial'
+        if any(token in primary for token in ('calibri', 'poppins', 'helvetica', 'verdana', 'tahoma')):
+            return 'arial'
+        return 'arial'
 
     @classmethod
     def _font_search_dirs(cls):
@@ -765,7 +757,11 @@ class GenerateCardService:
         paths = []
         if base_dir:
             paths.append(os.path.join(base_dir, 'static', 'fonts'))
+            paths.append(os.path.join(base_dir, 'static', 'fonts', 'Roshan_Font'))
+            paths.append(os.path.join(base_dir, 'static', 'fonts', 'roshanfonts'))
             paths.append(os.path.join(base_dir, 'staticfiles', 'fonts'))
+            paths.append(os.path.join(base_dir, 'staticfiles', 'fonts', 'Roshan_Font'))
+            paths.append(os.path.join(base_dir, 'staticfiles', 'fonts', 'roshanfonts'))
 
         windir = os.environ.get('WINDIR')
         if windir:
@@ -784,83 +780,51 @@ class GenerateCardService:
     @classmethod
     def _font_candidate_files(cls, family_key, weight_raw, style_raw='normal'):
         weight = cls._normalize_font_weight_value(weight_raw)
-        italic = cls._normalize_font_style_value(style_raw) == 'italic'
         bold = weight >= 600
 
         if family_key == 'arial':
-            if bold and italic:
-                return ['arialbi.ttf', 'ARIALBI.TTF']
             if bold:
-                return ['arialbd.ttf', 'ARIALBD.TTF']
-            if italic:
-                return ['ariali.ttf', 'ARIALI.TTF']
-            return ['arial.ttf', 'ARIAL.TTF']
-
-        if family_key == 'calibri':
-            if bold and italic:
-                return ['calibriz.ttf', 'CALIBRIZ.TTF']
-            if bold:
-                return ['calibrib.ttf', 'CALIBRIB.TTF']
-            if italic:
-                return ['calibrii.ttf', 'CALIBRII.TTF']
-            return ['calibri.ttf', 'CALIBRI.TTF']
-
-        if family_key == 'poppins':
-            names = {
-                100: 'Thin',
-                200: 'ExtraLight',
-                300: 'Light',
-                400: 'Regular',
-                500: 'Medium',
-                600: 'SemiBold',
-                700: 'Bold',
-                800: 'ExtraBold',
-                900: 'Black',
-            }
-            style_suffix = 'Italic' if italic else ''
+                return [
+                    'Roshan_Font/Arial Bold.ttf',
+                    'Arial Bold.ttf',
+                ]
             return [
-                f'Poppins-{names.get(weight, "Regular")}{style_suffix}.ttf',
-                f'poppins/Poppins-{names.get(weight, "Regular")}{style_suffix}.ttf',
+                'Roshan_Font/arial.ttf',
+                'Arial.ttf',
             ]
+
+        if family_key == 'saira':
+            if weight >= 700:
+                return ['saira-semi-condensed-700.ttf', 'saira-semi-condensed-600.ttf']
+            if weight >= 600:
+                return ['saira-semi-condensed-600.ttf', 'saira-semi-condensed-500.ttf']
+            if weight >= 500:
+                return ['saira-semi-condensed-500.ttf', 'saira-semi-condensed-400.ttf']
+            return ['saira-semi-condensed-400.ttf']
 
         if family_key == 'futura':
             if bold:
                 return [
-                    'Futura-Bold.ttf', 'futurab.ttf', 'FUTURAB.TTF', 'FUTURA_B.TTF',
-                    'Futura Bold font.ttf', 'Futura Md BT Bold.ttf', 'unicode.futurabb.ttf',
+                    'Roshan_Font/Futura Bold font.ttf',
+                    'Futura Bold font.ttf',
+                    'Roshan_Font/Futura XBlk BT.ttf',
+                    'Futura XBlk BT.ttf',
                 ]
-            if italic:
+            if weight <= 350:
                 return [
-                    'Futura-Oblique.ttf', 'futurai.ttf', 'FUTURAI.TTF',
-                    'Futura Book Italic font.ttf', 'Futura Medium Italic font.ttf',
-                    'Futura Md BT Medium Italic.ttf', 'Futura Bk BT Book Italic.ttf',
+                    'Roshan_Font/futura light bt.ttf',
+                    'futura light bt.ttf',
+                    'Roshan_Font/Futura Light font.ttf',
+                    'Futura Light font.ttf',
                 ]
             return [
-                'Futura.ttf', 'futura.ttf', 'FUTURA.TTF', 'FTLTLT.TTF',
-                'Futura Book font.ttf', 'Futura Medium font.ttf', 'Futura Md BT Medium.ttf',
-                'Futura Bk BT Book.ttf', 'futura medium bt.ttf',
+                'Roshan_Font/futura medium bt.ttf',
+                'futura medium bt.ttf',
+                'Roshan_Font/Futura Book font.ttf',
+                'Futura Book font.ttf',
+                'Roshan_Font/futura medium condensed bt.ttf',
+                'futura medium condensed bt.ttf',
             ]
-
-        if family_key == 'helvetica':
-            direct = []
-            if bold and italic:
-                direct = [
-                    'Helvetica Condensed Bold Italic.ttf',
-                    'Helvetica Condensed Bold Oblique.otf',
-                ]
-            elif bold:
-                direct = [
-                    'Helvetica-Bold-Font.ttf',
-                    'Helvetica Condensed Bold.otf',
-                ]
-            elif italic:
-                direct = ['Helvetica Condensed Bold Oblique.otf']
-            else:
-                direct = [
-                    'Helvetica-Normal Regular.ttf',
-                    'Helvetica Condensed Regular.ttf',
-                ]
-            return direct + cls._font_candidate_files('arial', weight, 'italic' if italic else 'normal')
 
         return []
 
@@ -912,14 +876,17 @@ class GenerateCardService:
         weight = cls._normalize_font_weight_value(weight_raw)
         style = cls._normalize_font_style_value(style_raw)
 
-        if family_key in ('times', 'courier'):
-            return cls._builtin_font_name(family_key, weight, style)
-
         candidates = cls._font_candidate_files(family_key, weight, style)
         font_path = cls._find_font_path(candidates)
         font_alias = cls._register_ttf_font(font_path)
         if font_alias:
             return font_alias
+
+        if family_key != 'arial':
+            fallback_path = cls._find_font_path(cls._font_candidate_files('arial', weight, style))
+            fallback_alias = cls._register_ttf_font(fallback_path)
+            if fallback_alias:
+                return fallback_alias
 
         return cls._builtin_font_name('helvetica', weight, style)
 
@@ -1027,14 +994,16 @@ class GenerateCardService:
         for item in elements:
             etype = str(item.get('type') or 'text').strip().lower()
             field_name = str(item.get('field') or '').strip()
-            if etype in ('text', 'image') and not field_name:
-                continue
 
             value = ''
-            if etype in ('text', 'image'):
+            if etype in ('text', 'image') and field_name:
                 value = fd.get(field_name)
                 if value in (None, ''):
                     value = fd_upper.get(field_name.upper()) or ''
+            elif etype == 'text':
+                value = str(item.get('label') or '').strip()
+            elif etype == 'image':
+                value = item.get('src') or item.get('data_url') or ''
             elif etype == 'background':
                 value = item.get('src') or ''
 
@@ -1094,8 +1063,8 @@ class GenerateCardService:
                 c.restoreState()
                 continue
 
-            mapped_type = field_type_map.get(field_name, 'text')
-            if etype == 'image' or cls._is_image_field(mapped_type, field_name):
+            mapped_type = field_type_map.get(field_name, 'text') if field_name else 'image'
+            if etype == 'image' or (field_name and cls._is_image_field(mapped_type, field_name)):
                 cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
                 continue
 
@@ -1131,15 +1100,20 @@ class GenerateCardService:
                 int(color_hex[4:6], 16) / 255.0,
             )
 
-            label = str(item.get('label') or cls._format_field_label(field_name)).strip()
-            show_label = bool(item.get('showLabel', True))
-            txt_value = str(value).strip() if value is not None else ''
-            if not txt_value:
-                txt_value = 'XXXXX'
-            if show_label and label:
-                text = f'{label}: {txt_value}'
+            if field_name:
+                label = str(item.get('label') or cls._format_field_label(field_name)).strip()
+                show_label = bool(item.get('showLabel', True))
+                txt_value = str(value).strip() if value is not None else ''
+                if not txt_value:
+                    txt_value = 'XXXXX'
+                if show_label and label:
+                    text = f'{label}: {txt_value}'
+                else:
+                    text = txt_value
             else:
-                text = txt_value
+                text = str(item.get('label') or value or '').strip()
+                if not text:
+                    continue
 
             cls._draw_text(c, text, rl_x, rl_y, rl_w, rl_h, elem_style)
 

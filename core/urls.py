@@ -263,6 +263,7 @@ urlpatterns = [
 
     # Export Template APIs
     path('api/export-templates/', views.api_export_templates_list, name='api_export_templates_list'),
+    path('api/export-templates/import-doc/', views.api_export_template_import_doc, name='api_export_template_import_doc'),
     path('api/export-templates/create/', views.api_export_template_create, name='api_export_template_create'),
     path('api/export-templates/<int:template_id>/update/', views.api_export_template_update, name='api_export_template_update'),
     path('api/export-templates/<int:template_id>/delete/', views.api_export_template_delete, name='api_export_template_delete'),

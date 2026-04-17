@@ -5,6 +5,7 @@ Page setup, headers, footers, formatting, and XML helper methods
 for Word document generation.
 """
 from django.utils import timezone
+from core.utils.template_rich_text import rich_text_to_plain_text
 
 
 class WordStylesMixin:
@@ -141,7 +142,7 @@ class WordStylesMixin:
         if template_id:
             try:
                 tpl = ExportTemplate.objects.get(id=template_id)
-                note_line = (tpl.instructions or '').strip()
+                note_line = rich_text_to_plain_text(tpl.instructions or '').strip()
                 note_font_name = 'AbbasiNatraj' if self._is_hindi_abbasi_font(tpl.font_name) else 'Arial'
                 note_is_bold = bool(tpl.is_bold)
             except ExportTemplate.DoesNotExist:
@@ -321,7 +322,7 @@ class WordStylesMixin:
         except ExportTemplate.DoesNotExist:
             return
         
-        instructions = tpl.instructions.strip()
+        instructions = rich_text_to_plain_text(tpl.instructions or '').strip()
         if not instructions:
             return
         

@@ -68,9 +68,15 @@
     <!-- Header -->
     <div class="center-modal-header">
       <h3 id="templateModalTitle"><i class="fa-solid fa-file-lines"></i> New Template</h3>
-      <button type="button" class="center-modal-header-close" onclick="closeTemplateModal()" title="Close">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+      <div class="template-modal-header-actions">
+        <button type="button" id="templateHeaderSaveBtn" class="template-modal-header-save" onclick="saveTemplate()" title="Save Template">
+          <i class="fa-solid fa-check"></i>
+          <span>Save Template</span>
+        </button>
+        <button type="button" class="center-modal-header-close" onclick="closeTemplateModal()" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
     </div>
     <!-- Body -->
     <div class="center-modal-body-area text-left">
@@ -81,30 +87,101 @@
 
       <label class="panel-form-label" for="templateInstructions">Footer Text *</label>
 
-      <div class="template-modal-toolbar">
+      <div class="template-modal-toolbar template-modal-toolbar-main">
         <select id="templateFontName" class="form-select panel-form-select template-font-select">
           <option value="arial">English (Arial)</option>
           <option value="hindi">Hindi (Abbasi)</option>
         </select>
-        <button type="button" id="templateBoldBtn" class="btn btn-sm btn-neutral template-bold-btn" onclick="toggleTemplateBold()" title="Bold">
-          B
+
+        <select id="templateFontSize" class="form-select panel-form-select template-size-select" title="Font Size" onchange="templateApplyFontSize(this.value)">
+          <option value="11">11</option>
+          <option value="12" selected>12</option>
+          <option value="14">14</option>
+          <option value="16">16</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="24">24</option>
+          <option value="28">28</option>
+          <option value="32">32</option>
+        </select>
+
+        <button type="button" id="templateBoldBtn" class="btn btn-sm btn-neutral template-editor-btn" onclick="toggleTemplateBold()" title="Bold (Ctrl+B)">
+          <i class="fa-solid fa-bold"></i>
         </button>
+        <button type="button" id="templateItalicBtn" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('italic')" title="Italic (Ctrl+I)">
+          <i class="fa-solid fa-italic"></i>
+        </button>
+        <button type="button" id="templateUnderlineBtn" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('underline')" title="Underline (Ctrl+U)">
+          <i class="fa-solid fa-underline"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('justifyLeft')" title="Align Left">
+          <i class="fa-solid fa-align-left"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('justifyCenter')" title="Align Center">
+          <i class="fa-solid fa-align-center"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('justifyRight')" title="Align Right">
+          <i class="fa-solid fa-align-right"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('insertUnorderedList')" title="Bullet List">
+          <i class="fa-solid fa-list-ul"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('insertOrderedList')" title="Numbered List">
+          <i class="fa-solid fa-list-ol"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="openTemplateImagePicker()" title="Insert Image">
+          <i class="fa-solid fa-image"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('undo')" title="Undo">
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('redo')" title="Redo">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-neutral template-editor-btn" onclick="templateExecCommand('removeFormat')" title="Clear Formatting">
+          <i class="fa-solid fa-eraser"></i>
+        </button>
+
+        <button type="button" id="templateImportDocBtn" class="btn btn-sm btn-neutral template-import-doc-btn" onclick="openTemplateDocImportPicker()" title="Import Word (.docx)">
+          <i class="fa-solid fa-file-word"></i>
+          <span>Import Doc</span>
+        </button>
+
         <label class="template-default-toggle" for="templateIsDefault">
           <input type="checkbox" id="templateIsDefault" class="checkbox-input">
           <span>Set as default template</span>
         </label>
       </div>
 
+      <div
+        id="templateInstructionsEditor"
+        class="template-rich-editor"
+        contenteditable="true"
+        spellcheck="true"
+        data-placeholder="Write or import your footer content (text, formatting, and images)..."
+      ></div>
+
       <textarea id="templateInstructions" class="panel-form-input" rows="5"
         placeholder="Footer text printed on every PDF/Word page footer..."
-        maxlength="5000" style="transition:font-family .2s,font-weight .2s;"></textarea>
+        maxlength="250000" style="display:none;"></textarea>
+
+      <input
+        type="file"
+        id="templateDocImportInput"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        style="display:none;"
+      >
+
+      <input
+        type="file"
+        id="templateImageUploadInput"
+        accept="image/*"
+        style="display:none;"
+      >
     </div>
     <!-- Footer -->
     <div class="center-modal-footer-area">
       <button type="button" class="center-modal-btn center-modal-btn-cancel" onclick="closeTemplateModal()">Cancel</button>
-      <button type="button" class="center-modal-btn center-modal-btn-confirm" onclick="saveTemplate()">
-        <i class="fa-solid fa-check"></i> Save Template
-      </button>
     </div>
   </div>
 </div>

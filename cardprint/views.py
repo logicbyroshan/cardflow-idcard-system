@@ -13,8 +13,6 @@ import json
 import logging
 import re
 import uuid
-import io
-import base64
 from typing import List
 
 from django.shortcuts import get_object_or_404, redirect, render
@@ -26,8 +24,6 @@ from django.db.models import Count, Q, Max, F
 from django.utils import timezone
 from django.utils.timezone import localtime
 from django.utils.dateparse import parse_datetime
-from django.core.files.base import ContentFile
-from django.urls import reverse
 
 from idcards.models import IDCard, IDCardTable
 from core.services.permission_service import PermissionService, api_require_permission
@@ -40,7 +36,6 @@ from accounts.rate_limit import rate_limit
 from .models import (
     PrintRequest,
     CardTemplate,
-    CardTemplateDoc,
     default_template_json,
     validate_field_mappings,
     validate_template_json,
@@ -278,17 +273,30 @@ def _validate_template_json_for_table(table, template_json) -> List[str]:
         if (x + w) > canvas_w or (y + h) > canvas_h:
             errors.append(f'template_json.elements[{idx}] must stay within canvas bounds')
 
-        if elem_type in ('text', 'image'):
-            if field_name not in known_fields:
-                errors.append(f'template_json.elements[{idx}].field "{field_name}" does not exist in table schema')
-                continue
+        if elem_type == 'text':
+            if field_name:
+                if field_name not in known_fields:
+                    errors.append(f'template_json.elements[{idx}].field "{field_name}" does not exist in table schema')
+                    continue
+            else:
+                static_text = str(item.get('label') or '').strip()
+                if not static_text:
+                    errors.append(f'template_json.elements[{idx}] text requires field or label')
 
-            if elem_type == 'image':
+        if elem_type == 'image':
+            if field_name:
+                if field_name not in known_fields:
+                    errors.append(f'template_json.elements[{idx}].field "{field_name}" does not exist in table schema')
+                    continue
                 field_type = field_type_map.get(field_name, 'text')
                 if not GenerateCardService._is_image_field(field_type, field_name):
                     errors.append(
                         f'template_json.elements[{idx}].field "{field_name}" is not an image-compatible field'
                     )
+            else:
+                static_src = str(item.get('src') or item.get('data_url') or '').strip()
+                if not _looks_like_supported_image_src(static_src):
+                    errors.append(f'template_json.elements[{idx}] image requires field or valid src')
 
         if elem_type == 'background':
             src = str(item.get('src') or '').strip()
@@ -464,16 +472,21 @@ def _sanitize_template_json(raw):
             continue
 
         field_name = str(item.get('field') or '').strip()
-        if elem_type in ('text', 'image') and not field_name:
-            continue
 
         src_value = ''
         if elem_type == 'background':
             src_value = str(item.get('src') or '').strip()
             if not src_value:
                 continue
+        elif elem_type == 'image' and not field_name:
+            src_value = str(item.get('src') or item.get('data_url') or '').strip()
+            if not src_value:
+                continue
 
-        label = str(item.get('label') or '').strip()[:120]
+        label_limit = 4000 if elem_type == 'text' else 120
+        label = str(item.get('label') or '').strip()[:label_limit]
+        if elem_type == 'text' and not field_name and not label:
+            continue
         side = str(item.get('side') or 'front').strip().lower()
         if side not in ('front', 'back', 'both'):
             side = 'front'
@@ -570,6 +583,9 @@ def _sanitize_template_json(raw):
         if elem_type == 'background':
             clean_item['field'] = ''
             clean_item['label'] = label or 'Background'
+            clean_item['src'] = src_value[:2000000]
+        elif elem_type == 'image' and not field_name:
+            clean_item['field'] = ''
             clean_item['src'] = src_value[:2000000]
         elif elem_type == 'rectangle':
             clean_item['field'] = ''
@@ -735,299 +751,8 @@ def _sanitize_doc_page_settings(raw, orientation='landscape'):
     }
 
 
-def _sanitize_doc_layout_name(value):
-    name = re.sub(r'\s+', ' ', str(value or '').strip())
-    if not name:
-        return ''
-    return name[:80]
-
-
-MAX_SAVED_DOC_LAYOUTS = 50
-
-
-def _sanitize_doc_layout_library(raw):
-    """Legacy snapshot validator for one-time migration from field_config."""
-    if not isinstance(raw, list):
-        return []
-
-    out = []
-    seen_ids = set()
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        layout_id = str(item.get('id') or '').strip()
-        name = _sanitize_doc_layout_name(item.get('name'))
-        saved_at = str(item.get('saved_at') or '').strip()[:40]
-        snapshot = item.get('snapshot') if isinstance(item.get('snapshot'), dict) else None
-        if not re.fullmatch(r'[A-Za-z0-9_-]{6,40}', layout_id):
-            continue
-        if not name or not snapshot:
-            continue
-        if layout_id in seen_ids:
-            continue
-        seen_ids.add(layout_id)
-        out.append({
-            'id': layout_id,
-            'name': name,
-            'saved_at': saved_at,
-            'snapshot': snapshot,
-        })
-        if len(out) >= 20:
-            break
-    return out
-
-
-def _saved_doc_layout_meta(tmpl, table_id):
-    docs = list(
-        CardTemplateDoc.objects
-        .filter(template=tmpl)
-        .order_by('-updated_at', '-created_at', '-id')[:MAX_SAVED_DOC_LAYOUTS]
-    )
-    meta = []
-    for item in docs:
-        download_url = ''
-        try:
-            download_url = reverse(
-                'cardprint:api_template_doc_layout_download',
-                kwargs={'table_id': table_id, 'layout_id': item.layout_id},
-            )
-        except Exception:
-            download_url = ''
-        meta.append({
-            'id': item.layout_id,
-            'name': item.name,
-            'saved_at': item.updated_at.isoformat() if item.updated_at else '',
-            'has_doc_file': bool(item.docx_file),
-            'download_url': download_url,
-        })
-    return meta
-
-
-def _snapshot_to_docx_bytes(snapshot, name):
-    """Build a real DOCX file from the current editor snapshot."""
-    try:
-        from docx import Document
-        from docx.enum.section import WD_ORIENT
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Mm, Pt
-    except Exception:
-        return None, 'python-docx is not available for DOC save'
-
-    if not isinstance(snapshot, dict):
-        return None, 'Invalid snapshot payload'
-
-    orientation = str(snapshot.get('card_orientation') or 'landscape').strip().lower()
-    if orientation not in ('landscape', 'portrait'):
-        orientation = 'landscape'
-
-    page_w_mm = 87.0 if orientation == 'landscape' else 57.0
-    page_h_mm = 57.0 if orientation == 'landscape' else 87.0
-    page_settings = _sanitize_doc_page_settings(snapshot.get('doc_page_settings'), orientation)
-    margins = page_settings.get('margins_mm') if isinstance(page_settings.get('margins_mm'), dict) else {}
-
-    doc = Document()
-    section = doc.sections[0]
-    section.orientation = WD_ORIENT.LANDSCAPE if orientation == 'landscape' else WD_ORIENT.PORTRAIT
-    section.page_width = Mm(page_w_mm)
-    section.page_height = Mm(page_h_mm)
-    section.left_margin = Mm(_clamp_float(margins.get('left'), 0.0, 25.0, 3.0))
-    section.right_margin = Mm(_clamp_float(margins.get('right'), 0.0, 25.0, 3.0))
-    section.top_margin = Mm(_clamp_float(margins.get('top'), 0.0, 25.0, 3.0))
-    section.bottom_margin = Mm(_clamp_float(margins.get('bottom'), 0.0, 25.0, 3.0))
-
-    doc.add_heading(str(name or 'Saved DOC'), level=1)
-    doc.add_paragraph(f'Card Size: {page_w_mm:.0f}mm x {page_h_mm:.0f}mm')
-
-    def _write_side(side_key, side_label):
-        model = snapshot.get(f'editable_design_{side_key}') if isinstance(snapshot.get(f'editable_design_{side_key}'), dict) else None
-        if not model:
-            return
-
-        doc.add_heading(side_label, level=2)
-        lines = [x for x in (model.get('lines') or []) if isinstance(x, dict)]
-        lines.sort(key=lambda x: (float(x.get('y_mm') or 0.0), float(x.get('x_mm') or 0.0)))
-        for line in lines:
-            txt = str(line.get('text') or '').strip()
-            if not txt:
-                continue
-            p = doc.add_paragraph(txt)
-            align = str(line.get('text_align') or 'left').strip().lower()
-            if align == 'center':
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            elif align == 'right':
-                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-            else:
-                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-
-            style_font_size = _clamp_float(line.get('font_size_pt'), 6.0, 72.0, 11.0)
-            style_line_height = _clamp_float(line.get('line_height'), 0.8, 3.0, 1.15)
-            if p.runs:
-                run = p.runs[0]
-                run.font.size = Pt(style_font_size)
-                fam = str(line.get('font_family') or '').strip()
-                if fam:
-                    run.font.name = fam[:80]
-                weight = str(line.get('font_weight') or '400').lower()
-                run.bold = weight in ('700', '600', 'bold', 'semibold')
-
-            try:
-                p.paragraph_format.line_spacing = style_line_height
-            except Exception:
-                pass
-
-        images = [x for x in (model.get('images') or []) if isinstance(x, dict)]
-        for idx, image in enumerate(images[:8], start=1):
-            data_url = str(image.get('data_url') or '').strip()
-            if not data_url.startswith('data:image/') or ',' not in data_url:
-                continue
-            try:
-                encoded = data_url.split(',', 1)[1]
-                raw = base64.b64decode(encoded)
-                width_mm = _clamp_float(image.get('w_mm'), 5.0, page_w_mm - 10.0, 25.0)
-                doc.add_paragraph(f'Image {idx}')
-                doc.add_picture(io.BytesIO(raw), width=Mm(width_mm))
-            except Exception:
-                continue
-
-    _write_side('front', 'Front Side')
-    if bool(snapshot.get('is_two_sided', False)):
-        _write_side('back', 'Back Side')
-
-    out = io.BytesIO()
-    doc.save(out)
-    out.seek(0)
-    return out.getvalue(), None
-
-
-def _migrate_legacy_doc_layouts(tmpl, user=None):
-    """Normalize field_config to the current doc-layout format."""
-    cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
-    if 'doc_layout_library' in cfg:
-        cfg.pop('doc_layout_library', None)
-        tmpl.field_config = cfg
-        tmpl.save(update_fields=['field_config', 'updated_at'])
-    return cfg
-
-
-def _trim_saved_doc_layouts(tmpl):
-    stale = list(
-        CardTemplateDoc.objects
-        .filter(template=tmpl)
-        .order_by('-updated_at', '-created_at', '-id')[MAX_SAVED_DOC_LAYOUTS:]
-    )
-    for item in stale:
-        if item.docx_file:
-            item.docx_file.delete(save=False)
-        item.delete()
-
-
-def _doc_layout_snapshot_from_template(tmpl):
-    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
-    mappings_raw = tmpl.field_mappings if isinstance(tmpl.field_mappings, dict) else {'front': {}, 'back': {}}
-    try:
-        mappings = json.loads(json.dumps(mappings_raw))
-    except Exception:
-        mappings = {'front': {}, 'back': {}}
-    orientation = str(cfg.get('card_orientation') or 'landscape').strip().lower()
-    if orientation not in ('landscape', 'portrait'):
-        orientation = 'landscape'
-
-    front_fields = _sanitize_name_list(cfg.get('front_fields') or [])
-    back_fields = _sanitize_name_list(cfg.get('back_fields') or []) if tmpl.is_two_sided else []
-
-    raw_style = cfg.get('docx_text_style') if isinstance(cfg.get('docx_text_style'), dict) else {}
-    style_align = str(raw_style.get('align') or 'left').strip().lower()
-    if style_align not in ('left', 'center', 'right'):
-        style_align = 'left'
-
-    docx_style = {
-        'font_family': str(raw_style.get('font_family') or tmpl.font_family or 'Arial').strip()[:80] or 'Arial',
-        'font_size_pt': _clamp_float(raw_style.get('font_size_pt'), 6.0, 72.0, float(tmpl.font_size or 11)),
-        'line_height': _clamp_float(raw_style.get('line_height'), 0.8, 3.0, 1.15),
-        'char_spacing_pt': _clamp_float(raw_style.get('char_spacing_pt'), -5.0, 20.0, 0.0),
-        'font_weight': str(raw_style.get('font_weight') or 'normal').strip().lower(),
-        'font_color_hex': _normalize_hex_color(raw_style.get('font_color_hex') or '#111111'),
-        'align': style_align,
-    }
-    if docx_style['font_weight'] not in ('normal', 'semibold', 'bold'):
-        docx_style['font_weight'] = 'normal'
-
-    return {
-        'is_two_sided': bool(tmpl.is_two_sided),
-        'card_orientation': orientation,
-        'doc_page_settings': _sanitize_doc_page_settings(cfg.get('doc_page_settings'), orientation),
-        'front_fields': front_fields,
-        'back_fields': back_fields,
-        'field_mappings': mappings,
-        'font_size': int(max(6, min(72, int(tmpl.font_size or 11)))),
-        'font_family': str(tmpl.font_family or 'Arial').strip()[:50] or 'Arial',
-        'docx_text_style': docx_style,
-        'show_guides': bool(cfg.get('show_guides', True)),
-    }
-
-
-def _apply_doc_layout_snapshot_to_template(tmpl, snapshot):
-    if not isinstance(snapshot, dict):
-        return 'Invalid saved DOC snapshot'
-
-    is_two_sided = bool(snapshot.get('is_two_sided', False))
-    mappings = snapshot.get('field_mappings') if isinstance(snapshot.get('field_mappings'), dict) else {'front': {}, 'back': {}}
-    mapping_err = validate_field_mappings(mappings)
-    if mapping_err:
-        return mapping_err
-
-    tmpl.is_two_sided = is_two_sided
-    tmpl.field_mappings = mappings
-
-    try:
-        font_size = int(snapshot.get('font_size', tmpl.font_size or 11) or 11)
-    except (TypeError, ValueError):
-        font_size = int(tmpl.font_size or 11)
-    tmpl.font_size = max(6, min(72, font_size))
-
-    font_family = str(snapshot.get('font_family', tmpl.font_family or 'Arial') or '').strip()
-    tmpl.font_family = (font_family[:50] if font_family else (tmpl.font_family or 'Arial'))
-
-    cfg = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
-    orientation = str(snapshot.get('card_orientation') or 'landscape').strip().lower()
-    if orientation not in ('landscape', 'portrait'):
-        orientation = 'landscape'
-    cfg['card_orientation'] = orientation
-    cfg['is_two_sided'] = is_two_sided
-    cfg['doc_page_settings'] = _sanitize_doc_page_settings(snapshot.get('doc_page_settings'), orientation)
-    cfg['front_fields'] = _sanitize_name_list(snapshot.get('front_fields') or [])
-    cfg['back_fields'] = _sanitize_name_list(snapshot.get('back_fields') or []) if is_two_sided else []
-    cfg['show_guides'] = bool(snapshot.get('show_guides', cfg.get('show_guides', True)))
-
-    raw_style = snapshot.get('docx_text_style') if isinstance(snapshot.get('docx_text_style'), dict) else {}
-    style_weight = str(raw_style.get('font_weight') or 'normal').strip().lower()
-    if style_weight not in ('normal', 'semibold', 'bold'):
-        style_weight = 'normal'
-    style_align = str(raw_style.get('align') or 'left').strip().lower()
-    if style_align not in ('left', 'center', 'right'):
-        style_align = 'left'
-
-    cfg['docx_text_style'] = {
-        'font_family': str(raw_style.get('font_family') or tmpl.font_family or 'Arial').strip()[:80] or 'Arial',
-        'font_size_pt': _clamp_float(raw_style.get('font_size_pt'), 6.0, 72.0, float(tmpl.font_size or 11)),
-        'line_height': _clamp_float(raw_style.get('line_height'), 0.8, 3.0, 1.15),
-        'char_spacing_pt': _clamp_float(raw_style.get('char_spacing_pt'), -5.0, 20.0, 0.0),
-        'font_weight': style_weight,
-        'font_color_hex': _normalize_hex_color(raw_style.get('font_color_hex') or '#111111'),
-        'align': style_align,
-    }
-
-    # TODO: Replace with new JSON-based template editor
-    cfg.pop('editable_design_front', None)
-    cfg.pop('editable_design_back', None)
-    cfg.pop('mapping_confidence', None)
-
-    tmpl.field_config = cfg
-    return None
-
-
 def _template_payload(tmpl):
-    field_config = _migrate_legacy_doc_layouts(tmpl)
+    field_config = tmpl.field_config if isinstance(tmpl.field_config, dict) else {}
     card_orientation = field_config.get('card_orientation') or 'landscape'
     if card_orientation not in ('landscape', 'portrait'):
         card_orientation = 'landscape'
@@ -1064,10 +789,6 @@ def _template_payload(tmpl):
     }
     front_fields = field_config.get('front_fields') or []
     back_fields = field_config.get('back_fields') or []
-    doc_layout_meta = _saved_doc_layout_meta(tmpl, tmpl.table_id)
-    active_doc_layout_id = str(field_config.get('active_doc_layout_id') or '').strip()
-    if not any(item['id'] == active_doc_layout_id for item in doc_layout_meta):
-        active_doc_layout_id = ''
 
     return {
         'id': tmpl.id,
@@ -1093,8 +814,6 @@ def _template_payload(tmpl):
         'back_fields': back_fields,
         'show_guides': bool(field_config.get('show_guides', True)),
         'doc_page_settings': _sanitize_doc_page_settings(field_config.get('doc_page_settings'), card_orientation),
-        'doc_layout_library': doc_layout_meta,
-        'active_doc_layout_id': active_doc_layout_id,
     }
 
 
@@ -1809,15 +1528,16 @@ def generate_card(request, table_id):
 # GENERATE CARD � API ENDPOINTS
 # ===========================================================================
 
-@require_http_methods(["GET", "POST", "PUT"])
+@require_http_methods(["GET", "POST", "PUT", "DELETE"])
 @login_required
 @api_require_permission('perm_print_list')
 def api_templates(request, ref_id):
     """Template list/create/update API.
 
-    GET  /api/templates/<table_id>/       -> list templates for table
-    POST /api/templates/<table_id>/       -> create template for table
-    PUT  /api/templates/<template_id>/    -> update template by id
+    GET    /api/templates/<table_id>/       -> list templates for table
+    POST   /api/templates/<table_id>/       -> create template for table
+    PUT    /api/templates/<template_id>/    -> update template by id
+    DELETE /api/templates/<template_id>/    -> delete template by id
     """
     if request.method in ('GET', 'POST'):
         table, err = _check_print_table_scope(request.user, ref_id)
@@ -1892,6 +1612,38 @@ def api_templates(request, ref_id):
     table, err = _check_print_table_scope(request.user, tmpl.table_id)
     if err:
         return err
+
+    if request.method == 'DELETE':
+        with transaction.atomic():
+            CardTemplate.objects.select_for_update().filter(table=table)
+            deleting_id = tmpl.id
+            tmpl.delete()
+
+            remaining_qs = CardTemplate.objects.filter(table=table)
+            if not remaining_qs.exists():
+                _ensure_default_template(table)
+            else:
+                if not remaining_qs.filter(is_active=True).exists():
+                    keep_active = remaining_qs.order_by('-updated_at', '-id').first()
+                    if keep_active:
+                        _set_active_template(table, keep_active.id)
+
+                if not remaining_qs.filter(is_default=True).exists():
+                    keep_default = remaining_qs.filter(is_active=True).order_by('-updated_at', '-id').first()
+                    if not keep_default:
+                        keep_default = remaining_qs.order_by('-updated_at', '-id').first()
+                    if keep_default:
+                        _set_default_template(table, keep_default.id)
+
+        refreshed = _get_template_for_table(table, create_default=True)
+        return JsonResponse({
+            'status': 'ok',
+            'message': 'Template deleted',
+            'deleted_template_id': deleting_id,
+            'template': _template_payload(refreshed) if refreshed else None,
+            'templates': [_template_list_item(t) for t in _table_templates_qs(table)],
+            'active_template_id': refreshed.id if refreshed else None,
+        })
 
     try:
         data = json.loads(request.body or '{}')
@@ -2137,45 +1889,6 @@ def api_template_save(request, table_id):
         card_orientation,
     )
 
-    try:
-        style_font_size = float(data.get('docx_font_size_pt', updated_font_size) or updated_font_size)
-    except (TypeError, ValueError):
-        style_font_size = float(updated_font_size)
-    style_font_size = max(6.0, min(72.0, style_font_size))
-
-    try:
-        line_height = float(data.get('docx_line_height', 1.15) or 1.15)
-    except (TypeError, ValueError):
-        line_height = 1.15
-    line_height = max(0.8, min(3.0, line_height))
-
-    try:
-        char_spacing = float(data.get('docx_char_spacing_pt', 0.0) or 0.0)
-    except (TypeError, ValueError):
-        char_spacing = 0.0
-    char_spacing = max(-5.0, min(20.0, char_spacing))
-
-    style_family = str(data.get('docx_font_family', updated_font_family or 'Arial') or '').strip()[:80]
-    if not style_family:
-        style_family = 'Arial'
-    style_weight = str(data.get('docx_font_weight', 'normal') or 'normal').strip().lower()
-    if style_weight not in ('normal', 'semibold', 'bold'):
-        style_weight = 'normal'
-    style_align = str(data.get('docx_text_align', 'left') or 'left').strip().lower()
-    if style_align not in ('left', 'center', 'right'):
-        style_align = 'left'
-    style_color = _normalize_hex_color(data.get('docx_font_color_hex', '#111111'))
-
-    cfg['docx_text_style'] = {
-        'font_family': style_family,
-        'font_size_pt': style_font_size,
-        'line_height': line_height,
-        'char_spacing_pt': char_spacing,
-        'font_weight': style_weight,
-        'font_color_hex': style_color,
-        'align': style_align,
-    }
-
     # TODO: Replace with new JSON-based template editor
     cfg.pop('editable_design_front', None)
     cfg.pop('editable_design_back', None)
@@ -2201,154 +1914,6 @@ def api_template_save(request, table_id):
         'templates': [_template_list_item(t) for t in _table_templates_qs(table)],
         'active_template_id': new_template.id,
     })
-
-
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_template_doc_layout_save(request, table_id):
-    """Save current editor state as a named DOC with persisted DOCX file."""
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    try:
-        data = json.loads(request.body or '{}')
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    name = _sanitize_doc_layout_name((data or {}).get('name'))
-    if not name:
-        return JsonResponse({'status': 'error', 'message': 'Please enter a DOC name'}, status=400)
-
-    tmpl = _ensure_default_template(table)
-    cfg = _migrate_legacy_doc_layouts(tmpl, request.user)
-    snapshot = _doc_layout_snapshot_from_template(tmpl)
-
-    try:
-        snapshot_size = len(json.dumps(snapshot))
-    except Exception:
-        snapshot_size = 0
-    if snapshot_size > 2_500_000:
-        return JsonResponse(
-            {'status': 'error', 'message': 'DOC snapshot is too large. Reduce embedded images and try again.'},
-            status=400,
-        )
-
-    layout_id = uuid.uuid4().hex[:12]
-    doc_bytes, doc_err = _snapshot_to_docx_bytes(snapshot, name)
-    if doc_err:
-        return JsonResponse({'status': 'error', 'message': doc_err}, status=500)
-
-    doc_obj = CardTemplateDoc(
-        template=tmpl,
-        layout_id=layout_id,
-        name=name,
-        snapshot=snapshot,
-        created_by=request.user,
-    )
-    filename = f'table_{table.id}_{layout_id}.docx'
-    doc_obj.docx_file.save(filename, ContentFile(doc_bytes), save=False)
-    doc_obj.save()
-
-    cfg.pop('doc_layout_library', None)
-    cfg['active_doc_layout_id'] = layout_id
-    tmpl.field_config = cfg
-    tmpl.save(update_fields=['field_config', 'updated_at'])
-    _trim_saved_doc_layouts(tmpl)
-
-    return JsonResponse({'status': 'ok', 'message': 'DOC saved', 'template': _template_payload(tmpl)})
-
-
-@require_http_methods(["GET"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_template_doc_layout_list(request, table_id):
-    """Return persisted saved DOC list for the current table template."""
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    tmpl = _ensure_default_template(table)
-    cfg = _migrate_legacy_doc_layouts(tmpl, request.user)
-    docs = _saved_doc_layout_meta(tmpl, table.id)
-    active_doc_layout_id = str(cfg.get('active_doc_layout_id') or '').strip()
-    if not any(item['id'] == active_doc_layout_id for item in docs):
-        active_doc_layout_id = ''
-
-    return JsonResponse({'status': 'ok', 'docs': docs, 'active_doc_layout_id': active_doc_layout_id})
-
-
-@require_http_methods(["POST"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_template_doc_layout_apply(request, table_id, layout_id):
-    """Apply a previously saved DOC snapshot to the current template."""
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    tmpl = _ensure_default_template(table)
-    cfg = _migrate_legacy_doc_layouts(tmpl, request.user)
-    selected = CardTemplateDoc.objects.filter(template=tmpl, layout_id=str(layout_id or '').strip()).first()
-    if not selected:
-        return JsonResponse({'status': 'error', 'message': 'Saved DOC not found'}, status=404)
-
-    snapshot = selected.snapshot if isinstance(selected.snapshot, dict) else None
-    apply_err = _apply_doc_layout_snapshot_to_template(tmpl, snapshot)
-    if apply_err:
-        return JsonResponse({'status': 'error', 'message': apply_err}, status=400)
-
-    updated_cfg = dict(tmpl.field_config) if isinstance(tmpl.field_config, dict) else {}
-    updated_cfg.pop('doc_layout_library', None)
-    updated_cfg['active_doc_layout_id'] = selected.layout_id
-    tmpl.field_config = updated_cfg
-    tmpl.save()
-    selected.save(update_fields=['updated_at'])
-
-    return JsonResponse({'status': 'ok', 'message': 'DOC loaded', 'template': _template_payload(tmpl)})
-
-
-@require_http_methods(["GET"])
-@login_required
-@api_require_permission('perm_print_list')
-def api_template_doc_layout_download(request, table_id, layout_id):
-    """Download a saved DOCX file for a previously saved editor DOC layout."""
-    table, err = _check_print_table_scope(request.user, table_id)
-    if err:
-        return err
-
-    tmpl = _ensure_default_template(table)
-    _migrate_legacy_doc_layouts(tmpl, request.user)
-
-    selected = CardTemplateDoc.objects.filter(template=tmpl, layout_id=str(layout_id or '').strip()).first()
-    if not selected:
-        return JsonResponse({'status': 'error', 'message': 'Saved DOC not found'}, status=404)
-
-    name = re.sub(r'[^A-Za-z0-9_-]+', '_', str(selected.name or 'saved_doc')).strip('_') or 'saved_doc'
-    filename = f'{name}.docx'
-
-    file_missing = not selected.docx_file or not selected.docx_file.name
-    if not file_missing:
-        try:
-            file_missing = not selected.docx_file.storage.exists(selected.docx_file.name)
-        except Exception:
-            file_missing = True
-
-    if file_missing:
-        snapshot = selected.snapshot if isinstance(selected.snapshot, dict) else None
-        if not snapshot:
-            return JsonResponse({'status': 'error', 'message': 'Saved DOC file is unavailable'}, status=404)
-        doc_bytes, doc_err = _snapshot_to_docx_bytes(snapshot, selected.name)
-        if doc_err:
-            return JsonResponse({'status': 'error', 'message': doc_err}, status=500)
-        regen_name = f'table_{table.id}_{selected.layout_id}.docx'
-        selected.docx_file.save(regen_name, ContentFile(doc_bytes), save=False)
-        selected.save(update_fields=['docx_file', 'updated_at'])
-
-    response = FileResponse(selected.docx_file.open('rb'), as_attachment=True, filename=filename)
-    response.block_size = SuperModeService.download_block_size_bytes(request.user)
-    return response
 
 
 @require_http_methods(["POST"])

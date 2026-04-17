@@ -8,12 +8,32 @@ The PrintRequest is a SEPARATE model that references the original IDCard
 without modifying it — the card's main status stays 'approved'.
 """
 import logging
+import re
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
 logger = logging.getLogger(__name__)
+
+
+def _looks_like_supported_image_src(value):
+    raw = str(value or '').strip().lower()
+    if not raw:
+        return False
+    return (
+        raw.startswith('data:image/')
+        or raw.startswith('/media/')
+        or raw.startswith('media/')
+        or raw.startswith('http://')
+        or raw.startswith('https://')
+        or raw.endswith('.png')
+        or raw.endswith('.jpg')
+        or raw.endswith('.jpeg')
+        or raw.endswith('.webp')
+        or raw.endswith('.gif')
+        or bool(re.search(r'\.(png|jpe?g|webp|gif)(\?.*)?$', raw))
+    )
 
 
 class PrintRequest(models.Model):
@@ -188,8 +208,15 @@ def validate_template_json(template_json):
             return f'template_json.elements[{idx}].type must be text, image, background, or rectangle'
 
         field_name = str(elem.get('field') or '').strip()
-        if elem_type in ('text', 'image') and not field_name:
-            return f'template_json.elements[{idx}].field is required'
+        if elem_type == 'text' and not field_name:
+            static_text = str(elem.get('label') or '').strip()
+            if not static_text:
+                return f'template_json.elements[{idx}] text requires field or label'
+
+        if elem_type == 'image' and not field_name:
+            static_src = str(elem.get('src') or elem.get('data_url') or '').strip()
+            if not _looks_like_supported_image_src(static_src):
+                return f'template_json.elements[{idx}] image requires field or valid src'
 
         if elem_type == 'background':
             src = str(elem.get('src') or '').strip()

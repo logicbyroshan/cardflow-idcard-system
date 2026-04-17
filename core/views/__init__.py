@@ -53,6 +53,7 @@ from .base import (
     api_export_settings_get,
     api_export_settings_update,
     api_export_templates_list,
+    api_export_template_import_doc,
     api_export_template_create,
     api_export_template_update,
     api_export_template_delete,

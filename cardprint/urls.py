@@ -38,10 +38,6 @@ urlpatterns = [
     path('api/generate-card/table/<int:table_id>/template/save/', views.api_template_save, name='api_template_save'),
     path('api/generate-card/table/<int:table_id>/template/upload-pdf/<str:side>/', views.api_template_upload_pdf, name='api_template_upload_pdf'),
     path('api/generate-card/table/<int:table_id>/template/clear-pdf/<str:side>/', views.api_template_clear_pdf, name='api_template_clear_pdf'),
-    path('api/generate-card/table/<int:table_id>/template/doc-layouts/', views.api_template_doc_layout_list, name='api_template_doc_layout_list'),
-    path('api/generate-card/table/<int:table_id>/template/doc-layouts/save/', views.api_template_doc_layout_save, name='api_template_doc_layout_save'),
-    path('api/generate-card/table/<int:table_id>/template/doc-layouts/apply/<str:layout_id>/', views.api_template_doc_layout_apply, name='api_template_doc_layout_apply'),
-    path('api/generate-card/table/<int:table_id>/template/doc-layouts/download/<str:layout_id>/', views.api_template_doc_layout_download, name='api_template_doc_layout_download'),
     path('api/generate-card/table/<int:table_id>/cards/', views.api_generate_card_list, name='api_generate_card_list'),
     path('api/generate-card/table/<int:table_id>/generate/', views.api_generate_pdf, name='api_generate_pdf'),
 ]
