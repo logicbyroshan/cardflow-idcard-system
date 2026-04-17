@@ -67,6 +67,8 @@ const HAS_MORE = {{ has_more|yesno:"true,false" }};
 const STUDENTS_DATA = JSON.parse(document.getElementById('mobile-students-data')?.textContent || '[]');
 const INITIAL_FROM_DATE = '{{ from_date|default:""|escapejs }}';
 const INITIAL_TO_DATE = '{{ to_date|default:""|escapejs }}';
+const INITIAL_SELECTED_CLASS = '{{ selected_class|default:""|escapejs }}';
+const INITIAL_SELECTED_SECTION = '{{ selected_section|default:""|escapejs }}';
 const ALL_CLASSES = JSON.parse(document.getElementById('mobile-classes-data')?.textContent || '[]');
 const ALL_SECTIONS = JSON.parse(document.getElementById('mobile-sections-data')?.textContent || '[]');
 const ALL_CLASS_TO_SECTIONS = JSON.parse(document.getElementById('mobile-class-sections-data')?.textContent || '{}');
@@ -82,5 +84,5 @@ const TAB_COUNTS = {
     pool: {{ tab_counts.pool|default:0 }}
 };
 </script>
-<script src="{% static 'js/mobile/list-app.js' %}?v=15"></script>
+<script src="{% static 'js/mobile/list-app.js' %}?v=16"></script>
 {% endblock %}

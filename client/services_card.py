@@ -376,6 +376,8 @@ class ClientCardService(BaseService):
         cursor: int = None,
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
+        class_filter: Optional[str] = None,
+        section_filter: Optional[str] = None,
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
@@ -472,6 +474,64 @@ class ClientCardService(BaseService):
                         parsed_to_d = parse_date(to_value)
                         if parsed_to_d is not None:
                             cards_query = cards_query.filter(downloaded_at__date__lte=parsed_to_d)
+
+            class_filter_value = str(class_filter or '').strip()
+            section_filter_value = str(section_filter or '').strip()
+            if class_filter_value or section_filter_value:
+                class_field_name, section_field_name, _ = cls._get_class_section_branch_fields(table)
+
+                if class_filter_value:
+                    if not class_field_name:
+                        cards_query = cards_query.none()
+                    else:
+                        from core.utils.field_utils import normalize_class_value
+
+                        cards_query = cards_query.annotate(
+                            _filter_cls=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField())
+                        )
+                        target_class = normalize_class_value(class_filter_value)
+                        if not target_class:
+                            cards_query = cards_query.none()
+                        else:
+                            raw_values = list(
+                                cards_query
+                                .exclude(_filter_cls__isnull=True)
+                                .exclude(_filter_cls='')
+                                .values_list('_filter_cls', flat=True)
+                                .distinct()
+                            )
+                            matching_raw = [
+                                raw for raw in raw_values
+                                if normalize_class_value(raw) == target_class
+                            ]
+                            if not matching_raw:
+                                cards_query = cards_query.none()
+                            else:
+                                cards_query = cards_query.filter(_filter_cls__in=matching_raw)
+
+                if section_filter_value:
+                    if not section_field_name:
+                        cards_query = cards_query.none()
+                    else:
+                        cards_query = cards_query.annotate(
+                            _filter_sec=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField())
+                        )
+                        target_section = section_filter_value.strip().lower()
+                        raw_sections = list(
+                            cards_query
+                            .exclude(_filter_sec__isnull=True)
+                            .exclude(_filter_sec='')
+                            .values_list('_filter_sec', flat=True)
+                            .distinct()
+                        )
+                        matching_sections = [
+                            raw for raw in raw_sections
+                            if str(raw).strip().lower() == target_section
+                        ]
+                        if not matching_sections:
+                            cards_query = cards_query.none()
+                        else:
+                            cards_query = cards_query.filter(_filter_sec__in=matching_sections)
             
             total_count = cards_query.count()
 

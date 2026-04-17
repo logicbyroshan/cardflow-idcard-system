@@ -14,10 +14,52 @@
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=3">
     <link rel="manifest" href="/app/manifest.json?v={{ APP_VERSION|urlencode }}">
     <link rel="apple-touch-icon" href="{% static 'mobile/images/icon-192.png' %}">
     <script src="{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}"></script>
+
+    <script>
+    (function ensureFontAwesomeFallbackState() {
+        var root = document.documentElement;
+        var fallbackClass = 'fa-font-fallback';
+
+        function hasFontAwesomeLoaded() {
+            if (!document.fonts || typeof document.fonts.check !== 'function') {
+                return false;
+            }
+            return document.fonts.check('900 14px "Font Awesome 6 Free"');
+        }
+
+        function refreshFallbackState() {
+            root.classList.toggle(fallbackClass, !hasFontAwesomeLoaded());
+        }
+
+        root.classList.add(fallbackClass);
+
+        var tries = 0;
+        function pollFontState() {
+            refreshFallbackState();
+            tries += 1;
+            if (root.classList.contains(fallbackClass) && tries < 20) {
+                setTimeout(pollFontState, 180);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', pollFontState, { once: true });
+        } else {
+            pollFontState();
+        }
+
+        window.addEventListener('load', refreshFallbackState);
+        window.addEventListener('pageshow', refreshFallbackState);
+        if (document.fonts && typeof document.fonts.addEventListener === 'function') {
+            document.fonts.addEventListener('loadingdone', refreshFallbackState);
+            document.fonts.addEventListener('loadingerror', refreshFallbackState);
+        }
+    })();
+    </script>
 
     <style>
         :root {
@@ -41,6 +83,23 @@
             background: var(--m-surface-bg);
             color: var(--m-text);
             animation: login-page-fade .34s ease-out;
+        }
+        html.fa-font-fallback i[class*='fa-']::before {
+            font-family: var(--m-font-family), "Segoe UI Symbol", sans-serif !important;
+            font-style: normal !important;
+            font-weight: 700 !important;
+        }
+        html.fa-font-fallback i.fa-xmark::before { content: 'x' !important; }
+        html.fa-font-fallback i.fa-lock::before { content: '#' !important; }
+        html.fa-font-fallback i.fa-envelope::before { content: '@' !important; }
+        html.fa-font-fallback i.fa-eye::before { content: 'o' !important; }
+        html.fa-font-fallback i.fa-mobile-screen-button::before { content: '[]' !important; }
+        html.fa-font-fallback i.fa-id-card::before { content: 'ID' !important; font-size: 0.62em; letter-spacing: 0.02em; }
+        html.fa-font-fallback i.fa-circle-exclamation::before { content: '!' !important; }
+        html.fa-font-fallback i.fa-spinner::before { content: 'o' !important; animation: fa-fallback-spin 1s linear infinite; }
+        @keyframes fa-fallback-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
         .login-shell {
             width: min(100%, var(--m-app-max-width));

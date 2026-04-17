@@ -212,7 +212,11 @@ class MobileAppPwaAndAuthTests(MobileAppBaseTestCase):
 		self.assertIn("const CACHE_GROUP = 'adarsh-mobile';", content)
 		self.assertIn('const CACHE_NAMESPACE = ', content)
 		self.assertIn('const ONLINE_REQUIRED_PREFIXES = ', content)
+		self.assertIn('/static/css/vendor/fontawesome/all.min.css?v=3', content)
 		self.assertIn("/static/css/vendor/webfonts/fa-solid-900.woff2", content)
+		self.assertIn('/static/css/vendor/webfonts/fa-solid-900.ttf', content)
+		self.assertIn('var isIconAsset = ', content)
+		self.assertIn('return cached || Response.error();', content)
 
 	def test_mobile_page_redirects_without_mobile_auth_checkpoint(self):
 		self.client.login(username='mob-super@test.com', password='pass1234')
@@ -1749,6 +1753,84 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		ids = [item['id'] for item in payload['data']['cards']]
 		self.assertIn(card.id, ids)
 
+	def test_mobile_list_api_honors_class_and_section_filters(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'CLASS', 'type': 'class', 'order': 1},
+			{'name': 'SECTION', 'type': 'section', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		class_a = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Class 10 A', 'CLASS': '10', 'SECTION': 'A'},
+			status='pending',
+		)
+		class_b = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Class 10 B', 'CLASS': '10', 'SECTION': 'B'},
+			status='pending',
+		)
+		class_other = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Class 11 A', 'CLASS': '11', 'SECTION': 'A'},
+			status='pending',
+		)
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&class=10')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(class_a.id, ids)
+		self.assertIn(class_b.id, ids)
+		self.assertNotIn(class_other.id, ids)
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/cards/?status=pending&class=10&section=A')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(class_a.id, ids)
+		self.assertNotIn(class_b.id, ids)
+		self.assertNotIn(class_other.id, ids)
+
+	def test_mobile_list_page_honors_class_and_section_query_filters(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'CLASS', 'type': 'class', 'order': 1},
+			{'name': 'SECTION', 'type': 'section', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		class_a = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Page Class 10 A', 'CLASS': '10', 'SECTION': 'A'},
+			status='pending',
+		)
+		class_b = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Page Class 10 B', 'CLASS': '10', 'SECTION': 'B'},
+			status='pending',
+		)
+		class_other = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Page Class 11 A', 'CLASS': '11', 'SECTION': 'A'},
+			status='pending',
+		)
+
+		response = self.client.get(f'/app/table/{self.table.id}/pending/?class=10&section=A')
+		self.assertEqual(response.status_code, 200)
+		students = response.context.get('students', [])
+		ids = [item.get('id') for item in students]
+		self.assertIn(class_a.id, ids)
+		self.assertNotIn(class_b.id, ids)
+		self.assertNotIn(class_other.id, ids)
+		self.assertEqual(response.context.get('selected_class'), '10')
+		self.assertEqual(response.context.get('selected_section'), 'A')
+
 	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
 		self._login_mobile_super_admin()
 
@@ -2105,6 +2187,14 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn('forced-color-adjust: none;', css)
 		self.assertIn('#mobile-action-progress', css)
 
+	def test_mobile_css_has_fontawesome_fallback_for_critical_action_icons(self):
+		css_path = Path(__file__).resolve().parent.parent / 'static' / 'mobile' / 'css' / 'mobile.css'
+		css = css_path.read_text(encoding='utf-8')
+		self.assertIn('html.fa-font-fallback #mobile-app i.fa-arrow-left::before', css)
+		self.assertIn('html.fa-font-fallback #mobile-app i.fa-sliders::before', css)
+		self.assertIn('html.fa-font-fallback #mobile-app i.fa-xmark::before', css)
+		self.assertIn('mobile-fa-fallback-spin', css)
+
 	def test_mobile_list_toast_is_above_modal_layers(self):
 		template_path = Path(__file__).resolve().parent.parent / 'templates' / 'mobile_app' / 'partials' / 'list_toast.html'
 		html = template_path.read_text(encoding='utf-8')
@@ -2177,6 +2267,11 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		response = self.client.get('/app/desktop-required/?status=download')
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.context.get('status'), 'download')
+
+	def test_list_app_edit_mode_includes_all_table_fields(self):
+		script_path = Path(__file__).resolve().parent.parent / 'static' / 'js' / 'mobile' / 'list-app.js'
+		script = script_path.read_text(encoding='utf-8')
+		self.assertIn('this._initDynamicForm(fd, true);', script)
 
 	def test_profile_page_and_profile_update_api_work_for_mobile_client(self):
 		self._login_mobile_client()
@@ -2598,10 +2693,16 @@ class MobileAppPhase5OfflineCachingContractTests(TestCase):
 		self.assertIn('/app/manifest.json?v={{ APP_VERSION|urlencode }}', base_content)
 		self.assertIn('/app/sw.js?v={{ APP_VERSION|urlencode }}', base_content)
 		self.assertIn("{% static 'mobile/js/app.js' %}?v={{ APP_VERSION|urlencode }}", base_content)
+		self.assertIn("{% static 'css/vendor/fontawesome/all.min.css' %}?v=3", base_content)
+		self.assertIn('ensureFontAwesomeFallbackState', base_content)
+		self.assertIn('fa-font-fallback', base_content)
 
 		self.assertIn('/app/manifest.json?v={{ APP_VERSION|urlencode }}', login_content)
 		self.assertIn('/app/sw.js?v={{ APP_VERSION|urlencode }}', login_content)
 		self.assertIn("{% static 'mobile/js/environment-gate.js' %}?v={{ APP_VERSION|urlencode }}", login_content)
+		self.assertIn("{% static 'css/vendor/fontawesome/all.min.css' %}?v=3", login_content)
+		self.assertIn('ensureFontAwesomeFallbackState', login_content)
+		self.assertIn('fa-font-fallback', login_content)
 
 	def test_phase5_offline_matrix_covers_route_inventory(self):
 		project_root = Path(__file__).resolve().parent.parent

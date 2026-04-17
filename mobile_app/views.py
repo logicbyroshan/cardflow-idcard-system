@@ -1259,10 +1259,13 @@ def pwa_service_worker(request):
     ]
     static_assets = [
         f'/static/css/tailwind.css?v={asset_version}',
-        '/static/css/vendor/fontawesome/all.min.css?v=2',
+        '/static/css/vendor/fontawesome/all.min.css?v=3',
         '/static/css/vendor/webfonts/fa-solid-900.woff2',
+        '/static/css/vendor/webfonts/fa-solid-900.ttf',
         '/static/css/vendor/webfonts/fa-regular-400.woff2',
+        '/static/css/vendor/webfonts/fa-regular-400.ttf',
         '/static/css/vendor/webfonts/fa-brands-400.woff2',
+        '/static/css/vendor/webfonts/fa-brands-400.ttf',
         f'/static/mobile/css/mobile.css?v={asset_version}',
         f'/static/css/dropdown-unified.css?v={asset_version}',
         f'/static/mobile/js/environment-gate.js?v={asset_version}',
@@ -1416,6 +1419,24 @@ self.addEventListener('fetch', function(event) {
     if (url.pathname.indexOf('/static/') === 0) {
         event.respondWith(
             caches.open(STATIC_CACHE).then(function(cache) {
+                var isIconAsset = url.pathname.indexOf('/static/css/vendor/fontawesome/') === 0 ||
+                    url.pathname.indexOf('/static/css/vendor/webfonts/') === 0;
+
+                if (isIconAsset) {
+                    return fetch(event.request)
+                        .then(function(response) {
+                            if (shouldCacheResponse(response)) {
+                                cache.put(event.request, response.clone());
+                            }
+                            return response;
+                        })
+                        .catch(function() {
+                            return cache.match(event.request).then(function(cached) {
+                                return cached || Response.error();
+                            });
+                        });
+                }
+
                 return cache.match(event.request).then(function(cached) {
                     var networkFetch = fetch(event.request)
                         .then(function(response) {
@@ -1425,7 +1446,7 @@ self.addEventListener('fetch', function(event) {
                             return response;
                         })
                         .catch(function() {
-                            return cached;
+                            return cached || Response.error();
                         });
 
                     return cached || networkFetch;
@@ -2175,6 +2196,25 @@ def card_list(request, table_id, status):
 
     from_date = (request.GET.get('from') or '').strip()
     to_date = (request.GET.get('to') or '').strip()
+    selected_class = (request.GET.get('class') or '').strip()
+    selected_section = (request.GET.get('section') or '').strip()
+    table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
+
+    class_field_name = None
+    section_field_name = None
+    for _field in table_fields:
+        _fname = str(_field.get('name', '')).strip()
+        _ftype = str(_field.get('type', '')).strip().lower()
+        _norm = _fname.lower().replace('_', ' ').replace('-', ' ').replace('.', ' ')
+        _norm = ' '.join(_norm.split())
+        if class_field_name is None and (
+            _ftype == 'class' or _norm in ('class', 'class name', 'std', 'standard', 'designation', 'grade')
+        ):
+            class_field_name = _fname
+        if section_field_name is None and (
+            _ftype == 'section' or _norm in ('section', 'section name', 'sec', 'division', 'div')
+        ):
+            section_field_name = _fname
 
     # Keep initial server-rendered ordering aligned with api_cards()/ClientCardService.get_cards.
     if status == 'download':
@@ -2224,6 +2264,50 @@ def card_list(request, table_id, status):
             allowed_classes, allowed_sections = _staff_table_scope_filters(staff, table)
         cards_qs = ClientCardService._apply_client_staff_row_scope(user, table, cards_qs)
 
+    if selected_class:
+        selected_class_norm = normalize_class_value(selected_class)
+        if not class_field_name or not selected_class_norm:
+            cards_qs = cards_qs.none()
+        else:
+            cards_qs = cards_qs.annotate(_filter_cls=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+            raw_classes = list(
+                cards_qs
+                .exclude(_filter_cls__isnull=True)
+                .exclude(_filter_cls='')
+                .values_list('_filter_cls', flat=True)
+                .distinct()
+            )
+            matching_classes = [
+                raw_value for raw_value in raw_classes
+                if normalize_class_value(raw_value) == selected_class_norm
+            ]
+            if not matching_classes:
+                cards_qs = cards_qs.none()
+            else:
+                cards_qs = cards_qs.filter(_filter_cls__in=matching_classes)
+
+    if selected_section:
+        if not section_field_name:
+            cards_qs = cards_qs.none()
+        else:
+            cards_qs = cards_qs.annotate(_filter_sec=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+            target_section = selected_section.strip().lower()
+            raw_sections = list(
+                cards_qs
+                .exclude(_filter_sec__isnull=True)
+                .exclude(_filter_sec='')
+                .values_list('_filter_sec', flat=True)
+                .distinct()
+            )
+            matching_sections = [
+                raw_value for raw_value in raw_sections
+                if str(raw_value).strip().lower() == target_section
+            ]
+            if not matching_sections:
+                cards_qs = cards_qs.none()
+            else:
+                cards_qs = cards_qs.filter(_filter_sec__in=matching_sections)
+
     try:
         initial_page_size = int(getattr(settings, 'MOBILE_LIST_INITIAL_PAGE_SIZE', 24) or 24)
     except (TypeError, ValueError):
@@ -2233,8 +2317,6 @@ def card_list(request, table_id, status):
     _card_batch_raw = list(cards_qs[:initial_page_size + 1])
     _has_more_raw = len(_card_batch_raw) > initial_page_size
     cards_batch = _card_batch_raw[:initial_page_size]
-
-    table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
 
     photo_exts = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.hei')
     image_field_keywords = ('photo', 'image', 'signature', 'barcode', 'qr')
@@ -2427,22 +2509,6 @@ def card_list(request, table_id, status):
 
         return ordered
 
-    class_field_name = None
-    section_field_name = None
-    for _field in table_fields:
-        _fname = str(_field.get('name', '')).strip()
-        _ftype = str(_field.get('type', '')).strip().lower()
-        _norm = _fname.lower().replace('_', ' ').replace('-', ' ').replace('.', ' ')
-        _norm = ' '.join(_norm.split())
-        if class_field_name is None and (
-            _ftype == 'class' or _norm in ('class', 'class name', 'std', 'standard', 'designation', 'grade')
-        ):
-            class_field_name = _fname
-        if section_field_name is None and (
-            _ftype == 'section' or _norm in ('section', 'section name', 'sec', 'division', 'div')
-        ):
-            section_field_name = _fname
-
     cards = []
     for idx, card in enumerate(cards_batch):
         fd = card.field_data or {}
@@ -2593,6 +2659,8 @@ def card_list(request, table_id, status):
         'from_date': from_date if status == 'download' else '',
         'to_date': to_date if status == 'download' else '',
         'search_scope_table_id': table.id,
+        'selected_class': selected_class,
+        'selected_section': selected_section,
         'back_url': '/app/clients/' if PermissionService.is_any_admin(user) else '/app/',
         **perms,
     })
@@ -3320,6 +3388,8 @@ def api_cards(request, table_id):
     search = _sanitize_search_query(request.GET.get('search', ''))
     from_date = (request.GET.get('from') or '').strip()
     to_date = (request.GET.get('to') or '').strip()
+    class_filter = (request.GET.get('class') or '').strip()
+    section_filter = (request.GET.get('section') or '').strip()
     try:
         page = max(int(request.GET.get('page', 1)), 1)
         per_page = max(1, min(int(request.GET.get('per_page', 50)), 200))
@@ -3333,6 +3403,8 @@ def api_cards(request, table_id):
         search or None,
         from_date=from_date,
         to_date=to_date,
+        class_filter=class_filter or None,
+        section_filter=section_filter or None,
     )
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})

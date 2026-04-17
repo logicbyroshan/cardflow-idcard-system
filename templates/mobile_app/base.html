@@ -25,7 +25,50 @@
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-solid-900.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-regular-400.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'css/vendor/webfonts/fa-brands-400.woff2' %}" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome/all.min.css' %}?v=3">
+
+    <script>
+        (function ensureFontAwesomeFallbackState() {
+            var root = document.documentElement;
+            var fallbackClass = 'fa-font-fallback';
+
+            function hasFontAwesomeLoaded() {
+                if (!document.fonts || typeof document.fonts.check !== 'function') {
+                    return false;
+                }
+                return document.fonts.check('900 14px "Font Awesome 6 Free"');
+            }
+
+            function refreshFallbackState() {
+                root.classList.toggle(fallbackClass, !hasFontAwesomeLoaded());
+            }
+
+            // Start in safe fallback mode; remove once Font Awesome is confirmed loaded.
+            root.classList.add(fallbackClass);
+
+            var tries = 0;
+            function pollFontState() {
+                refreshFallbackState();
+                tries += 1;
+                if (root.classList.contains(fallbackClass) && tries < 20) {
+                    setTimeout(pollFontState, 180);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', pollFontState, { once: true });
+            } else {
+                pollFontState();
+            }
+
+            window.addEventListener('load', refreshFallbackState);
+            window.addEventListener('pageshow', refreshFallbackState);
+            if (document.fonts && typeof document.fonts.addEventListener === 'function') {
+                document.fonts.addEventListener('loadingdone', refreshFallbackState);
+                document.fonts.addEventListener('loadingerror', refreshFallbackState);
+            }
+        })();
+    </script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'mobile/css/mobile.css' %}?v={{ APP_VERSION|urlencode }}">

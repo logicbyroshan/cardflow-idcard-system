@@ -57,8 +57,14 @@ function listApp() {
         },
         filters: {
             photo: 'all',
-            selectedClass: '',
-            selectedSection: '',
+            selectedClass: (typeof INITIAL_SELECTED_CLASS !== 'undefined' ? String(INITIAL_SELECTED_CLASS || '') : ''),
+            selectedSection: (typeof INITIAL_SELECTED_SECTION !== 'undefined' ? String(INITIAL_SELECTED_SECTION || '') : ''),
+            dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
+            dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
+        },
+        serverFilterState: {
+            selectedClass: (typeof INITIAL_SELECTED_CLASS !== 'undefined' ? String(INITIAL_SELECTED_CLASS || '') : ''),
+            selectedSection: (typeof INITIAL_SELECTED_SECTION !== 'undefined' ? String(INITIAL_SELECTED_SECTION || '') : ''),
             dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
             dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
         },
@@ -474,6 +480,50 @@ function listApp() {
             if (!this.filters.selectedClass) return this.sectionOptions || [];
             return this.classToSections[this.filters.selectedClass] || [];
         },
+        _hasServerBackedFilterChange() {
+            if (String(this.filters.selectedClass || '') !== String(this.serverFilterState.selectedClass || '')) return true;
+            if (String(this.filters.selectedSection || '') !== String(this.serverFilterState.selectedSection || '')) return true;
+            if (LIST_TYPE === 'download') {
+                if (String(this.filters.dateFrom || '') !== String(this.serverFilterState.dateFrom || '')) return true;
+                if (String(this.filters.dateTo || '') !== String(this.serverFilterState.dateTo || '')) return true;
+            }
+            return false;
+        },
+        _buildServerFilterUrl() {
+            const parsed = new URL(window.location.href);
+            const params = parsed.searchParams;
+
+            params.delete('focus_card');
+
+            const classValue = String(this.filters.selectedClass || '').trim();
+            const sectionValue = String(this.filters.selectedSection || '').trim();
+            if (classValue) params.set('class', classValue);
+            else params.delete('class');
+
+            if (sectionValue) params.set('section', sectionValue);
+            else params.delete('section');
+
+            if (LIST_TYPE === 'download') {
+                const fromValue = String(this.filters.dateFrom || '').trim();
+                const toValue = String(this.filters.dateTo || '').trim();
+                if (fromValue) params.set('from', fromValue);
+                else params.delete('from');
+                if (toValue) params.set('to', toValue);
+                else params.delete('to');
+            } else {
+                params.delete('from');
+                params.delete('to');
+            }
+
+            const query = params.toString();
+            return parsed.pathname + (query ? ('?' + query) : '');
+        },
+        _reloadWithServerFilters() {
+            const nextUrl = this._buildServerFilterUrl();
+            const currentUrl = window.location.pathname + window.location.search;
+            if (nextUrl === currentUrl) return;
+            window.location.href = nextUrl;
+        },
         _normalizeClassValue(value) {
             const raw = String(value || '').trim();
             if (!raw) return '';
@@ -596,6 +646,12 @@ function listApp() {
             this.searchQuery = '';
             this.searchScopeHintShown = false;
             this.lastSearchAutoExpandQuery = '';
+
+            if (this._hasServerBackedFilterChange()) {
+                this._reloadWithServerFilters();
+                return;
+            }
+
             this._applyAllFilters();
         },
         async applyFilters() {
@@ -606,6 +662,12 @@ function listApp() {
                 this.filters.dateFrom !== '' ||
                 this.filters.dateTo !== ''
             );
+
+            // Class/section/date filters are server-backed so pagination stays accurate.
+            if (this._hasServerBackedFilterChange()) {
+                this._reloadWithServerFilters();
+                return;
+            }
 
             const searchActive = !!String(this.searchQuery || '').trim();
             const canAutoExpand = this.studentsData.length < 150;
@@ -2096,6 +2158,8 @@ function listApp() {
                 params.set('page', String(page));
                 // Keep load-more pagination source aligned with first render.
                 // List text search is applied client-side against loaded rows.
+                if (this.filters.selectedClass) params.set('class', this.filters.selectedClass);
+                if (this.filters.selectedSection) params.set('section', this.filters.selectedSection);
                 if (LIST_TYPE === 'download') {
                     if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
                     if (this.filters.dateTo) params.set('to', this.filters.dateTo);
@@ -2258,7 +2322,8 @@ function listApp() {
         },
         populateFormFromStudent(student) {
             const fd = (student && student.field_data) || {};
-            this._initDynamicForm(fd, false);
+            // In edit mode, expose all table fields so users can fill previously empty columns.
+            this._initDynamicForm(fd, true);
             this._initImageForm(fd, student || {});
         },
         async openViewById(cardId) {

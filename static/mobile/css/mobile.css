@@ -262,6 +262,62 @@ body {
     vertical-align: middle;
 }
 
+/* Android/PWA resilience: keep action icons visible even if icon font fails to load. */
+html.fa-font-fallback #mobile-app i[class*='fa-']::before,
+html.fa-font-fallback #desktop-block i[class*='fa-']::before,
+html.fa-font-fallback #pwa-install-sheet i[class*='fa-']::before,
+html.fa-font-fallback #mobile-update-screen i[class*='fa-']::before {
+    font-family: var(--m-font-family), "Segoe UI Symbol", sans-serif !important;
+    font-style: normal !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    text-rendering: geometricPrecision;
+}
+
+html.fa-font-fallback #mobile-app i.fa-arrow-left::before,
+html.fa-font-fallback #desktop-block i.fa-arrow-left::before,
+html.fa-font-fallback #pwa-install-sheet i.fa-arrow-left::before { content: '<' !important; }
+html.fa-font-fallback #mobile-app i.fa-arrow-right::before,
+html.fa-font-fallback #desktop-block i.fa-arrow-right::before,
+html.fa-font-fallback #pwa-install-sheet i.fa-arrow-right::before { content: '>' !important; }
+html.fa-font-fallback #mobile-app i.fa-chevron-left::before,
+html.fa-font-fallback #mobile-app i.fa-angles-left::before { content: '<' !important; }
+html.fa-font-fallback #mobile-app i.fa-chevron-right::before,
+html.fa-font-fallback #mobile-app i.fa-angles-right::before { content: '>' !important; }
+html.fa-font-fallback #mobile-app i.fa-chevron-down::before,
+html.fa-font-fallback #mobile-app i.fa-caret-down::before { content: 'v' !important; }
+html.fa-font-fallback #mobile-app i.fa-chevron-up::before,
+html.fa-font-fallback #mobile-app i.fa-caret-up::before { content: '^' !important; }
+html.fa-font-fallback #mobile-app i.fa-xmark::before,
+html.fa-font-fallback #desktop-block i.fa-xmark::before,
+html.fa-font-fallback #pwa-install-sheet i.fa-xmark::before { content: 'x' !important; }
+html.fa-font-fallback #mobile-app i.fa-bars::before { content: '=' !important; }
+html.fa-font-fallback #mobile-app i.fa-sliders::before,
+html.fa-font-fallback #mobile-app i.fa-filter::before { content: '=' !important; }
+html.fa-font-fallback #mobile-app i.fa-magnifying-glass::before,
+html.fa-font-fallback #desktop-block i.fa-magnifying-glass::before { content: '?' !important; }
+html.fa-font-fallback #mobile-app i.fa-gear::before { content: '*' !important; }
+html.fa-font-fallback #mobile-app i.fa-plus::before { content: '+' !important; }
+html.fa-font-fallback #mobile-app i.fa-minus::before { content: '-' !important; }
+html.fa-font-fallback #mobile-app i.fa-check::before { content: 'ok' !important; font-size: 0.68em; letter-spacing: 0.01em; }
+html.fa-font-fallback #mobile-app i.fa-pen::before { content: '/' !important; }
+html.fa-font-fallback #mobile-app i.fa-trash::before { content: 'del' !important; font-size: 0.62em; letter-spacing: 0.01em; }
+html.fa-font-fallback #mobile-app i.fa-copy::before,
+html.fa-font-fallback #desktop-block i.fa-copy::before { content: 'cp' !important; font-size: 0.65em; }
+html.fa-font-fallback #mobile-app i.fa-link::before,
+html.fa-font-fallback #desktop-block i.fa-link::before { content: 'lnk' !important; font-size: 0.56em; letter-spacing: 0.01em; }
+html.fa-font-fallback #mobile-app i.fa-mobile-screen-button::before,
+html.fa-font-fallback #desktop-block i.fa-mobile-screen-button::before,
+html.fa-font-fallback #pwa-install-sheet i.fa-mobile-screen-button::before { content: '[]' !important; }
+html.fa-font-fallback #mobile-app i.fa-rotate::before,
+html.fa-font-fallback #mobile-update-screen i.fa-rotate::before { content: 'r' !important; }
+html.fa-font-fallback #mobile-app i.fa-spinner::before { content: 'o' !important; animation: mobile-fa-fallback-spin 1s linear infinite; }
+
+@keyframes mobile-fa-fallback-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 /* Keep page/header hierarchy consistent across all mobile screens. */
 #mobile-app {
     width: 100%;
