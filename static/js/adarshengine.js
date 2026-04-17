@@ -361,7 +361,10 @@
     this.currentFilename = filename || 'image.jpg';
     this.onSaveCallback = onSave || null;
     this.sourceUrl = srcUrl || '';
-    this.sourcePath = fsPath || null;  // explicit filesystem path (for blob URLs)
+    var extractedPath = (typeof this._extractPathFromUrl === 'function')
+      ? this._extractPathFromUrl(this.sourceUrl)
+      : null;
+    this.sourcePath = fsPath || extractedPath || null;  // explicit filesystem path (for blob/data URLs)
 
     e.filename.textContent = this.currentFilename;
     this._resetSliders();

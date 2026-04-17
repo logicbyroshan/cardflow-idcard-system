@@ -1165,7 +1165,7 @@ function cropperApp() {
 
       // Build image list for navigation inside the editor
       var engineList = images.map(function (i) {
-        return { url: i.url, name: i.name };
+        return { url: i.url, name: i.name, path: i.path || null };
       });
       window.AdarshEngine.setImageList(engineList, idx, function (url, name) {
         // When user navigates, update reference for future save callbacks

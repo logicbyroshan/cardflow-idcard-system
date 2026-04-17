@@ -69,6 +69,7 @@
 
     this.currentFilename = img.name;
     this.sourceUrl = img.url;
+    this.sourcePath = img.path || this._extractPathFromUrl(img.url) || null;
     this._els.filename.textContent = img.name;
 
     this._showLoading(true);
