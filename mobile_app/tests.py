@@ -699,6 +699,45 @@ class MobileReleasePreflightCommandTests(MobileAppBaseTestCase):
 
 
 class MobileAppCardApiTests(MobileAppBaseTestCase):
+	def _collect_mobile_cards_api_ids(self, table_id, *, status='pending', params=None, user_agent=None, per_page=50, max_pages=20):
+		query_params = {'status': status, 'per_page': per_page, 'page': 1}
+		if params:
+			query_params.update(params)
+
+		request_headers = {}
+		if user_agent:
+			request_headers['HTTP_USER_AGENT'] = user_agent
+
+		collected_ids = []
+		total = None
+		pages = 0
+
+		while True:
+			response = self.client.get(
+				f'/app/api/table/{table_id}/cards/',
+				data=query_params,
+				**request_headers,
+			)
+			self.assertEqual(response.status_code, 200)
+			payload = response.json()
+			self.assertTrue(payload.get('success'))
+
+			data = payload.get('data') or {}
+			cards = data.get('cards') or []
+			if total is None:
+				total = int(data.get('total') or 0)
+
+			collected_ids.extend(int(item['id']) for item in cards if item.get('id') is not None)
+			pages += 1
+
+			if not data.get('has_more'):
+				break
+
+			query_params['page'] = int(query_params['page']) + 1
+			self.assertLessEqual(query_params['page'], max_pages)
+
+		return collected_ids, int(total or 0), pages
+
 	def test_bulk_status_rejects_non_list_card_ids(self):
 		self._login_mobile_super_admin()
 		response = self.client.post(
@@ -1985,6 +2024,100 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 
 		second_page_ids = [int(item.get('id')) for item in cards_two if item.get('id') is not None]
 		self.assertEqual(len(set(first_page_ids).intersection(set(second_page_ids))), 0)
+
+	def test_mobile_search_and_load_more_consistent_for_pwa_and_android_shell(self):
+		self._login_mobile_super_admin()
+		table = IDCardTable.objects.create(
+			group=self.group,
+			name='Deep Audit Search Paging Table',
+			fields=[
+				{'name': 'NAME', 'type': 'text', 'order': 0},
+				{'name': 'CLASS', 'type': 'class', 'order': 1},
+				{'name': 'SECTION', 'type': 'section', 'order': 2},
+				{'name': 'PHOTO', 'type': 'photo', 'order': 3},
+			],
+		)
+
+		search_token = 'AUDIT-DEEP-SEARCH-KEY'
+		expected_filtered_ids = []
+		all_pending_ids = []
+
+		for idx in range(135):
+			field_data = {
+				'NAME': f'{search_token} Student {idx:03d}',
+				'CLASS': '10' if idx < 120 else '11',
+				'SECTION': 'A' if idx < 120 else 'B',
+			}
+			if idx % 2 == 0:
+				field_data['PHOTO'] = f'adarshimg/deep-audit/{idx:03d}.webp'
+
+			card = IDCard.objects.create(table=table, field_data=field_data, status='pending')
+			all_pending_ids.append(card.id)
+
+			if idx < 120 and idx % 2 == 0:
+				expected_filtered_ids.append(card.id)
+
+		for idx in range(10):
+			IDCard.objects.create(
+				table=table,
+				field_data={'NAME': f'Noise Student {idx:02d}', 'CLASS': '10', 'SECTION': 'A'},
+				status='pending',
+			)
+
+		user_agents = {
+			'pwa_android_browser': 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36',
+			'android_native_shell': 'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/124.0 Mobile Safari/537.36',
+		}
+
+		for _, ua in user_agents.items():
+			list_response = self.client.get(
+				f'/app/table/{table.id}/pending/',
+				data={
+					'search': search_token,
+					'class': '10',
+					'section': 'A',
+					'photo': 'with',
+				},
+				HTTP_USER_AGENT=ua,
+			)
+			self.assertEqual(list_response.status_code, 200)
+			self.assertEqual(list_response.context.get('selected_search'), search_token)
+			self.assertEqual(list_response.context.get('selected_class'), '10')
+			self.assertEqual(list_response.context.get('selected_section'), 'A')
+			self.assertEqual(list_response.context.get('selected_photo'), 'with')
+			self.assertEqual(list_response.context.get('total_count'), len(expected_filtered_ids))
+			self.assertTrue(list_response.context.get('has_more'))
+			self.assertEqual(len(list_response.context.get('students') or []), 50)
+
+			filtered_ids, filtered_total, filtered_pages = self._collect_mobile_cards_api_ids(
+				table.id,
+				status='pending',
+				params={
+					'search': search_token,
+					'class': '10',
+					'section': 'A',
+					'photo': 'with',
+				},
+				user_agent=ua,
+				per_page=50,
+			)
+			self.assertEqual(filtered_total, len(expected_filtered_ids))
+			self.assertEqual(len(filtered_ids), len(expected_filtered_ids))
+			self.assertEqual(len(set(filtered_ids)), len(expected_filtered_ids))
+			self.assertEqual(set(filtered_ids), set(expected_filtered_ids))
+			self.assertGreaterEqual(filtered_pages, 2)
+
+			all_ids, all_total, all_pages = self._collect_mobile_cards_api_ids(
+				table.id,
+				status='pending',
+				params={},
+				user_agent=ua,
+				per_page=50,
+			)
+			self.assertEqual(all_total, len(all_pending_ids) + 10)
+			self.assertEqual(len(all_ids), len(all_pending_ids) + 10)
+			self.assertEqual(len(set(all_ids)), len(all_pending_ids) + 10)
+			self.assertGreaterEqual(all_pages, 3)
 
 	def test_mobile_all_ids_api_honors_search_and_photo_filters(self):
 		self._login_mobile_super_admin()
