@@ -2485,6 +2485,7 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn('forceReloadWhenSame: this.filtersActive', script)
 		self.assertIn("if (this.filters.photo === 'with' || this.filters.photo === 'without')", script)
 		self.assertIn('this.totalRecords = Math.max(0, apiTotal);', script)
+		self.assertIn('this._queueNextPageIfNeeded();', script)
 
 	def test_profile_page_and_profile_update_api_work_for_mobile_client(self):
 		self._login_mobile_client()

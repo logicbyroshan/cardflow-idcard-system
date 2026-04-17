@@ -228,6 +228,28 @@ function listApp() {
             scrollRoot.addEventListener('scroll', this.scrollFallbackHandler, { passive: true });
         },
 
+        _remainingScrollDistance() {
+            const scrollRoot = document.getElementById('students-scroll');
+            if (!scrollRoot) return Number.POSITIVE_INFINITY;
+            return scrollRoot.scrollHeight - (scrollRoot.scrollTop + scrollRoot.clientHeight);
+        },
+
+        _queueNextPageIfNeeded() {
+            if (this.loading || !this.hasMore) return;
+
+            const remaining = this._remainingScrollDistance();
+            if (!Number.isFinite(remaining) || remaining > 260) return;
+
+            const schedule = window.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); };
+            schedule(() => {
+                if (this.loading || !this.hasMore) return;
+                const nextRemaining = this._remainingScrollDistance();
+                if (Number.isFinite(nextRemaining) && nextRemaining <= 260) {
+                    this.loadMore(true);
+                }
+            });
+        },
+
         _bindOverlayWatchers() {
             if (this.overlayWatchersBound || typeof this.$watch !== 'function') return;
             this.overlayWatchersBound = true;
@@ -2204,6 +2226,7 @@ function listApp() {
         async loadMore(silent) {
             if (this.loading || !this.hasMore) return;
             this.loading = true;
+            let allowAutoChain = false;
             try {
                 const page = this.loadMorePage + 1;
                 const pageSize = Number(this.pageSize || 50);
@@ -2227,8 +2250,9 @@ function listApp() {
                 const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/cards/`) + `?${params.toString()}`;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const json = await res.json();
-                if (!json.success) { this.showToast('Failed to load more', 'error'); this.loading = false; return; }
+                if (!json.success) { this.showToast('Failed to load more', 'error'); return; }
                 const apiData = json.data;
+                allowAutoChain = true;
                 const apiTotal = Number(apiData.total);
                 if (Number.isFinite(apiTotal)) {
                     this.totalRecords = Math.max(0, apiTotal);
@@ -2272,7 +2296,6 @@ function listApp() {
                     this.hasMore = !!apiData.has_more;
                     this.loadMoreOffset += rawCards.length || pageSize;
                     if (!silent && !this.hasMore) this.showToast('All records loaded', 'info');
-                    this.loading = false;
                     return;
                 }
                 this.studentsData.push(...newCards);
@@ -2295,7 +2318,12 @@ function listApp() {
                     this.visibleCount = this.studentsData.length;
                 }
             } catch (e) { this.showToast('Load failed', 'error'); }
-            this.loading = false;
+            finally {
+                this.loading = false;
+                if (allowAutoChain) {
+                    this._queueNextPageIfNeeded();
+                }
+            }
         },
 
         // --------- API helpers ---------
