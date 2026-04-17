@@ -452,6 +452,59 @@ def _can_access_card_with_row_scope(user, card):
     return scoped.exists()
 
 
+def _mobile_search_allowed_statuses(user):
+    """Return card statuses visible to the user in mobile list/search surfaces."""
+    status_perm_map = getattr(PermissionService, 'STATUS_LIST_PERM_MAP', {}) or {}
+    allowed = []
+    for status, perm_key in status_perm_map.items():
+        if not perm_key or PermissionService.has(user, perm_key):
+            allowed.append(status)
+    return allowed
+
+
+def _apply_mobile_search_status_scope(user, qs):
+    """Limit search queryset to statuses the user can actually open on mobile."""
+    if PermissionService.is_super_admin(user):
+        return qs
+
+    allowed_statuses = _mobile_search_allowed_statuses(user)
+    if not allowed_statuses:
+        return qs.none()
+    return qs.filter(status__in=allowed_statuses)
+
+
+def _filter_cards_for_client_staff_row_scope(user, cards):
+    """Batch-filter search cards by client_staff row scope table-by-table."""
+    cards_list = list(cards or [])
+    if not PermissionService.is_client_staff(user):
+        return cards_list
+    if not cards_list:
+        return cards_list
+
+    grouped_by_table = {}
+    for card in cards_list:
+        table_id = getattr(card, 'table_id', None)
+        card_id = getattr(card, 'id', None)
+        table_obj = getattr(card, 'table', None)
+        if not table_id or not card_id or table_obj is None:
+            continue
+
+        table_key = int(table_id)
+        bucket = grouped_by_table.setdefault(table_key, {'table': table_obj, 'card_ids': []})
+        bucket['card_ids'].append(int(card_id))
+
+    allowed_ids = set()
+    for table_id, payload in grouped_by_table.items():
+        scoped_qs = ClientCardService._apply_client_staff_row_scope(
+            user,
+            payload['table'],
+            IDCard.objects.filter(table_id=table_id, id__in=payload['card_ids']),
+        )
+        allowed_ids.update(scoped_qs.values_list('id', flat=True))
+
+    return [card for card in cards_list if int(getattr(card, 'id', 0) or 0) in allowed_ids]
+
+
 def _get_system_notifications(user, limit=20, mark_visible_as_read=False):
     """Return system notifications for a user with consistent unread tracking."""
     from core.models import Notification, NotificationRead
@@ -3790,13 +3843,13 @@ def search_page(request):
                 table__group__client=client,
             ).select_related('table', 'table__group').order_by('-updated_at')
 
+        base_qs = _apply_mobile_search_status_scope(user, base_qs)
+
         if table_scope_id:
             base_qs = base_qs.filter(table_id=table_scope_id)
 
         cards_qs = _search_cards_for_global_results(base_qs, query, limit=50, filter_type=filter_type)
-        if PermissionService.is_client_staff(user):
-            # Keep global search visibility aligned with list/detail row scope.
-            cards_qs = [card for card in cards_qs if _can_access_card_with_row_scope(user, card)]
+        cards_qs = _filter_cards_for_client_staff_row_scope(user, cards_qs)
 
         for card in cards_qs:
             fd = card.field_data or {}
@@ -4110,6 +4163,8 @@ def api_search(request):
             table__group__client=client,
         ).select_related('table', 'table__group').order_by('-updated_at')
 
+    base_qs = _apply_mobile_search_status_scope(user, base_qs)
+
     if raw_table_id:
         if not raw_table_id.isdigit():
             return JsonResponse({'success': False, 'message': 'Invalid table scope.'}, status=400)
@@ -4131,9 +4186,7 @@ def api_search(request):
         base_qs = base_qs.filter(table_id=scoped_table_id)
 
     cards_qs = _search_cards_for_global_results(base_qs, query, limit=30, filter_type=filter_type)
-    if PermissionService.is_client_staff(user):
-        # Keep global search visibility aligned with list/detail row scope.
-        cards_qs = [card for card in cards_qs if _can_access_card_with_row_scope(user, card)]
+    cards_qs = _filter_cards_for_client_staff_row_scope(user, cards_qs)
 
     results = []
     for card in cards_qs:

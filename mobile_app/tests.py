@@ -1670,6 +1670,59 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn(in_scope.id, ids)
 		self.assertNotIn(out_scope.id, ids)
 
+	def test_mobile_global_search_api_hides_statuses_without_list_permission(self):
+		self.client_staff_profile.perm_idcard_pending_list = True
+		self.client_staff_profile.perm_idcard_verified_list = False
+		self.client_staff_profile.assigned_groups.set([self.group])
+		self.client_staff_profile.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_verified_list'])
+
+		pending_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Status Scope Student', 'ROLL NO': '901'},
+			status='pending',
+		)
+		verified_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Status Scope Student', 'ROLL NO': '902'},
+			status='verified',
+		)
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/api/search/?q=Status Scope Student&filter=name&table_id={self.table.id}')
+
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['results']]
+		self.assertIn(pending_card.id, ids)
+		self.assertNotIn(verified_card.id, ids)
+
+	def test_mobile_global_search_page_hides_statuses_without_list_permission(self):
+		self.client_staff_profile.perm_idcard_pending_list = True
+		self.client_staff_profile.perm_idcard_verified_list = False
+		self.client_staff_profile.assigned_groups.set([self.group])
+		self.client_staff_profile.save(update_fields=['perm_idcard_pending_list', 'perm_idcard_verified_list'])
+
+		pending_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Status Scope Page', 'ROLL NO': '911'},
+			status='pending',
+		)
+		verified_card = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Status Scope Page', 'ROLL NO': '912'},
+			status='verified',
+		)
+
+		self._login_mobile_client_staff()
+		response = self.client.get(f'/app/search/?q=Status Scope Page&filter=name&table_id={self.table.id}')
+
+		self.assertEqual(response.status_code, 200)
+		results = response.context.get('results', [])
+		ids = [item.get('id') for item in results]
+		self.assertIn(pending_card.id, ids)
+		self.assertNotIn(verified_card.id, ids)
+
 	def test_mobile_list_api_search_matches_dynamic_table_field(self):
 		self._login_mobile_super_admin()
 		self.table.fields = [
