@@ -129,6 +129,7 @@ urlpatterns = [
     # continue to work even though panel routes are namespaced under /panel/.
     path('api/engine/status/', core_views.api_engine_status, name='api_engine_status_root'),
     path('api/engine/process-folder/', core_views.api_engine_process_folder, name='api_engine_process_folder_root'),
+    path('api/engine/page-photo-picker-folder/', core_views.api_engine_page_photo_picker_folder, name='api_engine_page_photo_picker_folder_root'),
     path('api/engine/preview/', core_views.api_engine_preview, name='api_engine_preview_root'),
     path('api/engine/serve-image/', core_views.api_engine_serve_image, name='api_engine_serve_image_root'),
     path('api/engine/save-edited/', core_views.api_engine_save_edited, name='api_engine_save_edited_root'),

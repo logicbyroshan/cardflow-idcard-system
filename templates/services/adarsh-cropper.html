@@ -446,7 +446,16 @@
               </label>
             </div>
 
-            {# Step 2: Compress (optional) #}
+            {# Step 2: Page Photo Picker (optional) #}
+            <div class="pipeline-step" :class="{ 'enabled': pipeline.facePick }">
+              <label class="pipeline-checkbox">
+                <input type="checkbox" x-model="pipeline.facePick">
+                <span class="pipeline-step-icon"><i class="fa-solid fa-file-image"></i></span>
+                <span class="pipeline-step-label">Page Photo Picker</span>
+              </label>
+            </div>
+
+            {# Step 3: Compress (optional) #}
             <div class="pipeline-step" :class="{ 'enabled': pipeline.compress }">
               <label class="pipeline-checkbox">
                 <input type="checkbox" x-model="pipeline.compress">
@@ -459,7 +468,7 @@
               </div>
             </div>
 
-            {# Step 3: Rename (optional - hidden in client mode) #}
+            {# Step 4: Rename (optional - hidden in client mode) #}
             <div class="pipeline-step" :class="{ 'enabled': pipeline.rename }" x-show="inputMode !== 'client'">
               <label class="pipeline-checkbox">
                 <input type="checkbox" x-model="pipeline.rename">
@@ -479,7 +488,7 @@
               </div>
             </div>
 
-            {# Step 4: Edit (optional) #}
+            {# Step 5: Edit (optional) #}
             <div class="pipeline-step" :class="{ 'enabled': pipeline.edit }">
               <label class="pipeline-checkbox">
                 <input type="checkbox" x-model="pipeline.edit">
@@ -491,7 +500,7 @@
         </div>
 
         <div class="card-actions">
-          <button class="btn btn-primary" :disabled="!folderPath.trim() || processing || (!pipeline.faceCrop && !pipeline.compress && !pipeline.rename && !pipeline.edit)" @click="processFolder()" type="button">
+          <button class="btn btn-primary" :disabled="!folderPath.trim() || processing || (!pipeline.facePick && !pipeline.faceCrop && !pipeline.compress && !pipeline.rename && !pipeline.edit)" @click="processFolder()" type="button">
             <template x-if="!processing">
               <span><i class="fa-solid fa-play"></i> Process</span>
             </template>

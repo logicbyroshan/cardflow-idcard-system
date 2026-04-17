@@ -41,6 +41,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
 from passport_engine_core import process_zip, process_folder
+from passport_engine_core.page_photo_picker import pick_page_photos_in_folder
 from passport_engine_core.compressor import compress_folder
 from passport_engine_core.config import ENGINE_VERSION
 
@@ -300,6 +301,11 @@ class CompressRequest(BaseModel):
     target_kb: float
 
 
+class PagePhotoPickerRequest(BaseModel):
+    """Request model for /page-photo-picker-folder endpoint."""
+    folder_path: str
+
+
 class AdjustImageRequest(BaseModel):
     """Request model for /adjust-image endpoint."""
     image_path: str           # Full path to source image
@@ -452,6 +458,34 @@ async def process_folder_endpoint(body: FolderRequest):
     except Exception:
         logger.exception("Unexpected error during folder processing.")
         raise HTTPException(status_code=500, detail="Internal processing error.")
+
+
+@app.post("/page-photo-picker-folder")
+async def page_photo_picker_folder_endpoint(body: PagePhotoPickerRequest):
+    """
+    Extract pasted/printed photo patches from scanned page images in a folder.
+
+    Returns summary JSON compatible with the cropper UI result panel.
+    """
+    folder = Path(body.folder_path)
+
+    if not folder.exists():
+        raise HTTPException(status_code=400, detail=f"Path does not exist: {body.folder_path}")
+    if not folder.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a directory: {body.folder_path}")
+
+    try:
+        logger.info("Page-photo picker processing folder: %s", body.folder_path)
+        summary = pick_page_photos_in_folder(body.folder_path)
+        return JSONResponse(content=summary)
+
+    except ValueError as exc:
+        logger.warning("Page-photo picker validation error: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    except Exception:
+        logger.exception("Unexpected error during page-photo picker processing.")
+        raise HTTPException(status_code=500, detail="Internal page-photo picker error.")
 
 
 @app.post("/compress-folder")

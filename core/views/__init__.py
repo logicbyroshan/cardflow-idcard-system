@@ -189,6 +189,7 @@ from .monitoring_api import (
 from .engine_api import (
     api_engine_status,
     api_engine_process_folder,
+    api_engine_page_photo_picker_folder,
     api_engine_compress_folder,
     api_engine_preview,
     api_engine_serve_image,
