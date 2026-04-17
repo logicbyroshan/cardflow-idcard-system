@@ -35,7 +35,7 @@ function estimateMobileUploadTimeoutMs(imageFiles) {
 
 function listApp() {
     return {
-        searchQuery: '',
+        searchQuery: (typeof INITIAL_SEARCH_QUERY !== 'undefined' ? String(INITIAL_SEARCH_QUERY || '') : ''),
         showFilters: false,
         selectAll: false,
         selectedIds: [],
@@ -56,13 +56,21 @@ function listApp() {
             abortController: null,
         },
         filters: {
-            photo: 'all',
+            photo: (function () {
+                const raw = (typeof INITIAL_PHOTO_FILTER !== 'undefined') ? String(INITIAL_PHOTO_FILTER || '').toLowerCase().trim() : '';
+                return (raw === 'with' || raw === 'without') ? raw : 'all';
+            })(),
             selectedClass: (typeof INITIAL_SELECTED_CLASS !== 'undefined' ? String(INITIAL_SELECTED_CLASS || '') : ''),
             selectedSection: (typeof INITIAL_SELECTED_SECTION !== 'undefined' ? String(INITIAL_SELECTED_SECTION || '') : ''),
             dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
             dateTo: (typeof INITIAL_TO_DATE !== 'undefined' ? String(INITIAL_TO_DATE || '') : ''),
         },
         serverFilterState: {
+            searchQuery: (typeof INITIAL_SEARCH_QUERY !== 'undefined' ? String(INITIAL_SEARCH_QUERY || '') : ''),
+            photo: (function () {
+                const raw = (typeof INITIAL_PHOTO_FILTER !== 'undefined') ? String(INITIAL_PHOTO_FILTER || '').toLowerCase().trim() : '';
+                return (raw === 'with' || raw === 'without') ? raw : 'all';
+            })(),
             selectedClass: (typeof INITIAL_SELECTED_CLASS !== 'undefined' ? String(INITIAL_SELECTED_CLASS || '') : ''),
             selectedSection: (typeof INITIAL_SELECTED_SECTION !== 'undefined' ? String(INITIAL_SELECTED_SECTION || '') : ''),
             dateFrom: (typeof INITIAL_FROM_DATE !== 'undefined' ? String(INITIAL_FROM_DATE || '') : ''),
@@ -121,6 +129,9 @@ function listApp() {
         editMode: false,
         editingId: null,
         studentsData: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA : [],
+        totalRecords: (typeof TOTAL_RECORDS !== 'undefined' && Number.isFinite(Number(TOTAL_RECORDS)))
+            ? Number(TOTAL_RECORDS)
+            : ((typeof STUDENTS_DATA !== 'undefined' && Array.isArray(STUDENTS_DATA)) ? STUDENTS_DATA.length : 0),
         hasMore: typeof HAS_MORE !== 'undefined' ? HAS_MORE : false,
         loadMoreOffset: typeof STUDENTS_DATA !== 'undefined' ? STUDENTS_DATA.length : 0,
         loadMorePage: 1,
@@ -141,6 +152,7 @@ function listApp() {
         },
 
         init() {
+            this.totalRecords = Math.max(Number(this.totalRecords || 0), Number(this.studentsData.length || 0));
             this.rebuildClassSectionOptions();
             this._wirePhotoFallbacks(document);
             this._bindOverlayWatchers();
@@ -431,22 +443,17 @@ function listApp() {
 
         // --- Filtering & Sorting ---
         filterStudents() {
-            // Debounced text search to avoid filtering/reflow on every keystroke.
+            // Debounced server-backed search to ensure full-table matching.
             if (this.searchFilterTimer) {
                 clearTimeout(this.searchFilterTimer);
                 this.searchFilterTimer = null;
             }
             this.searchFilterTimer = setTimeout(() => {
-                this._applyAllFilters({ showCountToast: false });
-
-                const trimmedQuery = String(this.searchQuery || '').trim();
-                if (!trimmedQuery) {
-                    this.searchScopeHintShown = false;
-                    this.lastSearchAutoExpandQuery = '';
+                if (this._hasServerBackedFilterChange()) {
+                    this._reloadWithServerFilters();
                     return;
                 }
-
-                this._maybeExpandSearchScope(trimmedQuery);
+                this._applyAllFilters({ showCountToast: false });
             }, 180);
         },
         async _maybeExpandSearchScope(query) {
@@ -481,6 +488,8 @@ function listApp() {
             return this.classToSections[this.filters.selectedClass] || [];
         },
         _hasServerBackedFilterChange() {
+            if (String(this.searchQuery || '').trim() !== String(this.serverFilterState.searchQuery || '').trim()) return true;
+            if (String(this.filters.photo || 'all') !== String(this.serverFilterState.photo || 'all')) return true;
             if (String(this.filters.selectedClass || '') !== String(this.serverFilterState.selectedClass || '')) return true;
             if (String(this.filters.selectedSection || '') !== String(this.serverFilterState.selectedSection || '')) return true;
             if (LIST_TYPE === 'download') {
@@ -494,6 +503,14 @@ function listApp() {
             const params = parsed.searchParams;
 
             params.delete('focus_card');
+
+            const searchValue = String(this.searchQuery || '').trim();
+            if (searchValue) params.set('search', searchValue);
+            else params.delete('search');
+
+            const photoValue = String(this.filters.photo || 'all').trim().toLowerCase();
+            if (photoValue === 'with' || photoValue === 'without') params.set('photo', photoValue);
+            else params.delete('photo');
 
             const classValue = String(this.filters.selectedClass || '').trim();
             const sectionValue = String(this.filters.selectedSection || '').trim();
@@ -663,32 +680,10 @@ function listApp() {
                 this.filters.dateTo !== ''
             );
 
-            // Class/section/date filters are server-backed so pagination stays accurate.
+            // Search/filter behavior is server-backed so matching runs across full dataset.
             if (this._hasServerBackedFilterChange()) {
                 this._reloadWithServerFilters();
                 return;
-            }
-
-            const searchActive = !!String(this.searchQuery || '').trim();
-            const canAutoExpand = this.studentsData.length < 150;
-
-            // Keep filtering responsive on large tables. Expand a few pages only
-            // for smaller datasets, otherwise filter loaded records immediately.
-            if (this.filtersActive && this.hasMore && canAutoExpand) {
-                this.loadingAllForFilters = true;
-                this.showToast('Loading more records for better filter accuracy...', 'info');
-                await this.loadAllDataForFiltering(MOBILE_LIST_AUTO_FILTER_MAX_PAGES);
-                this.loadingAllForFilters = false;
-                if (this.hasMore) {
-                    this.showToast('Filters apply to loaded records. Scroll to load more matches.', 'info');
-                }
-            } else if (this.filtersActive && this.hasMore && !canAutoExpand) {
-                this.showToast('Filters apply to loaded records. Scroll to load more matches.', 'info');
-            } else if (searchActive && this.hasMore && !this.searchScopeHintShown) {
-                this.showToast('Search currently applies to loaded records. Scroll to load more for wider matches.', 'info');
-                this.searchScopeHintShown = true;
-            } else if (!searchActive) {
-                this.searchScopeHintShown = false;
             }
 
             this._applyAllFilters({ showCountToast: true });
@@ -781,7 +776,7 @@ function listApp() {
             this.visibleCount = filtered.length;
             // Show count
             if ((q || this.filtersActive) && options.showCountToast) {
-                this.showToast(filtered.length + ' of ' + this.studentsData.length + ' shown', 'info');
+                this.showToast(filtered.length + ' of ' + this.totalRecords + ' shown', 'info');
             }
         },
 
@@ -2157,7 +2152,11 @@ function listApp() {
                 params.set('per_page', String(MOBILE_LIST_LOAD_MORE_PAGE_SIZE));
                 params.set('page', String(page));
                 // Keep load-more pagination source aligned with first render.
-                // List text search is applied client-side against loaded rows.
+                const searchValue = String(this.searchQuery || '').trim();
+                if (searchValue) params.set('search', searchValue);
+                if (this.filters.photo === 'with' || this.filters.photo === 'without') {
+                    params.set('photo', this.filters.photo);
+                }
                 if (this.filters.selectedClass) params.set('class', this.filters.selectedClass);
                 if (this.filters.selectedSection) params.set('section', this.filters.selectedSection);
                 if (LIST_TYPE === 'download') {
@@ -2170,6 +2169,10 @@ function listApp() {
                 const json = await res.json();
                 if (!json.success) { this.showToast('Failed to load more', 'error'); this.loading = false; return; }
                 const apiData = json.data;
+                const apiTotal = Number(apiData.total);
+                if (Number.isFinite(apiTotal)) {
+                    this.totalRecords = Math.max(0, apiTotal);
+                }
                 const existingIds = new Set(this.studentsData.map(s => s.id));
                 const rawCards = apiData.cards || [];
                 this.loadMorePage = page;
@@ -2220,7 +2223,7 @@ function listApp() {
                 }
                 this.hasMore = apiData.has_more;
                 if (!this.hasMore) {
-                    if (!silent) this.showToast('All ' + this.studentsData.length + ' records loaded', 'info');
+                    if (!silent) this.showToast('All ' + this.totalRecords + ' records loaded', 'info');
                 } else if (!silent) {
                     this.showToast('+' + newCards.length + ' loaded', 'success');
                 }

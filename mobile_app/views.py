@@ -2196,6 +2196,10 @@ def card_list(request, table_id, status):
 
     from_date = (request.GET.get('from') or '').strip()
     to_date = (request.GET.get('to') or '').strip()
+    selected_search = _sanitize_search_query(request.GET.get('search', ''))
+    selected_photo = str(request.GET.get('photo', '') or '').strip().lower()
+    if selected_photo not in ('with', 'without'):
+        selected_photo = ''
     selected_class = (request.GET.get('class') or '').strip()
     selected_section = (request.GET.get('section') or '').strip()
     table_fields = table.fields if hasattr(table, 'fields') and table.fields else []
@@ -2231,6 +2235,9 @@ def card_list(request, table_id, status):
         'id', 'field_data', 'status', 'photo',
         'created_at', 'status_changed_at', 'downloaded_at', 'deleted_at',
     )
+
+    if selected_search:
+        cards_qs = IDCardService._apply_search_filter(cards_qs, selected_search, table=table)
 
     if status == 'download':
         if from_date:
@@ -2307,6 +2314,18 @@ def card_list(request, table_id, status):
                 cards_qs = cards_qs.none()
             else:
                 cards_qs = cards_qs.filter(_filter_sec__in=matching_sections)
+
+    if selected_photo:
+        matching_photo_ids = []
+        for _photo_card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
+            _has_photo = bool(get_card_photo_url(_photo_card, _photo_card.field_data or {}))
+            if (selected_photo == 'with' and _has_photo) or (selected_photo == 'without' and not _has_photo):
+                matching_photo_ids.append(_photo_card.id)
+
+        if not matching_photo_ids:
+            cards_qs = cards_qs.none()
+        else:
+            cards_qs = cards_qs.filter(id__in=matching_photo_ids)
 
     try:
         initial_page_size = int(getattr(settings, 'MOBILE_LIST_INITIAL_PAGE_SIZE', 24) or 24)
@@ -2544,7 +2563,7 @@ def card_list(request, table_id, status):
             'display_fields': _build_display_fields(fd, table_fields),
         })
 
-    total_count = len(cards)
+    total_count = cards_qs.count()
 
     # Row-scope is applied directly in queryset, so pagination stays accurate for scoped users.
     has_more = _has_more_raw
@@ -2658,6 +2677,8 @@ def card_list(request, table_id, status):
         'has_any_list_actions': has_any_list_actions,
         'from_date': from_date if status == 'download' else '',
         'to_date': to_date if status == 'download' else '',
+        'selected_search': selected_search,
+        'selected_photo': selected_photo,
         'search_scope_table_id': table.id,
         'selected_class': selected_class,
         'selected_section': selected_section,
@@ -3388,6 +3409,9 @@ def api_cards(request, table_id):
     search = _sanitize_search_query(request.GET.get('search', ''))
     from_date = (request.GET.get('from') or '').strip()
     to_date = (request.GET.get('to') or '').strip()
+    photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
+    if photo_filter not in ('with', 'without'):
+        photo_filter = ''
     class_filter = (request.GET.get('class') or '').strip()
     section_filter = (request.GET.get('section') or '').strip()
     try:
@@ -3405,6 +3429,7 @@ def api_cards(request, table_id):
         to_date=to_date,
         class_filter=class_filter or None,
         section_filter=section_filter or None,
+        photo_filter=photo_filter or None,
     )
     if result.success:
         return JsonResponse({'success': True, 'data': result.data})

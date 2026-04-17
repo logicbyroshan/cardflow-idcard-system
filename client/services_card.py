@@ -378,6 +378,7 @@ class ClientCardService(BaseService):
         to_date: Optional[str] = None,
         class_filter: Optional[str] = None,
         section_filter: Optional[str] = None,
+        photo_filter: Optional[str] = None,
     ) -> ServiceResult:
         """
         Get cards for a table (with permission checks).
@@ -532,6 +533,19 @@ class ClientCardService(BaseService):
                             cards_query = cards_query.none()
                         else:
                             cards_query = cards_query.filter(_filter_sec__in=matching_sections)
+
+            photo_filter_value = str(photo_filter or '').strip().lower()
+            if photo_filter_value in ('with', 'without'):
+                matching_photo_ids: List[int] = []
+                for _card in cards_query.only('id', 'photo', 'field_data').iterator(chunk_size=500):
+                    _has_photo = bool(get_card_photo_url(_card, _card.field_data or {}))
+                    if (photo_filter_value == 'with' and _has_photo) or (photo_filter_value == 'without' and not _has_photo):
+                        matching_photo_ids.append(_card.id)
+
+                if not matching_photo_ids:
+                    cards_query = cards_query.none()
+                else:
+                    cards_query = cards_query.filter(id__in=matching_photo_ids)
             
             total_count = cards_query.count()
 

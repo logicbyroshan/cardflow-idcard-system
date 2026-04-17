@@ -65,6 +65,9 @@ const TABLE_ID = {{ table_id }};
 const LIST_TYPE = '{{ list_type }}';
 const HAS_MORE = {{ has_more|yesno:"true,false" }};
 const STUDENTS_DATA = JSON.parse(document.getElementById('mobile-students-data')?.textContent || '[]');
+const TOTAL_RECORDS = {{ total_count|default:0 }};
+const INITIAL_SEARCH_QUERY = '{{ selected_search|default:""|escapejs }}';
+const INITIAL_PHOTO_FILTER = '{{ selected_photo|default:""|escapejs }}';
 const INITIAL_FROM_DATE = '{{ from_date|default:""|escapejs }}';
 const INITIAL_TO_DATE = '{{ to_date|default:""|escapejs }}';
 const INITIAL_SELECTED_CLASS = '{{ selected_class|default:""|escapejs }}';
@@ -84,5 +87,5 @@ const TAB_COUNTS = {
     pool: {{ tab_counts.pool|default:0 }}
 };
 </script>
-<script src="{% static 'js/mobile/list-app.js' %}?v=16"></script>
+<script src="{% static 'js/mobile/list-app.js' %}?v=17"></script>
 {% endblock %}

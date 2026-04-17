@@ -1831,6 +1831,84 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.context.get('selected_class'), '10')
 		self.assertEqual(response.context.get('selected_section'), 'A')
 
+	def test_mobile_list_api_honors_search_and_photo_filters_for_full_dataset(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+		]
+		self.table.save(update_fields=['fields'])
+
+		match_with_photo = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Server Search Alpha', 'PHOTO': 'adarshimg/mobile-search/alpha.webp'},
+			status='pending',
+		)
+		match_without_photo = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Server Search Alpha No Photo'},
+			status='pending',
+		)
+		IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Completely Different Student'},
+			status='pending',
+		)
+
+		response = self.client.get(
+			f'/app/api/table/{self.table.id}/cards/?status=pending&search=Server Search Alpha&photo=with'
+		)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertIn(match_with_photo.id, ids)
+		self.assertNotIn(match_without_photo.id, ids)
+		self.assertEqual(payload['data']['total'], 1)
+
+		response = self.client.get(
+			f'/app/api/table/{self.table.id}/cards/?status=pending&search=Server Search Alpha&photo=without'
+		)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		ids = [item['id'] for item in payload['data']['cards']]
+		self.assertNotIn(match_with_photo.id, ids)
+		self.assertIn(match_without_photo.id, ids)
+		self.assertEqual(payload['data']['total'], 1)
+
+	def test_mobile_list_page_tracks_total_count_for_server_search(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+		]
+		self.table.save(update_fields=['fields'])
+
+		match_one = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Count Scope Alpha One'},
+			status='pending',
+		)
+		match_two = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Count Scope Alpha Two'},
+			status='pending',
+		)
+		IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Count Scope Beta'},
+			status='pending',
+		)
+
+		response = self.client.get(f'/app/table/{self.table.id}/pending/?search=Count Scope Alpha')
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.context.get('selected_search'), 'Count Scope Alpha')
+		self.assertEqual(response.context.get('total_count'), 2)
+		students = response.context.get('students', [])
+		ids = [item.get('id') for item in students]
+		self.assertIn(match_one.id, ids)
+		self.assertIn(match_two.id, ids)
+
 	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
 		self._login_mobile_super_admin()
 
@@ -2272,6 +2350,21 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		script_path = Path(__file__).resolve().parent.parent / 'static' / 'js' / 'mobile' / 'list-app.js'
 		script = script_path.read_text(encoding='utf-8')
 		self.assertIn('this._initDynamicForm(fd, true);', script)
+
+	def test_mobile_list_uses_server_backed_search_and_total_seed(self):
+		root = Path(__file__).resolve().parent.parent
+		list_page = (root / 'templates' / 'mobile_app' / 'list_page.html').read_text(encoding='utf-8')
+		list_table = (root / 'templates' / 'mobile_app' / 'partials' / 'list_table.html').read_text(encoding='utf-8')
+		script = (root / 'static' / 'js' / 'mobile' / 'list-app.js').read_text(encoding='utf-8')
+
+		self.assertIn('const TOTAL_RECORDS = {{ total_count|default:0 }};', list_page)
+		self.assertIn("const INITIAL_SEARCH_QUERY = '{{ selected_search|default:\"\"|escapejs }}';", list_page)
+		self.assertIn("const INITIAL_PHOTO_FILTER = '{{ selected_photo|default:\"\"|escapejs }}';", list_page)
+		self.assertIn("'Showing ' + visibleCount + ' of ' + totalRecords + ' records'", list_table)
+		self.assertIn('if (this._hasServerBackedFilterChange()) {', script)
+		self.assertIn("if (searchValue) params.set('search', searchValue);", script)
+		self.assertIn("if (this.filters.photo === 'with' || this.filters.photo === 'without')", script)
+		self.assertIn('this.totalRecords = Math.max(0, apiTotal);', script)
 
 	def test_profile_page_and_profile_update_api_work_for_mobile_client(self):
 		self._login_mobile_client()
