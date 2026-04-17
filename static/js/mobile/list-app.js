@@ -139,6 +139,8 @@ function listApp() {
         allClassesRaw: (typeof ALL_CLASSES !== 'undefined' && Array.isArray(ALL_CLASSES)) ? ALL_CLASSES : [],
         allSectionsRaw: (typeof ALL_SECTIONS !== 'undefined' && Array.isArray(ALL_SECTIONS)) ? ALL_SECTIONS : [],
         allClassToSectionsRaw: (typeof ALL_CLASS_TO_SECTIONS !== 'undefined' && ALL_CLASS_TO_SECTIONS && typeof ALL_CLASS_TO_SECTIONS === 'object') ? ALL_CLASS_TO_SECTIONS : {},
+        filterOptionsLoading: false,
+        filterOptionsHydrated: false,
         tableFields: Array.isArray(TABLE_FIELDS) ? TABLE_FIELDS : [],
         dynamicFormFields: [],
         imageFormFields: [],
@@ -160,6 +162,7 @@ function listApp() {
 
             this.$nextTick(() => {
                 this.initInfiniteLoader();
+                this.refreshFilterOptionsFromServer();
             });
 
             // Re-open edit form if we just returned from camera.html
@@ -581,6 +584,49 @@ function listApp() {
             if (canonical === 'KG1') return 'KG-I';
             if (canonical === 'KG2') return 'KG-II';
             return canonical;
+        },
+        async refreshFilterOptionsFromServer() {
+            if (this.filterOptionsLoading) return;
+
+            this.filterOptionsLoading = true;
+            try {
+                const params = new URLSearchParams();
+                params.set('status', LIST_TYPE);
+
+                const searchValue = String(this.searchQuery || '').trim();
+                if (searchValue) params.set('search', searchValue);
+
+                if (this.filters.photo === 'with' || this.filters.photo === 'without') {
+                    params.set('photo', this.filters.photo);
+                }
+
+                if (LIST_TYPE === 'download') {
+                    if (this.filters.dateFrom) params.set('from', this.filters.dateFrom);
+                    if (this.filters.dateTo) params.set('to', this.filters.dateTo);
+                }
+
+                const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/filter-options/`) + `?${params.toString()}`;
+                const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok || !json.success) return;
+
+                const payload = (json && json.data) || {};
+                const classes = Array.isArray(payload.classes) ? payload.classes : [];
+                const sections = Array.isArray(payload.sections) ? payload.sections : [];
+                const classToSections = payload.class_to_sections && typeof payload.class_to_sections === 'object'
+                    ? payload.class_to_sections
+                    : {};
+
+                this.allClassesRaw = classes;
+                this.allSectionsRaw = sections;
+                this.allClassToSectionsRaw = classToSections;
+                this.filterOptionsHydrated = true;
+                this.rebuildClassSectionOptions();
+            } catch (e) {
+                // Keep existing options fallback without interrupting UX.
+            } finally {
+                this.filterOptionsLoading = false;
+            }
         },
         rebuildClassSectionOptions() {
             if (this.allClassesRaw.length || this.allSectionsRaw.length || Object.keys(this.allClassToSectionsRaw || {}).length) {

@@ -1909,6 +1909,49 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertIn(match_one.id, ids)
 		self.assertIn(match_two.id, ids)
 
+	def test_mobile_filter_options_api_uses_full_dataset_not_loaded_rows_only(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'CLASS', 'type': 'class', 'order': 1},
+			{'name': 'SECTION', 'type': 'section', 'order': 2},
+		]
+		self.table.save(update_fields=['fields'])
+
+		# Create the oldest card with a unique class/section so it is outside the initial page batch.
+		IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Legacy Scope Card', 'CLASS': 'LEGACY', 'SECTION': 'Z'},
+			status='pending',
+		)
+		for idx in range(40):
+			IDCard.objects.create(
+				table=self.table,
+				field_data={'NAME': f'Recent Scope Card {idx}', 'CLASS': 'RECENT', 'SECTION': 'A'},
+				status='pending',
+			)
+
+		page_response = self.client.get(f'/app/table/{self.table.id}/pending/')
+		self.assertEqual(page_response.status_code, 200)
+		loaded_classes = {str(item.get('class_name') or '') for item in (page_response.context.get('students') or [])}
+		self.assertNotIn('LEGACY', loaded_classes)
+
+		response = self.client.get(f'/app/api/table/{self.table.id}/filter-options/?status=pending')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+
+		classes = payload['data'].get('classes') or []
+		sections = payload['data'].get('sections') or []
+		class_to_sections = payload['data'].get('class_to_sections') or {}
+
+		self.assertIn('LEGACY', classes)
+		self.assertIn('RECENT', classes)
+		self.assertIn('Z', sections)
+		self.assertIn('A', sections)
+		self.assertIn('LEGACY', class_to_sections)
+		self.assertIn('Z', class_to_sections.get('LEGACY', []))
+
 	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
 		self._login_mobile_super_admin()
 
@@ -2363,6 +2406,8 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn("'Showing ' + visibleCount + ' of ' + totalRecords + ' records'", list_table)
 		self.assertIn('if (this._hasServerBackedFilterChange()) {', script)
 		self.assertIn("if (searchValue) params.set('search', searchValue);", script)
+		self.assertIn('table/${TABLE_ID}/filter-options/', script)
+		self.assertIn('this.refreshFilterOptionsFromServer();', script)
 		self.assertIn("if (this.filters.photo === 'with' || this.filters.photo === 'without')", script)
 		self.assertIn('this.totalRecords = Math.max(0, apiTotal);', script)
 
