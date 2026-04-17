@@ -1986,6 +1986,40 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		second_page_ids = [int(item.get('id')) for item in cards_two if item.get('id') is not None]
 		self.assertEqual(len(set(first_page_ids).intersection(set(second_page_ids))), 0)
 
+	def test_mobile_all_ids_api_honors_search_and_photo_filters(self):
+		self._login_mobile_super_admin()
+		self.table.fields = [
+			{'name': 'NAME', 'type': 'text', 'order': 0},
+			{'name': 'PHOTO', 'type': 'photo', 'order': 1},
+		]
+		self.table.save(update_fields=['fields'])
+
+		with_photo = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Select Scope', 'PHOTO': 'adarshimg/mobile-select/with.webp'},
+			status='pending',
+		)
+		without_photo = IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Select Scope'},
+			status='pending',
+		)
+		IDCard.objects.create(
+			table=self.table,
+			field_data={'NAME': 'Another Student'},
+			status='pending',
+		)
+
+		response = self.client.get(
+			f'/app/api/table/{self.table.id}/cards/all-ids/?status=pending&search=Select Scope&photo=with'
+		)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['success'])
+		self.assertEqual(payload.get('total_count'), 1)
+		self.assertIn(with_photo.id, payload.get('card_ids') or [])
+		self.assertNotIn(without_photo.id, payload.get('card_ids') or [])
+
 	def test_mobile_list_api_download_date_filter_uses_downloaded_at(self):
 		self._login_mobile_super_admin()
 
@@ -2443,6 +2477,7 @@ class MobileAppCoverageGapRegressionTests(MobileAppBaseTestCase):
 		self.assertIn('if (this._hasServerBackedFilterChange()) {', script)
 		self.assertIn("if (searchValue) params.set('search', searchValue);", script)
 		self.assertIn("params.set('per_page', String(pageSize));", script)
+		self.assertIn('table/${TABLE_ID}/cards/all-ids/', script)
 		self.assertIn('table/${TABLE_ID}/filter-options/', script)
 		self.assertIn('this.refreshFilterOptionsFromServer();', script)
 		self.assertIn('const forceReloadWhenSame = !!(options && options.forceReloadWhenSame);', script)

@@ -394,30 +394,16 @@ function listApp() {
             }
 
             if (this.filters.photo !== 'all') {
-                const photoFields = (this.tableFields || [])
-                    .filter((f) => this._isPhotoFieldDef(f))
-                    .map((f) => String(f.name || '').trim())
-                    .filter(Boolean);
-
-                if (photoFields.length === 1) {
-                    params.set('image_column', photoFields[0]);
-                    params.set('image_condition', this.filters.photo === 'with' ? 'complete' : 'incomplete');
-                } else {
-                    return null;
-                }
+                params.set('photo', this.filters.photo);
             }
 
             return params;
         },
         async _fetchAllMatchingIds() {
             const params = this._buildAllIdsQueryParams();
-            if (!params) {
-                this.showToast('Photo filter uses multiple image fields. Selecting visible records only.', 'info');
-                return null;
-            }
 
             try {
-                const url = buildEndpoint(MOBILE_ENDPOINTS.panelApi, `table/${TABLE_ID}/cards/all-ids/`) + `?${params.toString()}`;
+                const url = buildEndpoint(MOBILE_ENDPOINTS.appApi, `table/${TABLE_ID}/cards/all-ids/`) + `?${params.toString()}`;
                 const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF } });
                 const data = await res.json().catch(() => ({}));
 

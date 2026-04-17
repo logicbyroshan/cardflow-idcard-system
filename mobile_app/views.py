@@ -3521,6 +3521,146 @@ def api_cards(request, table_id):
 
 @require_mobile_client
 @require_http_methods(["GET"])
+def api_all_card_ids(request, table_id):
+    """Return all matching card IDs for mobile Select All (full dataset, filter-aware)."""
+    status_filter = str(request.GET.get('status', '') or '').strip().lower()
+    if not status_filter:
+        return JsonResponse({'success': False, 'message': 'status is required'}, status=400)
+
+    valid_statuses = {'pending', 'verified', 'approved', 'download', 'pool', 'reprint'}
+    if status_filter not in valid_statuses:
+        return JsonResponse({'success': False, 'message': 'Invalid status'}, status=400)
+
+    table = get_object_or_404(IDCardTable, id=table_id)
+    if not ClientAccessService.can_access_table(request.user, table):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    perm_map = {
+        'pending': 'perm_idcard_pending_list',
+        'verified': 'perm_idcard_verified_list',
+        'pool': 'perm_idcard_pool_list',
+        'approved': 'perm_idcard_approved_list',
+        'download': 'perm_idcard_download_list',
+        'reprint': 'perm_idcard_reprint_list',
+    }
+    needed_perm = perm_map.get(status_filter)
+    if needed_perm and not PermissionService.has(request.user, needed_perm):
+        return JsonResponse({'success': False, 'message': 'No permission to view this list'}, status=403)
+
+    search = _sanitize_search_query(request.GET.get('search', ''))
+    from_date = (request.GET.get('from') or '').strip()
+    to_date = (request.GET.get('to') or '').strip()
+    selected_class = (request.GET.get('class') or '').strip()
+    selected_section = (request.GET.get('section') or '').strip()
+    photo_filter = str(request.GET.get('photo', '') or '').strip().lower()
+    if photo_filter not in ('with', 'without'):
+        photo_filter = ''
+
+    if status_filter == 'download':
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-downloaded_at', '-id')
+    elif status_filter == 'pool':
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-deleted_at', '-id')
+    elif status_filter in ('verified', 'approved'):
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-status_changed_at', 'id')
+    else:
+        cards_qs = IDCard.objects.filter(table=table, status=status_filter).order_by('-created_at', 'id')
+
+    cards_qs = ClientCardService._apply_client_staff_row_scope(request.user, table, cards_qs)
+
+    if search:
+        cards_qs = IDCardService._apply_search_filter(cards_qs, search, table=table)
+
+    if status_filter == 'download':
+        if from_date:
+            parsed_from_dt = parse_datetime(from_date)
+            if parsed_from_dt is not None:
+                if is_naive(parsed_from_dt):
+                    parsed_from_dt = make_aware(parsed_from_dt)
+                cards_qs = cards_qs.filter(downloaded_at__gte=parsed_from_dt)
+            else:
+                parsed_from_d = parse_date(from_date)
+                if parsed_from_d is not None:
+                    cards_qs = cards_qs.filter(downloaded_at__date__gte=parsed_from_d)
+
+        if to_date:
+            parsed_to_dt = parse_datetime(to_date)
+            if parsed_to_dt is not None:
+                if is_naive(parsed_to_dt):
+                    parsed_to_dt = make_aware(parsed_to_dt)
+                cards_qs = cards_qs.filter(downloaded_at__lte=parsed_to_dt)
+            else:
+                parsed_to_d = parse_date(to_date)
+                if parsed_to_d is not None:
+                    cards_qs = cards_qs.filter(downloaded_at__date__lte=parsed_to_d)
+
+    class_field_name, section_field_name, _ = ClientCardService._get_class_section_branch_fields(table)
+
+    if selected_class:
+        selected_class_norm = normalize_class_value(selected_class)
+        if not class_field_name or not selected_class_norm:
+            cards_qs = cards_qs.none()
+        else:
+            cards_qs = cards_qs.annotate(_filter_cls=Cast(KeyTextTransform(class_field_name, 'field_data'), CharField()))
+            raw_classes = list(
+                cards_qs
+                .exclude(_filter_cls__isnull=True)
+                .exclude(_filter_cls='')
+                .values_list('_filter_cls', flat=True)
+                .distinct()
+            )
+            matching_classes = [
+                raw_value for raw_value in raw_classes
+                if normalize_class_value(raw_value) == selected_class_norm
+            ]
+            if not matching_classes:
+                cards_qs = cards_qs.none()
+            else:
+                cards_qs = cards_qs.filter(_filter_cls__in=matching_classes)
+
+    if selected_section:
+        if not section_field_name:
+            cards_qs = cards_qs.none()
+        else:
+            cards_qs = cards_qs.annotate(_filter_sec=Cast(KeyTextTransform(section_field_name, 'field_data'), CharField()))
+            target_section = selected_section.strip().lower()
+            raw_sections = list(
+                cards_qs
+                .exclude(_filter_sec__isnull=True)
+                .exclude(_filter_sec='')
+                .values_list('_filter_sec', flat=True)
+                .distinct()
+            )
+            matching_sections = [
+                raw_value for raw_value in raw_sections
+                if str(raw_value).strip().lower() == target_section
+            ]
+            if not matching_sections:
+                cards_qs = cards_qs.none()
+            else:
+                cards_qs = cards_qs.filter(_filter_sec__in=matching_sections)
+
+    if photo_filter:
+        matching_photo_ids = []
+        for _photo_card in cards_qs.only('id', 'photo', 'field_data').iterator(chunk_size=500):
+            _has_photo = bool(get_card_photo_url(_photo_card, _photo_card.field_data or {}))
+            if (photo_filter == 'with' and _has_photo) or (photo_filter == 'without' and not _has_photo):
+                matching_photo_ids.append(_photo_card.id)
+
+        if not matching_photo_ids:
+            cards_qs = cards_qs.none()
+        else:
+            cards_qs = cards_qs.filter(id__in=matching_photo_ids)
+
+    card_ids = list(cards_qs.values_list('id', flat=True))
+    return JsonResponse({
+        'success': True,
+        'card_ids': card_ids,
+        'total_count': len(card_ids),
+    })
+
+
+@require_mobile_client
+@require_http_methods(["GET"])
 def api_filter_options(request, table_id):
     """Return full-dataset class/section filter options for a table status scope."""
     status_filter = str(request.GET.get('status', '') or '').strip().lower()

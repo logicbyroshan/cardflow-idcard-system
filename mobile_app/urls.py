@@ -40,6 +40,7 @@ urlpatterns = [
     path('api/card/<int:card_id>/detail/', views.api_card_detail, name='api_card_detail'),
     path('api/card/<int:card_id>/delete/', views.api_card_delete, name='api_card_delete'),
     path('api/table/<int:table_id>/cards/', views.api_cards, name='api_cards'),
+    path('api/table/<int:table_id>/cards/all-ids/', views.api_all_card_ids, name='api_all_card_ids'),
     path('api/table/<int:table_id>/filter-options/', views.api_filter_options, name='api_filter_options'),
     path('api/table/<int:table_id>/bulk-status/', views.api_bulk_status, name='api_bulk_status'),
     path('api/table/<int:table_id>/upload-photo/', views.api_upload_photo, name='api_upload_photo'),
