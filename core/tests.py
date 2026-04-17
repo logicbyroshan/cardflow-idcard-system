@@ -678,6 +678,26 @@ class DiskBackedImageStoreTests(TestCase):
         self.assertEqual(len(store), 0)
         self.assertIsNone(store.get('k'))
 
+    def test_force_ram_only_raises_when_budget_exceeded(self):
+        from core.services.bulk_upload_service import DiskBackedImageStore
+
+        store = DiskBackedImageStore(
+            ram_threshold_bytes=1024 * 1024,
+            ram_threshold_per_image=2 * 1024 * 1024,
+            force_ram_only=True,
+        )
+        try:
+            store.add('k1', b'\x00' * (700 * 1024), '.jpg', 'a.jpg')
+            self.assertFalse(store._use_disk)
+
+            with self.assertRaises(MemoryError):
+                store.add('k2', b'\x00' * (700 * 1024), '.jpg', 'b.jpg')
+
+            self.assertFalse(store._use_disk)
+            self.assertIsNotNone(store.get('k1'))
+        finally:
+            store.cleanup()
+
 
 class BulkUploadImageHeaderMappingTests(SimpleTestCase):
     def test_image_headers_match_without_photo_suffix(self):

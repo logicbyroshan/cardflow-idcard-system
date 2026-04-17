@@ -65,6 +65,7 @@ class ExcelExporter:
         uppercase_values: bool = True,
         status: str = '',
         progress_callback=None,
+        user=None,
     ) -> ExcelExportResult:
         """
         Export cards to Excel format.
@@ -206,6 +207,7 @@ class ExcelExporter:
                 xlsx_bytes,
                 filename,
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                user=user,
             )
             
             return ExcelExportResult(

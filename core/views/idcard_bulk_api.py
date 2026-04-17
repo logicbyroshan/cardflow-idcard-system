@@ -18,12 +18,14 @@ from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.conf import settings
 from django.core.cache import cache as django_cache
+from django.core.files.uploadhandler import MemoryFileUploadHandler
 
 from idcards.models import IDCard, IDCardTable
 from ..services import IDCardService
 from ..services.image_service import ImageService
 from ..services.base import BaseService
 from ..services.cache_version_service import CacheVersionService
+from ..services.super_mode_service import SuperModeService
 from ..services.permission_service import (
     api_require_any_authenticated,
     api_require_permission,
@@ -46,6 +48,13 @@ _REUPLOAD_NAME_BASE_RE = re.compile(r'^(?:[ac]\d{14}|\d{14})$')
 # Keep strict matching first; legacy timestamp-number stems are fallback only.
 # Fallback is intentionally permissive and matches any non-empty filename stem.
 REUPLOAD_ALLOW_LEGACY_FALLBACK = True
+
+
+class _SuperModeMemoryUploadHandler(MemoryFileUploadHandler):
+    """Force Django multipart uploads to stay in memory for Super Mode sync path."""
+
+    def handle_raw_input(self, input_data, META, content_length, boundary, encoding=None):
+        self.activated = True
 
 
 def _extract_reupload_stem(value):
@@ -89,7 +98,8 @@ def api_idcard_bulk_upload(request, table_id):
     """API endpoint to bulk upload ID Cards from XLSX/CSV file with fuzzy matching and optional ZIP photo upload.
     
     Uses disk-based image storage for large ZIPs to prevent OOM.
-    Small datasets (<50MB total) are kept in RAM for speed.
+    For effective Super Mode users, synchronous ZIP ingestion prefers RAM-only
+    processing with a bounded memory budget for lower I/O latency.
     Row processing is unified across XLSX and CSV via BulkUploadService.
     """
     _tbl, err = _check_client_scope_by_table(request.user, table_id)
@@ -107,6 +117,23 @@ def api_idcard_bulk_upload(request, table_id):
     
     # Track all image stores for cleanup on exit
     _all_stores = []
+    super_mode_sync_ram_only = False
+    effective_super_ram_mb = 0
+    try:
+        super_mode_sync_ram_only = bool(SuperModeService.is_effective_enabled(request.user))
+        if super_mode_sync_ram_only:
+            effective_super_ram_mb = max(0, int(SuperModeService.get_effective_ram_mb(request.user) or 0))
+    except Exception:
+        logger.exception("Failed resolving Super Mode RAM-only state for sync bulk upload")
+        super_mode_sync_ram_only = False
+        effective_super_ram_mb = 0
+
+    # Configure upload handlers before first access to request.FILES.
+    if super_mode_sync_ram_only:
+        try:
+            request.upload_handlers = [_SuperModeMemoryUploadHandler(request)]
+        except Exception:
+            logger.exception("Failed to apply Super Mode in-memory upload handler")
     
     try:
         import openpyxl
@@ -118,16 +145,18 @@ def api_idcard_bulk_upload(request, table_id):
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
 
-        # Pre-flight disk space check: require at least 500 MB free
-        try:
-            disk = shutil.disk_usage(settings.MEDIA_ROOT)
-            if disk.free < 500 * 1024 * 1024:  # 500 MB
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Insufficient disk space. Please contact your administrator.'
-                }, status=507)
-        except Exception:
-            pass  # Non-critical — proceed if check fails
+        # Pre-flight disk space check: require at least 500 MB free.
+        # Skip this guard for Super Mode RAM-only sync ingestion.
+        if not super_mode_sync_ram_only:
+            try:
+                disk = shutil.disk_usage(settings.MEDIA_ROOT)
+                if disk.free < 500 * 1024 * 1024:  # 500 MB
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Insufficient disk space. Please contact your administrator.'
+                    }, status=507)
+            except Exception:
+                pass  # Non-critical — proceed if check fails
         
         table = get_object_or_404(IDCardTable.objects.select_related('group__client'), id=table_id)
         
@@ -151,6 +180,37 @@ def api_idcard_bulk_upload(request, table_id):
             zip_field_names = json.loads(zip_field_names_str)
         except (json.JSONDecodeError, TypeError):
             zip_field_names = []
+
+        try:
+            unified_zip_count = min(int(request.POST.get('unified_zip_count', 0)), 20)
+        except (ValueError, TypeError):
+            unified_zip_count = 0
+
+        store_kwargs = {}
+        if super_mode_sync_ram_only:
+            mib = 1024 * 1024
+            # Keep headroom for Python, DB work, and request processing.
+            total_ram_budget = int(max(64 * mib, min(512 * mib, effective_super_ram_mb * mib * 0.60)))
+
+            uploaded_field_zip_count = sum(
+                1 for field_name in zip_field_names if f'photos_zip_{field_name}' in request.FILES
+            )
+            uploaded_unified_zip_count = sum(
+                1 for i in range(unified_zip_count) if f'unified_zip_{i}' in request.FILES
+            )
+            planned_store_count = uploaded_field_zip_count + (1 if uploaded_unified_zip_count > 0 else 0)
+            if planned_store_count <= 0 and 'photos_zip' in request.FILES:
+                planned_store_count = 1
+            planned_store_count = max(1, planned_store_count)
+
+            per_store_budget = max(32 * mib, int(total_ram_budget / planned_store_count))
+            per_image_budget = min(20 * mib, max(512 * 1024, int(per_store_budget / 8)))
+
+            store_kwargs = {
+                'ram_threshold_bytes': per_store_budget,
+                'ram_threshold_per_image': per_image_budget,
+                'force_ram_only': True,
+            }
         
         logger.debug("zip_field_names = %s", zip_field_names)
         
@@ -159,9 +219,18 @@ def api_idcard_bulk_upload(request, table_id):
             zip_key = f'photos_zip_{field_name}'
             if zip_key in request.FILES:
                 photos_zip_file = request.FILES[zip_key]
-                store = DiskBackedImageStore()
+                store = DiskBackedImageStore(**store_kwargs)
                 _all_stores.append(store)
-                count = extract_zip_to_store(photos_zip_file, store)
+                try:
+                    count = extract_zip_to_store(photos_zip_file, store)
+                except MemoryError:
+                    return JsonResponse({
+                        'success': False,
+                        'message': (
+                            'Super Mode RAM-only upload limit reached. '
+                            'Reduce ZIP size/count (or disable Super Mode to allow disk-assisted upload).'
+                        ),
+                    }, status=413)
                 if count > 0:
                     zip_photos_by_field[field_name] = store
                     logger.debug("Field '%s' extracted %d images", field_name, count)
@@ -170,25 +239,38 @@ def api_idcard_bulk_upload(request, table_id):
         if not zip_photos_by_field and 'photos_zip' in request.FILES:
             photos_zip_file = request.FILES['photos_zip']
             first_image_field = image_field_names[0] if image_field_names else 'PHOTO'
-            store = DiskBackedImageStore()
+            store = DiskBackedImageStore(**store_kwargs)
             _all_stores.append(store)
-            count = extract_zip_to_store(photos_zip_file, store)
+            try:
+                count = extract_zip_to_store(photos_zip_file, store)
+            except MemoryError:
+                return JsonResponse({
+                    'success': False,
+                    'message': (
+                        'Super Mode RAM-only upload limit reached. '
+                        'Reduce ZIP size/count (or disable Super Mode to allow disk-assisted upload).'
+                    ),
+                }, status=413)
             if count > 0:
                 zip_photos_by_field[first_image_field] = store
         
         # Unified ZIP files (images auto-matched to all columns)
-        unified_zip_photos = DiskBackedImageStore()
+        unified_zip_photos = DiskBackedImageStore(**store_kwargs)
         _all_stores.append(unified_zip_photos)
-        
-        try:
-            unified_zip_count = min(int(request.POST.get('unified_zip_count', 0)), 20)
-        except (ValueError, TypeError):
-            unified_zip_count = 0
         
         for i in range(unified_zip_count):
             zip_key = f'unified_zip_{i}'
             if zip_key in request.FILES:
-                extract_zip_to_store(request.FILES[zip_key], unified_zip_photos)
+                try:
+                    extract_zip_to_store(request.FILES[zip_key], unified_zip_photos)
+                except MemoryError:
+                    return JsonResponse({
+                        'success': False,
+                        'message': (
+                            'Super Mode RAM-only upload limit reached. '
+                            'Reduce ZIP size/count (or disable Super Mode to allow disk-assisted upload).'
+                        ),
+                    }, status=413)
         
         logger.debug("unified_zip_photos count = %d", len(unified_zip_photos))
         

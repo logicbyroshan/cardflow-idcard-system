@@ -86,6 +86,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
         template_id: int = None,
         allow_large: bool = False,
         progress_callback=None,
+        user=None,
     ) -> WordExportResult:
         """
         Export cards to Word format.
@@ -210,7 +211,7 @@ class WordExporter(WordStylesMixin, WordTablesMixin, WordImagesMixin):
             # Use chunked streaming for large files
             doc_bytes = doc_buffer.getvalue()
             doc_buffer.close()
-            response = stream_file_response(doc_bytes, filename, content_type)
+            response = stream_file_response(doc_bytes, filename, content_type, user=user)
             
             return WordExportResult(
                 success=True,

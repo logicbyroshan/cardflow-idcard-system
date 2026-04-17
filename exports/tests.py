@@ -1880,3 +1880,63 @@ class WordLayoutTuningTests(SimpleTestCase):
         self.assertTrue(exporter._is_hindi_abbasi_font(' Hindi '))
         self.assertTrue(exporter._is_hindi_abbasi_font('abbasi'))
         self.assertFalse(exporter._is_hindi_abbasi_font('arial'))
+
+
+class StreamFileResponseSuperModeTests(TestCase):
+    def setUp(self):
+        self.pro_user = User.objects.create_user(
+            username='stream-pro@test.com',
+            email='stream-pro@test.com',
+            password='pass12345',
+            role='pro_user',
+        )
+        self.normal_user = User.objects.create_user(
+            username='stream-normal@test.com',
+            email='stream-normal@test.com',
+            password='pass12345',
+            role='admin_staff',
+        )
+
+        from core.services.super_mode_service import SuperModeService
+
+        SuperModeService.configure_pro_user_self(
+            self.pro_user,
+            enabled=True,
+            ram_mb=750,
+        )
+
+    def test_super_mode_large_file_streams_from_ram_without_temp_file(self):
+        from exports.utils import stream_file_response
+
+        payload = b'A' * (11 * 1024 * 1024)
+
+        with mock.patch('tempfile.NamedTemporaryFile', side_effect=AssertionError('temp spool should not run')):
+            response = stream_file_response(
+                payload,
+                'super.bin',
+                'application/octet-stream',
+                user=self.pro_user,
+            )
+            streamed = b''.join(response.streaming_content)
+
+        self.assertEqual(streamed, payload)
+        self.assertEqual(int(response['Content-Length']), len(payload))
+
+    def test_non_super_mode_large_file_keeps_existing_temp_spool_behavior(self):
+        import tempfile
+        from exports.utils import stream_file_response
+
+        payload = b'B' * (11 * 1024 * 1024)
+        real_named_temporary_file = tempfile.NamedTemporaryFile
+
+        with mock.patch('tempfile.NamedTemporaryFile', wraps=real_named_temporary_file) as patched_tmp:
+            response = stream_file_response(
+                payload,
+                'normal.bin',
+                'application/octet-stream',
+                user=self.normal_user,
+            )
+            streamed = b''.join(response.streaming_content)
+
+        self.assertGreaterEqual(patched_tmp.call_count, 1)
+        self.assertEqual(streamed, payload)

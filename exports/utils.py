@@ -5,10 +5,13 @@ Common helper functions used across all export formats.
 This module is READ-ONLY - it never mutates data.
 """
 import re
+import logging
 from typing import List, Dict, Any, Optional
 
 # Import canonical constants from mediafiles
 from mediafiles.constants import IMAGE_FIELD_TYPES
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -514,7 +517,7 @@ def get_section_field_name(table_fields: Optional[List[Dict[str, Any]]]) -> Opti
 # CHUNKED STREAMING DOWNLOAD
 # =============================================================================
 
-def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1024):
+def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1024, user=None):
     """
     Stream a file download in chunks to keep memory usage low.
 
@@ -523,11 +526,16 @@ def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1
     then streams from disk in ``chunk_size`` (default 1 MB) chunks
     using Django's StreamingHttpResponse.
 
+    Effective Super Mode users use RAM-only streaming for synchronous
+    downloads (no temp-file spooling) with chunk size aligned to
+    Super Mode download block policy.
+
     Args:
         file_bytes: The raw bytes of the file (bytes or BytesIO.getvalue()).
         filename:   Suggested download filename.
         content_type: MIME type for the response.
         chunk_size: Size of each chunk in bytes (default 1 MB).
+        user: Optional authenticated user for Super Mode-aware streaming.
 
     Returns:
         HttpResponse or StreamingHttpResponse
@@ -537,6 +545,36 @@ def stream_file_response(file_bytes, filename, content_type, chunk_size=1024 * 1
     from django.http import HttpResponse, StreamingHttpResponse
 
     size = len(file_bytes)
+
+    stream_chunk_size = int(chunk_size or (1024 * 1024))
+    stream_chunk_size = max(128 * 1024, min(stream_chunk_size, 8 * 1024 * 1024))
+
+    # Super Mode: keep synchronous download path RAM-only and skip temp-file I/O.
+    super_mode_active = False
+    if user is not None:
+        try:
+            from core.services.super_mode_service import SuperModeService
+
+            super_mode_active = bool(SuperModeService.is_effective_enabled(user))
+            if super_mode_active:
+                stream_chunk_size = max(
+                    stream_chunk_size,
+                    int(SuperModeService.download_block_size_bytes(user) or stream_chunk_size),
+                )
+        except Exception:
+            logger.exception('Failed resolving Super Mode stream settings for %s', filename)
+            super_mode_active = False
+
+    if super_mode_active:
+        def _iter_mem_chunks():
+            view = memoryview(file_bytes)
+            for offset in range(0, size, stream_chunk_size):
+                yield bytes(view[offset:offset + stream_chunk_size])
+
+        response = StreamingHttpResponse(_iter_mem_chunks(), content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = size
+        return response
 
     # Small files: return directly — no disk I/O
     if size < 10 * 1024 * 1024:  # 10 MB

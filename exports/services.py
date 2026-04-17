@@ -246,7 +246,12 @@ class ExportService:
                 message=context.error_message or 'Permission denied'
             )
         
-        return self._excel_exporter.export_cards(context.table, context.cards, status=status)
+        return self._excel_exporter.export_cards(
+            context.table,
+            context.cards,
+            status=status,
+            user=self.user,
+        )
     
     # =========================================================================
     # WORD EXPORT
@@ -287,7 +292,7 @@ class ExportService:
 
         return self._word_exporter.export_cards(
             context.table, context.cards, doc_format=doc_format, status=status,
-            template_id=template_id, allow_large=allow_large
+            template_id=template_id, allow_large=allow_large, user=self.user
         )
     
     # =========================================================================
@@ -332,6 +337,7 @@ class ExportService:
             template_id=template_id, font_mode=font_mode,
             shorten_titles=shorten_titles,
             break_mode=break_mode,
+            user=self.user,
         )
     
     # =========================================================================

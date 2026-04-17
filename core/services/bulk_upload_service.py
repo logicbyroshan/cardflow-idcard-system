@@ -60,7 +60,34 @@ class DiskBackedImageStore:
     This prevents OOM when processing 5000 photos × 2MB = 10GB.
     """
     
-    def __init__(self):
+    def __init__(
+        self,
+        *,
+        ram_threshold_bytes=RAM_THRESHOLD_BYTES,
+        ram_threshold_per_image=RAM_THRESHOLD_PER_IMAGE,
+        force_ram_only=False,
+    ):
+        """
+        Args:
+            ram_threshold_bytes: Total in-memory budget before considering disk spill.
+            ram_threshold_per_image: Per-image in-memory size budget.
+            force_ram_only: When True, never spill to disk; raise MemoryError instead.
+        """
+        try:
+            threshold_bytes = int(ram_threshold_bytes or RAM_THRESHOLD_BYTES)
+        except (TypeError, ValueError):
+            threshold_bytes = RAM_THRESHOLD_BYTES
+        try:
+            threshold_per_image = int(ram_threshold_per_image or RAM_THRESHOLD_PER_IMAGE)
+        except (TypeError, ValueError):
+            threshold_per_image = RAM_THRESHOLD_PER_IMAGE
+
+        self._ram_threshold_bytes = max(1 * 1024 * 1024, threshold_bytes)
+        self._ram_threshold_per_image = max(64 * 1024, threshold_per_image)
+        if self._ram_threshold_per_image > self._ram_threshold_bytes:
+            self._ram_threshold_per_image = self._ram_threshold_bytes
+
+        self._force_ram_only = bool(force_ram_only)
         self._ram_store = {}       # { normalized_key: { bytes, ext, original_name } }
         self._disk_dir = None      # temp directory path (None if using RAM)
         self._disk_index = {}      # { normalized_key: { path, ext, original_name } }
@@ -80,6 +107,11 @@ class DiskBackedImageStore:
     
     def _switch_to_disk(self):
         """Move RAM-stored images to disk."""
+        if self._force_ram_only:
+            raise MemoryError(
+                "RAM-only upload mode exceeded configured in-memory budget. "
+                "Disable RAM-only mode or reduce ZIP payload size."
+            )
         if self._use_disk:
             return
         self._use_disk = True
@@ -106,10 +138,15 @@ class DiskBackedImageStore:
         # Check if we need to switch to disk
         if not self._use_disk:
             would_exceed_ram = (
-                (self._total_bytes + byte_len) > RAM_THRESHOLD_BYTES
-                or byte_len > RAM_THRESHOLD_PER_IMAGE
+                (self._total_bytes + byte_len) > self._ram_threshold_bytes
+                or byte_len > self._ram_threshold_per_image
             )
             if would_exceed_ram:
+                if self._force_ram_only:
+                    raise MemoryError(
+                        "RAM-only upload mode exceeded configured in-memory budget. "
+                        "Reduce ZIP payload size or image resolution."
+                    )
                 self._switch_to_disk()
         
         # Deterministic: if duplicate key, keep alphabetically-first filename
@@ -263,8 +300,12 @@ def extract_zip_to_store(zip_file, store, *, max_images=PER_FIELD_MAX_IMAGES,
                             extracted_bytes += len(image_bytes)
                             # Free the bytes reference immediately after storing
                             del image_bytes
+                except MemoryError:
+                    raise
                 except Exception:
                     continue
+    except MemoryError:
+        raise
     except Exception as e:
         logger.warning("Error extracting ZIP: %s", e)
     

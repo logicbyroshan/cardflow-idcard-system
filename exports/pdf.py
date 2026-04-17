@@ -299,6 +299,7 @@ class PdfExporter:
         shorten_titles: bool = False,
         break_mode: str = 'class_section',
         progress_callback=None,
+        user=None,
     ) -> PdfExportResult:
         """
         Export cards to PDF format.
@@ -554,7 +555,7 @@ class PdfExporter:
                     )
                 pdf_bytes = pdf_buffer.getvalue()
 
-            response = stream_file_response(pdf_bytes, filename, 'application/pdf')
+            response = stream_file_response(pdf_bytes, filename, 'application/pdf', user=user)
 
             return PdfExportResult(
                 success=True,
