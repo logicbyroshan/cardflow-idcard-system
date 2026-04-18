@@ -84,37 +84,45 @@
     }
 
     .gc-header-modal-actions .btn {
-      height: 32px;
-      padding: 0 12px;
-      border-radius: 8px;
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       white-space: nowrap;
+      font-weight: 700;
     }
 
 
     .gc-editor-header .gc-modal-close {
-      background: none;
-      border: none;
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
       cursor: pointer;
-      color: var(--text-muted,var(--color-gray-400));
-      font-size: var(--ui-font-size-2xl, 18px);
+      color: #be123c;
+      font-size: 20px;
       line-height: 1;
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       padding: 0;
-      border-radius: 8px;
+      border-radius: 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex: 0 0 auto;
-      transition: color .15s, background .15s;
+      transition: color .15s, background .15s, border-color .15s, transform .15s;
     }
 
     .gc-editor-header .gc-modal-close:hover {
-      color: var(--color-danger);
-      background: var(--color-red-100);
+      color: #9f1239;
+      background: #ffe4e6;
+      border-color: #fda4af;
+      transform: translateY(-1px);
+    }
+
+    .gc-editor-header .gc-modal-close:focus-visible {
+      outline: 2px solid rgba(225, 29, 72, 0.28);
+      outline-offset: 2px;
     }
 
     .gc-editor-body {
@@ -156,9 +164,9 @@
           <div class="gc-editor-header">
             <div class="gc-flow-header-left">
               <div class="gc-header-stepper" id="gcHeaderStepper" aria-hidden="false">
-                <button type="button" class="gc-mini-step is-active" data-step="1">1 Setup</button>
-                <button type="button" class="gc-mini-step" data-step="2">2 Map</button>
-                <button type="button" class="gc-mini-step" data-step="3">3 Generate</button>
+                <button type="button" class="gc-mini-step is-active" data-step="1">Setup</button>
+                <button type="button" class="gc-mini-step" data-step="2">Map</button>
+                <button type="button" class="gc-mini-step" data-step="3">Generate</button>
               </div>
               <span class="gc-step-pill hidden" id="gcStepCounter">Step 1 of 3</span>
             </div>

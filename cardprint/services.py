@@ -969,6 +969,37 @@ class GenerateCardService:
         return '' if value in (None, '') else value
 
     @classmethod
+    def _auto_image_field_candidates(cls, field_type_map):
+        candidates = []
+        for field_name, field_type in (field_type_map or {}).items():
+            if not cls._is_image_field(field_type, field_name):
+                continue
+            name = str(field_name or '').strip().lower()
+            score = 0
+            if 'photo' in name:
+                score += 100
+            if name in {'photo', 'student_photo'}:
+                score += 50
+            if 'image' in name:
+                score += 25
+            if 'signature' in name:
+                score += 15
+            if 'barcode' in name or 'qr' in name:
+                score -= 15
+            candidates.append((score, str(field_name or '').strip()))
+
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return [name for _score, name in candidates if name]
+
+    @classmethod
+    def _resolve_auto_image_value(cls, fd, fd_upper, field_type_map):
+        for field_name in cls._auto_image_field_candidates(field_type_map):
+            value = cls._resolve_field_value(fd, fd_upper, field_name)
+            if value not in (None, ''):
+                return value
+        return ''
+
+    @classmethod
     def _render_merge_tokens(cls, text, fd, fd_upper, fallback='XXXXX'):
         raw = str(text or '')
         if not raw:
@@ -1090,6 +1121,8 @@ class GenerateCardService:
                 continue
 
             mapped_type = field_type_map.get(field_name, 'text') if field_name else 'image'
+            if etype == 'image' and not field_name and not value:
+                value = cls._resolve_auto_image_value(fd, fd_upper, field_type_map)
             if etype == 'image' or (field_name and cls._is_image_field(mapped_type, field_name)):
                 cls._draw_image(c, value, rl_x, rl_y, rl_w, rl_h, settings)
                 continue
@@ -1128,15 +1161,22 @@ class GenerateCardService:
 
             if field_name:
                 label_template = str(item.get('label') or cls._format_field_label(field_name)).strip()
-                label = cls._render_merge_tokens(label_template, fd, fd_upper, fallback='').strip()
-                show_label = bool(item.get('showLabel', True))
-                txt_value = str(value).strip() if value is not None else ''
-                if not txt_value:
-                    txt_value = 'XXXXX'
-                if show_label and label:
-                    text = f'{label}: {txt_value}'
+                has_merge_tokens = bool(cls.MERGE_TOKEN_PATTERN.search(label_template))
+                if has_merge_tokens:
+                    text = cls._render_merge_tokens(label_template, fd, fd_upper, fallback='XXXXX').strip()
+                    if not text:
+                        fallback_value = str(value).strip() if value is not None else ''
+                        text = fallback_value or 'XXXXX'
                 else:
-                    text = txt_value
+                    label = cls._render_merge_tokens(label_template, fd, fd_upper, fallback='').strip()
+                    show_label = bool(item.get('showLabel', True))
+                    txt_value = str(value).strip() if value is not None else ''
+                    if not txt_value:
+                        txt_value = 'XXXXX'
+                    if show_label and label:
+                        text = f'{label}: {txt_value}'
+                    else:
+                        text = txt_value
             else:
                 raw_text = str(item.get('label') or value or '').strip()
                 text = cls._render_merge_tokens(raw_text, fd, fd_upper, fallback='XXXXX').strip()

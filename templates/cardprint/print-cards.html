@@ -81,8 +81,9 @@
     .gc-editor-box { width:90vw;height:90vh;background:var(--bg-surface,var(--color-white));border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.28);display:flex;flex-direction:column;overflow:hidden; }
     .gc-editor-header { display:flex;align-items:center;gap:10px;padding:13px 20px;border-bottom:1px solid var(--border-color,var(--color-gray-200));background:var(--bg-surface,var(--color-white));flex-shrink:0; }
     .gc-editor-header .gc-modal-title { font-size: var(--ui-font-size-base, 14px);font-weight:600;color:var(--text-primary,var(--color-gray-900));flex:1; }
-    .gc-editor-header .gc-modal-close { background:none;border:none;cursor:pointer;color:var(--text-muted,var(--color-gray-400));font-size: var(--ui-font-size-2xl, 18px);line-height:1;padding:2px 6px;border-radius:6px;transition:color .15s,background .15s;margin-left:auto;flex:0 0 auto; }
-    .gc-editor-header .gc-modal-close:hover { color:var(--color-danger);background:var(--color-red-100); }
+    .gc-editor-header .gc-modal-close { background:#fff1f2;border:1px solid #fecdd3;cursor:pointer;color:#be123c;font-size:20px;line-height:1;width:36px;height:36px;padding:0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;transition:color .15s,background .15s,border-color .15s,transform .15s;margin-left:auto;flex:0 0 auto; }
+    .gc-editor-header .gc-modal-close:hover { color:#9f1239;background:#ffe4e6;border-color:#fda4af;transform:translateY(-1px); }
+    .gc-editor-header .gc-modal-close:focus-visible { outline:2px solid rgba(225,29,72,.28);outline-offset:2px; }
     .gc-editor-body { flex:1;overflow:hidden;display:flex;flex-direction:column; }
 
 
@@ -115,14 +116,12 @@
     <div class="gc-editor-box">
       <div class="gc-editor-header">
         <div class="gc-flow-header-left">
-          <i class="fa-solid fa-id-card text-blue-500"></i>
-          <span class="gc-modal-title">Generate Cards &mdash; {{ table.name }}</span>
-          <span class="gc-step-pill" id="gcStepCounter">Step 1 of 3</span>
+          <span class="gc-step-pill hidden" id="gcStepCounter">Step 1 of 3</span>
         </div>
         <div class="gc-header-stepper" id="gcHeaderStepper" aria-hidden="false">
-          <button type="button" class="gc-mini-step is-active" data-step="1">1 Setup</button>
-          <button type="button" class="gc-mini-step" data-step="2">2 Map</button>
-          <button type="button" class="gc-mini-step" data-step="3">3 Generate</button>
+          <button type="button" class="gc-mini-step is-active" data-step="1">Setup</button>
+          <button type="button" class="gc-mini-step" data-step="2">Map</button>
+          <button type="button" class="gc-mini-step" data-step="3">Generate</button>
         </div>
         <div class="gc-header-modal-actions">
           <button type="button" class="btn btn-blue hidden" id="gcHeaderSaveTemplateBtn">Save Template</button>

@@ -789,6 +789,10 @@ def _template_payload(tmpl):
     }
     front_fields = field_config.get('front_fields') or []
     back_fields = field_config.get('back_fields') or []
+    has_front_editable_design = bool(field_config.get('editable_design_front'))
+    has_back_editable_design = bool(field_config.get('editable_design_back'))
+    has_front_design = bool(front_pdf_url) or has_front_editable_design
+    has_back_design = bool(back_pdf_url) or has_back_editable_design
 
     return {
         'id': tmpl.id,
@@ -808,6 +812,10 @@ def _template_payload(tmpl):
         'card_orientation': card_orientation,
         'has_front_pdf': bool(front_pdf_url),
         'has_back_pdf': bool(back_pdf_url),
+        'has_front_editable_design': has_front_editable_design,
+        'has_back_editable_design': has_back_editable_design,
+        'has_front_design': has_front_design,
+        'has_back_design': has_back_design,
         'front_pdf_url': front_pdf_url,
         'back_pdf_url': back_pdf_url,
         'front_fields': front_fields,

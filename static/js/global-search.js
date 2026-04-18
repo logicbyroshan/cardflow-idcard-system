@@ -427,6 +427,20 @@
         }
     }
 
+    function isGenerateEditorModalOpen() {
+        const modal = document.getElementById('gcEditorModal');
+        if (!modal) return false;
+        if (modal.classList && modal.classList.contains('hidden')) return false;
+        if (modal.getAttribute('aria-hidden') === 'true') return false;
+        if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+            const style = window.getComputedStyle(modal);
+            if (style && (style.display === 'none' || style.visibility === 'hidden')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     function performSearch(query) {
         if (currentSearchMode === 'client') {
             performClientQuickSearch(query);
@@ -593,6 +607,11 @@
 
         // Ctrl+K / Cmd+K
         document.addEventListener('keydown', function (e) {
+            if (isGenerateEditorModalOpen()) {
+                // Let generate-card modal own its shortcuts (Ctrl+K, etc.).
+                return;
+            }
+
             if (e.ctrlKey && e.shiftKey && (e.code === 'Space' || e.key === ' ')) {
                 e.preventDefault();
                 goHomeFromShortcut();

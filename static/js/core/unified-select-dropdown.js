@@ -79,6 +79,8 @@
         entry.optionsEl.style.left = '';
         entry.optionsEl.style.top = '';
         entry.optionsEl.style.width = '';
+        entry.optionsEl.style.minWidth = '';
+        entry.optionsEl.style.maxWidth = '';
         entry.optionsEl.style.maxHeight = '';
         entry.optionsEl.style.overflowY = '';
         entry.optionsEl.style.zIndex = '';
@@ -125,6 +127,8 @@
 
         entry.optionsEl.style.left = left + 'px';
         entry.optionsEl.style.width = finalWidth + 'px';
+        entry.optionsEl.style.minWidth = '0px';
+        entry.optionsEl.style.maxWidth = finalWidth + 'px';
         entry.optionsEl.style.maxHeight = finalMaxHeight + 'px';
         entry.optionsEl.style.overflowY = 'auto';
         entry.optionsEl.style.zIndex = '2147483640';
