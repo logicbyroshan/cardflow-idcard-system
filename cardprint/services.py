@@ -210,6 +210,7 @@ class GenerateCardService:
     CARD_PORTRAIT_W_MM = 57.0
     CARD_PORTRAIT_H_MM = 87.0
     DEFAULT_RENDER_BATCH_SIZE = 100
+    MERGE_TOKEN_PATTERN = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}|<<\s*([^<>]+?)\s*>>|\[\[\s*([^\[\]]+?)\s*\]\]")
 
     @classmethod
     def dimensions_for_orientation_mm(cls, orientation):
@@ -958,6 +959,33 @@ class GenerateCardService:
         return backgrounds + regular
 
     @classmethod
+    def _resolve_field_value(cls, fd, fd_upper, field_name):
+        key = str(field_name or '').strip()
+        if not key:
+            return ''
+        value = fd.get(key)
+        if value in (None, ''):
+            value = fd_upper.get(key.upper())
+        return '' if value in (None, '') else value
+
+    @classmethod
+    def _render_merge_tokens(cls, text, fd, fd_upper, fallback='XXXXX'):
+        raw = str(text or '')
+        if not raw:
+            return ''
+
+        def repl(match):
+            field_name = str(match.group(1) or match.group(2) or match.group(3) or '').strip()
+            if not field_name:
+                return ''
+            token_value = cls._resolve_field_value(fd, fd_upper, field_name)
+            if token_value in (None, ''):
+                return fallback
+            return str(token_value)
+
+        return cls.MERGE_TOKEN_PATTERN.sub(repl, raw)
+
+    @classmethod
     def _draw_side_from_template_json(
         cls,
         c,
@@ -997,9 +1025,7 @@ class GenerateCardService:
 
             value = ''
             if etype in ('text', 'image') and field_name:
-                value = fd.get(field_name)
-                if value in (None, ''):
-                    value = fd_upper.get(field_name.upper()) or ''
+                value = cls._resolve_field_value(fd, fd_upper, field_name)
             elif etype == 'text':
                 value = str(item.get('label') or '').strip()
             elif etype == 'image':
@@ -1101,7 +1127,8 @@ class GenerateCardService:
             )
 
             if field_name:
-                label = str(item.get('label') or cls._format_field_label(field_name)).strip()
+                label_template = str(item.get('label') or cls._format_field_label(field_name)).strip()
+                label = cls._render_merge_tokens(label_template, fd, fd_upper, fallback='').strip()
                 show_label = bool(item.get('showLabel', True))
                 txt_value = str(value).strip() if value is not None else ''
                 if not txt_value:
@@ -1111,7 +1138,8 @@ class GenerateCardService:
                 else:
                     text = txt_value
             else:
-                text = str(item.get('label') or value or '').strip()
+                raw_text = str(item.get('label') or value or '').strip()
+                text = cls._render_merge_tokens(raw_text, fd, fd_upper, fallback='XXXXX').strip()
                 if not text:
                     continue
 

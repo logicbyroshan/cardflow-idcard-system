@@ -112,7 +112,7 @@
     var raw = value && typeof value === 'object' ? value : {};
     var requestedActive = String(raw.active || '').toLowerCase();
     var active = '';
-    if (requestedActive === 'text' || requestedActive === 'align' || requestedActive === 'layers') {
+    if (requestedActive === 'text' || requestedActive === 'align' || requestedActive === 'layers' || requestedActive === 'merge') {
       active = requestedActive;
     }
     if (!active) {
@@ -122,6 +122,8 @@
         active = 'align';
       } else if (raw.layers) {
         active = 'layers';
+      } else if (raw.merge) {
+        active = 'merge';
       }
     }
     return {
@@ -129,6 +131,7 @@
       text: active === 'text',
       align: active === 'align',
       layers: active === 'layers',
+      merge: active === 'merge',
     };
   }
 
@@ -169,7 +172,7 @@
 
   function setDraftActivePanel(panelName) {
     var panel = String(panelName || '').toLowerCase();
-    if (panel !== 'text' && panel !== 'align' && panel !== 'layers') {
+    if (panel !== 'text' && panel !== 'align' && panel !== 'layers' && panel !== 'merge') {
       panel = '';
     }
     state.uiPanels = normalizeDraftUiPanels({ active: panel });
@@ -178,7 +181,7 @@
 
   function toggleDraftUiPanel(panelName) {
     var panel = String(panelName || '').toLowerCase();
-    if (panel !== 'text' && panel !== 'align' && panel !== 'layers') {
+    if (panel !== 'text' && panel !== 'align' && panel !== 'layers' && panel !== 'merge') {
       return;
     }
     var active = activeDraftPanelName();
@@ -711,10 +714,6 @@
       + '.gc-step2-tool-btn:hover{border-color:#7a97b9;background:#edf4fb;color:#0f172a;}'
       + '.gc-step2-tool-icon{width:24px;height:24px;border-radius:7px;background:#e2ebf5;color:#1f2937;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(122,151,185,.34);}'
       + '.gc-step2-tool-icon i{font-size:14px;line-height:1;}'
-      + '.gc-step2-tool-divider{height:1px;border-radius:999px;background:linear-gradient(90deg,transparent,#c8d3df,transparent);margin:1px 2px;}'
-      + '.gc-step2-group-btn{height:34px;border:1px solid #ccd6e2;border-radius:8px;background:#ffffff;color:#334155;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .16s ease;}'
-      + '.gc-step2-group-btn:hover{border-color:#7a97b9;background:#edf4fb;color:#0f172a;}'
-      + '.gc-step2-group-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;box-shadow:0 0 0 1px rgba(37,99,235,.16);}'
       + '.gc-step2-tool-label{font-size:10px;font-weight:700;letter-spacing:.01em;line-height:1.1;text-align:center;}'
       + '.gc-step2-tool-btn .gc-step2-tool-label{display:none;}'
       + '.gc-step2-tool-btn.is-active{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;box-shadow:0 0 0 1px rgba(59,130,246,.15),0 5px 12px rgba(37,99,235,.14);}'
@@ -724,13 +723,14 @@
       + '.gc-step2-canvas-head .gc-inline-label{font-size:10px;}'
       + '.gc-step2-canvas-head .gc-inline-value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px;}'
       + '.gc-step2-center-controls{display:flex;align-items:center;gap:5px;justify-self:center;flex-wrap:wrap;}'
-      + '.gc-step2-zoom-pill{font-size:10px;font-weight:800;color:#1e3a8a;background:#e0e7ff;border:1px solid #bfdbfe;border-radius:999px;padding:2px 7px;line-height:1.2;min-width:52px;text-align:center;}'
-      + '.gc-step2-center-controls .btn{height:28px;min-width:28px;padding:0 8px;font-size:11px;line-height:1;border-radius:6px;}'
+      + '.gc-step2-zoom-pill{display:inline-flex;align-items:center;justify-content:center;height:32px;min-width:76px;padding:0 10px;border-radius:8px;font-size:12px;font-weight:800;letter-spacing:.01em;color:#1e3a8a;background:#e0e7ff;border:1px solid #bfdbfe;text-align:center;}'
+      + '.gc-step2-center-controls .btn{height:32px;min-width:32px;padding:0 10px;font-size:11px;line-height:1;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:6px;}'
+      + '.gc-step2-save-btn{min-width:82px;font-weight:700;}'
       + '.gc-step2-center-controls .btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
       + '.gc-step2-side-switch{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}'
       + '.gc-step2-side-switch .gc-choice-btn{height:28px;padding:0 10px;border-radius:6px;font-size:11px;}'
       + '.gc-step2-target-side{display:inline-flex;align-items:center;height:26px;padding:0 8px;border:1px solid #cbd5e1;border-radius:4px;background:#ffffff;color:#334155;font-size:10px;font-weight:700;white-space:nowrap;}'
-      + '.gc-step2-tool-btn:focus-visible,.gc-step2-group-btn:focus-visible,.gc-panel-toggle-btn:focus-visible,.gc-layer-item-icon-btn:focus-visible,.gc-prop-icon-btn:focus-visible,.gc-step2-side-switch .gc-choice-btn:focus-visible,.gc-step2-center-controls .btn:focus-visible{outline:2px solid #2563eb;outline-offset:2px;}'
+      + '.gc-step2-tool-btn:focus-visible,.gc-prop-tab-btn:focus-visible,.gc-panel-toggle-btn:focus-visible,.gc-layer-item-icon-btn:focus-visible,.gc-prop-icon-btn:focus-visible,.gc-step2-side-switch .gc-choice-btn:focus-visible,.gc-step2-center-controls .btn:focus-visible{outline:2px solid #2563eb;outline-offset:2px;}'
       + '.gc-prop-input:focus-visible,.gc-prop-select:focus-visible{outline:2px solid rgba(37,99,235,.35);outline-offset:1px;border-color:#2563eb;}'
       + '.gc-step2-canvas-stage{position:relative;flex:1;min-height:360px;background:radial-gradient(circle at 22% 14%,#e6edf6 0,#d5dde7 42%,#cfd8e3 100%);overflow:hidden;}'
       + '.gc-step2-stage-content{position:absolute;top:10px;left:10px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:18px;}'
@@ -788,11 +788,7 @@
       + '.gc-draft-selection-handle.is-e,.gc-draft-selection-handle.is-w{cursor:ew-resize;}'
       + '.gc-draft-selection-handle.is-nw,.gc-draft-selection-handle.is-se{cursor:nwse-resize;}'
       + '.gc-draft-selection-handle.is-ne,.gc-draft-selection-handle.is-sw{cursor:nesw-resize;}'
-      + '.gc-draft-el.is-transform-rotate .gc-draft-selection-handle{border-radius:999px;}'
-      + '.gc-draft-el.is-transform-rotate .gc-draft-selection-handle.is-skew{border-radius:2px;background:#e2e8f0;}'
-      + '.gc-draft-selection-handle[data-transform-kind="rotate"]{cursor:grab;}'
-      + '.gc-draft-selection-handle[data-transform-kind="skew-x"]{cursor:ew-resize;}'
-      + '.gc-draft-selection-handle[data-transform-kind="skew-y"]{cursor:ns-resize;}'
+      + '.gc-draft-selection-handle:hover{border-color:#2563eb;background:#dbeafe;box-shadow:0 0 0 1px rgba(37,99,235,.22);}'
       + '.gc-draft-inline-editor{display:block;width:100%;height:100%;outline:none;border:0;background:transparent;overflow:visible;cursor:text;user-select:text;white-space:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;text-align:inherit;}'
       + '.gc-draft-inline-editor:focus{outline:none;}'
       + '.gc-draft-guide{position:absolute;border:0;background:transparent;z-index:2;}'
@@ -804,6 +800,7 @@
       + '.gc-draft-guide.is-selected::before{opacity:1;}'
       + '.gc-draft-guide.is-selected.is-vertical::before{background-image:repeating-linear-gradient(to bottom,rgba(2,132,199,1) 0,rgba(2,132,199,1) 5px,transparent 5px,transparent 9px);}'
       + '.gc-draft-guide.is-selected.is-horizontal::before{background-image:repeating-linear-gradient(to right,rgba(2,132,199,1) 0,rgba(2,132,199,1) 5px,transparent 5px,transparent 9px);}'
+      + '.gc-draft-guide:hover::before{opacity:1;}'
       + '.gc-step2-canvas-shell.is-guides-locked .gc-step2-ruler-top,.gc-step2-canvas-shell.is-guides-locked .gc-step2-ruler-left{cursor:not-allowed;opacity:.65;}'
       + '.gc-step2-canvas-shell.is-guides-locked .gc-draft-guide{pointer-events:none;}'
       + '.gc-draft-insert-guide{position:absolute;border:1px dashed #0f766e;background:rgba(45,212,191,0.18);pointer-events:none;z-index:2;}'
@@ -812,12 +809,18 @@
       + '.gc-draft-align-preview-line.is-h{left:0;right:0;height:0;border-top-width:1px;}'
       + '.gc-draft-insert-guide.is-rect{border-color:#2563eb;background:rgba(37,99,235,0.13);}'
       + '.gc-draft-insert-guide.is-select{border-color:#0f172a;background:rgba(15,23,42,0.08);}'
-      + '.gc-step2-props{border:0;border-radius:0;background:transparent;padding:0;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;position:relative;}'
+      + '.gc-step2-props{border:0;border-radius:0;background:transparent;padding:0;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden;position:relative;}'
+      + '.gc-prop-panel-switcher{position:sticky;top:0;z-index:3;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 0 6px;background:linear-gradient(180deg,#f8fafc 0,rgba(248,250,252,.9) 85%,rgba(248,250,252,0) 100%);backdrop-filter:saturate(120%) blur(2px);}'
+      + '.gc-prop-tab-btn{height:30px;border:1px solid #ccd6e2;border-radius:8px;background:#ffffff;color:#334155;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .16s ease;}'
+      + '.gc-prop-tab-btn:hover{border-color:#7a97b9;background:#edf4fb;color:#0f172a;}'
+      + '.gc-prop-tab-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;box-shadow:0 0 0 1px rgba(37,99,235,.15);}'
       + '.gc-panel-toggle-btn{height:28px;min-width:28px;padding:0 8px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#334155;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:700;cursor:pointer;}'
       + '.gc-panel-toggle-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
-      + '.gc-prop-panel{border:1px solid #d4deea;border-radius:12px;background:linear-gradient(180deg,#ffffff 0,#f7fbff 100%);padding:10px;display:flex;flex-direction:column;gap:8px;}'
-      + '.gc-prop-panel.gc-prop-panel-floating{box-shadow:0 12px 24px rgba(15,23,42,.12);transform:translateY(0);opacity:1;transition:opacity .18s ease,transform .18s ease;position:sticky;top:0;}'
+      + '.gc-prop-panel{border:1px solid #d4deea;border-radius:12px;background:linear-gradient(180deg,#ffffff 0,#f7fbff 100%);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0;}'
+      + '.gc-prop-panel.gc-prop-panel-floating{box-shadow:0 12px 24px rgba(15,23,42,.12);transform:translateY(0);opacity:1;transition:opacity .18s ease,transform .18s ease;position:sticky;top:0;height:100%;overflow:hidden;}'
       + '.gc-prop-panel-title{font-size:10px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid #e6edf6;}'
+      + '.gc-prop-panel-title i{opacity:.8;}'
+      + '.gc-prop-panel-body{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow:auto;padding-right:2px;}'
       + '.gc-prop-empty{font-size:11px;color:#64748b;padding:12px 9px;border:1px dashed #c5d1de;border-radius:10px;background:linear-gradient(180deg,#f8fafc,#f1f5f9);}'
       + '.gc-layer-stack-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}'
       + '.gc-layer-stack-actions .btn{height:28px;padding:0 8px;font-size:11px;line-height:1;}'
@@ -876,7 +879,7 @@
       + '.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:52mm;max-width:100%;height:auto;aspect-ratio:1/1.526;}'
       + '.gc-step-panel-step3 .gc-actions{margin-top:auto;padding:8px 10px 10px;position:sticky;bottom:0;background:#f8fafc;z-index:1;}'
       + '@media (max-width:1180px){.gc-flow-header{grid-template-columns:minmax(0,1fr) auto;}.gc-header-stepper{grid-column:1 / -1;order:3;overflow-x:auto;padding-bottom:2px;}.gc-inline-group.gc-inline-group-selection{align-items:flex-start;text-align:left;margin-left:0;}}'
-      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;flex-wrap:wrap;padding:6px;justify-content:flex-start;}.gc-step2-tool-btn{width:44px;height:44px;}.gc-step2-group-btn{width:36px;}.gc-step2-tool-divider{width:1px;height:26px;margin:4px 2px;background:linear-gradient(180deg,transparent,#c8d3df,transparent);}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
+      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;flex-wrap:wrap;padding:6px;justify-content:flex-start;}.gc-step2-tool-btn{width:44px;height:44px;}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-prop-panel-switcher{grid-template-columns:1fr 1fr;}.gc-prop-panel.gc-prop-panel-floating{height:auto;max-height:420px;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
 
     document.head.appendChild(style);
   }
@@ -1808,7 +1811,7 @@
         + (String(guide.id || '') === state.draftSelectedGuideId ? ' is-selected' : '');
       var style = isVertical
         ? 'left:' + String(canvasLeft + sideStart + posPx) + 'px;top:' + String(outside ? 0 : canvasTop) + 'px;height:' + String(outside ? layerHeight : canvasHeight) + 'px;'
-        : 'top:' + String(canvasTop + posPx) + 'px;left:' + String((outside ? 0 : canvasLeft) + sideStart) + 'px;width:' + String(outside ? Math.min(layerWidth, sideWidth) : sideWidth) + 'px;';
+        : 'top:' + String(canvasTop + posPx) + 'px;left:' + String(outside ? 0 : canvasLeft) + 'px;width:' + String(outside ? layerWidth : canvasWidth) + 'px;';
 
       return '<button type="button" class="' + cls + '" data-action="select-draft-guide" data-guide-id="' + escapeAttr(String(guide.id || '')) + '" style="' + style + '"></button>';
     }).join('');
@@ -3318,25 +3321,19 @@
     }
 
     var startAspect = startWidth / Math.max(1, startHeight);
-    if (event.shiftKey) {
+    if (isCorner) {
       var boxWidth = right - left;
       var boxHeight = bottom - top;
       var absWidthScale = Math.abs(boxWidth / Math.max(1, startWidth));
       var absHeightScale = Math.abs(boxHeight / Math.max(1, startHeight));
 
-      if (isCorner) {
-        if (absWidthScale >= absHeightScale) {
-          boxHeight = (boxWidth / Math.max(0.001, startAspect));
-        } else {
-          boxWidth = boxHeight * startAspect;
-        }
-      } else if (hasHorizontal && !hasVertical) {
+      if (absWidthScale >= absHeightScale) {
         boxHeight = (boxWidth / Math.max(0.001, startAspect));
-      } else if (hasVertical && !hasHorizontal) {
+      } else {
         boxWidth = boxHeight * startAspect;
       }
 
-      if (event.altKey || (!isCorner && (hasHorizontal || hasVertical))) {
+      if (event.altKey) {
         var centerX = (left + right) / 2;
         var centerY = (top + bottom) / 2;
         left = centerX - (boxWidth / 2);
@@ -3382,10 +3379,10 @@
         var nextScaleX = Number(seed.scaleX || 1);
         var nextScaleY = Number(seed.scaleY || 1);
 
-        if (hasHorizontal || isCorner || event.shiftKey) {
+        if (hasHorizontal || isCorner) {
           nextScaleX = clampDraftScale(nextScaleX * ratioW);
         }
-        if (hasVertical || isCorner || event.shiftKey) {
+        if (hasVertical || isCorner) {
           nextScaleY = clampDraftScale(nextScaleY * ratioH);
         }
 
@@ -3403,8 +3400,8 @@
 
       var minWidth = type === 'text' ? 8 : (type === 'rectangle' ? 20 : 12);
       var minHeight = type === 'text' ? 10 : (type === 'rectangle' ? 20 : 12);
-      var widthFactor = (hasHorizontal || isCorner || event.shiftKey) ? ratioW : 1;
-      var heightFactor = (hasVertical || isCorner || event.shiftKey) ? ratioH : 1;
+      var widthFactor = (hasHorizontal || isCorner) ? ratioW : 1;
+      var heightFactor = (hasVertical || isCorner) ? ratioH : 1;
       var nextElWidth = Math.max(minWidth, Number(seed.width || draft.width || minWidth) * widthFactor);
       var nextElHeight = Math.max(minHeight, Number(seed.height || draft.height || minHeight) * heightFactor);
 
@@ -5423,24 +5420,12 @@
     var metrics = draftCanvasMetrics();
     var layout = draftCanvasLayoutMetrics(metrics);
     var selectedIds = selectedDraftElementSet();
-    var transformMode = normalizeDraftTransformMode(state.draftTransformMode);
+    var transformMode = 'resize';
     var mergePreviewMode = !!state.draftMergePreview;
     var orderedElements = sortedDraftElements();
     var rows = [];
 
-    function renderDraftSelectionHandlesHtml(mode) {
-      var safeMode = normalizeDraftTransformMode(mode);
-      if (safeMode === 'rotate') {
-        return ''
-          + '<span class="gc-draft-selection-handle is-nw is-rotate" data-handle="nw" data-transform-kind="rotate"></span>'
-          + '<span class="gc-draft-selection-handle is-n is-skew" data-handle="n" data-transform-kind="skew-y"></span>'
-          + '<span class="gc-draft-selection-handle is-ne is-rotate" data-handle="ne" data-transform-kind="rotate"></span>'
-          + '<span class="gc-draft-selection-handle is-e is-skew" data-handle="e" data-transform-kind="skew-x"></span>'
-          + '<span class="gc-draft-selection-handle is-sw is-rotate" data-handle="sw" data-transform-kind="rotate"></span>'
-          + '<span class="gc-draft-selection-handle is-s is-skew" data-handle="s" data-transform-kind="skew-y"></span>'
-          + '<span class="gc-draft-selection-handle is-se is-rotate" data-handle="se" data-transform-kind="rotate"></span>'
-          + '<span class="gc-draft-selection-handle is-w is-skew" data-handle="w" data-transform-kind="skew-x"></span>';
-      }
+    function renderDraftSelectionHandlesHtml() {
       return ''
         + '<span class="gc-draft-selection-handle is-nw" data-handle="nw" data-transform-kind="resize"></span>'
         + '<span class="gc-draft-selection-handle is-n" data-handle="n" data-transform-kind="resize"></span>'
@@ -5486,7 +5471,7 @@
       var style = 'left:' + left + '%;top:' + top + '%;width:' + Math.max(0.8, width) + '%;height:' + Math.max(0.8, height) + '%;'
         + '--gc-handle-size:10px;--gc-handle-offset-x:10px;--gc-handle-offset-y:10px;';
       return '<div class="gc-draft-el gc-draft-selection-group is-selected is-transform-' + escapeAttr(transformMode) + '" data-action="select-draft-element" data-el-id="' + escapeAttr(primaryId) + '" data-selection-group="1" data-render-side="' + escapeAttr(activeSide) + '" style="' + style + '">'
-        + renderDraftSelectionHandlesHtml(transformMode)
+        + renderDraftSelectionHandlesHtml()
         + '</div>';
     }
 
@@ -5618,6 +5603,7 @@
         if (item.type === 'text' && isArtisticGeometry) {
           var baseWidth = Math.max(6, Number(item.width || 6));
           var baseHeight = Math.max(10, Number(item.height || 10));
+          var textMetrics = measureDraftTextDimensions(item, label);
           var coreOffsetX = Number(visualBounds.coreOffsetX || 0);
           var coreOffsetY = Number(visualBounds.coreOffsetY || 0);
           var scaleTextX = clampDraftScale(item.scaleX);
@@ -5625,8 +5611,16 @@
           var rotation = normalizeDraftAngle(item.rotation);
           var skewX = normalizeDraftAngle(item.skewX);
           var skewY = normalizeDraftAngle(item.skewY);
+          var alignValue = String(item.textAlign || item.align || 'center').toLowerCase();
+          var justify = alignValue === 'left'
+            ? 'flex-start'
+            : (alignValue === 'right' ? 'flex-end' : 'center');
+          var metricsHeight = Math.max(1, Number(textMetrics.height || 0));
+          var verticalPad = Math.max(0, (baseHeight - metricsHeight) / 2);
           var transformedTextStyle = 'position:absolute;left:' + coreOffsetX.toFixed(3) + 'px;top:' + coreOffsetY.toFixed(3) + 'px;'
-            + 'display:block;width:' + baseWidth.toFixed(2) + 'px;height:' + baseHeight.toFixed(2) + 'px;'
+            + 'display:flex;align-items:center;justify-content:' + justify + ';'
+            + 'box-sizing:border-box;padding:' + verticalPad.toFixed(3) + 'px 0;'
+            + 'width:' + baseWidth.toFixed(2) + 'px;height:' + baseHeight.toFixed(2) + 'px;'
             + 'transform-origin:top left;'
             + 'transform:scale(' + scaleTextX.toFixed(4) + ',' + scaleTextY.toFixed(4) + ') rotate(' + rotation.toFixed(3) + 'deg) skew(' + skewX.toFixed(3) + 'deg,' + skewY.toFixed(3) + 'deg);';
 
@@ -5642,7 +5636,7 @@
         }
 
         var handlesHtml = (isSelected && !isInlineEditing && selectedIds.size <= 1 && state.draftTool === 'select')
-          ? renderDraftSelectionHandlesHtml(transformMode)
+          ? renderDraftSelectionHandlesHtml()
           : '';
 
         rows.push('<div class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '" data-render-side="' + escapeAttr(renderSide) + '" data-el-type="' + escapeAttr(String(item.type || 'text')) + '" data-text-mode="' + escapeAttr(textType === 'paragraph' ? 'paragraph' : 'artistic') + '"'
@@ -5894,20 +5888,6 @@
     var unit = currentDraftUnit();
     var guidesLocked = !!state.draftGuidesLocked;
     var snapMmLabel = formatDraftSnapMm(state.draftSnapMm);
-    var mergeFieldOptions = renderSchemaFieldOptions('', {
-      includeEmpty: false,
-      imageOnly: false,
-    });
-    var photoFieldOptions = renderSchemaFieldOptions('', {
-      includeEmpty: false,
-      imageOnly: true,
-    });
-    var hasMergeFieldChoices = !!mergeFieldOptions;
-    var hasPhotoFieldChoices = !!photoFieldOptions;
-    var autoMapScope = normalizeAutoMapScope(state.draftAutoMapScope || 'active');
-    var autoMapScopeOptions = renderAutoMapScopeOptions(autoMapScope);
-    var hasAutoMapReport = !!state.draftAutoMapReport;
-
     return ''
       + renderDraftPropsHtml()
       + '<div class="gc-prop-section-title">Document</div>'
@@ -5927,13 +5907,34 @@
       + '</div>'
       + '<div class="gc-prop-actions">'
       + '<button type="button" class="btn btn-outline' + (guidesLocked ? ' is-active' : '') + '" data-action="toggle-guides-lock" title="Lock/unlock guides">'
-      + '<i class="fa-solid ' + (guidesLocked ? 'fa-lock' : 'fa-lock-open') + '"></i>'
+      + '<i class="fa-solid ' + (guidesLocked ? 'fa-lock' : 'fa-lock-open') + '"></i> Guides'
       + '</button>'
+      + '</div>';
+  }
+
+  function renderDraftMergePanelHtml() {
+    var mergeFieldOptions = renderSchemaFieldOptions('', {
+      includeEmpty: false,
+      imageOnly: false,
+    });
+    var photoFieldOptions = renderSchemaFieldOptions('', {
+      includeEmpty: false,
+      imageOnly: true,
+    });
+    var hasMergeFieldChoices = !!mergeFieldOptions;
+    var hasPhotoFieldChoices = !!photoFieldOptions;
+    var autoMapScope = normalizeAutoMapScope(state.draftAutoMapScope || 'active');
+    var autoMapScopeOptions = renderAutoMapScopeOptions(autoMapScope);
+    var hasAutoMapReport = !!state.draftAutoMapReport;
+
+    return ''
+      + '<div class="gc-prop-actions">'
       + '<button type="button" class="btn btn-outline' + (state.draftMergePreview ? ' is-active' : '') + '" data-action="toggle-merge-preview" title="Toggle merge preview">'
-      + '<i class="fa-solid fa-brackets-curly"></i>'
+      + '<i class="fa-solid fa-brackets-curly"></i> Preview Tokens'
       + '</button>'
       + '</div>'
       + '<div class="gc-prop-section-title">Field Tools</div>'
+      + '<div class="gc-prop-note">You can type merge tokens directly in text, e.g. <strong>Name: {{name}}</strong>.</div>'
       + '<div class="gc-prop-group">'
       + '<label for="gcDraftInsertFieldSelect">Insert Merge Field</label>'
       + '<select id="gcDraftInsertFieldSelect" class="gc-prop-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
@@ -6069,27 +6070,43 @@
 
   function renderStep2RightPanelsHtml() {
     var active = activeDraftPanelName();
+    var tabs = ''
+      + '<div class="gc-prop-panel-switcher">'
+      + '<button type="button" class="gc-prop-tab-btn' + (active === 'text' ? ' is-active' : '') + '" data-action="set-ui-panel" data-panel="text"><i class="fa-solid fa-font"></i> Text</button>'
+      + '<button type="button" class="gc-prop-tab-btn' + (active === 'merge' ? ' is-active' : '') + '" data-action="set-ui-panel" data-panel="merge"><i class="fa-solid fa-brackets-curly"></i> Merge</button>'
+      + '<button type="button" class="gc-prop-tab-btn' + (active === 'align' ? ' is-active' : '') + '" data-action="set-ui-panel" data-panel="align"><i class="fa-solid fa-border-all"></i> Align</button>'
+      + '<button type="button" class="gc-prop-tab-btn' + (active === 'layers' ? ' is-active' : '') + '" data-action="set-ui-panel" data-panel="layers"><i class="fa-solid fa-layer-group"></i> Layers</button>'
+      + '</div>';
+
     if (!active) {
-      return '<div class="gc-prop-empty">Use the left group icons to open Text, Align, or Layers panel.</div>';
+      return tabs + '<div class="gc-prop-empty">Choose a panel tab to continue.</div>';
     }
 
     var title = active === 'text'
       ? 'Text Panel'
-      : (active === 'align' ? 'Align &amp; Distribute' : 'Layer Manager');
+      : (active === 'merge'
+        ? 'Mail Merge'
+        : (active === 'align' ? 'Align &amp; Distribute' : 'Layer Manager'));
     var icon = active === 'text'
       ? 'fa-font'
-      : (active === 'align' ? 'fa-border-all' : 'fa-layer-group');
+      : (active === 'merge'
+        ? 'fa-brackets-curly'
+        : (active === 'align' ? 'fa-border-all' : 'fa-layer-group'));
     var body = active === 'text'
       ? renderDraftTextPanelHtml()
-      : (active === 'align' ? renderDraftAlignPanelHtml() : renderDraftLayersPanelHtml());
+      : (active === 'merge'
+        ? renderDraftMergePanelHtml()
+        : (active === 'align' ? renderDraftAlignPanelHtml() : renderDraftLayersPanelHtml()));
 
     return ''
+      + tabs
       + '<div class="gc-prop-panel gc-prop-panel-floating is-open" data-panel-active="' + escapeAttr(active) + '">'
       + '<div class="gc-prop-panel-title">'
       + '<span><i class="fa-solid ' + icon + '"></i> ' + title + '</span>'
-      + '<button type="button" class="gc-panel-toggle-btn" data-action="close-ui-panel" title="Close panel"><i class="fa-solid fa-xmark"></i></button>'
       + '</div>'
-      + body
+        + '<div class="gc-prop-panel-body">'
+        + body
+        + '</div>'
       + '</div>';
   }
 
@@ -6126,19 +6143,6 @@
     if (itemSide !== 'front' && itemSide !== 'back' && itemSide !== 'both') {
       itemSide = 'front';
     }
-    var showLabelChecked = item.showLabel !== false ? ' checked' : '';
-    var textFieldOptions = renderSchemaFieldOptions(item.field, {
-      includeEmpty: true,
-      emptyLabel: 'Static text (no field)',
-      imageOnly: false,
-    });
-    var imageFieldOptions = renderSchemaFieldOptions(item.field, {
-      includeEmpty: true,
-      emptyLabel: 'Static image (no field)',
-      imageOnly: true,
-    });
-    var hasMergeField = isText && String(item.field || '').trim();
-    var mergePreview = hasMergeField ? '{{' + fieldLabelForUi(item.field) + '}}' : '';
     var boldActive = isText && Number(item.fontWeight || 400) >= 600;
     var italicActive = isText && String(item.fontStyle || 'normal').toLowerCase() === 'italic';
     var imageSrc = String(item.src || '');
@@ -6146,33 +6150,14 @@
     return ''
       + '<div class="gc-prop-section-title">Content</div>'
       + (isText
-        ? '<div class="gc-prop-group">'
-          + '<label for="gcDraftLabelInput">Text Label</label>'
-          + '<input id="gcDraftLabelInput" class="gc-prop-input" type="text" value="' + escapeAttr(item.label || '') + '" placeholder="Type visible text or keep empty for field-only value">'
-          + '</div>'
-          + '<div class="gc-prop-group">'
-          + '<label for="gcDraftFieldInput">Merge Field</label>'
-          + '<select id="gcDraftFieldInput" class="gc-prop-select">'
-          + textFieldOptions
-          + '</select>'
-          + '</div>'
-          + '<label class="gc-prop-note"><input id="gcDraftShowLabelInput" type="checkbox"' + showLabelChecked + '> Prefix value with label while printing</label>'
-          + (hasMergeField
-            ? '<div class="gc-prop-note">Merge preview token: <strong>' + escapeHtml(mergePreview) + '</strong></div>'
-            : '<div class="gc-prop-note">Tip: assign a merge field to print per-card data in Step 3.</div>')
+        ? '<div class="gc-prop-note">Double-click on canvas text to edit it. Use the Merge tab to bind text/photo data fields.</div>'
         : (isRectangle
             ? '<div class="gc-prop-note">Rectangle is decorative only.</div>'
             : '<div class="gc-prop-group">'
-              + '<label for="gcDraftFieldInput">Image Field</label>'
-              + '<select id="gcDraftFieldInput" class="gc-prop-select">'
-              + imageFieldOptions
-              + '</select>'
-              + '</div>'
-              + '<div class="gc-prop-group">'
               + '<label for="gcDraftImageSrcInput">Static Image Source (URL/Data)</label>'
               + '<input id="gcDraftImageSrcInput" class="gc-prop-input" type="text" value="' + escapeAttr(imageSrc) + '" placeholder="https://... or data:image/...">'
               + '</div>'
-              + '<div class="gc-prop-note">Use an image field for per-card photos/signatures, or keep a static image source for fixed logos.</div>'))
+              + '<div class="gc-prop-note">Use the Merge tab to bind an image field (photo/signature/barcode) from database data.</div>'))
       + '<div class="gc-prop-group">'
       + '<label for="gcDraftSideInput">Side</label>'
       + '<select id="gcDraftSideInput" class="gc-prop-select">'
@@ -6644,7 +6629,7 @@
     var canvasWrapStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;transform-origin:' + zoomOriginX.toFixed(2) + '% ' + zoomOriginY.toFixed(2) + '%;transform:scale(' + zoom.toFixed(2) + ');';
     var canvasStyle = 'width:' + String(canvasDisplayWidth) + 'px;height:' + String(canvasDisplayHeight) + 'px;';
     var guidesOuterHtml = renderDraftGuidesHtml({
-      outside: false,
+      outside: true,
       canvasLeft: 0,
       canvasTop: 0,
       canvasWidth: canvasDisplayWidth,
@@ -6661,10 +6646,6 @@
     var textActive = state.draftTool === 'text';
     var photoActive = state.draftTool === 'photo';
     var rectActive = state.draftTool === 'rectangle';
-    var activePanel = activeDraftPanelName();
-    var textPanelActive = activePanel === 'text';
-    var alignPanelActive = activePanel === 'align';
-    var layersPanelActive = activePanel === 'layers';
     var canvasClass = 'gc-step2-canvas'
       + (state.isTwoSided ? ' is-two-sided' : '')
       + (textActive ? ' is-text-mode' : '')
@@ -6687,16 +6668,6 @@
       + '<button type="button" class="gc-step2-tool-btn' + (rectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="rectangle" title="Rectangle" aria-label="Rectangle">'
       + '<span class="gc-step2-tool-icon"><i class="fa-solid fa-vector-square"></i></span>'
       + '</button>'
-      + '<div class="gc-step2-tool-divider" aria-hidden="true"></div>'
-      + '<button type="button" class="gc-step2-group-btn' + (textPanelActive ? ' is-active' : '') + '" data-action="toggle-ui-panel" data-panel="text" title="Text/Object Panel (Ctrl+Alt+T)" aria-label="Text/Object Panel">'
-      + '<i class="fa-solid fa-sliders"></i>'
-      + '</button>'
-      + '<button type="button" class="gc-step2-group-btn' + (alignPanelActive ? ' is-active' : '') + '" data-action="toggle-ui-panel" data-panel="align" title="Align Panel (Ctrl+Alt+A)" aria-label="Align Panel">'
-      + '<i class="fa-solid fa-border-all"></i>'
-      + '</button>'
-      + '<button type="button" class="gc-step2-group-btn' + (layersPanelActive ? ' is-active' : '') + '" data-action="toggle-ui-panel" data-panel="layers" title="Layers Panel (Ctrl+Alt+L)" aria-label="Layers Panel">'
-      + '<i class="fa-solid fa-layer-group"></i>'
-      + '</button>'
       + '</div>'
       + '<div class="gc-step2-canvas-shell' + (guidesLocked ? ' is-guides-locked' : '') + '">'
       + '<div class="gc-step2-canvas-head">'
@@ -6711,7 +6682,7 @@
       + '<button type="button" class="btn btn-outline" data-action="zoom-in" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>'
       + '<button type="button" class="btn btn-outline" data-action="zoom-fit" title="Fit to View">Fit</button>'
       + '<span class="gc-step2-zoom-pill">' + zoomLabel + '%</span>'
-      + '<button type="button" class="btn btn-outline" data-action="save-draft-template" title="Save Template"><i class="fa-solid fa-floppy-disk"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-step2-save-btn" data-action="save-draft-template" title="Save Template"><i class="fa-solid fa-floppy-disk"></i><span>Save</span></button>'
       + '</div>'
       + '<div class="gc-step2-side-switch">'
       + '<button type="button" class="gc-choice-btn' + (activeFront ? ' is-active' : '') + '" data-action="switch-draft-side" data-side="front">Front</button>'
@@ -7495,6 +7466,12 @@
       return;
     }
 
+    if (action === 'set-ui-panel') {
+      setDraftActivePanel(target.getAttribute('data-panel'));
+      render();
+      return;
+    }
+
     if (action === 'close-ui-panel') {
       setDraftActivePanel('');
       render();
@@ -8203,7 +8180,6 @@
       state.draftSelectedGuideId = '';
       state.draftInlineEditingElementId = '';
       var resizeHandle = normalizeDraftResizeHandle(handleEl.getAttribute('data-handle'));
-      var transformMode = normalizeDraftTransformMode(state.draftTransformMode);
       var resizePoint = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
       var resizeBounds = keepMultiSelection
         ? draftSelectionBounds(new Set(dragIdsForResize), renderSideForEl)
@@ -8235,19 +8211,14 @@
       var startCenterX = Number(resizeBounds.x || 0) + (Number(resizeBounds.width || 0) / 2);
       var startCenterY = Number(resizeBounds.y || 0) + (Number(resizeBounds.height || 0) / 2);
       var startAngle = Math.atan2(Number(resizePoint.y || 0) - startCenterY, Number(resizePoint.x || 0) - startCenterX);
-      var transformKind = String(handleEl.getAttribute('data-transform-kind') || '').toLowerCase();
-      if (!transformKind) {
-        transformKind = transformMode === 'rotate'
-          ? (isDraftResizeCornerHandle(resizeHandle) ? 'rotate' : (resizeHandle === 'e' || resizeHandle === 'w' ? 'skew-x' : 'skew-y'))
-          : 'resize';
-      }
+      var transformKind = 'resize';
       state.draftPendingTextEdit = null;
       state.draftDragging = null;
       state.draftResizeDragging = {
         id: elId,
         dragIds: dragIdsForResize,
         handle: resizeHandle,
-        transformMode: transformMode,
+        transformMode: 'resize',
         transformKind: transformKind,
         type: String(current.type || ''),
         textMode: String(current.textType || current.textMode || ''),
@@ -8379,20 +8350,6 @@
         }
       }
 
-      var anyEl = dblTarget.closest('.gc-draft-el');
-      if (anyEl && !dblTarget.closest('.gc-draft-selection-handle')) {
-        var anyId = String(anyEl.getAttribute('data-el-id') || '');
-        var selected = selectedDraftElementSet();
-        if (anyId && selected.has(anyId)) {
-          var anyItem = findDraftElementById(anyId);
-          if (anyItem && String(anyItem.type || '').toLowerCase() !== 'text') {
-            toggleDraftTransformMode();
-            event.preventDefault();
-            render();
-            return;
-          }
-        }
-      }
     }
 
     if (state.step !== 2) {
@@ -8767,12 +8724,6 @@
       endDraftHistoryTransaction();
       return;
     }
-    if (!state.draftDragging.moved
-      && state.draftDragging.wasAlreadySelected
-      && state.draftTool === 'select'
-      && selectedDraftElementSet().size <= 1) {
-      toggleDraftTransformMode();
-    }
     state.draftDragging = null;
     endDraftHistoryTransaction();
     render();
@@ -8872,6 +8823,9 @@
       handled = true;
     } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'a') {
       toggleDraftUiPanel('align');
+      handled = true;
+    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'm') {
+      toggleDraftUiPanel('merge');
       handled = true;
     } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 't') {
       toggleDraftUiPanel('text');

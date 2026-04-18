@@ -83,9 +83,20 @@
       display: inline-flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 6px;
+      gap: 8px;
       margin-left: auto;
       flex: 0 0 auto;
+      min-height: 32px;
+    }
+
+    .gc-header-modal-actions .btn {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
     }
 
 
@@ -96,9 +107,13 @@
       color: var(--text-muted,var(--color-gray-400));
       font-size: var(--ui-font-size-2xl, 18px);
       line-height: 1;
-      padding: 2px 6px;
-      border-radius: 6px;
-      margin-left: auto;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       flex: 0 0 auto;
       transition: color .15s, background .15s;
     }
