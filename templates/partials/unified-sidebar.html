@@ -124,11 +124,6 @@
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
       </a>
       {% if is_client or is_client_staff %}
-      <a href="{% url 'website:testimonials' %}?review=open" class="{% if active_page == 'feedback' %}active{% endif %}">
-        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
-      </a>
-      {% endif %}
-      {% if is_client or is_client_staff %}
       <a href="{% url 'product_gallery' %}" class="{% if active_page == 'product_gallery' %}active{% endif %}">
         <i class="fa-solid fa-images"></i><span>Product Gallery</span>
       </a>

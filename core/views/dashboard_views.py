@@ -13,7 +13,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.db import DatabaseError, connection
+from django.db import connection
 from django.db.models import Count, F, Max, Q, Min
 from django.utils import timezone
 
@@ -335,46 +335,6 @@ def pro_user_log_deletion_guard_page(request):
         'user_role': get_user_role(request.user),
     }
     return render(request, 'pro_user/log-deletion-guard.html', context)
-
-
-@login_required
-def pro_user_feedback_page(request):
-    """Dedicated page for Pro User feedback inbox and submission entry point."""
-    if request.user.role != 'pro_user':
-        return redirect('dashboard')
-
-    from website.models import Testimonial
-
-    feedback_items = []
-    feedback_total = 0
-    feedback_write_url = '#'
-    try:
-        feedback_qs = Testimonial.objects.all().order_by('-created_at', '-id')
-        feedback_items = list(feedback_qs[:200])
-        feedback_total = feedback_qs.count()
-    except DatabaseError as exc:
-        logger.warning('Failed loading Pro User feedback inbox: %s', exc)
-
-    website_base = str(getattr(settings, 'WEBSITE_URL', '') or '').rstrip('/')
-    if website_base:
-        feedback_write_url = f"{website_base}/testimonials/?review=open"
-    else:
-        try:
-            feedback_write_url = f"{reverse('website:testimonials')}?review=open"
-        except Exception:
-            try:
-                feedback_write_url = f"{reverse('testimonials')}?review=open"
-            except Exception:
-                feedback_write_url = '#'
-
-    context = {
-        'active_page': 'pro_user_feedback',
-        'user_role': get_user_role(request.user),
-        'feedback_items': feedback_items,
-        'feedback_total': feedback_total,
-        'feedback_write_url': feedback_write_url,
-    }
-    return render(request, 'pro_user/feedback.html', context)
 
 
 @login_required

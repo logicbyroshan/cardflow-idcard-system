@@ -6,7 +6,6 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-from django.db import DatabaseError
 from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
@@ -297,55 +296,6 @@ class TestimonialSubmissionTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		created = Testimonial.objects.get(reviewer_email='attachment-user@example.com')
 		self.assertTrue(bool(created.attachment_image))
-
-
-class ProUserFeedbackPageTests(TestCase):
-	def test_pro_user_feedback_page_renders(self):
-		user = User.objects.create_user(
-			username='pro@example.com',
-			email='pro@example.com',
-			password='testpass123',
-			role='pro_user',
-		)
-		self.client.force_login(user)
-
-		response = self.client.get(reverse('pro_user_feedback'))
-
-		self.assertEqual(response.status_code, 200)
-		self.assertEqual(response.context['active_page'], 'pro_user_feedback')
-
-	@mock.patch('core.context_processors.TestimonialService.has_public_review', side_effect=DatabaseError('missing reviewer_ip column'))
-	def test_pro_user_feedback_page_handles_public_review_lookup_db_errors(self, _mock_has_public_review):
-		user = User.objects.create_user(
-			username='pro-fallback@example.com',
-			email='pro-fallback@example.com',
-			password='testpass123',
-			role='pro_user',
-		)
-		self.client.force_login(user)
-
-		response = self.client.get(reverse('pro_user_feedback'))
-
-		self.assertEqual(response.status_code, 200)
-		self.assertEqual(response.context['active_page'], 'pro_user_feedback')
-		self.assertTrue(response.context['can_submit_public_review'])
-
-	@mock.patch('website.models.Testimonial.objects.all', side_effect=DatabaseError('no such column: website_testimonial.reviewer_ip'))
-	def test_pro_user_feedback_page_handles_feedback_query_db_errors(self, _mock_feedback_all):
-		user = User.objects.create_user(
-			username='pro-feedback-fallback@example.com',
-			email='pro-feedback-fallback@example.com',
-			password='testpass123',
-			role='pro_user',
-		)
-		self.client.force_login(user)
-
-		response = self.client.get(reverse('pro_user_feedback'))
-
-		self.assertEqual(response.status_code, 200)
-		self.assertEqual(response.context['active_page'], 'pro_user_feedback')
-		self.assertEqual(response.context['feedback_total'], 0)
-		self.assertEqual(response.context['feedback_items'], [])
 
 
 class WebsitePublicHardeningTests(TestCase):

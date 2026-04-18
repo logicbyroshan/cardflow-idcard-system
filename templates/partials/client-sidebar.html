@@ -48,9 +48,6 @@
       <a href="{% url 'tutorial' %}" class="{% if active_page == 'tutorial' %}active{% endif %}">
         <i class="fa-solid fa-book-open"></i><span>Tutorial</span>
       </a>
-      <a href="{% url 'website:testimonials' %}?review=open" class="{% if active_page == 'feedback' %}active{% endif %}">
-        <i class="fa-solid fa-comment-dots"></i><span>Feedback</span>
-      </a>
       <a href="{% url 'product_gallery' %}" class="{% if active_page == 'product_gallery' %}active{% endif %}">
         <i class="fa-solid fa-images"></i><span>Product Gallery</span>
       </a>

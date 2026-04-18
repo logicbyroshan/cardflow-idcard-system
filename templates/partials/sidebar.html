@@ -119,7 +119,7 @@
       <span class="nav-section-title">Pro User</span>
       <div class="nav-section-line"></div>
     </div>
-    <a href="{% if is_impersonating %}{% url 'pro_user_activity_logs' %}{% else %}{% url 'login_as_user' %}{% endif %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' or active_page == 'pro_user_log_deletion_guard' or active_page == 'pro_user_feedback' or active_page == 'pro_user_data_deletion_guard' or active_page == 'pro_user_super_mode' %}active{% endif %}">
+    <a href="{% if is_impersonating %}{% url 'pro_user_activity_logs' %}{% else %}{% url 'login_as_user' %}{% endif %}" class="{% if active_page == 'impersonate' or active_page == 'pro_user_activity_logs' or active_page == 'pro_user_log_deletion_guard' or active_page == 'pro_user_data_deletion_guard' or active_page == 'pro_user_super_mode' %}active{% endif %}">
       <i class="fa-solid fa-gem"></i><span>Pro Feature</span>
     </a>
     {% endif %}

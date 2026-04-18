@@ -86,7 +86,6 @@ urlpatterns = [
     path('pro-user/activity-logs/', views.pro_user_activity_logs_page, name='pro_user_activity_logs'),
     path('pro-user/log-deletion-guard/', views.pro_user_log_deletion_guard_page, name='pro_user_log_deletion_guard'),
     path('pro-user/data-deletion-guard/', views.pro_user_data_deletion_guard_page, name='pro_user_data_deletion_guard'),
-    path('pro-user/feedback/', views.pro_user_feedback_page, name='pro_user_feedback'),
     path('pro-user/super-mode/', views.pro_user_super_mode_page, name='pro_user_super_mode'),
     path('pro-user/activity-logs/<int:user_id>/', views.pro_user_activity_logs_detail_page, name='pro_user_activity_logs_detail'),
 
