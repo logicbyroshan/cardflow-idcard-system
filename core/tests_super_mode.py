@@ -165,3 +165,41 @@ class SuperModeApiTests(TestCase):
 
         assignment = SuperModeAssignment.objects.get(user=self.operator)
         self.assertTrue(assignment.is_enabled)
+
+    def test_pro_user_assign_api_can_set_runtime_toggle(self):
+        self.client.force_login(self.pro_user)
+
+        enable_response = self.client.post(
+            '/panel/api/pro-user/super-mode/assign/',
+            data=json.dumps({
+                'user_id': self.operator.id,
+                'enabled': True,
+                'ram_allocation_mb': 250,
+                'runtime_enabled': True,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(enable_response.status_code, 200)
+        self.assertTrue(enable_response.json().get('success'))
+
+        assignment = SuperModeAssignment.objects.get(user=self.operator)
+        self.assertTrue(assignment.is_assigned)
+        self.assertTrue(assignment.is_enabled)
+        self.assertEqual(assignment.ram_allocation_mb, 250)
+
+        disable_response = self.client.post(
+            '/panel/api/pro-user/super-mode/assign/',
+            data=json.dumps({
+                'user_id': self.operator.id,
+                'enabled': True,
+                'ram_allocation_mb': 250,
+                'runtime_enabled': False,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(disable_response.status_code, 200)
+        self.assertTrue(disable_response.json().get('success'))
+
+        assignment.refresh_from_db()
+        self.assertTrue(assignment.is_assigned)
+        self.assertFalse(assignment.is_enabled)

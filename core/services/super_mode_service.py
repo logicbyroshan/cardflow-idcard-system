@@ -243,7 +243,15 @@ class SuperModeService:
 
     @classmethod
     @transaction.atomic
-    def assign_user(cls, actor: User, target_user: User, *, enabled: bool, ram_mb: Optional[int] = None) -> SuperModeAssignment:
+    def assign_user(
+        cls,
+        actor: User,
+        target_user: User,
+        *,
+        enabled: bool,
+        ram_mb: Optional[int] = None,
+        runtime_enabled: Optional[bool] = None,
+    ) -> SuperModeAssignment:
         """Assign or revoke Super Mode for super_admin/admin_staff users."""
         if not cls.can_manage_assignments(actor):
             raise PermissionError('Only Pro User can manage Super Mode assignments.')
@@ -261,8 +269,11 @@ class SuperModeService:
             ram_val = cls._validate_ram_for_role(role, ram_mb)
             assignment.is_assigned = True
             assignment.ram_allocation_mb = ram_val
-            # Keep user runtime preference if already enabled.
-            assignment.is_enabled = bool(assignment.is_enabled and assignment.is_assigned)
+            if runtime_enabled is None:
+                # Keep user runtime preference if caller did not provide a runtime state.
+                assignment.is_enabled = bool(assignment.is_enabled and assignment.is_assigned)
+            else:
+                assignment.is_enabled = bool(runtime_enabled and assignment.is_assigned)
         else:
             assignment.is_assigned = False
             assignment.is_enabled = False

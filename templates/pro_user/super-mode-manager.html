@@ -142,6 +142,61 @@
     color: var(--color-slate-700);
   }
 
+  .sm-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-slate-700);
+  }
+
+  .sm-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  .sm-switch-track {
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    position: relative;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .sm-switch-track::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #fff;
+    top: 2px;
+    left: 2px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
+    transition: transform 0.2s ease;
+  }
+
+  .sm-switch input:checked + .sm-switch-track {
+    background: #16a34a;
+  }
+
+  .sm-switch input:checked + .sm-switch-track::after {
+    transform: translateX(18px);
+  }
+
+  .sm-switch input:disabled + .sm-switch-track {
+    background: #e2e8f0;
+    cursor: not-allowed;
+  }
+
   .sm-actions {
     display: flex;
     justify-content: flex-end;
@@ -276,7 +331,7 @@
         <div class="sm-head">
           <div>
             <h2>My Super Mode (Pro User)</h2>
-            <p>Configure your own allocation and runtime switch.</p>
+            <p>Simple mode: pick RAM and toggle on or off. Changes apply instantly.</p>
           </div>
           <span class="sm-status off" id="smSelfStatus">Loading...</span>
         </div>
@@ -291,10 +346,11 @@
               </select>
             </div>
             <div class="sm-field">
-              <label>Runtime</label>
-              <label class="sm-toggle">
+              <label>Mode</label>
+              <label class="sm-switch" for="smSelfEnabled">
                 <input type="checkbox" id="smSelfEnabled" {% if super_mode_self.is_enabled %}checked{% endif %}>
-                Enable Super Mode now
+                <span class="sm-switch-track" aria-hidden="true"></span>
+                <span id="smSelfToggleLabel">Mode Off</span>
               </label>
             </div>
             <div class="sm-field">
@@ -303,10 +359,7 @@
             </div>
           </div>
           <div class="sm-actions">
-            <span class="sm-muted" id="smSelfHint">Save to apply your own Pro allocation.</span>
-            <button class="btn btn-primary" type="button" id="smSelfSaveBtn">
-              <i class="fa-solid fa-floppy-disk"></i> Save My Super Mode
-            </button>
+            <span class="sm-muted" id="smSelfHint">Changes auto-apply.</span>
           </div>
         </div>
       </section>
@@ -331,8 +384,8 @@
                   <th>Role</th>
                   <th>RAM</th>
                   <th>Assigned</th>
-                  <th>Runtime</th>
-                  <th>Action</th>
+                  <th>Mode</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody id="smUsersBody">

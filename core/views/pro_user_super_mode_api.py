@@ -67,6 +67,9 @@ def api_pro_user_super_mode_assign(request):
     target_user = get_object_or_404(User, id=target_user_id)
     enabled = SuperModeService.parse_bool(body.get('enabled'), default=True)
     ram_mb = body.get('ram_allocation_mb')
+    runtime_enabled = None
+    if 'runtime_enabled' in body:
+        runtime_enabled = SuperModeService.parse_bool(body.get('runtime_enabled'), default=False)
 
     try:
         assignment = SuperModeService.assign_user(
@@ -74,6 +77,7 @@ def api_pro_user_super_mode_assign(request):
             target_user,
             enabled=enabled,
             ram_mb=ram_mb,
+            runtime_enabled=runtime_enabled,
         )
     except PermissionError as exc:
         return JsonResponse({'success': False, 'message': str(exc)}, status=403)

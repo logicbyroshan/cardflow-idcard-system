@@ -71,13 +71,16 @@
     var selfInfo = document.getElementById('smSelfInfo');
     var selfStatus = document.getElementById('smSelfStatus');
     var selfHint = document.getElementById('smSelfHint');
-    var selfSaveBtn = document.getElementById('smSelfSaveBtn');
+    var selfToggleLabel = document.getElementById('smSelfToggleLabel');
 
     var state = {
       users: [],
       selfStatus: null,
       savingSelf: false,
-      savingUserIds: {}
+      savingUserIds: {},
+      selfRequestSeq: 0,
+      selfAutoApplyReady: false,
+      pendingSelfSave: false
     };
 
     function statusMarkup(superMode) {
@@ -115,17 +118,25 @@
         selfInfo.value = ram > 0 ? (ram + ' MB') : 'Not assigned';
       }
 
+      if (selfRam) {
+        var selectedRam = parseInt(status.ram_allocation_mb || 0, 10) || 0;
+        if (selectedRam > 0 && selfRam.querySelector('option[value="' + selectedRam + '"]')) {
+          selfRam.value = String(selectedRam);
+        }
+        selfRam.disabled = !!state.savingSelf;
+      }
+
       if (selfHint) {
-        selfHint.textContent = status.message || 'Save to apply your own Pro allocation.';
+        selfHint.textContent = status.message || 'Changes auto-apply.';
       }
 
       if (selfEnabled) {
         selfEnabled.checked = !!status.is_enabled;
-        selfEnabled.disabled = !status.is_assigned;
+        selfEnabled.disabled = !status.is_assigned || !!state.savingSelf;
       }
 
-      if (selfSaveBtn) {
-        selfSaveBtn.disabled = !!state.savingSelf;
+      if (selfToggleLabel) {
+        selfToggleLabel.textContent = (selfEnabled && selfEnabled.checked) ? 'Mode On' : 'Mode Off';
       }
     }
 
@@ -168,9 +179,12 @@
           return '<option value="' + mb + '"' + selected + '>' + mb + ' MB</option>';
         }).join('');
 
-        var disabled = !user.is_active ? ' disabled' : '';
+        var isAssigned = !!sm.is_assigned;
+        var isEnabled = !!sm.is_enabled;
         var isSaving = !!state.savingUserIds[user.id];
-        var saveDisabled = (isSaving || !user.is_active) ? ' disabled' : '';
+        var disabled = !user.is_active ? ' disabled' : '';
+        var runtimeDisabled = (!user.is_active || !isAssigned || isSaving) ? ' disabled' : '';
+        var runtimeLabel = (isAssigned && isEnabled) ? 'On' : 'Off';
 
         html += ''
           + '<tr data-user-id="' + user.id + '">'
@@ -180,19 +194,24 @@
           + '  </td>'
           + '  <td><span class="sm-role">' + escapeHtml(user.role_display || user.role) + '</span></td>'
           + '  <td>'
-          + '    <select class="sm-ram-select"' + disabled + '>' + optionHtml + '</select>'
+          + '    <select class="sm-ram-select"' + (disabled || (isSaving ? ' disabled' : '')) + '>' + optionHtml + '</select>'
           + '  </td>'
           + '  <td>'
           + '    <label class="sm-toggle">'
-          + '      <input type="checkbox" class="sm-assign-toggle"' + (sm.is_assigned ? ' checked' : '') + disabled + '>'
+          + '      <input type="checkbox" class="sm-assign-toggle"' + (isAssigned ? ' checked' : '') + (disabled || (isSaving ? ' disabled' : '')) + '>'
           + '      Assigned'
           + '    </label>'
           + '  </td>'
-          + '  <td>' + statusMarkup(sm) + '</td>'
           + '  <td>'
-          + '    <button class="btn btn-sm btn-primary sm-user-save" type="button"' + saveDisabled + '>'
-          + (isSaving ? '<i class="fa-solid fa-spinner fa-spin"></i> Saving' : '<i class="fa-solid fa-floppy-disk"></i> Save')
-          + '    </button>'
+          + '    <label class="sm-switch">'
+          + '      <input type="checkbox" class="sm-runtime-toggle"' + ((isAssigned && isEnabled) ? ' checked' : '') + runtimeDisabled + '>'
+          + '      <span class="sm-switch-track" aria-hidden="true"></span>'
+          + '      <span class="sm-runtime-label">' + runtimeLabel + '</span>'
+          + '    </label>'
+          + '  </td>'
+          + '  <td>'
+          + '    ' + statusMarkup(sm)
+          + (isSaving ? ' <span class="sm-muted"><i class="fa-solid fa-spinner fa-spin"></i> Saving...</span>' : '')
           + '  </td>'
           + '</tr>';
       });
@@ -221,11 +240,13 @@
     async function loadData() {
       usersBody.innerHTML = '<tr><td colspan="6" class="sm-empty">Loading users...</td></tr>';
       try {
+        state.selfAutoApplyReady = false;
         var payload = await requestJson(usersApi, { method: 'GET' });
         state.users = Array.isArray(payload.users) ? payload.users : [];
         state.selfStatus = payload.self_super_mode || null;
         renderSelfStatus();
         renderUsers();
+        state.selfAutoApplyReady = true;
       } catch (error) {
         console.error('Failed loading super mode data:', error);
         usersBody.innerHTML = '<tr><td colspan="6" class="sm-empty">Failed to load users.</td></tr>';
@@ -233,12 +254,15 @@
       }
     }
 
-    async function saveSelfConfig() {
+    async function saveSelfConfig(quiet) {
       if (state.savingSelf) {
+        state.pendingSelfSave = true;
         return;
       }
 
+      state.pendingSelfSave = false;
       state.savingSelf = true;
+      var requestSeq = ++state.selfRequestSeq;
       renderSelfStatus();
 
       try {
@@ -257,19 +281,30 @@
           body: JSON.stringify(payload)
         });
 
+        if (requestSeq !== state.selfRequestSeq) {
+          return;
+        }
+
         state.selfStatus = response.super_mode || state.selfStatus;
         renderSelfStatus();
-        showMessage(response.message || 'Super Mode updated', 'success');
+        if (!quiet) {
+          showMessage(response.message || 'Super Mode updated', 'success');
+        }
       } catch (error) {
         console.error('Failed saving self super mode:', error);
         showMessage(error.message || 'Failed to save Super Mode', 'error');
       } finally {
-        state.savingSelf = false;
-        renderSelfStatus();
+        if (requestSeq === state.selfRequestSeq) {
+          state.savingSelf = false;
+          renderSelfStatus();
+          if (state.pendingSelfSave) {
+            saveSelfConfig(true);
+          }
+        }
       }
     }
 
-    async function saveUserAssignment(userId, enabled, ramMb) {
+    async function saveUserAssignment(userId, enabled, ramMb, runtimeEnabled) {
       state.savingUserIds[userId] = true;
       renderUsers();
 
@@ -284,14 +319,14 @@
           body: JSON.stringify({
             user_id: userId,
             enabled: enabled,
-            ram_allocation_mb: ramMb
+            ram_allocation_mb: ramMb,
+            runtime_enabled: runtimeEnabled
           })
         });
 
         if (response && response.user) {
           updateUserRow(response.user);
         }
-        showMessage(response.message || 'Assignment updated', 'success');
       } catch (error) {
         console.error('Failed saving user assignment:', error);
         showMessage(error.message || 'Failed to update assignment', 'error');
@@ -301,22 +336,66 @@
       }
     }
 
+    function parseUserRowPayload(row) {
+      var assignToggle = row.querySelector('.sm-assign-toggle');
+      var ramSelect = row.querySelector('.sm-ram-select');
+      var runtimeToggle = row.querySelector('.sm-runtime-toggle');
+
+      var assigned = !!(assignToggle && assignToggle.checked);
+      var ramMb = parseInt(ramSelect && ramSelect.value ? ramSelect.value : '0', 10);
+      if (!ramMb || ramMb < 0) {
+        ramMb = 0;
+      }
+
+      var runtimeEnabled = assigned && !!(runtimeToggle && runtimeToggle.checked);
+      return {
+        assigned: assigned,
+        ramMb: ramMb,
+        runtimeEnabled: runtimeEnabled,
+      };
+    }
+
     if (searchInput) {
       searchInput.addEventListener('input', renderUsers);
     }
 
-    if (selfSaveBtn) {
-      selfSaveBtn.addEventListener('click', saveSelfConfig);
+    if (selfRam) {
+      selfRam.addEventListener('change', function () {
+        if (!state.selfAutoApplyReady) {
+          return;
+        }
+        saveSelfConfig(true);
+      });
+    }
+
+    if (selfEnabled) {
+      selfEnabled.addEventListener('change', function () {
+        if (selfToggleLabel) {
+          selfToggleLabel.textContent = selfEnabled.checked ? 'Mode On' : 'Mode Off';
+        }
+        if (!state.selfAutoApplyReady) {
+          return;
+        }
+        saveSelfConfig(true);
+      });
     }
 
     if (usersBody) {
-      usersBody.addEventListener('click', function (event) {
-        var button = event.target.closest('.sm-user-save');
-        if (!button) {
+      usersBody.addEventListener('change', function (event) {
+        var target = event.target;
+        if (!target) {
           return;
         }
 
-        var row = button.closest('tr[data-user-id]');
+        var isTrackedControl = target.classList.contains('sm-assign-toggle')
+          || target.classList.contains('sm-runtime-toggle')
+          || target.classList.contains('sm-ram-select');
+
+        if (!isTrackedControl) {
+          return;
+        }
+
+        var row = target.closest('tr[data-user-id]');
         if (!row) {
           return;
         }
@@ -326,12 +405,13 @@
           return;
         }
 
-        var assignToggle = row.querySelector('.sm-assign-toggle');
-        var ramSelect = row.querySelector('.sm-ram-select');
-        var enabled = !!(assignToggle && assignToggle.checked);
-        var ramMb = parseInt(ramSelect && ramSelect.value ? ramSelect.value : '0', 10);
+        var payload = parseUserRowPayload(row);
 
-        saveUserAssignment(userId, enabled, ramMb);
+        if (target.classList.contains('sm-ram-select') && !payload.assigned) {
+          return;
+        }
+
+        saveUserAssignment(userId, payload.assigned, payload.ramMb, payload.runtimeEnabled);
       });
     }
 

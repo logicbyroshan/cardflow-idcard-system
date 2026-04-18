@@ -375,6 +375,7 @@
   let autoRefreshTimer = null;
   let guardDisabled = false;
   let guardDisabledToastShown = false;
+  const toastCooldowns = {};
 
   function csrfToken() {
     if (typeof getCSRFToken === 'function') return getCSRFToken();
@@ -382,12 +383,36 @@
     return match ? decodeURIComponent(match[1]) : '';
   }
 
-  function notify(message, type) {
+  function notify(message, type, options) {
+    const opts = options || {};
+    const key = opts.key || '';
+    const cooldownMs = Number(opts.cooldownMs || 0);
+
+    if (key && cooldownMs > 0) {
+      const now = Date.now();
+      const last = Number(toastCooldowns[key] || 0);
+      if (last && (now - last) < cooldownMs) {
+        return;
+      }
+      toastCooldowns[key] = now;
+    }
+
     if (typeof showToast === 'function') {
       showToast(message, type || 'info');
       return;
     }
     window.alert(message);
+  }
+
+  function notifyGuardDisabledOnce(message) {
+    if (guardDisabledToastShown) {
+      return;
+    }
+    notify(message || 'Log deletion guard is disabled by server policy.', 'error', {
+      key: 'guard-disabled',
+      cooldownMs: 60000,
+    });
+    guardDisabledToastShown = true;
   }
 
   function applyGuardDisabledState(message) {
@@ -461,7 +486,7 @@
     }
   }
 
-  async function fetchState() {
+  async function fetchState(showErrors) {
     try {
       const res = await fetch('/api/activity-logs/clear/state/', {
         method: 'GET',
@@ -479,13 +504,14 @@
         const errorMessage = (data && data.message) || 'Unable to load log deletion state.';
         if (errorCode === 'log_clear_disabled') {
           applyGuardDisabledState(errorMessage);
-          if (!guardDisabledToastShown) {
-            notify(errorMessage, 'error');
-            guardDisabledToastShown = true;
+          if (showErrors) {
+            notifyGuardDisabledOnce(errorMessage);
           }
           return;
         }
-        notify(errorMessage, 'error');
+        if (showErrors) {
+          notify(errorMessage, 'error', { key: 'guard-state-failure', cooldownMs: 10000 });
+        }
         return;
       }
 
@@ -493,13 +519,18 @@
       renderState(data.state || {});
     } catch (err) {
       console.error('fetchState error', err);
-      notify('Network error while loading log deletion state.', 'error');
+      if (showErrors) {
+        notify('Network error while loading log deletion state.', 'error', {
+          key: 'guard-state-network',
+          cooldownMs: 10000,
+        });
+      }
     }
   }
 
   async function generateCode() {
     if (guardDisabled) {
-      notify('Log deletion guard is disabled by server policy.', 'error');
+      notifyGuardDisabledOnce('Log deletion guard is disabled by server policy.');
       return;
     }
 
@@ -511,6 +542,11 @@
       });
       const data = await res.json();
       if (!res.ok || !data.success || !data.code) {
+        if (String((data && data.code) || '') === 'log_clear_disabled') {
+          applyGuardDisabledState((data && data.message) || 'Log deletion guard is disabled by server policy.');
+          notifyGuardDisabledOnce((data && data.message) || 'Log deletion guard is disabled by server policy.');
+          return;
+        }
         notify((data && data.message) || 'Unable to generate code.', 'error');
         return;
       }
@@ -526,7 +562,7 @@
 
   async function submitAction() {
     if (guardDisabled) {
-      notify('Log deletion guard is disabled by server policy.', 'error');
+      notifyGuardDisabledOnce('Log deletion guard is disabled by server policy.');
       return;
     }
 
@@ -559,12 +595,17 @@
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        if (String((data && data.code) || '') === 'log_clear_disabled') {
+          applyGuardDisabledState((data && data.message) || 'Log deletion guard is disabled by server policy.');
+          notifyGuardDisabledOnce((data && data.message) || 'Log deletion guard is disabled by server policy.');
+          return;
+        }
         notify((data && data.message) || 'Action failed.', 'error');
         return;
       }
       notify(data.message || 'Action completed.', 'success');
       codeInput.value = '';
-      await fetchState();
+      await fetchState(false);
     } catch (err) {
       console.error('submitAction error', err);
       notify('Network error while submitting action.', 'error');
@@ -576,7 +617,7 @@
   codeInput.addEventListener('input', normalizeCodeInput);
   generateBtn.addEventListener('click', generateCode);
   submitBtn.addEventListener('click', submitAction);
-  refreshBtn.addEventListener('click', fetchState);
+  refreshBtn.addEventListener('click', function() { fetchState(true); });
 
   function startAutoRefresh() {
     if (autoRefreshTimer) {
@@ -584,14 +625,14 @@
     }
     autoRefreshTimer = window.setInterval(() => {
       if (!document.hidden && !guardDisabled) {
-        fetchState();
+        fetchState(false);
       }
     }, 8000);
   }
 
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden && !guardDisabled) {
-      fetchState();
+      fetchState(false);
     }
   });
 
@@ -603,7 +644,7 @@
   });
 
   startAutoRefresh();
-  fetchState();
+  fetchState(false);
 })();
 </script>
 {% endblock %}
