@@ -65,6 +65,8 @@
     draftZoom: 2,
     draftZoomOriginX: 50,
     draftZoomOriginY: 50,
+    clipboard: [],
+    clipboardPasteCount: 0,
     draftUnit: 'mm',
     draftSnapMm: 0.1,
     draftDirty: false,
@@ -73,6 +75,7 @@
     pendingZoomAnchor: null,
     draftLastPointerClientX: null,
     draftLastPointerClientY: null,
+    zoomWheelMode: false,
     spacePanMode: false,
     spacePanState: null,
     cards: [],
@@ -93,6 +96,10 @@
   var DRAFT_SKEW_DEGREES_AT_FULL_SPAN = 42;
   var DRAFT_SKEW_SHIFT_SNAP_DEGREES = 3;
   var DRAFT_SKEW_MAX_DEGREES = 75;
+  var DRAFT_ZOOM_MIN = 0.1;
+  var DRAFT_ZOOM_MAX = 8;
+  var DRAFT_ZOOM_IN_FACTOR = 1.1;
+  var DRAFT_ZOOM_OUT_FACTOR = 0.9;
   var MERGE_TOKEN_REGEX_GLOBAL = /\{\{\s*([^{}]+?)\s*\}\}|<<\s*([^<>]+?)\s*>>|\[\[\s*([^\[\]]+?)\s*\]\]/g;
   var DRAFT_UI_PANELS_STORAGE_KEY = 'gc_step2_ui_panels_v1';
   var draftTextMeasureNode = null;
@@ -767,6 +774,7 @@
       + '.gc-prop-input:focus-visible,.gc-prop-select:focus-visible{outline:2px solid rgba(37,99,235,.35);outline-offset:1px;border-color:#2563eb;}'
       + '.gc-step2-canvas-stage{position:relative;flex:1;min-height:360px;background:radial-gradient(circle at 22% 14%,#e6edf6 0,#d5dde7 42%,#cfd8e3 100%);overflow:hidden;}'
       + '.gc-step2-stage-content{position:absolute;top:10px;left:10px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:18px;}'
+      + '.gc-step2-stage-content.is-zoom-mode{cursor:zoom-in;}'
       + '.gc-step2-stage-content.is-space-pan{cursor:grab;}'
       + '.gc-step2-stage-content.is-space-pan.is-panning{cursor:grabbing;}'
       + '.gc-step2-stage-content.is-space-pan .gc-step2-canvas,.gc-step2-stage-content.is-space-pan .gc-draft-el,.gc-step2-stage-content.is-space-pan .gc-draft-guide{cursor:grab !important;}'
@@ -1877,7 +1885,33 @@
     if (!Number.isFinite(next)) {
       next = 1;
     }
-    state.draftZoom = Math.max(0.25, Math.min(4, next));
+    state.draftZoom = Math.max(DRAFT_ZOOM_MIN, Math.min(DRAFT_ZOOM_MAX, next));
+  }
+
+  function applyZoomFactor(factor, anchorEvent) {
+    var safeFactor = Number(factor || 1);
+    if (!Number.isFinite(safeFactor) || safeFactor <= 0) {
+      return;
+    }
+    var current = Number(state.draftZoom || 1);
+    if (!Number.isFinite(current) || current <= 0) {
+      current = 1;
+    }
+    setDraftZoomWithAnchor(current * safeFactor, anchorEvent || null);
+  }
+
+  function applySmoothZoomFromWheel(event) {
+    if (!event) {
+      return;
+    }
+
+    var deltaY = Number(event.deltaY || 0);
+    if (!Number.isFinite(deltaY) || deltaY === 0) {
+      return;
+    }
+
+    var factor = Math.exp(-deltaY * 0.0022);
+    applyZoomFactor(factor, event);
   }
 
   function applyDefaultStep2Viewport() {
@@ -3374,7 +3408,8 @@
     }
 
     var startAspect = startWidth / Math.max(1, startHeight);
-    if (isCorner) {
+    var lockAspectRatio = isCorner || !!event.shiftKey;
+    if (lockAspectRatio) {
       var boxWidth = right - left;
       var boxHeight = bottom - top;
       var absWidthScale = Math.abs(boxWidth / Math.max(1, startWidth));
@@ -3403,6 +3438,15 @@
           top = bottom - boxHeight;
         } else if (hasSouth && !hasNorth) {
           bottom = top + boxHeight;
+        }
+        if (hasHorizontal && !hasVertical) {
+          var centerYNoAlt = (top + bottom) / 2;
+          top = centerYNoAlt - (boxHeight / 2);
+          bottom = centerYNoAlt + (boxHeight / 2);
+        } else if (hasVertical && !hasHorizontal) {
+          var centerXNoAlt = (left + right) / 2;
+          left = centerXNoAlt - (boxWidth / 2);
+          right = centerXNoAlt + (boxWidth / 2);
         }
       }
     }
@@ -4983,6 +5027,7 @@
     if (!stageEl) {
       return;
     }
+    stageEl.classList.toggle('is-zoom-mode', !!state.zoomWheelMode && !state.spacePanMode);
     stageEl.classList.toggle('is-space-pan', !!state.spacePanMode);
     stageEl.classList.toggle('is-panning', !!state.spacePanState);
   }
@@ -5188,6 +5233,113 @@
       imageKind: selected.imageKind,
       src: selected.src,
     });
+    return true;
+  }
+
+  function selectedDraftElementsSortedByZIndex() {
+    var selected = selectedDraftElements();
+    if (!selected.length) {
+      return [];
+    }
+    return sortDraftElementsByZIndex(selected);
+  }
+
+  function copySelectedDraftElements(options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var quiet = !!opts.quiet;
+    var selected = selectedDraftElementsSortedByZIndex();
+    if (!selected.length) {
+      if (!quiet) {
+        showToast('Select at least one element to copy.', 'warning');
+      }
+      return false;
+    }
+
+    state.clipboard = selected.map(function (item) {
+      var snapshot = deepCloneJson(item, {});
+      if (snapshot && typeof snapshot === 'object') {
+        delete snapshot.__id;
+      }
+      return snapshot;
+    });
+    state.clipboardPasteCount = 0;
+
+    if (!quiet) {
+      showToast('Copied ' + String(selected.length) + ' element(s).', 'success');
+    }
+    return true;
+  }
+
+  function pasteClipboardElements(inPlace) {
+    ensureStep2DraftInitialized();
+    var clipboard = Array.isArray(state.clipboard) ? state.clipboard : [];
+    if (!clipboard.length) {
+      showToast('Clipboard is empty.', 'warning');
+      return false;
+    }
+
+    var placeInOriginalPosition = !!inPlace;
+    var offsetStep = 0;
+    if (!placeInOriginalPosition) {
+      var pasteCount = Math.max(0, Number(state.clipboardPasteCount || 0));
+      offsetStep = (pasteCount + 1) * 10;
+    }
+
+    var pastedIds = [];
+    beginDraftHistoryTransaction();
+    try {
+      prepareDraftHistoryMutation();
+      var zSeed = maxDraftElementZIndex();
+      clipboard.forEach(function (item, idx) {
+        var draft = deepCloneJson(item, {});
+        if (!draft || typeof draft !== 'object') {
+          return;
+        }
+        delete draft.__id;
+
+        draft.x = Number(draft.x || 0) + offsetStep;
+        draft.y = Number(draft.y || 0) + offsetStep;
+        draft.zIndex = zSeed + idx + 1;
+
+        var nextIndex = state.templateDraft.elements.length;
+        var normalized = normalizeDraftElement(draft, nextIndex);
+        state.templateDraft.elements.push(normalized);
+        pastedIds.push(String(normalized.__id || ''));
+      });
+
+      normalizeDraftElementZOrder(false);
+      setDraftSelectedElementIds(new Set(pastedIds), pastedIds[0] || '');
+      clearDraftInlineTextEditing();
+      state.draftSelectedGuideId = '';
+      markDraftDirty();
+    } finally {
+      endDraftHistoryTransaction();
+    }
+
+    if (!pastedIds.length) {
+      return false;
+    }
+
+    if (!placeInOriginalPosition) {
+      state.clipboardPasteCount = Math.max(0, Number(state.clipboardPasteCount || 0)) + 1;
+    }
+    showToast('Pasted ' + String(pastedIds.length) + ' element(s).', 'success');
+    return true;
+  }
+
+  function cutSelectedDraftElements() {
+    if (!copySelectedDraftElements({ quiet: true })) {
+      showToast('Select at least one element to cut.', 'warning');
+      return false;
+    }
+
+    beginDraftHistoryTransaction();
+    try {
+      removeDraftElement();
+    } finally {
+      endDraftHistoryTransaction();
+    }
+    showToast('Cut selected element(s).', 'success');
     return true;
   }
 
@@ -5871,10 +6023,17 @@
     }
     var sideOffsetUnits = state.isTwoSided && guideSide === 'back' ? layout.cardWidth : 0;
 
-    var left = Math.max(0, Math.min(100, ((box.x + sideOffsetUnits) / layout.totalWidth) * 100));
-    var top = Math.max(0, Math.min(100, (box.y / layout.cardHeight) * 100));
-    var width = Math.max(0.8, Math.min(100, (box.width / layout.totalWidth) * 100));
-    var height = Math.max(0.8, Math.min(100, (box.height / layout.cardHeight) * 100));
+    var left = ((box.x + sideOffsetUnits) / layout.totalWidth) * 100;
+    var top = (box.y / layout.cardHeight) * 100;
+    var width = (box.width / layout.totalWidth) * 100;
+    var height = (box.height / layout.cardHeight) * 100;
+
+    if (drag.kind !== 'select') {
+      left = Math.max(0, Math.min(100, left));
+      top = Math.max(0, Math.min(100, top));
+      width = Math.max(0.8, Math.min(100, width));
+      height = Math.max(0.8, Math.min(100, height));
+    }
     var cls = 'gc-draft-insert-guide'
       + (drag.kind === 'rectangle' ? ' is-rect' : '')
       + (drag.kind === 'select' ? ' is-select' : '');
@@ -7588,13 +7747,13 @@
     }
 
     if (action === 'zoom-in') {
-      setDraftZoomWithAnchor((Number(state.draftZoom || 1) + 0.1), null);
+      applyZoomFactor(DRAFT_ZOOM_IN_FACTOR, null);
       render();
       return;
     }
 
     if (action === 'zoom-out') {
-      setDraftZoomWithAnchor((Number(state.draftZoom || 1) - 0.1), null);
+      applyZoomFactor(DRAFT_ZOOM_OUT_FACTOR, null);
       render();
       return;
     }
@@ -8096,7 +8255,7 @@
   });
 
   flowRoot.addEventListener('wheel', function (event) {
-    if (state.step !== 2 || !event.altKey) {
+    if (state.step !== 2 || event.ctrlKey || !event.altKey) {
       return;
     }
 
@@ -8107,11 +8266,9 @@
       return;
     }
 
-    var delta = Number(event.deltaY || 0);
-    var nextZoom = Number(state.draftZoom || 1) + (delta < 0 ? 0.08 : -0.08);
-    setDraftZoomWithAnchor(nextZoom, event);
+    applySmoothZoomFromWheel(event);
     event.preventDefault();
-    render();
+    renderStep2OnNextFrame();
   }, { passive: false });
 
   flowRoot.addEventListener('mouseover', function (event) {
@@ -8165,10 +8322,8 @@
 
     var stage = target && target.closest ? target.closest('.gc-step2-canvas-stage') : null;
     if (stage && state.step === 2) {
-      var delta = Number(event.deltaY || 0);
-      var nextZoom = Number(state.draftZoom || 1) + (delta < 0 ? 0.08 : -0.08);
-      setDraftZoomWithAnchor(nextZoom, event);
-      render();
+      applySmoothZoomFromWheel(event);
+      renderStep2OnNextFrame();
     }
 
     event.preventDefault();
@@ -9080,12 +9235,17 @@
       return;
     }
 
+    var ctrlOrMeta = !!(event.ctrlKey || event.metaKey);
+    if (state.zoomWheelMode !== ctrlOrMeta) {
+      state.zoomWheelMode = ctrlOrMeta;
+      setSpacePanUiState();
+    }
+
     if (isTypingTarget(event.target)) {
       return;
     }
 
     var lower = key.toLowerCase();
-    var ctrlOrMeta = !!(event.ctrlKey || event.metaKey);
     var bracketRight = key === ']' || code === 'BracketRight';
     var bracketLeft = key === '[' || code === 'BracketLeft';
     var handled = false;
@@ -9184,14 +9344,22 @@
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && lower === 'd') {
       handled = duplicateSelectedDraftElement();
+    } else if (ctrlOrMeta && !event.altKey && event.shiftKey && lower === 'v') {
+      handled = pasteClipboardElements(true);
+    } else if (ctrlOrMeta && !event.altKey && lower === 'c') {
+      handled = copySelectedDraftElements();
+    } else if (ctrlOrMeta && !event.altKey && lower === 'x') {
+      handled = cutSelectedDraftElements();
+    } else if (ctrlOrMeta && !event.altKey && lower === 'v') {
+      handled = pasteClipboardElements(false);
     } else if (ctrlOrMeta && !event.altKey && lower === 's') {
       openSaveTemplateModal();
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && (key === '+' || key === '=')) {
-      setDraftZoomWithAnchor(Number(state.draftZoom || 1) + 0.1, null);
+      applyZoomFactor(DRAFT_ZOOM_IN_FACTOR, null);
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && (key === '-' || key === '_')) {
-      setDraftZoomWithAnchor(Number(state.draftZoom || 1) - 0.1, null);
+      applyZoomFactor(DRAFT_ZOOM_OUT_FACTOR, null);
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && lower === '0') {
       setDraftZoomWithAnchor(1, null);
@@ -9212,16 +9380,29 @@
     }
 
     var key = String(event.key || '');
-    if (key !== ' ' && key !== 'Spacebar') {
-      return;
-    }
-
-    if (state.spacePanMode || state.spacePanState) {
-      state.spacePanMode = false;
-      state.spacePanState = null;
+    if (!event.ctrlKey && !event.metaKey && state.zoomWheelMode) {
+      state.zoomWheelMode = false;
       setSpacePanUiState();
     }
-    event.preventDefault();
+
+    if (key === ' ' || key === 'Spacebar') {
+      if (state.spacePanMode || state.spacePanState) {
+        state.spacePanMode = false;
+        state.spacePanState = null;
+        setSpacePanUiState();
+      }
+      event.preventDefault();
+    }
+  });
+
+  window.addEventListener('blur', function () {
+    if (!state.zoomWheelMode && !state.spacePanMode && !state.spacePanState) {
+      return;
+    }
+    state.zoomWheelMode = false;
+    state.spacePanMode = false;
+    state.spacePanState = null;
+    setSpacePanUiState();
   });
 
   flowRoot.addEventListener('change', function (event) {
