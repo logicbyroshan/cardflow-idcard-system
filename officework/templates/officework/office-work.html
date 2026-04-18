@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Office Work - Adarsh ID Cards{% endblock %}
+
+{% block main_class %}office-work-main{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/client-message-drawer.css' %}">
+<link rel="stylesheet" href="{% static 'officework/css/office-work.css' %}">
+{% endblock %}
+
+{% block breadcrumb %}
+  {% if is_super_admin %}
+  <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% elif is_admin_staff %}
+  <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+  {% endif %}
+  <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+  <span class="breadcrumb-item active">Office Work</span>
+{% endblock %}
+
+{% block content %}
+<div class="main-content office-work-page">
+  <section class="office-work-hero">
+    <div>
+      <p class="office-work-kicker">Team Workspace</p>
+      <h1>Office Work</h1>
+      <p>Admin and Operator can chat, manage tasks, and share files in one place.</p>
+    </div>
+  </section>
+
+  <section class="office-work-shell">
+    <div class="office-work-tabs" role="tablist" aria-label="Office Work tabs">
+      <button type="button" class="btn btn-sm btn-primary office-tab-btn is-active" data-tab="chat" role="tab" aria-selected="true">
+        <i class="fa-solid fa-comments"></i> Chat
+      </button>
+      <button type="button" class="btn btn-sm btn-neutral office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
+        <i class="fa-solid fa-list-check"></i> Tasks
+      </button>
+      <button type="button" class="btn btn-sm btn-neutral office-tab-btn" data-tab="share" role="tab" aria-selected="false">
+        <i class="fa-solid fa-share-from-square"></i> Share
+      </button>
+    </div>
+
+    <div class="office-work-panels">
+      <section class="office-panel is-active" data-panel="chat" role="tabpanel">
+        <div class="office-chat-shell">
+          <div class="client-message-thread" id="officeChatList" aria-live="polite">
+            <div class="client-message-thread-state">Loading messages...</div>
+          </div>
+        </div>
+        <form id="officeChatForm" class="office-chat-form">
+          <textarea id="officeChatInput" class="office-input" rows="3" maxlength="4000" placeholder="Write a message to your office team..."></textarea>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-paper-plane"></i>
+            Send
+          </button>
+        </form>
+      </section>
+
+      <section class="office-panel" data-panel="tasks" role="tabpanel" hidden>
+        <div class="office-section">
+          <h3>Create Task</h3>
+          <form id="officeTaskForm" class="office-task-form">
+            <div class="office-grid-two">
+              <div>
+                <label for="officeTaskTitle">Title</label>
+                <input id="officeTaskTitle" class="office-input" type="text" maxlength="180" placeholder="Task title" required>
+              </div>
+              <div>
+                <label for="officeTaskAssignee">Assign To</label>
+                <select id="officeTaskAssignee" class="form-select form-select-sm">
+                  <option value="">Unassigned</option>
+                </select>
+              </div>
+            </div>
+            <div class="office-grid-two">
+              <div>
+                <label for="officeTaskPriority">Priority</label>
+                <select id="officeTaskPriority" class="form-select form-select-sm">
+                  <option value="low">Low</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label for="officeTaskDueDate">Due Date</label>
+                <input id="officeTaskDueDate" class="office-input" type="date">
+              </div>
+            </div>
+            <div>
+              <label for="officeTaskDescription">Description</label>
+              <textarea id="officeTaskDescription" class="office-input" rows="3" placeholder="Optional details"></textarea>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-plus"></i>
+              Add Task
+            </button>
+          </form>
+        </div>
+
+        <div class="office-section office-table-wrap">
+          <h3>Task Board</h3>
+          <div class="office-table-scroll">
+            <table class="data-table office-table" id="officeTaskTable">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Assignee</th>
+                  <th>Due</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="office-panel" data-panel="share" role="tabpanel" hidden>
+        <div class="office-section">
+          <h3>Share File</h3>
+          <form id="officeShareForm" class="office-share-form" enctype="multipart/form-data">
+            <div class="office-grid-two">
+              <div>
+                <label for="officeShareTitle">Title</label>
+                <input id="officeShareTitle" class="office-input" type="text" maxlength="200" placeholder="Optional title">
+              </div>
+              <div>
+                <label for="officeShareFile">File</label>
+                <input id="officeShareFile" class="office-input" type="file" required>
+              </div>
+            </div>
+            <div>
+              <label for="officeShareNote">Note</label>
+              <textarea id="officeShareNote" class="office-input" rows="3" placeholder="Optional note"></textarea>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-upload"></i>
+              Upload
+            </button>
+          </form>
+        </div>
+
+        <div class="office-section office-table-wrap">
+          <h3>Shared Files</h3>
+          <div class="office-table-scroll">
+            <table class="data-table office-table" id="officeShareTable">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>File</th>
+                  <th>Size</th>
+                  <th>Uploaded By</th>
+                  <th>Uploaded At</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block page_vars %}
+<script>
+window.OfficeWorkConfig = {
+  currentUserId: {{ request.user.id|default:0 }},
+  endpoints: {
+    chatList: "{% url 'api_office_work_chat_list' %}",
+    chatSend: "{% url 'api_office_work_chat_send' %}",
+    tasksList: "{% url 'api_office_work_tasks_list' %}",
+    taskCreate: "{% url 'api_office_work_task_create' %}",
+    taskUpdateBase: "/api/office-work/tasks/",
+    shareList: "{% url 'api_office_work_share_list' %}",
+    shareUpload: "{% url 'api_office_work_share_upload' %}",
+    shareDeleteBase: "/api/office-work/share/"
+  }
+};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'officework/js/office-work.js' %}"></script>
+{% endblock %}

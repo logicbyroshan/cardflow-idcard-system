@@ -1,0 +1,200 @@
+.office-work-page {
+  padding: 14px 18px 18px;
+}
+
+.office-work-hero {
+  margin: 0;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--color-slate-200);
+}
+
+.office-work-kicker {
+  margin: 0;
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-slate-500);
+}
+
+.office-work-hero h1 {
+  margin: 6px 0 4px;
+  font-size: var(--ui-font-size-4xl, 24px);
+  font-weight: 700;
+  color: var(--color-slate-900);
+}
+
+.office-work-hero p {
+  margin: 0;
+  color: var(--color-slate-600);
+}
+
+.office-work-shell {
+  margin-top: 12px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 0;
+  background: var(--color-white);
+}
+
+.office-work-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-slate-200);
+  background: var(--color-slate-50);
+}
+
+.office-tab-btn {
+  min-width: 92px;
+  justify-content: center;
+}
+
+.office-work-panels {
+  padding: 0;
+}
+
+.office-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.office-chat-shell {
+  padding: 14px;
+  border-bottom: 1px solid var(--color-slate-200);
+}
+
+#officeChatList.client-message-thread {
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.office-chat-form,
+.office-task-form,
+.office-share-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.office-chat-form {
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-slate-200);
+  background: var(--color-slate-50);
+}
+
+.office-input {
+  width: 100%;
+  min-height: 28px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 4px;
+  background: var(--color-white);
+  color: var(--color-slate-700);
+  padding: 6px 10px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+textarea.office-input {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.office-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.2);
+}
+
+.office-section {
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-slate-200);
+}
+
+.office-panel .office-section:first-child {
+  border-top: 0;
+}
+
+.office-section h3 {
+  margin: 0 0 10px;
+  font-size: var(--ui-font-size-md, 13px);
+  font-weight: 700;
+  color: var(--color-slate-800);
+}
+
+.office-task-form label,
+.office-share-form label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--ui-font-size-md, 13px);
+  font-weight: 600;
+  color: var(--color-slate-600);
+}
+
+.office-grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.office-table-wrap {
+  overflow: hidden;
+}
+
+.office-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.office-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.office-table th,
+.office-table td {
+  border-bottom: 1px solid var(--color-slate-200);
+  padding: 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.office-table th {
+  background: var(--color-slate-50);
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-slate-600);
+  text-transform: uppercase;
+}
+
+.office-table td {
+  color: var(--color-slate-700);
+}
+
+.office-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.office-table td .btn.btn-sm {
+  height: 28px;
+}
+
+@media (max-width: 900px) {
+  .office-work-page {
+    padding: 12px;
+  }
+
+  .office-grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .office-work-tabs {
+    padding: 8px;
+  }
+}

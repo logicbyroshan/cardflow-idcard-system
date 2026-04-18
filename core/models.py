@@ -3,6 +3,14 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 
+def office_work_shared_file_upload_to(instance, filename):
+    """Migration-compatibility shim for historical core migration imports."""
+    import os
+    from django.utils import timezone
+
+    safe_name = os.path.basename(str(filename or '').strip()) or 'shared-file'
+    return f'office-work/shared/{timezone.now():%Y/%m/%d}/{safe_name}'
+
 
 class CustomUserManager(UserManager):
     """
@@ -1306,3 +1314,4 @@ class ClientPresenceSession(models.Model):
     def __str__(self):
         state = 'closed' if self.closed_at else 'live'
         return f'Presence(user={self.user_id}, client={self.client_id}, tab={self.tab_id}, {state})'
+

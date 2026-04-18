@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 from exports import views as export_views
 
@@ -162,6 +162,9 @@ urlpatterns = [
     path('tutorial/', views.tutorial, name='tutorial'),
     path('tutorial/personal-guide/', views.tutorial_personal_guide, name='tutorial_personal_guide'),
     path('tutorial/personal-guide/download/', views.tutorial_personal_guide_download, name='tutorial_personal_guide_download'),
+
+    # Office Work (dedicated app)
+    path('', include('officework.urls')),
     
     # System Settings
     path('settings/', views.settings, name='settings'),
