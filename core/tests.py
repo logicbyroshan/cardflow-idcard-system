@@ -21,6 +21,7 @@ import io
 import zipfile
 import hmac
 import time
+import hashlib
 
 User = get_user_model()
 
@@ -249,6 +250,74 @@ class CropperWebhookSecurityTests(TestCase):
         with patch.object(cropper_api, 'WEBHOOK_SECRET', 'test-secret'), \
              patch.object(cropper_api, 'WEBHOOK_ALLOW_LEGACY_AUTH', False):
             self.assertFalse(cropper_api._verify_webhook(request))
+
+
+class CropperLatestVersionFallbackTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('cropper-fallback-admin@test.com')
+        self.client.force_login(self.admin)
+
+    def test_latest_version_falls_back_to_local_version_file(self):
+        from core.models import CropperRelease
+
+        CropperRelease.objects.all().delete()
+        response = self.client.get('/api/cropper/latest-version/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['available'])
+        self.assertEqual(payload['version'], '2.4.0')
+        self.assertIn('/panel/engine/download/', payload['download_url'])
+
+
+class EngineDownloadInstallerGuardTests(TestCase):
+    def setUp(self):
+        self.admin = _create_super_admin('engine-guard-admin@test.com')
+        self.client.force_login(self.admin)
+
+    def _sha256(self, path_obj: Path):
+        h = hashlib.sha256()
+        with path_obj.open('rb') as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b''):
+                h.update(chunk)
+        return h.hexdigest()
+
+    def test_engine_download_does_not_serve_raw_engine_binary(self):
+        from core.views.engine_api import engine_download
+
+        base_dir = Path(__file__).resolve().parent.parent
+        raw_engine = base_dir / 'Face Cropper' / 'dist' / 'AdarshEngine.exe'
+        served_setup = base_dir / 'static' / 'engine' / 'AdarshEngineSetup.exe'
+
+        # Guard is meaningful only when both artifacts exist in this workspace.
+        self.assertTrue(raw_engine.exists())
+        self.assertTrue(served_setup.exists())
+
+        factory = RequestFactory()
+        request = factory.get('/panel/engine/download/')
+        request.user = self.admin
+        response = engine_download(request)
+        self.assertEqual(response.status_code, 200)
+
+        served_stream = getattr(response, 'file_to_stream', None) or getattr(response, '_resource_closers', [None])[0]
+        if not hasattr(served_stream, 'read'):
+            served_stream = getattr(response, 'streaming_content', None)
+            if served_stream is not None:
+                served_hash = hashlib.sha256(b''.join(list(served_stream))).hexdigest()
+            else:
+                self.fail('No readable stream found on engine_download response.')
+        else:
+            try:
+                served_stream.seek(0)
+            except Exception:
+                pass
+            served_hash = hashlib.sha256(served_stream.read()).hexdigest()
+        raw_hash = self._sha256(raw_engine)
+        self.assertNotEqual(
+            served_hash,
+            raw_hash,
+            'Download endpoint served raw engine EXE instead of installer setup binary.',
+        )
 
 
 class EmailProductShowcaseSelectionTests(TestCase):

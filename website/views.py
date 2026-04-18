@@ -3,7 +3,7 @@ import random
 from urllib.parse import urlsplit, parse_qsl, urlencode
 
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
@@ -288,6 +288,61 @@ def _normalize_panel_next_target(raw_next, fallback_target):
 
     params = dict(parse_qsl(parsed.query, keep_blank_values=True))
     return normalized_path, params
+
+
+@require_GET
+def pwa_manifest(request):
+    """Public website PWA manifest for desktop/mobile browser install."""
+    manifest = {
+        'name': 'Adarsh ID Cards Website',
+        'short_name': 'Adarsh',
+        'id': '/',
+        'start_url': '/',
+        'scope': '/',
+        'display': 'standalone',
+        'background_color': '#ffffff',
+        'theme_color': '#3498db',
+        'description': 'Professional ID card solutions and public company website.',
+        'icons': [
+            {
+                'src': '/static/mobile/images/icon-192.png',
+                'sizes': '192x192',
+                'type': 'image/png',
+                'purpose': 'any maskable',
+            },
+            {
+                'src': '/static/mobile/images/icon-512.png',
+                'sizes': '512x512',
+                'type': 'image/png',
+                'purpose': 'any maskable',
+            },
+        ],
+    }
+    response = JsonResponse(manifest)
+    response['Content-Type'] = 'application/manifest+json'
+    response['Cache-Control'] = 'public, max-age=3600'
+    return response
+
+
+@require_GET
+def pwa_service_worker(request):
+    """Minimal pass-through service worker required for installability."""
+    sw_script = """self.addEventListener('install', function() {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', function() {
+    // Network pass-through; no runtime caching here.
+});
+"""
+    response = HttpResponse(sw_script, content_type='application/javascript')
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Service-Worker-Allowed'] = '/'
+    return response
 
 
 # ==========================================

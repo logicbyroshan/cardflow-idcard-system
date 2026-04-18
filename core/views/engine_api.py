@@ -15,6 +15,7 @@ Public surface:
 """
 import base64
 import concurrent.futures
+import hashlib
 import json
 import logging
 import mimetypes
@@ -964,12 +965,45 @@ def engine_download(request):
         base_dir / 'installer',
     ])
 
+    def _sha256_file(path_obj: Path):
+        hasher = hashlib.sha256()
+        with open(path_obj, 'rb') as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b''):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
     candidates = []
     for folder in search_dirs:
         for name in installer_names:
             candidate = folder / name
             if candidate.exists() and candidate.is_file():
                 candidates.append(candidate)
+
+    # Guard: do not serve a mislabeled raw engine EXE as the installer.
+    # This happened when AdarshEngine.exe was accidentally copied to
+    # AdarshEngineSetup.exe, which skips the setup wizard completely.
+    raw_engine_exe = base_dir / 'Face Cropper' / 'dist' / 'AdarshEngine.exe'
+    raw_engine_hash = None
+    raw_engine_size = None
+    try:
+        if raw_engine_exe.exists() and raw_engine_exe.is_file():
+            raw_engine_size = raw_engine_exe.stat().st_size
+            raw_engine_hash = _sha256_file(raw_engine_exe)
+    except Exception:
+        raw_engine_hash = None
+        raw_engine_size = None
+
+    if raw_engine_hash and raw_engine_size:
+        filtered = []
+        for candidate in candidates:
+            try:
+                if candidate.stat().st_size == raw_engine_size and _sha256_file(candidate) == raw_engine_hash:
+                    logger.warning("Skipping installer candidate identical to raw engine exe: %s", candidate)
+                    continue
+            except Exception:
+                pass
+            filtered.append(candidate)
+        candidates = filtered
 
     if not candidates:
         logger.error("AdarshEngineSetup.exe not found in any candidate path.")

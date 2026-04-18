@@ -18,7 +18,9 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -224,23 +226,49 @@ def api_cropper_latest_version(request):
 
     or ``{ "available": false }`` if no release has been published yet.
     """
-    release = CropperRelease.objects.filter(is_latest=True).first()
-
-    if not release:
-        return JsonResponse({"available": False})
-
-    # Use stored external URL if present, otherwise fall back to the local
-    # Django download endpoint so the update banner always has a working link.
     from django.urls import reverse
     fallback_url = request.build_absolute_uri(reverse('engine_download'))
-    download_url = release.download_url.strip() if release.download_url else ''
-    if not download_url:
-        download_url = fallback_url
+
+    release = CropperRelease.objects.filter(is_latest=True).first()
+    if release:
+        # Use stored external URL if present, otherwise fall back to the local
+        # Django download endpoint so the update banner always has a working link.
+        download_url = release.download_url.strip() if release.download_url else ''
+        if not download_url:
+            download_url = fallback_url
+
+        return JsonResponse({
+            "available": True,
+            "version": release.version,
+            "download_url": download_url,
+            "changelog": release.changelog,
+            "released_at": release.released_at.isoformat() if release.released_at else None,
+        })
+
+    # No release row exists (e.g., local/manual build) -> fall back to the
+    # bundled engine VERSION.txt so download buttons still show a concrete version.
+    base_dir = Path(getattr(settings, 'BASE_DIR', Path(__file__).resolve().parents[2]))
+    version_candidates = [
+        base_dir / 'Face Cropper' / 'VERSION.txt',
+        base_dir / 'VERSION.txt',
+    ]
+    local_version = ''
+    for candidate in version_candidates:
+        try:
+            if candidate.exists() and candidate.is_file():
+                local_version = candidate.read_text(encoding='utf-8').strip()
+        except Exception:
+            continue
+        if local_version:
+            break
+
+    if not local_version:
+        return JsonResponse({"available": False, "download_url": fallback_url})
 
     return JsonResponse({
         "available": True,
-        "version": release.version,
-        "download_url": download_url,
-        "changelog": release.changelog,
-        "released_at": release.released_at.isoformat() if release.released_at else None,
+        "version": local_version,
+        "download_url": fallback_url,
+        "changelog": "Local installer build available.",
+        "released_at": None,
     })

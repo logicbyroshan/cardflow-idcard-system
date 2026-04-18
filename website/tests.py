@@ -393,3 +393,24 @@ class WebsitePublicHardeningTests(TestCase):
 		self.assertEqual(submission.subject, 'Need help Bcc: hidden@example.com')
 		self.assertNotIn('\r', submission.subject)
 		self.assertNotIn('\n', submission.subject)
+
+
+class WebsitePwaInstallabilityTests(TestCase):
+	def test_manifest_endpoint_returns_installable_payload(self):
+		response = self.client.get(reverse('website:pwa_manifest'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/manifest+json')
+		payload = response.json()
+		self.assertEqual(payload.get('start_url'), '/')
+		self.assertEqual(payload.get('scope'), '/')
+		self.assertEqual(payload.get('display'), 'standalone')
+		self.assertGreaterEqual(len(payload.get('icons', [])), 1)
+
+	def test_service_worker_endpoint_returns_required_headers(self):
+		response = self.client.get(reverse('website:pwa_service_worker'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('javascript', response['Content-Type'])
+		self.assertEqual(response['Service-Worker-Allowed'], '/')
+		self.assertIn("self.addEventListener('fetch'", response.content.decode('utf-8'))

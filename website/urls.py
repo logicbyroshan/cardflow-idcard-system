@@ -6,6 +6,10 @@ from . import views
 app_name = 'website'
 
 urlpatterns = [
+    # Public website PWA endpoints (desktop/mobile browser install support)
+    path('manifest.json', views.pwa_manifest, name='pwa_manifest'),
+    path('sw.js', views.pwa_service_worker, name='pwa_service_worker'),
+
     # --- Main Navigation Pages ---
     path('', views.home, name='home'),
 

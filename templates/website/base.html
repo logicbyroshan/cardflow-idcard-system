@@ -21,8 +21,9 @@
     <meta name="twitter:card" content="summary_large_image">
     
     <meta name="theme-color" content="#3498db">
-    
-    <!-- PWA Manifest removed - landing site should not be installable as PWA -->
+
+    <!-- Public website PWA manifest (enables desktop install on Chrome/Edge) -->
+    <link rel="manifest" href="/manifest.json?v={{ APP_VERSION|urlencode }}">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
@@ -267,10 +268,10 @@
     // Panel URL for cross-subdomain redirects
     window.__panelUrl = '{{ PANEL_URL }}' || '';
 
-    // Unregister any leftover service workers from previous PWA setup
+    // Register website service worker for installability.
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-            regs.forEach(function(r) { r.unregister(); });
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js?v={{ APP_VERSION|urlencode }}', { scope: '/' }).catch(function () {});
         });
     }
     </script>
