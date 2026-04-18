@@ -45,13 +45,20 @@
     draftAutoMapReport: null,
     draftAutoMapReportOpen: false,
     draftActiveSide: 'front',
+    draftAlignReference: 'selection',
+    draftDistributeMode: 'spacing',
+    draftKeyObjectId: '',
+    draftAlignPreviewMode: '',
+    uiPanels: loadDraftUiPanelsState(),
     draftTool: 'select',
+    draftTransformMode: 'resize',
     draftDragging: null,
     draftResizeDragging: null,
     draftGuideDragging: null,
     draftTextDrag: null,
     draftRectDrag: null,
     draftSelectDrag: null,
+    draftLayerDragId: '',
     draftZoom: 2,
     draftZoomOriginX: 50,
     draftZoomOriginY: 50,
@@ -74,11 +81,109 @@
   var draftElementSeed = 1;
   var draftGuideSeed = 1;
   var PT_TO_PX = 96 / 72;
-  var DRAFT_HANDLE_SIZE_MIN_PX = 4;
-  var DRAFT_HANDLE_SIZE_MAX_PX = 9;
-  var DRAFT_HANDLE_GAP_MIN_PX = 3;
-  var DRAFT_HANDLE_GAP_MAX_PX = 5;
+  var DRAFT_HANDLE_SIZE_MIN_PX = 5;
+  var DRAFT_HANDLE_SIZE_MAX_PX = 11;
+  var DRAFT_HANDLE_GAP_MIN_PX = 4;
+  var DRAFT_HANDLE_GAP_MAX_PX = 6;
+  var DRAFT_ROTATE_DRAG_SENSITIVITY = 0.88;
+  var DRAFT_ROTATE_MIN_APPLY_DEGREES = 0.08;
+  var DRAFT_SKEW_DEGREES_AT_FULL_SPAN = 42;
+  var DRAFT_SKEW_SHIFT_SNAP_DEGREES = 3;
+  var DRAFT_SKEW_MAX_DEGREES = 75;
+  var DRAFT_UI_PANELS_STORAGE_KEY = 'gc_step2_ui_panels_v1';
   var draftTextMeasureNode = null;
+  var draftRenderRafId = 0;
+
+  function renderStep2OnNextFrame() {
+    if (state.step !== 2 || typeof window === 'undefined' || !window.requestAnimationFrame) {
+      render();
+      return;
+    }
+    if (draftRenderRafId) {
+      return;
+    }
+    draftRenderRafId = window.requestAnimationFrame(function () {
+      draftRenderRafId = 0;
+      render();
+    });
+  }
+
+  function normalizeDraftUiPanels(value) {
+    var raw = value && typeof value === 'object' ? value : {};
+    var requestedActive = String(raw.active || '').toLowerCase();
+    var active = '';
+    if (requestedActive === 'text' || requestedActive === 'align' || requestedActive === 'layers') {
+      active = requestedActive;
+    }
+    if (!active) {
+      if (raw.text) {
+        active = 'text';
+      } else if (raw.align) {
+        active = 'align';
+      } else if (raw.layers) {
+        active = 'layers';
+      }
+    }
+    return {
+      active: active,
+      text: active === 'text',
+      align: active === 'align',
+      layers: active === 'layers',
+    };
+  }
+
+  function loadDraftUiPanelsState() {
+    var fallback = normalizeDraftUiPanels(null);
+    try {
+      if (!window || !window.localStorage) {
+        return fallback;
+      }
+      var raw = String(window.localStorage.getItem(DRAFT_UI_PANELS_STORAGE_KEY) || '');
+      if (!raw) {
+        return fallback;
+      }
+      return normalizeDraftUiPanels(JSON.parse(raw));
+    } catch (_err) {
+      return fallback;
+    }
+  }
+
+  function saveDraftUiPanelsState() {
+    try {
+      if (!window || !window.localStorage) {
+        return;
+      }
+      window.localStorage.setItem(
+        DRAFT_UI_PANELS_STORAGE_KEY,
+        JSON.stringify(normalizeDraftUiPanels(state.uiPanels))
+      );
+    } catch (_err) {
+      // Ignore storage errors.
+    }
+  }
+
+  function activeDraftPanelName() {
+    state.uiPanels = normalizeDraftUiPanels(state.uiPanels);
+    return String(state.uiPanels.active || '');
+  }
+
+  function setDraftActivePanel(panelName) {
+    var panel = String(panelName || '').toLowerCase();
+    if (panel !== 'text' && panel !== 'align' && panel !== 'layers') {
+      panel = '';
+    }
+    state.uiPanels = normalizeDraftUiPanels({ active: panel });
+    saveDraftUiPanelsState();
+  }
+
+  function toggleDraftUiPanel(panelName) {
+    var panel = String(panelName || '').toLowerCase();
+    if (panel !== 'text' && panel !== 'align' && panel !== 'layers') {
+      return;
+    }
+    var active = activeDraftPanelName();
+    setDraftActivePanel(active === panel ? '' : panel);
+  }
 
   function ptToPx(value) {
     var v = Number(value || 0);
@@ -600,39 +705,34 @@
       + '.gc-step-panel.gc-step-panel-step2{width:100%;max-width:none;margin:0;border-radius:4px;padding:4px 0 0;display:flex;flex-direction:column;gap:6px;min-height:100%;background:#f8fafc;}'
       + '.gc-step-panel-step2 .gc-step-title,.gc-step-panel-step2 .gc-step-subtitle{padding:0 10px;}'
       + '.gc-step2-workspace{display:flex;flex-direction:column;gap:8px;padding:0 10px;min-height:0;flex:1;}'
-      + '.gc-step2-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;}'
-      + '.gc-step2-toolbar-left,.gc-step2-toolbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}'
-      + '.gc-step2-toolbar .btn{height:30px;padding:0 10px;font-size:11px;line-height:1;}'
-      + '.gc-step2-main{display:grid;grid-template-columns:58px minmax(0,1fr) 320px;gap:8px;min-height:0;flex:1;}'
-      + '.gc-step2-tools{border:1px solid #dbe2ea;border-radius:8px;background:linear-gradient(180deg,#ffffff,#f8fbff);padding:8px 6px;display:flex;flex-direction:column;gap:8px;align-items:stretch;box-shadow:0 1px 0 rgba(15,23,42,0.04);}'
-      + '.gc-step2-tool-btn{height:54px;border:1px solid #cbd5e1;border-radius:7px;background:#f8fafc;color:#334155;font-size:10px;font-weight:700;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;transition:all .16s ease;}'
-      + '.gc-step2-tool-btn:hover{border-color:#94a3b8;background:#f1f5f9;color:#0f172a;}'
-      + '.gc-step2-tool-icon{width:28px;height:28px;border-radius:8px;background:#e2e8f0;color:#1f2937;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(148,163,184,.35);}'
+      + '.gc-step2-main{display:grid;grid-template-columns:60px minmax(0,1fr) 336px;gap:10px;min-height:0;flex:1;}'
+      + '.gc-step2-tools{border:1px solid #cfd8e3;border-radius:10px;background:linear-gradient(180deg,#ffffff 0,#f3f7fb 100%);padding:8px 6px;display:flex;flex-direction:column;gap:7px;align-items:stretch;box-shadow:0 6px 16px rgba(15,23,42,.07);}'
+      + '.gc-step2-tool-btn{height:44px;border:1px solid #ccd6e2;border-radius:8px;background:#f7fbff;color:#334155;font-size:10px;font-weight:700;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;transition:all .16s ease;}'
+      + '.gc-step2-tool-btn:hover{border-color:#7a97b9;background:#edf4fb;color:#0f172a;}'
+      + '.gc-step2-tool-icon{width:24px;height:24px;border-radius:7px;background:#e2ebf5;color:#1f2937;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(122,151,185,.34);}'
       + '.gc-step2-tool-icon i{font-size:14px;line-height:1;}'
+      + '.gc-step2-tool-divider{height:1px;border-radius:999px;background:linear-gradient(90deg,transparent,#c8d3df,transparent);margin:1px 2px;}'
+      + '.gc-step2-group-btn{height:34px;border:1px solid #ccd6e2;border-radius:8px;background:#ffffff;color:#334155;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .16s ease;}'
+      + '.gc-step2-group-btn:hover{border-color:#7a97b9;background:#edf4fb;color:#0f172a;}'
+      + '.gc-step2-group-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;box-shadow:0 0 0 1px rgba(37,99,235,.16);}'
       + '.gc-step2-tool-label{font-size:10px;font-weight:700;letter-spacing:.01em;line-height:1.1;text-align:center;}'
       + '.gc-step2-tool-btn .gc-step2-tool-label{display:none;}'
-      + '.gc-step2-tool-btn.is-active{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;box-shadow:0 0 0 1px rgba(59,130,246,.15),0 6px 14px rgba(37,99,235,.16);}'
+      + '.gc-step2-tool-btn.is-active{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;box-shadow:0 0 0 1px rgba(59,130,246,.15),0 5px 12px rgba(37,99,235,.14);}'
       + '.gc-step2-tool-btn.is-active .gc-step2-tool-icon{background:#2563eb;color:#ffffff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);}'
-      + '.gc-step2-canvas-shell{display:flex;flex-direction:column;min-height:0;border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;overflow:hidden;}'
-      + '.gc-step2-canvas-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #e2e8f0;background:#f8fbff;}'
+      + '.gc-step2-canvas-shell{display:flex;flex-direction:column;min-height:0;border:1px solid #d5dde8;border-radius:10px;background:#ffffff;overflow:hidden;box-shadow:0 8px 22px rgba(15,23,42,.07);}'
+      + '.gc-step2-canvas-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #e2e8f0;background:linear-gradient(180deg,#ffffff 0,#f5f9fe 100%);}'
       + '.gc-step2-canvas-head .gc-inline-label{font-size:10px;}'
-      + '.gc-step2-center-controls{display:flex;align-items:center;gap:6px;justify-self:center;flex-wrap:wrap;}'
-      + '.gc-step2-zoom-range{width:120px;accent-color:#2563eb;}'
+      + '.gc-step2-canvas-head .gc-inline-value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px;}'
+      + '.gc-step2-center-controls{display:flex;align-items:center;gap:5px;justify-self:center;flex-wrap:wrap;}'
       + '.gc-step2-zoom-pill{font-size:10px;font-weight:800;color:#1e3a8a;background:#e0e7ff;border:1px solid #bfdbfe;border-radius:999px;padding:2px 7px;line-height:1.2;min-width:52px;text-align:center;}'
-      + '.gc-step2-unit-select{height:28px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 8px;font-size:11px;color:#0f172a;}'
-      + '.gc-step2-size-controls{display:flex;align-items:center;gap:2px;}'
-      + '.gc-step2-size-label{font-size:9px;font-weight:700;color:#334155;}'
-      + '.gc-step2-size-input{height:24px;width:48px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 4px;font-size:10px;color:#0f172a;text-align:center;}'
-      + '.gc-step2-size-input[readonly]{background:#f8fafc;color:#334155;border-color:#d1d5db;pointer-events:none;}'
-      + '.gc-step2-snap-control{display:flex;align-items:center;gap:4px;}'
-      + '.gc-step2-snap-label{font-size:10px;font-weight:700;color:#334155;white-space:nowrap;}'
-      + '.gc-step2-snap-input{height:28px;width:70px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 6px;font-size:11px;color:#0f172a;}'
-      + '.gc-step2-merge-select{height:28px;min-width:170px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:0 8px;font-size:11px;color:#0f172a;}'
+      + '.gc-step2-center-controls .btn{height:28px;min-width:28px;padding:0 8px;font-size:11px;line-height:1;border-radius:6px;}'
       + '.gc-step2-center-controls .btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
       + '.gc-step2-side-switch{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}'
-      + '.gc-step2-side-switch .gc-choice-btn{height:28px;padding:0 10px;border-radius:4px;font-size:11px;}'
+      + '.gc-step2-side-switch .gc-choice-btn{height:28px;padding:0 10px;border-radius:6px;font-size:11px;}'
       + '.gc-step2-target-side{display:inline-flex;align-items:center;height:26px;padding:0 8px;border:1px solid #cbd5e1;border-radius:4px;background:#ffffff;color:#334155;font-size:10px;font-weight:700;white-space:nowrap;}'
-      + '.gc-step2-canvas-stage{position:relative;flex:1;min-height:360px;background:#d6dde7;overflow:hidden;}'
+      + '.gc-step2-tool-btn:focus-visible,.gc-step2-group-btn:focus-visible,.gc-panel-toggle-btn:focus-visible,.gc-layer-item-icon-btn:focus-visible,.gc-prop-icon-btn:focus-visible,.gc-step2-side-switch .gc-choice-btn:focus-visible,.gc-step2-center-controls .btn:focus-visible{outline:2px solid #2563eb;outline-offset:2px;}'
+      + '.gc-prop-input:focus-visible,.gc-prop-select:focus-visible{outline:2px solid rgba(37,99,235,.35);outline-offset:1px;border-color:#2563eb;}'
+      + '.gc-step2-canvas-stage{position:relative;flex:1;min-height:360px;background:radial-gradient(circle at 22% 14%,#e6edf6 0,#d5dde7 42%,#cfd8e3 100%);overflow:hidden;}'
       + '.gc-step2-stage-content{position:absolute;top:10px;left:10px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:auto;padding:18px;}'
       + '.gc-step2-stage-content.is-space-pan{cursor:grab;}'
       + '.gc-step2-stage-content.is-space-pan.is-panning{cursor:grabbing;}'
@@ -657,30 +757,42 @@
       + '.gc-draft-el.gc-draft-el-text{background:transparent;border:1px dashed transparent;color:#0f172a;padding:0;}'
       + '.gc-draft-el.gc-draft-el-text:hover{border-color:transparent;background:transparent;}'
       + '.gc-draft-el.gc-draft-el-artistic{white-space:nowrap;align-items:center;overflow:visible;}'
+      + '.gc-draft-el-core{display:block;white-space:inherit;pointer-events:none;transform-origin:top left;}'
       + '.gc-draft-el.gc-draft-el-paragraph{white-space:normal;align-items:flex-start;padding-top:2px;overflow:hidden;}'
       + '.gc-draft-el.gc-draft-el-photo{border-style:solid;border-color:#0ea5e9;background:rgba(14,165,233,0.14);color:#0369a1;}'
       + '.gc-draft-el.gc-draft-el-rect{border-style:solid;background:rgba(37,99,235,0.10);color:transparent;padding:0;}'
+      + '.gc-draft-el.is-locked{cursor:not-allowed;opacity:.62;pointer-events:none;}'
       + '.gc-draft-el.is-selected{border:1px solid #111827;background:transparent;box-shadow:none;overflow:visible;}'
+      + '.gc-draft-el.is-key-object{border:2px solid #f59e0b !important;box-shadow:0 0 0 1px rgba(245,158,11,.35);}'
+      + '.gc-draft-el.is-key-object.gc-draft-el-text{border-color:#f59e0b !important;}'
+      + '.gc-draft-el.is-selected[data-action="select-draft-element"]{cursor:grab;}'
       + '.gc-draft-el.gc-draft-el-text.is-selected{background:transparent;border-color:transparent;}'
       + '.gc-draft-el.gc-draft-el-text.gc-draft-el-artistic.is-selected::after{display:none;}'
+      + '.gc-draft-selection-group{background:transparent !important;border:1px dashed #0f172a !important;z-index:4;pointer-events:auto;}'
       + '.gc-draft-el.is-merge-preview{border-style:dashed;}'
       + '.gc-draft-el.gc-draft-el-text.is-merge-preview{background:rgba(219,234,254,.32);border-color:rgba(37,99,235,.42);color:#1e3a8a;}'
       + '.gc-draft-el.gc-draft-el-photo.is-merge-preview{background:repeating-linear-gradient(45deg,rgba(14,165,233,.12) 0,rgba(14,165,233,.12) 6px,rgba(2,132,199,.18) 6px,rgba(2,132,199,.18) 12px);border-color:#0284c7;color:#075985;}'
       + '.gc-draft-el.gc-draft-el-text.is-editing::after{display:none;}'
       + '.gc-draft-el.gc-draft-el-text.is-editing{border-color:transparent;background:transparent;box-shadow:none;}'
-      + '.gc-draft-selection-handle{position:absolute;width:var(--gc-handle-size,5px);height:var(--gc-handle-size,5px);border:1px solid #111827;background:#ffffff;border-radius:1px;box-sizing:border-box;pointer-events:auto;z-index:3;}'
-      + '.gc-draft-selection-handle.is-nw{left:calc(-1 * var(--gc-handle-offset-x,6px));top:calc(-1 * var(--gc-handle-offset-y,6px));}'
-      + '.gc-draft-selection-handle.is-n{left:50%;top:calc(-1 * var(--gc-handle-offset-y,6px));transform:translateX(-50%);}'
-      + '.gc-draft-selection-handle.is-ne{right:calc(-1 * var(--gc-handle-offset-x,6px));top:calc(-1 * var(--gc-handle-offset-y,6px));}'
-      + '.gc-draft-selection-handle.is-e{right:calc(-1 * var(--gc-handle-offset-x,6px));top:50%;transform:translateY(-50%);}'
-      + '.gc-draft-selection-handle.is-sw{left:calc(-1 * var(--gc-handle-offset-x,6px));bottom:calc(-1 * var(--gc-handle-offset-y,6px));}'
-      + '.gc-draft-selection-handle.is-s{left:50%;bottom:calc(-1 * var(--gc-handle-offset-y,6px));transform:translateX(-50%);}'
-      + '.gc-draft-selection-handle.is-se{right:calc(-1 * var(--gc-handle-offset-x,6px));bottom:calc(-1 * var(--gc-handle-offset-y,6px));}'
-      + '.gc-draft-selection-handle.is-w{left:calc(-1 * var(--gc-handle-offset-x,6px));top:50%;transform:translateY(-50%);}'
+      + '.gc-draft-selection-handle{position:absolute;width:var(--gc-handle-size,8px);height:var(--gc-handle-size,8px);border:1px solid #111827;background:#ffffff;border-radius:1px;box-sizing:border-box;pointer-events:auto;z-index:3;touch-action:none;}'
+      + '.gc-draft-selection-handle::after{content:"";position:absolute;left:-6px;top:-6px;right:-6px;bottom:-6px;background:transparent;}'
+      + '.gc-draft-selection-handle.is-nw{left:calc(-1 * var(--gc-handle-offset-x,8px));top:calc(-1 * var(--gc-handle-offset-y,8px));}'
+      + '.gc-draft-selection-handle.is-n{left:50%;top:calc(-1 * var(--gc-handle-offset-y,8px));transform:translateX(-50%);}'
+      + '.gc-draft-selection-handle.is-ne{right:calc(-1 * var(--gc-handle-offset-x,8px));top:calc(-1 * var(--gc-handle-offset-y,8px));}'
+      + '.gc-draft-selection-handle.is-e{right:calc(-1 * var(--gc-handle-offset-x,8px));top:50%;transform:translateY(-50%);}'
+      + '.gc-draft-selection-handle.is-sw{left:calc(-1 * var(--gc-handle-offset-x,8px));bottom:calc(-1 * var(--gc-handle-offset-y,8px));}'
+      + '.gc-draft-selection-handle.is-s{left:50%;bottom:calc(-1 * var(--gc-handle-offset-y,8px));transform:translateX(-50%);}'
+      + '.gc-draft-selection-handle.is-se{right:calc(-1 * var(--gc-handle-offset-x,8px));bottom:calc(-1 * var(--gc-handle-offset-y,8px));}'
+      + '.gc-draft-selection-handle.is-w{left:calc(-1 * var(--gc-handle-offset-x,8px));top:50%;transform:translateY(-50%);}'
       + '.gc-draft-selection-handle.is-n,.gc-draft-selection-handle.is-s{cursor:ns-resize;}'
       + '.gc-draft-selection-handle.is-e,.gc-draft-selection-handle.is-w{cursor:ew-resize;}'
       + '.gc-draft-selection-handle.is-nw,.gc-draft-selection-handle.is-se{cursor:nwse-resize;}'
       + '.gc-draft-selection-handle.is-ne,.gc-draft-selection-handle.is-sw{cursor:nesw-resize;}'
+      + '.gc-draft-el.is-transform-rotate .gc-draft-selection-handle{border-radius:999px;}'
+      + '.gc-draft-el.is-transform-rotate .gc-draft-selection-handle.is-skew{border-radius:2px;background:#e2e8f0;}'
+      + '.gc-draft-selection-handle[data-transform-kind="rotate"]{cursor:grab;}'
+      + '.gc-draft-selection-handle[data-transform-kind="skew-x"]{cursor:ew-resize;}'
+      + '.gc-draft-selection-handle[data-transform-kind="skew-y"]{cursor:ns-resize;}'
       + '.gc-draft-inline-editor{display:block;width:100%;height:100%;outline:none;border:0;background:transparent;overflow:visible;cursor:text;user-select:text;white-space:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;text-align:inherit;}'
       + '.gc-draft-inline-editor:focus{outline:none;}'
       + '.gc-draft-guide{position:absolute;border:0;background:transparent;z-index:2;}'
@@ -695,9 +807,32 @@
       + '.gc-step2-canvas-shell.is-guides-locked .gc-step2-ruler-top,.gc-step2-canvas-shell.is-guides-locked .gc-step2-ruler-left{cursor:not-allowed;opacity:.65;}'
       + '.gc-step2-canvas-shell.is-guides-locked .gc-draft-guide{pointer-events:none;}'
       + '.gc-draft-insert-guide{position:absolute;border:1px dashed #0f766e;background:rgba(45,212,191,0.18);pointer-events:none;z-index:2;}'
+      + '.gc-draft-align-preview-line{position:absolute;pointer-events:none;z-index:2;border-color:rgba(245,158,11,.9);border-style:dashed;}'
+      + '.gc-draft-align-preview-line.is-v{top:0;bottom:0;width:0;border-left-width:1px;}'
+      + '.gc-draft-align-preview-line.is-h{left:0;right:0;height:0;border-top-width:1px;}'
       + '.gc-draft-insert-guide.is-rect{border-color:#2563eb;background:rgba(37,99,235,0.13);}'
       + '.gc-draft-insert-guide.is-select{border-color:#0f172a;background:rgba(15,23,42,0.08);}'
-      + '.gc-step2-props{border:1px solid #dbe2ea;border-radius:4px;background:#ffffff;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;}'
+      + '.gc-step2-props{border:0;border-radius:0;background:transparent;padding:0;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;position:relative;}'
+      + '.gc-panel-toggle-btn{height:28px;min-width:28px;padding:0 8px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#334155;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:700;cursor:pointer;}'
+      + '.gc-panel-toggle-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
+      + '.gc-prop-panel{border:1px solid #d4deea;border-radius:12px;background:linear-gradient(180deg,#ffffff 0,#f7fbff 100%);padding:10px;display:flex;flex-direction:column;gap:8px;}'
+      + '.gc-prop-panel.gc-prop-panel-floating{box-shadow:0 12px 24px rgba(15,23,42,.12);transform:translateY(0);opacity:1;transition:opacity .18s ease,transform .18s ease;position:sticky;top:0;}'
+      + '.gc-prop-panel-title{font-size:10px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid #e6edf6;}'
+      + '.gc-prop-empty{font-size:11px;color:#64748b;padding:12px 9px;border:1px dashed #c5d1de;border-radius:10px;background:linear-gradient(180deg,#f8fafc,#f1f5f9);}'
+      + '.gc-layer-stack-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}'
+      + '.gc-layer-stack-actions .btn{height:28px;padding:0 8px;font-size:11px;line-height:1;}'
+      + '.gc-layer-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;padding-right:2px;}'
+      + '.gc-layer-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px;padding:5px 6px;border:1px solid #dbe2ea;border-radius:5px;background:#ffffff;cursor:grab;}'
+      + '.gc-layer-item.is-selected{border-color:#2563eb;background:#eff6ff;}'
+      + '.gc-layer-item.is-hidden{opacity:.55;}'
+      + '.gc-layer-item.is-locked{border-style:dashed;}'
+      + '.gc-layer-item-label-btn{display:flex;align-items:center;gap:6px;min-width:0;background:transparent;border:0;padding:0;color:#0f172a;font-size:11px;font-weight:700;cursor:pointer;text-align:left;}'
+      + '.gc-layer-item-label-btn .gc-layer-item-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+      + '.gc-layer-item-meta{font-size:10px;color:#64748b;font-weight:700;white-space:nowrap;}'
+      + '.gc-layer-item-icon-btn{width:26px;height:26px;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;color:#334155;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}'
+      + '.gc-layer-item-icon-btn.is-active{border-color:#2563eb;background:#dbeafe;color:#1d4ed8;}'
+      + '.gc-layer-item-icon-btn.is-off{opacity:.65;}'
+      + '.gc-layer-item.is-drag-over{outline:2px solid rgba(37,99,235,.45);outline-offset:1px;}'
       + '.gc-prop-section-title{font-size:10px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:.05em;margin:2px 0;}'
       + '.gc-prop-group{display:flex;flex-direction:column;gap:4px;}'
       + '.gc-prop-group label{font-size:11px;font-weight:700;color:#334155;}'
@@ -741,7 +876,7 @@
       + '.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:52mm;max-width:100%;height:auto;aspect-ratio:1/1.526;}'
       + '.gc-step-panel-step3 .gc-actions{margin-top:auto;padding:8px 10px 10px;position:sticky;bottom:0;background:#f8fafc;z-index:1;}'
       + '@media (max-width:1180px){.gc-flow-header{grid-template-columns:minmax(0,1fr) auto;}.gc-header-stepper{grid-column:1 / -1;order:3;overflow-x:auto;padding-bottom:2px;}.gc-inline-group.gc-inline-group-selection{align-items:flex-start;text-align:left;margin-left:0;}}'
-      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;padding:6px;justify-content:space-between;}.gc-step2-tool-btn{flex:1;height:44px;}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-zoom-range{width:100px;}.gc-step2-size-input{width:58px;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
+      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;flex-wrap:wrap;padding:6px;justify-content:flex-start;}.gc-step2-tool-btn{width:44px;height:44px;}.gc-step2-group-btn{width:36px;}.gc-step2-tool-divider{width:1px;height:26px;margin:4px 2px;background:linear-gradient(180deg,transparent,#c8d3df,transparent);}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
 
     document.head.appendChild(style);
   }
@@ -1116,6 +1251,10 @@
     state.draftAutoMapReport = null;
     state.draftAutoMapReportOpen = false;
     state.draftActiveSide = 'front';
+    state.draftAlignReference = 'selection';
+    state.draftDistributeMode = 'spacing';
+    state.draftKeyObjectId = '';
+    state.draftAlignPreviewMode = '';
     state.draftTool = 'select';
     state.draftDragging = null;
     state.draftResizeDragging = null;
@@ -1123,6 +1262,7 @@
     state.draftTextDrag = null;
     state.draftRectDrag = null;
     state.draftSelectDrag = null;
+    state.draftLayerDragId = '';
     state.draftZoom = 2;
     state.draftZoomOriginX = 50;
     state.draftZoomOriginY = 50;
@@ -1171,6 +1311,9 @@
       draftSelectedGuideId: String(state.draftSelectedGuideId || ''),
       draftMergePreview: !!state.draftMergePreview,
       draftActiveSide: state.draftActiveSide === 'back' ? 'back' : 'front',
+      draftAlignReference: normalizeDraftAlignReference(state.draftAlignReference),
+      draftDistributeMode: normalizeDraftDistributeMode(state.draftDistributeMode),
+      draftKeyObjectId: String(state.draftKeyObjectId || ''),
       draftTool: String(state.draftTool || 'select'),
       orientation: normalizeOrientation(state.orientation || 'landscape'),
       isTwoSided: !!state.isTwoSided,
@@ -1268,6 +1411,10 @@
     state.draftSelectedGuideId = String(snapshot.draftSelectedGuideId || '');
     state.draftMergePreview = !!snapshot.draftMergePreview;
     state.draftActiveSide = snapshot.draftActiveSide === 'back' ? 'back' : 'front';
+    state.draftAlignReference = normalizeDraftAlignReference(snapshot.draftAlignReference);
+    state.draftDistributeMode = normalizeDraftDistributeMode(snapshot.draftDistributeMode);
+    state.draftKeyObjectId = String(snapshot.draftKeyObjectId || '');
+    state.draftAlignPreviewMode = '';
 
     var tool = String(snapshot.draftTool || 'select');
     if (tool !== 'select' && tool !== 'text' && tool !== 'photo' && tool !== 'rectangle') {
@@ -1297,9 +1444,11 @@
     state.draftTextDrag = null;
     state.draftRectDrag = null;
     state.draftSelectDrag = null;
+    state.draftLayerDragId = '';
     clearDraftInlineTextEditing();
     state.draftInlineEditHistoryActive = false;
 
+    normalizeDraftElementZOrder(false);
     normalizeDraftElementSelection();
     state.draftDirty = true;
     syncDraftToSelectedTemplate();
@@ -1942,6 +2091,416 @@
   var DRAFT_ARTISTIC_MAX_HEIGHT_MULTIPLIER = 4;
   var DRAFT_ARTISTIC_MIN_VISIBLE_PX = 8;
 
+  function normalizeDraftTextType(value) {
+    var raw = String(value || '').toLowerCase();
+    return raw === 'paragraph' ? 'paragraph' : 'artistic';
+  }
+
+  function normalizeDraftAlignReference(value) {
+    var raw = String(value || '').toLowerCase();
+    if (raw === 'page') {
+      return 'page';
+    }
+    if (raw === 'keyobject' || raw === 'key-object') {
+      return 'keyObject';
+    }
+    return 'selection';
+  }
+
+  function normalizeDraftDistributeMode(value) {
+    var raw = String(value || '').toLowerCase();
+    if (raw === 'centers') {
+      return 'centers';
+    }
+    if (raw === 'edges') {
+      return 'edges';
+    }
+    return 'spacing';
+  }
+
+  function normalizeDraftElementZIndex(value, fallback) {
+    var z = Number(value);
+    if (!Number.isFinite(z)) {
+      z = Number(fallback || 1);
+    }
+    if (!Number.isFinite(z) || z < 1) {
+      z = 1;
+    }
+    return Math.max(1, Math.round(z));
+  }
+
+  function isDraftElementVisible(item) {
+    return !!item && item.visible !== false;
+  }
+
+  function isDraftElementLocked(item) {
+    return !!(item && item.locked === true);
+  }
+
+  function isDraftElementSelectable(item) {
+    return !!item && isDraftElementVisible(item) && !isDraftElementLocked(item);
+  }
+
+  function sortDraftElementsByZIndex(elements) {
+    var src = Array.isArray(elements) ? elements : [];
+    return src
+      .map(function (item, idx) {
+        return {
+          item: item,
+          idx: idx,
+          z: normalizeDraftElementZIndex(item && item.zIndex, idx + 1),
+        };
+      })
+      .sort(function (a, b) {
+        if (a.z !== b.z) {
+          return a.z - b.z;
+        }
+        return a.idx - b.idx;
+      })
+      .map(function (entry) {
+        return entry.item;
+      });
+  }
+
+  function sortedDraftElements() {
+    ensureStep2DraftInitialized();
+    return sortDraftElementsByZIndex(state.templateDraft && state.templateDraft.elements);
+  }
+
+  function maxDraftElementZIndex() {
+    var sorted = sortedDraftElements();
+    if (!sorted.length) {
+      return 0;
+    }
+    return normalizeDraftElementZIndex(sorted[sorted.length - 1] && sorted[sorted.length - 1].zIndex, sorted.length);
+  }
+
+  function normalizeDraftElementZOrder(markDirty) {
+    var elements = Array.isArray(state.templateDraft && state.templateDraft.elements)
+      ? state.templateDraft.elements
+      : [];
+    if (!elements.length) {
+      return false;
+    }
+
+    var sorted = sortDraftElementsByZIndex(elements);
+    var changed = false;
+    var normalized = sorted.map(function (item, idx) {
+      if (!item) {
+        return item;
+      }
+      var expectedZ = idx + 1;
+      var currentZ = normalizeDraftElementZIndex(item.zIndex, expectedZ);
+      if (currentZ !== expectedZ || item !== elements[idx]) {
+        changed = true;
+      }
+      var next = Object.assign({}, item);
+      next.zIndex = expectedZ;
+      return next;
+    });
+
+    if (!changed) {
+      return false;
+    }
+
+    state.templateDraft.elements = normalized;
+    normalizeDraftElementSelection();
+    if (markDirty) {
+      markDraftDirty();
+    }
+    return true;
+  }
+
+  function topDraftElementAtPoint(pointX, pointY, side, includeLocked) {
+    ensureStep2DraftInitialized();
+    var x = Number(pointX || 0);
+    var y = Number(pointY || 0);
+    var wantedSide = normalizeDraftEditorSide(side || state.draftActiveSide);
+    var allowLocked = !!includeLocked;
+    var items = sortedDraftElements();
+
+    for (var i = items.length - 1; i >= 0; i -= 1) {
+      var item = items[i];
+      if (!item) {
+        continue;
+      }
+      if (!isDraftElementVisible(item)) {
+        continue;
+      }
+      if (!allowLocked && isDraftElementLocked(item)) {
+        continue;
+      }
+      var renderSides = draftElementRenderSides(item);
+      if (!renderSides.some(function (s) { return s === wantedSide; })) {
+        continue;
+      }
+      var b = draftElementBounds(item);
+      var left = Number(b.x || 0);
+      var top = Number(b.y || 0);
+      var right = left + Math.max(0, Number(b.width || 0));
+      var bottom = top + Math.max(0, Number(b.height || 0));
+      if (x >= left && x <= right && y >= top && y <= bottom) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  function isArtisticDraftText(item) {
+    if (!item || String(item.type || '').toLowerCase() !== 'text') {
+      return false;
+    }
+    return normalizeDraftTextType(item.textType || item.textMode) === 'artistic';
+  }
+
+  function clampDraftScale(value) {
+    var v = Number(value || 1);
+    if (!Number.isFinite(v) || v === 0) {
+      v = 1;
+    }
+    var abs = Math.max(0.05, Math.min(50, Math.abs(v)));
+    return v < 0 ? -abs : abs;
+  }
+
+  function normalizeDraftAngle(value) {
+    var v = Number(value || 0);
+    if (!Number.isFinite(v)) {
+      return 0;
+    }
+    return Math.max(-360, Math.min(360, v));
+  }
+
+  function draftTextValue(item) {
+    if (!item || typeof item !== 'object') {
+      return '';
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'text')) {
+      return String(item.text == null ? '' : item.text);
+    }
+    return String(item.label == null ? '' : item.label);
+  }
+
+  function draftTextAlignOffsetX(textAlign, width) {
+    var align = String(textAlign || 'left').toLowerCase();
+    var w = Math.max(0, Number(width || 0));
+    if (align === 'center') {
+      return -(w / 2);
+    }
+    if (align === 'right') {
+      return -w;
+    }
+    return 0;
+  }
+
+  function draftArtisticTransformInfo(item, widthOverride, heightOverride) {
+    var baseWidth = Math.max(6, Number(widthOverride == null ? (item && item.width || 6) : widthOverride));
+    var baseHeight = Math.max(10, Number(heightOverride == null ? (item && item.height || 10) : heightOverride));
+    var scaleX = clampDraftScale(item && item.scaleX);
+    var scaleY = clampDraftScale(item && item.scaleY);
+    var rotation = normalizeDraftAngle(item && item.rotation);
+    var skewX = normalizeDraftAngle(item && item.skewX);
+    var skewY = normalizeDraftAngle(item && item.skewY);
+
+    var rotationRad = rotation * (Math.PI / 180);
+    var skewXRad = skewX * (Math.PI / 180);
+    var skewYRad = skewY * (Math.PI / 180);
+    var tanSkewX = Math.tan(skewXRad);
+    var tanSkewY = Math.tan(skewYRad);
+    if (!Number.isFinite(tanSkewX)) {
+      tanSkewX = 0;
+    }
+    if (!Number.isFinite(tanSkewY)) {
+      tanSkewY = 0;
+    }
+    tanSkewX = Math.max(-100, Math.min(100, tanSkewX));
+    tanSkewY = Math.max(-100, Math.min(100, tanSkewY));
+
+    var cosR = Math.cos(rotationRad);
+    var sinR = Math.sin(rotationRad);
+    var a = scaleX * (cosR - (sinR * tanSkewY));
+    var b = scaleX * ((cosR * tanSkewX) - sinR);
+    var c = scaleY * (sinR + (cosR * tanSkewY));
+    var d = scaleY * ((sinR * tanSkewX) + cosR);
+
+    var p1x = (a * baseWidth);
+    var p1y = (c * baseWidth);
+    var p2x = (b * baseHeight);
+    var p2y = (d * baseHeight);
+    var p3x = p1x + p2x;
+    var p3y = p1y + p2y;
+
+    var minX = Math.min(0, p1x, p2x, p3x);
+    var minY = Math.min(0, p1y, p2y, p3y);
+    var maxX = Math.max(0, p1x, p2x, p3x);
+    var maxY = Math.max(0, p1y, p2y, p3y);
+
+    return {
+      baseWidth: baseWidth,
+      baseHeight: baseHeight,
+      scaleX: scaleX,
+      scaleY: scaleY,
+      rotation: rotation,
+      skewX: skewX,
+      skewY: skewY,
+      a: a,
+      b: b,
+      c: c,
+      d: d,
+      minX: minX,
+      minY: minY,
+      maxX: maxX,
+      maxY: maxY,
+      width: Math.max(1, maxX - minX),
+      height: Math.max(1, maxY - minY),
+      basisX: a,
+      basisY: c,
+    };
+  }
+
+  function measureDraftTextDimensions(item, textOverride) {
+    var metrics = draftCanvasMetrics();
+    var displayInfo = draftCanvasDisplayInfo(metrics);
+    var displayScaleX = Number(displayInfo.scaleX || 1);
+    var displayScaleY = Number(displayInfo.scaleY || 1);
+    if (!Number.isFinite(displayScaleX) || displayScaleX <= 0) {
+      displayScaleX = 1;
+    }
+    if (!Number.isFinite(displayScaleY) || displayScaleY <= 0) {
+      displayScaleY = 1;
+    }
+
+    var fontSize = Number(item && item.fontSize || 12);
+    if (!Number.isFinite(fontSize) || fontSize <= 0) {
+      fontSize = 12;
+    }
+    var fontSizePx = ptToPx(fontSize);
+    if (!Number.isFinite(fontSizePx) || fontSizePx <= 0) {
+      fontSizePx = ptToPx(12);
+    }
+    var letterSpacing = Number(item && item.letterSpacing || 0);
+    if (!Number.isFinite(letterSpacing)) {
+      letterSpacing = 0;
+    }
+
+    var value = textOverride == null ? draftTextValue(item) : String(textOverride);
+    var normalized = value.replace(/\r\n?/g, '\n').split('\n')[0] || '';
+    var widthPx = estimateDraftTextWidthPx(
+      normalized,
+      fontSize,
+      item && item.fontFamily,
+      item && item.fontWeight,
+      item && item.fontStyle,
+      letterSpacing
+    );
+    if (!Number.isFinite(widthPx) || widthPx < 0) {
+      widthPx = 0;
+    }
+
+    var heightPx = 0;
+    var ctx = draftTextMeasureContext();
+    if (ctx) {
+      ctx.font = String(item && item.fontStyle || 'normal')
+        + ' ' + String(item && item.fontWeight || '400')
+        + ' ' + fontSizePx + 'px '
+        + String(item && item.fontFamily || 'Arial');
+      var glyphMetrics = ctx.measureText(normalized || ' ');
+      var ascent = Number(glyphMetrics && glyphMetrics.actualBoundingBoxAscent || 0);
+      var descent = Number(glyphMetrics && glyphMetrics.actualBoundingBoxDescent || 0);
+      var glyphHeight = ascent + descent;
+      if (Number.isFinite(glyphHeight) && glyphHeight > 0) {
+        heightPx = glyphHeight;
+      }
+    }
+
+    var measureNode = draftTextMeasureElement();
+    if ((!Number.isFinite(heightPx) || heightPx <= 0) && measureNode) {
+      measureNode.style.fontFamily = String(item && item.fontFamily || 'Arial');
+      measureNode.style.fontWeight = String(item && item.fontWeight || '400');
+      measureNode.style.fontStyle = String(item && item.fontStyle || 'normal');
+      measureNode.style.fontSize = String(fontSize) + 'pt';
+      measureNode.style.letterSpacing = String(letterSpacing) + 'px';
+      measureNode.style.lineHeight = '1';
+      measureNode.style.whiteSpace = 'nowrap';
+      measureNode.textContent = normalized || ' ';
+      var heightDom = Number(measureNode.getBoundingClientRect && measureNode.getBoundingClientRect().height || 0);
+      if (Number.isFinite(heightDom) && heightDom > 0) {
+        heightPx = heightDom;
+      }
+    }
+    if (!Number.isFinite(heightPx) || heightPx <= 0) {
+      heightPx = Math.ceil(fontSizePx + 1);
+    }
+
+    return {
+      width: widthPx / displayScaleX,
+      height: heightPx / displayScaleY,
+      hasText: normalized.length > 0,
+    };
+  }
+
+  function draftArtisticBounds(item) {
+    var transform = draftArtisticTransformInfo(item);
+    var width = Math.max(1, Number(transform.width || 1));
+    var height = Math.max(1, Number(transform.height || 1));
+    var anchorX = Number(item && item.x || 0);
+    var anchorY = Number(item && item.y || 0);
+    if (!Number.isFinite(anchorX)) {
+      anchorX = 0;
+    }
+    if (!Number.isFinite(anchorY)) {
+      anchorY = 0;
+    }
+    var left = anchorX + draftTextAlignOffsetX(item && (item.textAlign || item.align), width);
+    var top = anchorY;
+    var originX = left - Number(transform.minX || 0);
+    var originY = top - Number(transform.minY || 0);
+    return {
+      x: left,
+      y: top,
+      width: width,
+      height: height,
+      anchorX: anchorX,
+      anchorY: anchorY,
+      baseWidth: transform.baseWidth,
+      baseHeight: transform.baseHeight,
+      scaleX: transform.scaleX,
+      scaleY: transform.scaleY,
+      rotation: transform.rotation,
+      skewX: transform.skewX,
+      skewY: transform.skewY,
+      minX: transform.minX,
+      minY: transform.minY,
+      maxX: transform.maxX,
+      maxY: transform.maxY,
+      originX: originX,
+      originY: originY,
+      coreOffsetX: -Number(transform.minX || 0),
+      coreOffsetY: -Number(transform.minY || 0),
+      matrixA: transform.a,
+      matrixB: transform.b,
+      matrixC: transform.c,
+      matrixD: transform.d,
+      basisX: transform.basisX,
+      basisY: transform.basisY,
+    };
+  }
+
+  function draftElementBounds(item) {
+    if (!item) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+    if (isArtisticDraftText(item)) {
+      return draftArtisticBounds(item);
+    }
+    return {
+      x: Number(item.x || 0),
+      y: Number(item.y || 0),
+      width: Math.max(0, Number(item.width || 0)),
+      height: Math.max(0, Number(item.height || 0)),
+    };
+  }
+
   function draftArtisticLimits(metrics) {
     var widthBase = Math.max(1, Number(metrics && metrics.width || 0));
     var heightBase = Math.max(1, Number(metrics && metrics.height || 0));
@@ -1956,91 +2515,21 @@
       return;
     }
 
-    var mode = String(draft.textMode || 'artistic').toLowerCase();
+    var mode = normalizeDraftTextType(draft.textType || draft.textMode);
     if (mode !== 'artistic') {
       return;
     }
 
+    var size = measureDraftTextDimensions(draft);
+    var width = Number(size.width || 0);
+    var height = Number(size.height || 0);
+    var textRaw = draftTextValue(draft).replace(/\r\n?/g, '\n').split('\n')[0] || '';
+
     var metrics = draftCanvasMetrics();
-    var displayInfo = draftCanvasDisplayInfo(metrics);
-    var displayScaleX = Number(displayInfo.scaleX || 1);
-    var displayScaleY = Number(displayInfo.scaleY || 1);
-    if (!Number.isFinite(displayScaleX) || displayScaleX <= 0) {
-      displayScaleX = 1;
-    }
-    if (!Number.isFinite(displayScaleY) || displayScaleY <= 0) {
-      displayScaleY = 1;
-    }
-    var fontSize = Number(draft.fontSize || 12);
-    if (!Number.isFinite(fontSize) || fontSize <= 0) {
-      fontSize = 12;
-    }
-    var fontSizePx = ptToPx(fontSize);
-    if (!Number.isFinite(fontSizePx) || fontSizePx <= 0) {
-      fontSizePx = ptToPx(12);
-    }
-    var letterSpacing = Number(draft.letterSpacing || 0);
-    if (!Number.isFinite(letterSpacing)) {
-      letterSpacing = 0;
-    }
-
-    var label = String(draft.label == null ? '' : draft.label);
-    var normalized = label.replace(/\r\n?/g, '\n').split('\n')[0] || '';
-    var width = estimateDraftTextWidthPx(
-      normalized,
-      fontSize,
-      draft.fontFamily,
-      draft.fontWeight,
-      draft.fontStyle,
-      letterSpacing
-    );
-    if (!Number.isFinite(width) || width < 0) {
-      width = 0;
-    }
-
-    var height = 0;
-    var ctx = draftTextMeasureContext();
-    if (ctx) {
-      ctx.font = String(draft.fontStyle || 'normal')
-        + ' ' + String(draft.fontWeight || '400')
-        + ' ' + fontSizePx + 'px '
-        + String(draft.fontFamily || 'Arial');
-      var glyphMetrics = ctx.measureText(normalized || ' ');
-      var ascent = Number(glyphMetrics && glyphMetrics.actualBoundingBoxAscent || 0);
-      var descent = Number(glyphMetrics && glyphMetrics.actualBoundingBoxDescent || 0);
-      var glyphHeight = ascent + descent;
-      if (Number.isFinite(glyphHeight) && glyphHeight > 0) {
-        height = glyphHeight;
-      }
-    }
-
-    var measureNode = draftTextMeasureElement();
-    if ((!Number.isFinite(height) || height <= 0) && measureNode) {
-      measureNode.style.fontFamily = String(draft.fontFamily || 'Arial');
-      measureNode.style.fontWeight = String(draft.fontWeight || '400');
-      measureNode.style.fontStyle = String(draft.fontStyle || 'normal');
-      measureNode.style.fontSize = String(fontSize) + 'pt';
-      measureNode.style.letterSpacing = String(letterSpacing) + 'px';
-      measureNode.style.lineHeight = '1';
-      measureNode.style.whiteSpace = 'nowrap';
-      measureNode.textContent = normalized || ' ';
-      var heightDom = Number(measureNode.getBoundingClientRect && measureNode.getBoundingClientRect().height || 0);
-      if (Number.isFinite(heightDom) && heightDom > 0) {
-        height = heightDom;
-      }
-    }
-    if (!Number.isFinite(height) || height <= 0) {
-      height = Math.ceil(fontSizePx + 1);
-    }
-
-    // Text metrics are in rendered CSS pixels; convert back to internal canvas units.
-    width = width / displayScaleX;
-    height = height / displayScaleY;
-
     var limits = draftArtisticLimits(metrics);
     var resolvedWidth = Number(width.toFixed(2));
     var resolvedHeight = Number(height.toFixed(2));
-    draft.width = Math.max(normalized.length ? 8 : 6, Math.min(limits.maxWidth, resolvedWidth));
+    draft.width = Math.max(textRaw.length ? 8 : 6, Math.min(limits.maxWidth, resolvedWidth));
     draft.height = Math.max(10, Math.min(limits.maxHeight, resolvedHeight));
   }
 
@@ -2056,11 +2545,8 @@
     if (type !== 'text' && type !== 'image' && type !== 'rectangle') {
       type = 'text';
     }
-    var rawTextMode = String(item.textMode || 'artistic').toLowerCase();
-    if (rawTextMode !== 'artistic' && rawTextMode !== 'paragraph') {
-      rawTextMode = 'artistic';
-    }
-    var isArtisticText = type === 'text' && rawTextMode === 'artistic';
+    var textType = normalizeDraftTextType(item.textType || item.textMode || 'artistic');
+    var isArtisticText = type === 'text' && textType === 'artistic';
     var width = Number(item.width || 90);
     var height = Number(item.height || 24);
     var x = Number(item.x || 16);
@@ -2071,6 +2557,17 @@
     if (!Number.isFinite(x)) x = 16;
     if (!Number.isFinite(y)) y = 16;
 
+    var textAlign = String(item.textAlign || item.align || 'center').toLowerCase();
+    if (textAlign !== 'left' && textAlign !== 'center' && textAlign !== 'right') {
+      textAlign = 'center';
+    }
+
+    var scaleX = clampDraftScale(item.scaleX);
+    var scaleY = clampDraftScale(item.scaleY);
+    var rotation = normalizeDraftAngle(item.rotation);
+    var skewX = normalizeDraftAngle(item.skewX);
+    var skewY = normalizeDraftAngle(item.skewY);
+
     var minWidth = type === 'text' ? 6 : (type === 'rectangle' ? 20 : 12);
     var minHeight = type === 'text' ? 10 : (type === 'rectangle' ? 20 : 12);
     if (isArtisticText) {
@@ -2079,12 +2576,36 @@
       height = Math.max(minHeight, Math.min(artisticLimits.maxHeight, height));
 
       var minVisiblePx = DRAFT_ARTISTIC_MIN_VISIBLE_PX;
-      var minX = minVisiblePx - width;
-      var maxX = metrics.width - minVisiblePx;
-      var minY = minVisiblePx - height;
-      var maxY = metrics.height - minVisiblePx;
-      x = Math.max(minX, Math.min(maxX, x));
-      y = Math.max(minY, Math.min(maxY, y));
+      var artisticBounds = draftArtisticBounds({
+        type: 'text',
+        textType: 'artistic',
+        textAlign: textAlign,
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        rotation: rotation,
+        skewX: skewX,
+        skewY: skewY,
+      });
+      var nextX = x;
+      var nextY = y;
+      var rightEdge = Number(artisticBounds.x || 0) + Number(artisticBounds.width || 0);
+      var bottomEdge = Number(artisticBounds.y || 0) + Number(artisticBounds.height || 0);
+      if (rightEdge < minVisiblePx) {
+        nextX += (minVisiblePx - rightEdge);
+      } else if (Number(artisticBounds.x || 0) > (metrics.width - minVisiblePx)) {
+        nextX += ((metrics.width - minVisiblePx) - Number(artisticBounds.x || 0));
+      }
+      if (bottomEdge < minVisiblePx) {
+        nextY += (minVisiblePx - bottomEdge);
+      } else if (Number(artisticBounds.y || 0) > (metrics.height - minVisiblePx)) {
+        nextY += ((metrics.height - minVisiblePx) - Number(artisticBounds.y || 0));
+      }
+      x = nextX;
+      y = nextY;
     } else {
       width = Math.max(minWidth, Math.min(metrics.width, width));
       height = Math.max(minHeight, Math.min(metrics.height, height));
@@ -2142,20 +2663,13 @@
       || 'regular'
     );
 
-    var textAlign = String(item.textAlign || item.align || 'center').toLowerCase();
-    if (textAlign !== 'left' && textAlign !== 'center' && textAlign !== 'right') {
-      textAlign = 'center';
-    }
-
     var color = String(item.color || '#1e293b').slice(0, 20);
-    var textMode = rawTextMode;
-    if (textMode !== 'artistic' && textMode !== 'paragraph') {
-      textMode = 'artistic';
-    }
-    if (type === 'text' && textMode === 'artistic') {
+    var textMode = textType;
+    if (type === 'text' && textType === 'artistic') {
       lineHeight = 1;
     }
-    var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label');
+    var textValue = draftTextValue(item);
+    var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label') || Object.prototype.hasOwnProperty.call(item, 'text');
     var fallbackLabel = type === 'image'
       ? 'Image'
       : (type === 'rectangle' ? 'Rectangle' : '');
@@ -2163,14 +2677,23 @@
     var normalizedItem = {
       __id: item.__id || nextDraftElementId(),
       type: type,
+      zIndex: normalizeDraftElementZIndex(item.zIndex, idx + 1),
+      visible: item.visible !== false,
+      locked: item.locked === true,
       field: String(item.field || ''),
-      label: hasStoredLabel ? String(item.label) : fallbackLabel,
+      text: type === 'text' ? (hasStoredLabel ? String(textValue) : '') : '',
+      label: type === 'text' ? (hasStoredLabel ? String(textValue) : '') : (hasStoredLabel ? String(item.label) : fallbackLabel),
       showLabel: item.showLabel !== false,
       side: side,
       x: x,
       y: y,
       width: width,
       height: height,
+      scaleX: type === 'text' ? scaleX : 1,
+      scaleY: type === 'text' ? scaleY : 1,
+      rotation: type === 'text' ? rotation : 0,
+      skewX: type === 'text' ? skewX : 0,
+      skewY: type === 'text' ? skewY : 0,
       fontSize: fontSize,
       fontFamily: fontFamily,
       fontGroup: fontGroup,
@@ -2182,6 +2705,7 @@
       align: textAlign,
       letterSpacing: letterSpacing,
       color: color,
+      textType: type === 'text' ? textType : '',
       textMode: type === 'text' ? textMode : '',
       imageKind: type === 'image' ? String(item.imageKind || '') : '',
       src: type === 'image' ? String(item.src || item.data_url || '') : '',
@@ -2244,6 +2768,8 @@
         font_family: 'Arial',
       };
     }
+
+    normalizeDraftElementZOrder(false);
   }
 
   function selectedDraftElement() {
@@ -2281,7 +2807,9 @@
     var elements = state.templateDraft && Array.isArray(state.templateDraft.elements)
       ? state.templateDraft.elements
       : [];
-    var validIds = new Set(elements.map(function (item) {
+    var validIds = new Set(elements.filter(function (item) {
+      return isDraftElementSelectable(item);
+    }).map(function (item) {
       return String(item && item.__id || '');
     }).filter(function (id) {
       return !!id;
@@ -2314,6 +2842,10 @@
     }
 
     state.draftSelectedElementIds = nextSelected;
+    if (state.draftSelectedElementIds.size < 2
+      || !state.draftSelectedElementIds.has(String(state.draftKeyObjectId || ''))) {
+      state.draftKeyObjectId = '';
+    }
   }
 
   function selectedDraftElements() {
@@ -2324,7 +2856,7 @@
       : [];
     var selected = selectedDraftElementSet();
     return elements.filter(function (item) {
-      return item && selected.has(item.__id);
+      return item && selected.has(item.__id) && isDraftElementSelectable(item);
     });
   }
 
@@ -2335,6 +2867,126 @@
     }
     var selected = selectedDraftElementSet();
     return selected.has(wanted);
+  }
+
+  function normalizeDraftTransformMode(value) {
+    return String(value || '').toLowerCase() === 'rotate' ? 'rotate' : 'resize';
+  }
+
+  function toggleDraftTransformMode() {
+    state.draftTransformMode = normalizeDraftTransformMode(state.draftTransformMode) === 'rotate'
+      ? 'resize'
+      : 'rotate';
+  }
+
+  function setDraftSelectedElementIds(nextIds, primaryId) {
+    var ids = new Set();
+    if (nextIds && typeof nextIds.forEach === 'function') {
+      nextIds.forEach(function (id) {
+        var sid = String(id || '');
+        if (sid) {
+          ids.add(sid);
+        }
+      });
+    }
+
+    var nextPrimary = String(primaryId || '');
+    if (!nextPrimary || !ids.has(nextPrimary)) {
+      nextPrimary = '';
+      ids.forEach(function (id) {
+        if (!nextPrimary) {
+          nextPrimary = String(id || '');
+        }
+      });
+    }
+
+    state.draftSelectedElementIds = ids;
+    state.draftSelectedElementId = nextPrimary;
+    if (ids.size < 2 || !ids.has(String(state.draftKeyObjectId || ''))) {
+      state.draftKeyObjectId = '';
+    }
+  }
+
+  function draftSelectionBounds(ids, side) {
+    ensureStep2DraftInitialized();
+    var elements = Array.isArray(state.templateDraft && state.templateDraft.elements)
+      ? state.templateDraft.elements
+      : [];
+    var sideName = normalizeDraftEditorSide(side || state.draftActiveSide);
+    var wantedIds = ids && typeof ids.forEach === 'function' ? ids : selectedDraftElementSet();
+
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    var count = 0;
+
+    elements.forEach(function (item) {
+      if (!item || !wantedIds.has(String(item.__id || ''))) {
+        return;
+      }
+      var renderSides = draftElementRenderSides(item);
+      if (!renderSides.some(function (s) { return s === sideName; })) {
+        return;
+      }
+      var b = draftElementBounds(item);
+      var left = Number(b.x || 0);
+      var top = Number(b.y || 0);
+      var right = left + Math.max(0, Number(b.width || 0));
+      var bottom = top + Math.max(0, Number(b.height || 0));
+      minX = Math.min(minX, left);
+      minY = Math.min(minY, top);
+      maxX = Math.max(maxX, right);
+      maxY = Math.max(maxY, bottom);
+      count += 1;
+    });
+
+    if (!count) {
+      return null;
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: Math.max(1, maxX - minX),
+      height: Math.max(1, maxY - minY),
+      side: sideName,
+      count: count,
+    };
+  }
+
+  function isDraftResizeCornerHandle(handle) {
+    var h = normalizeDraftResizeHandle(handle);
+    return h === 'nw' || h === 'ne' || h === 'se' || h === 'sw';
+  }
+
+  function draftPointFromResizeDrag(resizeDrag, event, scaleX, scaleY) {
+    var sx = Number(scaleX || 1);
+    var sy = Number(scaleY || 1);
+    if (!Number.isFinite(sx) || sx <= 0) {
+      sx = 1;
+    }
+    if (!Number.isFinite(sy) || sy <= 0) {
+      sy = 1;
+    }
+    return {
+      x: Number(resizeDrag.startPointerX || 0) + ((Number(event.clientX || 0) - Number(resizeDrag.startMouseX || 0)) * sx),
+      y: Number(resizeDrag.startPointerY || 0) + ((Number(event.clientY || 0) - Number(resizeDrag.startMouseY || 0)) * sy),
+    };
+  }
+
+  function normalizeAngleDeltaDegrees(value) {
+    var delta = Number(value || 0);
+    if (!Number.isFinite(delta)) {
+      return 0;
+    }
+    while (delta > 180) {
+      delta -= 360;
+    }
+    while (delta < -180) {
+      delta += 360;
+    }
+    return delta;
   }
 
   function findDraftElementById(id) {
@@ -2363,7 +3015,7 @@
   function setDraftInlineTextEditing(id) {
     var wanted = String(id || '');
     var item = findDraftElementById(wanted);
-    if (!wanted || !isDraftTextElement(item)) {
+    if (!wanted || !isDraftTextElement(item) || !isDraftElementSelectable(item)) {
       state.draftInlineEditingElementId = '';
       return false;
     }
@@ -2407,11 +3059,11 @@
       }
 
       var next = String(nextLabel || '');
-      var isArtisticText = String(item.textMode || '').toLowerCase() === 'artistic';
+      var isArtisticText = isArtisticDraftText(item);
       if (isArtisticText) {
         next = next.replace(/[ \t\u00A0]+$/g, '');
       }
-      var draft = Object.assign({}, item, { label: next });
+      var draft = Object.assign({}, item, { label: next, text: next });
       if (isArtisticText && item.artisticAutoFit !== false) {
         fitDraftArtisticTextBounds(draft);
       }
@@ -2496,13 +3148,148 @@
       scaleY = 1;
     }
 
-    var deltaX = (Number(event.clientX || 0) - Number(resizeDrag.startMouseX || 0)) * scaleX;
-    var deltaY = (Number(event.clientY || 0) - Number(resizeDrag.startMouseY || 0)) * scaleY;
+    var pointer = draftPointFromResizeDrag(resizeDrag, event, scaleX, scaleY);
+    var deltaX = Number(pointer.x || 0) - Number(resizeDrag.startPointerX || 0);
+    var deltaY = Number(pointer.y || 0) - Number(resizeDrag.startPointerY || 0);
 
-    var left = Number(resizeDrag.startX || 0);
-    var top = Number(resizeDrag.startY || 0);
-    var right = left + startWidth;
-    var bottom = top + startHeight;
+    var dragIds = Array.isArray(resizeDrag.dragIds) && resizeDrag.dragIds.length
+      ? resizeDrag.dragIds.map(function (id) { return String(id || ''); }).filter(function (id) { return !!id; })
+      : [String(resizeDrag.id || '')];
+    if (!dragIds.length) {
+      return false;
+    }
+    var dragIdSet = new Set(dragIds);
+    var startElements = resizeDrag.startElements && typeof resizeDrag.startElements === 'object'
+      ? resizeDrag.startElements
+      : {};
+
+    var startLeft = Number(resizeDrag.startX || 0);
+    var startTop = Number(resizeDrag.startY || 0);
+    var startRight = startLeft + startWidth;
+    var startBottom = startTop + startHeight;
+    var startCenterX = Number(resizeDrag.startCenterX || ((startLeft + startRight) / 2));
+    var startCenterY = Number(resizeDrag.startCenterY || ((startTop + startBottom) / 2));
+
+    var transformMode = normalizeDraftTransformMode(resizeDrag.transformMode || state.draftTransformMode);
+    var transformKind = String(resizeDrag.transformKind || '').toLowerCase();
+    if (!transformKind) {
+      transformKind = transformMode === 'rotate'
+        ? (isCorner ? 'rotate' : (hasHorizontal ? 'skew-x' : 'skew-y'))
+        : 'resize';
+    }
+
+    function applyResizeDragMutations(mutator) {
+      if (typeof mutator !== 'function') {
+        return false;
+      }
+
+      ensureStep2DraftInitialized();
+      prepareDraftHistoryMutation();
+      var changed = false;
+      state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+        if (!item || !dragIdSet.has(String(item.__id || ''))) {
+          return item;
+        }
+
+        var sid = String(item.__id || '');
+        var seed = startElements[sid];
+        if (!seed || typeof seed !== 'object') {
+          var b = draftElementBounds(item);
+          seed = {
+            x: Number(item.x || 0),
+            y: Number(item.y || 0),
+            width: Number(item.width || 0),
+            height: Number(item.height || 0),
+            scaleX: clampDraftScale(item.scaleX),
+            scaleY: clampDraftScale(item.scaleY),
+            rotation: normalizeDraftAngle(item.rotation),
+            skewX: normalizeDraftAngle(item.skewX),
+            skewY: normalizeDraftAngle(item.skewY),
+            centerX: Number(b.x || 0) + (Number(b.width || 0) / 2),
+            centerY: Number(b.y || 0) + (Number(b.height || 0) / 2),
+          };
+        }
+
+        var draft = Object.assign({}, item);
+        mutator(draft, seed, sid);
+        var normalized = normalizeDraftElement(draft, idx);
+        normalized.__id = item.__id;
+        changed = true;
+        return normalized;
+      });
+
+      if (changed) {
+        markDraftDirty();
+        normalizeDraftElementSelection();
+      }
+
+      return changed;
+    }
+
+    if (transformKind === 'rotate') {
+      var angleNow = Math.atan2(Number(pointer.y || 0) - startCenterY, Number(pointer.x || 0) - startCenterX);
+      var angleStart = Number(resizeDrag.startAngle || 0);
+      var deltaDeg = normalizeAngleDeltaDegrees((angleNow - angleStart) * (180 / Math.PI))
+        * Number(DRAFT_ROTATE_DRAG_SENSITIVITY || 1);
+      if (Math.abs(deltaDeg) < Number(DRAFT_ROTATE_MIN_APPLY_DEGREES || 0)) {
+        deltaDeg = 0;
+      }
+      if (event.shiftKey) {
+        deltaDeg = Math.round(deltaDeg / 15) * 15;
+      }
+      var deltaRad = deltaDeg * (Math.PI / 180);
+      var cosD = Math.cos(deltaRad);
+      var sinD = Math.sin(deltaRad);
+
+      return applyResizeDragMutations(function (draft, seed) {
+        var offsetX = Number(seed.centerX || 0) - startCenterX;
+        var offsetY = Number(seed.centerY || 0) - startCenterY;
+        var targetCenterX = startCenterX + (offsetX * cosD) - (offsetY * sinD);
+        var targetCenterY = startCenterY + (offsetX * sinD) + (offsetY * cosD);
+
+        if (String(draft.type || '').toLowerCase() === 'text') {
+          draft.rotation = normalizeDraftAngle(Number(seed.rotation || 0) + deltaDeg);
+        }
+
+        var shiftX = targetCenterX - Number(seed.centerX || 0);
+        var shiftY = targetCenterY - Number(seed.centerY || 0);
+        draft.x = Number(seed.x || 0) + shiftX;
+        draft.y = Number(seed.y || 0) + shiftY;
+      });
+    }
+
+    if (transformKind === 'skew-x' || transformKind === 'skew-y') {
+      var span = transformKind === 'skew-x' ? Math.max(24, startWidth) : Math.max(24, startHeight);
+      var rawSkewDelta = (transformKind === 'skew-x' ? deltaX : deltaY)
+        * (Number(DRAFT_SKEW_DEGREES_AT_FULL_SPAN || 60) / span);
+      if (!Number.isFinite(rawSkewDelta)) {
+        rawSkewDelta = 0;
+      }
+      if (event.shiftKey) {
+        rawSkewDelta = Math.round(rawSkewDelta / Math.max(1, Number(DRAFT_SKEW_SHIFT_SNAP_DEGREES || 5)))
+          * Math.max(1, Number(DRAFT_SKEW_SHIFT_SNAP_DEGREES || 5));
+      }
+
+      return applyResizeDragMutations(function (draft, seed) {
+        if (String(draft.type || '').toLowerCase() !== 'text') {
+          return;
+        }
+        if (transformKind === 'skew-x') {
+          draft.skewX = normalizeDraftAngle(
+            Math.max(-Number(DRAFT_SKEW_MAX_DEGREES || 80), Math.min(Number(DRAFT_SKEW_MAX_DEGREES || 80), Number(seed.skewX || 0) + rawSkewDelta))
+          );
+        } else {
+          draft.skewY = normalizeDraftAngle(
+            Math.max(-Number(DRAFT_SKEW_MAX_DEGREES || 80), Math.min(Number(DRAFT_SKEW_MAX_DEGREES || 80), Number(seed.skewY || 0) + rawSkewDelta))
+          );
+        }
+      });
+    }
+
+    var left = startLeft;
+    var top = startTop;
+    var right = startRight;
+    var bottom = startBottom;
 
     if (hasWest) {
       left += deltaX;
@@ -2517,93 +3304,114 @@
       bottom += deltaY;
     }
 
-    var resizeType = String(resizeDrag.type || '').toLowerCase();
-    var isArtisticText = resizeType === 'text'
-      && String(resizeDrag.textMode || '').toLowerCase() === 'artistic';
-    var minWidth = isArtisticText ? 6 : (resizeType === 'text' ? 8 : (resizeType === 'rectangle' ? 20 : 12));
-    var minHeight = isArtisticText ? 10 : (resizeType === 'rectangle' ? 20 : 12);
-
-    if ((right - left) < minWidth) {
+    if (event.altKey) {
       if (hasWest && !hasEast) {
-        left = right - minWidth;
-      } else {
-        right = left + minWidth;
+        right -= deltaX;
+      } else if (hasEast && !hasWest) {
+        left -= deltaX;
       }
-    }
-
-    if ((bottom - top) < minHeight) {
       if (hasNorth && !hasSouth) {
-        top = bottom - minHeight;
+        bottom -= deltaY;
+      } else if (hasSouth && !hasNorth) {
+        top -= deltaY;
+      }
+    }
+
+    var startAspect = startWidth / Math.max(1, startHeight);
+    if (event.shiftKey) {
+      var boxWidth = right - left;
+      var boxHeight = bottom - top;
+      var absWidthScale = Math.abs(boxWidth / Math.max(1, startWidth));
+      var absHeightScale = Math.abs(boxHeight / Math.max(1, startHeight));
+
+      if (isCorner) {
+        if (absWidthScale >= absHeightScale) {
+          boxHeight = (boxWidth / Math.max(0.001, startAspect));
+        } else {
+          boxWidth = boxHeight * startAspect;
+        }
+      } else if (hasHorizontal && !hasVertical) {
+        boxHeight = (boxWidth / Math.max(0.001, startAspect));
+      } else if (hasVertical && !hasHorizontal) {
+        boxWidth = boxHeight * startAspect;
+      }
+
+      if (event.altKey || (!isCorner && (hasHorizontal || hasVertical))) {
+        var centerX = (left + right) / 2;
+        var centerY = (top + bottom) / 2;
+        left = centerX - (boxWidth / 2);
+        right = centerX + (boxWidth / 2);
+        top = centerY - (boxHeight / 2);
+        bottom = centerY + (boxHeight / 2);
       } else {
-        bottom = top + minHeight;
-      }
-    }
-
-    if (isArtisticText) {
-      if (!isCorner) {
-        return mutateDraftElementById(resizeDrag.id, function (draft) {
-          draft.artisticAutoFit = false;
-          draft.x = left;
-          draft.y = top;
-          draft.width = Math.max(minWidth, right - left);
-          draft.height = Math.max(minHeight, bottom - top);
-        });
-      }
-
-      return mutateDraftElementById(resizeDrag.id, function (draft) {
-        var startFontSize = Number(resizeDrag.startFontSize || draft.fontSize || 12);
-        if (!Number.isFinite(startFontSize) || startFontSize <= 0) {
-          startFontSize = 12;
-        }
-        var scaleFromWidth = (right - left) / Math.max(1, startWidth);
-        var scaleFromHeight = (bottom - top) / Math.max(1, startHeight);
-        var scale = 1;
-        if (isCorner) {
-          scale = Math.max(scaleFromWidth, scaleFromHeight);
-        } else if (hasHorizontal && !hasVertical) {
-          scale = scaleFromWidth;
-        } else if (hasVertical && !hasHorizontal) {
-          scale = scaleFromHeight;
-        }
-        if (!Number.isFinite(scale) || scale <= 0) {
-          scale = 1;
-        }
-
-        var nextFontSize = Math.max(4, Math.min(240, startFontSize * scale));
-        var nextLetterSpacing = Number(resizeDrag.startLetterSpacing || draft.letterSpacing || 0);
-        if (!Number.isFinite(nextLetterSpacing)) {
-          nextLetterSpacing = 0;
-        }
-        nextLetterSpacing = Math.max(-3, Math.min(3, nextLetterSpacing));
-        draft.artisticAutoFit = true;
-        draft.fontSize = nextFontSize;
-        draft.letterSpacing = nextLetterSpacing;
-        fitDraftArtisticTextBounds(draft);
-
-        var fittedWidth = Number(draft.width || startWidth);
-        var fittedHeight = Number(draft.height || startHeight);
-        var anchorRight = Number(resizeDrag.startX || 0) + startWidth;
-        var anchorBottom = Number(resizeDrag.startY || 0) + startHeight;
-
         if (hasWest && !hasEast) {
-          draft.x = anchorRight - fittedWidth;
-        } else {
-          draft.x = Number(resizeDrag.startX || 0);
+          left = right - boxWidth;
+        } else if (hasEast && !hasWest) {
+          right = left + boxWidth;
         }
-
         if (hasNorth && !hasSouth) {
-          draft.y = anchorBottom - fittedHeight;
-        } else {
-          draft.y = Number(resizeDrag.startY || 0);
+          top = bottom - boxHeight;
+        } else if (hasSouth && !hasNorth) {
+          bottom = top + boxHeight;
         }
-      });
+      }
     }
 
-    return mutateDraftElementById(resizeDrag.id, function (draft) {
-      draft.x = left;
-      draft.y = top;
-      draft.width = Math.max(minWidth, right - left);
-      draft.height = Math.max(minHeight, bottom - top);
+    var nextCenterX = (left + right) / 2;
+    var nextCenterY = (top + bottom) / 2;
+    var nextWidth = Math.max(1, Math.abs(right - left));
+    var nextHeight = Math.max(1, Math.abs(bottom - top));
+    left = nextCenterX - (nextWidth / 2);
+    right = nextCenterX + (nextWidth / 2);
+    top = nextCenterY - (nextHeight / 2);
+    bottom = nextCenterY + (nextHeight / 2);
+
+    var ratioW = nextWidth / Math.max(1, startWidth);
+    var ratioH = nextHeight / Math.max(1, startHeight);
+
+    return applyResizeDragMutations(function (draft, seed) {
+      var relX = (Number(seed.centerX || 0) - startLeft) / Math.max(1, startWidth);
+      var relY = (Number(seed.centerY || 0) - startTop) / Math.max(1, startHeight);
+      var targetCenterX = left + (relX * nextWidth);
+      var targetCenterY = top + (relY * nextHeight);
+
+      var type = String(draft.type || '').toLowerCase();
+      var isArtisticText = type === 'text' && normalizeDraftTextType(draft.textType || draft.textMode) === 'artistic';
+
+      if (isArtisticText) {
+        var nextScaleX = Number(seed.scaleX || 1);
+        var nextScaleY = Number(seed.scaleY || 1);
+
+        if (hasHorizontal || isCorner || event.shiftKey) {
+          nextScaleX = clampDraftScale(nextScaleX * ratioW);
+        }
+        if (hasVertical || isCorner || event.shiftKey) {
+          nextScaleY = clampDraftScale(nextScaleY * ratioH);
+        }
+
+        draft.scaleX = nextScaleX;
+        draft.scaleY = nextScaleY;
+        draft.fontSize = Number(resizeDrag.startFontSize || draft.fontSize || 12);
+
+        var candidateBounds = draftElementBounds(draft);
+        var candidateCenterX = Number(candidateBounds.x || 0) + (Number(candidateBounds.width || 0) / 2);
+        var candidateCenterY = Number(candidateBounds.y || 0) + (Number(candidateBounds.height || 0) / 2);
+        draft.x = Number(draft.x || 0) + (targetCenterX - candidateCenterX);
+        draft.y = Number(draft.y || 0) + (targetCenterY - candidateCenterY);
+        return;
+      }
+
+      var minWidth = type === 'text' ? 8 : (type === 'rectangle' ? 20 : 12);
+      var minHeight = type === 'text' ? 10 : (type === 'rectangle' ? 20 : 12);
+      var widthFactor = (hasHorizontal || isCorner || event.shiftKey) ? ratioW : 1;
+      var heightFactor = (hasVertical || isCorner || event.shiftKey) ? ratioH : 1;
+      var nextElWidth = Math.max(minWidth, Number(seed.width || draft.width || minWidth) * widthFactor);
+      var nextElHeight = Math.max(minHeight, Number(seed.height || draft.height || minHeight) * heightFactor);
+
+      draft.width = nextElWidth;
+      draft.height = nextElHeight;
+      draft.x = targetCenterX - (nextElWidth / 2);
+      draft.y = targetCenterY - (nextElHeight / 2);
     });
   }
 
@@ -2665,157 +3473,834 @@
     return changed;
   }
 
-  function alignSelectedDraftElements(mode) {
+  function applyToDraftElementIds(ids, mutator) {
+    var idSet = ids instanceof Set ? ids : new Set(ids || []);
+    if (!idSet.size || typeof mutator !== 'function') {
+      return false;
+    }
+
+    ensureStep2DraftInitialized();
+    prepareDraftHistoryMutation();
+    var changed = false;
+    state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
+      if (!item || !idSet.has(String(item.__id || ''))) {
+        return item;
+      }
+
+      var draft = Object.assign({}, item);
+      mutator(draft, item);
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = item.__id;
+      changed = true;
+      return normalized;
+    });
+
+    if (changed) {
+      markDraftDirty();
+      normalizeDraftElementSelection();
+    }
+
+    return changed;
+  }
+
+  function selectedDraftElementsForLayout() {
     var selected = selectedDraftElements();
     if (!selected.length) {
-      return false;
+      return [];
     }
 
-    var multiOnly = mode !== 'canvas-center';
-    if (multiOnly && selected.length < 2) {
-      return false;
+    if (!state.isTwoSided) {
+      return selected;
     }
 
-    var metrics = draftCanvasMetrics();
+    var side = normalizeDraftEditorSide(state.draftActiveSide);
+    var filtered = selected.filter(function (item) {
+      return draftElementVisibleOnSide(item, side);
+    });
+    return filtered.length ? filtered : selected;
+  }
+
+  function draftCombinedBoundsFromItems(items, boundsById) {
+    if (!Array.isArray(items) || !items.length) {
+      return null;
+    }
+
     var minX = Infinity;
     var minY = Infinity;
     var maxRight = -Infinity;
     var maxBottom = -Infinity;
 
-    selected.forEach(function (item) {
-      var x = Number(item.x || 0);
-      var y = Number(item.y || 0);
-      var w = Number(item.width || 0);
-      var h = Number(item.height || 0);
+    items.forEach(function (item) {
+      var id = String(item && item.__id || '');
+      var b = boundsById && boundsById[id] ? boundsById[id] : draftElementBounds(item);
+      var x = Number(b.x || 0);
+      var y = Number(b.y || 0);
+      var right = x + Number(b.width || 0);
+      var bottom = y + Number(b.height || 0);
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
-      maxRight = Math.max(maxRight, x + w);
-      maxBottom = Math.max(maxBottom, y + h);
+      maxRight = Math.max(maxRight, right);
+      maxBottom = Math.max(maxBottom, bottom);
     });
 
-    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxRight) || !Number.isFinite(maxBottom)) {
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)
+      || !Number.isFinite(maxRight) || !Number.isFinite(maxBottom)) {
+      return null;
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: Math.max(1, maxRight - minX),
+      height: Math.max(1, maxBottom - minY),
+    };
+  }
+
+  function resolveDraftAlignContext(mode) {
+    var items = selectedDraftElementsForLayout();
+    if (!items.length) {
+      return null;
+    }
+
+    var boundsById = {};
+    var idSet = new Set();
+    items.forEach(function (item) {
+      var id = String(item && item.__id || '');
+      if (!id) {
+        return;
+      }
+      idSet.add(id);
+      boundsById[id] = draftElementBounds(item);
+    });
+
+    if (!idSet.size) {
+      return null;
+    }
+
+    var selectionBounds = draftCombinedBoundsFromItems(items, boundsById);
+    if (!selectionBounds) {
+      return null;
+    }
+
+    var safeMode = String(mode || '').toLowerCase();
+    var reference = normalizeDraftAlignReference(state.draftAlignReference);
+    if (safeMode === 'canvas-center') {
+      reference = 'page';
+    }
+
+    var keyObjectId = String(state.draftKeyObjectId || '');
+    if (!keyObjectId || !idSet.has(keyObjectId) || items.length < 2) {
+      keyObjectId = '';
+      if (reference === 'keyObject') {
+        reference = 'selection';
+      }
+    }
+
+    var referenceBounds = selectionBounds;
+    if (reference === 'page') {
+      var metrics = draftCanvasMetrics();
+      referenceBounds = {
+        x: 0,
+        y: 0,
+        width: Number(metrics.width || 0),
+        height: Number(metrics.height || 0),
+      };
+    } else if (reference === 'keyObject' && keyObjectId) {
+      referenceBounds = boundsById[keyObjectId] || selectionBounds;
+    }
+
+    return {
+      items: items,
+      itemIdSet: idSet,
+      boundsById: boundsById,
+      selectionBounds: selectionBounds,
+      reference: reference,
+      referenceBounds: referenceBounds,
+      keyObjectId: keyObjectId,
+    };
+  }
+
+  function resolveDraftDistributeVariant(mode) {
+    var raw = String(mode || '').toLowerCase();
+    if (raw.indexOf('centers') !== -1) {
+      return 'centers';
+    }
+    if (raw.indexOf('edges') !== -1) {
+      return 'edges';
+    }
+    return normalizeDraftDistributeMode(state.draftDistributeMode);
+  }
+
+  function distributeDraftElements(context, axis, variant) {
+    if (!context || !Array.isArray(context.items) || context.items.length < 2) {
       return false;
     }
 
-    if (mode === 'canvas-center') {
-      var targetCanvasCx = Number(metrics.width || 0) / 2;
-      var targetCanvasCy = Number(metrics.height || 0) / 2;
-      var currentCx = (minX + maxRight) / 2;
-      var currentCy = (minY + maxBottom) / 2;
-      var dx = targetCanvasCx - currentCx;
-      var dy = targetCanvasCy - currentCy;
-      return applyToSelectedDraftElements(function (draft) {
-        draft.x = Number(draft.x || 0) + dx;
-        draft.y = Number(draft.y || 0) + dy;
-      });
+    var keyId = context.reference === 'keyObject' ? String(context.keyObjectId || '') : '';
+    var working = context.items.filter(function (item) {
+      return !keyId || String(item.__id || '') !== keyId;
+    });
+    if (working.length < 2) {
+      return false;
     }
 
-    if (mode === 'align-left') {
-      return applyToSelectedDraftElements(function (draft) {
-        draft.x = minX;
-      });
+    var safeVariant = normalizeDraftDistributeMode(variant);
+    if (working.length <= 2) {
+      safeVariant = 'spacing';
     }
 
-    if (mode === 'align-right') {
-      return applyToSelectedDraftElements(function (draft) {
-        draft.x = maxRight - Number(draft.width || 0);
-      });
+    var isHorizontal = axis === 'x';
+    var posKey = isHorizontal ? 'x' : 'y';
+    var sizeKey = isHorizontal ? 'width' : 'height';
+
+    function metricForItem(item) {
+      var id = String(item && item.__id || '');
+      var b = context.boundsById[id] || draftElementBounds(item);
+      var start = Number(b[posKey] || 0);
+      var size = Math.max(0, Number(b[sizeKey] || 0));
+      var end = start + size;
+      return {
+        id: id,
+        item: item,
+        start: start,
+        size: size,
+        end: end,
+        center: start + (size / 2),
+      };
     }
 
-    if (mode === 'align-top') {
-      return applyToSelectedDraftElements(function (draft) {
-        draft.y = minY;
+    var keyMetrics = null;
+    if (keyId) {
+      var keyItem = context.items.find(function (item) {
+        return String(item && item.__id || '') === keyId;
       });
-    }
-
-    if (mode === 'align-bottom') {
-      return applyToSelectedDraftElements(function (draft) {
-        draft.y = maxBottom - Number(draft.height || 0);
-      });
-    }
-
-    if (mode === 'align-h-center') {
-      var targetCenterX = (minX + maxRight) / 2;
-      return applyToSelectedDraftElements(function (draft) {
-        draft.x = targetCenterX - (Number(draft.width || 0) / 2);
-      });
-    }
-
-    if (mode === 'align-v-center') {
-      var targetCenterY = (minY + maxBottom) / 2;
-      return applyToSelectedDraftElements(function (draft) {
-        draft.y = targetCenterY - (Number(draft.height || 0) / 2);
-      });
-    }
-
-    if (mode === 'distribute-h') {
-      if (selected.length < 3) {
+      if (!keyItem) {
         return false;
       }
-      var sortedH = selected.slice().sort(function (a, b) {
-        return Number(a.x || 0) - Number(b.x || 0);
+      keyMetrics = metricForItem(keyItem);
+    }
+
+    if (keyMetrics) {
+      var otherMetrics = working.map(metricForItem).filter(function (m) {
+        return !!m.id;
       });
-      var firstH = sortedH[0];
-      var lastH = sortedH[sortedH.length - 1];
-      var minLeft = Number(firstH.x || 0);
-      var maxRightH = Number(lastH.x || 0) + Number(lastH.width || 0);
-      var totalWidth = sortedH.reduce(function (sum, item) {
-        return sum + Math.max(0, Number(item.width || 0));
-      }, 0);
-      var gapH = (maxRightH - minLeft - totalWidth) / Math.max(1, sortedH.length - 1);
-      if (!Number.isFinite(gapH)) {
+      if (otherMetrics.length < 2) {
         return false;
       }
-      var nextXById = {};
-      var cursorX = minLeft;
-      sortedH.forEach(function (item) {
-        nextXById[String(item.__id || '')] = cursorX;
-        cursorX += Math.max(0, Number(item.width || 0)) + gapH;
-      });
-      return applyToSelectedDraftElements(function (draft) {
-        var key = String(draft.__id || '');
-        if (Object.prototype.hasOwnProperty.call(nextXById, key)) {
-          draft.x = nextXById[key];
+
+      var leftSide = [];
+      var rightSide = [];
+
+      otherMetrics.forEach(function (m) {
+        if (m.end <= keyMetrics.start) {
+          leftSide.push(m);
+        } else if (m.start >= keyMetrics.end) {
+          rightSide.push(m);
+        } else if (m.center < keyMetrics.center) {
+          leftSide.push(m);
+        } else if (m.center > keyMetrics.center) {
+          rightSide.push(m);
+        } else if (m.start < keyMetrics.start) {
+          leftSide.push(m);
+        } else {
+          rightSide.push(m);
         }
       });
+
+      leftSide.sort(function (a, b) {
+        return a.start - b.start;
+      });
+      rightSide.sort(function (a, b) {
+        return a.start - b.start;
+      });
+
+      var targetById = {};
+
+      function distributeSide(metrics, sideName) {
+        if (!Array.isArray(metrics) || !metrics.length) {
+          return;
+        }
+
+        if (safeVariant === 'centers') {
+          if (metrics.length < 2) {
+            return;
+          }
+          if (sideName === 'left') {
+            var firstCenterL = metrics[0].center;
+            var centerStepL = (keyMetrics.center - firstCenterL) / metrics.length;
+            if (!Number.isFinite(centerStepL)) {
+              return;
+            }
+            metrics.forEach(function (m, idx) {
+              var wantedCenter = firstCenterL + (centerStepL * idx);
+              targetById[m.id] = wantedCenter - (m.size / 2);
+            });
+            return;
+          }
+
+          var lastCenterR = metrics[metrics.length - 1].center;
+          var centerStepR = (lastCenterR - keyMetrics.center) / metrics.length;
+          if (!Number.isFinite(centerStepR)) {
+            return;
+          }
+          metrics.forEach(function (m, idx) {
+            var wantedCenter = keyMetrics.center + (centerStepR * (idx + 1));
+            targetById[m.id] = wantedCenter - (m.size / 2);
+          });
+          return;
+        }
+
+        if (safeVariant === 'edges') {
+          if (metrics.length < 2) {
+            return;
+          }
+          if (sideName === 'left') {
+            var firstEdgeL = metrics[0].start;
+            var edgeStepL = (keyMetrics.start - firstEdgeL) / metrics.length;
+            if (!Number.isFinite(edgeStepL)) {
+              return;
+            }
+            metrics.forEach(function (m, idx) {
+              targetById[m.id] = firstEdgeL + (edgeStepL * idx);
+            });
+            return;
+          }
+
+          var lastEdgeR = metrics[metrics.length - 1].start;
+          var edgeStepR = (lastEdgeR - keyMetrics.start) / metrics.length;
+          if (!Number.isFinite(edgeStepR)) {
+            return;
+          }
+          metrics.forEach(function (m, idx) {
+            targetById[m.id] = keyMetrics.start + (edgeStepR * (idx + 1));
+          });
+          return;
+        }
+
+        if (sideName === 'left') {
+          var spanStartL = metrics[0].start;
+          var spanEndL = keyMetrics.start;
+          var totalSizeL = metrics.reduce(function (sum, m) {
+            return sum + m.size;
+          }, 0);
+          var gapsL = metrics.length;
+          var gapL = gapsL > 0 ? ((spanEndL - spanStartL - totalSizeL) / gapsL) : 0;
+          if (!Number.isFinite(gapL)) {
+            return;
+          }
+          var cursorL = spanStartL;
+          metrics.forEach(function (m) {
+            targetById[m.id] = cursorL;
+            cursorL += m.size + gapL;
+          });
+          return;
+        }
+
+        var spanStartR = keyMetrics.end;
+        var spanEndR = metrics[metrics.length - 1].end;
+        var totalSizeR = metrics.reduce(function (sum, m) {
+          return sum + m.size;
+        }, 0);
+        var gapsR = metrics.length;
+        var gapR = gapsR > 0 ? ((spanEndR - spanStartR - totalSizeR) / gapsR) : 0;
+        if (!Number.isFinite(gapR)) {
+          return;
+        }
+        var cursorR = spanStartR + gapR;
+        metrics.forEach(function (m) {
+          targetById[m.id] = cursorR;
+          cursorR += m.size + gapR;
+        });
+      }
+
+      distributeSide(leftSide, 'left');
+      distributeSide(rightSide, 'right');
+
+      var applyKeyIds = Object.keys(targetById);
+      if (!applyKeyIds.length) {
+        return false;
+      }
+
+      var applyKeySet = new Set(applyKeyIds);
+      var changedKey = false;
+      beginDraftHistoryTransaction();
+      try {
+        changedKey = applyToDraftElementIds(applyKeySet, function (draft) {
+          var id = String(draft.__id || '');
+          if (!Object.prototype.hasOwnProperty.call(targetById, id)) {
+            return;
+          }
+          var b = context.boundsById[id] || draftElementBounds(draft);
+          var delta = Number(targetById[id]) - Number(b[posKey] || 0);
+          if (!Number.isFinite(delta) || Math.abs(delta) < 0.00001) {
+            return;
+          }
+
+          if (isHorizontal) {
+            draft.x = snapCanvasValueToGrid(Number(draft.x || 0) + delta, 'x');
+          } else {
+            draft.y = snapCanvasValueToGrid(Number(draft.y || 0) + delta, 'y');
+          }
+        });
+      } finally {
+        endDraftHistoryTransaction();
+      }
+
+      return changedKey;
     }
 
-    if (mode === 'distribute-v') {
-      if (selected.length < 3) {
+    var sorted = working.slice().sort(function (a, b) {
+      var ba = context.boundsById[String(a.__id || '')] || draftElementBounds(a);
+      var bb = context.boundsById[String(b.__id || '')] || draftElementBounds(b);
+      return Number(ba[posKey] || 0) - Number(bb[posKey] || 0);
+    });
+
+    var first = sorted[0];
+    var last = sorted[sorted.length - 1];
+    var firstB = context.boundsById[String(first.__id || '')] || draftElementBounds(first);
+    var lastB = context.boundsById[String(last.__id || '')] || draftElementBounds(last);
+    var targetById = {};
+    var den = sorted.length - 1;
+
+    if (safeVariant === 'centers') {
+      var firstCenter = Number(firstB[posKey] || 0) + (Number(firstB[sizeKey] || 0) / 2);
+      var lastCenter = Number(lastB[posKey] || 0) + (Number(lastB[sizeKey] || 0) / 2);
+      var centerStep = den > 0 ? ((lastCenter - firstCenter) / den) : 0;
+      if (!Number.isFinite(centerStep)) {
         return false;
       }
-      var sortedV = selected.slice().sort(function (a, b) {
-        return Number(a.y || 0) - Number(b.y || 0);
+      sorted.forEach(function (item, idx) {
+        var b = context.boundsById[String(item.__id || '')] || draftElementBounds(item);
+        var wantedCenter = firstCenter + (centerStep * idx);
+        targetById[String(item.__id || '')] = wantedCenter - (Number(b[sizeKey] || 0) / 2);
       });
-      var firstV = sortedV[0];
-      var lastV = sortedV[sortedV.length - 1];
-      var minTop = Number(firstV.y || 0);
-      var maxBottomV = Number(lastV.y || 0) + Number(lastV.height || 0);
-      var totalHeight = sortedV.reduce(function (sum, item) {
-        return sum + Math.max(0, Number(item.height || 0));
+    } else if (safeVariant === 'edges') {
+      var firstEdge = Number(firstB[posKey] || 0);
+      var lastEdge = Number(lastB[posKey] || 0);
+      var edgeStep = den > 0 ? ((lastEdge - firstEdge) / den) : 0;
+      if (!Number.isFinite(edgeStep)) {
+        return false;
+      }
+      sorted.forEach(function (item, idx) {
+        targetById[String(item.__id || '')] = firstEdge + (edgeStep * idx);
+      });
+    } else {
+      var spanStart = Number(firstB[posKey] || 0);
+      var spanEnd = Number(lastB[posKey] || 0) + Number(lastB[sizeKey] || 0);
+      var totalSize = sorted.reduce(function (sum, item) {
+        var b = context.boundsById[String(item.__id || '')] || draftElementBounds(item);
+        return sum + Math.max(0, Number(b[sizeKey] || 0));
       }, 0);
-      var gapV = (maxBottomV - minTop - totalHeight) / Math.max(1, sortedV.length - 1);
-      if (!Number.isFinite(gapV)) {
+      var gap = den > 0 ? ((spanEnd - spanStart - totalSize) / den) : 0;
+      if (!Number.isFinite(gap)) {
         return false;
       }
-      var nextYById = {};
-      var cursorY = minTop;
-      sortedV.forEach(function (item) {
-        nextYById[String(item.__id || '')] = cursorY;
-        cursorY += Math.max(0, Number(item.height || 0)) + gapV;
+      var cursor = spanStart;
+      sorted.forEach(function (item) {
+        var id = String(item.__id || '');
+        var b = context.boundsById[id] || draftElementBounds(item);
+        targetById[id] = cursor;
+        cursor += Math.max(0, Number(b[sizeKey] || 0)) + gap;
       });
-      return applyToSelectedDraftElements(function (draft) {
-        var key = String(draft.__id || '');
-        if (Object.prototype.hasOwnProperty.call(nextYById, key)) {
-          draft.y = nextYById[key];
+    }
+
+    var applyIds = new Set(sorted.map(function (item) {
+      return String(item && item.__id || '');
+    }).filter(function (id) {
+      return !!id;
+    }));
+    if (!applyIds.size) {
+      return false;
+    }
+
+    var changed = false;
+    beginDraftHistoryTransaction();
+    try {
+      changed = applyToDraftElementIds(applyIds, function (draft) {
+        var id = String(draft.__id || '');
+        if (!Object.prototype.hasOwnProperty.call(targetById, id)) {
+          return;
+        }
+        var b = context.boundsById[id] || draftElementBounds(draft);
+        var delta = Number(targetById[id]) - Number(b[posKey] || 0);
+        if (!Number.isFinite(delta) || Math.abs(delta) < 0.00001) {
+          return;
+        }
+
+        if (isHorizontal) {
+          draft.x = snapCanvasValueToGrid(Number(draft.x || 0) + delta, 'x');
+        } else {
+          draft.y = snapCanvasValueToGrid(Number(draft.y || 0) + delta, 'y');
         }
       });
+    } finally {
+      endDraftHistoryTransaction();
     }
 
-    return false;
+    return changed;
+  }
+
+  function alignSelectedDraftElements(mode) {
+    var safeMode = String(mode || '').toLowerCase();
+    var context = resolveDraftAlignContext(safeMode);
+    if (!context || !context.items.length) {
+      return false;
+    }
+
+    if (safeMode.indexOf('distribute-h') === 0) {
+      return distributeDraftElements(context, 'x', resolveDraftDistributeVariant(safeMode));
+    }
+    if (safeMode.indexOf('distribute-v') === 0) {
+      return distributeDraftElements(context, 'y', resolveDraftDistributeVariant(safeMode));
+    }
+
+    var ref = context.referenceBounds || context.selectionBounds;
+    var targetX = null;
+    var targetY = null;
+
+    if (safeMode === 'align-left') {
+      targetX = Number(ref.x || 0);
+    } else if (safeMode === 'align-right') {
+      targetX = Number(ref.x || 0) + Number(ref.width || 0);
+    } else if (safeMode === 'align-h-center') {
+      targetX = Number(ref.x || 0) + (Number(ref.width || 0) / 2);
+    } else if (safeMode === 'align-top') {
+      targetY = Number(ref.y || 0);
+    } else if (safeMode === 'align-bottom') {
+      targetY = Number(ref.y || 0) + Number(ref.height || 0);
+    } else if (safeMode === 'align-v-center') {
+      targetY = Number(ref.y || 0) + (Number(ref.height || 0) / 2);
+    } else if (safeMode === 'canvas-center') {
+      targetX = Number(ref.x || 0) + (Number(ref.width || 0) / 2);
+      targetY = Number(ref.y || 0) + (Number(ref.height || 0) / 2);
+    } else {
+      return false;
+    }
+
+    var skipKeyId = context.reference === 'keyObject' ? String(context.keyObjectId || '') : '';
+    var changed = false;
+    beginDraftHistoryTransaction();
+    try {
+      changed = applyToDraftElementIds(context.itemIdSet, function (draft) {
+        var id = String(draft.__id || '');
+        if (skipKeyId && id === skipKeyId) {
+          return;
+        }
+
+        var b = context.boundsById[id] || draftElementBounds(draft);
+        var nextX = Number(draft.x || 0);
+        var nextY = Number(draft.y || 0);
+        var moveX = false;
+        var moveY = false;
+
+        if (targetX !== null) {
+          var currentX = safeMode === 'align-left'
+            ? Number(b.x || 0)
+            : (safeMode === 'align-right'
+              ? (Number(b.x || 0) + Number(b.width || 0))
+              : (Number(b.x || 0) + (Number(b.width || 0) / 2)));
+          var deltaX = targetX - currentX;
+          if (Number.isFinite(deltaX) && Math.abs(deltaX) > 0.00001) {
+            nextX = Number(draft.x || 0) + deltaX;
+            moveX = true;
+          }
+        }
+
+        if (targetY !== null) {
+          var currentY = safeMode === 'align-top'
+            ? Number(b.y || 0)
+            : (safeMode === 'align-bottom'
+              ? (Number(b.y || 0) + Number(b.height || 0))
+              : (Number(b.y || 0) + (Number(b.height || 0) / 2)));
+          var deltaY = targetY - currentY;
+          if (Number.isFinite(deltaY) && Math.abs(deltaY) > 0.00001) {
+            nextY = Number(draft.y || 0) + deltaY;
+            moveY = true;
+          }
+        }
+
+        if (moveX) {
+          draft.x = snapCanvasValueToGrid(nextX, 'x');
+        }
+        if (moveY) {
+          draft.y = snapCanvasValueToGrid(nextY, 'y');
+        }
+      });
+    } finally {
+      endDraftHistoryTransaction();
+    }
+
+    return changed;
+  }
+
+  function applyDraftLayerOrderByIds(orderedIds) {
+    ensureStep2DraftInitialized();
+    var elements = Array.isArray(state.templateDraft && state.templateDraft.elements)
+      ? state.templateDraft.elements
+      : [];
+    if (!elements.length || !Array.isArray(orderedIds) || !orderedIds.length) {
+      return false;
+    }
+
+    var byId = {};
+    elements.forEach(function (item) {
+      var id = String(item && item.__id || '');
+      if (id) {
+        byId[id] = item;
+      }
+    });
+
+    var nextElements = [];
+    orderedIds.forEach(function (id, idx) {
+      var sid = String(id || '');
+      var src = byId[sid];
+      if (!src) {
+        return;
+      }
+      var draft = Object.assign({}, src);
+      draft.zIndex = idx + 1;
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = src.__id;
+      nextElements.push(normalized);
+      delete byId[sid];
+    });
+
+    Object.keys(byId).forEach(function (id) {
+      var src = byId[id];
+      if (!src) {
+        return;
+      }
+      var idx = nextElements.length;
+      var draft = Object.assign({}, src);
+      draft.zIndex = idx + 1;
+      var normalized = normalizeDraftElement(draft, idx);
+      normalized.__id = src.__id;
+      nextElements.push(normalized);
+    });
+
+    var prevIds = sortDraftElementsByZIndex(elements).map(function (item) {
+      return String(item && item.__id || '');
+    });
+    var nextIds = nextElements.map(function (item) {
+      return String(item && item.__id || '');
+    });
+    if (prevIds.join('|') === nextIds.join('|')) {
+      return false;
+    }
+
+    state.templateDraft.elements = nextElements;
+    normalizeDraftElementSelection();
+    markDraftDirty();
+    return true;
+  }
+
+  function moveSelectedDraftLayers(mode) {
+    ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+
+    var selected = selectedDraftElementSet();
+    if (!selected.size) {
+      return false;
+    }
+
+    var ordered = sortDraftElementsByZIndex(state.templateDraft.elements || []);
+    if (ordered.length < 2) {
+      return false;
+    }
+
+    var ids = ordered.map(function (item) {
+      return String(item && item.__id || '');
+    }).filter(function (id) {
+      return !!id;
+    });
+    if (!ids.length) {
+      return false;
+    }
+
+    var selectedIds = new Set(ids.filter(function (id) {
+      return selected.has(id);
+    }));
+    if (!selectedIds.size) {
+      return false;
+    }
+
+    var safeMode = String(mode || '').toLowerCase();
+    var nextIds = ids.slice();
+    var changed = false;
+
+    function selectedBlocks() {
+      var indices = [];
+      nextIds.forEach(function (id, idx) {
+        if (selectedIds.has(id)) {
+          indices.push(idx);
+        }
+      });
+      if (!indices.length) {
+        return [];
+      }
+      var blocks = [];
+      var blockStart = indices[0];
+      var prev = indices[0];
+      for (var i = 1; i < indices.length; i += 1) {
+        var at = indices[i];
+        if (at === prev + 1) {
+          prev = at;
+          continue;
+        }
+        blocks.push({ start: blockStart, end: prev });
+        blockStart = at;
+        prev = at;
+      }
+      blocks.push({ start: blockStart, end: prev });
+      return blocks;
+    }
+
+    if (safeMode === 'forward') {
+      var forwardBlocks = selectedBlocks();
+      for (var f = forwardBlocks.length - 1; f >= 0; f -= 1) {
+        var fb = forwardBlocks[f];
+        if (fb.end >= (nextIds.length - 1)) {
+          continue;
+        }
+        var forwardChunk = nextIds.splice(fb.start, (fb.end - fb.start + 1));
+        Array.prototype.splice.apply(nextIds, [fb.start + 1, 0].concat(forwardChunk));
+        changed = true;
+      }
+    } else if (safeMode === 'backward') {
+      var backwardBlocks = selectedBlocks();
+      backwardBlocks.forEach(function (bb) {
+        if (bb.start <= 0) {
+          return;
+        }
+        var backChunk = nextIds.splice(bb.start, (bb.end - bb.start + 1));
+        Array.prototype.splice.apply(nextIds, [bb.start - 1, 0].concat(backChunk));
+        changed = true;
+      });
+    } else if (safeMode === 'front') {
+      var unselectedFront = nextIds.filter(function (id) {
+        return !selectedIds.has(id);
+      });
+      var selectedFront = nextIds.filter(function (id) {
+        return selectedIds.has(id);
+      });
+      var mergedFront = unselectedFront.concat(selectedFront);
+      changed = mergedFront.join('|') !== nextIds.join('|');
+      nextIds = mergedFront;
+    } else if (safeMode === 'back') {
+      var selectedBack = nextIds.filter(function (id) {
+        return selectedIds.has(id);
+      });
+      var unselectedBack = nextIds.filter(function (id) {
+        return !selectedIds.has(id);
+      });
+      var mergedBack = selectedBack.concat(unselectedBack);
+      changed = mergedBack.join('|') !== nextIds.join('|');
+      nextIds = mergedBack;
+    } else {
+      return false;
+    }
+
+    if (!changed) {
+      return false;
+    }
+
+    var didApply = false;
+    beginDraftHistoryTransaction();
+    try {
+      prepareDraftHistoryMutation();
+      didApply = applyDraftLayerOrderByIds(nextIds);
+    } finally {
+      endDraftHistoryTransaction();
+    }
+
+    return didApply;
+  }
+
+  function reorderDraftLayerByIds(sourceId, targetId, placeAfter) {
+    var source = String(sourceId || '');
+    var target = String(targetId || '');
+    if (!source || !target || source === target) {
+      return false;
+    }
+
+    ensureStep2DraftInitialized();
+    var ordered = sortDraftElementsByZIndex(state.templateDraft.elements || []);
+    var ids = ordered.map(function (item) {
+      return String(item && item.__id || '');
+    }).filter(function (id) {
+      return !!id;
+    });
+    var sourceIndex = ids.indexOf(source);
+    var targetIndex = ids.indexOf(target);
+    if (sourceIndex === -1 || targetIndex === -1) {
+      return false;
+    }
+
+    var moved = ids.splice(sourceIndex, 1)[0];
+    var refreshedTargetIndex = ids.indexOf(target);
+    var insertAt = refreshedTargetIndex + (placeAfter ? 1 : 0);
+    ids.splice(insertAt, 0, moved);
+
+    var didApply = false;
+    beginDraftHistoryTransaction();
+    try {
+      prepareDraftHistoryMutation();
+      didApply = applyDraftLayerOrderByIds(ids);
+    } finally {
+      endDraftHistoryTransaction();
+    }
+
+    return didApply;
+  }
+
+  function setDraftLayerVisibility(id, visible) {
+    var wanted = String(id || '');
+    if (!wanted) {
+      return false;
+    }
+    var nextVisible = visible !== false;
+    var changed = false;
+    beginDraftHistoryTransaction();
+    try {
+      changed = mutateDraftElementById(wanted, function (draft) {
+        draft.visible = nextVisible;
+      });
+      if (!nextVisible) {
+        clearDraftInlineTextEditing();
+      }
+      normalizeDraftElementSelection();
+    } finally {
+      endDraftHistoryTransaction();
+    }
+    return changed;
+  }
+
+  function setDraftLayerLocked(id, locked) {
+    var wanted = String(id || '');
+    if (!wanted) {
+      return false;
+    }
+    var nextLocked = !!locked;
+    var changed = false;
+    beginDraftHistoryTransaction();
+    try {
+      changed = mutateDraftElementById(wanted, function (draft) {
+        draft.locked = nextLocked;
+      });
+      if (nextLocked) {
+        clearDraftInlineTextEditing();
+      }
+      normalizeDraftElementSelection();
+    } finally {
+      endDraftHistoryTransaction();
+    }
+    return changed;
   }
 
   function draftElementVisibleOnSide(item, side) {
+    if (!isDraftElementVisible(item)) {
+      return false;
+    }
     var itemSide = String(item && item.side || 'front').toLowerCase();
     var wanted = String(side || 'front').toLowerCase();
     return itemSide === 'both' || itemSide === wanted;
@@ -3131,20 +4616,34 @@
     var defaultX = 16 + ((nextIndex * 10) % 60);
     var defaultY = 16 + ((nextIndex * 10) % 60);
     var hasLabelOption = Object.prototype.hasOwnProperty.call(options, 'label');
+    var hasTextOption = Object.prototype.hasOwnProperty.call(options, 'text');
+    var textType = normalizeDraftTextType(options.textType || options.textMode || (baseType === 'text' ? 'artistic' : ''));
+    var textValue = hasTextOption
+      ? String(options.text || '')
+      : (hasLabelOption ? String(options.label || '') : '');
 
     var itemDraft = {
       type: baseType,
-      label: hasLabelOption ? String(options.label) : (
+      zIndex: maxDraftElementZIndex() + 1,
+      label: baseType === 'text'
+        ? textValue
+        : (hasLabelOption ? String(options.label) : (
         baseType === 'image'
           ? 'Image ' + String(nextIndex + 1)
           : (baseType === 'rectangle' ? 'Rectangle ' + String(nextIndex + 1) : '')
-      ),
+      )),
+      text: baseType === 'text' ? textValue : '',
       field: String(options.field || ''),
       side: String(options.side || state.draftActiveSide || 'front'),
       width: Number(options.width || defaultWidth),
       height: Number(options.height || defaultHeight),
       x: Number(options.x || defaultX),
       y: Number(options.y || defaultY),
+      scaleX: baseType === 'text' ? clampDraftScale(options.scaleX) : 1,
+      scaleY: baseType === 'text' ? clampDraftScale(options.scaleY) : 1,
+      rotation: baseType === 'text' ? normalizeDraftAngle(options.rotation) : 0,
+      skewX: baseType === 'text' ? normalizeDraftAngle(options.skewX) : 0,
+      skewY: baseType === 'text' ? normalizeDraftAngle(options.skewY) : 0,
       fontFamily: String(options.fontFamily || 'Arial'),
       fontGroup: String(options.fontGroup || 'arial'),
       fontFace: String(options.fontFace || 'regular'),
@@ -3154,13 +4653,14 @@
       lineHeight: Number(options.lineHeight || 1.2),
       letterSpacing: Number(options.letterSpacing || 0),
       color: String(options.color || '#1e293b'),
-      textMode: String(options.textMode || (baseType === 'text' ? 'artistic' : '')),
+      textType: baseType === 'text' ? textType : '',
+      textMode: baseType === 'text' ? textType : '',
       imageKind: String(options.imageKind || ''),
       src: baseType === 'image' ? String(options.src || '') : '',
       showLabel: options.showLabel !== false,
     };
 
-    if (baseType === 'text' && String(itemDraft.textMode || '').toLowerCase() === 'artistic' && options.autoFitArtistic === true) {
+    if (baseType === 'text' && normalizeDraftTextType(itemDraft.textType) === 'artistic' && options.autoFitArtistic === true) {
       fitDraftArtisticTextBounds(itemDraft);
     }
 
@@ -3560,6 +5060,7 @@
     state.templateDraft.elements = state.templateDraft.elements.filter(function (item) {
       return !selected.has(String(item && item.__id || ''));
     });
+    normalizeDraftElementZOrder(false);
 
     if (state.templateDraft.elements.length) {
       state.draftSelectedElementId = state.templateDraft.elements[0].__id;
@@ -3609,12 +5110,21 @@
     ) + ' Copy';
     addDraftElement(selected.type, {
       label: nextLabel,
+      text: selected.type === 'text' ? String(draftTextValue(selected) || '') : '',
+      textType: selected.type === 'text'
+        ? normalizeDraftTextType(selected.textType || selected.textMode)
+        : '',
       field: selected.field,
       side: selected.side,
       width: selected.width,
       height: selected.height,
       x: Number(selected.x || 0) + 8,
       y: Number(selected.y || 0) + 8,
+      scaleX: selected.scaleX,
+      scaleY: selected.scaleY,
+      rotation: selected.rotation,
+      skewX: selected.skewX,
+      skewY: selected.skewY,
       fontFamily: selected.fontFamily,
       fontGroup: selected.fontGroup,
       fontFace: selected.fontFace,
@@ -3629,6 +5139,143 @@
       src: selected.src,
     });
     return true;
+  }
+
+  function splitArtisticTextParts(value, mode) {
+    var text = String(value == null ? '' : value);
+    if (!text) {
+      return [];
+    }
+
+    if (mode === 'words') {
+      var wordParts = text.match(/\S+\s*/g);
+      if (Array.isArray(wordParts) && wordParts.length) {
+        return wordParts;
+      }
+      return [text];
+    }
+
+    return Array.from(text);
+  }
+
+  function resolveBreakTextMode() {
+    var response = window.prompt('Break artistic text into "chars" or "words"?', 'chars');
+    if (response === null) {
+      return '';
+    }
+    var raw = String(response || '').trim().toLowerCase();
+    if (raw === 'word' || raw === 'words' || raw === 'w') {
+      return 'words';
+    }
+    if (raw === 'char' || raw === 'chars' || raw === 'c' || raw === '') {
+      return 'chars';
+    }
+    return '';
+  }
+
+  function breakSelectedArtisticText(mode) {
+    var selected = selectedDraftElement();
+    if (!selected || !isArtisticDraftText(selected)) {
+      return false;
+    }
+
+    var wantedMode = mode || resolveBreakTextMode();
+    if (wantedMode !== 'chars' && wantedMode !== 'words') {
+      return false;
+    }
+
+    var sourceText = draftTextValue(selected);
+    var parts = splitArtisticTextParts(sourceText, wantedMode);
+    if (parts.length <= 1) {
+      showToast('Nothing to break: text has a single segment.', 'info');
+      return false;
+    }
+
+    ensureStep2DraftInitialized();
+    beginDraftHistoryTransaction();
+    try {
+      prepareDraftHistoryMutation();
+
+      var bounds = draftArtisticBounds(selected);
+      var transformInfo = draftArtisticTransformInfo(selected);
+      var basisX = Number(transformInfo.basisX || 0);
+      var basisY = Number(transformInfo.basisY || 0);
+      if (Math.abs(basisX) < 0.0001 && Math.abs(basisY) < 0.0001) {
+        var fallbackAngle = normalizeDraftAngle(selected.rotation) * (Math.PI / 180);
+        basisX = Math.cos(fallbackAngle);
+        basisY = Math.sin(fallbackAngle);
+      }
+
+      var cursorX = Number(bounds.x || 0);
+      var cursorY = Number(bounds.y || 0);
+      var scaleX = clampDraftScale(selected.scaleX);
+      var scaleY = clampDraftScale(selected.scaleY);
+      var createdIds = [];
+      var newElements = [];
+
+      var partMeta = parts.map(function (part) {
+        var partText = String(part || '');
+        var dims = measureDraftTextDimensions(selected, partText);
+        var partWidth = Math.max(6, Number(dims.width || selected.width || 6));
+        var partHeight = Math.max(10, Number(dims.height || selected.height || 10));
+        return {
+          text: partText,
+          width: partWidth,
+          height: partHeight,
+          localBounds: draftArtisticTransformInfo(selected, partWidth, partHeight),
+        };
+      });
+      if (!partMeta.length) {
+        return false;
+      }
+
+      (state.templateDraft.elements || []).forEach(function (item) {
+        if (!item || String(item.__id || '') !== String(selected.__id || '')) {
+          newElements.push(item);
+          return;
+        }
+
+        partMeta.forEach(function (part, idx) {
+          var piece = Object.assign({}, selected, {
+            __id: nextDraftElementId(),
+            text: part.text,
+            label: part.text,
+            textType: 'artistic',
+            textMode: 'artistic',
+            textAlign: 'left',
+            x: cursorX,
+            y: cursorY,
+            width: part.width,
+            height: part.height,
+            scaleX: scaleX,
+            scaleY: scaleY,
+            artisticAutoFit: false,
+          });
+          var normalized = normalizeDraftElement(piece, idx);
+          normalized.__id = piece.__id;
+          newElements.push(normalized);
+          createdIds.push(normalized.__id);
+
+          if (idx < (partMeta.length - 1)) {
+            var nextPart = partMeta[idx + 1];
+            var advanceLocal = Number(part.width || 0);
+            var localCurrent = part.localBounds || { minX: 0, minY: 0 };
+            var localNext = nextPart.localBounds || { minX: 0, minY: 0 };
+            cursorX += (basisX * advanceLocal) + (Number(localNext.minX || 0) - Number(localCurrent.minX || 0));
+            cursorY += (basisY * advanceLocal) + (Number(localNext.minY || 0) - Number(localCurrent.minY || 0));
+          }
+        });
+      });
+
+      state.templateDraft.elements = newElements;
+      state.draftSelectedElementIds = new Set(createdIds);
+      state.draftSelectedElementId = createdIds.length ? createdIds[0] : '';
+      clearDraftInlineTextEditing();
+      markDraftDirty();
+      return true;
+    } finally {
+      endDraftHistoryTransaction();
+    }
   }
 
   function isTypingTarget(node) {
@@ -3679,23 +5326,71 @@
 
     var patchData = patch && typeof patch === 'object' ? patch : {};
 
+    if (Object.prototype.hasOwnProperty.call(patchData, 'text')) {
+      patchData.text = String(patchData.text || '');
+      patchData.label = patchData.text;
+    }
+    if (Object.prototype.hasOwnProperty.call(patchData, 'label')) {
+      patchData.label = String(patchData.label || '');
+      if (String(current.type || '').toLowerCase() === 'text') {
+        patchData.text = patchData.label;
+      }
+    }
+
     if (Object.prototype.hasOwnProperty.call(patchData, 'label')
       && String(current.type || '').toLowerCase() === 'text'
-      && String(current.textMode || '').toLowerCase() === 'artistic') {
+      && isArtisticDraftText(current)) {
       patchData.label = String(patchData.label || '').replace(/[ \t\u00A0]+$/g, '');
+      patchData.text = patchData.label;
+    }
+
+    if (isArtisticDraftText(current)) {
+      if (Object.prototype.hasOwnProperty.call(patchData, 'width')) {
+        var wantedWidth = Number(patchData.width || 0);
+        var baseWidth = Math.max(1, Number(current.width || 1));
+        if (Number.isFinite(wantedWidth) && wantedWidth > 0) {
+          patchData.scaleX = clampDraftScale(wantedWidth / baseWidth);
+        }
+        delete patchData.width;
+      }
+      if (Object.prototype.hasOwnProperty.call(patchData, 'height')) {
+        var wantedHeight = Number(patchData.height || 0);
+        var baseHeight = Math.max(1, Number(current.height || 1));
+        if (Number.isFinite(wantedHeight) && wantedHeight > 0) {
+          patchData.scaleY = clampDraftScale(wantedHeight / baseHeight);
+        }
+        delete patchData.height;
+      }
+      if (Object.prototype.hasOwnProperty.call(patchData, 'scaleX')) {
+        patchData.scaleX = clampDraftScale(patchData.scaleX);
+      }
+      if (Object.prototype.hasOwnProperty.call(patchData, 'scaleY')) {
+        patchData.scaleY = clampDraftScale(patchData.scaleY);
+      }
+      if (Object.prototype.hasOwnProperty.call(patchData, 'rotation')) {
+        patchData.rotation = normalizeDraftAngle(patchData.rotation);
+      }
+      if (Object.prototype.hasOwnProperty.call(patchData, 'skewX')) {
+        patchData.skewX = normalizeDraftAngle(patchData.skewX);
+      }
+      if (Object.prototype.hasOwnProperty.call(patchData, 'skewY')) {
+        patchData.skewY = normalizeDraftAngle(patchData.skewY);
+      }
     }
 
     Object.keys(patchData).forEach(function (key) {
       current[key] = patchData[key];
     });
 
-    var isArtisticText = String(current.type || '').toLowerCase() === 'text'
-      && String(current.textMode || 'artistic').toLowerCase() === 'artistic';
+    var isArtisticText = isArtisticDraftText(current);
     if (isArtisticText) {
       var artisticAutoFit = current.artisticAutoFit !== false;
       var hasManualSize = Object.prototype.hasOwnProperty.call(patchData, 'width')
         || Object.prototype.hasOwnProperty.call(patchData, 'height');
+      var hasManualScale = Object.prototype.hasOwnProperty.call(patchData, 'scaleX')
+        || Object.prototype.hasOwnProperty.call(patchData, 'scaleY');
       var affectsArtisticBounds = Object.prototype.hasOwnProperty.call(patchData, 'label')
+        || Object.prototype.hasOwnProperty.call(patchData, 'text')
         || Object.prototype.hasOwnProperty.call(patchData, 'fontSize')
         || Object.prototype.hasOwnProperty.call(patchData, 'fontFamily')
         || Object.prototype.hasOwnProperty.call(patchData, 'fontWeight')
@@ -3708,7 +5403,7 @@
         current.artisticAutoFit = false;
         artisticAutoFit = false;
       }
-      if (!hasManualSize && affectsArtisticBounds && artisticAutoFit) {
+      if (!hasManualSize && !hasManualScale && affectsArtisticBounds && artisticAutoFit) {
         fitDraftArtisticTextBounds(current);
       }
     }
@@ -3728,31 +5423,101 @@
     var metrics = draftCanvasMetrics();
     var layout = draftCanvasLayoutMetrics(metrics);
     var selectedIds = selectedDraftElementSet();
+    var transformMode = normalizeDraftTransformMode(state.draftTransformMode);
     var mergePreviewMode = !!state.draftMergePreview;
+    var orderedElements = sortedDraftElements();
     var rows = [];
 
-    (state.templateDraft.elements || []).forEach(function (item, idx) {
+    function renderDraftSelectionHandlesHtml(mode) {
+      var safeMode = normalizeDraftTransformMode(mode);
+      if (safeMode === 'rotate') {
+        return ''
+          + '<span class="gc-draft-selection-handle is-nw is-rotate" data-handle="nw" data-transform-kind="rotate"></span>'
+          + '<span class="gc-draft-selection-handle is-n is-skew" data-handle="n" data-transform-kind="skew-y"></span>'
+          + '<span class="gc-draft-selection-handle is-ne is-rotate" data-handle="ne" data-transform-kind="rotate"></span>'
+          + '<span class="gc-draft-selection-handle is-e is-skew" data-handle="e" data-transform-kind="skew-x"></span>'
+          + '<span class="gc-draft-selection-handle is-sw is-rotate" data-handle="sw" data-transform-kind="rotate"></span>'
+          + '<span class="gc-draft-selection-handle is-s is-skew" data-handle="s" data-transform-kind="skew-y"></span>'
+          + '<span class="gc-draft-selection-handle is-se is-rotate" data-handle="se" data-transform-kind="rotate"></span>'
+          + '<span class="gc-draft-selection-handle is-w is-skew" data-handle="w" data-transform-kind="skew-x"></span>';
+      }
+      return ''
+        + '<span class="gc-draft-selection-handle is-nw" data-handle="nw" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-n" data-handle="n" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-ne" data-handle="ne" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-e" data-handle="e" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-sw" data-handle="sw" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-s" data-handle="s" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-se" data-handle="se" data-transform-kind="resize"></span>'
+        + '<span class="gc-draft-selection-handle is-w" data-handle="w" data-transform-kind="resize"></span>';
+    }
+
+    function renderDraftGroupSelectionHtml() {
+      if (selectedIds.size <= 1 || state.draftTool !== 'select') {
+        return '';
+      }
+
+      var activeSide = normalizeDraftEditorSide(state.draftActiveSide);
+      if (!state.isTwoSided) {
+        activeSide = 'front';
+      }
+      var groupBounds = draftSelectionBounds(selectedIds, activeSide);
+      if (!groupBounds) {
+        return '';
+      }
+
+      var sideOffsetUnits = state.isTwoSided && activeSide === 'back' ? layout.cardWidth : 0;
+      var left = ((Number(groupBounds.x || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+      var top = (Number(groupBounds.y || 0) / Math.max(1, layout.cardHeight)) * 100;
+      var width = (Number(groupBounds.width || 1) / Math.max(1, layout.totalWidth)) * 100;
+      var height = (Number(groupBounds.height || 1) / Math.max(1, layout.cardHeight)) * 100;
+      var primaryId = String(state.draftSelectedElementId || '');
+      if (!primaryId) {
+        selectedIds.forEach(function (sid) {
+          if (!primaryId) {
+            primaryId = String(sid || '');
+          }
+        });
+      }
+      if (!primaryId) {
+        return '';
+      }
+
+      var style = 'left:' + left + '%;top:' + top + '%;width:' + Math.max(0.8, width) + '%;height:' + Math.max(0.8, height) + '%;'
+        + '--gc-handle-size:10px;--gc-handle-offset-x:10px;--gc-handle-offset-y:10px;';
+      return '<div class="gc-draft-el gc-draft-selection-group is-selected is-transform-' + escapeAttr(transformMode) + '" data-action="select-draft-element" data-el-id="' + escapeAttr(primaryId) + '" data-selection-group="1" data-render-side="' + escapeAttr(activeSide) + '" style="' + style + '">'
+        + renderDraftSelectionHandlesHtml(transformMode)
+        + '</div>';
+    }
+
+    orderedElements.forEach(function (item, idx) {
       if (!item) {
+        return;
+      }
+      if (!isDraftElementVisible(item)) {
         return;
       }
 
       var renderSides = draftElementRenderSides(item);
       renderSides.forEach(function (renderSide) {
         var sideOffsetUnits = state.isTwoSided && renderSide === 'back' ? layout.cardWidth : 0;
-        var isArtisticGeometry = String(item.type || '').toLowerCase() === 'text'
-          && String(item.textMode || 'artistic').toLowerCase() === 'artistic';
-        var leftRaw = ((Number(item.x || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
-        var topRaw = (Number(item.y || 0) / Math.max(1, layout.cardHeight)) * 100;
-        var widthRaw = (Number(item.width || 1) / Math.max(1, layout.totalWidth)) * 100;
-        var heightRaw = (Number(item.height || 1) / Math.max(1, layout.cardHeight)) * 100;
+        var isArtisticGeometry = isArtisticDraftText(item);
+        var visualBounds = isArtisticGeometry ? draftArtisticBounds(item) : draftElementBounds(item);
+        var leftRaw = ((Number(visualBounds.x || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+        var topRaw = (Number(visualBounds.y || 0) / Math.max(1, layout.cardHeight)) * 100;
+        var widthRaw = (Number(visualBounds.width || 1) / Math.max(1, layout.totalWidth)) * 100;
+        var heightRaw = (Number(visualBounds.height || 1) / Math.max(1, layout.cardHeight)) * 100;
         var left = isArtisticGeometry ? leftRaw : Math.max(0, Math.min(100, leftRaw));
         var top = isArtisticGeometry ? topRaw : Math.max(0, Math.min(100, topRaw));
         var width = isArtisticGeometry ? Math.max(0.8, widthRaw) : Math.max(2, Math.min(100, widthRaw));
         var height = isArtisticGeometry ? Math.max(0.8, heightRaw) : Math.max(2, Math.min(100, heightRaw));
-        var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label');
-        var label = hasStoredLabel
-          ? String(item.label)
-          : String(item.field || ('Field ' + String(idx + 1)));
+
+        var hasStoredLabel = Object.prototype.hasOwnProperty.call(item, 'label') || Object.prototype.hasOwnProperty.call(item, 'text');
+        var label = item.type === 'text'
+          ? String(draftTextValue(item))
+          : (hasStoredLabel
+            ? String(item.label)
+            : String(item.field || ('Field ' + String(idx + 1))));
         if (!label && item.type !== 'text') {
           label = String(item.field || ('Field ' + String(idx + 1)));
         }
@@ -3762,16 +5527,25 @@
         if (mergePreviewMode && item.type === 'text' && item.field) {
           label = '{{' + fieldLabelForUi(item.field) + '}}';
         }
+
+        var textType = normalizeDraftTextType(item.textType || item.textMode || 'artistic');
         var isSelected = isDraftElementSelected(item.__id);
+        var isLocked = isDraftElementLocked(item);
+        var isKeyObject = isSelected
+          && selectedIds.size > 1
+          && String(state.draftKeyObjectId || '') === String(item.__id || '');
         var cls = 'gc-draft-el gc-draft-el-' + (
           item.type === 'image'
             ? 'photo'
             : (item.type === 'rectangle' ? 'rect' : 'text')
         )
           + ' gc-draft-el-side-' + renderSide
-          + (item.type === 'text' ? (' gc-draft-el-' + (item.textMode === 'paragraph' ? 'paragraph' : 'artistic')) : '')
+          + (item.type === 'text' ? (' gc-draft-el-' + (textType === 'paragraph' ? 'paragraph' : 'artistic')) : '')
           + (item.type === 'text' && state.draftInlineEditingElementId === item.__id ? ' is-editing' : '')
           + (mergePreviewMode && item.field ? ' is-merge-preview' : '')
+          + (isSelected && state.draftTool === 'select' ? (' is-transform-' + transformMode) : '')
+          + (isLocked ? ' is-locked' : '')
+          + (isKeyObject ? ' is-key-object' : '')
           + (isSelected ? ' is-selected' : '');
         var style = 'left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;';
 
@@ -3785,13 +5559,10 @@
           var handleGapPx = Math.max(DRAFT_HANDLE_GAP_MIN_PX, Math.min(DRAFT_HANDLE_GAP_MAX_PX, fontSizePx * 0.05));
           var handleOffsetPx = Math.round((handleSizePx / 2) + handleGapPx);
           var handleOffsetYPx = handleOffsetPx;
-          var align = item.textAlign === 'left'
-            ? 'flex-start'
-            : (item.textAlign === 'right' ? 'flex-end' : 'center');
           var textAlign = item.textAlign === 'left'
             ? 'left'
             : (item.textAlign === 'right' ? 'right' : 'center');
-          var resolvedLineHeight = item.textMode === 'paragraph'
+          var resolvedLineHeight = textType === 'paragraph'
             ? Number(item.lineHeight || 1.2)
             : 1;
           style += '--gc-handle-size:' + handleSizePx + 'px;'
@@ -3805,8 +5576,7 @@
             + 'letter-spacing:' + Number(item.letterSpacing || 0) + 'px;'
             + 'color:' + escapeAttr(item.color || '#1e293b') + ';'
             + 'text-align:' + textAlign + ';'
-            + 'justify-content:' + align + ';'
-            + (item.textMode === 'paragraph' ? 'white-space:normal;' : 'white-space:nowrap;');
+            + (textType === 'paragraph' ? 'white-space:normal;' : 'white-space:nowrap;');
         }
 
         if (item.type === 'rectangle') {
@@ -3843,27 +5613,50 @@
           && state.draftInlineEditingElementId === item.__id
           && (!state.isTwoSided || String(item.side || '').toLowerCase() !== 'both' || renderSide === normalizeDraftEditorSide(state.draftActiveSide))
           && selectedIds.size <= 1;
-        var contentHtml = isInlineEditing
-          ? '<div class="gc-draft-inline-editor" data-inline-text-editor="1" data-inline-editor-id="' + escapeAttr(item.__id) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '" contenteditable="true" spellcheck="false">' + escapeHtml(label) + '</div>'
-          : escapeHtml(label);
-        var handlesHtml = (isSelected && !isInlineEditing)
-          ? '<span class="gc-draft-selection-handle is-nw" data-handle="nw"></span>'
-            + '<span class="gc-draft-selection-handle is-n" data-handle="n"></span>'
-            + '<span class="gc-draft-selection-handle is-ne" data-handle="ne"></span>'
-            + '<span class="gc-draft-selection-handle is-e" data-handle="e"></span>'
-            + '<span class="gc-draft-selection-handle is-sw" data-handle="sw"></span>'
-            + '<span class="gc-draft-selection-handle is-s" data-handle="s"></span>'
-            + '<span class="gc-draft-selection-handle is-se" data-handle="se"></span>'
-            + '<span class="gc-draft-selection-handle is-w" data-handle="w"></span>'
+
+        var contentHtml = '';
+        if (item.type === 'text' && isArtisticGeometry) {
+          var baseWidth = Math.max(6, Number(item.width || 6));
+          var baseHeight = Math.max(10, Number(item.height || 10));
+          var coreOffsetX = Number(visualBounds.coreOffsetX || 0);
+          var coreOffsetY = Number(visualBounds.coreOffsetY || 0);
+          var scaleTextX = clampDraftScale(item.scaleX);
+          var scaleTextY = clampDraftScale(item.scaleY);
+          var rotation = normalizeDraftAngle(item.rotation);
+          var skewX = normalizeDraftAngle(item.skewX);
+          var skewY = normalizeDraftAngle(item.skewY);
+          var transformedTextStyle = 'position:absolute;left:' + coreOffsetX.toFixed(3) + 'px;top:' + coreOffsetY.toFixed(3) + 'px;'
+            + 'display:block;width:' + baseWidth.toFixed(2) + 'px;height:' + baseHeight.toFixed(2) + 'px;'
+            + 'transform-origin:top left;'
+            + 'transform:scale(' + scaleTextX.toFixed(4) + ',' + scaleTextY.toFixed(4) + ') rotate(' + rotation.toFixed(3) + 'deg) skew(' + skewX.toFixed(3) + 'deg,' + skewY.toFixed(3) + 'deg);';
+
+          if (isInlineEditing) {
+            contentHtml = '<div class="gc-draft-inline-editor" data-inline-text-editor="1" data-inline-editor-id="' + escapeAttr(item.__id) + '" data-text-mode="artistic" contenteditable="true" spellcheck="false" style="' + transformedTextStyle + '">' + escapeHtml(label) + '</div>';
+          } else {
+            contentHtml = '<span class="gc-draft-el-core" style="' + transformedTextStyle + '">' + escapeHtml(label) + '</span>';
+          }
+        } else {
+          contentHtml = isInlineEditing
+            ? '<div class="gc-draft-inline-editor" data-inline-text-editor="1" data-inline-editor-id="' + escapeAttr(item.__id) + '" data-text-mode="' + escapeAttr(textType === 'paragraph' ? 'paragraph' : 'artistic') + '" contenteditable="true" spellcheck="false">' + escapeHtml(label) + '</div>'
+            : escapeHtml(label);
+        }
+
+        var handlesHtml = (isSelected && !isInlineEditing && selectedIds.size <= 1 && state.draftTool === 'select')
+          ? renderDraftSelectionHandlesHtml(transformMode)
           : '';
 
-        rows.push('<div class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '" data-render-side="' + escapeAttr(renderSide) + '" data-el-type="' + escapeAttr(String(item.type || 'text')) + '" data-text-mode="' + escapeAttr(item.textMode === 'paragraph' ? 'paragraph' : 'artistic') + '"'
+        rows.push('<div class="' + cls + '" data-action="select-draft-element" data-el-id="' + escapeAttr(item.__id) + '" data-render-side="' + escapeAttr(renderSide) + '" data-el-type="' + escapeAttr(String(item.type || 'text')) + '" data-text-mode="' + escapeAttr(textType === 'paragraph' ? 'paragraph' : 'artistic') + '"'
           + ' style="' + style + '">'
           + contentHtml
           + handlesHtml
           + '</div>');
       });
     });
+
+    var groupOverlayHtml = renderDraftGroupSelectionHtml();
+    if (groupOverlayHtml) {
+      rows.push(groupOverlayHtml);
+    }
 
     if (!rows.length) {
       return '';
@@ -3915,19 +5708,44 @@
     return aLeft <= bRight && aRight >= bLeft && aTop <= bBottom && aBottom >= bTop;
   }
 
-  function selectDraftElementsByBox(box, appendSelection) {
+  function selectDraftElementsByBox(box, appendSelection, mode, baseSelectionIds) {
     ensureStep2DraftInitialized();
     normalizeDraftElementSelection();
+
+    var selectionMode = mode;
+    var append = appendSelection;
+    if (typeof appendSelection === 'string') {
+      selectionMode = appendSelection;
+      append = false;
+    }
+    selectionMode = String(selectionMode || 'intersect').toLowerCase();
+    if (selectionMode !== 'intersect') {
+      selectionMode = 'intersect';
+    }
 
     var activeSide = normalizeDraftEditorSide((box && box.side) || state.draftActiveSide);
     if (!state.isTwoSided) {
       activeSide = 'front';
     }
-    var selectedIds = appendSelection ? new Set(selectedDraftElementSet()) : new Set();
+    var selectedIds = new Set();
+    if (append) {
+      var base = (baseSelectionIds && typeof baseSelectionIds.forEach === 'function')
+        ? baseSelectionIds
+        : selectedDraftElementSet();
+      base.forEach(function (id) {
+        var sid = String(id || '');
+        if (sid) {
+          selectedIds.add(sid);
+        }
+      });
+    }
     var elements = Array.isArray(state.templateDraft.elements) ? state.templateDraft.elements : [];
 
     elements.forEach(function (item) {
       if (!item || !item.__id) {
+        return;
+      }
+      if (!isDraftElementSelectable(item)) {
         return;
       }
 
@@ -3936,24 +5754,16 @@
         return;
       }
 
-      var itemBox = {
-        x: Number(item.x || 0),
-        y: Number(item.y || 0),
-        width: Math.max(0, Number(item.width || 0)),
-        height: Math.max(0, Number(item.height || 0)),
-      };
-      if (draftBoxesIntersect(box, itemBox)) {
+      var itemBox = isArtisticDraftText(item) ? draftArtisticBounds(item) : draftElementBounds(item);
+      var hit = selectionMode === 'intersect'
+        ? draftBoxesIntersect(box, itemBox)
+        : draftBoxesIntersect(box, itemBox);
+      if (hit) {
         selectedIds.add(String(item.__id));
       }
     });
 
-    state.draftSelectedElementIds = selectedIds;
-    state.draftSelectedElementId = '';
-    selectedIds.forEach(function (id) {
-      if (!state.draftSelectedElementId) {
-        state.draftSelectedElementId = String(id || '');
-      }
-    });
+    setDraftSelectedElementIds(selectedIds, state.draftSelectedElementId);
     state.draftSelectedGuideId = '';
     clearDraftInlineTextEditing();
     normalizeDraftElementSelection();
@@ -4007,6 +5817,282 @@
     return '<div class="' + cls + '" style="left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;"></div>';
   }
 
+  function renderDraftAlignPreviewHtml() {
+    var mode = String(state.draftAlignPreviewMode || '').toLowerCase();
+    if (!mode || mode.indexOf('distribute-') === 0) {
+      return '';
+    }
+
+    var context = resolveDraftAlignContext(mode);
+    if (!context || !context.referenceBounds) {
+      return '';
+    }
+
+    var ref = context.referenceBounds;
+    var vertical = [];
+    var horizontal = [];
+
+    if (mode === 'align-left') {
+      vertical.push(Number(ref.x || 0));
+    } else if (mode === 'align-right') {
+      vertical.push(Number(ref.x || 0) + Number(ref.width || 0));
+    } else if (mode === 'align-h-center') {
+      vertical.push(Number(ref.x || 0) + (Number(ref.width || 0) / 2));
+    } else if (mode === 'align-top') {
+      horizontal.push(Number(ref.y || 0));
+    } else if (mode === 'align-bottom') {
+      horizontal.push(Number(ref.y || 0) + Number(ref.height || 0));
+    } else if (mode === 'align-v-center') {
+      horizontal.push(Number(ref.y || 0) + (Number(ref.height || 0) / 2));
+    } else if (mode === 'canvas-center') {
+      vertical.push(Number(ref.x || 0) + (Number(ref.width || 0) / 2));
+      horizontal.push(Number(ref.y || 0) + (Number(ref.height || 0) / 2));
+    } else {
+      return '';
+    }
+
+    var metrics = draftCanvasMetrics();
+    var layout = draftCanvasLayoutMetrics(metrics);
+    var activeSide = normalizeDraftEditorSide(state.draftActiveSide);
+    if (!state.isTwoSided) {
+      activeSide = 'front';
+    }
+    var sideOffsetUnits = state.isTwoSided && activeSide === 'back' ? layout.cardWidth : 0;
+
+    var rows = [];
+    vertical.forEach(function (xVal) {
+      var left = ((Number(xVal || 0) + sideOffsetUnits) / Math.max(1, layout.totalWidth)) * 100;
+      rows.push('<div class="gc-draft-align-preview-line is-v" style="left:' + left + '%;"></div>');
+    });
+    horizontal.forEach(function (yVal) {
+      var top = (Number(yVal || 0) / Math.max(1, layout.cardHeight)) * 100;
+      rows.push('<div class="gc-draft-align-preview-line is-h" style="top:' + top + '%;"></div>');
+    });
+
+    return rows.join('');
+  }
+
+  function draftLayerItemName(item, index) {
+    if (!item) {
+      return 'Object ' + String(index + 1);
+    }
+    var type = String(item.type || '').toLowerCase();
+    if (type === 'text') {
+      var text = String(draftTextValue(item) || item.label || '').trim();
+      return text || ('Text ' + String(index + 1));
+    }
+    if (type === 'image') {
+      return String(item.label || '').trim() || ('Image ' + String(index + 1));
+    }
+    if (type === 'rectangle') {
+      return String(item.label || '').trim() || ('Rectangle ' + String(index + 1));
+    }
+    return String(item.label || '').trim() || ('Object ' + String(index + 1));
+  }
+
+  function renderDraftTextPanelHtml() {
+    var unit = currentDraftUnit();
+    var guidesLocked = !!state.draftGuidesLocked;
+    var snapMmLabel = formatDraftSnapMm(state.draftSnapMm);
+    var mergeFieldOptions = renderSchemaFieldOptions('', {
+      includeEmpty: false,
+      imageOnly: false,
+    });
+    var photoFieldOptions = renderSchemaFieldOptions('', {
+      includeEmpty: false,
+      imageOnly: true,
+    });
+    var hasMergeFieldChoices = !!mergeFieldOptions;
+    var hasPhotoFieldChoices = !!photoFieldOptions;
+    var autoMapScope = normalizeAutoMapScope(state.draftAutoMapScope || 'active');
+    var autoMapScopeOptions = renderAutoMapScopeOptions(autoMapScope);
+    var hasAutoMapReport = !!state.draftAutoMapReport;
+
+    return ''
+      + renderDraftPropsHtml()
+      + '<div class="gc-prop-section-title">Document</div>'
+      + '<div class="gc-prop-grid">'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftUnitSelect">Units</label>'
+      + '<select id="gcDraftUnitSelect" class="gc-prop-select">'
+      + '<option value="mm"' + (unit === 'mm' ? ' selected' : '') + '>Millimeter</option>'
+      + '<option value="cm"' + (unit === 'cm' ? ' selected' : '') + '>Centimeter</option>'
+      + '<option value="in"' + (unit === 'in' ? ' selected' : '') + '>Inch</option>'
+      + '</select>'
+      + '</div>'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftSnapMmInput">Snap (mm)</label>'
+      + '<input id="gcDraftSnapMmInput" class="gc-prop-input" type="number" min="0" max="10" step="0.1" value="' + escapeAttr(snapMmLabel) + '" title="0 = off">'
+      + '</div>'
+      + '</div>'
+      + '<div class="gc-prop-actions">'
+      + '<button type="button" class="btn btn-outline' + (guidesLocked ? ' is-active' : '') + '" data-action="toggle-guides-lock" title="Lock/unlock guides">'
+      + '<i class="fa-solid ' + (guidesLocked ? 'fa-lock' : 'fa-lock-open') + '"></i>'
+      + '</button>'
+      + '<button type="button" class="btn btn-outline' + (state.draftMergePreview ? ' is-active' : '') + '" data-action="toggle-merge-preview" title="Toggle merge preview">'
+      + '<i class="fa-solid fa-brackets-curly"></i>'
+      + '</button>'
+      + '</div>'
+      + '<div class="gc-prop-section-title">Field Tools</div>'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftInsertFieldSelect">Insert Merge Field</label>'
+      + '<select id="gcDraftInsertFieldSelect" class="gc-prop-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
+      + (hasMergeFieldChoices ? mergeFieldOptions : '<option value="">No fields available</option>')
+      + '</select>'
+      + '</div>'
+      + '<div class="gc-prop-actions">'
+      + '<button type="button" class="btn btn-outline" data-action="insert-merge-field"' + (hasMergeFieldChoices ? '' : ' disabled') + '>Insert</button>'
+      + '<button type="button" class="btn btn-outline" data-action="open-auto-map-report"' + (hasAutoMapReport ? '' : ' disabled') + '>Report</button>'
+      + '</div>'
+      + '<div class="gc-prop-grid">'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftAutoMapScopeSelect">Auto Map Scope</label>'
+      + '<select id="gcDraftAutoMapScopeSelect" class="gc-prop-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
+      + autoMapScopeOptions
+      + '</select>'
+      + '</div>'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftInsertPhotoFieldSelect">Insert Photo Field</label>'
+      + '<select id="gcDraftInsertPhotoFieldSelect" class="gc-prop-select"' + (hasPhotoFieldChoices ? '' : ' disabled') + '>'
+      + (hasPhotoFieldChoices ? photoFieldOptions : '<option value="">No image fields</option>')
+      + '</select>'
+      + '</div>'
+      + '</div>'
+      + '<div class="gc-prop-actions">'
+      + '<button type="button" class="btn btn-outline" data-action="auto-map-fields"' + (hasMergeFieldChoices ? '' : ' disabled') + '>Auto Map</button>'
+      + '<button type="button" class="btn btn-outline" data-action="insert-photo-field"' + (hasPhotoFieldChoices ? '' : ' disabled') + '>Insert Photo</button>'
+      + '</div>';
+  }
+
+  function renderDraftAlignPanelHtml() {
+    var selectedCount = selectedDraftElementSet().size;
+    var alignReference = normalizeDraftAlignReference(state.draftAlignReference);
+    var distributeMode = normalizeDraftDistributeMode(state.draftDistributeMode);
+    var keyOptionDisabled = selectedCount < 2 ? ' disabled' : '';
+    var keyObjectLabel = '';
+    if (selectedCount > 1 && state.draftKeyObjectId) {
+      var keyObj = findDraftElementById(state.draftKeyObjectId);
+      if (keyObj) {
+        keyObjectLabel = keyObj.type === 'text'
+          ? String(draftTextValue(keyObj) || 'Text')
+          : String(keyObj.label || keyObj.type || 'Object');
+      }
+    }
+
+    return ''
+      + '<div class="gc-prop-grid">'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftAlignReferenceSelectPanel">Reference</label>'
+      + '<select id="gcDraftAlignReferenceSelectPanel" class="gc-prop-select">'
+      + '<option value="selection"' + (alignReference === 'selection' ? ' selected' : '') + '>Selection</option>'
+      + '<option value="page"' + (alignReference === 'page' ? ' selected' : '') + '>Page</option>'
+      + '<option value="keyObject"' + (alignReference === 'keyObject' ? ' selected' : '') + keyOptionDisabled + '>Key Object</option>'
+      + '</select>'
+      + '</div>'
+      + '<div class="gc-prop-group">'
+      + '<label for="gcDraftDistributeModeSelectPanel">Distribute</label>'
+      + '<select id="gcDraftDistributeModeSelectPanel" class="gc-prop-select">'
+      + '<option value="spacing"' + (distributeMode === 'spacing' ? ' selected' : '') + '>Spacing</option>'
+      + '<option value="centers"' + (distributeMode === 'centers' ? ' selected' : '') + '>Centers</option>'
+      + '<option value="edges"' + (distributeMode === 'edges' ? ' selected' : '') + '>Edges</option>'
+      + '</select>'
+      + '</div>'
+      + '</div>'
+      + (keyObjectLabel
+        ? '<div class="gc-prop-note">Key object: <strong>' + escapeHtml(keyObjectLabel) + '</strong></div>'
+        : (selectedCount > 1
+          ? '<div class="gc-prop-note">Tip: click a selected object again to set it as key object.</div>'
+          : '<div class="gc-prop-note">Select one or more objects to use align actions.</div>'))
+      + '<div class="gc-prop-actions gc-prop-actions-icons">'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-left" title="Align Left" aria-label="Align Left"><i class="fa-solid fa-align-left"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-h-center" title="Align Center X" aria-label="Align Center X"><i class="fa-solid fa-align-center"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-right" title="Align Right" aria-label="Align Right"><i class="fa-solid fa-align-right"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-top" title="Align Top" aria-label="Align Top"><i class="fa-solid fa-arrow-up"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-v-center" title="Align Center Y" aria-label="Align Center Y"><i class="fa-solid fa-arrows-up-down"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-bottom" title="Align Bottom" aria-label="Align Bottom"><i class="fa-solid fa-arrow-down"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="canvas-center" title="Center To Canvas" aria-label="Center To Canvas"><i class="fa-solid fa-crosshairs"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="distribute-h" title="Distribute Horizontal" aria-label="Distribute Horizontal"><i class="fa-solid fa-arrows-left-right"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="distribute-v" title="Distribute Vertical" aria-label="Distribute Vertical"><i class="fa-solid fa-arrows-up-down"></i></button>'
+      + '</div>';
+  }
+
+  function renderDraftLayersPanelHtml() {
+    ensureStep2DraftInitialized();
+    normalizeDraftElementSelection();
+    var ordered = sortDraftElementsByZIndex(state.templateDraft && state.templateDraft.elements);
+    if (!ordered.length) {
+      return '<div class="gc-prop-note">No objects on canvas yet.</div>';
+    }
+
+    var rows = [];
+    var total = ordered.length;
+    var display = ordered.slice().reverse();
+    display.forEach(function (item, idx) {
+      var id = String(item && item.__id || '');
+      if (!id) {
+        return;
+      }
+      var isSelected = isDraftElementSelected(id);
+      var isVisible = isDraftElementVisible(item);
+      var isLocked = isDraftElementLocked(item);
+      var z = normalizeDraftElementZIndex(item.zIndex, total - idx);
+      var rowCls = 'gc-layer-item'
+        + (isSelected ? ' is-selected' : '')
+        + (!isVisible ? ' is-hidden' : '')
+        + (isLocked ? ' is-locked' : '');
+
+      rows.push(''
+        + '<div class="' + rowCls + '" data-layer-row="1" data-el-id="' + escapeAttr(id) + '" draggable="true">'
+        + '<button type="button" class="gc-layer-item-label-btn" data-action="select-layer-element" data-el-id="' + escapeAttr(id) + '" title="Select layer"' + (isLocked ? ' disabled' : '') + '>'
+        + '<span class="gc-layer-item-name">' + escapeHtml(draftLayerItemName(item, idx)) + '</span>'
+        + '<span class="gc-layer-item-meta">z ' + String(z) + '</span>'
+        + '</button>'
+        + '<button type="button" class="gc-layer-item-icon-btn' + (isVisible ? ' is-active' : ' is-off') + '" data-action="toggle-layer-visibility" data-el-id="' + escapeAttr(id) + '" title="' + (isVisible ? 'Hide' : 'Show') + '">'
+        + '<i class="fa-solid ' + (isVisible ? 'fa-eye' : 'fa-eye-slash') + '"></i>'
+        + '</button>'
+        + '<button type="button" class="gc-layer-item-icon-btn' + (isLocked ? ' is-active' : '') + '" data-action="toggle-layer-lock" data-el-id="' + escapeAttr(id) + '" title="' + (isLocked ? 'Unlock' : 'Lock') + '">'
+        + '<i class="fa-solid ' + (isLocked ? 'fa-lock' : 'fa-lock-open') + '"></i>'
+        + '</button>'
+        + '</div>');
+    });
+
+    return ''
+      + '<div class="gc-layer-stack-actions">'
+      + '<button type="button" class="btn btn-outline" data-action="layer-stack" data-mode="front" title="Bring to front">Front</button>'
+      + '<button type="button" class="btn btn-outline" data-action="layer-stack" data-mode="back" title="Send to back">Back</button>'
+      + '<button type="button" class="btn btn-outline" data-action="layer-stack" data-mode="forward" title="Bring forward">Forward</button>'
+      + '<button type="button" class="btn btn-outline" data-action="layer-stack" data-mode="backward" title="Send backward">Backward</button>'
+      + '</div>'
+      + '<div class="gc-prop-note">Drag rows to reorder. Hidden layers skip render/hit-test, locked layers cannot be selected or transformed.</div>'
+      + '<div class="gc-layer-list">' + rows.join('') + '</div>';
+  }
+
+  function renderStep2RightPanelsHtml() {
+    var active = activeDraftPanelName();
+    if (!active) {
+      return '<div class="gc-prop-empty">Use the left group icons to open Text, Align, or Layers panel.</div>';
+    }
+
+    var title = active === 'text'
+      ? 'Text Panel'
+      : (active === 'align' ? 'Align &amp; Distribute' : 'Layer Manager');
+    var icon = active === 'text'
+      ? 'fa-font'
+      : (active === 'align' ? 'fa-border-all' : 'fa-layer-group');
+    var body = active === 'text'
+      ? renderDraftTextPanelHtml()
+      : (active === 'align' ? renderDraftAlignPanelHtml() : renderDraftLayersPanelHtml());
+
+    return ''
+      + '<div class="gc-prop-panel gc-prop-panel-floating is-open" data-panel-active="' + escapeAttr(active) + '">'
+      + '<div class="gc-prop-panel-title">'
+      + '<span><i class="fa-solid ' + icon + '"></i> ' + title + '</span>'
+      + '<button type="button" class="gc-panel-toggle-btn" data-action="close-ui-panel" title="Close panel"><i class="fa-solid fa-xmark"></i></button>'
+      + '</div>'
+      + body
+      + '</div>';
+  }
+
   function renderDraftPropsHtml() {
     var item = selectedDraftElement();
     if (!item) {
@@ -4031,10 +6117,11 @@
     }
 
     var unit = currentDraftUnit().toUpperCase();
+    var artisticVisualBounds = isArtisticDraftText(item) ? draftArtisticBounds(item) : null;
     var xValue = formatDraftMeasure(item.x, 'x');
     var yValue = formatDraftMeasure(item.y, 'y');
-    var wValue = formatDraftMeasure(item.width, 'x');
-    var hValue = formatDraftMeasure(item.height, 'y');
+    var wValue = formatDraftMeasure(artisticVisualBounds ? artisticVisualBounds.width : item.width, 'x');
+    var hValue = formatDraftMeasure(artisticVisualBounds ? artisticVisualBounds.height : item.height, 'y');
     var itemSide = String(item.side || 'front').toLowerCase();
     if (itemSide !== 'front' && itemSide !== 'back' && itemSide !== 'both') {
       itemSide = 'front';
@@ -4160,28 +6247,19 @@
       + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="1" data-dy="0" title="Nudge Right" aria-label="Nudge Right"><i class="fa-solid fa-arrow-right"></i></button>'
       + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="0" data-dy="-1" title="Nudge Up" aria-label="Nudge Up"><i class="fa-solid fa-arrow-up"></i></button>'
       + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="nudge-draft" data-dx="0" data-dy="1" title="Nudge Down" aria-label="Nudge Down"><i class="fa-solid fa-arrow-down"></i></button>'
-        + '</div>'
-        + '<div class="gc-prop-section-title">Align &amp; Distribute</div>'
-        + '<div class="gc-prop-actions gc-prop-actions-icons">'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-left" title="Align Left" aria-label="Align Left"><i class="fa-solid fa-align-left"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-h-center" title="Align Center X" aria-label="Align Center X"><i class="fa-solid fa-align-center"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-right" title="Align Right" aria-label="Align Right"><i class="fa-solid fa-align-right"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-top" title="Align Top" aria-label="Align Top"><i class="fa-solid fa-arrow-up"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-v-center" title="Align Center Y" aria-label="Align Center Y"><i class="fa-solid fa-arrows-up-down"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="align-bottom" title="Align Bottom" aria-label="Align Bottom"><i class="fa-solid fa-arrow-down"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="canvas-center" title="Center To Canvas" aria-label="Center To Canvas"><i class="fa-solid fa-crosshairs"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="distribute-h" title="Distribute Horizontal" aria-label="Distribute Horizontal"><i class="fa-solid fa-arrows-left-right"></i></button>'
-        + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="align-selected" data-mode="distribute-v" title="Distribute Vertical" aria-label="Distribute Vertical"><i class="fa-solid fa-arrows-up-down"></i></button>'
-          + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="duplicate-draft-element" title="Duplicate" aria-label="Duplicate"><i class="fa-solid fa-clone"></i></button>'
-          + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="remove-draft-element" title="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="duplicate-draft-element" title="Duplicate" aria-label="Duplicate"><i class="fa-solid fa-clone"></i></button>'
+      + '<button type="button" class="btn btn-outline gc-prop-icon-btn" data-action="remove-draft-element" title="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>'
       + '</div>';
   }
 
   function templateElementsForSide(side) {
     var tpl = currentTemplateJson();
     var wanted = side === 'back' ? 'back' : 'front';
-    return (tpl.elements || []).filter(function (item) {
+    return sortDraftElementsByZIndex((tpl.elements || []).filter(function (item) {
       if (!item || typeof item !== 'object') {
+        return false;
+      }
+      if (!isDraftElementVisible(item)) {
         return false;
       }
       if (String(item.type || '').toLowerCase() === 'background') {
@@ -4192,7 +6270,7 @@
         itemSide = 'front';
       }
       return itemSide === wanted || itemSide === 'both';
-    });
+    }));
   }
 
   function buildOverlayHtml(side) {
@@ -4575,32 +6653,18 @@
       layerHeight: canvasDisplayHeight,
     });
     var zoomLabel = Math.round(zoom * 100);
-    var unit = currentDraftUnit();
-    var unitLabel = unit.toUpperCase();
-    var canvasWValue = formatDraftMeasure(metrics.width, 'x');
-    var canvasHValue = formatDraftMeasure(metrics.height, 'y');
-    var snapMmLabel = formatDraftSnapMm(state.draftSnapMm);
     var canUndo = !!(draftHistoryState && draftHistoryState.undo && draftHistoryState.undo.length);
     var canRedo = !!(draftHistoryState && draftHistoryState.redo && draftHistoryState.redo.length);
     var guidesLocked = !!state.draftGuidesLocked;
-    var mergeFieldOptions = renderSchemaFieldOptions('', {
-      includeEmpty: false,
-      imageOnly: false,
-    });
-    var photoFieldOptions = renderSchemaFieldOptions('', {
-      includeEmpty: false,
-      imageOnly: true,
-    });
-    var hasMergeFieldChoices = !!mergeFieldOptions;
-    var hasPhotoFieldChoices = !!photoFieldOptions;
-    var autoMapScope = normalizeAutoMapScope(state.draftAutoMapScope || 'active');
-    var autoMapScopeOptions = renderAutoMapScopeOptions(autoMapScope);
-    var hasAutoMapReport = !!state.draftAutoMapReport;
     var activeFront = normalizeDraftEditorSide(state.draftActiveSide) !== 'back';
     var selectActive = state.draftTool === 'select';
     var textActive = state.draftTool === 'text';
     var photoActive = state.draftTool === 'photo';
     var rectActive = state.draftTool === 'rectangle';
+    var activePanel = activeDraftPanelName();
+    var textPanelActive = activePanel === 'text';
+    var alignPanelActive = activePanel === 'align';
+    var layersPanelActive = activePanel === 'layers';
     var canvasClass = 'gc-step2-canvas'
       + (state.isTwoSided ? ' is-two-sided' : '')
       + (textActive ? ' is-text-mode' : '')
@@ -4623,6 +6687,16 @@
       + '<button type="button" class="gc-step2-tool-btn' + (rectActive ? ' is-active' : '') + '" data-action="set-draft-tool" data-tool="rectangle" title="Rectangle" aria-label="Rectangle">'
       + '<span class="gc-step2-tool-icon"><i class="fa-solid fa-vector-square"></i></span>'
       + '</button>'
+      + '<div class="gc-step2-tool-divider" aria-hidden="true"></div>'
+      + '<button type="button" class="gc-step2-group-btn' + (textPanelActive ? ' is-active' : '') + '" data-action="toggle-ui-panel" data-panel="text" title="Text/Object Panel (Ctrl+Alt+T)" aria-label="Text/Object Panel">'
+      + '<i class="fa-solid fa-sliders"></i>'
+      + '</button>'
+      + '<button type="button" class="gc-step2-group-btn' + (alignPanelActive ? ' is-active' : '') + '" data-action="toggle-ui-panel" data-panel="align" title="Align Panel (Ctrl+Alt+A)" aria-label="Align Panel">'
+      + '<i class="fa-solid fa-border-all"></i>'
+      + '</button>'
+      + '<button type="button" class="gc-step2-group-btn' + (layersPanelActive ? ' is-active' : '') + '" data-action="toggle-ui-panel" data-panel="layers" title="Layers Panel (Ctrl+Alt+L)" aria-label="Layers Panel">'
+      + '<i class="fa-solid fa-layer-group"></i>'
+      + '</button>'
       + '</div>'
       + '<div class="gc-step2-canvas-shell' + (guidesLocked ? ' is-guides-locked' : '') + '">'
       + '<div class="gc-step2-canvas-head">'
@@ -4631,45 +6705,13 @@
       + '<div class="gc-inline-value">' + escapeHtml(templateName) + (templateVersion ? ' (v' + templateVersion + ')' : ' (Draft)') + '</div>'
       + '</div>'
       + '<div class="gc-step2-center-controls">'
-      + '<button type="button" class="btn btn-outline" data-action="zoom-out">-</button>'
-      + '<button type="button" class="btn btn-outline" data-action="zoom-in">+</button>'
-      + '<button type="button" class="btn btn-outline" data-action="zoom-fit">Fit</button>'
+      + '<button type="button" class="btn btn-outline" data-action="undo-draft"' + (canUndo ? '' : ' disabled') + ' title="Undo"><i class="fa-solid fa-rotate-left"></i></button>'
+      + '<button type="button" class="btn btn-outline" data-action="redo-draft"' + (canRedo ? '' : ' disabled') + ' title="Redo"><i class="fa-solid fa-rotate-right"></i></button>'
+      + '<button type="button" class="btn btn-outline" data-action="zoom-out" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>'
+      + '<button type="button" class="btn btn-outline" data-action="zoom-in" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>'
+      + '<button type="button" class="btn btn-outline" data-action="zoom-fit" title="Fit to View">Fit</button>'
       + '<span class="gc-step2-zoom-pill">' + zoomLabel + '%</span>'
-      + '<button type="button" class="btn btn-outline" data-action="undo-draft"' + (canUndo ? '' : ' disabled') + '>Undo</button>'
-      + '<button type="button" class="btn btn-outline" data-action="redo-draft"' + (canRedo ? '' : ' disabled') + '>Redo</button>'
-      + '<select id="gcDraftUnitSelect" class="gc-step2-unit-select">'
-      + '<option value="mm"' + (unit === 'mm' ? ' selected' : '') + '>mm</option>'
-      + '<option value="cm"' + (unit === 'cm' ? ' selected' : '') + '>cm</option>'
-      + '<option value="in"' + (unit === 'in' ? ' selected' : '') + '>in</option>'
-      + '</select>'
-      + '<label class="gc-step2-snap-control" for="gcDraftSnapMmInput">'
-      + '<span class="gc-step2-snap-label">Snap (mm)</span>'
-      + '<input id="gcDraftSnapMmInput" class="gc-step2-snap-input" type="number" min="0" max="10" step="0.1" value="' + escapeAttr(snapMmLabel) + '" title="0 = off">'
-      + '</label>'
-      + '<button type="button" class="btn btn-outline' + (guidesLocked ? ' is-active' : '') + '" data-action="toggle-guides-lock" title="Lock or unlock guide lines">'
-      + '<i class="fa-solid ' + (guidesLocked ? 'fa-lock' : 'fa-lock-open') + '"></i> '
-      + (guidesLocked ? 'Guides Locked' : 'Lock Guides')
-      + '</button>'
-      + '<button type="button" class="btn btn-outline' + (state.draftMergePreview ? ' is-active' : '') + '" data-action="toggle-merge-preview" title="Show merge-token preview on canvas">Merge Preview</button>'
-      + '<div class="gc-step2-size-controls">'
-      + '<span class="gc-step2-size-label">W (' + unitLabel + ')</span>'
-      + '<input id="gcDraftCanvasWidthCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasWValue) + '" readonly aria-readonly="true" tabindex="-1">'
-      + '<span class="gc-step2-size-label">H (' + unitLabel + ')</span>'
-      + '<input id="gcDraftCanvasHeightCenterInput" class="gc-step2-size-input" type="number" step="any" value="' + escapeAttr(canvasHValue) + '" readonly aria-readonly="true" tabindex="-1">'
-      + '</div>'
-      + '<select id="gcDraftInsertFieldSelect" class="gc-step2-merge-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
-      + (hasMergeFieldChoices ? mergeFieldOptions : '<option value="">No fields available</option>')
-      + '</select>'
-      + '<button type="button" class="btn btn-outline" data-action="insert-merge-field"' + (hasMergeFieldChoices ? '' : ' disabled') + '>Insert Field</button>'
-      + '<select id="gcDraftAutoMapScopeSelect" class="gc-step2-merge-select"' + (hasMergeFieldChoices ? '' : ' disabled') + '>'
-      + autoMapScopeOptions
-      + '</select>'
-      + '<button type="button" class="btn btn-outline" data-action="auto-map-fields"' + (hasMergeFieldChoices ? '' : ' disabled') + '>Auto Map Fields</button>'
-      + '<button type="button" class="btn btn-outline" data-action="open-auto-map-report"' + (hasAutoMapReport ? '' : ' disabled') + '>View Map Report</button>'
-      + '<select id="gcDraftInsertPhotoFieldSelect" class="gc-step2-merge-select"' + (hasPhotoFieldChoices ? '' : ' disabled') + '>'
-      + (hasPhotoFieldChoices ? photoFieldOptions : '<option value="">No image fields</option>')
-      + '</select>'
-      + '<button type="button" class="btn btn-outline" data-action="insert-photo-field"' + (hasPhotoFieldChoices ? '' : ' disabled') + '>Insert Photo Field</button>'
+      + '<button type="button" class="btn btn-outline" data-action="save-draft-template" title="Save Template"><i class="fa-solid fa-floppy-disk"></i></button>'
       + '</div>'
       + '<div class="gc-step2-side-switch">'
       + '<button type="button" class="gc-choice-btn' + (activeFront ? ' is-active' : '') + '" data-action="switch-draft-side" data-side="front">Front</button>'
@@ -4691,6 +6733,7 @@
       + '<div class="' + canvasClass + '" style="' + canvasStyle + '">'
       + renderDualSideCanvasOverlayHtml()
       + renderDraftElementsHtml()
+      + renderDraftAlignPreviewHtml()
       + renderDraftInsertGuideHtml()
       + '</div>'
       + '</div>'
@@ -4698,7 +6741,7 @@
       + '</div>'
       + '</div>'
       + '<div class="gc-step2-props">'
-      + renderDraftPropsHtml()
+      + renderStep2RightPanelsHtml()
       + '</div>'
       + '</div>'
       + '</div>'
@@ -4743,6 +6786,11 @@
   }
 
   function render() {
+    if (draftRenderRafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(draftRenderRafId);
+      draftRenderRafId = 0;
+    }
+
     if (state.step !== 2) {
       state.spacePanMode = false;
       state.spacePanState = null;
@@ -5064,6 +7112,7 @@
     state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
       return normalizeDraftElement(item, idx);
     });
+    normalizeDraftElementZOrder(false);
     state.draftDirty = false;
     if (!state.draftSelectedElementId && state.templateDraft.elements.length) {
       state.draftSelectedElementId = state.templateDraft.elements[0].__id;
@@ -5117,6 +7166,7 @@
     state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
       return normalizeDraftElement(item, idx);
     });
+    normalizeDraftElementZOrder(false);
     state.draftDirty = false;
     if (!state.draftSelectedElementId && state.templateDraft.elements.length) {
       state.draftSelectedElementId = state.templateDraft.elements[0].__id;
@@ -5424,6 +7474,7 @@
       state.draftDragging = null;
       state.draftResizeDragging = null;
       state.draftGuideDragging = null;
+      state.draftAlignPreviewMode = '';
       clearDraftInlineTextEditing();
       if (tool === 'photo') {
         state.draftTool = 'photo';
@@ -5435,6 +7486,63 @@
         state.draftTool = 'select';
       }
       render();
+      return;
+    }
+
+    if (action === 'toggle-ui-panel') {
+      toggleDraftUiPanel(target.getAttribute('data-panel'));
+      render();
+      return;
+    }
+
+    if (action === 'close-ui-panel') {
+      setDraftActivePanel('');
+      render();
+      return;
+    }
+
+    if (action === 'layer-stack') {
+      var stackMode = String(target.getAttribute('data-mode') || '').toLowerCase();
+      if (moveSelectedDraftLayers(stackMode)) {
+        render();
+      }
+      return;
+    }
+
+    if (action === 'select-layer-element') {
+      var layerId = String(target.getAttribute('data-el-id') || '');
+      var layerItem = findDraftElementById(layerId);
+      if (!layerItem || !isDraftElementSelectable(layerItem)) {
+        return;
+      }
+      state.draftSelectedGuideId = '';
+      clearDraftInlineTextEditing();
+      setDraftSelectedElementIds(new Set([layerId]), layerId);
+      render();
+      return;
+    }
+
+    if (action === 'toggle-layer-visibility') {
+      var visId = String(target.getAttribute('data-el-id') || '');
+      var visItem = findDraftElementById(visId);
+      if (!visItem) {
+        return;
+      }
+      if (setDraftLayerVisibility(visId, !isDraftElementVisible(visItem))) {
+        render();
+      }
+      return;
+    }
+
+    if (action === 'toggle-layer-lock') {
+      var lockId = String(target.getAttribute('data-el-id') || '');
+      var lockItem = findDraftElementById(lockId);
+      if (!lockItem) {
+        return;
+      }
+      if (setDraftLayerLocked(lockId, !isDraftElementLocked(lockItem))) {
+        render();
+      }
       return;
     }
 
@@ -5525,6 +7633,9 @@
       ensureStep2DraftInitialized();
       normalizeDraftElementSelection();
       var clickedItem = findDraftElementById(elId);
+      if (!isDraftElementSelectable(clickedItem)) {
+        return;
+      }
       var clickedIsText = isDraftTextElement(clickedItem);
       var isDoubleClick = Number(event.detail || 0) >= 2;
       if (!event.shiftKey && clickedIsText && isDoubleClick && !state.draftMergePreview) {
@@ -5552,35 +7663,40 @@
       );
       var selectedSet = selectedDraftElementSet();
       if (event.shiftKey) {
-        if (selectedSet.has(elId)) {
-          selectedSet.delete(elId);
-          if (state.draftSelectedElementId === elId) {
-            var nextId = '';
-            selectedSet.forEach(function (sid) {
-              if (!nextId) {
-                nextId = sid;
-              }
-            });
-            state.draftSelectedElementId = nextId;
-          }
-        } else {
-          selectedSet.add(elId);
-          state.draftSelectedElementId = elId;
+        state.draftPendingTextEdit = null;
+        return;
+      }
+
+      if (!isDoubleClick
+        && selectedSet.size > 1
+        && selectedSet.has(elId)
+        && !shouldInlineEdit) {
+        if (state.draftKeyObjectId !== elId) {
+          state.draftKeyObjectId = elId;
+          state.draftAlignReference = normalizeDraftAlignReference(state.draftAlignReference);
+          render();
         }
-        clearDraftInlineTextEditing();
-      } else {
+        state.draftPendingTextEdit = null;
+        return;
+      }
+
+      var selectionChanged = false;
+      if (!selectedSet.has(elId)) {
         state.draftSelectedElementId = elId;
         state.draftSelectedElementIds = elId ? new Set([elId]) : new Set();
-        if (shouldInlineEdit) {
-          setDraftInlineTextEditing(elId);
-        } else if (state.draftInlineEditingElementId && state.draftInlineEditingElementId !== elId) {
-          state.draftInlineEditingElementId = '';
-        }
+        selectionChanged = true;
+      }
+      if (shouldInlineEdit) {
+        setDraftInlineTextEditing(elId);
+      } else if (state.draftInlineEditingElementId && state.draftInlineEditingElementId !== elId) {
+        state.draftInlineEditingElementId = '';
       }
       state.draftSelectedGuideId = '';
       state.draftPendingTextEdit = null;
       normalizeDraftElementSelection();
-      render();
+      if (shouldInlineEdit || selectionChanged) {
+        render();
+      }
       return;
     }
 
@@ -5665,6 +7781,93 @@
     }
   });
 
+  flowRoot.addEventListener('dragstart', function (event) {
+    if (state.step !== 2) {
+      return;
+    }
+    var row = event.target && event.target.closest
+      ? event.target.closest('[data-layer-row="1"]')
+      : null;
+    if (!row) {
+      return;
+    }
+    var id = String(row.getAttribute('data-el-id') || '');
+    if (!id) {
+      return;
+    }
+    state.draftLayerDragId = id;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', id);
+    }
+  });
+
+  flowRoot.addEventListener('dragover', function (event) {
+    if (state.step !== 2 || !state.draftLayerDragId) {
+      return;
+    }
+    var row = event.target && event.target.closest
+      ? event.target.closest('[data-layer-row="1"]')
+      : null;
+    if (!row) {
+      return;
+    }
+    event.preventDefault();
+    row.classList.add('is-drag-over');
+  });
+
+  flowRoot.addEventListener('dragleave', function (event) {
+    var row = event.target && event.target.closest
+      ? event.target.closest('[data-layer-row="1"]')
+      : null;
+    if (!row) {
+      return;
+    }
+    row.classList.remove('is-drag-over');
+  });
+
+  flowRoot.addEventListener('drop', function (event) {
+    if (state.step !== 2) {
+      return;
+    }
+    var row = event.target && event.target.closest
+      ? event.target.closest('[data-layer-row="1"]')
+      : null;
+    if (!row) {
+      return;
+    }
+
+    event.preventDefault();
+    var sourceId = String(state.draftLayerDragId || '');
+    if (!sourceId && event.dataTransfer) {
+      sourceId = String(event.dataTransfer.getData('text/plain') || '');
+    }
+    var targetId = String(row.getAttribute('data-el-id') || '');
+    if (!sourceId || !targetId || sourceId === targetId) {
+      state.draftLayerDragId = '';
+      row.classList.remove('is-drag-over');
+      return;
+    }
+
+    var rect = row.getBoundingClientRect();
+    var placeAfter = Number(event.clientY || 0) > (rect.top + (rect.height / 2));
+    if (reorderDraftLayerByIds(sourceId, targetId, placeAfter)) {
+      render();
+    }
+
+    state.draftLayerDragId = '';
+    Array.prototype.forEach.call(flowRoot.querySelectorAll('[data-layer-row="1"].is-drag-over'), function (el) {
+      el.classList.remove('is-drag-over');
+    });
+  });
+
+  flowRoot.addEventListener('dragend', function () {
+    state.draftLayerDragId = '';
+    Array.prototype.forEach.call(flowRoot.querySelectorAll('[data-layer-row="1"].is-drag-over'), function (el) {
+      el.classList.remove('is-drag-over');
+    });
+  });
+
   flowRoot.addEventListener('wheel', function (event) {
     if (state.step !== 2 || !event.altKey) {
       return;
@@ -5683,6 +7886,44 @@
     event.preventDefault();
     render();
   }, { passive: false });
+
+  flowRoot.addEventListener('mouseover', function (event) {
+    if (state.step !== 2) {
+      return;
+    }
+    var btn = event.target && event.target.closest
+      ? event.target.closest('[data-action="align-selected"]')
+      : null;
+    if (!btn) {
+      return;
+    }
+    var mode = String(btn.getAttribute('data-mode') || '').toLowerCase();
+    if (state.draftAlignPreviewMode === mode) {
+      return;
+    }
+    state.draftAlignPreviewMode = mode;
+    render();
+  });
+
+  flowRoot.addEventListener('mouseout', function (event) {
+    if (state.step !== 2 || !state.draftAlignPreviewMode) {
+      return;
+    }
+    var fromBtn = event.target && event.target.closest
+      ? event.target.closest('[data-action="align-selected"]')
+      : null;
+    if (!fromBtn) {
+      return;
+    }
+    var toBtn = event.relatedTarget && event.relatedTarget.closest
+      ? event.relatedTarget.closest('[data-action="align-selected"]')
+      : null;
+    if (toBtn) {
+      return;
+    }
+    state.draftAlignPreviewMode = '';
+    render();
+  });
 
   window.addEventListener('wheel', function (event) {
     if (!modalEl || modalEl.classList.contains('hidden') || !event.ctrlKey) {
@@ -5855,13 +8096,34 @@
     }
 
     var el = event.target.closest('.gc-draft-el');
+    var hitOverride = null;
     if (!canvasEl) {
       return;
     }
 
-    if (!el) {
+    var directHandle = event.target.closest('.gc-draft-selection-handle');
+    if (state.draftTool === 'select' && !directHandle) {
+      var hitPoint = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
+      var topItem = topDraftElementAtPoint(hitPoint.x, hitPoint.y, hitPoint.side, false);
+      if (topItem) {
+        hitOverride = {
+          id: String(topItem.__id || ''),
+          side: normalizeDraftEditorSide(hitPoint.side),
+        };
+        if (!el || String(el.getAttribute('data-el-id') || '') !== hitOverride.id) {
+          var sideAttr = hitOverride.side === 'back' ? 'back' : 'front';
+          var matchNode = canvasEl.querySelector('.gc-draft-el[data-el-id="' + hitOverride.id + '"][data-render-side="' + sideAttr + '"]');
+          if (matchNode) {
+            el = matchNode;
+          }
+        }
+      }
+    }
+
+    if (!el && !hitOverride) {
       var selectStart = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
       state.draftActiveSide = normalizeDraftEditorSide(selectStart.side);
+      var marqueeBase = !!event.shiftKey ? Array.from(selectedDraftElementSet()) : [];
       state.draftPendingTextEdit = null;
       state.draftDragging = null;
       state.draftResizeDragging = null;
@@ -5874,6 +8136,7 @@
         currentX: Number(selectStart.x || 0),
         currentY: Number(selectStart.y || 0),
         appendSelection: !!event.shiftKey,
+        baseSelectionIds: marqueeBase,
       };
       beginDraftHistoryTransaction();
       clearDraftInlineTextEditing();
@@ -5883,8 +8146,12 @@
     }
     var handleEl = event.target.closest('.gc-draft-selection-handle');
 
-    var elId = String(el.getAttribute('data-el-id') || '');
-    var renderSideForEl = normalizeDraftEditorSide(el.getAttribute('data-render-side'));
+    var elId = hitOverride && hitOverride.id
+      ? String(hitOverride.id)
+      : String(el && el.getAttribute('data-el-id') || '');
+    var renderSideForEl = hitOverride && hitOverride.side
+      ? normalizeDraftEditorSide(hitOverride.side)
+      : normalizeDraftEditorSide(el && el.getAttribute('data-render-side'));
     if (!elId) {
       return;
     }
@@ -5892,48 +8159,119 @@
       state.draftActiveSide = renderSideForEl;
     }
 
-    if (event.shiftKey) {
-      state.draftPendingTextEdit = null;
-      event.preventDefault();
-      return;
-    }
-
     ensureStep2DraftInitialized();
     normalizeDraftElementSelection();
     var selectedBefore = new Set(selectedDraftElementSet());
+    var isGroupSelectionEl = !!(el && String(el.getAttribute('data-selection-group') || '') === '1');
+    var wasAlreadySelected = selectedBefore.has(elId);
     var current = state.templateDraft.elements.find(function (item) {
       return item && item.__id === elId;
     });
-    if (!current) {
+    if (!current || !isDraftElementSelectable(current)) {
+      return;
+    }
+
+    if (event.shiftKey && !handleEl) {
+      var toggled = new Set(selectedBefore);
+      if (toggled.has(elId)) {
+        toggled.delete(elId);
+      } else {
+        toggled.add(elId);
+      }
+      setDraftSelectedElementIds(toggled, elId);
+      state.draftSelectedGuideId = '';
+      state.draftPendingTextEdit = null;
+      clearDraftInlineTextEditing();
+      event.preventDefault();
+      render();
       return;
     }
 
     var keepMultiSelection = !event.shiftKey
-      && selectedBefore.size > 1
-      && selectedBefore.has(elId);
+      && ((selectedBefore.size > 1 && selectedBefore.has(elId)) || isGroupSelectionEl);
 
     if (handleEl) {
-      state.draftSelectedElementId = elId;
-      state.draftSelectedElementIds = new Set([elId]);
+      var dragIdsForResize = keepMultiSelection ? Array.from(selectedBefore) : [elId];
+      if (!dragIdsForResize.length) {
+        dragIdsForResize = [elId];
+      }
+      if (!keepMultiSelection) {
+        setDraftSelectedElementIds(new Set([elId]), elId);
+      } else {
+        setDraftSelectedElementIds(new Set(dragIdsForResize), state.draftSelectedElementId || elId);
+      }
       state.draftSelectedGuideId = '';
       state.draftInlineEditingElementId = '';
       var resizeHandle = normalizeDraftResizeHandle(handleEl.getAttribute('data-handle'));
+      var transformMode = normalizeDraftTransformMode(state.draftTransformMode);
       var resizePoint = canvasEventToDraftPoint(canvasEl, event, { allowOutside: true });
+      var resizeBounds = keepMultiSelection
+        ? draftSelectionBounds(new Set(dragIdsForResize), renderSideForEl)
+        : draftElementBounds(current);
+      if (!resizeBounds) {
+        resizeBounds = draftElementBounds(current);
+      }
+      var startElements = {};
+      dragIdsForResize.forEach(function (sid) {
+        var src = findDraftElementById(sid);
+        if (!src) {
+          return;
+        }
+        var b = draftElementBounds(src);
+        startElements[String(sid)] = {
+          x: Number(src.x || 0),
+          y: Number(src.y || 0),
+          width: Number(src.width || 0),
+          height: Number(src.height || 0),
+          scaleX: clampDraftScale(src.scaleX),
+          scaleY: clampDraftScale(src.scaleY),
+          rotation: normalizeDraftAngle(src.rotation),
+          skewX: normalizeDraftAngle(src.skewX),
+          skewY: normalizeDraftAngle(src.skewY),
+          centerX: Number(b.x || 0) + (Number(b.width || 0) / 2),
+          centerY: Number(b.y || 0) + (Number(b.height || 0) / 2),
+        };
+      });
+      var startCenterX = Number(resizeBounds.x || 0) + (Number(resizeBounds.width || 0) / 2);
+      var startCenterY = Number(resizeBounds.y || 0) + (Number(resizeBounds.height || 0) / 2);
+      var startAngle = Math.atan2(Number(resizePoint.y || 0) - startCenterY, Number(resizePoint.x || 0) - startCenterX);
+      var transformKind = String(handleEl.getAttribute('data-transform-kind') || '').toLowerCase();
+      if (!transformKind) {
+        transformKind = transformMode === 'rotate'
+          ? (isDraftResizeCornerHandle(resizeHandle) ? 'rotate' : (resizeHandle === 'e' || resizeHandle === 'w' ? 'skew-x' : 'skew-y'))
+          : 'resize';
+      }
       state.draftPendingTextEdit = null;
       state.draftDragging = null;
       state.draftResizeDragging = {
         id: elId,
+        dragIds: dragIdsForResize,
         handle: resizeHandle,
+        transformMode: transformMode,
+        transformKind: transformKind,
         type: String(current.type || ''),
-        textMode: String(current.textMode || ''),
+        textMode: String(current.textType || current.textMode || ''),
         startFontSize: Number(current.fontSize || 12),
         startLetterSpacing: Number(current.letterSpacing || 0),
+        startScaleX: clampDraftScale(current.scaleX),
+        startScaleY: clampDraftScale(current.scaleY),
         startMouseX: Number(event.clientX || 0),
         startMouseY: Number(event.clientY || 0),
-        startX: Number(current.x || 0),
-        startY: Number(current.y || 0),
-        startWidth: Number(current.width || 0),
-        startHeight: Number(current.height || 0),
+        startPointerX: Number(resizePoint.x || 0),
+        startPointerY: Number(resizePoint.y || 0),
+        startX: Number(resizeBounds.x || 0),
+        startY: Number(resizeBounds.y || 0),
+        startWidth: Number(resizeBounds.width || 0),
+        startHeight: Number(resizeBounds.height || 0),
+        startCenterX: startCenterX,
+        startCenterY: startCenterY,
+        startAngle: startAngle,
+        startElements: startElements,
+        groupBounds: resizeBounds,
+        startAnchorX: Number(current.x || 0),
+        startAnchorY: Number(current.y || 0),
+        startBaseWidth: Number(current.width || 0),
+        startBaseHeight: Number(current.height || 0),
         canvasRect: resizePoint.rect,
         metrics: resizePoint.metrics,
       };
@@ -5944,8 +8282,9 @@
     }
 
     if (!keepMultiSelection) {
-      state.draftSelectedElementId = elId;
-      state.draftSelectedElementIds = new Set([elId]);
+      setDraftSelectedElementIds(new Set([elId]), elId);
+    } else {
+      setDraftSelectedElementIds(selectedBefore, state.draftSelectedElementId || elId);
     }
     state.draftSelectedGuideId = '';
     state.draftInlineEditingElementId = '';
@@ -5989,6 +8328,9 @@
       startMouseY: Number(event.clientY || 0),
       startX: Number(anchorStart && anchorStart.x || current.x || 0),
       startY: Number(anchorStart && anchorStart.y || current.y || 0),
+      moved: false,
+      lockAxis: '',
+      wasAlreadySelected: wasAlreadySelected,
       canvasRect: point.rect,
       metrics: point.metrics,
     };
@@ -6034,6 +8376,21 @@
           event.preventDefault();
           render();
           return;
+        }
+      }
+
+      var anyEl = dblTarget.closest('.gc-draft-el');
+      if (anyEl && !dblTarget.closest('.gc-draft-selection-handle')) {
+        var anyId = String(anyEl.getAttribute('data-el-id') || '');
+        var selected = selectedDraftElementSet();
+        if (anyId && selected.has(anyId)) {
+          var anyItem = findDraftElementById(anyId);
+          if (anyItem && String(anyItem.type || '').toLowerCase() !== 'text') {
+            toggleDraftTransformMode();
+            event.preventDefault();
+            render();
+            return;
+          }
         }
       }
     }
@@ -6115,7 +8472,7 @@
     var resizeDrag = state.draftResizeDragging;
     if (resizeDrag) {
       applyDraftResizeDrag(resizeDrag, event);
-      render();
+      renderStep2OnNextFrame();
       return;
     }
 
@@ -6123,7 +8480,7 @@
     if (guideDrag) {
       if (state.draftGuidesLocked) {
         state.draftGuideDragging = null;
-        render();
+        renderStep2OnNextFrame();
         return;
       }
       var guideCanvas = resolveDraftCanvasEl(guideDrag.canvasEl);
@@ -6135,7 +8492,7 @@
       var nextPos = guideDrag.axis === 'x' ? guidePoint.x : guidePoint.y;
       nextPos = snapCanvasValueToGrid(nextPos, guideDrag.axis);
       updateDraftGuidePosition(guideDrag.id, nextPos);
-      render();
+      renderStep2OnNextFrame();
       return;
     }
 
@@ -6149,7 +8506,7 @@
       var livePoint = canvasEventToDraftPoint(textCanvas, event);
       textDrag.currentX = snapCanvasValueToGrid(livePoint.x, 'x');
       textDrag.currentY = snapCanvasValueToGrid(livePoint.y, 'y');
-      render();
+      renderStep2OnNextFrame();
       return;
     }
 
@@ -6164,7 +8521,7 @@
       rectDrag.currentX = snapCanvasValueToGrid(rectPoint.x, 'x');
       rectDrag.currentY = snapCanvasValueToGrid(rectPoint.y, 'y');
       rectDrag.lockSquare = !!event.shiftKey;
-      render();
+      renderStep2OnNextFrame();
       return;
     }
 
@@ -6178,7 +8535,24 @@
       var selectPoint = canvasEventToDraftPoint(selectCanvas, event, { allowOutside: true });
       selectDrag.currentX = Number(selectPoint.x || selectDrag.startX || 0);
       selectDrag.currentY = Number(selectPoint.y || selectDrag.startY || 0);
-      render();
+
+      var liveSelectBox = draftDragBox(
+        Number(selectDrag.startX || 0),
+        Number(selectDrag.startY || 0),
+        Number(selectDrag.currentX || selectDrag.startX || 0),
+        Number(selectDrag.currentY || selectDrag.startY || 0),
+        false
+      );
+      liveSelectBox.side = normalizeDraftEditorSide(selectDrag.side || state.draftActiveSide);
+      if (liveSelectBox.width >= 2 || liveSelectBox.height >= 2) {
+        selectDraftElementsByBox(
+          liveSelectBox,
+          !!selectDrag.appendSelection,
+          'intersect',
+          Array.isArray(selectDrag.baseSelectionIds) ? new Set(selectDrag.baseSelectionIds) : null
+        );
+      }
+      renderStep2OnNextFrame();
       return;
     }
 
@@ -6189,8 +8563,28 @@
 
     var scaleX = drag.metrics.width / Math.max(1, draftCanvasSideDisplayWidthPx(drag.canvasRect));
     var scaleY = drag.metrics.height / Math.max(1, drag.canvasRect.height);
-    var x = drag.startX + ((Number(event.clientX || 0) - drag.startMouseX) * scaleX);
-    var y = drag.startY + ((Number(event.clientY || 0) - drag.startMouseY) * scaleY);
+    var rawDx = (Number(event.clientX || 0) - drag.startMouseX) * scaleX;
+    var rawDy = (Number(event.clientY || 0) - drag.startMouseY) * scaleY;
+
+    if (Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2) {
+      drag.moved = true;
+    }
+
+    if (event.shiftKey) {
+      if (!drag.lockAxis) {
+        drag.lockAxis = Math.abs(rawDx) >= Math.abs(rawDy) ? 'x' : 'y';
+      }
+      if (drag.lockAxis === 'x') {
+        rawDy = 0;
+      } else if (drag.lockAxis === 'y') {
+        rawDx = 0;
+      }
+    } else {
+      drag.lockAxis = '';
+    }
+
+    var x = drag.startX + rawDx;
+    var y = drag.startY + rawDy;
     x = snapCanvasValueToGrid(x, 'x');
     y = snapCanvasValueToGrid(y, 'y');
 
@@ -6205,8 +8599,8 @@
     if (Array.isArray(drag.dragIds) && drag.dragIds.length > 1 && drag.startPositions && typeof drag.startPositions === 'object') {
       var anchorStartX = Number(drag.startX || 0);
       var anchorStartY = Number(drag.startY || 0);
-      var snappedAnchorX = snapCanvasValueToGrid(anchorStartX + ((Number(event.clientX || 0) - drag.startMouseX) * scaleX), 'x');
-      var snappedAnchorY = snapCanvasValueToGrid(anchorStartY + ((Number(event.clientY || 0) - drag.startMouseY) * scaleY), 'y');
+      var snappedAnchorX = snapCanvasValueToGrid(anchorStartX + rawDx, 'x');
+      var snappedAnchorY = snapCanvasValueToGrid(anchorStartY + rawDy, 'y');
       var deltaX = snappedAnchorX - anchorStartX;
       var deltaY = snappedAnchorY - anchorStartY;
 
@@ -6238,12 +8632,12 @@
         normalizeDraftElementSelection();
       }
 
-      render();
+      renderStep2OnNextFrame();
       return;
     }
 
     updateSelectedDraftElement({ x: x, y: y });
-    render();
+    renderStep2OnNextFrame();
   });
 
   window.addEventListener('mouseup', function (event) {
@@ -6355,7 +8749,12 @@
           clearDraftInlineTextEditing();
         }
       } else {
-        selectDraftElementsByBox(selectBox, !!sd.appendSelection);
+        selectDraftElementsByBox(
+          selectBox,
+          !!sd.appendSelection,
+          'intersect',
+          Array.isArray(sd.baseSelectionIds) ? new Set(sd.baseSelectionIds) : null
+        );
       }
 
       state.draftSelectDrag = null;
@@ -6368,8 +8767,15 @@
       endDraftHistoryTransaction();
       return;
     }
+    if (!state.draftDragging.moved
+      && state.draftDragging.wasAlreadySelected
+      && state.draftTool === 'select'
+      && selectedDraftElementSet().size <= 1) {
+      toggleDraftTransformMode();
+    }
     state.draftDragging = null;
     endDraftHistoryTransaction();
+    render();
   });
 
   flowRoot.addEventListener('keydown', function (event) {
@@ -6430,6 +8836,7 @@
     }
 
     var key = String(event.key || '');
+    var code = String(event.code || '');
     if ((key === ' ' || key === 'Spacebar') && !isTypingTarget(event.target)) {
       if (!state.spacePanMode) {
         state.spacePanMode = true;
@@ -6445,6 +8852,8 @@
 
     var lower = key.toLowerCase();
     var ctrlOrMeta = !!(event.ctrlKey || event.metaKey);
+    var bracketRight = key === ']' || code === 'BracketRight';
+    var bracketLeft = key === '[' || code === 'BracketLeft';
     var handled = false;
 
     if (state.draftAutoMapReportOpen && key === 'Escape') {
@@ -6454,7 +8863,20 @@
       return;
     }
 
-    if (ctrlOrMeta && !event.altKey && lower === 'z') {
+    if (ctrlOrMeta && !event.altKey && bracketRight) {
+      handled = moveSelectedDraftLayers(event.shiftKey ? 'front' : 'forward');
+    } else if (ctrlOrMeta && !event.altKey && bracketLeft) {
+      handled = moveSelectedDraftLayers(event.shiftKey ? 'back' : 'backward');
+    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'l') {
+      toggleDraftUiPanel('layers');
+      handled = true;
+    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'a') {
+      toggleDraftUiPanel('align');
+      handled = true;
+    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 't') {
+      toggleDraftUiPanel('text');
+      handled = true;
+    } else if (ctrlOrMeta && !event.altKey && lower === 'z') {
       handled = event.shiftKey ? redoDraftHistory() : undoDraftHistory();
     } else if (ctrlOrMeta && !event.altKey && lower === 'y') {
       handled = redoDraftHistory();
@@ -6462,6 +8884,12 @@
       handled = toggleSelectedTextStyle('bold');
     } else if (ctrlOrMeta && !event.altKey && lower === 'i') {
       handled = toggleSelectedTextStyle('italic');
+    } else if (ctrlOrMeta && !event.altKey && lower === 'k') {
+      var activeForBreak = selectedDraftElement();
+      if (activeForBreak && isArtisticDraftText(activeForBreak)) {
+        handled = true;
+        breakSelectedArtisticText();
+      }
     } else if (!ctrlOrMeta && !event.altKey && (key === 'Delete' || key === 'Backspace')) {
       if (selectedDraftElement()) {
         removeDraftElement();
@@ -6506,6 +8934,9 @@
       state.draftTextDrag = null;
       state.draftRectDrag = null;
       state.draftSelectDrag = null;
+      state.draftLayerDragId = '';
+      state.draftTransformMode = 'resize';
+      state.draftAlignPreviewMode = '';
       if (state.draftInlineEditHistoryActive) {
         endDraftHistoryTransaction();
         state.draftInlineEditHistoryActive = false;
@@ -6611,32 +9042,6 @@
       return;
     }
 
-    if (target.id === 'gcDraftCanvasWidthCenterInput') {
-      var widthRaw = Number(target.value || 0);
-      var widthValue = unitValueToCanvas(widthRaw, 'x');
-      var real = draftRealDimensionsMm();
-      var widthMm = unitValueToMm(widthRaw);
-      if (Number.isFinite(widthMm) && widthMm > 0) {
-        real.widthMm = widthMm;
-      }
-      updateDraftCanvasSize(widthValue, draftCanvasMetrics().height, real);
-      render();
-      return;
-    }
-
-    if (target.id === 'gcDraftCanvasHeightCenterInput') {
-      var heightRaw = Number(target.value || 0);
-      var heightValue = unitValueToCanvas(heightRaw, 'y');
-      var realSize = draftRealDimensionsMm();
-      var heightMm = unitValueToMm(heightRaw);
-      if (Number.isFinite(heightMm) && heightMm > 0) {
-        realSize.heightMm = heightMm;
-      }
-      updateDraftCanvasSize(draftCanvasMetrics().width, heightValue, realSize);
-      render();
-      return;
-    }
-
     if (target.id === 'gcDraftUnitSelect') {
       var unit = String(target.value || 'mm').toLowerCase();
       if (unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
@@ -6649,6 +9054,33 @@
 
     if (target.id === 'gcDraftSnapMmInput') {
       state.draftSnapMm = normalizeDraftSnapMm(target.value);
+      render();
+      return;
+    }
+
+    if (target.id === 'gcDraftAlignReferenceSelect' || target.id === 'gcDraftAlignReferenceSelectPanel') {
+      state.draftAlignReference = normalizeDraftAlignReference(target.value);
+      if (state.draftAlignReference === 'keyObject') {
+        var selectedIds = selectedDraftElementSet();
+        if (selectedIds.size < 2 || !selectedIds.has(String(state.draftKeyObjectId || ''))) {
+          var nextKey = '';
+          selectedIds.forEach(function (id) {
+            if (!nextKey) {
+              nextKey = String(id || '');
+            }
+          });
+          state.draftKeyObjectId = nextKey;
+          if (!state.draftKeyObjectId) {
+            state.draftAlignReference = 'selection';
+          }
+        }
+      }
+      render();
+      return;
+    }
+
+    if (target.id === 'gcDraftDistributeModeSelect' || target.id === 'gcDraftDistributeModeSelectPanel') {
+      state.draftDistributeMode = normalizeDraftDistributeMode(target.value);
       render();
       return;
     }
@@ -6706,13 +9138,27 @@
     }
 
     if (target.id === 'gcDraftWInput') {
-      updateSelectedDraftElement({ width: unitValueToCanvas(Number(target.value || 0), 'x') });
+      var selectedForWidth = selectedDraftElement();
+      var widthCanvas = unitValueToCanvas(Number(target.value || 0), 'x');
+      if (selectedForWidth && isArtisticDraftText(selectedForWidth)) {
+        var baseWidth = Math.max(1, Number(selectedForWidth.width || 1));
+        updateSelectedDraftElement({ scaleX: clampDraftScale(widthCanvas / baseWidth) });
+      } else {
+        updateSelectedDraftElement({ width: widthCanvas });
+      }
       render();
       return;
     }
 
     if (target.id === 'gcDraftHInput') {
-      updateSelectedDraftElement({ height: unitValueToCanvas(Number(target.value || 0), 'y') });
+      var selectedForHeight = selectedDraftElement();
+      var heightCanvas = unitValueToCanvas(Number(target.value || 0), 'y');
+      if (selectedForHeight && isArtisticDraftText(selectedForHeight)) {
+        var baseHeight = Math.max(1, Number(selectedForHeight.height || 1));
+        updateSelectedDraftElement({ scaleY: clampDraftScale(heightCanvas / baseHeight) });
+      } else {
+        updateSelectedDraftElement({ height: heightCanvas });
+      }
       render();
       return;
     }
