@@ -193,6 +193,8 @@ select.wa-status-select:disabled,
   margin-top: 4px !important;
   padding: 4px 0 !important;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+  max-width: calc(100vw - 16px) !important;
+  box-sizing: border-box !important;
 }
 
 .unified-select-dropdown {
@@ -233,6 +235,10 @@ select.wa-status-select:disabled,
   border-radius: 4px !important;
   padding: 6px 10px !important;
   transition: background-color 0.1s ease, color 0.1s ease !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 .panel-content select option,
