@@ -44,6 +44,9 @@
     draftAutoMapScope: 'active',
     draftAutoMapReport: null,
     draftAutoMapReportOpen: false,
+    draftSaveModalOpen: false,
+    draftSaveTemplateName: '',
+    draftSaveTemplateError: '',
     draftActiveSide: 'front',
     draftAlignReference: 'selection',
     draftDistributeMode: 'spacing',
@@ -90,6 +93,7 @@
   var DRAFT_SKEW_DEGREES_AT_FULL_SPAN = 42;
   var DRAFT_SKEW_SHIFT_SNAP_DEGREES = 3;
   var DRAFT_SKEW_MAX_DEGREES = 75;
+  var MERGE_TOKEN_REGEX_GLOBAL = /\{\{\s*([^{}]+?)\s*\}\}|<<\s*([^<>]+?)\s*>>|\[\[\s*([^\[\]]+?)\s*\]\]/g;
   var DRAFT_UI_PANELS_STORAGE_KEY = 'gc_step2_ui_panels_v1';
   var draftTextMeasureNode = null;
   var draftRenderRafId = 0;
@@ -300,6 +304,32 @@
       tokenMatch = raw.match(/^\[\[\s*([^\[\]]+?)\s*\]\]$/);
     }
     return tokenMatch ? String(tokenMatch[1] || '').trim() : '';
+  }
+
+  function extractMergeTokenFieldNames(text) {
+    var raw = String(text || '');
+    if (!raw) {
+      return [];
+    }
+
+    var found = [];
+    var seen = {};
+    var match = null;
+    MERGE_TOKEN_REGEX_GLOBAL.lastIndex = 0;
+    while ((match = MERGE_TOKEN_REGEX_GLOBAL.exec(raw)) !== null) {
+      var tokenName = String(match[1] || match[2] || match[3] || '').trim();
+      if (!tokenName) {
+        continue;
+      }
+      var key = normalizeFieldLookupKey(tokenName);
+      if (!key || seen[key]) {
+        continue;
+      }
+      seen[key] = true;
+      found.push(tokenName);
+    }
+    MERGE_TOKEN_REGEX_GLOBAL.lastIndex = 0;
+    return found;
   }
 
   function findBestSchemaFieldForLabel(rawLabel) {
@@ -642,8 +672,11 @@
       + '.gc-summary-label{font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}'
       + '.gc-summary-value{font-size:14px;color:#0f172a;font-weight:700;margin-top:4px;}'
       + '.gc-flow-box .btn{border-radius:4px;}'
-      + '.gc-actions{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;}'
-      + '.gc-actions-right{display:flex;gap:8px;flex-wrap:wrap;}'
+      + '.gc-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:nowrap;}'
+      + '.gc-actions-meta{display:flex;flex-direction:column;gap:2px;min-width:0;}'
+      + '.gc-actions-meta-title{font-size:12px;font-weight:700;color:#0f172a;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+      + '.gc-actions-meta-step{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;}'
+      + '.gc-actions-right{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end;}'
       + '.gc-loading{position:absolute;inset:0;background:rgba(248,250,252,0.72);display:flex;align-items:center;justify-content:center;z-index:2;}'
       + '.gc-loading-box{display:flex;align-items:center;gap:8px;background:#ffffff;border:1px solid #dbe2ea;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:700;color:#334155;}'
       + '.gc-spinner{width:15px;height:15px;border:2px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:gcSpin .8s linear infinite;}'
@@ -744,8 +777,8 @@
       + '.gc-step2-guide-layer{position:absolute;inset:0;pointer-events:none;z-index:2;}'
       + '.gc-step2-guide-layer .gc-draft-guide{pointer-events:auto;}'
       + '.gc-step2-canvas{position:relative;width:100%;height:100%;background:#ffffff;border:1px solid #b8c1cc;border-radius:2px;box-shadow:8px 8px 0 rgba(15,23,42,0.12);}'
-      + '.gc-step2-canvas.is-two-sided{background:linear-gradient(90deg,#ffffff 0,#ffffff calc(50% - .5px),#d1d9e4 calc(50% - .5px),#d1d9e4 calc(50% + .5px),#ffffff calc(50% + .5px),#ffffff 100%);}'
-      + '.gc-step2-dual-divider{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:2px dashed rgba(71,85,105,.55);pointer-events:none;z-index:1;}'
+      + '.gc-step2-canvas.is-two-sided{background:#ffffff;}'
+      + '.gc-step2-dual-divider{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:1px solid rgba(71,85,105,.35);opacity:.75;pointer-events:none;z-index:1;}'
       + '.gc-step2-dual-side-tag{position:absolute;top:8px;display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:22px;padding:0 8px;border-radius:999px;border:1px solid #bfdbfe;background:rgba(239,246,255,.9);color:#1e3a8a;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;pointer-events:none;z-index:1;}'
       + '.gc-step2-dual-side-tag.is-front{left:8px;}'
       + '.gc-step2-dual-side-tag.is-back{left:calc(50% + 8px);}'
@@ -864,6 +897,15 @@
       + '.gc-step2-report-meta{color:#64748b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
       + '.gc-step2-report-empty{font-size:11px;color:#94a3b8;padding:4px 2px;}'
       + '.gc-step2-report-more{font-size:11px;color:#64748b;padding:2px 2px 0;}'
+      + '.gc-save-template-overlay{position:fixed;inset:0;background:rgba(15,23,42,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:16100;}'
+      + '.gc-save-template-modal{width:min(460px,94vw);border:1px solid #dbe2ea;border-radius:10px;background:#ffffff;box-shadow:0 24px 60px rgba(2,8,23,.34);padding:14px;display:flex;flex-direction:column;gap:8px;}'
+      + '.gc-save-template-title{font-size:16px;font-weight:800;color:#0f172a;line-height:1.2;}'
+      + '.gc-save-template-subtitle{font-size:12px;color:#64748b;line-height:1.35;}'
+      + '.gc-save-template-label{font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.04em;}'
+      + '.gc-save-template-input{height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px;font-size:12px;color:#0f172a;}'
+      + '.gc-save-template-input:focus{outline:2px solid rgba(37,99,235,.25);outline-offset:1px;border-color:#2563eb;}'
+      + '.gc-save-template-error{font-size:11px;color:#b91c1c;font-weight:700;}'
+      + '.gc-save-template-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;}'
       + '.gc-step-panel-step2 .gc-actions{margin-top:auto;padding:8px 10px 10px;position:sticky;bottom:0;background:#f8fafc;z-index:1;}'
       + '.gc-step-panel.gc-step-panel-step3{width:100%;max-width:none;margin:0;border-radius:4px;padding:4px 0 0;display:flex;flex-direction:column;gap:6px;min-height:100%;background:#f8fafc;}'
       + '.gc-step-panel-step3 .gc-step-title,.gc-step-panel-step3 .gc-step-subtitle{padding:0 10px;}'
@@ -879,7 +921,7 @@
       + '.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:52mm;max-width:100%;height:auto;aspect-ratio:1/1.526;}'
       + '.gc-step-panel-step3 .gc-actions{margin-top:auto;padding:8px 10px 10px;position:sticky;bottom:0;background:#f8fafc;z-index:1;}'
       + '@media (max-width:1180px){.gc-flow-header{grid-template-columns:minmax(0,1fr) auto;}.gc-header-stepper{grid-column:1 / -1;order:3;overflow-x:auto;padding-bottom:2px;}.gc-inline-group.gc-inline-group-selection{align-items:flex-start;text-align:left;margin-left:0;}}'
-      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;flex-wrap:wrap;padding:6px;justify-content:flex-start;}.gc-step2-tool-btn{width:44px;height:44px;}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-prop-panel-switcher{grid-template-columns:1fr 1fr;}.gc-prop-panel.gc-prop-panel-floating{height:auto;max-height:420px;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{justify-content:center;}}';
+      + '@media (max-width:860px){.gc-step1-upload-row{grid-template-columns:1fr;}.gc-upload-input-wrap{flex-wrap:wrap;}.gc-inline-controls{gap:8px;}.gc-step1-topbar{align-items:flex-start;}.gc-inline-control-block.gc-inline-template-block{min-width:100%;}.gc-inline-template-row .gc-select{min-width:0;max-width:none;flex:1;}.gc-step2-main{grid-template-columns:1fr;}.gc-step2-tools{flex-direction:row;flex-wrap:wrap;padding:6px;justify-content:flex-start;}.gc-step2-tool-btn{width:44px;height:44px;}.gc-step2-canvas-head{grid-template-columns:1fr;}.gc-step2-center-controls{justify-self:stretch;justify-content:flex-start;}.gc-step2-canvas-stage{min-height:240px;padding:10px;}.gc-step2-props{order:2;}.gc-prop-panel-switcher{grid-template-columns:1fr 1fr;}.gc-prop-panel.gc-prop-panel-floating{height:auto;max-height:420px;}.gc-step2-report-grid{grid-template-columns:1fr;}.gc-step2-report-modal{max-height:88vh;}.gc-step-panel-step3 .gc-preview-box.gc-mm-landscape{width:min(100%,340px);}.gc-step-panel-step3 .gc-preview-box.gc-mm-portrait{width:min(100%,220px);}.gc-step3-summary{grid-template-columns:1fr 1fr;}.gc-actions{align-items:flex-start;}.gc-actions-meta{max-width:58%;}.gc-actions-right{margin-left:auto;justify-content:flex-end;}}';
 
     document.head.appendChild(style);
   }
@@ -959,11 +1001,9 @@
   }
 
   function setStepCounter() {
-    if (!stepCounterEl) {
-      syncHeaderActionButtons();
-      return;
+    if (stepCounterEl) {
+      stepCounterEl.textContent = 'Step ' + String(state.step) + ' of 3';
     }
-    stepCounterEl.textContent = 'Step ' + String(state.step) + ' of 3';
 
     if (headerStepperEl) {
       var stepNodes = headerStepperEl.querySelectorAll('[data-step]');
@@ -1240,6 +1280,10 @@
     return raw;
   }
 
+  function defaultStep2Zoom() {
+    return state.isTwoSided ? 1.75 : 2;
+  }
+
   function resetStep2DraftState() {
     state.templateDraft = null;
     state.templateDraftName = '';
@@ -1253,6 +1297,9 @@
     state.draftAutoMapScope = 'active';
     state.draftAutoMapReport = null;
     state.draftAutoMapReportOpen = false;
+    state.draftSaveModalOpen = false;
+    state.draftSaveTemplateName = '';
+    state.draftSaveTemplateError = '';
     state.draftActiveSide = 'front';
     state.draftAlignReference = 'selection';
     state.draftDistributeMode = 'spacing';
@@ -1266,7 +1313,7 @@
     state.draftRectDrag = null;
     state.draftSelectDrag = null;
     state.draftLayerDragId = '';
-    state.draftZoom = 2;
+    state.draftZoom = defaultStep2Zoom();
     state.draftZoomOriginX = 50;
     state.draftZoomOriginY = 50;
     state.draftLastPointerClientX = null;
@@ -1831,6 +1878,12 @@
       next = 1;
     }
     state.draftZoom = Math.max(0.25, Math.min(4, next));
+  }
+
+  function applyDefaultStep2Viewport() {
+    setDraftZoom(defaultStep2Zoom());
+    state.draftZoomOriginX = 50;
+    state.draftZoomOriginY = 50;
   }
 
   function canvasValueToUnit(value, axis) {
@@ -5292,9 +5345,27 @@
     return state.step === 2 && modalEl && !modalEl.classList.contains('hidden');
   }
 
-  function triggerSaveDraftTemplate() {
+  function openSaveTemplateModal() {
+    ensureStep2DraftInitialized();
+    state.draftSaveTemplateName = String(state.templateDraftName || draftTemplateName());
+    state.draftSaveTemplateError = '';
+    state.draftSaveModalOpen = true;
+  }
+
+  function closeSaveTemplateModal() {
+    state.draftSaveTemplateError = '';
+    state.draftSaveModalOpen = false;
+  }
+
+  function triggerSaveDraftTemplate(nameOverride) {
     if (state.loading) {
       return;
+    }
+
+    var providedName = String(nameOverride || '').trim();
+    if (providedName) {
+      state.templateDraftName = providedName.slice(0, 120);
+      state.draftSaveTemplateName = state.templateDraftName;
     }
 
     state.loading = true;
@@ -6370,6 +6441,26 @@
       + '</div>';
   }
 
+  function flowListNameForUi() {
+    var raw = window && Object.prototype.hasOwnProperty.call(window, 'TABLE_NAME')
+      ? window.TABLE_NAME
+      : '';
+    var name = String(raw || '').trim();
+    if (!name) {
+      return 'Selected List';
+    }
+    return name;
+  }
+
+  function renderStepFooterMeta() {
+    var listLine = 'Generate Card List: ' + flowListNameForUi();
+    var stepLine = 'Step ' + String(state.step) + ' of 3';
+    return '<div class="gc-actions-meta">'
+      + '<div class="gc-actions-meta-title">' + escapeHtml(listLine) + '</div>'
+      + '<div class="gc-actions-meta-step">' + escapeHtml(stepLine) + '</div>'
+      + '</div>';
+  }
+
   function renderStep1() {
     var frontName = state.frontFile
       ? state.frontFile.name
@@ -6449,6 +6540,7 @@
 
     var actionsHtml = ''
       + '<div class="gc-actions">'
+      + renderStepFooterMeta()
       + '<div class="gc-actions-right">'
       + '<button type="button" class="btn btn-blue" data-action="next-step">Next</button>'
       + '</div>'
@@ -6587,6 +6679,32 @@
       + '</div>';
   }
 
+  function renderSaveTemplateModal() {
+    if (!state.draftSaveModalOpen) {
+      return '';
+    }
+
+    var currentName = String(state.draftSaveTemplateName || state.templateDraftName || draftTemplateName());
+    var errorHtml = state.draftSaveTemplateError
+      ? '<div class="gc-save-template-error">' + escapeHtml(state.draftSaveTemplateError) + '</div>'
+      : '';
+
+    return ''
+      + '<div class="gc-save-template-overlay">'
+      + '<div class="gc-save-template-modal" role="dialog" aria-modal="true" aria-label="Save template">'
+      + '<div class="gc-save-template-title">Save Template</div>'
+      + '<div class="gc-save-template-subtitle">Enter a template name to save this layout.</div>'
+      + '<label class="gc-save-template-label" for="gcDraftTemplateNameModalInput">Template Name</label>'
+      + '<input id="gcDraftTemplateNameModalInput" class="gc-input gc-save-template-input" type="text" maxlength="120" value="' + escapeAttr(currentName) + '" placeholder="Template name">'
+      + errorHtml
+      + '<div class="gc-save-template-actions">'
+      + '<button type="button" class="btn btn-outline" data-action="close-save-template-modal">Cancel</button>'
+      + '<button type="button" class="btn btn-blue" data-action="confirm-save-template-modal"' + (state.loading ? ' disabled' : '') + '>Save</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
   function renderDualSideCanvasOverlayHtml() {
     if (!state.isTwoSided) {
       return '';
@@ -6717,9 +6835,11 @@
       + '</div>'
       + '</div>'
       + renderAutoMapReportModal()
+      + renderSaveTemplateModal()
       + '<div class="gc-actions">'
-      + '<button type="button" class="btn btn-outline" data-action="prev-step">Back</button>'
+      + renderStepFooterMeta()
       + '<div class="gc-actions-right">'
+      + '<button type="button" class="btn btn-outline" data-action="prev-step">Back</button>'
       + '<button type="button" class="btn btn-blue" data-action="next-step">Next</button>'
       + '</div>'
       + '</div>'
@@ -6746,8 +6866,9 @@
       + (state.isTwoSided ? renderPdfPreview('Final Back Preview', 'back', true, { cardSized: true, orientation: state.orientation }) : '')
       + '</div>'
       + '<div class="gc-actions">'
-      + '<button type="button" class="btn btn-outline" data-action="prev-step">Back</button>'
+      + renderStepFooterMeta()
       + '<div class="gc-actions-right">'
+      + '<button type="button" class="btn btn-outline" data-action="prev-step">Back</button>'
       + '<button type="button" class="btn btn-green" data-action="generate-all"' + generateDisabled + '>'
       + (state.generating ? 'Generating...' : 'Generate All')
       + '</button>'
@@ -6784,6 +6905,14 @@
       + panelHtml
       + (state.loading ? '<div class="gc-loading"><div class="gc-loading-box"><span class="gc-spinner"></span><span>Loading...</span></div></div>' : '')
       + '</div>';
+
+    if (state.draftSaveModalOpen) {
+      var saveNameInput = flowRoot.querySelector('#gcDraftTemplateNameModalInput');
+      if (saveNameInput && document.activeElement !== saveNameInput) {
+        saveNameInput.focus();
+        saveNameInput.select();
+      }
+    }
 
     focusDraftInlineEditorIfNeeded();
     setSpacePanUiState();
@@ -7016,10 +7145,90 @@
     render();
   }
 
+  function collectStep2MappingValidation() {
+    ensureStep2DraftInitialized();
+    var template = state.templateDraft;
+    var elements = template && Array.isArray(template.elements) ? template.elements : [];
+    var hasMappedField = false;
+    var invalid = [];
+    var invalidSeen = {};
+
+    function addInvalid(name) {
+      var key = normalizeFieldLookupKey(name);
+      if (!key || invalidSeen[key]) {
+        return;
+      }
+      invalidSeen[key] = true;
+      invalid.push(String(name || '').trim());
+    }
+
+    elements.forEach(function (item) {
+      if (!item || (item.type !== 'text' && item.type !== 'image')) {
+        return;
+      }
+
+      var fieldName = String(item.field || '').trim();
+      if (fieldName) {
+        if (findTableFieldByName(fieldName)) {
+          hasMappedField = true;
+        } else {
+          addInvalid(fieldName);
+        }
+      }
+
+      if (item.type === 'text') {
+        var tokenFields = extractMergeTokenFieldNames(String(item.label || item.text || ''));
+        tokenFields.forEach(function (tokenName) {
+          if (findTableFieldByName(tokenName)) {
+            hasMappedField = true;
+          } else {
+            addInvalid(tokenName);
+          }
+        });
+      }
+    });
+
+    return {
+      hasMappedField: hasMappedField,
+      invalid: invalid,
+    };
+  }
+
+  function validateStep2MappingsBeforeStep3() {
+    var validation = collectStep2MappingValidation();
+    if (validation.invalid.length) {
+      var badList = validation.invalid.slice(0, 3).join(', ');
+      var badSuffix = validation.invalid.length > 3 ? '...' : '';
+      var invalidMessage = 'Fix invalid mapped fields before Step 3: ' + badList + badSuffix;
+      setAlert(invalidMessage, 'error');
+      showToast(invalidMessage, 'error');
+      return false;
+    }
+
+    if (!validation.hasMappedField) {
+      var message = 'Map at least one template field in Step 2 before going to Step 3.';
+      setAlert(message, 'error');
+      showToast(message, 'error');
+      return false;
+    }
+
+    return true;
+  }
+
   function handleStepNext() {
-    state.step = Math.min(3, state.step + 1);
+    var previousStep = state.step;
+    var nextStep = Math.min(3, state.step + 1);
+    if (nextStep === 3 && previousStep !== 3 && !validateStep2MappingsBeforeStep3()) {
+      render();
+      return;
+    }
+
+    state.step = nextStep;
     if (state.step === 2) {
       ensureStep2DraftInitialized();
+      if (previousStep === 1) {
+        applyDefaultStep2Viewport();
+      }
     }
     setAlert('', 'warning');
     render();
@@ -7032,13 +7241,23 @@
   }
 
   function goToStep(stepNum) {
+    var previousStep = state.step;
     var nextStep = Number(stepNum || 1);
     if (!Number.isFinite(nextStep)) {
       return;
     }
-    state.step = Math.min(3, Math.max(1, Math.floor(nextStep)));
+    nextStep = Math.min(3, Math.max(1, Math.floor(nextStep)));
+    if (nextStep === 3 && previousStep !== 3 && !validateStep2MappingsBeforeStep3()) {
+      render();
+      return;
+    }
+
+    state.step = nextStep;
     if (state.step === 2) {
       ensureStep2DraftInitialized();
+      if (previousStep === 1) {
+        applyDefaultStep2Viewport();
+      }
     }
     setAlert('', 'warning');
     render();
@@ -7211,6 +7430,10 @@
 
   async function handleGenerateAll() {
     if (state.generating) {
+      return;
+    }
+    if (!validateStep2MappingsBeforeStep3()) {
+      render();
       return;
     }
     if (selectedCardCount() <= 0) {
@@ -7415,6 +7638,32 @@
     if (action === 'close-auto-map-report') {
       state.draftAutoMapReportOpen = false;
       render();
+      return;
+    }
+
+    if (action === 'open-save-template-modal') {
+      openSaveTemplateModal();
+      render();
+      return;
+    }
+
+    if (action === 'close-save-template-modal') {
+      closeSaveTemplateModal();
+      render();
+      return;
+    }
+
+    if (action === 'confirm-save-template-modal') {
+      var modalNameInput = flowRoot.querySelector('#gcDraftTemplateNameModalInput');
+      var modalName = String(modalNameInput && modalNameInput.value || state.draftSaveTemplateName || '').trim();
+      if (!modalName) {
+        state.draftSaveTemplateError = 'Template name is required.';
+        render();
+        return;
+      }
+      state.draftSaveTemplateError = '';
+      closeSaveTemplateModal();
+      triggerSaveDraftTemplate(modalName);
       return;
     }
 
@@ -7749,7 +7998,8 @@
     }
 
     if (action === 'save-draft-template') {
-      triggerSaveDraftTemplate();
+      openSaveTemplateModal();
+      render();
       return;
     }
 
@@ -8744,6 +8994,14 @@
 
   flowRoot.addEventListener('input', function (event) {
     var target = event.target;
+    if (target && target.id === 'gcDraftTemplateNameModalInput') {
+      state.draftSaveTemplateName = String(target.value || '').slice(0, 120);
+      if (state.draftSaveTemplateError && state.draftSaveTemplateName.trim()) {
+        state.draftSaveTemplateError = '';
+      }
+      return;
+    }
+
     if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
       return;
     }
@@ -8788,6 +9046,31 @@
 
     var key = String(event.key || '');
     var code = String(event.code || '');
+
+    if (state.draftSaveModalOpen) {
+      if (key === 'Escape') {
+        closeSaveTemplateModal();
+        event.preventDefault();
+        render();
+        return;
+      }
+      if (key === 'Enter' && !event.shiftKey) {
+        var modalInput = flowRoot.querySelector('#gcDraftTemplateNameModalInput');
+        var modalValue = String(modalInput && modalInput.value || state.draftSaveTemplateName || '').trim();
+        if (!modalValue) {
+          state.draftSaveTemplateError = 'Template name is required.';
+          event.preventDefault();
+          render();
+          return;
+        }
+        state.draftSaveTemplateError = '';
+        closeSaveTemplateModal();
+        triggerSaveDraftTemplate(modalValue);
+        event.preventDefault();
+        return;
+      }
+    }
+
     if ((key === ' ' || key === 'Spacebar') && !isTypingTarget(event.target)) {
       if (!state.spacePanMode) {
         state.spacePanMode = true;
@@ -8902,7 +9185,7 @@
     } else if (ctrlOrMeta && !event.altKey && lower === 'd') {
       handled = duplicateSelectedDraftElement();
     } else if (ctrlOrMeta && !event.altKey && lower === 's') {
-      triggerSaveDraftTemplate();
+      openSaveTemplateModal();
       handled = true;
     } else if (ctrlOrMeta && !event.altKey && (key === '+' || key === '=')) {
       setDraftZoomWithAnchor(Number(state.draftZoom || 1) + 0.1, null);
@@ -9228,7 +9511,8 @@
       if (state.step !== 2) {
         return;
       }
-      triggerSaveDraftTemplate();
+      openSaveTemplateModal();
+      render();
     });
   }
 
