@@ -3,6 +3,8 @@
 <!-- Controlled by Alpine.js; opened via $dispatch('open-hamburger') from navbar btn -->
 <div x-data="hamburgerDrawer()"
      x-on:open-hamburger.window="open()"
+    x-on:open-mobile-impersonation.window="openImpersonation()"
+    x-on:stop-mobile-impersonation.window="stopImpersonation()"
     data-mobile-overlay-root
      class="pwa-drawer-root">
 
@@ -171,7 +173,7 @@
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
                 <div class="flex flex-col gap-2.5">
 
-                      {% if is_super_admin or is_admin_staff and perm_idcard_client_list %}
+                      {% if is_super_admin or is_admin_staff %}
                           <!-- Manage Client -->
                           <a href="{% url 'mobile_app:clients_list' %}"
                        @click="close()"
@@ -284,7 +286,7 @@
                     <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
                 </button>
 
-                {% if is_pro_user %}
+                {% if is_pro_user and not is_impersonating %}
                 <button type="button"
                         @click="openImpersonation()"
                         class="pwa-drawer-item w-full text-left">
@@ -297,6 +299,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
                 </button>
+                {% endif %}
                 {% if is_impersonating %}
                 <button type="button"
                         @click="stopImpersonation()"
@@ -310,7 +313,6 @@
                     </div>
                     <i class="fa-solid fa-chevron-right pwa-drawer-chevron"></i>
                 </button>
-                {% endif %}
                 {% endif %}
             </div>
 

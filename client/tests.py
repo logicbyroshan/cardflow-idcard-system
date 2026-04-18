@@ -278,12 +278,15 @@ class ManageClientsPermissionGateTests(TestCase):
         self.staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
         self.staff_profile.assigned_clients.add(self.client_obj)
 
-    def test_manage_clients_redirects_admin_staff_without_manage_client_permission(self):
+    def test_manage_clients_allows_read_only_admin_staff_without_manage_client_permission(self):
         self.client.login(username='gate-admin-staff@test.com', password='pass1234')
         response = self.client.get('/panel/manage-clients/')
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['clients']), 1)
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
+        self.assertFalse(response.context['can_manage_clients'])
 
-    def test_manage_clients_allows_admin_staff_with_manage_client_permission(self):
+    def test_manage_clients_scopes_admin_staff_with_manage_client_permission_to_assigned_clients(self):
         self.staff_profile.perm_idcard_client_list = True
         self.staff_profile.save(update_fields=['perm_idcard_client_list'])
 
@@ -291,8 +294,8 @@ class ManageClientsPermissionGateTests(TestCase):
         response = self.client.get('/panel/manage-clients/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['clients']), 2)
-        self.assertEqual(response.context['page_obj'].paginator.count, 2)
+        self.assertEqual(len(response.context['clients']), 1)
+        self.assertEqual(response.context['page_obj'].paginator.count, 1)
         self.assertTrue(response.context['can_manage_clients'])
         self.assertNotContains(response, 'id="deleteClientBtn"')
 

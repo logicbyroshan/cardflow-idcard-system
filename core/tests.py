@@ -269,6 +269,24 @@ class CropperLatestVersionFallbackTests(TestCase):
         self.assertEqual(payload['version'], '2.4.0')
         self.assertIn('/panel/engine/download/', payload['download_url'])
 
+    def test_latest_version_prefers_local_download_even_when_release_url_exists(self):
+        from core.models import CropperRelease
+
+        CropperRelease.objects.all().delete()
+        CropperRelease.objects.create(
+            version='9.9.9',
+            download_url='https://old-or-unreachable-host.example/AdarshEngineSetup%20(5).exe',
+            changelog='External release url should not override local endpoint',
+            is_latest=True,
+        )
+
+        response = self.client.get('/api/cropper/latest-version/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['available'])
+        self.assertEqual(payload['version'], '9.9.9')
+        self.assertEqual(payload['download_url'], '/panel/engine/download/')
+
 
 class EngineDownloadInstallerGuardTests(TestCase):
     def setUp(self):
@@ -2021,7 +2039,7 @@ class SecurityApiRegressionTests(TestCase):
         self.card_a.refresh_from_db()
         self.assertNotIn('__HACK__', self.card_a.field_data)
 
-    def test_client_toggle_status_allows_manage_client_admin_staff_for_unassigned_client(self):
+    def test_client_toggle_status_denies_manage_client_admin_staff_for_unassigned_client(self):
         self.admin_staff_profile.perm_idcard_client_list = True
         self.admin_staff_profile.save(update_fields=['perm_idcard_client_list'])
         self.client.login(username='sec-admin-staff@test.com', password='pass1234')
@@ -2032,8 +2050,8 @@ class SecurityApiRegressionTests(TestCase):
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json().get('success'))
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('access denied', response.json().get('message', '').lower())
 
     def test_admin_staff_without_manage_client_permission_cannot_create_client(self):
         self.client.login(username='sec-admin-staff@test.com', password='pass1234')
@@ -2046,7 +2064,18 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn('manage client permission required', response.json().get('message', '').lower())
 
-    def test_admin_staff_with_manage_client_permission_can_manage_client_crud(self):
+    def test_admin_staff_without_manage_client_permission_can_view_assigned_client_details_only(self):
+        self.client.login(username='sec-admin-staff@test.com', password='pass1234')
+
+        assigned_resp = self.client.get(f'/panel/api/client/{self.client_a.id}/')
+        self.assertEqual(assigned_resp.status_code, 200)
+        self.assertTrue(assigned_resp.json().get('success'))
+
+        unassigned_resp = self.client.get(f'/panel/api/client/{self.client_b.id}/')
+        self.assertEqual(unassigned_resp.status_code, 403)
+        self.assertIn('access denied', unassigned_resp.json().get('message', '').lower())
+
+    def test_admin_staff_with_manage_client_permission_can_create_update_but_not_delete_client(self):
         from client.models import Client
 
         self.admin_staff_profile.perm_idcard_client_list = True
@@ -2090,9 +2119,9 @@ class SecurityApiRegressionTests(TestCase):
         self.assertTrue(get_payload.get('client', {}).get('perm_idcard_delete'))
 
         delete_resp = self.client.post(f'/panel/api/client/{new_client_id}/delete/', data=json.dumps({}), content_type='application/json')
-        self.assertEqual(delete_resp.status_code, 200)
-        self.assertTrue(delete_resp.json().get('success'))
-        self.assertFalse(Client.objects.filter(id=new_client_id).exists())
+        self.assertEqual(delete_resp.status_code, 403)
+        self.assertIn('only super admin can delete clients', delete_resp.json().get('message', '').lower())
+        self.assertTrue(Client.objects.filter(id=new_client_id).exists())
 
     def test_delete_all_confirmation_locks_after_five_failed_attempts(self):
         self.client.login(username='sec-api-admin@test.com', password='adminpass1')

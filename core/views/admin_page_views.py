@@ -514,10 +514,6 @@ def manage_clients(request):
     """View to manage all clients — supports HTMX partial responses."""
     user = request.user
     can_manage_clients = PermissionService.is_super_admin(user) or PermissionService.has(user, 'perm_idcard_client_list')
-    if PermissionService.is_admin_staff(user) and not can_manage_clients:
-        if is_htmx(request):
-            return JsonResponse({'success': False, 'message': 'Manage Client permission required'}, status=403)
-        return redirect(reverse('admin_staff_dashboard'))
 
     DEFAULT_PER_PAGE = 25
     PER_PAGE_OPTIONS = [5, 10, 25, 50, 100]
@@ -539,8 +535,8 @@ def manage_clients(request):
     if status_filter not in ('all', 'active', 'inactive', 'suspended'):
         status_filter = 'all'
     
-    # Manage Clients page is a full-capability surface for super_admin and
-    # admin_staff who have the Manage Client permission.
+    # Admin staff can always open this page, but the result set remains
+    # scoped to their assigned clients.
     clients_qs = (
         Client.objects
         .all()
@@ -548,6 +544,7 @@ def manage_clients(request):
         .annotate(group_count=Count('id_card_groups', distinct=True))
         .order_by('-id')
     )
+    clients_qs = PermissionService.get_accessible_clients(user, base_qs=clients_qs)
     
     if search_query:
         if search_field == 'name':

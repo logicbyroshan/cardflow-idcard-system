@@ -136,6 +136,57 @@
                 </div>
                 {% endif %}
 
+                {% if is_pro_user or is_impersonating %}
+                <div class="mt-2 rounded-2xl border border-violet-100 bg-gradient-to-r from-white via-violet-50/30 to-indigo-50/30 px-3 py-2.5 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Pro Quick Actions</p>
+                    </div>
+                    <div class="mt-2 grid grid-cols-2 gap-2">
+                        {% if is_pro_user %}
+                        <a href="{% url 'mobile_app:clients_list' %}"
+                           class="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-2.5 py-2 active:scale-[0.98] transition-transform">
+                            <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">
+                                <i class="fa-solid fa-building"></i>
+                            </span>
+                            <span class="text-[11px] font-semibold text-gray-700">Manage Clients</span>
+                        </a>
+                        <a href="{% url 'mobile_app:staff_manage' %}"
+                           class="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-2.5 py-2 active:scale-[0.98] transition-transform">
+                            <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]">
+                                <i class="fa-solid fa-user-cog"></i>
+                            </span>
+                            <span class="text-[11px] font-semibold text-gray-700">Manage Staff</span>
+                        </a>
+                        <button type="button"
+                                @click="window.dispatchEvent(new CustomEvent('open-mobile-impersonation'))"
+                                class="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-2.5 py-2 active:scale-[0.98] transition-transform text-left">
+                            <span class="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center text-[10px]">
+                                <i class="fa-solid fa-user-secret"></i>
+                            </span>
+                            <span class="text-[11px] font-semibold text-gray-700">Login As User</span>
+                        </button>
+                        <a href="{% url 'mobile_app:search_page' %}"
+                           class="flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-2.5 py-2 active:scale-[0.98] transition-transform">
+                            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center text-[10px]">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </span>
+                            <span class="text-[11px] font-semibold text-gray-700">Search Cards</span>
+                        </a>
+                        {% endif %}
+                        {% if is_impersonating %}
+                        <button type="button"
+                                @click="window.dispatchEvent(new CustomEvent('stop-mobile-impersonation'))"
+                                class="col-span-2 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-2 active:scale-[0.98] transition-transform text-left">
+                            <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-[10px]">
+                                <i class="fa-solid fa-user-check"></i>
+                            </span>
+                            <span class="text-[11px] font-semibold text-amber-800">Stop Login As</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
 
             <!-- RECENT CLIENT UPDATES -->

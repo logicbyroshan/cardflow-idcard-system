@@ -12,14 +12,18 @@
     <div class="btn-group">
         {% if can_manage_clients %}
         <button class="btn btn-md btn-primary" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
-        {% endif %}
         <button class="btn btn-md btn-neutral" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
+        {% endif %}
         <button class="btn btn-md btn-neutral" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+        {% if can_manage_clients %}
         <button class="btn btn-md btn-neutral" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> Staff</button>
+        {% endif %}
         {% if is_super_admin %}
         <button class="btn btn-md btn-danger" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
         {% endif %}
+        {% if can_manage_clients %}
         <button class="btn btn-md btn-warning" id="activeClientBtn" disabled><i class="fa-solid fa-toggle-on"></i> Active</button>
+        {% endif %}
     </div>
 
     {% if is_super_admin or perm_idcard_setting_list %}

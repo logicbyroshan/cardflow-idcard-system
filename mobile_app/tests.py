@@ -1554,6 +1554,29 @@ class MobileAppManagementApiTests(MobileAppBaseTestCase):
 		self.assertEqual(response.status_code, 403)
 		self.assertFalse(response.json()['success'])
 
+	def test_mobile_home_shows_pro_quick_actions_and_impersonation_controls(self):
+		self._login_mobile_pro_user()
+
+		home = self.client.get('/app/')
+		self.assertEqual(home.status_code, 200)
+		home_content = home.content.decode('utf-8')
+		self.assertIn('Pro Quick Actions', home_content)
+		self.assertIn('open-mobile-impersonation', home_content)
+
+		start = self.client.post(
+			'/app/api/impersonate/start/',
+			data=json.dumps({'user_id': self.client_user.id}),
+			content_type='application/json',
+		)
+		self.assertEqual(start.status_code, 200)
+		self.assertTrue(start.json()['success'])
+
+		impersonated_home = self.client.get('/app/')
+		self.assertEqual(impersonated_home.status_code, 200)
+		impersonated_content = impersonated_home.content.decode('utf-8')
+		self.assertIn('Stop Login As', impersonated_content)
+		self.assertIn('stop-mobile-impersonation', impersonated_content)
+
 	def test_mobile_impersonation_start_and_stop_keeps_mobile_session(self):
 		self._login_mobile_pro_user()
 

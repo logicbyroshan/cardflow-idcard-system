@@ -26,14 +26,14 @@
     </a>
     {% endif %}
     
-    {% if is_super_admin or is_admin_staff and perm_idcard_client_list or is_admin_staff and perm_manage_client_staff %}
+    {% if is_super_admin or is_admin_staff %}
     <!-- User Management Section -->
     <div class="nav-section">
       <div class="nav-section-line"></div>
       <span class="nav-section-title">User Management</span>
       <div class="nav-section-line"></div>
     </div>
-    {% if is_super_admin or perm_idcard_client_list %}
+    {% if is_super_admin or is_admin_staff %}
     <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' or active_page == 'idcard_group' or active_page == 'group_settings' %}active{% endif %}">
       <i class="fa-solid fa-users"></i><span>Manage Clients</span>
     </a>

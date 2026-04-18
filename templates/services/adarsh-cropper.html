@@ -243,7 +243,7 @@
       </div>
       <div class="update-banner-actions">
         <span class="update-current-version" x-show="engine.connected">Installed: v<span x-text="engine.version"></span></span>
-        <a :href="update.downloadUrl" class="btn btn-primary btn-sm" download>
+        <a :href="update.downloadUrl" class="btn btn-primary btn-sm" download="AdarshEngineSetup.exe">
           <i class="fa-solid fa-download"></i> <span x-text="engine.connected ? 'Update to v' + update.version : 'Download v' + update.version"></span>
         </a>
         <button class="btn btn-neutral btn-sm" @click="update.available = false" title="Dismiss" type="button">

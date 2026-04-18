@@ -942,7 +942,18 @@ def engine_download(request):
     from django.conf import settings
     from django.http import Http404
 
-    installer_names = ['AdarshEngineSetup.exe', 'PassportEngineSetup.exe']
+    installer_names = [
+        'AdarshEngineSetup.exe',
+        'AdarshCropperSetup.exe',
+        'PassportEngineSetup.exe',
+        'PhotoCropperSetup.exe',
+    ]
+    installer_globs = [
+        'AdarshEngineSetup*.exe',
+        'AdarshCropperSetup*.exe',
+        'PassportEngineSetup*.exe',
+        'PhotoCropperSetup*.exe',
+    ]
     search_dirs = []
 
     media_engine_dir = None
@@ -958,6 +969,10 @@ def engine_download(request):
 
     base_dir = Path(getattr(settings, 'BASE_DIR', Path(__file__).resolve().parents[2]))
     search_dirs.extend([
+        base_dir / 'static' / 'engine',
+        base_dir / 'staticfiles' / 'engine',
+    ])
+    search_dirs.extend([
         base_dir / 'Face Cropper' / 'Output',
         base_dir / 'Face Cropper' / 'installer',
         base_dir / 'Face Cropper' / 'dist',
@@ -972,12 +987,31 @@ def engine_download(request):
                 hasher.update(chunk)
         return hasher.hexdigest()
 
-    candidates = []
+    exact_candidates = []
+    glob_candidates = []
+    seen_paths = set()
     for folder in search_dirs:
+        if not folder.exists() or not folder.is_dir():
+            continue
         for name in installer_names:
             candidate = folder / name
             if candidate.exists() and candidate.is_file():
-                candidates.append(candidate)
+                key = str(candidate.resolve())
+                if key not in seen_paths:
+                    exact_candidates.append(candidate)
+                    seen_paths.add(key)
+        for pattern in installer_globs:
+            for candidate in folder.glob(pattern):
+                if not candidate.exists() or not candidate.is_file():
+                    continue
+                key = str(candidate.resolve())
+                if key not in seen_paths:
+                    glob_candidates.append(candidate)
+                    seen_paths.add(key)
+
+    # Prefer canonical setup names first; only fall back to glob variants if
+    # canonical files are unavailable in the current deployment snapshot.
+    candidates = exact_candidates if exact_candidates else glob_candidates
 
     # Guard: do not serve a mislabeled raw engine EXE as the installer.
     # This happened when AdarshEngine.exe was accidentally copied to

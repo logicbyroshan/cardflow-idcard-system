@@ -68,11 +68,8 @@ def _validate_optional_image_upload(uploaded):
 def _check_admin_staff_client_access(user, client_id):
     """Check if user has access to a specific client.
 
-    Manage Client permission grants full Manage Clients surface access for
-    admin_staff (same capability level as super_admin on this page/API).
+    Admin staff access is always scoped to assigned clients.
     """
-    if PermissionService.is_admin_staff(user) and _has_manage_client_page_permission(user):
-        return True
     return PermissionService.can_access_client(user, client_id)
 
 
@@ -320,8 +317,6 @@ def api_client_create(request):
 @rate_limit(max_requests=60, window_seconds=60, key_prefix='client_get')
 def api_client_get(request, client_id):
     """API endpoint to get a client's details"""
-    if not _has_manage_client_page_permission(request.user):
-        return _manage_client_permission_denied_response()
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     result = ClientService.get(client_id, include_permissions=True)
@@ -371,6 +366,8 @@ def api_client_delete(request, client_id):
     """API endpoint to delete a client."""
     if not _has_manage_client_page_permission(request.user):
         return _manage_client_permission_denied_response()
+    if PermissionService.is_admin_staff(request.user):
+        return JsonResponse({'success': False, 'message': 'Only super admin can delete clients'}, status=403)
     if not _check_admin_staff_client_access(request.user, client_id):
         return JsonResponse({'success': False, 'message': 'Access denied. You are not assigned to this client.'}, status=403)
     # Get client name before deletion for the activity log
