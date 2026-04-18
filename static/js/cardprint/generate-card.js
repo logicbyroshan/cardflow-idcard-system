@@ -15,74 +15,17 @@
   var panelBase = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
   var apiBases = panelBase ? [panelBase + '/print', '/print'] : ['/print', '/panel/print'];
 
-  var state = {
-    step: 1,
-    loading: false,
-    generating: false,
-    orientation: 'landscape',
-    isTwoSided: false,
-    frontFile: null,
-    backFile: null,
-    frontPreviewUrl: '',
-    backPreviewUrl: '',
-    localPreviewUrls: {
-      front: '',
-      back: '',
-    },
-    templates: [],
-    selectedTemplateId: null,
-    selectedTemplate: null,
-    templateDraft: null,
-    templateDraftName: '',
-    draftSelectedElementId: '',
-    draftSelectedElementIds: new Set(),
-    draftInlineEditingElementId: '',
-    draftPendingTextEdit: null,
-    draftSelectedGuideId: '',
-    draftGuidesLocked: false,
-    draftMergePreview: false,
-    draftAutoMapScope: 'active',
-    draftAutoMapReport: null,
-    draftAutoMapReportOpen: false,
-    draftSaveModalOpen: false,
-    draftSaveTemplateName: '',
-    draftSaveTemplateError: '',
-    draftActiveSide: 'front',
-    draftAlignReference: 'selection',
-    draftDistributeMode: 'spacing',
-    draftKeyObjectId: '',
-    draftAlignPreviewMode: '',
-    uiPanels: loadDraftUiPanelsState(),
-    draftTool: 'select',
-    draftTransformMode: 'resize',
-    draftDragging: null,
-    draftResizeDragging: null,
-    draftGuideDragging: null,
-    draftTextDrag: null,
-    draftRectDrag: null,
-    draftSelectDrag: null,
-    draftLayerDragId: '',
-    draftZoom: 2,
-    draftZoomOriginX: 50,
-    draftZoomOriginY: 50,
-    clipboard: [],
-    clipboardPasteCount: 0,
-    draftUnit: 'mm',
-    draftSnapMm: 0.1,
-    draftDirty: false,
-    draftHistory: null,
-    draftInlineEditHistoryActive: false,
-    pendingZoomAnchor: null,
-    draftLastPointerClientX: null,
-    draftLastPointerClientY: null,
-    zoomWheelMode: false,
-    spacePanMode: false,
-    spacePanState: null,
-    cards: [],
-    selectedRequestIds: new Set(),
-    lastPdfBlob: null,
-    lastPdfName: 'cards.pdf',
-  };
+  if (!window.GcEditorState || typeof window.GcEditorState.createInitialEditorState !== 'function'
+    || typeof window.GcEditorState.createEditorStateStore !== 'function') {
+    return;
+  }
+
+  var stateStore = window.GcEditorState.createEditorStateStore(
+    window.GcEditorState.createInitialEditorState({
+      uiPanels: loadDraftUiPanelsState(),
+    })
+  );
+  var state = stateStore.getState();
   var pdfJsLoadPromise = null;
   var draftElementSeed = 1;
   var draftGuideSeed = 1;
@@ -104,6 +47,11 @@
   var DRAFT_UI_PANELS_STORAGE_KEY = 'gc_step2_ui_panels_v1';
   var draftTextMeasureNode = null;
   var draftRenderRafId = 0;
+  var historyService = null;
+  var clipboardService = null;
+  var stageEventBindings = null;
+  var pointerEventBindings = null;
+  var keyboardEventBindings = null;
 
   function renderStep2OnNextFrame() {
     if (state.step !== 2 || typeof window === 'undefined' || !window.requestAnimationFrame) {
@@ -1342,229 +1290,85 @@
   }
 
   function ensureDraftHistoryState() {
-    if (!state.draftHistory || typeof state.draftHistory !== 'object') {
-      state.draftHistory = {
-        undo: [],
-        redo: [],
-        applying: false,
-        inTxn: false,
-        txnCaptured: false,
-        maxDepth: 15,
-        lastSig: '',
-      };
+    if (!historyService) {
+      if (!window.GcEditorHistoryService || typeof window.GcEditorHistoryService.create !== 'function') {
+        if (!state.draftHistory || typeof state.draftHistory !== 'object') {
+          state.draftHistory = {
+            undo: [],
+            redo: [],
+            applying: false,
+            inTxn: false,
+            txnCaptured: false,
+            maxDepth: 15,
+            lastSig: '',
+          };
+        }
+        return state.draftHistory;
+      }
+      historyService = window.GcEditorHistoryService.create({
+        state: state,
+        defaultTemplateJson: defaultTemplateJson,
+        deepCloneJson: deepCloneJson,
+        normalizeDraftAlignReference: normalizeDraftAlignReference,
+        normalizeDraftDistributeMode: normalizeDraftDistributeMode,
+        normalizeOrientation: normalizeOrientation,
+        normalizeDraftSnapMm: normalizeDraftSnapMm,
+        setDraftZoom: setDraftZoom,
+        normalizeDraftElementZOrder: normalizeDraftElementZOrder,
+        normalizeDraftElementSelection: normalizeDraftElementSelection,
+        clearDraftInlineTextEditing: clearDraftInlineTextEditing,
+        syncDraftToSelectedTemplate: syncDraftToSelectedTemplate,
+        ensureStep2DraftInitialized: ensureStep2DraftInitialized,
+        selectedDraftElementSet: selectedDraftElementSet,
+        currentDraftUnit: currentDraftUnit,
+      });
     }
-    return state.draftHistory;
+    return historyService.ensureDraftHistoryState();
   }
 
   function draftHistorySnapshot() {
-    ensureStep2DraftInitialized();
-    normalizeDraftElementSelection();
-    return {
-      templateDraft: deepCloneJson(state.templateDraft, defaultTemplateJson()),
-      templateDraftName: String(state.templateDraftName || ''),
-      draftSelectedElementId: String(state.draftSelectedElementId || ''),
-      draftSelectedElementIds: Array.from(selectedDraftElementSet()).map(function (id) {
-        return String(id || '');
-      }).sort(),
-      draftSelectedGuideId: String(state.draftSelectedGuideId || ''),
-      draftMergePreview: !!state.draftMergePreview,
-      draftActiveSide: state.draftActiveSide === 'back' ? 'back' : 'front',
-      draftAlignReference: normalizeDraftAlignReference(state.draftAlignReference),
-      draftDistributeMode: normalizeDraftDistributeMode(state.draftDistributeMode),
-      draftKeyObjectId: String(state.draftKeyObjectId || ''),
-      draftTool: String(state.draftTool || 'select'),
-      orientation: normalizeOrientation(state.orientation || 'landscape'),
-      isTwoSided: !!state.isTwoSided,
-      draftUnit: currentDraftUnit(),
-      draftSnapMm: normalizeDraftSnapMm(state.draftSnapMm),
-      draftZoom: Number(state.draftZoom || 1),
-      draftZoomOriginX: Number(state.draftZoomOriginX || 50),
-      draftZoomOriginY: Number(state.draftZoomOriginY || 50),
-    };
+    ensureDraftHistoryState();
+    return historyService.draftHistorySnapshot();
   }
 
   function draftHistorySignature(snapshot) {
-    return JSON.stringify(snapshot || {});
+    ensureDraftHistoryState();
+    return historyService.draftHistorySignature(snapshot);
   }
 
   function captureDraftHistoryPoint() {
-    if (state.step !== 2) {
-      return false;
-    }
-
-    var hist = ensureDraftHistoryState();
-    if (hist.applying) {
-      return false;
-    }
-
-    var snap = draftHistorySnapshot();
-    var sig = draftHistorySignature(snap);
-    if (sig === hist.lastSig) {
-      return false;
-    }
-
-    hist.undo.push(snap);
-    while (hist.undo.length > Math.max(1, Number(hist.maxDepth || 15))) {
-      hist.undo.shift();
-    }
-    hist.redo = [];
-    hist.lastSig = sig;
-    if (hist.inTxn) {
-      hist.txnCaptured = true;
-    }
-    return true;
+    ensureDraftHistoryState();
+    return historyService.captureDraftHistoryPoint();
   }
 
   function beginDraftHistoryTransaction() {
-    if (state.step !== 2) {
-      return;
-    }
-    var hist = ensureDraftHistoryState();
-    if (!hist.inTxn) {
-      hist.inTxn = true;
-      hist.txnCaptured = false;
-    }
+    ensureDraftHistoryState();
+    return historyService.beginDraftHistoryTransaction();
   }
 
   function endDraftHistoryTransaction() {
-    var hist = ensureDraftHistoryState();
-    if (!hist.inTxn) {
-      return;
-    }
-    hist.inTxn = false;
-    hist.txnCaptured = false;
-    if (state.step === 2) {
-      hist.lastSig = draftHistorySignature(draftHistorySnapshot());
-    }
+    ensureDraftHistoryState();
+    return historyService.endDraftHistoryTransaction();
   }
 
   function prepareDraftHistoryMutation() {
-    if (state.step !== 2) {
-      return;
-    }
-    var hist = ensureDraftHistoryState();
-    if (hist.applying) {
-      return;
-    }
-    if (hist.inTxn) {
-      if (!hist.txnCaptured) {
-        captureDraftHistoryPoint();
-      }
-      return;
-    }
-    captureDraftHistoryPoint();
+    ensureDraftHistoryState();
+    return historyService.prepareDraftHistoryMutation();
   }
 
   function applyDraftHistorySnapshot(snapshot) {
-    if (!snapshot || typeof snapshot !== 'object') {
-      return false;
-    }
-
-    state.templateDraft = deepCloneJson(snapshot.templateDraft, defaultTemplateJson());
-    state.templateDraftName = String(snapshot.templateDraftName || '');
-    state.draftSelectedElementId = String(snapshot.draftSelectedElementId || '');
-    state.draftSelectedElementIds = new Set(Array.isArray(snapshot.draftSelectedElementIds)
-      ? snapshot.draftSelectedElementIds.map(function (id) { return String(id || ''); })
-      : []);
-    state.draftSelectedGuideId = String(snapshot.draftSelectedGuideId || '');
-    state.draftMergePreview = !!snapshot.draftMergePreview;
-    state.draftActiveSide = snapshot.draftActiveSide === 'back' ? 'back' : 'front';
-    state.draftAlignReference = normalizeDraftAlignReference(snapshot.draftAlignReference);
-    state.draftDistributeMode = normalizeDraftDistributeMode(snapshot.draftDistributeMode);
-    state.draftKeyObjectId = String(snapshot.draftKeyObjectId || '');
-    state.draftAlignPreviewMode = '';
-
-    var tool = String(snapshot.draftTool || 'select');
-    if (tool !== 'select' && tool !== 'text' && tool !== 'photo' && tool !== 'rectangle') {
-      tool = 'select';
-    }
-    state.draftTool = tool;
-
-    state.orientation = normalizeOrientation(snapshot.orientation || state.orientation || 'landscape');
-    state.isTwoSided = !!snapshot.isTwoSided;
-
-    var unit = String(snapshot.draftUnit || 'mm').toLowerCase();
-    if (unit !== 'mm' && unit !== 'cm' && unit !== 'in') {
-      unit = 'mm';
-    }
-    state.draftUnit = unit;
-    state.draftSnapMm = normalizeDraftSnapMm(snapshot.draftSnapMm);
-
-    setDraftZoom(Number(snapshot.draftZoom || 1));
-    var originX = Number(snapshot.draftZoomOriginX);
-    var originY = Number(snapshot.draftZoomOriginY);
-    state.draftZoomOriginX = Number.isFinite(originX) ? Math.max(0, Math.min(100, originX)) : 50;
-    state.draftZoomOriginY = Number.isFinite(originY) ? Math.max(0, Math.min(100, originY)) : 50;
-
-    state.draftDragging = null;
-    state.draftResizeDragging = null;
-    state.draftGuideDragging = null;
-    state.draftTextDrag = null;
-    state.draftRectDrag = null;
-    state.draftSelectDrag = null;
-    state.draftLayerDragId = '';
-    clearDraftInlineTextEditing();
-    state.draftInlineEditHistoryActive = false;
-
-    normalizeDraftElementZOrder(false);
-    normalizeDraftElementSelection();
-    state.draftDirty = true;
-    syncDraftToSelectedTemplate();
-    return true;
+    ensureDraftHistoryState();
+    return historyService.applyDraftHistorySnapshot(snapshot);
   }
 
   function undoDraftHistory() {
-    if (state.step !== 2) {
-      return false;
-    }
-    var hist = ensureDraftHistoryState();
-    if (!hist.undo.length) {
-      return false;
-    }
-
-    var current = draftHistorySnapshot();
-    var previous = hist.undo.pop();
-    hist.redo.push(current);
-    while (hist.redo.length > Math.max(1, Number(hist.maxDepth || 15))) {
-      hist.redo.shift();
-    }
-
-    hist.applying = true;
-    try {
-      applyDraftHistorySnapshot(previous);
-    } finally {
-      hist.applying = false;
-    }
-
-    hist.lastSig = draftHistorySignature(draftHistorySnapshot());
-    return true;
+    ensureDraftHistoryState();
+    return historyService.undoDraftHistory();
   }
 
   function redoDraftHistory() {
-    if (state.step !== 2) {
-      return false;
-    }
-    var hist = ensureDraftHistoryState();
-    if (!hist.redo.length) {
-      return false;
-    }
-
-    var current = draftHistorySnapshot();
-    var next = hist.redo.pop();
-    hist.undo.push(current);
-    while (hist.undo.length > Math.max(1, Number(hist.maxDepth || 15))) {
-      hist.undo.shift();
-    }
-
-    hist.applying = true;
-    try {
-      applyDraftHistorySnapshot(next);
-    } finally {
-      hist.applying = false;
-    }
-
-    hist.lastSig = draftHistorySignature(draftHistorySnapshot());
-    return true;
+    ensureDraftHistoryState();
+    return historyService.redoDraftHistory();
   }
 
   function deepCloneJson(value, fallback) {
@@ -5236,15 +5040,50 @@
     return true;
   }
 
+  function ensureClipboardService() {
+    if (clipboardService) {
+      return true;
+    }
+    if (!window.GcEditorClipboardService || typeof window.GcEditorClipboardService.create !== 'function') {
+      return false;
+    }
+    clipboardService = window.GcEditorClipboardService.create({
+      state: state,
+      showToast: showToast,
+      selectedDraftElements: selectedDraftElements,
+      sortDraftElementsByZIndex: sortDraftElementsByZIndex,
+      deepCloneJson: deepCloneJson,
+      ensureStep2DraftInitialized: ensureStep2DraftInitialized,
+      beginDraftHistoryTransaction: beginDraftHistoryTransaction,
+      prepareDraftHistoryMutation: prepareDraftHistoryMutation,
+      maxDraftElementZIndex: maxDraftElementZIndex,
+      normalizeDraftElement: normalizeDraftElement,
+      normalizeDraftElementZOrder: normalizeDraftElementZOrder,
+      setDraftSelectedElementIds: setDraftSelectedElementIds,
+      clearDraftInlineTextEditing: clearDraftInlineTextEditing,
+      markDraftDirty: markDraftDirty,
+      endDraftHistoryTransaction: endDraftHistoryTransaction,
+      removeDraftElement: removeDraftElement,
+    });
+    return !!clipboardService;
+  }
+
   function selectedDraftElementsSortedByZIndex() {
-    var selected = selectedDraftElements();
-    if (!selected.length) {
+    if (ensureClipboardService()) {
+      return clipboardService.selectedDraftElementsSortedByZIndex();
+    }
+    var fallbackSelected = selectedDraftElements();
+    if (!fallbackSelected.length) {
       return [];
     }
-    return sortDraftElementsByZIndex(selected);
+    return sortDraftElementsByZIndex(fallbackSelected);
   }
 
   function copySelectedDraftElements(options) {
+    if (ensureClipboardService()) {
+      return clipboardService.copySelectedDraftElements(options);
+    }
+
     var opts = options && typeof options === 'object' ? options : {};
     var quiet = !!opts.quiet;
     var selected = selectedDraftElementsSortedByZIndex();
@@ -5271,6 +5110,10 @@
   }
 
   function pasteClipboardElements(inPlace) {
+    if (ensureClipboardService()) {
+      return clipboardService.pasteClipboardElements(inPlace);
+    }
+
     ensureStep2DraftInitialized();
     var clipboard = Array.isArray(state.clipboard) ? state.clipboard : [];
     if (!clipboard.length) {
@@ -5328,6 +5171,10 @@
   }
 
   function cutSelectedDraftElements() {
+    if (ensureClipboardService()) {
+      return clipboardService.cutSelectedDraftElements();
+    }
+
     if (!copySelectedDraftElements({ quiet: true })) {
       showToast('Select at least one element to cut.', 'warning');
       return false;
@@ -8167,167 +8014,19 @@
     }
   });
 
-  flowRoot.addEventListener('dragstart', function (event) {
-    if (state.step !== 2) {
-      return;
-    }
-    var row = event.target && event.target.closest
-      ? event.target.closest('[data-layer-row="1"]')
-      : null;
-    if (!row) {
-      return;
-    }
-    var id = String(row.getAttribute('data-el-id') || '');
-    if (!id) {
-      return;
-    }
-    state.draftLayerDragId = id;
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', id);
-    }
-  });
-
-  flowRoot.addEventListener('dragover', function (event) {
-    if (state.step !== 2 || !state.draftLayerDragId) {
-      return;
-    }
-    var row = event.target && event.target.closest
-      ? event.target.closest('[data-layer-row="1"]')
-      : null;
-    if (!row) {
-      return;
-    }
-    event.preventDefault();
-    row.classList.add('is-drag-over');
-  });
-
-  flowRoot.addEventListener('dragleave', function (event) {
-    var row = event.target && event.target.closest
-      ? event.target.closest('[data-layer-row="1"]')
-      : null;
-    if (!row) {
-      return;
-    }
-    row.classList.remove('is-drag-over');
-  });
-
-  flowRoot.addEventListener('drop', function (event) {
-    if (state.step !== 2) {
-      return;
-    }
-    var row = event.target && event.target.closest
-      ? event.target.closest('[data-layer-row="1"]')
-      : null;
-    if (!row) {
-      return;
-    }
-
-    event.preventDefault();
-    var sourceId = String(state.draftLayerDragId || '');
-    if (!sourceId && event.dataTransfer) {
-      sourceId = String(event.dataTransfer.getData('text/plain') || '');
-    }
-    var targetId = String(row.getAttribute('data-el-id') || '');
-    if (!sourceId || !targetId || sourceId === targetId) {
-      state.draftLayerDragId = '';
-      row.classList.remove('is-drag-over');
-      return;
-    }
-
-    var rect = row.getBoundingClientRect();
-    var placeAfter = Number(event.clientY || 0) > (rect.top + (rect.height / 2));
-    if (reorderDraftLayerByIds(sourceId, targetId, placeAfter)) {
-      render();
-    }
-
-    state.draftLayerDragId = '';
-    Array.prototype.forEach.call(flowRoot.querySelectorAll('[data-layer-row="1"].is-drag-over'), function (el) {
-      el.classList.remove('is-drag-over');
+  if (window.GcEditorStageEventBindings && typeof window.GcEditorStageEventBindings.create === 'function') {
+    stageEventBindings = window.GcEditorStageEventBindings.create({
+      flowRoot: flowRoot,
+      windowObj: window,
+      modalEl: modalEl,
+      state: state,
+      reorderDraftLayerByIds: reorderDraftLayerByIds,
+      render: render,
+      applySmoothZoomFromWheel: applySmoothZoomFromWheel,
+      renderStep2OnNextFrame: renderStep2OnNextFrame,
     });
-  });
-
-  flowRoot.addEventListener('dragend', function () {
-    state.draftLayerDragId = '';
-    Array.prototype.forEach.call(flowRoot.querySelectorAll('[data-layer-row="1"].is-drag-over'), function (el) {
-      el.classList.remove('is-drag-over');
-    });
-  });
-
-  flowRoot.addEventListener('wheel', function (event) {
-    if (state.step !== 2 || event.ctrlKey || !event.altKey) {
-      return;
-    }
-
-    var stage = event.target && event.target.closest
-      ? event.target.closest('.gc-step2-canvas-stage')
-      : null;
-    if (!stage) {
-      return;
-    }
-
-    applySmoothZoomFromWheel(event);
-    event.preventDefault();
-    renderStep2OnNextFrame();
-  }, { passive: false });
-
-  flowRoot.addEventListener('mouseover', function (event) {
-    if (state.step !== 2) {
-      return;
-    }
-    var btn = event.target && event.target.closest
-      ? event.target.closest('[data-action="align-selected"]')
-      : null;
-    if (!btn) {
-      return;
-    }
-    var mode = String(btn.getAttribute('data-mode') || '').toLowerCase();
-    if (state.draftAlignPreviewMode === mode) {
-      return;
-    }
-    state.draftAlignPreviewMode = mode;
-    render();
-  });
-
-  flowRoot.addEventListener('mouseout', function (event) {
-    if (state.step !== 2 || !state.draftAlignPreviewMode) {
-      return;
-    }
-    var fromBtn = event.target && event.target.closest
-      ? event.target.closest('[data-action="align-selected"]')
-      : null;
-    if (!fromBtn) {
-      return;
-    }
-    var toBtn = event.relatedTarget && event.relatedTarget.closest
-      ? event.relatedTarget.closest('[data-action="align-selected"]')
-      : null;
-    if (toBtn) {
-      return;
-    }
-    state.draftAlignPreviewMode = '';
-    render();
-  });
-
-  window.addEventListener('wheel', function (event) {
-    if (!modalEl || modalEl.classList.contains('hidden') || !event.ctrlKey) {
-      return;
-    }
-
-    var target = event.target;
-    var inModal = target && target.closest ? target.closest('#gcEditorModal') : null;
-    if (!inModal) {
-      return;
-    }
-
-    var stage = target && target.closest ? target.closest('.gc-step2-canvas-stage') : null;
-    if (stage && state.step === 2) {
-      applySmoothZoomFromWheel(event);
-      renderStep2OnNextFrame();
-    }
-
-    event.preventDefault();
-  }, { passive: false, capture: true });
+    stageEventBindings.bind();
+  }
 
   flowRoot.addEventListener('mousedown', function (event) {
     if (state.step !== 2) {
@@ -8717,693 +8416,82 @@
     render();
   });
 
-  flowRoot.addEventListener('dblclick', function (event) {
-    var dblTarget = event.target && event.target.nodeType === 1
-      ? event.target
-      : (event.target && event.target.parentElement ? event.target.parentElement : null);
-    if (!dblTarget || !dblTarget.closest) {
-      return;
-    }
-
-    var guideEl = dblTarget.closest('.gc-draft-guide');
-    if (guideEl) {
-      if (state.draftGuidesLocked) {
-        event.preventDefault();
-        return;
-      }
-      var guideId = String(guideEl.getAttribute('data-guide-id') || '');
-      if (guideId) {
-        removeDraftGuideById(guideId);
-        state.draftSelectedGuideId = '';
-        event.preventDefault();
-        render();
-      }
-      return;
-    }
-
-    if (state.step === 2 && state.draftTool === 'select') {
-      var textEl = dblTarget.closest('.gc-draft-el.gc-draft-el-text');
-      if (textEl && !dblTarget.closest('.gc-draft-selection-handle')) {
-        var textId = String(textEl.getAttribute('data-el-id') || '');
-        if (textId && setDraftInlineTextEditing(textId)) {
-          state.draftPendingTextEdit = null;
-          state.draftDragging = null;
-          state.draftResizeDragging = null;
-          event.preventDefault();
-          render();
-          return;
-        }
-      }
-
-    }
-
-    if (state.step !== 2) {
-      return;
-    }
-
-    var canvasEl = dblTarget.closest('.gc-step2-canvas');
-    if (!canvasEl || dblTarget !== canvasEl) {
-      return;
-    }
-
-    if (state.draftTool === 'rectangle') {
-      var rectPoint = canvasEventToDraftPoint(canvasEl, event);
-      state.draftActiveSide = normalizeDraftEditorSide(rectPoint.side);
-      var metrics = draftCanvasMetrics();
-      var count = (state.templateDraft && state.templateDraft.elements ? state.templateDraft.elements.length : 0) + 1;
-      addDraftElement('rectangle', {
-        x: 0,
-        y: 0,
-        width: Number(metrics.width || 0),
-        height: Number(metrics.height || 0),
-        side: state.draftActiveSide,
-        color: '#2563eb',
-        label: 'Rectangle ' + String(count),
-      });
-      event.preventDefault();
-      render();
-      return;
-    }
-
-    if (state.draftTool !== 'photo') {
-      return;
-    }
-
-    var point = canvasEventToDraftPoint(canvasEl, event);
-    state.draftActiveSide = normalizeDraftEditorSide(point.side);
-    addPhotoPlaceholderElement({
-      atPoint: true,
-      x: point.x,
-      y: point.y,
-      side: state.draftActiveSide,
+  if (window.GcEditorPointerEventBindings && typeof window.GcEditorPointerEventBindings.create === 'function') {
+    pointerEventBindings = window.GcEditorPointerEventBindings.create({
+      flowRoot: flowRoot,
+      windowObj: window,
+      state: state,
+      removeDraftGuideById: removeDraftGuideById,
+      render: render,
+      setDraftInlineTextEditing: setDraftInlineTextEditing,
+      canvasEventToDraftPoint: canvasEventToDraftPoint,
+      normalizeDraftEditorSide: normalizeDraftEditorSide,
+      draftCanvasMetrics: draftCanvasMetrics,
+      addDraftElement: addDraftElement,
+      addPhotoPlaceholderElement: addPhotoPlaceholderElement,
+      resolveStageContentEl: resolveStageContentEl,
+      applyDraftResizeDrag: applyDraftResizeDrag,
+      renderStep2OnNextFrame: renderStep2OnNextFrame,
+      resolveDraftCanvasEl: resolveDraftCanvasEl,
+      snapCanvasValueToGrid: snapCanvasValueToGrid,
+      updateDraftGuidePosition: updateDraftGuidePosition,
+      draftDragBox: draftDragBox,
+      selectDraftElementsByBox: selectDraftElementsByBox,
+      draftCanvasSideDisplayWidthPx: draftCanvasSideDisplayWidthPx,
+      ensureStep2DraftInitialized: ensureStep2DraftInitialized,
+      prepareDraftHistoryMutation: prepareDraftHistoryMutation,
+      normalizeDraftElement: normalizeDraftElement,
+      markDraftDirty: markDraftDirty,
+      normalizeDraftElementSelection: normalizeDraftElementSelection,
+      updateSelectedDraftElement: updateSelectedDraftElement,
+      setSpacePanUiState: setSpacePanUiState,
+      endDraftHistoryTransaction: endDraftHistoryTransaction,
+      clearDraftInlineTextEditing: clearDraftInlineTextEditing,
     });
-    state.draftTool = 'select';
-    event.preventDefault();
-    render();
-  });
+    pointerEventBindings.bind();
+  }
 
-  window.addEventListener('mousemove', function (event) {
-    if (state.step === 2) {
-      var pointerTarget = event && event.target;
-      var pointerInStage = pointerTarget && pointerTarget.closest
-        ? pointerTarget.closest('.gc-step2-canvas-stage')
-        : null;
-      if (pointerInStage) {
-        state.draftLastPointerClientX = Number(event.clientX || 0);
-        state.draftLastPointerClientY = Number(event.clientY || 0);
-      } else {
-        state.draftLastPointerClientX = null;
-        state.draftLastPointerClientY = null;
-      }
-    }
-
-    var panState = state.spacePanState;
-    if (panState) {
-      var panStage = resolveStageContentEl(panState.stageEl);
-      if (!panStage) {
-        return;
-      }
-      panState.stageEl = panStage;
-      var dx = Number(event.clientX || 0) - panState.startClientX;
-      var dy = Number(event.clientY || 0) - panState.startClientY;
-      panStage.scrollLeft = panState.startScrollLeft - dx;
-      panStage.scrollTop = panState.startScrollTop - dy;
-      return;
-    }
-
-    var resizeDrag = state.draftResizeDragging;
-    if (resizeDrag) {
-      applyDraftResizeDrag(resizeDrag, event);
-      renderStep2OnNextFrame();
-      return;
-    }
-
-    var guideDrag = state.draftGuideDragging;
-    if (guideDrag) {
-      if (state.draftGuidesLocked) {
-        state.draftGuideDragging = null;
-        renderStep2OnNextFrame();
-        return;
-      }
-      var guideCanvas = resolveDraftCanvasEl(guideDrag.canvasEl);
-      if (!guideCanvas) {
-        return;
-      }
-      guideDrag.canvasEl = guideCanvas;
-      var guidePoint = canvasEventToDraftPoint(guideCanvas, event, { allowOutside: true });
-      var nextPos = guideDrag.axis === 'x' ? guidePoint.x : guidePoint.y;
-      nextPos = snapCanvasValueToGrid(nextPos, guideDrag.axis);
-      updateDraftGuidePosition(guideDrag.id, nextPos);
-      renderStep2OnNextFrame();
-      return;
-    }
-
-    var textDrag = state.draftTextDrag;
-    if (textDrag) {
-      var textCanvas = resolveDraftCanvasEl(textDrag.canvasEl);
-      if (!textCanvas) {
-        return;
-      }
-      textDrag.canvasEl = textCanvas;
-      var livePoint = canvasEventToDraftPoint(textCanvas, event);
-      textDrag.currentX = snapCanvasValueToGrid(livePoint.x, 'x');
-      textDrag.currentY = snapCanvasValueToGrid(livePoint.y, 'y');
-      renderStep2OnNextFrame();
-      return;
-    }
-
-    var rectDrag = state.draftRectDrag;
-    if (rectDrag) {
-      var rectCanvas = resolveDraftCanvasEl(rectDrag.canvasEl);
-      if (!rectCanvas) {
-        return;
-      }
-      rectDrag.canvasEl = rectCanvas;
-      var rectPoint = canvasEventToDraftPoint(rectCanvas, event, { allowOutside: true });
-      rectDrag.currentX = snapCanvasValueToGrid(rectPoint.x, 'x');
-      rectDrag.currentY = snapCanvasValueToGrid(rectPoint.y, 'y');
-      rectDrag.lockSquare = !!event.shiftKey;
-      renderStep2OnNextFrame();
-      return;
-    }
-
-    var selectDrag = state.draftSelectDrag;
-    if (selectDrag) {
-      var selectCanvas = resolveDraftCanvasEl(selectDrag.canvasEl);
-      if (!selectCanvas) {
-        return;
-      }
-      selectDrag.canvasEl = selectCanvas;
-      var selectPoint = canvasEventToDraftPoint(selectCanvas, event, { allowOutside: true });
-      selectDrag.currentX = Number(selectPoint.x || selectDrag.startX || 0);
-      selectDrag.currentY = Number(selectPoint.y || selectDrag.startY || 0);
-
-      var liveSelectBox = draftDragBox(
-        Number(selectDrag.startX || 0),
-        Number(selectDrag.startY || 0),
-        Number(selectDrag.currentX || selectDrag.startX || 0),
-        Number(selectDrag.currentY || selectDrag.startY || 0),
-        false
-      );
-      liveSelectBox.side = normalizeDraftEditorSide(selectDrag.side || state.draftActiveSide);
-      if (liveSelectBox.width >= 2 || liveSelectBox.height >= 2) {
-        selectDraftElementsByBox(
-          liveSelectBox,
-          !!selectDrag.appendSelection,
-          'intersect',
-          Array.isArray(selectDrag.baseSelectionIds) ? new Set(selectDrag.baseSelectionIds) : null
-        );
-      }
-      renderStep2OnNextFrame();
-      return;
-    }
-
-    var drag = state.draftDragging;
-    if (!drag) {
-      return;
-    }
-
-    var scaleX = drag.metrics.width / Math.max(1, draftCanvasSideDisplayWidthPx(drag.canvasRect));
-    var scaleY = drag.metrics.height / Math.max(1, drag.canvasRect.height);
-    var rawDx = (Number(event.clientX || 0) - drag.startMouseX) * scaleX;
-    var rawDy = (Number(event.clientY || 0) - drag.startMouseY) * scaleY;
-
-    if (Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2) {
-      drag.moved = true;
-    }
-
-    if (event.shiftKey) {
-      if (!drag.lockAxis) {
-        drag.lockAxis = Math.abs(rawDx) >= Math.abs(rawDy) ? 'x' : 'y';
-      }
-      if (drag.lockAxis === 'x') {
-        rawDy = 0;
-      } else if (drag.lockAxis === 'y') {
-        rawDx = 0;
-      }
-    } else {
-      drag.lockAxis = '';
-    }
-
-    var x = drag.startX + rawDx;
-    var y = drag.startY + rawDy;
-    x = snapCanvasValueToGrid(x, 'x');
-    y = snapCanvasValueToGrid(y, 'y');
-
-    if (state.draftPendingTextEdit && state.draftPendingTextEdit.id === drag.id) {
-      var moveDx = Number(event.clientX || 0) - Number(state.draftPendingTextEdit.startMouseX || 0);
-      var moveDy = Number(event.clientY || 0) - Number(state.draftPendingTextEdit.startMouseY || 0);
-      if (Math.abs(moveDx) > 2 || Math.abs(moveDy) > 2) {
-        state.draftPendingTextEdit.moved = true;
-      }
-    }
-
-    if (Array.isArray(drag.dragIds) && drag.dragIds.length > 1 && drag.startPositions && typeof drag.startPositions === 'object') {
-      var anchorStartX = Number(drag.startX || 0);
-      var anchorStartY = Number(drag.startY || 0);
-      var snappedAnchorX = snapCanvasValueToGrid(anchorStartX + rawDx, 'x');
-      var snappedAnchorY = snapCanvasValueToGrid(anchorStartY + rawDy, 'y');
-      var deltaX = snappedAnchorX - anchorStartX;
-      var deltaY = snappedAnchorY - anchorStartY;
-
-      ensureStep2DraftInitialized();
-        prepareDraftHistoryMutation();
-      var changed = false;
-      state.templateDraft.elements = state.templateDraft.elements.map(function (item, idx) {
-        if (!item) {
-          return item;
-        }
-        var sid = String(item.__id || '');
-        var startPos = drag.startPositions[sid];
-        if (!startPos) {
-          return item;
-        }
-
-        var draft = Object.assign({}, item);
-        draft.x = Number(startPos.x || 0) + deltaX;
-        draft.y = Number(startPos.y || 0) + deltaY;
-
-        var normalized = normalizeDraftElement(draft, idx);
-        normalized.__id = item.__id;
-        changed = true;
-        return normalized;
-      });
-
-      if (changed) {
-        markDraftDirty();
-        normalizeDraftElementSelection();
-      }
-
-      renderStep2OnNextFrame();
-      return;
-    }
-
-    updateSelectedDraftElement({ x: x, y: y });
-    renderStep2OnNextFrame();
-  });
-
-  window.addEventListener('mouseup', function (event) {
-    if (state.spacePanState) {
-      state.spacePanState = null;
-      setSpacePanUiState();
-      return;
-    }
-
-    if (state.draftResizeDragging) {
-      state.draftResizeDragging = null;
-      endDraftHistoryTransaction();
-      render();
-      return;
-    }
-
-    if (state.draftGuideDragging) {
-      state.draftGuideDragging = null;
-      endDraftHistoryTransaction();
-      render();
-      return;
-    }
-
-    if (state.draftTextDrag) {
-      var td = state.draftTextDrag;
-      var dx = Math.abs(Number(td.currentX || td.startX) - Number(td.startX || 0));
-      var dy = Math.abs(Number(td.currentY || td.startY) - Number(td.startY || 0));
-      var createdTextItem = null;
-
-      if (dx >= 14 || dy >= 14) {
-        createdTextItem = addDraftElement('text', {
-          x: Math.min(Number(td.startX || 0), Number(td.currentX || td.startX || 0)),
-          y: Math.min(Number(td.startY || 0), Number(td.currentY || td.startY || 0)),
-          width: Math.max(36, dx),
-          height: Math.max(20, dy),
-          side: normalizeDraftEditorSide(td.side || state.draftActiveSide),
-          textMode: 'paragraph',
-          textAlign: 'left',
-          label: '',
-        });
-      } else {
-        createdTextItem = addDraftElement('text', {
-          x: Number(td.startX || 0),
-          y: Number(td.startY || 0),
-          side: normalizeDraftEditorSide(td.side || state.draftActiveSide),
-          textMode: 'artistic',
-          textAlign: 'left',
-          autoFitArtistic: true,
-          label: '',
-        });
-      }
-
-      if (createdTextItem && createdTextItem.__id && String(createdTextItem.textMode || '').toLowerCase() === 'artistic') {
-        setDraftInlineTextEditing(createdTextItem.__id);
-      }
-
-      state.draftTextDrag = null;
-      endDraftHistoryTransaction();
-      render();
-      return;
-    }
-
-    if (state.draftRectDrag) {
-      var rd = state.draftRectDrag;
-      var rectBox = draftDragBox(
-        Number(rd.startX || 0),
-        Number(rd.startY || 0),
-        Number(rd.currentX || rd.startX || 0),
-        Number(rd.currentY || rd.startY || 0),
-        !!(event.shiftKey || rd.lockSquare)
-      );
-      var count = (state.templateDraft && state.templateDraft.elements ? state.templateDraft.elements.length : 0) + 1;
-
-      if (rectBox.width >= 8 || rectBox.height >= 8) {
-        addDraftElement('rectangle', {
-          x: rectBox.x,
-          y: rectBox.y,
-          width: Math.max(12, rectBox.width),
-          height: Math.max(12, rectBox.height),
-          side: normalizeDraftEditorSide(rd.side || state.draftActiveSide),
-          color: '#2563eb',
-          label: 'Rectangle ' + String(count),
-        });
-      }
-
-      state.draftRectDrag = null;
-      endDraftHistoryTransaction();
-      render();
-      return;
-    }
-
-    if (state.draftSelectDrag) {
-      var sd = state.draftSelectDrag;
-      var selectBox = draftDragBox(
-        Number(sd.startX || 0),
-        Number(sd.startY || 0),
-        Number(sd.currentX || sd.startX || 0),
-        Number(sd.currentY || sd.startY || 0),
-        false
-      );
-      selectBox.side = normalizeDraftEditorSide(sd.side || state.draftActiveSide);
-      var clickOnly = selectBox.width < 3 && selectBox.height < 3;
-
-      if (clickOnly) {
-        if (!sd.appendSelection) {
-          state.draftSelectedElementId = '';
-          state.draftSelectedElementIds = new Set();
-          state.draftSelectedGuideId = '';
-          clearDraftInlineTextEditing();
-        }
-      } else {
-        selectDraftElementsByBox(
-          selectBox,
-          !!sd.appendSelection,
-          'intersect',
-          Array.isArray(sd.baseSelectionIds) ? new Set(sd.baseSelectionIds) : null
-        );
-      }
-
-      state.draftSelectDrag = null;
-      endDraftHistoryTransaction();
-      render();
-      return;
-    }
-
-    if (!state.draftDragging) {
-      endDraftHistoryTransaction();
-      return;
-    }
-    state.draftDragging = null;
-    endDraftHistoryTransaction();
-    render();
-  });
-
-  flowRoot.addEventListener('keydown', function (event) {
-    var target = event.target;
-    if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
-      return;
-    }
-
-    var mode = String(target.getAttribute('data-text-mode') || 'artistic').toLowerCase();
-    if (event.key === 'Enter' && mode !== 'paragraph') {
-      event.preventDefault();
-      target.blur();
-    }
-  });
-
-  flowRoot.addEventListener('input', function (event) {
-    var target = event.target;
-    if (target && target.id === 'gcDraftTemplateNameModalInput') {
-      state.draftSaveTemplateName = String(target.value || '').slice(0, 120);
-      if (state.draftSaveTemplateError && state.draftSaveTemplateName.trim()) {
-        state.draftSaveTemplateError = '';
-      }
-      return;
-    }
-
-    if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
-      return;
-    }
-
-    var elId = String(target.getAttribute('data-inline-editor-id') || '');
-    if (!elId) {
-      return;
-    }
-
-    if (!state.draftInlineEditHistoryActive) {
-      beginDraftHistoryTransaction();
-      state.draftInlineEditHistoryActive = true;
-    }
-
-    var nextText = String(typeof target.innerText === 'string' ? target.innerText : (target.textContent || ''));
-    updateDraftTextLabelById(elId, nextText.replace(/\r\n?/g, '\n'));
-  });
-
-  flowRoot.addEventListener('focusout', function (event) {
-    var target = event.target;
-    if (!target || !target.classList || !target.classList.contains('gc-draft-inline-editor')) {
-      return;
-    }
-
-    if (state.draftInlineEditHistoryActive) {
-      endDraftHistoryTransaction();
-      state.draftInlineEditHistoryActive = false;
-    }
-
-    if (!state.draftInlineEditingElementId) {
-      return;
-    }
-
-    state.draftInlineEditingElementId = '';
-    render();
-  });
-
-  window.addEventListener('keydown', function (event) {
-    if (!isStep2EditorActive()) {
-      return;
-    }
-
-    var key = String(event.key || '');
-    var code = String(event.code || '');
-
-    if (state.draftSaveModalOpen) {
-      if (key === 'Escape') {
-        closeSaveTemplateModal();
-        event.preventDefault();
-        render();
-        return;
-      }
-      if (key === 'Enter' && !event.shiftKey) {
-        var modalInput = flowRoot.querySelector('#gcDraftTemplateNameModalInput');
-        var modalValue = String(modalInput && modalInput.value || state.draftSaveTemplateName || '').trim();
-        if (!modalValue) {
-          state.draftSaveTemplateError = 'Template name is required.';
-          event.preventDefault();
-          render();
-          return;
-        }
-        state.draftSaveTemplateError = '';
-        closeSaveTemplateModal();
-        triggerSaveDraftTemplate(modalValue);
-        event.preventDefault();
-        return;
-      }
-    }
-
-    if ((key === ' ' || key === 'Spacebar') && !isTypingTarget(event.target)) {
-      if (!state.spacePanMode) {
-        state.spacePanMode = true;
-        setSpacePanUiState();
-      }
-      event.preventDefault();
-      return;
-    }
-
-    var ctrlOrMeta = !!(event.ctrlKey || event.metaKey);
-    if (state.zoomWheelMode !== ctrlOrMeta) {
-      state.zoomWheelMode = ctrlOrMeta;
-      setSpacePanUiState();
-    }
-
-    if (isTypingTarget(event.target)) {
-      return;
-    }
-
-    var lower = key.toLowerCase();
-    var bracketRight = key === ']' || code === 'BracketRight';
-    var bracketLeft = key === '[' || code === 'BracketLeft';
-    var handled = false;
-
-    if (state.draftAutoMapReportOpen && key === 'Escape') {
-      state.draftAutoMapReportOpen = false;
-      event.preventDefault();
-      render();
-      return;
-    }
-
-    if (ctrlOrMeta && !event.altKey && bracketRight) {
-      handled = moveSelectedDraftLayers(event.shiftKey ? 'front' : 'forward');
-    } else if (ctrlOrMeta && !event.altKey && bracketLeft) {
-      handled = moveSelectedDraftLayers(event.shiftKey ? 'back' : 'backward');
-    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'l') {
-      toggleDraftUiPanel('layers');
-      handled = true;
-    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'a') {
-      toggleDraftUiPanel('align');
-      handled = true;
-    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 'm') {
-      toggleDraftUiPanel('merge');
-      handled = true;
-    } else if (ctrlOrMeta && event.altKey && !event.shiftKey && lower === 't') {
-      toggleDraftUiPanel('text');
-      handled = true;
-    } else if (ctrlOrMeta && !event.altKey && lower === 'z') {
-      handled = event.shiftKey ? redoDraftHistory() : undoDraftHistory();
-    } else if (ctrlOrMeta && !event.altKey && lower === 'y') {
-      handled = redoDraftHistory();
-    } else if (ctrlOrMeta && !event.altKey && lower === 'b') {
-      handled = toggleSelectedTextStyle('bold');
-    } else if (ctrlOrMeta && !event.altKey && lower === 'i') {
-      handled = toggleSelectedTextStyle('italic');
-    } else if (ctrlOrMeta && !event.altKey && lower === 'k') {
-      var activeForBreak = selectedDraftElement();
-      if (activeForBreak && isArtisticDraftText(activeForBreak)) {
-        handled = true;
-        breakSelectedArtisticText();
-      }
-    } else if (!ctrlOrMeta && !event.altKey && (key === 'Delete' || key === 'Backspace')) {
-      if (selectedDraftElement()) {
-        removeDraftElement();
-        handled = true;
-      } else if (selectedDraftGuide()) {
-        if (state.draftGuidesLocked) {
-          showToast('Unlock guides first to remove them.', 'warning');
-          handled = true;
-        } else {
-          handled = removeDraftGuideById(state.draftSelectedGuideId);
-        }
-      }
-    } else if (!ctrlOrMeta && !event.altKey && key.indexOf('Arrow') === 0) {
-      var step = event.shiftKey ? 10 : 1;
-      if (key === 'ArrowLeft') {
-        handled = nudgeSelectedDraftElement(-step, 0);
-      } else if (key === 'ArrowRight') {
-        handled = nudgeSelectedDraftElement(step, 0);
-      } else if (key === 'ArrowUp') {
-        handled = nudgeSelectedDraftElement(0, -step);
-      } else if (key === 'ArrowDown') {
-        handled = nudgeSelectedDraftElement(0, step);
-      }
-    } else if (!ctrlOrMeta && !event.altKey && lower === 'p') {
-      handled = alignSelectedDraftElements('canvas-center');
-    } else if (!ctrlOrMeta && !event.altKey && lower === 'e') {
-      handled = alignSelectedDraftElements('align-v-center');
-    } else if (!ctrlOrMeta && !event.altKey && lower === 'c') {
-      handled = alignSelectedDraftElements('align-h-center');
-    } else if (!ctrlOrMeta && !event.altKey && lower === 'l') {
-      handled = alignSelectedDraftElements('align-left');
-    } else if (!ctrlOrMeta && !event.altKey && lower === 'r') {
-      handled = alignSelectedDraftElements('align-right');
-    } else if (!ctrlOrMeta && !event.altKey && lower === 't') {
-      handled = alignSelectedDraftElements('align-top');
-    } else if (!ctrlOrMeta && !event.altKey && lower === 'b') {
-      handled = alignSelectedDraftElements('align-bottom');
-    } else if (!ctrlOrMeta && !event.altKey && key === 'Escape') {
-      state.draftDragging = null;
-      state.draftResizeDragging = null;
-      state.draftGuideDragging = null;
-      state.draftTextDrag = null;
-      state.draftRectDrag = null;
-      state.draftSelectDrag = null;
-      state.draftLayerDragId = '';
-      state.draftTransformMode = 'resize';
-      state.draftAlignPreviewMode = '';
-      if (state.draftInlineEditHistoryActive) {
-        endDraftHistoryTransaction();
-        state.draftInlineEditHistoryActive = false;
-      }
-      endDraftHistoryTransaction();
-      clearDraftInlineTextEditing();
-      state.draftTool = 'select';
-      handled = true;
-    } else if (ctrlOrMeta && !event.altKey && lower === 'd') {
-      handled = duplicateSelectedDraftElement();
-    } else if (ctrlOrMeta && !event.altKey && event.shiftKey && lower === 'v') {
-      handled = pasteClipboardElements(true);
-    } else if (ctrlOrMeta && !event.altKey && lower === 'c') {
-      handled = copySelectedDraftElements();
-    } else if (ctrlOrMeta && !event.altKey && lower === 'x') {
-      handled = cutSelectedDraftElements();
-    } else if (ctrlOrMeta && !event.altKey && lower === 'v') {
-      handled = pasteClipboardElements(false);
-    } else if (ctrlOrMeta && !event.altKey && lower === 's') {
-      openSaveTemplateModal();
-      handled = true;
-    } else if (ctrlOrMeta && !event.altKey && (key === '+' || key === '=')) {
-      applyZoomFactor(DRAFT_ZOOM_IN_FACTOR, null);
-      handled = true;
-    } else if (ctrlOrMeta && !event.altKey && (key === '-' || key === '_')) {
-      applyZoomFactor(DRAFT_ZOOM_OUT_FACTOR, null);
-      handled = true;
-    } else if (ctrlOrMeta && !event.altKey && lower === '0') {
-      setDraftZoomWithAnchor(1, null);
-      handled = true;
-    }
-
-    if (!handled) {
-      return;
-    }
-
-    event.preventDefault();
-    render();
-  });
-
-  window.addEventListener('keyup', function (event) {
-    if (!isStep2EditorActive()) {
-      return;
-    }
-
-    var key = String(event.key || '');
-    if (!event.ctrlKey && !event.metaKey && state.zoomWheelMode) {
-      state.zoomWheelMode = false;
-      setSpacePanUiState();
-    }
-
-    if (key === ' ' || key === 'Spacebar') {
-      if (state.spacePanMode || state.spacePanState) {
-        state.spacePanMode = false;
-        state.spacePanState = null;
-        setSpacePanUiState();
-      }
-      event.preventDefault();
-    }
-  });
-
-  window.addEventListener('blur', function () {
-    if (!state.zoomWheelMode && !state.spacePanMode && !state.spacePanState) {
-      return;
-    }
-    state.zoomWheelMode = false;
-    state.spacePanMode = false;
-    state.spacePanState = null;
-    setSpacePanUiState();
-  });
+  if (window.GcEditorKeyboardEventBindings && typeof window.GcEditorKeyboardEventBindings.create === 'function') {
+    keyboardEventBindings = window.GcEditorKeyboardEventBindings.create({
+      flowRoot: flowRoot,
+      windowObj: window,
+      state: state,
+      isStep2EditorActive: isStep2EditorActive,
+      isTypingTarget: isTypingTarget,
+      closeSaveTemplateModal: closeSaveTemplateModal,
+      render: render,
+      triggerSaveDraftTemplate: triggerSaveDraftTemplate,
+      setSpacePanUiState: setSpacePanUiState,
+      toggleDraftUiPanel: toggleDraftUiPanel,
+      moveSelectedDraftLayers: moveSelectedDraftLayers,
+      redoDraftHistory: redoDraftHistory,
+      undoDraftHistory: undoDraftHistory,
+      toggleSelectedTextStyle: toggleSelectedTextStyle,
+      selectedDraftElement: selectedDraftElement,
+      isArtisticDraftText: isArtisticDraftText,
+      breakSelectedArtisticText: breakSelectedArtisticText,
+      removeDraftElement: removeDraftElement,
+      selectedDraftGuide: selectedDraftGuide,
+      showToast: showToast,
+      removeDraftGuideById: removeDraftGuideById,
+      nudgeSelectedDraftElement: nudgeSelectedDraftElement,
+      alignSelectedDraftElements: alignSelectedDraftElements,
+      endDraftHistoryTransaction: endDraftHistoryTransaction,
+      clearDraftInlineTextEditing: clearDraftInlineTextEditing,
+      duplicateSelectedDraftElement: duplicateSelectedDraftElement,
+      pasteClipboardElements: pasteClipboardElements,
+      copySelectedDraftElements: copySelectedDraftElements,
+      cutSelectedDraftElements: cutSelectedDraftElements,
+      openSaveTemplateModal: openSaveTemplateModal,
+      applyZoomFactor: applyZoomFactor,
+      DRAFT_ZOOM_IN_FACTOR: DRAFT_ZOOM_IN_FACTOR,
+      DRAFT_ZOOM_OUT_FACTOR: DRAFT_ZOOM_OUT_FACTOR,
+      setDraftZoomWithAnchor: setDraftZoomWithAnchor,
+      beginDraftHistoryTransaction: beginDraftHistoryTransaction,
+      updateDraftTextLabelById: updateDraftTextLabelById,
+    });
+    keyboardEventBindings.bind();
+  }
 
   flowRoot.addEventListener('change', function (event) {
     var target = event.target;
