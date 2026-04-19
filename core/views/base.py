@@ -40,7 +40,6 @@ from .dashboard_views import (                       # noqa: F401
     dashboard,
     api_presence_track,
     api_live_client_presence,
-    api_live_client_presence_stream,
     api_dashboard_card_stats,
     api_recent_client_updates,
     api_print_reprint_overview,

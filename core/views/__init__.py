@@ -14,7 +14,6 @@ from .base import (
     dashboard,
     api_presence_track,
     api_live_client_presence,
-    api_live_client_presence_stream,
     api_global_search,
     api_dashboard_card_stats,
     api_recent_client_updates,

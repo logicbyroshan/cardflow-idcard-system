@@ -2,7 +2,6 @@ import logging
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
@@ -10,6 +9,7 @@ from client.models import Client
 from staff.models import Staff
 
 from ..models import ClientPresenceSession
+from .realtime_service import publish_topic_event
 from .permission_service import PermissionService
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class LiveClientPresenceService:
     """Tracks live client presence using explicit client-side start/heartbeat/stop events."""
 
-    SIGNAL_CACHE_KEY = 'dashboard_live_presence_signal_v1'
+    DASHBOARD_REALTIME_TOPIC = 'dashboard.working'
 
     @classmethod
     def _live_window_seconds(cls):
@@ -42,21 +42,19 @@ class LiveClientPresenceService:
         )
 
     @classmethod
-    def get_signal_version(cls):
-        value = cache.get(cls.SIGNAL_CACHE_KEY)
+    def _publish_dashboard_presence_changed(cls, *, trigger, action=''):
         try:
-            return int(value or 1)
-        except (TypeError, ValueError):
-            return 1
-
-    @classmethod
-    def bump_signal_version(cls):
-        try:
-            cache.incr(cls.SIGNAL_CACHE_KEY)
-        except ValueError:
-            cache.set(cls.SIGNAL_CACHE_KEY, 2, None)
+            publish_topic_event(
+                topic=cls.DASHBOARD_REALTIME_TOPIC,
+                event_type='dashboard.presence.changed',
+                payload={
+                    'trigger': str(trigger or ''),
+                    'action': str(action or ''),
+                    'at': timezone.now().isoformat(),
+                },
+            )
         except Exception:
-            logger.exception('Failed to bump live presence signal version')
+            logger.exception('Failed to publish dashboard presence websocket event')
 
     @classmethod
     def retire_stale_sessions(cls, now=None):
@@ -73,7 +71,7 @@ class LiveClientPresenceService:
         ClientPresenceSession.objects.filter(closed_at__lt=retention_cutoff).delete()
 
         if updated:
-            cls.bump_signal_version()
+            cls._publish_dashboard_presence_changed(trigger='retire_stale')
 
         return updated
 
@@ -166,7 +164,7 @@ class LiveClientPresenceService:
         after_assistant_live = cls.is_assistant_live(user.id, now=now) if role == 'client_staff' else False
         changed = (before_live != after_live) or (before_assistant_live != after_assistant_live)
         if changed:
-            cls.bump_signal_version()
+            cls._publish_dashboard_presence_changed(trigger='record_event', action=action)
 
         return {
             'tracked': True,

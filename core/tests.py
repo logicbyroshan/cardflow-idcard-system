@@ -2405,6 +2405,44 @@ class SecurityApiRegressionTests(TestCase):
         self.assertEqual(live_after_stop.get('active_client_ids'), [])
         self.assertEqual(live_after_stop.get('active_assistant_client_ids'), [])
 
+    @patch('core.services.live_presence_service.publish_topic_event')
+    def test_presence_track_publishes_dashboard_websocket_events(self, mock_publish):
+        client_session = self.client_class()
+        client_session.login(username='sec-client-a@test.com', password='clientpass1')
+
+        start_resp = client_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'start', 'tab_id': 'tab_ws_a'}),
+            content_type='application/json',
+        )
+        self.assertEqual(start_resp.status_code, 200)
+
+        heartbeat_resp = client_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'heartbeat', 'tab_id': 'tab_ws_a'}),
+            content_type='application/json',
+        )
+        self.assertEqual(heartbeat_resp.status_code, 200)
+
+        stop_resp = client_session.post(
+            reverse('api_presence_track'),
+            data=json.dumps({'action': 'stop', 'tab_id': 'tab_ws_a'}),
+            content_type='application/json',
+        )
+        self.assertEqual(stop_resp.status_code, 200)
+
+        self.assertEqual(mock_publish.call_count, 2)
+        first_call = mock_publish.call_args_list[0]
+        second_call = mock_publish.call_args_list[1]
+
+        self.assertEqual(first_call.kwargs.get('topic'), 'dashboard.working')
+        self.assertEqual(first_call.kwargs.get('event_type'), 'dashboard.presence.changed')
+        self.assertEqual(first_call.kwargs.get('payload', {}).get('action'), 'start')
+
+        self.assertEqual(second_call.kwargs.get('topic'), 'dashboard.working')
+        self.assertEqual(second_call.kwargs.get('event_type'), 'dashboard.presence.changed')
+        self.assertEqual(second_call.kwargs.get('payload', {}).get('action'), 'stop')
+
     def test_live_presence_exposes_assistant_count_separately(self):
         from staff.models import Staff
 

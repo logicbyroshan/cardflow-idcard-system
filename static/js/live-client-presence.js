@@ -3,7 +3,6 @@
 
     var HEARTBEAT_MS = 20000;
     var HEARTBEAT_MOBILE_MS = 60000;
-    var LIVE_POLL_FALLBACK_MS = 2000;
 
     function panelUrl(path) {
         if (!path) return path;
@@ -144,123 +143,7 @@
         }
     }
 
-    function updateLiveBadges(clientCount, assistantCount) {
-        var clientBadge = document.getElementById('recentClientUpdatesActiveBadge');
-        var assistantBadge = document.getElementById('recentClientUpdatesAssistantBadge');
-
-        var clientSafeCount = Number.isFinite(Number(clientCount)) ? Number(clientCount) : 0;
-        var assistantSafeCount = Number.isFinite(Number(assistantCount)) ? Number(assistantCount) : 0;
-
-        if (clientBadge) {
-            clientBadge.textContent = 'Live Working Clients: ' + clientSafeCount.toLocaleString();
-        }
-
-        if (assistantBadge) {
-            assistantBadge.textContent = 'Live Working Assistants: ' + assistantSafeCount.toLocaleString();
-        }
-    }
-
-    function refreshLiveCount() {
-        var clientBadge = document.getElementById('recentClientUpdatesActiveBadge');
-        var assistantBadge = document.getElementById('recentClientUpdatesAssistantBadge');
-        if (!clientBadge && !assistantBadge) return;
-
-        var liveCountUrl = panelUrl('/api/presence/live-count/') + '?_ts=' + Date.now();
-
-        fetch(liveCountUrl, {
-            method: 'GET',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-            .then(function (resp) { return resp.ok ? resp.json() : null; })
-            .then(function (data) {
-                if (!data || !data.success) return;
-                updateLiveBadges(data.active_clients_now, data.active_assistants_now);
-            })
-            .catch(function () {
-                // Keep silent; this runs in the background.
-            });
-    }
-
-    function startAdminLiveCountUpdates() {
-        var clientBadge = document.getElementById('recentClientUpdatesActiveBadge');
-        var assistantBadge = document.getElementById('recentClientUpdatesAssistantBadge');
-        if (!clientBadge && !assistantBadge) return;
-
-        var fallbackTimer = null;
-        var eventSource = null;
-
-        function startFallbackPolling() {
-            if (fallbackTimer) return;
-            fallbackTimer = window.setInterval(refreshLiveCount, LIVE_POLL_FALLBACK_MS);
-        }
-
-        function stopFallbackPolling() {
-            if (!fallbackTimer) return;
-            window.clearInterval(fallbackTimer);
-            fallbackTimer = null;
-        }
-
-        function connectSSE() {
-            if (typeof window.EventSource !== 'function') {
-                startFallbackPolling();
-                return;
-            }
-
-            eventSource = new EventSource(panelUrl('/api/presence/stream/'), { withCredentials: true });
-            eventSource.addEventListener('presence', function (event) {
-                try {
-                    var payload = JSON.parse(event.data || '{}');
-                    updateLiveBadges(payload.active_clients_now, payload.active_assistants_now);
-                } catch (_err) {
-                    // Ignore malformed SSE payloads.
-                }
-            });
-
-            eventSource.onerror = function () {
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
-                window.setTimeout(connectSSE, 4000);
-            };
-        }
-
-        refreshLiveCount();
-        // Keep polling as a backstop for environments where SSE stays connected
-        // but does not receive updates reliably (e.g., multi-worker cache split).
-        startFallbackPolling();
-        connectSSE();
-
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) {
-                stopFallbackPolling();
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
-                return;
-            }
-
-            refreshLiveCount();
-            startFallbackPolling();
-            if (!eventSource) {
-                connectSSE();
-            }
-        });
-
-        window.addEventListener('beforeunload', function () {
-            stopFallbackPolling();
-            if (eventSource) {
-                eventSource.close();
-                eventSource = null;
-            }
-        });
-    }
-
     document.addEventListener('DOMContentLoaded', function () {
         startClientPresenceTracking();
-        startAdminLiveCountUpdates();
     });
 })();

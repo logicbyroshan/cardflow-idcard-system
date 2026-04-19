@@ -5,11 +5,10 @@ Split from base.py for maintainability.
 import json
 import logging
 import re
-import time
 from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
@@ -682,47 +681,6 @@ def api_live_client_presence(request):
     except Exception as e:
         logger.exception('api_live_client_presence error: %s', e)
         return JsonResponse({'success': False, 'message': 'Could not load live client presence.'}, status=500)
-
-
-@require_http_methods(["GET"])
-@api_require_any_admin
-def api_live_client_presence_stream(request):
-    """SSE stream that pushes dashboard live-client count changes without page reload."""
-
-    def _sse_event(event_name, data):
-        return f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
-
-    def _stream(user):
-        start = time.monotonic()
-        stop_after_seconds = 55
-        keepalive_every_seconds = 15
-        next_keepalive = start + keepalive_every_seconds
-
-        last_version = LiveClientPresenceService.get_signal_version()
-        initial_payload = LiveClientPresenceService.get_live_payload_for_user(user)
-        initial_payload['version'] = last_version
-        yield _sse_event('presence', initial_payload)
-
-        while (time.monotonic() - start) < stop_after_seconds:
-            time.sleep(1)
-            current_version = LiveClientPresenceService.get_signal_version()
-            now_mono = time.monotonic()
-
-            if current_version != last_version:
-                payload = LiveClientPresenceService.get_live_payload_for_user(user)
-                payload['version'] = current_version
-                yield _sse_event('presence', payload)
-                last_version = current_version
-                continue
-
-            if now_mono >= next_keepalive:
-                yield ': keepalive\n\n'
-                next_keepalive = now_mono + keepalive_every_seconds
-
-    response = StreamingHttpResponse(_stream(request.user), content_type='text/event-stream')
-    response['Cache-Control'] = 'no-cache'
-    response['X-Accel-Buffering'] = 'no'
-    return response
 
 
 @require_http_methods(["GET"])

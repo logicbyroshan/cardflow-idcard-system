@@ -44,7 +44,6 @@ urlpatterns = [
     # Live working client presence APIs
     path('api/presence/track/', views.api_presence_track, name='api_presence_track'),
     path('api/presence/live-count/', views.api_live_client_presence, name='api_live_client_presence'),
-    path('api/presence/stream/', views.api_live_client_presence_stream, name='api_live_client_presence_stream'),
 
     # Print & Reprint Overview API (dashboard)
     path('api/print-reprint-overview/', views.api_print_reprint_overview, name='api_print_reprint_overview'),
