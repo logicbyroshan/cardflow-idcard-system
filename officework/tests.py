@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from core.realtime.consumers import RealtimeHubConsumer
 from core.models import User
-from officework.models import OfficeWorkChatGroup, OfficeWorkChatGroupMember, OfficeWorkChatMessage, OfficeWorkTask
+from officework.models import OfficeWorkChatGroup, OfficeWorkChatGroupMember, OfficeWorkChatMessage, OfficeWorkTask, OfficeWorkTaskComment
 
 
 class OfficeWorkChatGroupAndAttachmentTests(TestCase):
@@ -234,6 +234,14 @@ class OfficeWorkTaskRealtimeEventTests(TestCase):
             is_staff=True,
             is_active=True,
         )
+        self.admin_peer = User.objects.create_user(
+            username='office_task_admin_peer',
+            email='office_task_admin_peer@example.com',
+            password='pass12345',
+            role='admin_staff',
+            is_staff=True,
+            is_active=True,
+        )
         self.client.force_login(self.admin)
 
     @patch('officework.views_tasks.publish_topic_event')
@@ -253,6 +261,74 @@ class OfficeWorkTaskRealtimeEventTests(TestCase):
         publish_mock.assert_called_once()
         self.assertEqual(publish_mock.call_args.kwargs.get('topic'), 'officework.tasks')
         self.assertEqual(publish_mock.call_args.kwargs.get('event_type'), 'officework.task.created')
+
+    def test_task_create_always_starts_in_todo(self):
+        response = self.client.post(
+            reverse('api_office_work_task_create'),
+            data=json.dumps({
+                'title': 'Force Todo',
+                'status': OfficeWorkTask.STATUS_DONE,
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertEqual(payload['task']['status'], OfficeWorkTask.STATUS_TODO)
+
+    def test_non_creator_done_move_requests_creator_approval(self):
+        task = OfficeWorkTask.objects.create(
+            title='Need Approval',
+            status=OfficeWorkTask.STATUS_IN_PROGRESS,
+            priority=OfficeWorkTask.PRIORITY_NORMAL,
+            created_by=self.admin,
+            assigned_to=self.admin_peer,
+        )
+
+        self.client.force_login(self.admin_peer)
+        update_response = self.client.post(
+            reverse('api_office_work_task_update', args=[task.id]),
+            data=json.dumps({'status': OfficeWorkTask.STATUS_DONE}),
+            content_type='application/json',
+        )
+        self.assertEqual(update_response.status_code, 200)
+        update_payload = update_response.json()
+        self.assertTrue(update_payload.get('success'))
+        self.assertEqual(update_payload['task']['status'], OfficeWorkTask.STATUS_PENDING)
+
+        self.client.force_login(self.admin)
+        approve_response = self.client.post(
+            reverse('api_office_work_task_update', args=[task.id]),
+            data=json.dumps({'approval_decision': 'approve'}),
+            content_type='application/json',
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        approve_payload = approve_response.json()
+        self.assertTrue(approve_payload.get('success'))
+        self.assertEqual(approve_payload['task']['status'], OfficeWorkTask.STATUS_DONE)
+
+    @patch('officework.views_tasks.publish_topic_event')
+    def test_task_comment_create_emits_realtime_event(self, publish_mock):
+        task = OfficeWorkTask.objects.create(
+            title='Task Commented',
+            status=OfficeWorkTask.STATUS_TODO,
+            priority=OfficeWorkTask.PRIORITY_NORMAL,
+            created_by=self.admin,
+        )
+
+        response = self.client.post(
+            reverse('api_office_work_task_comment_create', args=[task.id]),
+            data=json.dumps({'message': 'Please share final lanyard fields.'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get('success'))
+        self.assertTrue(OfficeWorkTaskComment.objects.filter(task=task).exists())
+
+        publish_mock.assert_called_once()
+        self.assertEqual(publish_mock.call_args.kwargs.get('topic'), 'officework.tasks')
+        self.assertEqual(publish_mock.call_args.kwargs.get('event_type'), 'officework.task.comment.created')
 
     @patch('officework.views_tasks.publish_topic_event')
     def test_task_update_emits_realtime_event(self, publish_mock):

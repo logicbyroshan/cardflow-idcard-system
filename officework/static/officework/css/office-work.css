@@ -681,7 +681,8 @@ textarea.office-input {
 .office-task-card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -759,6 +760,236 @@ textarea.office-input {
 
 .office-task-modal-header h3 {
   margin: 0;
+}
+
+.office-task-section {
+  border: 1px solid var(--color-slate-200);
+  border-radius: 4px;
+  padding: 10px;
+  background: #f9fbff;
+}
+
+.office-task-section h4 {
+  margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  color: var(--color-slate-800);
+}
+
+.office-task-readonly {
+  min-height: 34px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 4px;
+  background: var(--color-slate-50);
+  padding: 7px 10px;
+  color: var(--color-slate-700);
+  font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-followers-strip {
+  border: 1px solid var(--color-slate-200);
+  border-radius: 4px;
+  min-height: 36px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.office-task-follower-chip {
+  border-radius: 999px;
+  background: #eaf1fb;
+  color: #244869;
+  font-size: var(--ui-font-size-xs, 11px);
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.office-field-help {
+  margin-top: 4px;
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+}
+
+.office-task-checklist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.office-task-checklist-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 4px;
+  background: var(--color-white);
+  padding: 7px 8px;
+}
+
+.office-task-checklist-title {
+  color: var(--color-slate-800);
+  font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-checklist-title.is-done {
+  text-decoration: line-through;
+  color: var(--color-slate-500);
+}
+
+.office-task-checklist-assignee {
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+}
+
+.office-task-checklist-empty,
+.office-task-comments-empty {
+  border: 1px dashed var(--color-slate-300);
+  border-radius: 4px;
+  background: var(--color-white);
+  color: var(--color-slate-500);
+  font-size: var(--ui-font-size-sm, 12px);
+  padding: 8px;
+}
+
+.office-task-checklist-add-row {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px auto;
+  gap: 8px;
+}
+
+.office-task-approval-box {
+  border: 1px solid #f5d185;
+  border-radius: 4px;
+  padding: 10px;
+  background: #fff8e7;
+}
+
+.office-task-approval-text {
+  color: #7a5512;
+  font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-approval-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.office-task-comments-list {
+  max-height: 230px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.office-task-comment-row {
+  border: 1px solid var(--color-slate-200);
+  border-radius: 4px;
+  background: var(--color-white);
+  padding: 8px;
+}
+
+.office-task-comment-row.is-self {
+  border-color: rgba(var(--primary-rgb), 0.3);
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
+.office-task-comment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.office-task-comment-author {
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  color: var(--color-slate-800);
+}
+
+.office-task-comment-time {
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+}
+
+.office-task-comment-body {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-slate-700);
+  font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-comment-composer {
+  margin-top: 8px;
+  position: relative;
+}
+
+.office-task-comment-composer textarea {
+  min-height: 70px;
+  padding: 10px 94px 10px 42px;
+}
+
+.office-task-comment-composer-btn {
+  position: absolute;
+  bottom: 10px;
+  border: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.office-task-comment-composer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.office-task-comment-composer-btn-attach {
+  left: 10px;
+  background: #ebf2fb;
+  color: var(--color-slate-600);
+}
+
+.office-task-comment-composer-btn-send {
+  right: 10px;
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.office-task-comment-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.office-task-comment-attachment-preview {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--color-slate-200);
+  background: var(--color-white);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: var(--ui-font-size-sm, 12px);
+  color: var(--color-slate-700);
 }
 
 .office-task-modal-close {
@@ -851,6 +1082,10 @@ textarea.office-input {
 
   .office-kanban-column {
     flex: 0 0 260px;
+  }
+
+  .office-task-checklist-add-row {
+    grid-template-columns: 1fr;
   }
 
   .office-chat-panel {

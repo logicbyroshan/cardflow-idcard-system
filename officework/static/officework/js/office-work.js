@@ -53,6 +53,9 @@
     taskItems: [],
     taskDragId: 0,
     taskModalOpen: false,
+    taskCurrentItem: null,
+    taskCommentsByTaskId: {},
+    taskPendingCommentFile: null,
     fileItems: [],
     pollTimer: null,
     chatLoaded: false,
@@ -89,8 +92,28 @@
     taskDescription: document.getElementById('officeTaskDescription'),
     taskStatus: document.getElementById('officeTaskStatus'),
     taskAssignee: document.getElementById('officeTaskAssignee'),
+    taskCollaborators: document.getElementById('officeTaskCollaborators'),
+    taskFollowers: document.getElementById('officeTaskFollowers'),
     taskPriority: document.getElementById('officeTaskPriority'),
     taskDueDate: document.getElementById('officeTaskDueDate'),
+    taskCreatedBy: document.getElementById('officeTaskCreatedBy'),
+    taskCompletionState: document.getElementById('officeTaskCompletionState'),
+    taskChecklistItems: document.getElementById('officeTaskChecklistItems'),
+    taskChecklistInput: document.getElementById('officeTaskChecklistInput'),
+    taskChecklistAssignee: document.getElementById('officeTaskChecklistAssignee'),
+    taskChecklistAddBtn: document.getElementById('officeTaskChecklistAddBtn'),
+    taskApprovalBox: document.getElementById('officeTaskApprovalBox'),
+    taskApprovalText: document.getElementById('officeTaskApprovalText'),
+    taskApproveBtn: document.getElementById('officeTaskApproveBtn'),
+    taskRejectBtn: document.getElementById('officeTaskRejectBtn'),
+    taskCommentsList: document.getElementById('officeTaskCommentsList'),
+    taskCommentInput: document.getElementById('officeTaskCommentInput'),
+    taskCommentSendBtn: document.getElementById('officeTaskCommentSendBtn'),
+    taskCommentAttachBtn: document.getElementById('officeTaskCommentAttachBtn'),
+    taskCommentFileInput: document.getElementById('officeTaskCommentFileInput'),
+    taskCommentAttachmentPreview: document.getElementById('officeTaskCommentAttachmentPreview'),
+    taskCommentAttachmentName: document.getElementById('officeTaskCommentAttachmentName'),
+    taskCommentAttachmentRemove: document.getElementById('officeTaskCommentAttachmentRemove'),
     taskFormHeading: document.getElementById('officeTaskFormHeading'),
     taskEditId: document.getElementById('officeTaskEditId'),
     taskSubmitBtn: document.getElementById('officeTaskSubmitBtn'),
@@ -714,6 +737,39 @@
     return html;
   }
 
+  function getMembersOnlyOptionsHtml(selectedId) {
+    var selected = Number(selectedId || 0);
+    var html = '<option value="">Select member</option>';
+    state.members.forEach(function (member) {
+      var isSelected = Number(member.id) === selected ? ' selected' : '';
+      html += '<option value="' + escapeHtml(member.id) + '"' + isSelected + '>' +
+        escapeHtml(member.name + ' (' + member.role_display + ')') +
+        '</option>';
+    });
+    return html;
+  }
+
+  function getMembersLookup() {
+    var lookup = {};
+    state.members.forEach(function (member) {
+      lookup[Number(member.id || 0)] = member;
+    });
+    return lookup;
+  }
+
+  function memberNameById(memberId) {
+    var id = Number(memberId || 0);
+    if (id <= 0) {
+      return 'Unassigned';
+    }
+    for (var i = 0; i < state.members.length; i += 1) {
+      if (Number(state.members[i].id || 0) === id) {
+        return String(state.members[i].name || ('User ' + id));
+      }
+    }
+    return 'User ' + id;
+  }
+
   var TASK_STATUS_META = {
     todo: { label: 'To Do' },
     in_progress: { label: 'In Progress' },
@@ -799,19 +855,227 @@
     return raw.slice(0, 117) + '...';
   }
 
+  function taskCommentsEndpoint(taskId) {
+    return (endpoints.taskCommentsBase || endpoints.taskUpdateBase) + encodeURIComponent(taskId) + '/comments/';
+  }
+
+  function taskCommentCreateEndpoint(taskId) {
+    return (endpoints.taskCommentsBase || endpoints.taskUpdateBase) + encodeURIComponent(taskId) + '/comments/create/';
+  }
+
+  function getSelectedCollaboratorIds() {
+    if (!ui.taskCollaborators || !ui.taskCollaborators.options) {
+      return [];
+    }
+    var ids = [];
+    for (var i = 0; i < ui.taskCollaborators.options.length; i += 1) {
+      var option = ui.taskCollaborators.options[i];
+      if (!option.selected) {
+        continue;
+      }
+      var parsedId = Number(option.value || 0);
+      if (parsedId > 0) {
+        ids.push(parsedId);
+      }
+    }
+    return ids;
+  }
+
+  function renderFollowerStrip(item) {
+    if (!ui.taskFollowers) {
+      return;
+    }
+    var followerIds = Array.isArray(item && item.follower_ids) ? item.follower_ids : [];
+    if (!followerIds.length) {
+      ui.taskFollowers.innerHTML = '<span class="office-task-follower-chip">No followers</span>';
+      return;
+    }
+    ui.taskFollowers.innerHTML = followerIds.map(function (followerId) {
+      return '<span class="office-task-follower-chip">' + escapeHtml(memberNameById(followerId)) + '</span>';
+    }).join('');
+  }
+
+  function renderTaskChecklistRows() {
+    if (!ui.taskChecklistItems) {
+      return;
+    }
+    var item = state.taskCurrentItem || {};
+    var checklist = Array.isArray(item.checklist_items) ? item.checklist_items : [];
+    if (!checklist.length) {
+      ui.taskChecklistItems.innerHTML = '<div class="office-task-checklist-empty">No checklist items yet.</div>';
+      return;
+    }
+
+    ui.taskChecklistItems.innerHTML = checklist.map(function (checkItem) {
+      var id = String(checkItem && checkItem.id || '');
+      var isDone = !!(checkItem && checkItem.is_done);
+      return '' +
+        '<div class="office-task-checklist-row" data-checklist-id="' + escapeHtml(id) + '">' +
+        '  <input class="office-task-checklist-toggle" type="checkbox" ' + (isDone ? 'checked' : '') + '>' +
+        '  <span class="office-task-checklist-title' + (isDone ? ' is-done' : '') + '">' + escapeHtml(checkItem && checkItem.title || 'Checklist Item') + '</span>' +
+        '  <span class="office-task-checklist-assignee">' + escapeHtml(memberNameById(checkItem && checkItem.assigned_to_id)) + '</span>' +
+        '  <button type="button" class="btn btn-xs btn-neutral" data-action="remove-checklist-item">Remove</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  function updateTaskCompletionState(item) {
+    if (!ui.taskCompletionState) {
+      return;
+    }
+    if (!item || !item.id) {
+      ui.taskCompletionState.textContent = 'No request yet';
+      return;
+    }
+    if (item.status === 'pending') {
+      var requester = String(item.completion_requested_by_name || 'A member');
+      ui.taskCompletionState.textContent = 'Waiting creator approval. Requested by ' + requester + '.';
+      return;
+    }
+    if (item.status === 'done') {
+      var approver = String(item.completion_approved_by_name || 'Creator');
+      ui.taskCompletionState.textContent = 'Approved by ' + approver + '.';
+      return;
+    }
+    ui.taskCompletionState.textContent = 'No request yet';
+  }
+
+  function updateTaskApprovalBox(item) {
+    if (!ui.taskApprovalBox || !ui.taskApprovalText) {
+      return;
+    }
+    var canApprove = !!item && item.status === 'pending' && Number(cfg.currentUserId || 0) === Number(item.created_by_id || 0);
+    ui.taskApprovalBox.hidden = !canApprove;
+    if (!canApprove) {
+      return;
+    }
+    var requester = String(item.completion_requested_by_name || 'A member');
+    ui.taskApprovalText.textContent = requester + ' marked this card as done. Approve to move into Done list.';
+  }
+
+  function resetTaskCommentAttachment() {
+    state.taskPendingCommentFile = null;
+    if (ui.taskCommentFileInput) {
+      ui.taskCommentFileInput.value = '';
+    }
+    if (ui.taskCommentAttachmentPreview) {
+      ui.taskCommentAttachmentPreview.hidden = true;
+    }
+    if (ui.taskCommentAttachmentName) {
+      ui.taskCommentAttachmentName.textContent = '';
+    }
+  }
+
+  function setTaskCommentAttachment(file) {
+    if (!file) {
+      resetTaskCommentAttachment();
+      return;
+    }
+    var sizeBytes = Number(file.size || 0);
+    if (sizeBytes <= 0) {
+      notify('Attachment is empty.', 'error');
+      return;
+    }
+    if (sizeBytes > 50 * 1024 * 1024) {
+      notify('Attachment too large (max 50 MB).', 'error');
+      return;
+    }
+    state.taskPendingCommentFile = file;
+    if (ui.taskCommentAttachmentName) {
+      ui.taskCommentAttachmentName.textContent = String(file.name || 'Attachment') + ' (' + formatBytes(sizeBytes) + ')';
+    }
+    if (ui.taskCommentAttachmentPreview) {
+      ui.taskCommentAttachmentPreview.hidden = false;
+    }
+  }
+
+  function renderTaskComments(item) {
+    if (!ui.taskCommentsList) {
+      return;
+    }
+    var taskId = Number(item && item.id || 0);
+    var comments = state.taskCommentsByTaskId[taskId] || [];
+    if (!comments.length) {
+      ui.taskCommentsList.innerHTML = '<div class="office-task-comments-empty">No discussion yet.</div>';
+      return;
+    }
+
+    ui.taskCommentsList.innerHTML = comments.map(function (comment) {
+      var isSelf = Number(comment.sender_id || 0) === Number(cfg.currentUserId || 0);
+      return '' +
+        '<article class="office-task-comment-row' + (isSelf ? ' is-self' : '') + '">' +
+        '  <div class="office-task-comment-head">' +
+        '    <span class="office-task-comment-author">' + escapeHtml(comment.sender_name || 'Unknown') + '</span>' +
+        '    <span class="office-task-comment-time">' + escapeHtml(formatDateTime(comment.created_at)) + '</span>' +
+        '  </div>' +
+        (comment.message ? '  <div class="office-task-comment-body">' + escapeHtml(comment.message) + '</div>' : '') +
+        (comment.attachment ? (
+          '  <a class="office-chat-file-link" href="' + escapeHtml(comment.attachment.download_url || '#') + '">' +
+          '    <i class="fa-solid fa-file-arrow-down"></i>' +
+          '    <span>' + escapeHtml(comment.attachment.name || 'Attachment') + '</span>' +
+          '    <span>(' + escapeHtml(formatBytes(comment.attachment.size_bytes || 0)) + ')</span>' +
+          '  </a>'
+        ) : '') +
+        '</article>';
+    }).join('');
+    ui.taskCommentsList.scrollTop = ui.taskCommentsList.scrollHeight;
+  }
+
+  async function loadTaskComments(taskId) {
+    var id = Number(taskId || 0);
+    if (id <= 0) {
+      return;
+    }
+    try {
+      var data = await ApiClient.get(taskCommentsEndpoint(id));
+      if (!data || !data.success) {
+        return;
+      }
+      state.taskCommentsByTaskId[id] = Array.isArray(data.comments) ? data.comments : [];
+      if (state.taskCurrentItem && Number(state.taskCurrentItem.id || 0) === id) {
+        renderTaskComments(state.taskCurrentItem);
+      }
+    } catch (error) {
+      notify((error && error.message) || 'Failed to load task comments.', 'error');
+    }
+  }
+
   function resetTaskEditor() {
     if (!ui.taskForm) {
       return;
     }
+    state.taskCurrentItem = null;
     ui.taskForm.reset();
     if (ui.taskStatus) {
       ui.taskStatus.value = 'todo';
+      ui.taskStatus.disabled = true;
     }
     if (ui.taskPriority) {
       ui.taskPriority.value = 'normal';
     }
     if (ui.taskEditId) {
       ui.taskEditId.value = '';
+    }
+    if (ui.taskAssignee) {
+      ui.taskAssignee.innerHTML = getMemberOptionsHtml(0);
+    }
+    if (ui.taskCollaborators) {
+      ui.taskCollaborators.innerHTML = getMembersOnlyOptionsHtml(0);
+    }
+    if (ui.taskChecklistAssignee) {
+      ui.taskChecklistAssignee.innerHTML = getMembersOnlyOptionsHtml(0);
+    }
+    if (ui.taskChecklistItems) {
+      ui.taskChecklistItems.innerHTML = '<div class="office-task-checklist-empty">No checklist items yet.</div>';
+    }
+    if (ui.taskFollowers) {
+      ui.taskFollowers.innerHTML = '<span class="office-task-follower-chip">No followers</span>';
+    }
+    if (ui.taskCreatedBy) {
+      ui.taskCreatedBy.textContent = 'You';
+    }
+    if (ui.taskCompletionState) {
+      ui.taskCompletionState.textContent = 'No request yet';
     }
     if (ui.taskFormHeading) {
       ui.taskFormHeading.innerHTML = '<i class="fa-solid fa-plus"></i> Create Card';
@@ -825,12 +1089,30 @@
     if (ui.taskDeleteBtn) {
       ui.taskDeleteBtn.hidden = true;
     }
+    if (ui.taskApprovalBox) {
+      ui.taskApprovalBox.hidden = true;
+    }
+    if (ui.taskCommentsList) {
+      ui.taskCommentsList.innerHTML = '<div class="office-task-comments-empty">Create the card first to start discussion.</div>';
+    }
+    if (ui.taskCommentInput) {
+      ui.taskCommentInput.value = '';
+      ui.taskCommentInput.disabled = true;
+    }
+    if (ui.taskCommentSendBtn) {
+      ui.taskCommentSendBtn.disabled = true;
+    }
+    if (ui.taskCommentAttachBtn) {
+      ui.taskCommentAttachBtn.disabled = true;
+    }
+    resetTaskCommentAttachment();
   }
 
   function setTaskEditor(item) {
     if (!item || !ui.taskForm) {
       return;
     }
+    state.taskCurrentItem = item;
     if (ui.taskEditId) {
       ui.taskEditId.value = String(item.id || '');
     }
@@ -842,15 +1124,37 @@
     }
     if (ui.taskStatus) {
       ui.taskStatus.value = String(item.status || 'todo');
+      ui.taskStatus.disabled = false;
     }
     if (ui.taskPriority) {
       ui.taskPriority.value = String(item.priority || 'normal');
     }
     if (ui.taskAssignee) {
+      ui.taskAssignee.innerHTML = getMemberOptionsHtml(item.assigned_to_id || 0);
       ui.taskAssignee.value = item.assigned_to_id ? String(item.assigned_to_id) : '';
+    }
+    if (ui.taskCollaborators) {
+      ui.taskCollaborators.innerHTML = state.members.map(function (member) {
+        var memberId = Number(member.id || 0);
+        var selected = (Array.isArray(item.collaborator_ids) && item.collaborator_ids.indexOf(memberId) >= 0) ? ' selected' : '';
+        return '<option value="' + escapeHtml(memberId) + '"' + selected + '>' +
+          escapeHtml(member.name + ' (' + member.role_display + ')') +
+          '</option>';
+      }).join('');
     }
     if (ui.taskDueDate) {
       ui.taskDueDate.value = String(item.due_date || '');
+    }
+    if (ui.taskChecklistAssignee) {
+      ui.taskChecklistAssignee.innerHTML = getMembersOnlyOptionsHtml(0);
+    }
+    renderFollowerStrip(item);
+    renderTaskChecklistRows();
+    updateTaskCompletionState(item);
+    updateTaskApprovalBox(item);
+
+    if (ui.taskCreatedBy) {
+      ui.taskCreatedBy.textContent = String(item.created_by_name || '-');
     }
     if (ui.taskFormHeading) {
       ui.taskFormHeading.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit Card #' + escapeHtml(item.id) + '';
@@ -864,6 +1168,22 @@
     if (ui.taskDeleteBtn) {
       ui.taskDeleteBtn.hidden = false;
     }
+    if (ui.taskCommentsList) {
+      ui.taskCommentsList.innerHTML = '<div class="office-task-comments-empty">Loading discussion...</div>';
+    }
+    if (ui.taskCommentInput) {
+      ui.taskCommentInput.value = '';
+      ui.taskCommentInput.disabled = false;
+    }
+    if (ui.taskCommentSendBtn) {
+      ui.taskCommentSendBtn.disabled = false;
+    }
+    if (ui.taskCommentAttachBtn) {
+      ui.taskCommentAttachBtn.disabled = false;
+    }
+    resetTaskCommentAttachment();
+    loadTaskComments(item.id);
+
     if (ui.taskTitle && typeof ui.taskTitle.focus === 'function') {
       ui.taskTitle.focus();
     }
@@ -874,6 +1194,15 @@
     var priorityMeta = TASK_PRIORITY_META[priority] || TASK_PRIORITY_META.normal;
     var statusMeta = TASK_STATUS_META[String(task.status || '').toLowerCase()] || TASK_STATUS_META.todo;
     var description = truncateTaskDescription(task.description || '');
+    var collaborators = Array.isArray(task.collaborator_ids) ? task.collaborator_ids : [];
+    var checklist = Array.isArray(task.checklist_items) ? task.checklist_items : [];
+    var doneChecklistCount = checklist.filter(function (item) {
+      return !!(item && item.is_done);
+    }).length;
+    var approvalLabel = '';
+    if (String(task.status || '') === 'pending') {
+      approvalLabel = '<span class="office-task-chip priority-high">Approval Pending</span>';
+    }
 
     return '' +
       '<article class="office-task-card" draggable="true" data-task-id="' + escapeHtml(task.id) + '">' +
@@ -886,9 +1215,14 @@
       '    <span><i class="fa-solid fa-user"></i> ' + escapeHtml(task.assigned_to_name || 'Unassigned') + '</span>' +
       '    <span><i class="fa-regular fa-calendar"></i> ' + escapeHtml(task.due_date || 'No due date') + '</span>' +
       '  </div>' +
+      '  <div class="office-task-card-meta">' +
+      '    <span><i class="fa-solid fa-users"></i> ' + escapeHtml(String(collaborators.length)) + ' collaborators</span>' +
+      '    <span><i class="fa-solid fa-list-check"></i> ' + escapeHtml(doneChecklistCount + '/' + checklist.length) + ' checklist</span>' +
+      '  </div>' +
       '  <div class="office-task-card-footer">' +
       '    <span class="office-task-chip">' + escapeHtml(statusMeta.label) + '</span>' +
-      '    <button type="button" class="btn btn-sm btn-neutral" data-action="edit-task">Edit</button>' +
+      (approvalLabel || '') +
+      '    <button type="button" class="btn btn-sm btn-neutral" data-action="edit-task">Open</button>' +
       '  </div>' +
       '</article>';
   }
@@ -933,6 +1267,12 @@
       sortTasksInPlace();
       if (ui.taskAssignee) {
         ui.taskAssignee.innerHTML = getMemberOptionsHtml(0);
+      }
+      if (ui.taskCollaborators) {
+        ui.taskCollaborators.innerHTML = getMembersOnlyOptionsHtml(0);
+      }
+      if (ui.taskChecklistAssignee) {
+        ui.taskChecklistAssignee.innerHTML = getMembersOnlyOptionsHtml(0);
       }
       renderTaskBoard();
     } catch (error) {
@@ -1063,6 +1403,10 @@
       var updatedTask = packet.payload && packet.payload.task;
       if (updatedTask && updatedTask.id) {
         upsertTaskItem(updatedTask);
+        if (state.taskCurrentItem && Number(state.taskCurrentItem.id || 0) === Number(updatedTask.id || 0)) {
+          state.taskCurrentItem = updatedTask;
+          setTaskEditor(updatedTask);
+        }
         renderTaskBoard();
       }
       return;
@@ -1072,10 +1416,23 @@
       var deletedTaskId = Number(packet.payload && packet.payload.task_id || 0);
       if (deletedTaskId > 0) {
         removeTaskItem(deletedTaskId);
+        delete state.taskCommentsByTaskId[deletedTaskId];
         if (deletedTaskId === getTaskEditId()) {
           resetTaskEditor();
         }
         renderTaskBoard();
+      }
+      return;
+    }
+
+    if (packet.type === 'realtime.event' && packet.event === 'officework.task.comment.created') {
+      var commentTaskId = Number(packet.payload && packet.payload.task_id || 0);
+      var commentItem = packet.payload && packet.payload.comment;
+      if (commentTaskId > 0 && commentItem && commentItem.id) {
+        appendCommentToTaskCache(commentTaskId, commentItem);
+        if (state.taskCurrentItem && Number(state.taskCurrentItem.id || 0) === commentTaskId) {
+          renderTaskComments(state.taskCurrentItem);
+        }
       }
       return;
     }
@@ -1270,6 +1627,27 @@
     if (!data || !data.success || !data.task) {
       throw new Error((data && data.message) || 'Failed to move task.');
     }
+    if (data.message) {
+      notify(data.message, 'info');
+    }
+    return data.task;
+  }
+
+  async function updateTaskById(taskId, payload) {
+    var url = endpoints.taskUpdateBase + encodeURIComponent(taskId) + '/update/';
+    var data = await ApiClient.post(url, payload || {});
+    if (!data || !data.success || !data.task) {
+      throw new Error((data && data.message) || 'Failed to update task.');
+    }
+    upsertTaskItem(data.task);
+    if (state.taskCurrentItem && Number(state.taskCurrentItem.id || 0) === Number(data.task.id || 0)) {
+      state.taskCurrentItem = data.task;
+      setTaskEditor(data.task);
+    }
+    renderTaskBoard();
+    if (data.message) {
+      notify(data.message, 'success');
+    }
     return data.task;
   }
 
@@ -1295,6 +1673,9 @@
     try {
       var saved = await persistTaskStatus(taskId, targetStatus);
       upsertTaskItem(saved);
+      if (state.taskCurrentItem && Number(state.taskCurrentItem.id || 0) === Number(saved.id || 0)) {
+        state.taskCurrentItem = saved;
+      }
       renderTaskBoard();
     } catch (error) {
       item.status = previousStatus;
@@ -1320,7 +1701,8 @@
   function openTaskCreateModal(status) {
     resetTaskEditor();
     if (ui.taskStatus) {
-      ui.taskStatus.value = TASK_STATUS_META[status] ? status : 'todo';
+      ui.taskStatus.value = 'todo';
+      ui.taskStatus.disabled = true;
     }
     setTaskModalOpen(true);
     if (ui.taskTitle && typeof ui.taskTitle.focus === 'function') {
@@ -1334,6 +1716,148 @@
     setTaskModalOpen(true);
   }
 
+  function buildTaskFormPayload() {
+    return {
+      title: String(ui.taskTitle && ui.taskTitle.value || '').trim(),
+      description: String(ui.taskDescription && ui.taskDescription.value || '').trim(),
+      status: String(ui.taskStatus && ui.taskStatus.value || 'todo').trim(),
+      priority: String(ui.taskPriority && ui.taskPriority.value || 'normal').trim(),
+      assigned_to_id: String(ui.taskAssignee && ui.taskAssignee.value || '').trim(),
+      collaborator_ids: getSelectedCollaboratorIds(),
+      checklist_items: Array.isArray(state.taskCurrentItem && state.taskCurrentItem.checklist_items)
+        ? state.taskCurrentItem.checklist_items
+        : [],
+      due_date: String(ui.taskDueDate && ui.taskDueDate.value || '').trim(),
+    };
+  }
+
+  function appendCommentToTaskCache(taskId, comment) {
+    var id = Number(taskId || 0);
+    if (id <= 0 || !comment || !comment.id) {
+      return;
+    }
+    if (!Array.isArray(state.taskCommentsByTaskId[id])) {
+      state.taskCommentsByTaskId[id] = [];
+    }
+    var exists = state.taskCommentsByTaskId[id].some(function (item) {
+      return Number(item.id || 0) === Number(comment.id || 0);
+    });
+    if (!exists) {
+      state.taskCommentsByTaskId[id].push(comment);
+    }
+  }
+
+  async function sendTaskComment(taskId) {
+    var id = Number(taskId || 0);
+    if (id <= 0) {
+      return;
+    }
+    var text = String(ui.taskCommentInput && ui.taskCommentInput.value || '').trim();
+    var file = state.taskPendingCommentFile;
+    if (!text && !file) {
+      notify('Write a message or attach a file first.', 'error');
+      return;
+    }
+
+    var data;
+    if (file) {
+      var formData = new FormData();
+      formData.append('message', text);
+      formData.append('file', file);
+      data = await ApiClient.upload(taskCommentCreateEndpoint(id), formData);
+    } else {
+      data = await ApiClient.post(taskCommentCreateEndpoint(id), { message: text });
+    }
+
+    if (!data || !data.success || !data.comment) {
+      notify((data && data.message) || 'Failed to send comment.', 'error');
+      return;
+    }
+
+    appendCommentToTaskCache(id, data.comment);
+    if (ui.taskCommentInput) {
+      ui.taskCommentInput.value = '';
+    }
+    resetTaskCommentAttachment();
+    if (state.taskCurrentItem && Number(state.taskCurrentItem.id || 0) === id) {
+      renderTaskComments(state.taskCurrentItem);
+    }
+    notify('Comment posted.', 'success');
+  }
+
+  async function addChecklistItemFromForm() {
+    var taskId = getTaskEditId();
+    if (taskId <= 0) {
+      notify('Save the card first, then add checklist items.', 'error');
+      return;
+    }
+    var item = state.taskCurrentItem;
+    if (!item) {
+      return;
+    }
+    var title = String(ui.taskChecklistInput && ui.taskChecklistInput.value || '').trim();
+    if (!title) {
+      notify('Checklist item title is required.', 'error');
+      return;
+    }
+    var assigneeId = Number(ui.taskChecklistAssignee && ui.taskChecklistAssignee.value || 0);
+    var checklist = Array.isArray(item.checklist_items) ? item.checklist_items.slice() : [];
+    checklist.push({
+      id: 'local_' + String(Date.now()) + '_' + String(Math.floor(Math.random() * 10000)),
+      title: title,
+      assigned_to_id: assigneeId > 0 ? assigneeId : null,
+      is_done: false,
+    });
+    try {
+      await updateTaskById(taskId, { checklist_items: checklist });
+      if (ui.taskChecklistInput) {
+        ui.taskChecklistInput.value = '';
+      }
+      if (ui.taskChecklistAssignee) {
+        ui.taskChecklistAssignee.value = '';
+      }
+    } catch (error) {
+      notify((error && error.message) || 'Failed to add checklist item.', 'error');
+    }
+  }
+
+  async function toggleChecklistItem(checklistId, nextDone) {
+    var taskId = getTaskEditId();
+    if (taskId <= 0 || !state.taskCurrentItem) {
+      return;
+    }
+    var checklist = Array.isArray(state.taskCurrentItem.checklist_items) ? state.taskCurrentItem.checklist_items.slice() : [];
+    var updated = checklist.map(function (item) {
+      if (String(item && item.id || '') !== String(checklistId || '')) {
+        return item;
+      }
+      var next = Object.assign({}, item);
+      next.is_done = !!nextDone;
+      return next;
+    });
+    try {
+      await updateTaskById(taskId, { checklist_items: updated });
+    } catch (error) {
+      notify((error && error.message) || 'Failed to update checklist item.', 'error');
+    }
+  }
+
+  async function removeChecklistItem(checklistId) {
+    var taskId = getTaskEditId();
+    if (taskId <= 0 || !state.taskCurrentItem) {
+      return;
+    }
+    var checklist = Array.isArray(state.taskCurrentItem.checklist_items) ? state.taskCurrentItem.checklist_items : [];
+    var updated = checklist.filter(function (item) {
+      return String(item && item.id || '') !== String(checklistId || '');
+    });
+    try {
+      await updateTaskById(taskId, { checklist_items: updated });
+    } catch (error) {
+      notify((error && error.message) || 'Failed to remove checklist item.', 'error');
+    }
+  }
+
   function bindTaskForm() {
     if (!ui.taskForm) {
       return;
@@ -1342,14 +1866,7 @@
     ui.taskForm.addEventListener('submit', async function (event) {
       event.preventDefault();
 
-      var payload = {
-        title: String(ui.taskTitle && ui.taskTitle.value || '').trim(),
-        description: String(ui.taskDescription && ui.taskDescription.value || '').trim(),
-        status: String(ui.taskStatus && ui.taskStatus.value || 'todo').trim(),
-        priority: String(ui.taskPriority && ui.taskPriority.value || 'normal').trim(),
-        assigned_to_id: String(ui.taskAssignee && ui.taskAssignee.value || '').trim(),
-        due_date: String(ui.taskDueDate && ui.taskDueDate.value || '').trim(),
-      };
+      var payload = buildTaskFormPayload();
 
       if (!payload.title) {
         notify('Card title is required.', 'error');
@@ -1360,16 +1877,10 @@
 
       try {
         if (editingId > 0) {
-          var updateUrl = endpoints.taskUpdateBase + encodeURIComponent(editingId) + '/update/';
-          var updateData = await ApiClient.post(updateUrl, payload);
-          if (!updateData || !updateData.success || !updateData.task) {
-            notify((updateData && updateData.message) || 'Failed to update card.', 'error');
-            return;
+          var updatedTask = await updateTaskById(editingId, payload);
+          if (updatedTask) {
+            closeTaskModal();
           }
-          upsertTaskItem(updateData.task);
-          renderTaskBoard();
-          notify('Card updated.', 'success');
-          closeTaskModal();
           return;
         }
 
@@ -1380,6 +1891,7 @@
         }
         upsertTaskItem(createData.task);
         renderTaskBoard();
+        state.taskCurrentItem = createData.task;
         closeTaskModal();
         notify('Card created.', 'success');
       } catch (error) {
@@ -1427,11 +1939,128 @@
       });
     }
 
+    if (ui.taskChecklistAddBtn) {
+      ui.taskChecklistAddBtn.addEventListener('click', function () {
+        addChecklistItemFromForm();
+      });
+    }
+
+    if (ui.taskChecklistItems) {
+      ui.taskChecklistItems.addEventListener('change', function (event) {
+        var toggle = event.target.closest('.office-task-checklist-toggle');
+        if (!toggle) {
+          return;
+        }
+        var row = toggle.closest('[data-checklist-id]');
+        if (!row) {
+          return;
+        }
+        toggleChecklistItem(row.getAttribute('data-checklist-id') || '', !!toggle.checked);
+      });
+
+      ui.taskChecklistItems.addEventListener('click', function (event) {
+        var removeBtn = event.target.closest('[data-action="remove-checklist-item"]');
+        if (!removeBtn) {
+          return;
+        }
+        var row = removeBtn.closest('[data-checklist-id]');
+        if (!row) {
+          return;
+        }
+        removeChecklistItem(row.getAttribute('data-checklist-id') || '');
+      });
+    }
+
+    if (ui.taskApproveBtn) {
+      ui.taskApproveBtn.addEventListener('click', async function () {
+        var taskId = getTaskEditId();
+        if (taskId <= 0) {
+          return;
+        }
+        try {
+          await updateTaskById(taskId, { approval_decision: 'approve' });
+        } catch (error) {
+          notify((error && error.message) || 'Failed to approve completion.', 'error');
+        }
+      });
+    }
+
+    if (ui.taskRejectBtn) {
+      ui.taskRejectBtn.addEventListener('click', async function () {
+        var taskId = getTaskEditId();
+        if (taskId <= 0) {
+          return;
+        }
+        try {
+          await updateTaskById(taskId, { approval_decision: 'reject' });
+        } catch (error) {
+          notify((error && error.message) || 'Failed to send card back.', 'error');
+        }
+      });
+    }
+
+    if (ui.taskCommentAttachBtn && ui.taskCommentFileInput) {
+      ui.taskCommentAttachBtn.addEventListener('click', function () {
+        if (ui.taskCommentAttachBtn.disabled) {
+          return;
+        }
+        ui.taskCommentFileInput.click();
+      });
+      ui.taskCommentFileInput.addEventListener('change', function () {
+        var file = ui.taskCommentFileInput.files && ui.taskCommentFileInput.files[0];
+        setTaskCommentAttachment(file || null);
+      });
+    }
+
+    if (ui.taskCommentAttachmentRemove) {
+      ui.taskCommentAttachmentRemove.addEventListener('click', function () {
+        resetTaskCommentAttachment();
+      });
+    }
+
+    if (ui.taskCommentInput) {
+      ui.taskCommentInput.addEventListener('paste', function (event) {
+        if (ui.taskCommentInput.disabled) {
+          return;
+        }
+        var clipboard = event.clipboardData;
+        if (!clipboard || !clipboard.items) {
+          return;
+        }
+        var pickedFile = null;
+        for (var i = 0; i < clipboard.items.length; i += 1) {
+          var item = clipboard.items[i];
+          if (item && item.kind === 'file') {
+            pickedFile = item.getAsFile();
+            if (pickedFile) {
+              break;
+            }
+          }
+        }
+        if (pickedFile) {
+          event.preventDefault();
+          setTaskCommentAttachment(pickedFile);
+          notify('Attachment pasted. Ready to send.', 'success');
+        }
+      });
+    }
+
+    if (ui.taskCommentSendBtn) {
+      ui.taskCommentSendBtn.addEventListener('click', function () {
+        var taskId = getTaskEditId();
+        if (taskId <= 0) {
+          notify('Save the card first to start discussion.', 'error');
+          return;
+        }
+        sendTaskComment(taskId);
+      });
+    }
+
     if (ui.taskBoard) {
       ui.taskBoard.addEventListener('click', function (event) {
         var addBtn = event.target.closest('[data-add-task-status]');
         if (addBtn) {
-          openTaskCreateModal(String(addBtn.getAttribute('data-add-task-status') || 'todo'));
+          openTaskCreateModal('todo');
           return;
         }
 

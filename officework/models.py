@@ -17,6 +17,14 @@ def office_work_chat_attachment_upload_to(instance, filename):
     return f'office-work/chat/{group_id}/{timezone.now():%Y/%m/%d}/{safe_name}'
 
 
+def office_work_task_comment_attachment_upload_to(instance, filename):
+    import os
+
+    safe_name = os.path.basename(str(filename or '').strip()) or 'task-comment-file'
+    task_id = getattr(instance, 'task_id', None) or 'task'
+    return f'office-work/tasks/{task_id}/{timezone.now():%Y/%m/%d}/{safe_name}'
+
+
 class OfficeWorkChatGroup(models.Model):
     """Office Work chat group visible to selected members."""
 
@@ -177,8 +185,27 @@ class OfficeWorkTask(models.Model):
         blank=True,
         related_name='office_work_tasks_assigned',
     )
+    collaborator_ids = models.JSONField(default=list, blank=True)
+    follower_ids = models.JSONField(default=list, blank=True)
+    checklist_items = models.JSONField(default=list, blank=True)
     due_date = models.DateField(null=True, blank=True, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    completion_requested_at = models.DateTimeField(null=True, blank=True)
+    completion_requested_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='office_work_tasks_completion_requested',
+    )
+    completion_approved_at = models.DateTimeField(null=True, blank=True)
+    completion_approved_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='office_work_tasks_completion_approved',
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -194,6 +221,53 @@ class OfficeWorkTask(models.Model):
 
     def __str__(self):
         return f'OfficeTask<{self.id}:{self.title}>'
+
+
+class OfficeWorkTaskComment(models.Model):
+    """Discussion stream for a task card, including optional attachments."""
+
+    task = models.ForeignKey(
+        OfficeWorkTask,
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
+    sender = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='office_work_task_comments',
+    )
+    message = models.TextField(blank=True, default='')
+    attachment = models.FileField(upload_to=office_work_task_comment_attachment_upload_to, null=True, blank=True)
+    attachment_original_name = models.CharField(max_length=255, blank=True, default='')
+    attachment_size_bytes = models.BigIntegerField(default=0)
+    attachment_content_type = models.CharField(max_length=160, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['id']
+        db_table = 'core_officeworktaskcomment'
+        indexes = [
+            models.Index(fields=['task', 'id'], name='owtaskcomment_task_id_idx'),
+            models.Index(fields=['-created_at'], name='owtaskcomment_created_idx'),
+        ]
+        verbose_name = 'Office Work Task Comment'
+        verbose_name_plural = 'Office Work Task Comments'
+
+    def __str__(self):
+        author = self.sender.get_full_name() if self.sender else 'Unknown'
+        author = author or (self.sender.username if self.sender else 'Unknown')
+        return f'OfficeTaskComment<{author}: {self.message[:40]}>'
+
+    def save(self, *args, **kwargs):
+        if self.attachment:
+            self.attachment_original_name = self.attachment_original_name or self.attachment.name.rsplit('/', 1)[-1]
+            try:
+                self.attachment_size_bytes = int(getattr(self.attachment, 'size', 0) or 0)
+            except Exception:
+                self.attachment_size_bytes = 0
+        super().save(*args, **kwargs)
 
 
 class OfficeWorkSharedFile(models.Model):
