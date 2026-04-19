@@ -140,11 +140,13 @@ class OfficeWorkTask(models.Model):
     STATUS_TODO = 'todo'
     STATUS_IN_PROGRESS = 'in_progress'
     STATUS_DONE = 'done'
+    STATUS_PENDING = 'pending'
 
     STATUS_CHOICES = [
         (STATUS_TODO, 'Todo'),
         (STATUS_IN_PROGRESS, 'In Progress'),
         (STATUS_DONE, 'Done'),
+        (STATUS_PENDING, 'Pending'),
     ]
 
     PRIORITY_LOW = 'low'

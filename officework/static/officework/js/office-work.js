@@ -52,6 +52,7 @@
     members: [],
     taskItems: [],
     taskDragId: 0,
+    taskModalOpen: false,
     fileItems: [],
     pollTimer: null,
     chatLoaded: false,
@@ -85,6 +86,7 @@
     taskForm: document.getElementById('officeTaskForm'),
     taskTitle: document.getElementById('officeTaskTitle'),
     taskDescription: document.getElementById('officeTaskDescription'),
+    taskStatus: document.getElementById('officeTaskStatus'),
     taskAssignee: document.getElementById('officeTaskAssignee'),
     taskPriority: document.getElementById('officeTaskPriority'),
     taskDueDate: document.getElementById('officeTaskDueDate'),
@@ -93,6 +95,9 @@
     taskSubmitBtn: document.getElementById('officeTaskSubmitBtn'),
     taskCancelBtn: document.getElementById('officeTaskCancelBtn'),
     taskDeleteBtn: document.getElementById('officeTaskDeleteBtn'),
+    taskModal: document.getElementById('officeTaskModal'),
+    taskModalBackdrop: document.getElementById('officeTaskModalBackdrop'),
+    taskModalClose: document.getElementById('officeTaskModalClose'),
     taskBoard: document.getElementById('officeTaskBoard'),
     taskColumns: Array.prototype.slice.call(document.querySelectorAll('.office-kanban-column[data-status]')),
     shareForm: document.getElementById('officeShareForm'),
@@ -680,7 +685,10 @@
     todo: { label: 'To Do' },
     in_progress: { label: 'In Progress' },
     done: { label: 'Done' },
+    pending: { label: 'Pending' },
   };
+
+  var TASK_STATUS_ORDER = ['todo', 'in_progress', 'done', 'pending'];
 
   var TASK_PRIORITY_META = {
     low: { label: 'Low' },
@@ -763,6 +771,9 @@
       return;
     }
     ui.taskForm.reset();
+    if (ui.taskStatus) {
+      ui.taskStatus.value = 'todo';
+    }
     if (ui.taskPriority) {
       ui.taskPriority.value = 'normal';
     }
@@ -776,7 +787,7 @@
       ui.taskSubmitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Card';
     }
     if (ui.taskCancelBtn) {
-      ui.taskCancelBtn.hidden = true;
+      ui.taskCancelBtn.hidden = false;
     }
     if (ui.taskDeleteBtn) {
       ui.taskDeleteBtn.hidden = true;
@@ -795,6 +806,9 @@
     }
     if (ui.taskDescription) {
       ui.taskDescription.value = String(item.description || '');
+    }
+    if (ui.taskStatus) {
+      ui.taskStatus.value = String(item.status || 'todo');
     }
     if (ui.taskPriority) {
       ui.taskPriority.value = String(item.priority || 'normal');
@@ -851,7 +865,7 @@
       return;
     }
 
-    ['todo', 'in_progress', 'done'].forEach(function (status) {
+    TASK_STATUS_ORDER.forEach(function (status) {
       var listNode = ui.taskBoard.querySelector('[data-list-for="' + status + '"]');
       var countNode = ui.taskBoard.querySelector('[data-count-for="' + status + '"]');
       if (!listNode) {
@@ -867,7 +881,7 @@
       }
 
       if (!items.length) {
-        listNode.innerHTML = '<div class="office-task-empty">Drop a card here.</div>';
+        listNode.innerHTML = '<div class="office-task-empty">No cards here yet.</div>';
         return;
       }
 
@@ -1255,6 +1269,37 @@
     }
   }
 
+  function setTaskModalOpen(open) {
+    if (!ui.taskModal || !ui.taskModalBackdrop) {
+      return;
+    }
+    state.taskModalOpen = !!open;
+    ui.taskModal.hidden = !open;
+    ui.taskModalBackdrop.hidden = !open;
+  }
+
+  function closeTaskModal() {
+    setTaskModalOpen(false);
+    resetTaskEditor();
+  }
+
+  function openTaskCreateModal(status) {
+    resetTaskEditor();
+    if (ui.taskStatus) {
+      ui.taskStatus.value = TASK_STATUS_META[status] ? status : 'todo';
+    }
+    setTaskModalOpen(true);
+    if (ui.taskTitle && typeof ui.taskTitle.focus === 'function') {
+      ui.taskTitle.focus();
+    }
+  }
+
+  function openTaskEditModal(item) {
+    resetTaskEditor();
+    setTaskEditor(item);
+    setTaskModalOpen(true);
+  }
+
   function bindTaskForm() {
     if (!ui.taskForm) {
       return;
@@ -1266,6 +1311,7 @@
       var payload = {
         title: String(ui.taskTitle && ui.taskTitle.value || '').trim(),
         description: String(ui.taskDescription && ui.taskDescription.value || '').trim(),
+        status: String(ui.taskStatus && ui.taskStatus.value || 'todo').trim(),
         priority: String(ui.taskPriority && ui.taskPriority.value || 'normal').trim(),
         assigned_to_id: String(ui.taskAssignee && ui.taskAssignee.value || '').trim(),
         due_date: String(ui.taskDueDate && ui.taskDueDate.value || '').trim(),
@@ -1289,7 +1335,7 @@
           upsertTaskItem(updateData.task);
           renderTaskBoard();
           notify('Card updated.', 'success');
-          setTaskEditor(updateData.task);
+          closeTaskModal();
           return;
         }
 
@@ -1300,7 +1346,7 @@
         }
         upsertTaskItem(createData.task);
         renderTaskBoard();
-        resetTaskEditor();
+        closeTaskModal();
         notify('Card created.', 'success');
       } catch (error) {
         notify((error && error.message) || 'Failed to save card.', 'error');
@@ -1309,7 +1355,19 @@
 
     if (ui.taskCancelBtn) {
       ui.taskCancelBtn.addEventListener('click', function () {
-        resetTaskEditor();
+        closeTaskModal();
+      });
+    }
+
+    if (ui.taskModalClose) {
+      ui.taskModalClose.addEventListener('click', function () {
+        closeTaskModal();
+      });
+    }
+
+    if (ui.taskModalBackdrop) {
+      ui.taskModalBackdrop.addEventListener('click', function () {
+        closeTaskModal();
       });
     }
 
@@ -1327,7 +1385,7 @@
           await deleteTaskById(taskId);
           removeTaskItem(taskId);
           renderTaskBoard();
-          resetTaskEditor();
+          closeTaskModal();
           notify('Card deleted.', 'success');
         } catch (error) {
           notify((error && error.message) || 'Failed to delete card.', 'error');
@@ -1337,6 +1395,12 @@
 
     if (ui.taskBoard) {
       ui.taskBoard.addEventListener('click', function (event) {
+        var addBtn = event.target.closest('[data-add-task-status]');
+        if (addBtn) {
+          openTaskCreateModal(String(addBtn.getAttribute('data-add-task-status') || 'todo'));
+          return;
+        }
+
         var cardNode = event.target.closest('.office-task-card[data-task-id]');
         if (!cardNode) {
           return;
@@ -1347,7 +1411,7 @@
         }
         var item = taskById(taskId);
         if (item) {
-          setTaskEditor(item);
+          openTaskEditModal(item);
         }
       });
 
@@ -1418,6 +1482,12 @@
         }
       });
     }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && state.taskModalOpen) {
+        closeTaskModal();
+      }
+    });
   }
 
   function bindShareForm() {

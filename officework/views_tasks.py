@@ -37,6 +37,7 @@ def api_office_work_tasks_list(request):
             OfficeWorkTask.STATUS_TODO,
             OfficeWorkTask.STATUS_IN_PROGRESS,
             OfficeWorkTask.STATUS_DONE,
+            OfficeWorkTask.STATUS_PENDING,
         ],
         'priority_choices': [
             OfficeWorkTask.PRIORITY_LOW,
@@ -62,7 +63,12 @@ def api_office_work_task_create(request):
     if not title:
         return JsonResponse({'success': False, 'message': 'Task title is required.'}, status=400)
 
-    valid_statuses = {OfficeWorkTask.STATUS_TODO, OfficeWorkTask.STATUS_IN_PROGRESS, OfficeWorkTask.STATUS_DONE}
+    valid_statuses = {
+        OfficeWorkTask.STATUS_TODO,
+        OfficeWorkTask.STATUS_IN_PROGRESS,
+        OfficeWorkTask.STATUS_DONE,
+        OfficeWorkTask.STATUS_PENDING,
+    }
     if status not in valid_statuses:
         status = OfficeWorkTask.STATUS_TODO
 
@@ -139,7 +145,12 @@ def api_office_work_task_update(request, task_id):
 
     if 'status' in body:
         new_status = str(body.get('status') or '').strip().lower()
-        valid_statuses = {OfficeWorkTask.STATUS_TODO, OfficeWorkTask.STATUS_IN_PROGRESS, OfficeWorkTask.STATUS_DONE}
+        valid_statuses = {
+            OfficeWorkTask.STATUS_TODO,
+            OfficeWorkTask.STATUS_IN_PROGRESS,
+            OfficeWorkTask.STATUS_DONE,
+            OfficeWorkTask.STATUS_PENDING,
+        }
         if new_status not in valid_statuses:
             return JsonResponse({'success': False, 'message': 'Invalid status.'}, status=400)
         task.status = new_status

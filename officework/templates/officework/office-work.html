@@ -115,80 +115,126 @@
       </section>
 
       <section class="office-panel" data-panel="tasks" role="tabpanel" hidden>
-        <div class="office-trello-layout">
-          <aside class="office-section office-task-editor-card">
+        <section class="office-section office-task-board-shell">
+          <h3><i class="fa-solid fa-table-columns"></i> Team Board</h3>
+          <div id="officeTaskBoard" class="office-kanban-board" aria-live="polite">
+            <article class="office-kanban-column" data-status="todo">
+              <header class="office-kanban-column-header">
+                <h4>To Do</h4>
+                <span class="office-kanban-count" data-count-for="todo">0</span>
+              </header>
+              <div class="office-kanban-list" data-list-for="todo"></div>
+              <div class="office-kanban-add-wrap">
+                <button type="button" class="office-kanban-add-btn" data-add-task-status="todo">
+                  <i class="fa-solid fa-plus"></i>
+                  Add a card
+                </button>
+              </div>
+            </article>
+            <article class="office-kanban-column" data-status="in_progress">
+              <header class="office-kanban-column-header">
+                <h4>In Progress</h4>
+                <span class="office-kanban-count" data-count-for="in_progress">0</span>
+              </header>
+              <div class="office-kanban-list" data-list-for="in_progress"></div>
+              <div class="office-kanban-add-wrap">
+                <button type="button" class="office-kanban-add-btn" data-add-task-status="in_progress">
+                  <i class="fa-solid fa-plus"></i>
+                  Add a card
+                </button>
+              </div>
+            </article>
+            <article class="office-kanban-column" data-status="done">
+              <header class="office-kanban-column-header">
+                <h4>Done</h4>
+                <span class="office-kanban-count" data-count-for="done">0</span>
+              </header>
+              <div class="office-kanban-list" data-list-for="done"></div>
+              <div class="office-kanban-add-wrap">
+                <button type="button" class="office-kanban-add-btn" data-add-task-status="done">
+                  <i class="fa-solid fa-plus"></i>
+                  Add a card
+                </button>
+              </div>
+            </article>
+            <article class="office-kanban-column" data-status="pending">
+              <header class="office-kanban-column-header">
+                <h4>Pending</h4>
+                <span class="office-kanban-count" data-count-for="pending">0</span>
+              </header>
+              <div class="office-kanban-list" data-list-for="pending"></div>
+              <div class="office-kanban-add-wrap">
+                <button type="button" class="office-kanban-add-btn" data-add-task-status="pending">
+                  <i class="fa-solid fa-plus"></i>
+                  Add a card
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <div id="officeTaskModalBackdrop" class="office-task-modal-backdrop" hidden></div>
+        <section id="officeTaskModal" class="office-task-modal" role="dialog" aria-modal="true" aria-labelledby="officeTaskFormHeading" hidden>
+          <header class="office-task-modal-header">
             <h3 id="officeTaskFormHeading"><i class="fa-solid fa-plus"></i> Create Card</h3>
-            <form id="officeTaskForm" class="office-task-form">
-              <input id="officeTaskEditId" type="hidden" value="">
+            <button id="officeTaskModalClose" type="button" class="office-task-modal-close" aria-label="Close task modal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </header>
+          <form id="officeTaskForm" class="office-task-form">
+            <input id="officeTaskEditId" type="hidden" value="">
+            <div>
+              <label for="officeTaskTitle">Card Title</label>
+              <input id="officeTaskTitle" class="office-input" type="text" maxlength="180" placeholder="What needs to be done?" required>
+            </div>
+            <div>
+              <label for="officeTaskDescription">Description</label>
+              <textarea id="officeTaskDescription" class="office-input" rows="4" placeholder="Add details"></textarea>
+            </div>
+            <div class="office-grid-two">
               <div>
-                <label for="officeTaskTitle">Card Title</label>
-                <input id="officeTaskTitle" class="office-input" type="text" maxlength="180" placeholder="What needs to be done?" required>
+                <label for="officeTaskStatus">List</label>
+                <select id="officeTaskStatus" class="form-select form-select-sm">
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="done">Done</option>
+                  <option value="pending">Pending</option>
+                </select>
               </div>
               <div>
-                <label for="officeTaskDescription">Description</label>
-                <textarea id="officeTaskDescription" class="office-input" rows="4" placeholder="Add details"></textarea>
+                <label for="officeTaskAssignee">Member</label>
+                <select id="officeTaskAssignee" class="form-select form-select-sm">
+                  <option value="">Unassigned</option>
+                </select>
               </div>
-              <div class="office-grid-two">
-                <div>
-                  <label for="officeTaskAssignee">Member</label>
-                  <select id="officeTaskAssignee" class="form-select form-select-sm">
-                    <option value="">Unassigned</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="officeTaskPriority">Priority</label>
-                  <select id="officeTaskPriority" class="form-select form-select-sm">
-                    <option value="low">Low</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
+            </div>
+            <div class="office-grid-two">
+              <div>
+                <label for="officeTaskPriority">Priority</label>
+                <select id="officeTaskPriority" class="form-select form-select-sm">
+                  <option value="low">Low</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="high">High</option>
+                </select>
               </div>
               <div>
                 <label for="officeTaskDueDate">Due Date</label>
                 <input id="officeTaskDueDate" class="office-input" type="date">
               </div>
-              <div class="office-task-form-actions">
-                <button id="officeTaskSubmitBtn" type="submit" class="btn btn-md btn-primary office-submit-btn">
-                  <i class="fa-solid fa-plus"></i>
-                  Add Card
-                </button>
-                <button id="officeTaskCancelBtn" type="button" class="btn btn-md btn-neutral" hidden>Cancel Edit</button>
-                <button id="officeTaskDeleteBtn" type="button" class="btn btn-md btn-danger" hidden>
-                  <i class="fa-solid fa-trash"></i>
-                  Delete Card
-                </button>
-              </div>
-            </form>
-          </aside>
-
-          <section class="office-section office-task-board-shell">
-            <h3><i class="fa-solid fa-table-columns"></i> Team Board</h3>
-            <div id="officeTaskBoard" class="office-kanban-board" aria-live="polite">
-              <article class="office-kanban-column" data-status="todo">
-                <header class="office-kanban-column-header">
-                  <h4>To Do</h4>
-                  <span class="office-kanban-count" data-count-for="todo">0</span>
-                </header>
-                <div class="office-kanban-list" data-list-for="todo"></div>
-              </article>
-              <article class="office-kanban-column" data-status="in_progress">
-                <header class="office-kanban-column-header">
-                  <h4>In Progress</h4>
-                  <span class="office-kanban-count" data-count-for="in_progress">0</span>
-                </header>
-                <div class="office-kanban-list" data-list-for="in_progress"></div>
-              </article>
-              <article class="office-kanban-column" data-status="done">
-                <header class="office-kanban-column-header">
-                  <h4>Done</h4>
-                  <span class="office-kanban-count" data-count-for="done">0</span>
-                </header>
-                <div class="office-kanban-list" data-list-for="done"></div>
-              </article>
             </div>
-          </section>
-        </div>
+            <div class="office-task-form-actions">
+              <button id="officeTaskSubmitBtn" type="submit" class="btn btn-md btn-primary office-submit-btn">
+                <i class="fa-solid fa-plus"></i>
+                Add Card
+              </button>
+              <button id="officeTaskCancelBtn" type="button" class="btn btn-md btn-neutral">Cancel</button>
+              <button id="officeTaskDeleteBtn" type="button" class="btn btn-md btn-danger" hidden>
+                <i class="fa-solid fa-trash"></i>
+                Delete Card
+              </button>
+            </div>
+          </form>
+        </section>
       </section>
 
       <section class="office-panel" data-panel="share" role="tabpanel" hidden>

@@ -463,18 +463,6 @@ textarea.office-input {
   align-self: flex-start;
 }
 
-.office-trello-layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-  gap: 12px;
-}
-
-.office-task-editor-card {
-  height: fit-content;
-  position: sticky;
-  top: 78px;
-}
-
 .office-task-form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -482,19 +470,22 @@ textarea.office-input {
 }
 
 .office-task-board-shell {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .office-kanban-board {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  display: flex;
+  align-items: stretch;
   gap: 12px;
-  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .office-kanban-column {
+  flex: 0 0 290px;
   border: 1px solid var(--color-slate-200);
-  background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.03) 0%, var(--color-slate-50) 100%);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f7fafe 0%, #eef4fb 100%);
   min-height: 420px;
   display: flex;
   flex-direction: column;
@@ -507,7 +498,7 @@ textarea.office-input {
   gap: 8px;
   padding: 10px;
   border-bottom: 1px solid var(--color-slate-200);
-  background: rgba(var(--primary-rgb), 0.05);
+  background: rgba(59, 130, 246, 0.05);
 }
 
 .office-kanban-column-header h4 {
@@ -537,6 +528,7 @@ textarea.office-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 220px;
 }
 
 .office-kanban-column.is-drop-target .office-kanban-list {
@@ -546,7 +538,8 @@ textarea.office-input {
 .office-task-card {
   border: 1px solid var(--color-slate-200);
   background: var(--color-white);
-  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.08);
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -631,11 +624,88 @@ textarea.office-input {
 
 .office-task-empty {
   border: 1px dashed var(--color-slate-300);
-  background: rgba(var(--primary-rgb), 0.02);
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.04);
   padding: 12px;
   color: var(--color-slate-500);
   font-size: var(--ui-font-size-sm, 12px);
   text-align: center;
+}
+
+.office-kanban-add-wrap {
+  padding: 0 10px 10px;
+}
+
+.office-kanban-add-btn {
+  width: 100%;
+  min-height: 34px;
+  border: 1px dashed #9ab9df;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #23405c;
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.office-kanban-add-btn:hover {
+  background: #e8f1fb;
+  border-color: #73a6dc;
+}
+
+.office-task-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  z-index: 1190;
+}
+
+.office-task-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(620px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 14px;
+  background: var(--color-white);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+  z-index: 1200;
+  padding: 12px;
+}
+
+.office-task-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-slate-200);
+  margin-bottom: 12px;
+}
+
+.office-task-modal-header h3 {
+  margin: 0;
+}
+
+.office-task-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-slate-600);
+  cursor: pointer;
+}
+
+.office-task-modal-close:hover {
+  background: var(--color-slate-100);
 }
 
 .office-table-wrap {
@@ -703,16 +773,8 @@ textarea.office-input {
     grid-template-columns: 1fr;
   }
 
-  .office-trello-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .office-task-editor-card {
-    position: static;
-  }
-
-  .office-kanban-board {
-    grid-template-columns: 1fr;
+  .office-kanban-column {
+    flex-basis: 260px;
   }
 
   .office-chat-panel {
@@ -772,5 +834,11 @@ textarea.office-input {
 
   .office-chat-group-meta {
     text-align: left;
+  }
+
+  .office-task-modal {
+    width: calc(100vw - 12px);
+    max-height: calc(100vh - 12px);
+    padding: 10px;
   }
 }
