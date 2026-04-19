@@ -24,32 +24,30 @@ User = get_user_model()
 
 
 class MobileAppBaseTestCase(TestCase):
-	def setUp(self):
-		# Keep test client aligned with mobile-only server-side gating.
-		self.client.defaults['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Mobile Safari/537.36'
-
-		self.super_admin = User.objects.create_user(
+	@classmethod
+	def setUpTestData(cls):
+		cls.super_admin = User.objects.create_user(
 			username='mob-super@test.com',
 			email='mob-super@test.com',
 			password='pass1234',
 			role='super_admin',
 		)
 
-		self.pro_user = User.objects.create_user(
+		cls.pro_user = User.objects.create_user(
 			username='mob-pro@test.com',
 			email='mob-pro@test.com',
 			password='pass1234',
 			role='pro_user',
 		)
 
-		self.client_user = User.objects.create_user(
+		cls.client_user = User.objects.create_user(
 			username='mob-client@test.com',
 			email='mob-client@test.com',
 			password='pass1234',
 			role='client',
 		)
-		self.client_profile = Client.objects.create(
-			user=self.client_user,
+		cls.client_profile = Client.objects.create(
+			user=cls.client_user,
 			name='Mobile Client',
 			status='active',
 			perm_mobile_app=True,
@@ -59,14 +57,14 @@ class MobileAppBaseTestCase(TestCase):
 			perm_idcard_delete=False,
 		)
 
-		self.client_user_with_add_perm = User.objects.create_user(
+		cls.client_user_with_add_perm = User.objects.create_user(
 			username='mob-client-add@test.com',
 			email='mob-client-add@test.com',
 			password='pass1234',
 			role='client',
 		)
-		self.client_profile_with_add_perm = Client.objects.create(
-			user=self.client_user_with_add_perm,
+		cls.client_profile_with_add_perm = Client.objects.create(
+			user=cls.client_user_with_add_perm,
 			name='Mobile Client Add',
 			status='active',
 			perm_mobile_app=True,
@@ -76,36 +74,36 @@ class MobileAppBaseTestCase(TestCase):
 			perm_idcard_delete=True,
 		)
 
-		self.admin_staff_user = User.objects.create_user(
+		cls.admin_staff_user = User.objects.create_user(
 			username='mob-admin-staff@test.com',
 			email='mob-admin-staff@test.com',
 			password='pass1234',
 			role='admin_staff',
 		)
-		self.admin_staff_profile = Staff.objects.create(
-			user=self.admin_staff_user,
+		cls.admin_staff_profile = Staff.objects.create(
+			user=cls.admin_staff_user,
 			staff_type='admin_staff',
 			perm_mobile_app=True,
 			perm_idcard_pending_list=True,
 		)
 
-		self.admin_staff_manage_user = User.objects.create_user(
+		cls.admin_staff_manage_user = User.objects.create_user(
 			username='mob-admin-manage@test.com',
 			email='mob-admin-manage@test.com',
 			password='pass1234',
 			role='admin_staff',
 		)
-		self.admin_staff_manage_profile = Staff.objects.create(
-			user=self.admin_staff_manage_user,
+		cls.admin_staff_manage_profile = Staff.objects.create(
+			user=cls.admin_staff_manage_user,
 			staff_type='admin_staff',
 			perm_mobile_app=True,
 			perm_idcard_pending_list=True,
 			perm_idcard_client_list=True,
 		)
 
-		self.group = IDCardGroup.objects.create(client=self.client_profile, name='Group A')
-		self.table = IDCardTable.objects.create(
-			group=self.group,
+		cls.group = IDCardGroup.objects.create(client=cls.client_profile, name='Group A')
+		cls.table = IDCardTable.objects.create(
+			group=cls.group,
 			name='Table A',
 			fields=[
 				{'name': 'NAME', 'type': 'text', 'order': 0},
@@ -113,26 +111,52 @@ class MobileAppBaseTestCase(TestCase):
 			],
 			is_active=True,
 		)
-		self.card = IDCard.objects.create(
-			table=self.table,
+		cls.card = IDCard.objects.create(
+			table=cls.table,
 			field_data={'NAME': 'Student One', 'ROLL NO': '101'},
 			status='pending',
 		)
-		self.admin_staff_manage_profile.assigned_clients.add(self.client_profile)
+		cls.admin_staff_manage_profile.assigned_clients.add(cls.client_profile)
 
-		self.client_staff_user = User.objects.create_user(
+		cls.client_staff_user = User.objects.create_user(
 			username='mob-client-staff@test.com',
 			email='mob-client-staff@test.com',
 			password='pass1234',
 			role='client_staff',
 		)
-		self.client_staff_profile = Staff.objects.create(
-			user=self.client_staff_user,
+		cls.client_staff_profile = Staff.objects.create(
+			user=cls.client_staff_user,
 			staff_type='client_staff',
-			client=self.client_profile,
+			client=cls.client_profile,
 			perm_mobile_app=True,
 			perm_idcard_pending_list=True,
 		)
+
+	def setUp(self):
+		# Keep test client aligned with mobile-only server-side gating.
+		self.client.defaults['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Mobile Safari/537.36'
+
+		# Class-level fixtures can be mutated by tests; refresh to stable DB state each run.
+		for attr in (
+			'super_admin',
+			'pro_user',
+			'client_user',
+			'client_profile',
+			'client_user_with_add_perm',
+			'client_profile_with_add_perm',
+			'admin_staff_user',
+			'admin_staff_profile',
+			'admin_staff_manage_user',
+			'admin_staff_manage_profile',
+			'group',
+			'table',
+			'card',
+			'client_staff_user',
+			'client_staff_profile',
+		):
+			obj = getattr(self, attr, None)
+			if obj is not None and hasattr(obj, 'refresh_from_db'):
+				obj.refresh_from_db()
 
 	def _set_mobile_auth_checkpoint(self):
 		session = self.client.session

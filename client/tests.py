@@ -51,13 +51,18 @@ class ClientModelTests(TestCase):
 class ClientAccessControlTests(TestCase):
     """Tests for client access control."""
 
-    def setUp(self):
-        self.user = User.objects.create_user(
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
             username='access@test.com', email='access@test.com',
             password='pass1234', role='client',
         )
         from client.models import Client
-        self.client_obj = Client.objects.create(user=self.user, name='Access Client')
+        cls.client_obj = Client.objects.create(user=cls.user, name='Access Client')
+
+    def setUp(self):
+        self.user.refresh_from_db()
+        self.client_obj.refresh_from_db()
         cache.clear()
 
     def tearDown(self):
@@ -84,43 +89,50 @@ class ClientAccessControlTests(TestCase):
 
 
 class ClientMessagesPageTests(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         from client.models import Client
         from staff.models import Staff
 
-        self.sender = User.objects.create_user(
+        cls.sender = User.objects.create_user(
             username='sender-msg@test.com',
             email='sender-msg@test.com',
             password='pass1234',
             role='super_admin',
         )
 
-        self.client_owner = User.objects.create_user(
+        cls.client_owner = User.objects.create_user(
             username='client-owner-msg@test.com',
             email='client-owner-msg@test.com',
             password='pass1234',
             role='client',
         )
-        self.client_obj = Client.objects.create(user=self.client_owner, name='Msg Client')
+        cls.client_obj = Client.objects.create(user=cls.client_owner, name='Msg Client')
 
-        self.client_staff_user = User.objects.create_user(
+        cls.client_staff_user = User.objects.create_user(
             username='client-staff-msg@test.com',
             email='client-staff-msg@test.com',
             password='pass1234',
             role='client_staff',
         )
-        self.client_staff = Staff.objects.create(
-            user=self.client_staff_user,
+        cls.client_staff = Staff.objects.create(
+            user=cls.client_staff_user,
             staff_type='client_staff',
-            client=self.client_obj,
+            client=cls.client_obj,
         )
 
-        self.super_admin = User.objects.create_user(
+        cls.super_admin = User.objects.create_user(
             username='superadmin-msg@test.com',
             email='superadmin-msg@test.com',
             password='pass1234',
             role='super_admin',
         )
+
+    def setUp(self):
+        for attr in ('sender', 'client_owner', 'client_obj', 'client_staff_user', 'client_staff', 'super_admin'):
+            obj = getattr(self, attr, None)
+            if obj is not None and hasattr(obj, 'refresh_from_db'):
+                obj.refresh_from_db()
 
     def _create_message(self, text, recipients, scope='client_and_staff'):
         from core.models import Notification, ClientMessage
@@ -197,10 +209,11 @@ class ClientMessagesPageTests(TestCase):
 
 
 class ManageClientsPaginationTests(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         from client.models import Client
 
-        self.super_admin = User.objects.create_user(
+        cls.super_admin = User.objects.create_user(
             username='sa-manage-clients@test.com',
             email='sa-manage-clients@test.com',
             password='pass1234',
@@ -214,6 +227,9 @@ class ManageClientsPaginationTests(TestCase):
                 role='client',
             )
             Client.objects.create(user=owner, name=f'Client {idx}')
+
+    def setUp(self):
+        self.super_admin.refresh_from_db()
 
     def test_manage_clients_renders_all_rows_not_first_ten_only(self):
         self.client.login(username='sa-manage-clients@test.com', password='pass1234')
@@ -250,7 +266,8 @@ class ManageClientsPaginationTests(TestCase):
 
 
 class ManageClientsPermissionGateTests(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         from client.models import Client
         from staff.models import Staff
 
@@ -260,23 +277,29 @@ class ManageClientsPermissionGateTests(TestCase):
             password='pass1234',
             role='client',
         )
-        self.client_obj = Client.objects.create(user=owner, name='Gate Client')
+        cls.client_obj = Client.objects.create(user=owner, name='Gate Client')
         owner2 = User.objects.create_user(
             username='gate-client-owner-2@test.com',
             email='gate-client-owner-2@test.com',
             password='pass1234',
             role='client',
         )
-        self.client_obj_2 = Client.objects.create(user=owner2, name='Gate Client 2')
+        cls.client_obj_2 = Client.objects.create(user=owner2, name='Gate Client 2')
 
-        self.admin_staff = User.objects.create_user(
+        cls.admin_staff = User.objects.create_user(
             username='gate-admin-staff@test.com',
             email='gate-admin-staff@test.com',
             password='pass1234',
             role='admin_staff',
         )
-        self.staff_profile = Staff.objects.create(user=self.admin_staff, staff_type='admin_staff')
-        self.staff_profile.assigned_clients.add(self.client_obj)
+        cls.staff_profile = Staff.objects.create(user=cls.admin_staff, staff_type='admin_staff')
+        cls.staff_profile.assigned_clients.add(cls.client_obj)
+
+    def setUp(self):
+        self.client_obj.refresh_from_db()
+        self.client_obj_2.refresh_from_db()
+        self.admin_staff.refresh_from_db()
+        self.staff_profile.refresh_from_db()
 
     def test_manage_clients_allows_read_only_admin_staff_without_manage_client_permission(self):
         self.client.login(username='gate-admin-staff@test.com', password='pass1234')
