@@ -157,6 +157,21 @@ def _filter_ordered_fields_by_names(ordered_fields, allowed_names):
     return [f for f in ordered_fields if f.get('name') in allowed]
 
 
+def _promote_legacy_print_list(table):
+    """Compatibility shim: migrate legacy `print_list` rows to `generate_list`.
+
+    Older callers still invoke this helper before rendering print pages.
+    """
+    if table is None:
+        return 0
+    return int(
+        PrintRequest.objects.filter(table=table, status='print_list').update(
+            status='generate_list',
+            updated_at=timezone.now(),
+        )
+    )
+
+
 def _safe_template_pdf_url(file_field):
     """Return a usable template file URL only when the underlying file exists."""
     if not file_field:

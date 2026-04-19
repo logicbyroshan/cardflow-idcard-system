@@ -13,7 +13,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/home.html",
-                          "sha256":  "9B6B71B9F1C0C001F0F8712D3582414ACCDC7868FF2139B9115769613E0B0752"
+                          "sha256":  "E56D6F96C758E2C1DABF766A9C0DD7A1BBA343113FF48E9B2D6A1B1571CCC954"
                       },
                       {
                           "path":  "templates/mobile_app/list_page.html",
@@ -33,7 +33,7 @@
                       },
                       {
                           "path":  "templates/mobile_app/partials/hamburger_drawer.html",
-                          "sha256":  "51E0638B52DF7BB93D9F8AE3C788194CB05625DF8492D56058EFA81CB025A97F"
+                          "sha256":  "5521144E532154A90526226615410AC0AD1FC5C7FDC8A10843ACC01EF04A4E11"
                       },
                       {
                           "path":  "templates/mobile_app/partials/bottom_nav.html",

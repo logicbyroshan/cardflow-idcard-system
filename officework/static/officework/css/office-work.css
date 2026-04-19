@@ -1,53 +1,86 @@
 .office-work-page {
-  padding: 14px 18px 18px;
+  padding: 0;
 }
 
-.office-work-hero {
+.office-work-action-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.office-work-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.office-work-title {
   margin: 0;
-  padding: 0 0 10px;
-  border-bottom: 1px solid var(--color-slate-200);
-}
-
-.office-work-kicker {
-  margin: 0;
-  font-size: var(--ui-font-size-sm, 12px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-slate-500);
-}
-
-.office-work-hero h1 {
-  margin: 6px 0 4px;
-  font-size: var(--ui-font-size-4xl, 24px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--ui-font-size-lg, 15px);
   font-weight: 700;
   color: var(--color-slate-900);
 }
 
-.office-work-hero p {
-  margin: 0;
-  color: var(--color-slate-600);
+.office-work-title i {
+  color: var(--color-primary);
+  font-size: var(--ui-font-size-xl, 16px);
 }
 
-.office-work-shell {
-  margin-top: 12px;
-  border: 1px solid var(--color-slate-200);
-  border-radius: 0;
-  background: var(--color-white);
+.office-work-subtitle {
+  margin: 0;
+  color: var(--color-slate-500);
+  font-size: var(--ui-font-size-sm, 12px);
 }
 
 .office-work-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--color-slate-200);
-  background: var(--color-slate-50);
+  gap: 0;
+  border: 1px solid var(--color-slate-200);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--color-white);
 }
 
 .office-tab-btn {
-  min-width: 92px;
-  justify-content: center;
+  padding: 8px 14px;
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 600;
+  color: var(--color-slate-500);
+  background: var(--color-white);
+  border: 0;
+  border-right: 1px solid var(--color-slate-200);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.office-tab-btn:last-child {
+  border-right: 0;
+}
+
+.office-tab-btn:hover {
+  color: var(--color-slate-700);
+  background: var(--color-gray-50);
+}
+
+.office-tab-btn.is-active {
+  color: var(--color-primary);
+  background: rgba(var(--primary-rgb), 0.08);
+}
+
+.office-work-shell {
+  padding: 12px;
+  background: var(--color-gray-100);
+  min-height: calc(100vh - 150px);
 }
 
 .office-work-panels {
@@ -57,20 +90,123 @@
 .office-panel {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 12px;
 }
 
-.office-chat-shell {
-  padding: 14px;
-  border-bottom: 1px solid var(--color-slate-200);
+.office-chat-panel {
+  border: 1px solid var(--color-slate-200);
+  background: var(--color-white);
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.office-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.office-chat-header-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.office-chat-group-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#officeChatGroupSelect {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.office-chat-body {
+  flex: 1;
 }
 
 #officeChatList.client-message-thread {
-  max-height: 460px;
+  max-height: calc(100vh - 370px);
+  min-height: 320px;
   overflow-y: auto;
+  padding-right: 4px;
 }
 
-.office-chat-form,
+.office-chat-row-self {
+  justify-content: flex-end;
+}
+
+.office-chat-row-self .client-message-bubble {
+  border-color: rgba(var(--primary-rgb), 0.24);
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08) 0%, rgba(var(--primary-rgb), 0.04) 100%);
+}
+
+.office-chat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.office-chat-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.office-chat-attachment-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--color-slate-200);
+  background: var(--color-slate-50);
+  padding: 6px 8px;
+  color: var(--color-slate-700);
+  font-size: var(--ui-font-size-sm, 12px);
+  border-radius: 2px;
+}
+
+.office-chat-attachment-preview span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.office-chat-input {
+  min-height: 96px;
+}
+
+.office-chat-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.office-chat-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: var(--ui-font-size-sm, 12px);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.office-chat-file-link:hover {
+  text-decoration: underline;
+}
+
 .office-task-form,
 .office-share-form {
   display: flex;
@@ -78,17 +214,11 @@
   gap: 10px;
 }
 
-.office-chat-form {
-  padding: 12px 14px;
-  border-top: 1px solid var(--color-slate-200);
-  background: var(--color-slate-50);
-}
-
 .office-input {
   width: 100%;
-  min-height: 28px;
+  min-height: 34px;
   border: 1px solid var(--color-gray-200);
-  border-radius: 4px;
+  border-radius: 2px;
   background: var(--color-white);
   color: var(--color-slate-700);
   padding: 6px 10px;
@@ -97,30 +227,34 @@
 }
 
 textarea.office-input {
-  min-height: 74px;
+  min-height: 84px;
   resize: vertical;
 }
 
 .office-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.2);
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.22);
 }
 
 .office-section {
-  padding: 12px 14px;
-  border-top: 1px solid var(--color-slate-200);
-}
-
-.office-panel .office-section:first-child {
-  border-top: 0;
+  border: 1px solid var(--color-slate-200);
+  background: var(--color-white);
+  padding: 12px;
 }
 
 .office-section h3 {
   margin: 0 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--ui-font-size-md, 13px);
   font-weight: 700;
   color: var(--color-slate-800);
+}
+
+.office-section h3 i {
+  color: var(--color-primary);
 }
 
 .office-task-form label,
@@ -129,13 +263,192 @@ textarea.office-input {
   margin-bottom: 4px;
   font-size: var(--ui-font-size-md, 13px);
   font-weight: 600;
-  color: var(--color-slate-600);
+  color: var(--color-slate-700);
 }
 
 .office-grid-two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.office-submit-btn {
+  align-self: flex-start;
+}
+
+.office-trello-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.office-task-editor-card {
+  height: fit-content;
+  position: sticky;
+  top: 78px;
+}
+
+.office-task-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.office-task-board-shell {
+  overflow: hidden;
+}
+
+.office-kanban-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.office-kanban-column {
+  border: 1px solid var(--color-slate-200);
+  background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.03) 0%, var(--color-slate-50) 100%);
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.office-kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--color-slate-200);
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
+.office-kanban-column-header h4 {
+  margin: 0;
+  font-size: var(--ui-font-size-md, 13px);
+  color: var(--color-slate-800);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.office-kanban-count {
+  min-width: 24px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  color: var(--color-primary);
+  background: rgba(var(--primary-rgb), 0.12);
+}
+
+.office-kanban-list {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.office-kanban-column.is-drop-target .office-kanban-list {
+  background: rgba(var(--primary-rgb), 0.08);
+}
+
+.office-task-card {
+  border: 1px solid var(--color-slate-200);
+  background: var(--color-white);
+  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.08);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: grab;
+}
+
+.office-task-card.is-dragging {
+  opacity: 0.55;
+}
+
+.office-task-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.office-task-card-title {
+  margin: 0;
+  font-size: var(--ui-font-size-md, 13px);
+  color: var(--color-slate-900);
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.office-task-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-slate-600);
+  background: var(--color-slate-100);
+}
+
+.office-task-chip.priority-low {
+  color: var(--color-slate-700);
+  background: var(--color-slate-100);
+}
+
+.office-task-chip.priority-normal {
+  color: var(--color-primary);
+  background: rgba(var(--primary-rgb), 0.14);
+}
+
+.office-task-chip.priority-high {
+  color: var(--color-danger, #b42318);
+  background: var(--color-danger-soft, #fee2e2);
+}
+
+.office-task-card-desc {
+  margin: 0;
+  font-size: var(--ui-font-size-sm, 12px);
+  line-height: 1.35;
+  color: var(--color-slate-600);
+}
+
+.office-task-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--color-slate-500);
+  font-size: var(--ui-font-size-sm, 12px);
+}
+
+.office-task-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.office-task-card-footer .btn {
+  height: 30px;
+}
+
+.office-task-empty {
+  border: 1px dashed var(--color-slate-300);
+  background: rgba(var(--primary-rgb), 0.02);
+  padding: 12px;
+  color: var(--color-slate-500);
+  font-size: var(--ui-font-size-sm, 12px);
+  text-align: center;
 }
 
 .office-table-wrap {
@@ -185,16 +498,72 @@ textarea.office-input {
   height: 28px;
 }
 
-@media (max-width: 900px) {
-  .office-work-page {
-    padding: 12px;
+@media (max-width: 980px) {
+  .office-work-action-bar {
+    padding: 8px;
+  }
+
+  .office-work-subtitle {
+    display: none;
+  }
+
+  .office-work-shell {
+    padding: 8px;
+    min-height: calc(100vh - 136px);
   }
 
   .office-grid-two {
     grid-template-columns: 1fr;
   }
 
-  .office-work-tabs {
-    padding: 8px;
+  .office-trello-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .office-task-editor-card {
+    position: static;
+  }
+
+  .office-kanban-board {
+    grid-template-columns: 1fr;
+  }
+
+  .office-chat-panel {
+    min-height: 500px;
+  }
+
+  #officeChatList.client-message-thread {
+    max-height: calc(100vh - 360px);
+    min-height: 260px;
+  }
+
+  .office-chat-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .office-chat-group-tools {
+    width: 100%;
+  }
+
+  #officeChatGroupSelect {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .office-work-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .office-tab-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .office-chat-form {
+    padding: 12px;
   }
 }

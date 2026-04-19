@@ -35,7 +35,8 @@ _default_workers = 2 if _cpu_count <= 2 else min(4, _cpu_count + 1)
 bind = os.getenv("GUNICORN_BIND", "unix:/run/gunicorn.sock")
 backlog = _env_int("GUNICORN_BACKLOG", 2048, minimum=128, maximum=8192)
 
-worker_class = os.getenv("GUNICORN_WORKER_CLASS", "gthread").strip() or "gthread"
+# Default to ASGI worker so Django Channels/websockets work out of the box.
+worker_class = os.getenv("GUNICORN_WORKER_CLASS", "uvicorn.workers.UvicornWorker").strip() or "uvicorn.workers.UvicornWorker"
 workers = _env_int("WEB_CONCURRENCY", _default_workers, minimum=1, maximum=4)
 threads = _env_int("GUNICORN_THREADS", 2, minimum=1, maximum=8) if worker_class == "gthread" else 1
 

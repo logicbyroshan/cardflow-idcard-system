@@ -22,107 +22,163 @@
 
 {% block content %}
 <div class="main-content office-work-page">
-  <section class="office-work-hero">
-    <div>
-      <p class="office-work-kicker">Team Workspace</p>
-      <h1>Office Work</h1>
-      <p>Admin and Operator can chat, manage tasks, and share files in one place.</p>
+  <section class="action-bar office-work-action-bar" aria-label="Office Work controls">
+    <div class="action-bar-left">
+      <div class="office-work-heading">
+        <h1 class="office-work-title"><i class="fa-solid fa-briefcase"></i> Office Work</h1>
+        <p class="office-work-subtitle">Admin and Operator collaboration workspace</p>
+      </div>
+    </div>
+    <div class="action-bar-right">
+      <div class="office-work-tabs" role="tablist" aria-label="Office Work tabs">
+        <button type="button" class="office-tab-btn is-active" data-tab="chat" role="tab" aria-selected="true">
+          <i class="fa-solid fa-comments"></i> Chat
+        </button>
+        <button type="button" class="office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
+          <i class="fa-solid fa-list-check"></i> Tasks
+        </button>
+        <button type="button" class="office-tab-btn" data-tab="share" role="tab" aria-selected="false">
+          <i class="fa-solid fa-share-from-square"></i> Share
+        </button>
+      </div>
     </div>
   </section>
 
   <section class="office-work-shell">
-    <div class="office-work-tabs" role="tablist" aria-label="Office Work tabs">
-      <button type="button" class="btn btn-sm btn-primary office-tab-btn is-active" data-tab="chat" role="tab" aria-selected="true">
-        <i class="fa-solid fa-comments"></i> Chat
-      </button>
-      <button type="button" class="btn btn-sm btn-neutral office-tab-btn" data-tab="tasks" role="tab" aria-selected="false">
-        <i class="fa-solid fa-list-check"></i> Tasks
-      </button>
-      <button type="button" class="btn btn-sm btn-neutral office-tab-btn" data-tab="share" role="tab" aria-selected="false">
-        <i class="fa-solid fa-share-from-square"></i> Share
-      </button>
-    </div>
-
     <div class="office-work-panels">
       <section class="office-panel is-active" data-panel="chat" role="tabpanel">
-        <div class="office-chat-shell">
-          <div class="client-message-thread" id="officeChatList" aria-live="polite">
-            <div class="client-message-thread-state">Loading messages...</div>
+        <article class="office-chat-panel">
+          <header class="drawer-header client-message-drawer-header office-chat-header">
+            <div class="office-chat-header-main">
+              <h3>
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>Team Message</span>
+              </h3>
+              <span class="client-message-header-pill" id="officeChatCountPill">0 messages</span>
+            </div>
+            <div class="office-chat-group-tools">
+              <select id="officeChatGroupSelect" class="form-select form-select-sm" aria-label="Select chat group"></select>
+              <button
+                type="button"
+                id="officeCreateGroupBtn"
+                class="btn btn-sm btn-neutral"
+                {% if not can_manage_groups %}disabled{% endif %}
+                title="Create Group">
+                <i class="fa-solid fa-user-group"></i>
+                New Group
+              </button>
+            </div>
+          </header>
+
+          <div class="client-message-drawer-body office-chat-body">
+            <div class="client-message-thread" id="officeChatList" aria-live="polite">
+              <div class="client-message-thread-state">Loading messages...</div>
+            </div>
           </div>
-        </div>
-        <form id="officeChatForm" class="office-chat-form">
-          <textarea id="officeChatInput" class="office-input" rows="3" maxlength="4000" placeholder="Write a message to your office team..."></textarea>
-          <button type="submit" class="btn btn-sm btn-primary">
-            <i class="fa-solid fa-paper-plane"></i>
-            Send
-          </button>
-        </form>
+
+          <form id="officeChatForm" class="drawer-footer client-message-drawer-footer office-chat-form">
+            <textarea id="officeChatInput" class="form-textarea office-input office-chat-input" rows="3" maxlength="4000" placeholder="Write a message to your office team..."></textarea>
+            <input id="officeChatFileInput" type="file" class="office-chat-file-input" tabindex="-1" aria-hidden="true">
+            <div id="officeChatAttachmentPreview" class="office-chat-attachment-preview" hidden>
+              <span id="officeChatAttachmentName"></span>
+              <button type="button" id="officeChatAttachmentRemove" class="btn btn-sm btn-neutral">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div class="office-chat-action-row">
+              <button type="button" id="officeChatAttachBtn" class="btn btn-md btn-neutral">
+                <i class="fa-solid fa-paperclip"></i>
+                Attach / Paste File
+              </button>
+              <button type="submit" class="btn btn-md btn-primary">
+                <i class="fa-solid fa-paper-plane"></i>
+                Send Message
+              </button>
+            </div>
+          </form>
+        </article>
       </section>
 
       <section class="office-panel" data-panel="tasks" role="tabpanel" hidden>
-        <div class="office-section">
-          <h3>Create Task</h3>
-          <form id="officeTaskForm" class="office-task-form">
-            <div class="office-grid-two">
+        <div class="office-trello-layout">
+          <aside class="office-section office-task-editor-card">
+            <h3 id="officeTaskFormHeading"><i class="fa-solid fa-plus"></i> Create Card</h3>
+            <form id="officeTaskForm" class="office-task-form">
+              <input id="officeTaskEditId" type="hidden" value="">
               <div>
-                <label for="officeTaskTitle">Title</label>
-                <input id="officeTaskTitle" class="office-input" type="text" maxlength="180" placeholder="Task title" required>
+                <label for="officeTaskTitle">Card Title</label>
+                <input id="officeTaskTitle" class="office-input" type="text" maxlength="180" placeholder="What needs to be done?" required>
               </div>
               <div>
-                <label for="officeTaskAssignee">Assign To</label>
-                <select id="officeTaskAssignee" class="form-select form-select-sm">
-                  <option value="">Unassigned</option>
-                </select>
+                <label for="officeTaskDescription">Description</label>
+                <textarea id="officeTaskDescription" class="office-input" rows="4" placeholder="Add details"></textarea>
               </div>
-            </div>
-            <div class="office-grid-two">
-              <div>
-                <label for="officeTaskPriority">Priority</label>
-                <select id="officeTaskPriority" class="form-select form-select-sm">
-                  <option value="low">Low</option>
-                  <option value="normal" selected>Normal</option>
-                  <option value="high">High</option>
-                </select>
+              <div class="office-grid-two">
+                <div>
+                  <label for="officeTaskAssignee">Member</label>
+                  <select id="officeTaskAssignee" class="form-select form-select-sm">
+                    <option value="">Unassigned</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="officeTaskPriority">Priority</label>
+                  <select id="officeTaskPriority" class="form-select form-select-sm">
+                    <option value="low">Low</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label for="officeTaskDueDate">Due Date</label>
                 <input id="officeTaskDueDate" class="office-input" type="date">
               </div>
-            </div>
-            <div>
-              <label for="officeTaskDescription">Description</label>
-              <textarea id="officeTaskDescription" class="office-input" rows="3" placeholder="Optional details"></textarea>
-            </div>
-            <button type="submit" class="btn btn-sm btn-primary">
-              <i class="fa-solid fa-plus"></i>
-              Add Task
-            </button>
-          </form>
-        </div>
+              <div class="office-task-form-actions">
+                <button id="officeTaskSubmitBtn" type="submit" class="btn btn-md btn-primary office-submit-btn">
+                  <i class="fa-solid fa-plus"></i>
+                  Add Card
+                </button>
+                <button id="officeTaskCancelBtn" type="button" class="btn btn-md btn-neutral" hidden>Cancel Edit</button>
+                <button id="officeTaskDeleteBtn" type="button" class="btn btn-md btn-danger" hidden>
+                  <i class="fa-solid fa-trash"></i>
+                  Delete Card
+                </button>
+              </div>
+            </form>
+          </aside>
 
-        <div class="office-section office-table-wrap">
-          <h3>Task Board</h3>
-          <div class="office-table-scroll">
-            <table class="data-table office-table" id="officeTaskTable">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Assignee</th>
-                  <th>Due</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+          <section class="office-section office-task-board-shell">
+            <h3><i class="fa-solid fa-table-columns"></i> Team Board</h3>
+            <div id="officeTaskBoard" class="office-kanban-board" aria-live="polite">
+              <article class="office-kanban-column" data-status="todo">
+                <header class="office-kanban-column-header">
+                  <h4>To Do</h4>
+                  <span class="office-kanban-count" data-count-for="todo">0</span>
+                </header>
+                <div class="office-kanban-list" data-list-for="todo"></div>
+              </article>
+              <article class="office-kanban-column" data-status="in_progress">
+                <header class="office-kanban-column-header">
+                  <h4>In Progress</h4>
+                  <span class="office-kanban-count" data-count-for="in_progress">0</span>
+                </header>
+                <div class="office-kanban-list" data-list-for="in_progress"></div>
+              </article>
+              <article class="office-kanban-column" data-status="done">
+                <header class="office-kanban-column-header">
+                  <h4>Done</h4>
+                  <span class="office-kanban-count" data-count-for="done">0</span>
+                </header>
+                <div class="office-kanban-list" data-list-for="done"></div>
+              </article>
+            </div>
+          </section>
         </div>
       </section>
 
       <section class="office-panel" data-panel="share" role="tabpanel" hidden>
         <div class="office-section">
-          <h3>Share File</h3>
+          <h3><i class="fa-solid fa-upload"></i> Share File</h3>
           <form id="officeShareForm" class="office-share-form" enctype="multipart/form-data">
             <div class="office-grid-two">
               <div>
@@ -138,7 +194,7 @@
               <label for="officeShareNote">Note</label>
               <textarea id="officeShareNote" class="office-input" rows="3" placeholder="Optional note"></textarea>
             </div>
-            <button type="submit" class="btn btn-sm btn-primary">
+            <button type="submit" class="btn btn-md btn-primary office-submit-btn">
               <i class="fa-solid fa-upload"></i>
               Upload
             </button>
@@ -146,7 +202,7 @@
         </div>
 
         <div class="office-section office-table-wrap">
-          <h3>Shared Files</h3>
+          <h3><i class="fa-solid fa-folder-open"></i> Shared Files</h3>
           <div class="office-table-scroll">
             <table class="data-table office-table" id="officeShareTable">
               <thead>
@@ -173,7 +229,18 @@
 <script>
 window.OfficeWorkConfig = {
   currentUserId: {{ request.user.id|default:0 }},
+  canManageGroups: {{ can_manage_groups|yesno:'true,false' }},
+  realtime: {
+    wsPath: "/ws/panel/realtime/",
+    chatTopicPrefix: "officework.chat.group.",
+    userTopicPrefix: "officework.chat.user.",
+    tasksTopic: "officework.tasks",
+    shareTopic: "officework.share"
+  },
   endpoints: {
+    chatGroupsList: "{% url 'api_office_work_chat_groups_list' %}",
+    chatGroupCreate: "{% url 'api_office_work_chat_group_create' %}",
+    chatGroupMembersUpdateBase: "/api/office-work/chat/groups/",
     chatList: "{% url 'api_office_work_chat_list' %}",
     chatSend: "{% url 'api_office_work_chat_send' %}",
     tasksList: "{% url 'api_office_work_tasks_list' %}",
@@ -188,5 +255,5 @@ window.OfficeWorkConfig = {
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'officework/js/office-work.js' %}"></script>
+<script defer src="{% static 'officework/js/office-work.js' %}"></script>
 {% endblock %}

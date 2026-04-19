@@ -9,8 +9,91 @@ def office_work_shared_file_upload_to(instance, filename):
     return f'office-work/shared/{timezone.now():%Y/%m/%d}/{safe_name}'
 
 
+def office_work_chat_attachment_upload_to(instance, filename):
+    import os
+
+    safe_name = os.path.basename(str(filename or '').strip()) or 'chat-file'
+    group_id = getattr(instance, 'group_id', None) or 'general'
+    return f'office-work/chat/{group_id}/{timezone.now():%Y/%m/%d}/{safe_name}'
+
+
+class OfficeWorkChatGroup(models.Model):
+    """Office Work chat group visible to selected members."""
+
+    name = models.CharField(max_length=120)
+    created_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='office_work_chat_groups_created',
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name', 'id']
+        db_table = 'core_officeworkchatgroup'
+        indexes = [
+            models.Index(fields=['is_active', 'name'], name='owchatgrp_active_name_idx'),
+        ]
+        verbose_name = 'Office Work Chat Group'
+        verbose_name_plural = 'Office Work Chat Groups'
+
+    def __str__(self):
+        return self.name
+
+
+class OfficeWorkChatGroupMember(models.Model):
+    """Membership map for Office Work chat groups."""
+
+    group = models.ForeignKey(
+        OfficeWorkChatGroup,
+        on_delete=models.CASCADE,
+        related_name='memberships',
+    )
+    user = models.ForeignKey(
+        'core.User',
+        on_delete=models.CASCADE,
+        related_name='office_work_chat_memberships',
+    )
+    added_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='office_work_chat_members_added',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['id']
+        db_table = 'core_officeworkchatgroupmember'
+        constraints = [
+            models.UniqueConstraint(fields=['group', 'user'], name='owchat_group_user_unique'),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'group'], name='owchatgm_user_group_idx'),
+            models.Index(fields=['group', 'created_at'], name='owchatgm_group_created_idx'),
+        ]
+        verbose_name = 'Office Work Chat Group Member'
+        verbose_name_plural = 'Office Work Chat Group Members'
+
+    def __str__(self):
+        return f'{self.user_id} in {self.group_id}'
+
+
 class OfficeWorkChatMessage(models.Model):
     """Simple team chat stream for super_admin/admin_staff collaboration."""
+
+    group = models.ForeignKey(
+        OfficeWorkChatGroup,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='messages',
+    )
 
     sender = models.ForeignKey(
         'core.User',
@@ -20,12 +103,17 @@ class OfficeWorkChatMessage(models.Model):
         related_name='office_work_chat_messages',
     )
     message = models.TextField()
+    attachment = models.FileField(upload_to=office_work_chat_attachment_upload_to, null=True, blank=True)
+    attachment_original_name = models.CharField(max_length=255, blank=True, default='')
+    attachment_size_bytes = models.BigIntegerField(default=0)
+    attachment_content_type = models.CharField(max_length=160, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['-id']
         db_table = 'core_officeworkchatmessage'
         indexes = [
+            models.Index(fields=['group', '-id'], name='owchat_group_id_idx'),
             models.Index(fields=['-created_at'], name='owchat_created_idx'),
         ]
         verbose_name = 'Office Work Chat Message'
@@ -35,6 +123,15 @@ class OfficeWorkChatMessage(models.Model):
         author = self.sender.get_full_name() if self.sender else 'Unknown'
         author = author or (self.sender.username if self.sender else 'Unknown')
         return f'OfficeChat<{author}: {self.message[:40]}>'
+
+    def save(self, *args, **kwargs):
+        if self.attachment:
+            self.attachment_original_name = self.attachment_original_name or self.attachment.name.rsplit('/', 1)[-1]
+            try:
+                self.attachment_size_bytes = int(getattr(self.attachment, 'size', 0) or 0)
+            except Exception:
+                self.attachment_size_bytes = 0
+        super().save(*args, **kwargs)
 
 
 class OfficeWorkTask(models.Model):

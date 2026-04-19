@@ -127,6 +127,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'core',
     'accounts',
     'client',
@@ -198,6 +199,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # =============================================================================
@@ -596,6 +598,37 @@ if not DEBUG and CACHES['default']['BACKEND'].endswith('LocMemCache'):
         'are NOT shared between Gunicorn workers. '
         'Set REDIS_URL in .env for production (e.g. REDIS_URL=redis://127.0.0.1:6379/1).'
     )
+
+# =============================================================================
+# REAL-TIME (DJANGO CHANNELS)
+# =============================================================================
+
+# Reuse existing Redis by default so websocket fanout is shared across workers.
+# Override REDIS_CHANNEL_LAYER_URL only when channel traffic must use a different Redis.
+REDIS_CHANNEL_LAYER_URL = os.getenv('REDIS_CHANNEL_LAYER_URL', '').strip() or REDIS_LOCATION
+REDIS_CHANNEL_PREFIX = os.getenv('REDIS_CHANNEL_PREFIX', 'adarsh:realtime').strip() or 'adarsh:realtime'
+REDIS_CHANNEL_CAPACITY = _env_int('REDIS_CHANNEL_CAPACITY', 1500, minimum=100, maximum=20000)
+REDIS_CHANNEL_EXPIRY = _env_int('REDIS_CHANNEL_EXPIRY', 30, minimum=5, maximum=3600)
+
+if REDIS_CHANNEL_LAYER_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_CHANNEL_LAYER_URL],
+                'capacity': REDIS_CHANNEL_CAPACITY,
+                'expiry': REDIS_CHANNEL_EXPIRY,
+                'prefix': REDIS_CHANNEL_PREFIX,
+            },
+        }
+    }
+else:
+    # Local fallback when Redis is not configured (DEBUG-only expected).
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
 
 
 # =============================================================================

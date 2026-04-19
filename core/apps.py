@@ -29,8 +29,9 @@ class CoreConfig(AppConfig):
             python manage.py migrate
             python manage.py createsuperuser
         
-        For Render deployment, the start command runs:
-            python startup.py && gunicorn config.wsgi
+        For deployment, the start command should use ASGI app so websocket
+        routes are available, e.g.:
+            python startup.py && gunicorn config.asgi:application
         """
 
         # ── Pillow decompression-bomb guard (set once, process-wide) ──
