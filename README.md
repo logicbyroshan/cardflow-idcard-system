@@ -589,6 +589,29 @@ python manage.py check
 python manage.py test
 ```
 
+Pytest lanes (recommended for daily workflow):
+
+```bash
+# Fast local loop
+python -m pytest -m "not slow and not very_slow" --reuse-db -q
+
+# PR/business-critical lane
+python -m pytest -m "important and not very_slow" --reuse-db -q
+
+# Slow integration lane
+python -m pytest -m "slow and not very_slow" --reuse-db -q
+
+# Very slow/nightly lane
+python -m pytest -m "very_slow" --reuse-db -q
+
+# Full release lane
+python -m pytest --reuse-db --durations=80 --durations-min=0.5 -q
+```
+
+Detailed lane guide:
+
+- docs/testing-lanes.md
+
 Focused regression examples:
 
 ```bash
