@@ -43,6 +43,9 @@
           <i class="fa-solid fa-wave-square"></i> Logs &amp; Updates
         </button>
         {% endif %}
+        <button class="panel-tab" data-tab="batch-jobs" onclick="switchTab('batch-jobs')">
+          <i class="fa-solid fa-bars-progress"></i> Batch Jobs
+        </button>
         {% if is_super_admin or perm_manage_panel_backup %}
         <button class="panel-tab" data-tab="backups" onclick="switchTab('backups')">
           <i class="fa-solid fa-database"></i> Backups
@@ -61,6 +64,7 @@
       {% if is_super_admin %}{% include 'partials/panel/tab-notifications.html' %}{% endif %}
       {% if is_super_admin or perm_manage_panel_email %}{% include 'partials/panel/tab-email-logs.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-log-history.html' %}{% endif %}
+      {% include 'partials/panel/tab-batch-jobs.html' %}
       {% if is_super_admin or perm_manage_panel_backup %}{% include 'partials/panel/tab-backups.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-download-templates.html' %}{% endif %}
       {% if is_super_admin %}{% include 'partials/panel/tab-server-info.html' %}{% endif %}

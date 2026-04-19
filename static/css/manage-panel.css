@@ -157,6 +157,209 @@
 }
 
 /* ================================
+   BATCH JOBS TAB
+   ================================ */
+
+#tab-batch-jobs .notif-actions-bar {
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+#tab-batch-jobs .panel-batch-jobs-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 20px 14px;
+}
+
+#tab-batch-jobs .batch-jobs-panel-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-indigo-100);
+  background: var(--color-indigo-50);
+  color: var(--color-blue-700);
+  font-size: var(--ui-font-size-xs, 11px);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+#tab-batch-jobs .batch-job-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#tab-batch-jobs .batch-job-stat-card {
+  border: 1px solid var(--color-slate-200);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#tab-batch-jobs .batch-job-stat-label {
+  font-size: var(--ui-font-size-2xs, 10px);
+  font-weight: 700;
+  color: var(--color-slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#tab-batch-jobs .batch-job-stat-value {
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  color: var(--color-slate-800);
+}
+
+#tab-batch-jobs .batch-job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#tab-batch-jobs .batch-job-item {
+  border: 1px solid var(--color-slate-200);
+  border-radius: 8px;
+  background: var(--color-white);
+  padding: 9px 10px;
+}
+
+#tab-batch-jobs .batch-job-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#tab-batch-jobs .batch-job-title {
+  font-size: var(--ui-font-size-sm, 12px);
+  font-weight: 700;
+  color: var(--color-slate-800);
+}
+
+#tab-batch-jobs .batch-job-owner {
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+}
+
+#tab-batch-jobs .batch-job-status-pill {
+  margin-left: auto;
+  font-size: var(--ui-font-size-2xs, 10px);
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--color-slate-300);
+  padding: 2px 8px;
+  color: var(--color-slate-700);
+  background: var(--color-slate-100);
+}
+
+#tab-batch-jobs .batch-job-status-pill.is-pending {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+#tab-batch-jobs .batch-job-status-pill.is-processing {
+  color: #1e40af;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+#tab-batch-jobs .batch-job-status-pill.is-completed {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+#tab-batch-jobs .batch-job-status-pill.is-failed {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+#tab-batch-jobs .batch-job-status-pill.is-cancelled {
+  color: #334155;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+#tab-batch-jobs .batch-job-progress-line {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+#tab-batch-jobs .batch-job-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb 0%, #10b981 100%);
+}
+
+#tab-batch-jobs .batch-job-meta {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+}
+
+#tab-batch-jobs .batch-job-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#tab-batch-jobs .batch-job-action-btn {
+  border: 1px solid var(--color-slate-300);
+  background: var(--color-white);
+  color: var(--color-slate-700);
+  border-radius: 6px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: var(--ui-font-size-2xs, 10px);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#tab-batch-jobs .batch-job-action-btn:hover {
+  background: #f8fafc;
+}
+
+#tab-batch-jobs .batch-job-action-btn[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+#tab-batch-jobs .batch-job-empty {
+  border: 1px dashed var(--color-slate-300);
+  border-radius: 8px;
+  background: var(--color-white);
+  padding: 14px;
+  color: var(--color-slate-500);
+  font-size: var(--ui-font-size-sm, 12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+@media (max-width: 1024px) {
+  #tab-batch-jobs .batch-job-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ================================
    NOTIFICATIONS TAB
    ================================ */
 

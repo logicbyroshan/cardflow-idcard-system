@@ -22,9 +22,22 @@ let _domainCanSendProAccess = false;
 let _domainStatusLoading = false;
 let _domainToggleBusy = false;
 let _domainEmailBusy = false;
+let _batchJobsAutoRefreshTimer = null;
 const MANAGE_PANEL_TAB_KEY = 'managePanel:lastTab';
 const SERVER_INFO_LOCAL_CACHE_KEY = 'managePanel:serverInfoSnapshot:v2';
 const SERVER_INFO_LOCAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const MANAGE_PANEL_BATCH_REFRESH_MS = 30000;
+const MANAGE_PANEL_BASE = window.location.pathname.indexOf('/panel/') === 0 ? '/panel' : '';
+
+function managePanelUrl(path) {
+  if (!path) return path;
+  const raw = String(path);
+  if (raw.indexOf('http://') === 0 || raw.indexOf('https://') === 0) return raw;
+  if (raw.indexOf('/panel/') === 0) return raw;
+  const normalized = raw.charAt(0) === '/' ? raw : ('/' + raw);
+  if (MANAGE_PANEL_BASE) return MANAGE_PANEL_BASE + normalized;
+  return normalized;
+}
 
 function _isPageReloadNavigation() {
   try {
@@ -68,6 +81,222 @@ function _getAvailablePanelTabs() {
     .map(function (el) { return el.getAttribute('data-tab') || ''; })
     .filter(Boolean);
 }
+
+function _formatBatchJobDuration(totalSeconds) {
+  const seconds = Number(totalSeconds);
+  if (!Number.isFinite(seconds) || seconds < 0) return '-';
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  if (hours < 24) return remMinutes ? `${hours}h ${remMinutes}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours ? `${days}d ${remHours}h` : `${days}d`;
+}
+
+function _formatBatchJobUpdatedAt() {
+  const now = new Date();
+  return `Updated ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function _batchJobStatusClass(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (!normalized) return '';
+  return 'is-' + normalized;
+}
+
+function _renderManagePanelBatchJobRows(tasks) {
+  if (!Array.isArray(tasks) || !tasks.length) {
+    return '<div class="batch-job-empty"><i class="fa-solid fa-circle-info"></i>No batch jobs found yet.</div>';
+  }
+
+  return tasks.map((task) => {
+    const status = String(task.status || '').toLowerCase();
+    const statusDisplay = escHtml(task.status_display || task.status || 'Unknown');
+    const typeDisplay = escHtml(task.task_type_display || task.task_type || 'Task');
+    const owner = escHtml(task.owner_name || 'You');
+    const stage = escHtml(task.stage_label || statusDisplay);
+    const progress = Number(task.progress) || 0;
+    const total = Number(task.total) || 0;
+    const progressPercentage = Math.max(0, Math.min(100, Number(task.progress_percentage) || 0));
+    const elapsed = _formatBatchJobDuration(task.elapsed_seconds);
+    const eta = task.eta_seconds == null ? '-' : _formatBatchJobDuration(task.eta_seconds);
+    const metaProgress = total > 0 ? `${progress.toLocaleString()} / ${total.toLocaleString()}` : `${progress.toLocaleString()}`;
+    const createdAt = task.created_at ? new Date(task.created_at).toLocaleString() : '-';
+
+    const taskId = Number(task.task_id || 0);
+    const canCancel = !!task.can_cancel && Number.isInteger(taskId) && taskId > 0;
+    const cancelBtn = canCancel
+      ? `<button type="button" class="batch-job-action-btn" data-batch-job-cancel="${taskId}">Cancel</button>`
+      : '';
+    const downloadUrl = String(task.download_url || '').trim();
+    const downloadBtn = downloadUrl
+      ? `<button type="button" class="batch-job-action-btn" data-batch-job-download="${escAttr(downloadUrl)}">Download</button>`
+      : '';
+
+    return `
+      <div class="batch-job-item">
+        <div class="batch-job-row">
+          <div>
+            <div class="batch-job-title">${typeDisplay}</div>
+            <div class="batch-job-owner">Owner: ${owner}</div>
+          </div>
+          <span class="batch-job-status-pill ${_batchJobStatusClass(status)}">${statusDisplay}</span>
+        </div>
+        <div class="batch-job-progress-line">
+          <div class="batch-job-progress-fill" style="width: ${progressPercentage}%;"></div>
+        </div>
+        <div class="batch-job-meta">
+          <span><strong>${metaProgress}</strong> (${progressPercentage}%)</span>
+          <span>Stage: ${stage}</span>
+          <span>Elapsed: ${elapsed}</span>
+          <span>ETA: ${eta}</span>
+          <span>Created: ${escHtml(createdAt)}</span>
+          <span class="batch-job-actions">${cancelBtn}${downloadBtn}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function _bindManagePanelBatchJobActions() {
+  const listEl = document.getElementById('batchJobProgressList');
+  if (!listEl || listEl.dataset.boundBatchActions === '1') return;
+
+  listEl.addEventListener('click', async function(event) {
+    const cancelBtn = event.target.closest('[data-batch-job-cancel]');
+    if (cancelBtn) {
+      event.preventDefault();
+      const taskId = Number(cancelBtn.getAttribute('data-batch-job-cancel') || 0);
+      if (!Number.isInteger(taskId) || taskId <= 0) return;
+
+      cancelBtn.disabled = true;
+      try {
+        const res = await fetch(managePanelUrl(`/api/task-cancel/${taskId}/`), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (res.ok && data && data.success) {
+          if (typeof showToast === 'function') showToast(data.message || 'Task cancel requested', 'success');
+        } else if (typeof showToast === 'function') {
+          showToast((data && data.message) || 'Unable to cancel task', 'error');
+        }
+      } catch (err) {
+        console.error('batch job cancel failed:', err);
+        if (typeof showToast === 'function') showToast('Unable to cancel task', 'error');
+      } finally {
+        window.loadManagePanelBatchJobProgressCenter(false);
+      }
+      return;
+    }
+
+    const downloadBtn = event.target.closest('[data-batch-job-download]');
+    if (downloadBtn) {
+      event.preventDefault();
+      const downloadUrl = downloadBtn.getAttribute('data-batch-job-download') || '';
+      if (!downloadUrl) return;
+      window.location.href = managePanelUrl(downloadUrl);
+    }
+  });
+
+  listEl.dataset.boundBatchActions = '1';
+}
+
+function _syncBatchJobsAutoRefresh(shouldRun) {
+  if (!shouldRun) {
+    if (_batchJobsAutoRefreshTimer) {
+      clearInterval(_batchJobsAutoRefreshTimer);
+      _batchJobsAutoRefreshTimer = null;
+    }
+    return;
+  }
+
+  if (_batchJobsAutoRefreshTimer) return;
+
+  _batchJobsAutoRefreshTimer = setInterval(function () {
+    const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
+    if (activeTab === 'batch-jobs' && !document.hidden) {
+      window.loadManagePanelBatchJobProgressCenter(false);
+    }
+  }, MANAGE_PANEL_BATCH_REFRESH_MS);
+}
+
+window.loadManagePanelBatchJobProgressCenter = async function(showLoadingState) {
+  const listEl = document.getElementById('batchJobProgressList');
+  if (!listEl) return;
+
+  const activeCountEl = document.getElementById('batchJobActiveCount');
+  const pendingCountEl = document.getElementById('batchJobPendingCount');
+  const processingCountEl = document.getElementById('batchJobProcessingCount');
+  const completedCountEl = document.getElementById('batchJobCompletedCount');
+  const failedCountEl = document.getElementById('batchJobFailedCount');
+  const updatedAtEl = document.getElementById('batchJobLastUpdated');
+  const refreshBtn = document.getElementById('batchJobRefreshBtn');
+  const shouldShowLoading = showLoadingState !== false;
+
+  _bindManagePanelBatchJobActions();
+
+  if (shouldShowLoading) {
+    listEl.innerHTML = '<div class="batch-job-empty"><i class="fa-solid fa-spinner fa-spin"></i>Loading batch jobs...</div>';
+  }
+
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing';
+  }
+
+  try {
+    const res = await fetch(managePanelUrl('/api/task-progress-center/?limit=8'), {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if (!res.ok) throw new Error('Failed to load task progress center');
+
+    const data = await res.json();
+    if (!data || !data.success) {
+      throw new Error((data && data.message) || 'Failed to load task progress center');
+    }
+
+    const stats = data.stats || {};
+    const activeCount = Number(stats.active) || 0;
+    const pendingCount = Number(stats.pending) || 0;
+    const processingCount = Number(stats.processing) || 0;
+    const completed24hCount = Number(stats.completed_24h) || 0;
+    const failed24hCount = Number(stats.failed_24h) || 0;
+
+    if (activeCountEl) activeCountEl.textContent = activeCount.toLocaleString();
+    if (pendingCountEl) pendingCountEl.textContent = pendingCount.toLocaleString();
+    if (processingCountEl) processingCountEl.textContent = processingCount.toLocaleString();
+    if (completedCountEl) completedCountEl.textContent = completed24hCount.toLocaleString();
+    if (failedCountEl) failedCountEl.textContent = failed24hCount.toLocaleString();
+    if (updatedAtEl) updatedAtEl.textContent = _formatBatchJobUpdatedAt();
+
+    listEl.innerHTML = _renderManagePanelBatchJobRows(data.tasks || []);
+  } catch (error) {
+    console.error('Error loading batch jobs:', error);
+    if (activeCountEl) activeCountEl.textContent = '0';
+    if (pendingCountEl) pendingCountEl.textContent = '0';
+    if (processingCountEl) processingCountEl.textContent = '0';
+    if (completedCountEl) completedCountEl.textContent = '0';
+    if (failedCountEl) failedCountEl.textContent = '0';
+    if (updatedAtEl) updatedAtEl.textContent = 'Update failed';
+    listEl.innerHTML = '<div class="batch-job-empty"><i class="fa-solid fa-triangle-exclamation"></i>Unable to load batch jobs right now.</div>';
+  } finally {
+    if (refreshBtn) {
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+    }
+  }
+};
 
 function _loadInitialManagePanelTabData(tabName) {
   if (!tabName) return;
@@ -3222,9 +3451,11 @@ document.addEventListener('keydown', function (e) {
 const _origSwitchTab = switchTab;
 switchTab = function(tabName) {
   _origSwitchTab(tabName);
+  if (tabName === 'batch-jobs') window.loadManagePanelBatchJobProgressCenter(false);
   if (tabName === 'download-templates' && !panelTemplates.length) loadTemplates();
   if (tabName === 'log-history' && !operationsFeed.length) loadOperationsFeed();
   _syncOpsAutoRefresh(tabName === 'log-history');
+  _syncBatchJobsAutoRefresh(tabName === 'batch-jobs');
 };
 
 /* ============ Monitoring (legacy alias -> Logs & Updates) ============ */
@@ -3251,10 +3482,18 @@ document.addEventListener('visibilitychange', function () {
   const activeTab = document.querySelector('.panel-tab.active')?.dataset?.tab;
   if (activeTab === 'log-history' && !document.hidden) {
     _syncOpsAutoRefresh(true);
+    _syncBatchJobsAutoRefresh(false);
+    return;
+  }
+  if (activeTab === 'batch-jobs' && !document.hidden) {
+    _syncOpsAutoRefresh(false);
+    _syncBatchJobsAutoRefresh(true);
+    window.loadManagePanelBatchJobProgressCenter(false);
     return;
   }
   if (document.hidden) {
     _syncOpsAutoRefresh(false);
+    _syncBatchJobsAutoRefresh(false);
   }
 });
 

@@ -1,10 +1,22 @@
-<!-- Batch Job Progress Center -->
-<div class="dashboard-card">
-  <div class="dashboard-card-header batch-job-header">
-    <h3><i class="fa-solid fa-bars-progress"></i> Batch Job Progress Center</h3>
-    <div class="batch-job-header-meta" id="batchJobLastUpdated">Updated just now</div>
+<!-- === BATCH JOBS TAB === -->
+<div class="panel-tab-content panel-tab-full-height batch-jobs-panel-theme" id="tab-batch-jobs">
+  <div class="notif-actions-bar">
+    <div class="notif-actions-left">
+      <span class="batch-jobs-panel-kicker">
+        <i class="fa-solid fa-bars-progress"></i>
+        Batch Jobs
+      </span>
+      <span class="panel-subnote">Track active, pending, completed, and failed tasks in real time.</span>
+    </div>
+    <div class="notif-actions-right">
+      <span class="panel-muted-count" id="batchJobLastUpdated">Updated just now</span>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="batchJobRefreshBtn" onclick="loadManagePanelBatchJobProgressCenter(true)">
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+      </button>
+    </div>
   </div>
-  <div class="dashboard-card-body tall-body">
+
+  <div class="panel-batch-jobs-scroll">
     <div class="batch-job-stats">
       <div class="batch-job-stat-card">
         <span class="batch-job-stat-label">Active</span>
