@@ -4,6 +4,7 @@
 
 .office-work-action-bar {
   position: sticky;
+  overflow: hidden;
   top: 0;
   z-index: 20;
   gap: 12px;
@@ -96,16 +97,169 @@
 .office-chat-panel {
   border: 1px solid var(--color-slate-200);
   background: var(--color-white);
-  display: flex;
-  flex-direction: column;
+  min-height: 560px;
+  overflow: hidden;
+}
+
+.office-chat-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   min-height: 560px;
 }
 
-.office-chat-header {
+.office-chat-sidebar {
+  border-right: 1px solid var(--color-slate-200);
+  background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.office-chat-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid var(--color-slate-200);
+}
+
+.office-chat-sidebar-head h3 {
+  margin: 0;
+  font-size: var(--ui-font-size-md, 13px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-slate-800);
+}
+
+.office-chat-sidebar-head h3 i {
+  color: #22c55e;
+}
+
+.office-chat-search-row {
+  padding: 10px;
+  border-bottom: 1px solid var(--color-slate-200);
+}
+
+.office-chat-groups-list {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.office-chat-group-row {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.office-chat-group-row:hover {
+  background: #edf5ff;
+  border-color: #dbe7f6;
+}
+
+.office-chat-group-row.is-active {
+  background: #e4f0ff;
+  border-color: #9cc4f4;
+  box-shadow: inset 0 0 0 1px rgba(42, 127, 218, 0.22);
+}
+
+.office-chat-group-row-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.office-chat-group-row-title {
+  color: var(--color-slate-900);
+  font-size: var(--ui-font-size-md, 13px);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.office-chat-group-row-count {
+  border-radius: 999px;
+  min-width: 22px;
+  padding: 2px 6px;
+  font-size: var(--ui-font-size-xs, 11px);
+  font-weight: 700;
+  text-align: center;
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+.office-chat-group-row-sub {
+  margin-top: 4px;
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.office-chat-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.office-chat-header {
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-slate-200);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.office-chat-header h3 {
+  margin: 0;
+  font-size: var(--ui-font-size-md, 13px);
+}
+
+.office-chat-header h3 i {
+  color: var(--color-primary);
+}
+
+.office-chat-message-pill {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-primary);
+}
+
+.office-chat-group-meta {
+  font-size: var(--ui-font-size-xs, 11px);
+  color: var(--color-slate-500);
+  text-align: right;
+}
+
+.office-chat-members-strip {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-slate-200);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #fbfdff;
+}
+
+.office-chat-member-chip {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: var(--ui-font-size-xs, 11px);
+  font-weight: 600;
+  background: #edf3fb;
+  color: #28537a;
 }
 
 .office-chat-header-main {
@@ -118,7 +272,8 @@
 .office-chat-group-tools {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
 #officeChatGroupSelect {
@@ -134,7 +289,7 @@
   max-height: calc(100vh - 370px);
   min-height: 320px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 4px 6px 4px 0;
 }
 
 .office-chat-row-self {
@@ -149,8 +304,11 @@
 .office-chat-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: stretch;
+  padding: 10px 12px;
+  border-top: 1px solid var(--color-slate-200);
+  background: var(--color-white);
 }
 
 .office-chat-file-input {
@@ -182,15 +340,44 @@
 }
 
 .office-chat-input {
-  min-height: 96px;
+  min-height: 54px;
+  max-height: 140px;
+  resize: vertical;
+  padding: 12px 94px 10px 42px;
+  border-radius: 16px;
 }
 
-.office-chat-action-row {
+.office-chat-composer {
+  position: relative;
+}
+
+.office-chat-composer-btn {
+  position: absolute;
+  bottom: 10px;
+  border: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.office-chat-composer-btn-attach {
+  left: 10px;
+  background: #ebf2fb;
+  color: var(--color-slate-600);
+}
+
+.office-chat-composer-btn-send {
+  right: 10px;
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.office-chat-composer-btn:hover {
+  filter: brightness(0.96);
 }
 
 .office-chat-file-link {
@@ -532,6 +719,16 @@ textarea.office-input {
     min-height: 500px;
   }
 
+  .office-chat-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .office-chat-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-slate-200);
+    max-height: 260px;
+  }
+
   #officeChatList.client-message-thread {
     max-height: calc(100vh - 360px);
     min-height: 260px;
@@ -544,6 +741,7 @@ textarea.office-input {
 
   .office-chat-group-tools {
     width: 100%;
+    justify-content: flex-start;
   }
 
   #officeChatGroupSelect {
@@ -564,6 +762,15 @@ textarea.office-input {
   }
 
   .office-chat-form {
-    padding: 12px;
+    padding: 10px;
+  }
+
+  .office-chat-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .office-chat-group-meta {
+    text-align: left;
   }
 }

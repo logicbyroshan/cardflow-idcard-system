@@ -48,54 +48,69 @@
     <div class="office-work-panels">
       <section class="office-panel is-active" data-panel="chat" role="tabpanel">
         <article class="office-chat-panel">
-          <header class="drawer-header client-message-drawer-header office-chat-header">
-            <div class="office-chat-header-main">
-              <h3>
-                <i class="fa-solid fa-paper-plane"></i>
-                <span>Team Message</span>
-              </h3>
-              <span class="client-message-header-pill" id="officeChatCountPill">0 messages</span>
-            </div>
-            <div class="office-chat-group-tools">
-              <select id="officeChatGroupSelect" class="form-select form-select-sm" aria-label="Select chat group"></select>
-              <button
-                type="button"
-                id="officeCreateGroupBtn"
-                class="btn btn-sm btn-neutral"
-                {% if not can_manage_groups %}disabled{% endif %}
-                title="Create Group">
-                <i class="fa-solid fa-user-group"></i>
-                New Group
-              </button>
-            </div>
-          </header>
+          <div class="office-chat-layout">
+            <aside class="office-chat-sidebar" aria-label="Groups and contacts">
+              <div class="office-chat-sidebar-head">
+                <h3><i class="fa-brands fa-whatsapp"></i> Chats</h3>
+                <button
+                  type="button"
+                  id="officeCreateGroupBtn"
+                  class="btn btn-sm btn-neutral"
+                  {% if not can_manage_groups %}disabled{% endif %}
+                  title="Create Group">
+                  <i class="fa-solid fa-user-group"></i>
+                  New Group
+                </button>
+              </div>
+              <div class="office-chat-search-row">
+                <input id="officeChatGroupSearch" type="text" class="office-input" placeholder="Search groups or members..." aria-label="Search groups">
+              </div>
+              <div id="officeChatGroupsList" class="office-chat-groups-list" role="listbox" aria-label="Office Work groups"></div>
+            </aside>
 
-          <div class="client-message-drawer-body office-chat-body">
-            <div class="client-message-thread" id="officeChatList" aria-live="polite">
-              <div class="client-message-thread-state">Loading messages...</div>
+            <div class="office-chat-main">
+              <header class="drawer-header office-chat-header">
+                <div class="office-chat-header-main">
+                  <h3>
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span id="officeChatActiveGroupName">Team Message</span>
+                  </h3>
+                  <span class="client-message-header-pill office-chat-message-pill" id="officeChatCountPill">0 messages</span>
+                </div>
+                <div class="office-chat-group-tools">
+                  <span id="officeChatActiveGroupMeta" class="office-chat-group-meta">Select a group to start messaging.</span>
+                  <select id="officeChatGroupSelect" class="form-select form-select-sm" aria-label="Select chat group" hidden></select>
+                </div>
+              </header>
+
+              <div id="officeChatMembersStrip" class="office-chat-members-strip" aria-live="polite"></div>
+
+              <div class="client-message-drawer-body office-chat-body">
+                <div class="client-message-thread" id="officeChatList" aria-live="polite">
+                  <div class="client-message-thread-state">Loading messages...</div>
+                </div>
+              </div>
+
+              <form id="officeChatForm" class="drawer-footer client-message-drawer-footer office-chat-form">
+                <input id="officeChatFileInput" type="file" class="office-chat-file-input" tabindex="-1" aria-hidden="true">
+                <div class="office-chat-composer" role="group" aria-label="Message composer">
+                  <textarea id="officeChatInput" class="form-textarea office-input office-chat-input" rows="3" maxlength="4000" placeholder="Type a message..."></textarea>
+                  <button type="button" id="officeChatAttachBtn" class="office-chat-composer-btn office-chat-composer-btn-attach" title="Attach or paste file">
+                    <i class="fa-solid fa-paperclip"></i>
+                  </button>
+                  <button type="submit" class="office-chat-composer-btn office-chat-composer-btn-send" title="Send message">
+                    <i class="fa-solid fa-paper-plane"></i>
+                  </button>
+                </div>
+                <div id="officeChatAttachmentPreview" class="office-chat-attachment-preview" hidden>
+                  <span id="officeChatAttachmentName"></span>
+                  <button type="button" id="officeChatAttachmentRemove" class="btn btn-sm btn-neutral">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-
-          <form id="officeChatForm" class="drawer-footer client-message-drawer-footer office-chat-form">
-            <textarea id="officeChatInput" class="form-textarea office-input office-chat-input" rows="3" maxlength="4000" placeholder="Write a message to your office team..."></textarea>
-            <input id="officeChatFileInput" type="file" class="office-chat-file-input" tabindex="-1" aria-hidden="true">
-            <div id="officeChatAttachmentPreview" class="office-chat-attachment-preview" hidden>
-              <span id="officeChatAttachmentName"></span>
-              <button type="button" id="officeChatAttachmentRemove" class="btn btn-sm btn-neutral">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-            <div class="office-chat-action-row">
-              <button type="button" id="officeChatAttachBtn" class="btn btn-md btn-neutral">
-                <i class="fa-solid fa-paperclip"></i>
-                Attach / Paste File
-              </button>
-              <button type="submit" class="btn btn-md btn-primary">
-                <i class="fa-solid fa-paper-plane"></i>
-                Send Message
-              </button>
-            </div>
-          </form>
         </article>
       </section>
 
