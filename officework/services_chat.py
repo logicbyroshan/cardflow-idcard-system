@@ -20,7 +20,6 @@ from .models import OfficeWorkChatGroup, OfficeWorkChatGroupMember, OfficeWorkCh
 
 MAX_CHAT_MESSAGE_LENGTH = 4000
 MAX_CHAT_ATTACHMENT_BYTES = 50 * 1024 * 1024
-DEFAULT_GROUP_NAME = 'General'
 
 
 def officework_allowed_members_qs():
@@ -28,7 +27,7 @@ def officework_allowed_members_qs():
 
     User = get_user_model()
     return (
-        User.objects.filter(role__in=('super_admin', 'admin_staff'), is_active=True)
+        User.objects.filter(role__in=('pro_user', 'super_admin', 'admin_staff'), is_active=True)
         .only('id', 'first_name', 'last_name', 'username', 'email', 'role')
         .order_by('first_name', 'username', 'id')
     )
@@ -106,26 +105,7 @@ def user_can_manage_officework_groups(user) -> bool:
     return PermissionService.is_any_admin(user)
 
 
-def ensure_default_group_for_user(user) -> OfficeWorkChatGroup:
-    group, _ = OfficeWorkChatGroup.objects.get_or_create(
-        name=DEFAULT_GROUP_NAME,
-        defaults={
-            'created_by': user if getattr(user, 'is_authenticated', False) else None,
-            'is_active': True,
-        },
-    )
-
-    if getattr(user, 'is_authenticated', False):
-        OfficeWorkChatGroupMember.objects.get_or_create(
-            group=group,
-            user=user,
-            defaults={'added_by': user},
-        )
-    return group
-
-
 def user_visible_groups_qs(user):
-    ensure_default_group_for_user(user)
     return (
         OfficeWorkChatGroup.objects.filter(is_active=True, memberships__user=user)
         .select_related('created_by')
@@ -298,6 +278,17 @@ def create_office_work_chat_message(*, sender, message_text: str, group=None, at
 
 def list_visible_groups_payload(user) -> dict:
     groups = list(user_visible_groups_qs(user))
+
+    # Legacy cleanup behavior: hide empty auto-seeded "General" groups.
+    filtered_groups = []
+    for group in groups:
+        if str(group.name or '').strip().lower() == 'general':
+            has_messages = OfficeWorkChatMessage.objects.filter(group_id=group.id).exists()
+            if not has_messages:
+                continue
+        filtered_groups.append(group)
+    groups = filtered_groups
+
     group_ids = [group.id for group in groups]
 
     member_map = {gid: [] for gid in group_ids}

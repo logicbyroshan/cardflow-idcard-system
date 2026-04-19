@@ -72,6 +72,7 @@
     chatGroupSelect: document.getElementById('officeChatGroupSelect'),
     chatGroupSearch: document.getElementById('officeChatGroupSearch'),
     chatGroupsList: document.getElementById('officeChatGroupsList'),
+    chatContactsList: document.getElementById('officeChatContactsList'),
     chatActiveGroupName: document.getElementById('officeChatActiveGroupName'),
     chatActiveGroupMeta: document.getElementById('officeChatActiveGroupMeta'),
     chatMembersStrip: document.getElementById('officeChatMembersStrip'),
@@ -256,7 +257,7 @@
     var group = activeGroupItem();
 
     if (ui.chatActiveGroupName) {
-      ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Message') : 'Team Message';
+      ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Message') : 'No Group Selected';
     }
 
     if (ui.chatActiveGroupMeta) {
@@ -312,7 +313,7 @@
     });
 
     if (!visibleGroups.length) {
-      ui.chatGroupsList.innerHTML = '<div class="client-message-thread-state">No groups found.</div>';
+      ui.chatGroupsList.innerHTML = '<div class="client-message-thread-state">No groups found. Create one to start.</div>';
       return;
     }
 
@@ -327,6 +328,36 @@
         '    <span class="office-chat-group-row-count">' + escapeHtml(groupMemberCount(group)) + '</span>' +
         '  </div>' +
         '  <div class="office-chat-group-row-sub">' + escapeHtml(groupSubtitle(group)) + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function renderAvailableMembersList() {
+    if (!ui.chatContactsList) {
+      return;
+    }
+
+    var query = String(ui.chatGroupSearch && ui.chatGroupSearch.value || '').trim().toLowerCase();
+    var members = state.availableMembers.filter(function (member) {
+      if (!query) {
+        return true;
+      }
+      var name = String(member && member.name || '').toLowerCase();
+      var role = String(member && (member.role_display || member.role) || '').toLowerCase();
+      return name.indexOf(query) >= 0 || role.indexOf(query) >= 0;
+    });
+
+    if (!members.length) {
+      ui.chatContactsList.innerHTML = '<div class="client-message-thread-state">No members found.</div>';
+      return;
+    }
+
+    ui.chatContactsList.innerHTML = members.map(function (member) {
+      var roleLabel = formatRoleLabel(member && (member.role_display || member.role));
+      return '' +
+        '<div class="office-chat-member-row">' +
+        '  <div class="office-chat-member-row-name">' + escapeHtml(member && member.name ? member.name : 'Member') + '</div>' +
+        '  <div class="office-chat-member-row-role">' + escapeHtml(roleLabel) + '</div>' +
         '</div>';
     }).join('');
   }
@@ -413,7 +444,7 @@
     updateChatCountPill();
     var empty = document.createElement('div');
     empty.className = 'client-message-thread-state';
-    empty.textContent = 'No chat yet. Start the conversation.';
+    empty.textContent = state.groups.length ? 'No chat yet. Start the conversation.' : 'No groups yet. Create your first group to start messaging.';
     ui.chatList.appendChild(empty);
   }
 
@@ -491,6 +522,7 @@
       }
       state.activeGroupId = 0;
       renderGroupList();
+      renderAvailableMembersList();
       updateActiveGroupHeader();
       return;
     }
@@ -504,6 +536,7 @@
     }
 
     renderGroupList();
+    renderAvailableMembersList();
     updateActiveGroupHeader();
   }
 
@@ -1133,6 +1166,7 @@
     if (ui.chatGroupSearch) {
       ui.chatGroupSearch.addEventListener('input', function () {
         renderGroupList();
+        renderAvailableMembersList();
       });
     }
 
