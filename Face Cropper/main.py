@@ -26,6 +26,7 @@ import logging.handlers
 import os
 import signal
 import socket
+import subprocess
 import sys
 import mimetypes
 import tempfile
@@ -55,6 +56,7 @@ SERVICE_MODE = os.environ.get("PASSPORT_ENGINE_MODE", "").lower() == "service"
 
 # Internal API key — must be sent as the X-ENGINE-KEY header.
 ENGINE_API_KEY = os.environ.get("ENGINE_API_KEY", "passport-engine-local-key")
+MAX_SELF_UPDATE_BYTES = int(os.environ.get("ENGINE_MAX_SELF_UPDATE_BYTES", str(300 * 1024 * 1024)))
 
 # Allowed CORS origins.
 _DEFAULT_ALLOWED_ORIGINS = [
@@ -333,6 +335,58 @@ class RenameExecuteRequest(BaseModel):
     white_point: int = 255    # Levels white point (1-255)
     vibrance: int = 0         # Vibrance adjustment (-100 to 100)
     temperature: int = 0      # Temperature adjustment (-100 to 100)
+
+
+def _launch_installer(installer_path: Path, silent: bool = True) -> Path:
+    """Launch the setup executable detached so this API can return immediately."""
+    log_path = installer_path.with_suffix(".log")
+
+    args = [str(installer_path)]
+    if silent:
+        args.extend(["/VERYSILENT", "/SUPPRESSMSGBOXES"])
+    else:
+        args.append("/SILENT")
+    args.extend([
+        "/NORESTART",
+        "/CLOSEAPPLICATIONS",
+        "/RESTARTAPPLICATIONS",
+        "/SP-",
+        f"/LOG={log_path}",
+    ])
+
+    creation_flags = 0
+    creation_flags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+    creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    creation_flags |= getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+    subprocess.Popen(
+        args,
+        cwd=str(installer_path.parent),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        creationflags=creation_flags,
+    )
+    return log_path
+
+
+def _cleanup_old_update_artifacts(update_dir: Path) -> None:
+    """Best-effort cleanup of old staged installers/logs."""
+    now = time.time()
+    max_age_seconds = 7 * 24 * 3600
+    for item in update_dir.glob("AdarshEngineSetup_*.exe"):
+        try:
+            if (now - item.stat().st_mtime) > max_age_seconds:
+                item.unlink(missing_ok=True)
+        except Exception:
+            continue
+    for item in update_dir.glob("AdarshEngineSetup_*.log"):
+        try:
+            if (now - item.stat().st_mtime) > max_age_seconds:
+                item.unlink(missing_ok=True)
+        except Exception:
+            continue
 
 
 # ── Routes ───────────────────────────────────────────────────────────────
@@ -668,6 +722,69 @@ async def rename_execute_endpoint(body: RenameExecuteRequest):
     except Exception:
         logger.exception("Unexpected error during batch rename.")
         raise HTTPException(status_code=500, detail="Internal rename error.")
+
+
+@app.post("/self-update")
+async def self_update_endpoint(
+    installer: UploadFile = File(...),
+    silent: bool = Form(True),
+    source_version: str | None = Form(None),
+):
+    """
+    Stage a setup EXE from the panel and launch a detached in-place upgrade.
+
+    This endpoint is intended for localhost direct-mode updates only.
+    """
+    filename = (installer.filename or "").strip()
+    if not filename.lower().endswith(".exe"):
+        raise HTTPException(status_code=400, detail="Only .exe installer uploads are accepted.")
+
+    update_dir = Path(tempfile.gettempdir()) / "AdarshEngineUpdater"
+    update_dir.mkdir(parents=True, exist_ok=True)
+    _cleanup_old_update_artifacts(update_dir)
+
+    stamp = int(time.time())
+    target_path = update_dir / f"AdarshEngineSetup_{stamp}.exe"
+    total_bytes = 0
+
+    try:
+        with open(target_path, "wb") as out_fh:
+            while True:
+                chunk = await installer.read(4 * 1024 * 1024)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > MAX_SELF_UPDATE_BYTES:
+                    out_fh.close()
+                    target_path.unlink(missing_ok=True)
+                    raise HTTPException(status_code=413, detail="Installer exceeds maximum allowed size.")
+                out_fh.write(chunk)
+
+        if total_bytes < 128 * 1024:
+            target_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail="Installer file appears invalid or incomplete.")
+
+        log_path = _launch_installer(target_path, silent=bool(silent))
+        logger.info(
+            "Self-update launched (bytes=%s, version_hint=%s, file=%s)",
+            total_bytes,
+            source_version or "",
+            target_path,
+        )
+
+        return JSONResponse(content={
+            "accepted": True,
+            "message": "Installer launched. Engine service may restart shortly.",
+            "bytes": total_bytes,
+            "version_hint": source_version or "",
+            "installer_path": str(target_path),
+            "log_path": str(log_path),
+        })
+    finally:
+        try:
+            await installer.close()
+        except Exception:
+            pass
 
 
 @app.get("/rename-operations")

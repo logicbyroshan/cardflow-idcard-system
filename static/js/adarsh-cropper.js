@@ -169,6 +169,8 @@ function cropperApp() {
       version: '',
       downloadUrl: '',
       changelog: '',
+      installing: false,
+      installError: '',
     },
 
     // 
@@ -407,6 +409,7 @@ function cropperApp() {
         var data = await ApiClient.get('/api/cropper/latest-version/');
         if (!data || !data.available) {
           this.update.available = false;
+          this.update.installError = '';
           return;
         }
 
@@ -422,6 +425,7 @@ function cropperApp() {
           this.update.available = true;
         } else {
           this.update.available = false;
+          this.update.installError = '';
         }
       } catch (err) {
         console.warn('[Cropper] Update check failed:', err);
@@ -434,6 +438,95 @@ function cropperApp() {
      */
     _semverCompare(a, b) {
       return window.CropperUtils.semverCompare(a, b);
+    },
+
+    /**
+     * Return a same-origin URL for downloading the installer.
+     */
+    _resolvedUpdateDownloadUrl() {
+      if (this.update.downloadUrl && String(this.update.downloadUrl).charAt(0) === '/') {
+        return this.update.downloadUrl;
+      }
+      return '/panel/engine/download/';
+    },
+
+    /**
+     * Download and apply update in-place through the local engine service.
+     */
+    async installEngineUpdate() {
+      if (this.update.installing) return;
+
+      var fallbackUrl = this._resolvedUpdateDownloadUrl();
+
+      // Only direct mode can install update on the current machine.
+      if (!this.engine.connected || !this.engine.direct) {
+        window.location.href = fallbackUrl;
+        return;
+      }
+
+      this.update.installing = true;
+      this.update.installError = '';
+      this._showProgress('Installing engine update...');
+      this._updateProgress(5, 'Downloading installer package...');
+
+      try {
+        var downloadResp = await fetch(fallbackUrl, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (!downloadResp.ok) {
+          throw new Error('Failed to download installer (' + downloadResp.status + ')');
+        }
+
+        var installerBlob = await downloadResp.blob();
+        if (!installerBlob || installerBlob.size < 128 * 1024) {
+          throw new Error('Downloaded installer is invalid or incomplete.');
+        }
+
+        this._updateProgress(45, 'Sending installer to local engine...');
+
+        var formData = new FormData();
+        formData.append('installer', installerBlob, 'AdarshEngineSetup.exe');
+        formData.append('silent', 'true');
+        formData.append('source_version', this.update.version || '');
+
+        var installResp = await fetch(ENGINE_DIRECT_URL + '/self-update', {
+          method: 'POST',
+          headers: {
+            'X-ENGINE-KEY': ENGINE_API_KEY,
+          },
+          body: formData,
+        });
+
+        var installData = {};
+        try { installData = await installResp.json(); } catch (_) {}
+
+        if (!installResp.ok || !installData.accepted) {
+          var detail = installData.message || installData.detail || ('Engine update error ' + installResp.status);
+          throw new Error(detail);
+        }
+
+        this._updateProgress(100, 'Update installer launched. Waiting for service restart...');
+        this.update.available = false;
+
+        if (typeof Toast !== 'undefined') {
+          Toast.info('Update started. Please wait 30-60 seconds while Adarsh Engine restarts.');
+        }
+
+        var self = this;
+        setTimeout(function () {
+          self.checkEngine();
+        }, 12000);
+      } catch (err) {
+        this.update.installError = err && err.message ? err.message : 'Failed to start update.';
+        console.warn('[Cropper] Update install failed:', err);
+        if (typeof Toast !== 'undefined') {
+          Toast.error('Update failed: ' + this.update.installError);
+        }
+      } finally {
+        this.update.installing = false;
+        this._hideProgress();
+      }
     },
 
     // 

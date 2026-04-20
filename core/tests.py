@@ -266,7 +266,9 @@ class CropperLatestVersionFallbackTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload['available'])
-        self.assertEqual(payload['version'], '2.4.0')
+        version_file = Path(__file__).resolve().parent.parent / 'Face Cropper' / 'VERSION.txt'
+        expected_version = version_file.read_text(encoding='utf-8').strip()
+        self.assertEqual(payload['version'], expected_version)
         self.assertIn('/panel/engine/download/', payload['download_url'])
 
     def test_latest_version_prefers_local_download_even_when_release_url_exists(self):

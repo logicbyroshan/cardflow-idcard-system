@@ -39,7 +39,7 @@
 ; ═══════════════════════════════════════════════════════════════════════
 
 #define MyAppName "Adarsh Engine"
-#define MyAppVersion "2.5.0"
+#define MyAppVersion "3.18.0"
 #define MyAppPublisher "Adarsh ID Card"
 #define MyAppCopyright "© 2026 Adarsh ID Card. Developed by Roshan Damor."
 #define MyAppExeName "AdarshEngine.exe"
@@ -52,7 +52,7 @@ AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppCopyright={#MyAppCopyright}
-VersionInfoVersion=2.5.0.0
+VersionInfoVersion=3.18.0.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=Adarsh Engine — Photo Processing Engine by Adarsh ID Card
 VersionInfoProductName={#MyAppName}
@@ -72,6 +72,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName={#MyAppName}
 CreateUninstallRegKey=yes
 Uninstallable=yes
+CloseApplications=yes
+RestartApplications=no
 
 ; Code signing — uncomment SignTool when you have a certificate.
 ; Configure via: Inno Setup → Tools → Configure Sign Tools
@@ -101,6 +103,37 @@ Name: "{app}\logs"
 var
   OutputDirPage: TInputDirWizardPage;
 
+procedure RunHiddenBestEffort(const ExePath: String; const Params: String);
+var
+    ResultCode: Integer;
+begin
+    if ExePath = '' then
+        exit;
+    if not FileExists(ExePath) then
+        exit;
+    Exec(ExePath, Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+procedure StopAndRemoveExistingServices();
+var
+    NssmPath: String;
+    ResultCode: Integer;
+begin
+    NssmPath := ExpandConstant('{app}\nssm.exe');
+
+    { Upgrade-safe pre-stop: do this before files are copied to avoid lock prompts. }
+    RunHiddenBestEffort(NssmPath, 'stop {#MyServiceName}');
+    RunHiddenBestEffort(NssmPath, 'stop PassportEngine');
+    RunHiddenBestEffort(NssmPath, 'remove {#MyServiceName} confirm');
+    RunHiddenBestEffort(NssmPath, 'remove PassportEngine confirm');
+
+    { Fallback through SCM in case NSSM binary is missing in prior install. }
+    Exec(ExpandConstant('{cmd}'), '/C sc stop {#MyServiceName} >nul 2>nul', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec(ExpandConstant('{cmd}'), '/C sc stop PassportEngine >nul 2>nul', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec(ExpandConstant('{cmd}'), '/C sc delete {#MyServiceName} >nul 2>nul', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec(ExpandConstant('{cmd}'), '/C sc delete PassportEngine >nul 2>nul', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
 procedure InitializeWizard();
 begin
   { Custom page: let user choose where cropped photos are saved }
@@ -121,6 +154,11 @@ var
   ConfigFile: String;
   OutputDir: String;
 begin
+    if CurStep = ssInstall then
+    begin
+        StopAndRemoveExistingServices();
+    end;
+
   if CurStep = ssPostInstall then
   begin
     { Write the chosen output directory to config file }
@@ -135,22 +173,6 @@ begin
 end;
 
 [Run]
-; ── Stop old service (if upgrading) ──────────────────────────────────
-Filename: "{app}\nssm.exe"; Parameters: "stop {#MyServiceName}"; \
-    Flags: runhidden nowait; StatusMsg: "Stopping existing service..."
-
-; ── Also stop legacy service name if upgrading from old version ──────
-Filename: "{app}\nssm.exe"; Parameters: "stop PassportEngine"; \
-    Flags: runhidden nowait; StatusMsg: "Stopping legacy service..."
-
-; ── Remove old service (if upgrading) ────────────────────────────────
-Filename: "{app}\nssm.exe"; Parameters: "remove {#MyServiceName} confirm"; \
-    Flags: runhidden; StatusMsg: "Removing old service..."
-
-; ── Remove legacy service name if present ────────────────────────────
-Filename: "{app}\nssm.exe"; Parameters: "remove PassportEngine confirm"; \
-    Flags: runhidden; StatusMsg: "Removing legacy service..."
-
 ; ── Install service ──────────────────────────────────────────────────
 Filename: "{app}\nssm.exe"; Parameters: "install {#MyServiceName} ""{app}\{#MyAppExeName}"""; \
     Flags: runhidden; StatusMsg: "Installing service..."

@@ -42,6 +42,19 @@ WEBHOOK_RATE_LIMIT_PER_MIN = int(os.getenv("CROPPER_WEBHOOK_RATE_LIMIT_PER_MIN",
 WEBHOOK_ALLOW_LEGACY_AUTH = os.getenv("CROPPER_WEBHOOK_ALLOW_LEGACY_AUTH", "false").strip().lower() in ('1', 'true', 'yes')
 
 
+def _parse_semver_tuple(version: str) -> tuple[int, ...]:
+    parts = []
+    for token in str(version or "").split('.'):
+        if token.isdigit():
+            parts.append(int(token))
+        else:
+            digits = ''.join(ch for ch in token if ch.isdigit())
+            parts.append(int(digits) if digits else 0)
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:3])
+
+
 def _verify_webhook(request) -> bool:
     """
     Verify the request is from a trusted source.
@@ -232,20 +245,8 @@ def api_cropper_latest_version(request):
     fallback_url = reverse('engine_download')
 
     release = CropperRelease.objects.filter(is_latest=True).first()
-    if release:
-        # Always use local endpoint for authenticated in-panel downloads.
-        download_url = fallback_url
 
-        return JsonResponse({
-            "available": True,
-            "version": release.version,
-            "download_url": download_url,
-            "changelog": release.changelog,
-            "released_at": release.released_at.isoformat() if release.released_at else None,
-        })
-
-    # No release row exists (e.g., local/manual build) -> fall back to the
-    # bundled engine VERSION.txt so download buttons still show a concrete version.
+    # Also inspect local/manual build version from VERSION.txt.
     base_dir = Path(getattr(settings, 'BASE_DIR', Path(__file__).resolve().parents[2]))
     version_candidates = [
         base_dir / 'Face Cropper' / 'VERSION.txt',
@@ -262,7 +263,27 @@ def api_cropper_latest_version(request):
             break
 
     if not local_version:
+        if release:
+            return JsonResponse({
+                "available": True,
+                "version": release.version,
+                "download_url": fallback_url,
+                "changelog": release.changelog,
+                "released_at": release.released_at.isoformat() if release.released_at else None,
+            })
         return JsonResponse({"available": False, "download_url": fallback_url})
+
+    if release:
+        release_v = _parse_semver_tuple(release.version)
+        local_v = _parse_semver_tuple(local_version)
+        if release_v >= local_v:
+            return JsonResponse({
+                "available": True,
+                "version": release.version,
+                "download_url": fallback_url,
+                "changelog": release.changelog,
+                "released_at": release.released_at.isoformat() if release.released_at else None,
+            })
 
     return JsonResponse({
         "available": True,
