@@ -6,11 +6,14 @@ realtime fanout so HTTP and websocket paths share one source of truth.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Iterable
 
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.urls import reverse
+from django.utils import timezone
 
 from core.services.permission_service import PermissionService
 from core.services.realtime_service import publish_topic_event
@@ -20,6 +23,8 @@ from .models import OfficeWorkChatGroup, OfficeWorkChatGroupMember, OfficeWorkCh
 
 MAX_CHAT_MESSAGE_LENGTH = 4000
 MAX_CHAT_ATTACHMENT_BYTES = 50 * 1024 * 1024
+OFFICEWORK_PRESENCE_ONLINE_WINDOW_SECONDS = 75
+OFFICEWORK_PRESENCE_RETENTION_SECONDS = 60 * 60 * 24 * 14
 
 
 def officework_allowed_members_qs():
@@ -41,13 +46,89 @@ def officework_user_topic(user_id: int) -> str:
     return f'officework.chat.user.{int(user_id)}'
 
 
-def _serialize_member(user) -> dict:
+def _officework_presence_key(user_id: int) -> str:
+    return f'officework:presence:last_seen:{int(user_id)}'
+
+
+def mark_officework_user_presence(user):
+    user_id = int(getattr(user, 'id', 0) or 0)
+    if user_id <= 0:
+        return None
+    now = timezone.now()
+    cache.set(_officework_presence_key(user_id), now.isoformat(), timeout=OFFICEWORK_PRESENCE_RETENTION_SECONDS)
+    return now
+
+
+def _parse_presence_value(raw_value):
+    if raw_value is None:
+        return None
+
+    dt = raw_value if isinstance(raw_value, datetime) else None
+    if dt is None:
+        text = str(raw_value or '').strip()
+        if not text:
+            return None
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
+
+
+def _presence_map_for_users(user_ids: Iterable[int]) -> dict[int, datetime]:
+    normalized_ids = set()
+    for raw_user_id in (user_ids or []):
+        try:
+            parsed_id = int(raw_user_id)
+        except (TypeError, ValueError):
+            continue
+        if parsed_id > 0:
+            normalized_ids.add(parsed_id)
+    if not normalized_ids:
+        return {}
+
+    key_by_user_id = {
+        user_id: _officework_presence_key(user_id)
+        for user_id in normalized_ids
+    }
+    raw_map = cache.get_many(list(key_by_user_id.values()))
+
+    result = {}
+    for user_id, cache_key in key_by_user_id.items():
+        parsed = _parse_presence_value(raw_map.get(cache_key))
+        if parsed is not None:
+            result[user_id] = parsed
+    return result
+
+
+def _serialize_member(user, *, presence_map=None, now=None) -> dict:
+    user_id = int(getattr(user, 'id', 0) or 0)
+    current_time = now or timezone.now()
+    latest_seen = None
+
+    if isinstance(presence_map, dict):
+        latest_seen = presence_map.get(user_id)
+    if latest_seen is None and getattr(user, 'last_login', None):
+        latest_seen = user.last_login
+        if timezone.is_naive(latest_seen):
+            latest_seen = timezone.make_aware(latest_seen, timezone.get_current_timezone())
+
+    is_online = bool(
+        latest_seen is not None
+        and (current_time - latest_seen).total_seconds() <= OFFICEWORK_PRESENCE_ONLINE_WINDOW_SECONDS
+    )
+
     full_name = (user.get_full_name() or '').strip()
     return {
-        'id': user.id,
-        'name': full_name or user.username or user.email or f'User {user.id}',
+        'id': user_id,
+        'name': full_name or user.username or user.email or f'User {user_id}',
         'role': user.role,
         'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else user.role,
+        'is_online': is_online,
+        'last_seen_at': latest_seen.isoformat() if latest_seen else None,
     }
 
 
@@ -278,6 +359,7 @@ def create_office_work_chat_message(*, sender, message_text: str, group=None, at
 
 def list_visible_groups_payload(user) -> dict:
     groups = list(user_visible_groups_qs(user))
+    available_members = list(officework_allowed_members_qs())
 
     # Legacy cleanup behavior: hide empty auto-seeded "General" groups.
     filtered_groups = []
@@ -290,6 +372,8 @@ def list_visible_groups_payload(user) -> dict:
     groups = filtered_groups
 
     group_ids = [group.id for group in groups]
+    all_member_ids = {int(user.id or 0)}
+    all_member_ids.update(int(member.id or 0) for member in available_members)
 
     member_map = {gid: [] for gid in group_ids}
     memberships = (
@@ -298,7 +382,13 @@ def list_visible_groups_payload(user) -> dict:
         .order_by('id')
     )
     for membership in memberships:
-        member_map.setdefault(membership.group_id, []).append(_serialize_member(membership.user))
+        all_member_ids.add(int(getattr(membership, 'user_id', 0) or 0))
+
+    presence_map = _presence_map_for_users(all_member_ids)
+    now = timezone.now()
+
+    for membership in memberships:
+        member_map.setdefault(membership.group_id, []).append(_serialize_member(membership.user, presence_map=presence_map, now=now))
 
     group_payload = []
     for group in groups:
@@ -308,6 +398,6 @@ def list_visible_groups_payload(user) -> dict:
 
     return {
         'groups': group_payload,
-        'available_members': [_serialize_member(member) for member in officework_allowed_members_qs()],
+        'available_members': [_serialize_member(member, presence_map=presence_map, now=now) for member in available_members],
         'can_manage_groups': user_can_manage_officework_groups(user),
     }

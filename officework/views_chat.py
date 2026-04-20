@@ -15,6 +15,7 @@ from .services_chat import (
     create_officework_chat_group,
     create_office_work_chat_message,
     list_visible_groups_payload,
+    mark_officework_user_presence,
     replace_officework_chat_group_members,
     resolve_group_for_user,
     user_can_manage_officework_groups,
@@ -26,6 +27,7 @@ from .views_common import parse_int, parse_json_body, serialize_chat_message
 @login_required
 @require_any_admin
 def office_work_page(request):
+    mark_officework_user_presence(request.user)
     return render(
         request,
         'officework/office-work.html',
@@ -40,6 +42,7 @@ def office_work_page(request):
 @rate_limit(max_requests=180, window_seconds=60, key_prefix='ow_chat_groups_list')
 @api_require_any_admin
 def api_office_work_chat_groups_list(request):
+    mark_officework_user_presence(request.user)
     payload = list_visible_groups_payload(request.user)
     return JsonResponse({
         'success': True,
@@ -53,6 +56,7 @@ def api_office_work_chat_groups_list(request):
 @rate_limit(max_requests=20, window_seconds=60, key_prefix='ow_chat_group_create')
 @api_require_any_admin
 def api_office_work_chat_group_create(request):
+    mark_officework_user_presence(request.user)
     body = parse_json_body(request)
     if body is None:
         return JsonResponse({'success': False, 'message': 'Invalid JSON body.'}, status=400)
@@ -81,6 +85,7 @@ def api_office_work_chat_group_create(request):
 @rate_limit(max_requests=30, window_seconds=60, key_prefix='ow_chat_group_members_update')
 @api_require_any_admin
 def api_office_work_chat_group_members_update(request, group_id):
+    mark_officework_user_presence(request.user)
     body = parse_json_body(request)
     if body is None:
         return JsonResponse({'success': False, 'message': 'Invalid JSON body.'}, status=400)
@@ -105,6 +110,7 @@ def api_office_work_chat_group_members_update(request, group_id):
 @rate_limit(max_requests=240, window_seconds=60, key_prefix='ow_chat_list')
 @api_require_any_admin
 def api_office_work_chat_list(request):
+    mark_officework_user_presence(request.user)
     limit = max(1, min(parse_int(request.GET.get('limit'), 150), 300))
     after_id = parse_int(request.GET.get('after_id'), 0)
     group_id = parse_int(request.GET.get('group_id'), 0)
@@ -136,6 +142,7 @@ def api_office_work_chat_list(request):
 @rate_limit(max_requests=80, window_seconds=60, key_prefix='ow_chat_send')
 @api_require_any_admin
 def api_office_work_chat_send(request):
+    mark_officework_user_presence(request.user)
     is_multipart = 'multipart/form-data' in str(request.META.get('CONTENT_TYPE') or '').lower()
     body = None if is_multipart else parse_json_body(request)
     if body is None and not is_multipart:
@@ -192,6 +199,7 @@ def api_office_work_chat_send(request):
 @require_any_admin
 @require_http_methods(['GET'])
 def api_office_work_chat_attachment_download(request, message_id):
+    mark_officework_user_presence(request.user)
     message = get_object_or_404(
         OfficeWorkChatMessage.objects.select_related('group'),
         id=message_id,

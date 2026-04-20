@@ -79,6 +79,7 @@
     chatGroupSelect: document.getElementById('officeChatGroupSelect'),
     chatGroupSearch: document.getElementById('officeChatGroupSearch'),
     chatGroupsList: document.getElementById('officeChatGroupsList'),
+    chatActiveAvatar: document.getElementById('officeChatActiveAvatar'),
     chatActiveGroupName: document.getElementById('officeChatActiveGroupName'),
     chatActiveGroupMeta: document.getElementById('officeChatActiveGroupMeta'),
     chatMembersStrip: document.getElementById('officeChatMembersStrip'),
@@ -171,6 +172,96 @@
       return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     return dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  function formatChatClock(raw) {
+    if (!raw) {
+      return '';
+    }
+    var dt = new Date(raw);
+    if (Number.isNaN(dt.getTime())) {
+      return '';
+    }
+    return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function parseDateSafe(raw) {
+    if (!raw) {
+      return null;
+    }
+    var dt = new Date(raw);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function formatLastSeen(raw) {
+    var dt = parseDateSafe(raw);
+    if (!dt) {
+      return '';
+    }
+
+    var now = new Date();
+    var diffMs = Math.max(0, now.getTime() - dt.getTime());
+    var diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) {
+      return 'just now';
+    }
+    if (diffMin < 60) {
+      return diffMin + ' min ago';
+    }
+
+    var startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    var startTarget = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
+    var dayDelta = Math.round((startToday - startTarget) / 86400000);
+    var timeLabel = formatChatClock(raw);
+    if (dayDelta === 0) {
+      return 'today ' + timeLabel;
+    }
+    if (dayDelta === 1) {
+      return 'yesterday ' + timeLabel;
+    }
+    return dt.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + timeLabel;
+  }
+
+  function memberPresenceLabel(member) {
+    if (!member) {
+      return 'Select a user from the right sidebar to start messaging.';
+    }
+    if (member.is_online) {
+      return 'online';
+    }
+    var lastSeen = formatLastSeen(member.last_seen_at);
+    if (!lastSeen) {
+      return 'last seen recently';
+    }
+    return 'last seen ' + lastSeen;
+  }
+
+  function activePeerCanConfirmRead() {
+    var member = activeMemberItem();
+    if (!member || !member.is_online) {
+      return false;
+    }
+    var group = activeGroupItem();
+    if (!group) {
+      return false;
+    }
+    return groupMemberCount(group) <= 2;
+  }
+
+  function refreshSelfMessageDeliveryState() {
+    if (!ui.chatList) {
+      return;
+    }
+    var isRead = activePeerCanConfirmRead();
+    var stateNodes = ui.chatList.querySelectorAll('.office-chat-msg-state[data-self-message="1"]');
+    stateNodes.forEach(function (node) {
+      node.classList.toggle('is-read', isRead);
+      node.classList.toggle('is-sent', !isRead);
+      node.title = isRead ? 'Read' : 'Sent';
+      node.innerHTML = isRead
+        ? '<i class="fa-solid fa-check-double" aria-hidden="true"></i>'
+        : '<i class="fa-solid fa-check" aria-hidden="true"></i>';
+    });
   }
 
   function formatBytes(bytes) {
@@ -624,24 +715,40 @@
   function updateActiveGroupHeader() {
     var group = activeGroupItem();
     var member = activeMemberItem();
+    var titleText = 'Select a chat';
+    if (member) {
+      titleText = String(member.name || 'Team Member');
+    } else if (group) {
+      titleText = String(group.name || 'Team Chat');
+    }
 
     if (ui.chatActiveGroupName) {
-      if (member) {
-        ui.chatActiveGroupName.textContent = String(member.name || 'Team Member');
-      } else {
-        ui.chatActiveGroupName.textContent = group ? String(group.name || 'Team Chat') : 'Select a chat';
-      }
+      ui.chatActiveGroupName.textContent = titleText;
+    }
+
+    if (ui.chatActiveAvatar) {
+      var avatarChar = titleText.trim().charAt(0).toUpperCase() || '?';
+      ui.chatActiveAvatar.textContent = avatarChar;
     }
 
     if (ui.chatActiveGroupMeta) {
       if (!group) {
-        ui.chatActiveGroupMeta.textContent = 'Pick a user or group from the right sidebar to start messaging.';
+        ui.chatActiveGroupMeta.textContent = 'Pick a user from the right sidebar to start messaging.';
+        ui.chatActiveGroupMeta.classList.remove('is-online');
+        ui.chatActiveGroupMeta.classList.add('is-offline');
       } else if (member) {
-        ui.chatActiveGroupMeta.textContent = formatRoleLabel(member.role_display || member.role);
+        ui.chatActiveGroupMeta.textContent = memberPresenceLabel(member);
+        ui.chatActiveGroupMeta.classList.toggle('is-online', !!member.is_online);
+        ui.chatActiveGroupMeta.classList.toggle('is-offline', !member.is_online);
       } else {
-        ui.chatActiveGroupMeta.textContent = 'Group conversation';
+        var count = groupMemberCount(group);
+        ui.chatActiveGroupMeta.textContent = (count > 0 ? count + ' members' : 'Group conversation');
+        ui.chatActiveGroupMeta.classList.remove('is-online');
+        ui.chatActiveGroupMeta.classList.add('is-offline');
       }
     }
+
+    refreshSelfMessageDeliveryState();
 
     if (!ui.chatMembersStrip) {
       return;
@@ -697,7 +804,6 @@
       var avatar = String(member && member.name || 'U').trim().charAt(0).toUpperCase() || 'U';
       var preview = linkedGroup ? groupSubtitle(linkedGroup) : 'Click to start chat';
       var timeText = linkedGroup ? formatChatTime(groupUpdatedAt(linkedGroup)) : '';
-      var unreadCount = Number(linkedGroup && linkedGroup.unread_count || 0);
       return '' +
         '<div class="' + rowClass + '" data-member-id="' + escapeHtml(memberId) + '">' +
         '  <div class="office-chat-group-avatar" aria-hidden="true">' + escapeHtml(avatar) + '</div>' +
@@ -708,7 +814,6 @@
         '    </div>' +
         '    <div class="office-chat-group-row-sub">' + escapeHtml(preview) + '</div>' +
         '  </div>' +
-        (unreadCount > 0 ? '  <span class="office-chat-group-row-unread">' + escapeHtml(unreadCount > 99 ? '99+' : unreadCount) + '</span>' : '') +
         '</div>';
     }).join('');
   }
@@ -842,18 +947,19 @@
 
     var isSelf = Number(item.sender_id || 0) === Number(cfg.currentUserId || 0);
     var row = document.createElement('article');
-    row.className = isSelf ? 'client-message-row office-chat-row-self' : 'client-message-row';
+    row.className = isSelf ? 'client-message-row office-chat-row-self' : 'client-message-row office-chat-row-peer';
+    var timeText = formatChatClock(item.created_at);
+    var showRead = isSelf && activePeerCanConfirmRead();
+    var deliveryStateHtml = isSelf
+      ? (
+        '<span class="office-chat-msg-state ' + (showRead ? 'is-read' : 'is-sent') + '" data-self-message="1" title="' + (showRead ? 'Read' : 'Sent') + '">' +
+        '  <i class="fa-solid ' + (showRead ? 'fa-check-double' : 'fa-check') + '" aria-hidden="true"></i>' +
+        '</span>'
+      )
+      : '';
     row.innerHTML = '' +
       '<div class="client-message-bubble">' +
-      '  <div class="client-message-bubble-head">' +
-      '    <span class="client-message-sender">' + escapeHtml(item.sender_name || 'Unknown') + '</span>' +
-      '    <span class="client-message-time">' + escapeHtml(formatDateTime(item.created_at)) + '</span>' +
-      '  </div>' +
-      '  <div class="client-message-text">' + escapeHtml(item.message || '') + '</div>' +
-      '  <div class="client-message-meta">' +
-      '    <span class="client-message-chip scope">' + escapeHtml(formatRoleLabel(item.sender_role)) + '</span>' +
-      (isSelf ? '    <span class="client-message-chip read">You</span>' : '') +
-      '  </div>' +
+      (item.message ? '  <div class="client-message-text">' + escapeHtml(item.message || '') + '</div>' : '') +
       (item.attachment ? (
         '  <a class="office-chat-file-link" href="' + escapeHtml(item.attachment.download_url || '#') + '">' +
         '    <i class="fa-solid fa-file-arrow-down"></i>' +
@@ -861,6 +967,10 @@
         '    <span>(' + escapeHtml(formatBytes(item.attachment.size_bytes || 0)) + ')</span>' +
         '  </a>'
       ) : '') +
+      '  <div class="office-chat-msg-footer">' +
+      '    <span class="office-chat-msg-time">' + escapeHtml(timeText) + '</span>' +
+      deliveryStateHtml +
+      '  </div>' +
       '</div>' +
       '';
     ui.chatList.appendChild(row);
